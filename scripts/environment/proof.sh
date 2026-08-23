@@ -19,8 +19,12 @@ cycles=1
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --cycles)
+      # Checked before shifting: `--cycles` with nothing after it would
+      # otherwise consume the last argument and leave the trailing shift to
+      # fail, killing the script under errexit with no explanation at all.
+      [ "$#" -ge 2 ] || inferops::fail "--cycles needs a value. Usage: proof.sh [--cycles N]"
+      cycles="$2"
       shift
-      cycles="${1:-}"
       ;;
     *) inferops::fail "unknown argument '$1'. Usage: proof.sh [--cycles N]" ;;
   esac

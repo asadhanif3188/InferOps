@@ -30,7 +30,19 @@ collect_diagnostics() {
   inferops::kubectl get nodes -o yaml >"${diag_dir}/nodes.yaml" 2>&1 || true
 }
 
-trap 'collect_diagnostics' ERR
+on_exit() {
+  local rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    collect_diagnostics
+  fi
+  exit "${rc}"
+}
+
+# On EXIT rather than on ERR, so that a deliberate failure — an assertion this
+# script raises itself — collects diagnostics just as a failing command does.
+# An ERR trap alone misses every `exit` path, and those are most of the
+# interesting ones.
+trap on_exit EXIT
 
 inferops::section "Applying the hello-world workload"
 
@@ -54,8 +66,26 @@ inferops::kubectl delete job hello-world-verify \
   -n "${INFEROPS_NAMESPACE}" --ignore-not-found=true --wait=true
 
 inferops::kubectl apply -f "$(inferops::native_path "${manifest_dir}/verify-job.yaml")"
-inferops::kubectl wait --for=condition=Complete job/hello-world-verify \
-  -n "${INFEROPS_NAMESPACE}" --timeout=180s
+
+# `kubectl wait` watches one condition at a time, so waiting for Complete alone
+# would sit through the entire timeout before noticing a Job that had already
+# failed. Poll for either terminal condition and stop at whichever arrives.
+verify_deadline=$((SECONDS + 180))
+verify_state=""
+while [ "${SECONDS}" -lt "${verify_deadline}" ]; do
+  verify_state="$(inferops::kubectl get job hello-world-verify \
+    -n "${INFEROPS_NAMESPACE}" \
+    -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}/{.status.conditions[?(@.type=="Failed")].status}' \
+    2>/dev/null || true)"
+  case "${verify_state}" in
+    True/*) break ;;
+    */True) inferops::fail "the verification job failed; the Service did not answer as expected." ;;
+  esac
+  sleep 2
+done
+
+[ "${verify_state%%/*}" = "True" ] ||
+  inferops::fail "the verification job did not reach a terminal state within the deadline."
 
 verify_output="$(inferops::kubectl logs -n "${INFEROPS_NAMESPACE}" job/hello-world-verify)"
 printf '%s\n' "${verify_output}"
@@ -80,8 +110,6 @@ if command -v docker >/dev/null 2>&1; then
   docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}' ||
     inferops::warn "could not read engine statistics."
 fi
-
-trap - ERR
 
 inferops::section "Result"
 

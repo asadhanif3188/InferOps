@@ -283,15 +283,27 @@ does silently on their behalf:
   must disable it before creating `inferops-dev`. It competes for the same virtual
   machine's memory and binds the same local port.
 
-**How the refusals are enforced, and what defeated a naive version of them.** The
-first implementation of the identity guard checked that the reachable cluster's
-control-plane node carried a kind cluster label. It does not: kind labels the node
-*container*, not the Kubernetes node object, and the guard failed closed on the
-project's own cluster. The check now requires every node the API server reports to
-be a container that kind itself labelled for `inferops-dev`. That version was then
-tested against a second, real cluster whose context had been renamed to this
-project's context name, and it refused. A correct context name is not accepted as
-evidence of identity, because a context name is only what someone typed.
+**How the refusals are enforced, and what defeated two naive versions of them.**
+The first implementation checked that the reachable cluster's control-plane node
+carried a kind cluster label. It does not: kind labels the node *container*, not
+the Kubernetes node object, and the guard failed closed on the project's own
+cluster. The check now requires every node the API server reports to be a
+container that kind itself labelled for `inferops-dev`, and it was then tested
+against a second, real cluster whose context had been renamed to this project's
+context name. It refused. A correct context name is not evidence of identity,
+because a context name is only what someone typed.
+
+The second version was correct and applied in the wrong places. It guarded the
+object-scoped teardown but not the equivalent delete on the *default* teardown
+path — the one a contributor actually runs. Both are guarded now. Where identity
+cannot be established, the object-scoped delete is skipped and the reason
+reported, rather than aborting: deleting the cluster itself is scoped by kind's
+own bookkeeping and stays safe either way.
+
+The limit of all this is worth naming. Identity here means "a kind cluster kind
+labelled `inferops-dev`". A second cluster deliberately created under that name
+satisfies every check. The guard prevents reaching the wrong cluster by accident;
+it cannot prevent a name collision made on purpose.
 
 ### D6 — Cleanup
 
@@ -507,6 +519,8 @@ evidence and their own PR.
 | R10 | Every third-party comparison here is documentation-derived; none of the compared tools was run | **Partly closed** | The two selected tools have now been run. Every rejected alternative is still rejected on documentation alone, so the comparison could still be wrong in the direction of the roads not taken. |
 | R11 | The engine's virtual disk grows to hold the cluster and does not shrink when it is removed | New | Host free space is not returned by teardown. On a host with roughly 23 GB free, repeated create-and-destroy cycles are not free, and reclaiming the space needs an engine maintenance operation this project must not perform on a contributor's behalf. |
 | R12 | kind ships no ingress controller and no `Service type=LoadBalancer`, and neither was installed | New | The accepted evidence covers a ClusterIP Service only. The contracts InferOps most needs to exercise are still unexercised, and what installing them costs on this host is unknown. |
+| R13 | The environment scripts require the `docker` CLI specifically, not merely a Docker-API-compatible engine | New | D1 selects the engine API, but cluster identity is established by querying the engine for kind's container labels, and only the Docker CLI form of that query exists. Podman and the other permissively licensed alternatives are further from working than D1's wording implies. |
+| R14 | Cluster identity is a project-chosen name | New | A second kind cluster deliberately named `inferops-dev` would pass every guard and be deleted. Accidental misdirection is defended against; a deliberate collision is not. |
 
 Open questions carried forward: whether the permissively licensed engine
 alternatives behave identically for the chosen Kubernetes distribution; whether the

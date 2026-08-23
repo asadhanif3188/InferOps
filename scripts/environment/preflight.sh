@@ -84,8 +84,14 @@ fi
 inferops::section "Client version skew"
 
 if command -v kubectl >/dev/null 2>&1; then
+  # `kubectl version` accepts only yaml and json, not jsonpath, so the value is
+  # read out of the JSON. awk splitting on the quote character is indifferent to
+  # how the document is indented; `exit` takes the first match, which is the
+  # client's, and avoids a truncated pipe. `tr -cd` tolerates the vendor '34+'
+  # form. `|| true` so that a kubectl which cannot report its version produces
+  # the diagnosis below rather than aborting the script under errexit.
   client_minor="$(kubectl version --client=true -o json 2>/dev/null |
-    tr -d ' "' | grep -E '^minor:' | cut -d: -f2 | tr -cd '0-9')"
+    awk -F'"' '/"minor"/ { print $4; exit }' | tr -cd '0-9' || true)"
   if [ -n "${client_minor}" ]; then
     skew=$((client_minor - INFEROPS_SERVER_MINOR))
     [ "${skew}" -lt 0 ] && skew=$((-skew))

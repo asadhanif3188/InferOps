@@ -11,6 +11,9 @@
 # shellcheck source=scripts/environment/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+[ "$#" -le 1 ] ||
+  inferops::fail "expected at most one argument, got $#: $*. Usage: cluster-up.sh [--recreate]"
+
 recreate=0
 case "${1:-}" in
   --recreate) recreate=1 ;;
@@ -58,12 +61,26 @@ inferops::log "kind: $(kind version -q)"
 inferops::log "engine server: $(docker version --format '{{.Server.Version}}')"
 inferops::log "node image (pinned): kindest/node:${INFEROPS_NODE_IMAGE_TAG}@${INFEROPS_NODE_IMAGE_DIGEST}"
 
-# The digest the node container actually runs, read back from the engine. If it
-# differs from the pin above, the pin did not take effect and the run is not
-# reproducible.
-running_digest="$(docker inspect "${INFEROPS_CLUSTER_NAME}-control-plane" \
-  --format '{{index .Image}}' 2>/dev/null || true)"
-inferops::log "node container image id: ${running_digest:-unknown}"
+# The digest the node actually runs, read back from the engine and compared. A
+# pin that is never checked is decoration; this is the check. Read the image's
+# repository digest rather than the container's image ID, because the two are
+# only incidentally equal and on some engines never are.
+node_image="$(docker inspect "${INFEROPS_CLUSTER_NAME}-control-plane" \
+  --format '{{.Config.Image}}' 2>/dev/null || true)"
+running_digest="$(docker image inspect "${node_image}" \
+  --format '{{range .RepoDigests}}{{.}}{{"\n"}}{{end}}' 2>/dev/null |
+  sed -n 's|^kindest/node@||p' | head -1 || true)"
+
+if [ "${running_digest}" = "${INFEROPS_NODE_IMAGE_DIGEST}" ]; then
+  inferops::log "node image digest verified: ${running_digest}"
+elif [ -z "${running_digest}" ]; then
+  # An image built or loaded locally has no repository digest at all. Say so
+  # rather than reporting a mismatch that would send someone hunting a
+  # difference that does not exist.
+  inferops::warn "the node image reports no repository digest, so the pin could not be verified against the running node."
+else
+  inferops::fail "node image digest mismatch: expected ${INFEROPS_NODE_IMAGE_DIGEST}, running ${running_digest}. The pin did not take effect and this run is not reproducible."
+fi
 
 inferops::kubectl version -o yaml | sed -n '1,80p'
 

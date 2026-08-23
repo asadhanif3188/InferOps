@@ -18,16 +18,16 @@ once versioned releases begin.
 - A pull-request template covering scope, decision impact, validation, and evidence.
 - An explicit record that no public maintainer roster or `CODEOWNERS` file exists yet.
 - A decision-record convention and index under `docs/architecture/decisions/`.
-- Proposed ADR 0001, comparing alternatives for the container runtime, the local
-  Kubernetes distribution, the task runner, how dependencies are installed, how the
-  project's workspace stays isolated, how it is torn down, and what a host needs.
+- ADR 0001, comparing alternatives for the container runtime, the local Kubernetes
+  distribution, the task runner, how dependencies are installed, how the project's
+  workspace stays isolated, how it is torn down, and what a host needs. Added as a
+  proposal; see **Changed** below for the status it now holds.
 - A redacted inventory of the one development host measured for that decision, with
   every row marked as either measured or documented.
-- Proposed and explicitly estimated minimum and recommended CPU, memory, and disk
-  figures, kept separate from the prerequisites this repository actually supports.
+- Minimum and recommended CPU, memory, and disk figures, kept separate from the
+  prerequisites this repository actually supports.
 - A stated verdict that the one measured host does not meet the recommended tier,
   rather than an estimate left unchecked against the evidence beside it.
-
 - A reproducible local development cluster: prerequisite checks, cluster creation
   from a digest-pinned node image, a hello-world smoke test verified from inside
   the cluster, scoped teardown, and residue verification, under
@@ -62,6 +62,20 @@ once versioned releases begin.
   does not return space to the host when a cluster is deleted, and a cluster
   identity check based on a Kubernetes node label does not work, because the label
   is on the node container rather than on the node object.
+- Defects in the environment scripts that review found and that every passing run
+  had hidden: the diagnostics collector could never run, because an `ERR` trap is
+  not reached when a failure occurs inside a shell function; the residue verifier
+  certified a clean teardown when the container engine was merely unreachable; the
+  cluster identity guard did not cover the default teardown path; and the node
+  image digest read-back compared the pin against a value that is only
+  incidentally equal to it.
+- Slow and nondeterministic failure behaviour in the smoke test: a failed
+  verification now reports in about 25 seconds rather than after a 180-second
+  timeout, and job retries are disabled so the assertion always reads the log it
+  was meant to read.
+- Argument handling on the destructive scripts: a second, ignored argument and a
+  valueless `--cycles` are now refused rather than silently doing something other
+  than what was asked.
 
 ADR 0001 is accepted only for what was executed, on one Windows host, one
 architecture, one point in time. Linux and macOS remain untested. No model, serving

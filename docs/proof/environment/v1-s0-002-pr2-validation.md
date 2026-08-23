@@ -192,6 +192,77 @@ Three specific claims were weakened against their author's convenience:
 - Teardown is described as returning storage to the container engine, not to the
   host, because measurement showed host free space does not come back.
 
+## Independent review and what it changed
+
+The change was reviewed by three independent reviewers before it was finalised:
+one against the work item's own boundary and for overclaiming, one for
+public-information safety and for the security of the scripts, and one for
+technical correctness and portability. Their findings are summarised here because
+several were correct and material, and a record that hid them would be worth less
+than one that does not.
+
+Defects found and corrected. The first three were the serious ones, and none of
+them was visible to any check in this document — every gate above passed while all
+three were present.
+
+1. **The diagnostics collector was unreachable code.** `smoke.sh` collected
+   diagnostics from an `ERR` trap. With `errexit` set but `errtrace` not, a
+   failure inside a shell function aborts the script without reaching the caller's
+   trap, and every fallible command in that script is a call to such a function.
+   The collector could never run. It now runs from an `EXIT` trap, which also
+   covers the script's own assertions. Verified by injecting a real failure and
+   confirming the artefacts appear.
+2. **The residue verifier could not fail.** Each of its checks treats an empty
+   answer from the container engine as proof of absence. With the engine stopped,
+   every check returned empty and the script certified a clean teardown while the
+   cluster was still on disk. It now requires the engine to answer before it asks
+   anything. Verified against a stub engine that refuses to report its version.
+3. **The identity guard did not cover the default teardown path.** It was called
+   before the object-scoped teardown but not before the equivalent delete in the
+   full teardown, which is the path a contributor actually runs, and whose errors
+   were additionally discarded. Both paths are now covered. Verified against a
+   second real cluster wearing this project's context name.
+4. **The digest read-back did not read a digest.** It compared the pin against the
+   container's image ID rather than the image's repository digest. The two are
+   equal on the engine used here, so it looked correct; they are not equal in
+   general. It now reads the repository digest, compares it, and aborts on
+   mismatch instead of printing two values for a human to eyeball.
+5. **The verification job could report a false failure.** With retries permitted,
+   a job that failed once and then succeeded leaves several pods, and reading
+   "the" log of the job picks among them nondeterministically. Retries are now
+   disabled so the smoke test is deterministic.
+6. **Three error paths were unreachable under `errexit`.** A failing query inside
+   a command substitution aborted the script before the diagnosis written for that
+   very case could print — in the cluster identity guard, and in the client
+   version parse. Both now tolerate the failure and report it.
+7. **A slow failure.** Waiting on a single job condition meant an already-failed
+   verification burned the whole 180-second timeout. It now polls for either
+   terminal condition and reports in about 25 seconds.
+8. **Argument handling on destructive scripts.** `--cycles` with no value died
+   silently under `errexit`, and a second argument to either cluster script was
+   silently ignored — so `cluster-down.sh --workload --purge-node-image` quietly
+   ran neither of the things it appeared to ask for. Both now refuse.
+9. **Two messages asserted more than they knew.** A failure to remove the cached
+   node image was reported as the image being absent, when the likelier cause is
+   another cluster still referencing it; and a context found in the contributor's
+   default kubeconfig was reported as this project's residue and failed the
+   teardown, when this project never writes there.
+10. **A documentation overclaim.** The prerequisites described "a
+    Docker-API-compatible engine", but the scripts require the `docker` CLI
+    specifically, because that is how cluster identity is established. The page
+    now says so and records non-Docker engines as unsupported until proven.
+
+A reviewer suggestion was also rejected on evidence: replacing the client version
+parse with `kubectl version -o jsonpath=...`. That subcommand accepts only `yaml`
+and `json`, so the change broke the check, which the next run caught. The parse
+now reads the JSON with `awk`, which is indifferent to indentation — the concern
+behind the suggestion was right even though the remedy was not.
+
+Two counting corrections were also made to the evidence record: creation timings
+were restated from the final certifying run rather than an earlier one, and counts
+that aggregate several runs now say so explicitly instead of implying a single
+transcribed invocation covers them.
+
 ## Limitations and skipped checks
 
 - No repository task runner or continuous-integration lane exists yet, so these are

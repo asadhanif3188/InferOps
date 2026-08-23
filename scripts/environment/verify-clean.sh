@@ -11,7 +11,13 @@
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 inferops::require_cmd kind
-inferops::require_cmd docker
+
+# Not just "is the CLI installed" but "does the engine answer". Every check below
+# asks the engine a question and treats an empty answer as proof of absence. With
+# the engine down, every question returns empty and this script would certify a
+# clean teardown while the cluster sat untouched on disk. A verification script
+# that cannot fail is worse than none.
+inferops::require_engine
 
 residue=0
 report_residue() {
@@ -49,12 +55,14 @@ else
   inferops::log "no project kubeconfig at ${INFEROPS_KUBECONFIG_REL}."
 fi
 
-# The contributor's default kubeconfig is inspected but never written. kind
-# removes its own context on delete; if one is left, that is a defect worth
-# reporting rather than silently repairing.
+# The contributor's default kubeconfig is inspected but never written. Nothing
+# in this project can put a context there, so a match is somebody else's cluster
+# that happens to share the name — worth saying aloud, but not this project's
+# residue and not grounds for failing a teardown that did its job.
 if command -v kubectl >/dev/null 2>&1; then
-  if kubectl config get-contexts -o name 2>/dev/null | grep -Fxq "${INFEROPS_KUBE_CONTEXT}"; then
-    report_residue "context '${INFEROPS_KUBE_CONTEXT}' is still present in the default kubeconfig."
+  default_contexts="$(kubectl config get-contexts -o name 2>/dev/null || true)"
+  if printf '%s\n' "${default_contexts}" | grep -Fxq "${INFEROPS_KUBE_CONTEXT}"; then
+    inferops::warn "a '${INFEROPS_KUBE_CONTEXT}' context exists in the default kubeconfig. This project never writes there, so it is not residue from this teardown — but it points at a cluster that no longer exists."
   else
     inferops::log "no '${INFEROPS_KUBE_CONTEXT}' context in the default kubeconfig."
   fi

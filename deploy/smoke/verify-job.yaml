@@ -14,7 +14,11 @@ metadata:
     app.kubernetes.io/name: hello-world-verify
     app.kubernetes.io/managed-by: inferops-env-scripts
 spec:
-  backoffLimit: 2
+  # Zero, deliberately. With retries, a Job that failed once and succeeded on
+  # a later attempt leaves several pods behind, and reading "the" log of the Job
+  # then picks among them nondeterministically. A smoke test that reports
+  # different results for the same cluster state is not a test.
+  backoffLimit: 0
   # Bounded: the job is failed by the control plane rather than retried forever
   # if the Service never answers.
   activeDeadlineSeconds: 120

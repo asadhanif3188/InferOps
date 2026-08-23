@@ -30,10 +30,20 @@ last column are stated in [ADR 0001](../architecture/decisions/0001-local-develo
 
 | Tool | Version | Notes |
 |---|---|---|
-| A Docker-API-compatible engine | Any reachable server | The engine must be running before you start |
+| Docker Engine, and the `docker` CLI | Any reachable server | The engine must be running before you start |
 | kind | `v0.32.0` | Pinned; another release is reported as unverified rather than refused |
 | kubectl | 1.33, 1.34, or 1.35 | Must be within one minor version of the pinned node image |
 | A POSIX shell | Any | On Windows, the shell supplied with Git is sufficient |
+
+> [!NOTE]
+> These scripts require the `docker` CLI specifically, not merely a
+> Docker-API-compatible engine. They ask the engine directly which containers and
+> volumes carry kind's cluster label, and that is how the cluster's identity is
+> established before anything is deleted. ADR 0001 (D1) selects the engine *API*
+> rather than a vendor product, and keeping a permissively licensed path open
+> remains the intent — but running these scripts against Podman or another engine
+> would need that label query ported, and nobody has done or tested that. Treat
+> non-Docker engines as unsupported here until someone proves otherwise.
 
 The cluster node image is pinned by digest to
 `kindest/node:v1.34.8@sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256`.
@@ -119,6 +129,13 @@ These are enforced in `scripts/environment/lib.sh`, not merely intended:
 listings, descriptions, events, and pod logs — and leaves the workload in place
 so you can inspect it. That directory is git-ignored; it is local host state and
 must not be committed.
+
+**If you interrupt a run.** Nothing traps Ctrl-C. Interrupting `cluster-up.sh` or
+`proof.sh` mid-cycle can leave the cluster running, and the next `cluster-up.sh`
+will then refuse rather than silently reuse it. `scripts/environment/cluster-down.sh`
+recovers from that in one step. A teardown is deliberately not wired to a signal
+handler: being interrupted halfway through deleting things is worse than being
+left with something to delete.
 
 Two failure causes are worth eliminating before blaming the cluster:
 

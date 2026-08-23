@@ -29,7 +29,16 @@ That script runs, per cycle: preflight, cluster creation, the hello-world smoke
 test, partial teardown, full teardown, and residue verification. Two cycles were
 run in one invocation so that "repeatable" is a result rather than an assertion.
 
-Started `2026-08-23T12:09:40Z`, finished `2026-08-23T12:15:30Z`. Exit code `0`.
+The certifying invocation started `2026-08-23T13:29:14Z`, finished
+`2026-08-23T13:33:22Z`, exit code `0`. It is the run whose figures are quoted
+below, and it was executed against the final state of the scripts in this change.
+
+Where a count in this record exceeds two cycles, it aggregates that invocation
+with the other runs of the same scripts made during this session — earlier
+two-cycle invocations, the guard tests in the section below, and the deliberate
+failure injections. Those runs produced the same results; they are summarised
+rather than transcribed, and only the invocation above should be treated as the
+reproducible reference.
 
 ## Environment
 
@@ -89,9 +98,18 @@ was read back rather than trusted:
 | | Value |
 |---|---|
 | Pinned in `deploy/kind/inferops-dev.yaml` | `sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256` |
-| Image the node container ran | `sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256` |
+| Repository digest of the image the node ran | `sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256` |
 
-Identical on both cycles.
+Identical on both cycles, and the script now aborts on a mismatch rather than
+printing the two values and leaving a human to compare them.
+
+An earlier revision read the node container's image *ID* instead of the image's
+repository digest. On this engine the two happen to be equal, so the check looked
+like it was working. It was not: the two are only incidentally equal, and on
+engines where they differ the check would have compared the pin against something
+that could never match it. The comparison now reads the repository digest, and an
+image with no repository digest at all — one built or loaded locally — is reported
+as unverifiable rather than as a mismatch.
 
 ### Client/server skew
 
@@ -110,12 +128,13 @@ constraint; this is the measurement that acts on it.
 
 | Cycle | Control plane ready | Node status |
 |---|---|---|
-| 1 | 16 s | `Ready`, `control-plane`, `v1.34.8` |
-| 2 | 13 s | `Ready`, `control-plane`, `v1.34.8` |
+| 1 | 18 s | `Ready`, `control-plane`, `v1.34.8` |
+| 2 | 16 s | `Ready`, `control-plane`, `v1.34.8` |
 
-Two further creations in the same session reported 14 s and 13 s, so four
-creations fell in a 13–16 s band. These are warm figures: the node image was
-already cached. A first run on a cold host also downloads roughly 1.35 GB.
+Across every creation in this session the figures fell in a 13–18 s band. These
+are warm figures: the node image was already cached. A first run on a cold host
+also downloads roughly 1.35 GB, which on a slow link dominates everything else
+here.
 
 All eight control-plane and system pods reached `Running` on both cycles: `etcd`,
 `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, `kube-proxy`,
@@ -156,7 +175,7 @@ roughly 150 seconds:
 |---|---|
 | Node container memory, idle | 712–720 MiB of the 7.598 GiB the engine offers, about 9% |
 | Node container CPU, idle | 22.7%–39.7% as the engine reports it, across six samples |
-| Node container memory, workload running | 587–703 MiB observed |
+| Node container memory, workload running | 587–703 MiB observed, and 654–657 MiB on the certifying run |
 
 The workload figures are not higher than the idle ones. That is not an anomaly to
 explain away: the hello-world container requests 16 MiB, which is inside the
@@ -213,19 +232,63 @@ claim of refusal is worth nothing until something tries. Four attempts were made
 | G1 | Run `cluster-up.sh` with the cluster already present | Refused: `cluster 'inferops-dev' already exists.` Exit 1 |
 | G2 | Pass `cluster-down.sh` an argument it does not define | Refused: `unknown argument '--delete-everything'.` Exit 1 |
 | G3 | Point the project kubeconfig's current context elsewhere, then run a destructive step | Refused: `expected context 'kind-inferops-dev', found 'does-not-exist'.` Exit 1 |
-| G4 | Create a second, real kind cluster, rename its context to `kind-inferops-dev`, and point the project kubeconfig at it | Refused: `the reachable cluster reports node(s) outside 'inferops-dev': inferops-guard-probe-control-plane`. Exit 1 |
+| G4a | Create a second, real kind cluster, rename its context to `kind-inferops-dev`, point the project kubeconfig at it, and run the object-scoped teardown | Refused: `the reachable cluster reports node(s) outside 'inferops-dev': inferops-guard-probe-control-plane`. Exit 1 |
+| G4b | The same spoofed cluster, but running the **default** full teardown | Scoped delete skipped with that same reason reported aloud; the project's own cluster still deleted by name. The foreign cluster untouched |
+| G5 | Run the teardown and the residue verifier with the container engine unreachable | Refused: `the container engine is not reachable, so its state cannot be inspected.` Exit 1 |
 
-G4 is the one that matters. It is the scenario the ADR was actually worried about
-— a destructive operation reaching a cluster that is not this project's — and it
-was built to defeat the naive defence. The context name was correct. The
-kubeconfig was valid. The cluster was real and running. It was refused anyway,
-because the guard requires every node the API server reports to be a container
-that kind itself labelled for `inferops-dev`, and a name a human typed cannot
-satisfy that.
+G4a is the scenario the ADR was actually worried about — a destructive operation
+reaching a cluster that is not this project's — and it was built to defeat the
+naive defence. The context name was correct. The kubeconfig was valid. The cluster
+was real and running. It was refused anyway, because the guard requires every node
+the API server reports to be a container that kind itself labelled for
+`inferops-dev`, and a name a human typed cannot satisfy that.
 
-After the refusal, the foreign cluster was inspected and still held all five of
-its namespaces. Nothing had been deleted from it. It was then removed, and the
+After the refusal the foreign cluster was inspected and still held all five of its
+namespaces. Nothing had been deleted from it. It was then removed, and the
 project's own cluster was confirmed unharmed.
+
+G4b and G5 exist because review found the first implementation did not deserve the
+credit G4a appeared to give it.
+
+The identity guard was called before the object-scoped teardown, but **not** before
+the equivalent delete on the full-teardown path — which is the default, and the one
+a contributor actually runs. That path would have sent a namespace delete into
+whatever cluster the kubeconfig reached, with its error output discarded. The
+guard now covers both. On the full-teardown path a failure to establish identity
+skips the scoped delete and says so, rather than aborting, because deleting the
+cluster itself is scoped by kind's own bookkeeping and stays safe regardless.
+
+G5 covers a different way to be wrong. Every check in the residue verifier asks
+the engine a question and reads an empty answer as proof of absence. With the
+engine stopped, every question returns empty, and the verifier certified a clean
+teardown while the cluster sat untouched on disk. A verification script that
+cannot fail is worse than none, so the engine must now answer before any of those
+questions are asked.
+
+Neither defect was visible to `shellcheck`, to `bash -n`, or to any passing run.
+Both were found by reading the code against its own claims.
+
+## The failure path was executed too
+
+A script that collects diagnostics only in its own documentation is not a script
+that collects diagnostics. Two failures were injected deliberately.
+
+| Injected fault | Result |
+|---|---|
+| Workload configured to listen on a port its probe does not check, so readiness never arrives | Rollout wait timed out and failed; `.artifacts/smoke/` was populated with object listings, descriptions, events, and logs |
+| Service answering with a body other than the asserted one | Verification job failed; the script reported it in **25 s** and collected the same diagnostics |
+
+The first injection is what exposed the most consequential defect in this change.
+`smoke.sh` collected diagnostics from an `ERR` trap, and with `errexit` set but
+`errtrace` not, a failure *inside* a shell function aborts the script without ever
+reaching that trap. Every fallible command in the script is a call to such a
+function, so the collector was unreachable code. It now runs from an `EXIT` trap,
+which also covers the script's own assertions — `exit` never raises `ERR` either.
+
+The second injection previously took the verification wait's full 180-second
+timeout, because `kubectl wait` watches one condition and a job that has already
+failed is not the condition it was watching. It now polls for either terminal
+condition, which is why the figure above is 25 seconds.
 
 ## Limitations
 
@@ -253,3 +316,12 @@ project's own cluster was confirmed unharmed.
 - **Nothing here tests D3 or D4** of ADR 0001. No task runner and no dependency
   manager was exercised, so those two decisions remain proposed on documentation
   alone.
+- **The scripts require the `docker` CLI specifically.** They establish cluster
+  identity by asking the engine which containers carry kind's cluster label. ADR
+  0001 (D1) selects the engine API rather than a vendor product, and that intent
+  is unchanged, but nothing here has been run against Podman or any other engine
+  and no such support may be claimed from this record.
+- **The guard identifies the cluster by a name this project chose.** A second kind
+  cluster deliberately created under the name `inferops-dev` would satisfy every
+  check and be deleted. The guard defends against reaching the wrong cluster by
+  accident; it cannot defend against a name collision created on purpose.
