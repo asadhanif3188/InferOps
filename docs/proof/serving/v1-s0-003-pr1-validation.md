@@ -119,6 +119,27 @@ property of whoever runs the trial and not of this project.
 | `README.md` | Added an entry point; corrected the ADR status line |
 | `CHANGELOG.md` | Recorded the above |
 
+## Review pass
+
+The change was reviewed a second time after it was first written, against the
+accepted evidence it quotes rather than against itself. Three corrections came out
+of that pass, and they are recorded here because a record that lists only its
+successes is the less useful kind:
+
+| Finding | Correction |
+|---|---|
+| ADR 0002 quoted the idle cluster's memory as `0.72 GiB`. The source records `712–720 MiB`, which is `0.695–0.703 GiB` — outside the range it was meant to summarise | Quoted the measured range directly. The figure derived from it, "roughly 6.9 GiB remaining", was already correct and is unchanged |
+| ADR 0002 said a GPU path "cannot be proven at all on this host". ADR 0001 leaves an integrated-GPU path open in principle and rules out only a discrete accelerator | Narrowed the claim to what ADR 0001 actually supports |
+| The feasibility workflow listed the **minimum** host tier as a prerequisite, which a reader could take as a claim that the minimum tier is enough to serve a model | Stated that the minimum tier is the floor for running the cluster, and that whether it can serve is what `T3` and `T4` exist to determine |
+
+The first of these is the reason the check exists. It was a transcription error that
+every internal consistency check passed, because the wrong number was used
+consistently.
+
+The same pass found no private information, no credential, no local path, no
+reference to material outside this repository, and no sentence claiming that a
+model was downloaded, a runtime was run, or a candidate was selected.
+
 ## Limitations
 
 - Static checks on text. They establish that the documents are well-formed and safe

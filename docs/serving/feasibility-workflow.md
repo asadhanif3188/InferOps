@@ -50,10 +50,12 @@ not a smaller claim built from documentation.
 
 ## Prerequisites
 
-- The environment in [prerequisites](../prerequisites.md), at the **minimum** tier
-  or better, with the cluster from
+- The environment in [prerequisites](../prerequisites.md), with the cluster from
   [the local cluster runbook](../environment/local-cluster.md) creatable and
-  destroyable.
+  destroyable. The **minimum** tier is the floor for running the cluster; it is not
+  a claim that the minimum tier can serve a model. Whether it can is precisely what
+  `T3` and `T4` are there to find out, and ADR 0001 D7 already warns that the
+  reference host does not meet the tier its own estimate assigned to serving.
 - A model cache directory **outside the repository working tree**, with the free
   space the bounds above require. Point the acquisition tool at it through its own
   cache environment variable rather than copying files by hand; nothing about the

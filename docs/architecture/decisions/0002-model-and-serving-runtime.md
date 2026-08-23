@@ -35,10 +35,10 @@ From [the cluster smoke proof](../../proof/environment/v1-s0-002-pr2-cluster-smo
 | Constraint | Value | Why it binds this decision |
 |---|---|---|
 | Memory reaching the container VM | 7.60 GiB | This, not the 16 GiB installed on the host, is the real ceiling |
-| Consumed by the idle cluster | 0.72 GiB | Leaves roughly 6.9 GiB for everything scheduled beside it |
+| Consumed by the idle cluster | 712–720 MiB | Leaves roughly 6.9 GiB for everything scheduled beside it |
 | Free disk | ~23 GB on the system volume, where the engine's virtual disk lives; ~36 GB on a second volume | The two cannot be pooled. Weights, container image, and engine growth all land on one of them |
 | Processor | AVX2, no AVX-512 | Rules out anything whose CPU path requires AVX-512 |
-| Accelerator | None discrete | The CPU path is mandatory. A GPU path cannot be proven at all on this host |
+| Accelerator | None discrete | The CPU path is mandatory. ADR 0001 leaves an integrated-GPU path open in principle; no discrete accelerator path can be proven here at all |
 
 ADR 0001 also recorded, in D7, that this host **meets the minimum tier and does not
 meet the recommended tier** — and that the recommended tier is where serving lives.
