@@ -60,17 +60,59 @@ implemented outcome without overstating it.
 
 ## Validation
 
-Run the smallest complete check set available for the changed files. Documentation
-changes require, at minimum:
+Run the smallest complete check set available for the changed files. No repository
+task runner, linter, or continuous-integration lane is selected yet, so the checks
+below are run manually until those tooling decisions are accepted and published.
+
+Documentation changes require, at minimum, a clean whitespace check:
 
 ```text
-git diff --check
+git diff --check main...HEAD
 ```
 
-Also verify every changed relative link, inspect the full diff, and search it for
-credentials, private planning content, personal paths, generated files, and
-unsupported capability claims. Tool-specific checks will be added only after their
-tooling decisions are accepted.
+Every relative Markdown link must resolve from the directory of the file that
+contains it. Both checks below skip fenced code blocks so that command samples are
+not mistaken for links. On a POSIX shell:
+
+```sh
+for f in $(git ls-files '*.md'); do
+  d=$(dirname "$f")
+  awk '/^```/ { fence = !fence; next } !fence' "$f" |
+    grep -oE '\]\([^)]+\)' | sed 's/^](//; s/)$//' |
+    while read -r t; do
+      case "$t" in http*|mailto:*|\#*) continue ;; esac
+      p="${t%%#*}"
+      [ -n "$p" ] && [ ! -e "$d/$p" ] && echo "BROKEN: $f -> $t"
+    done
+done
+```
+
+On Windows PowerShell:
+
+```powershell
+foreach ($f in (git ls-files '*.md')) {
+  $dir = Split-Path -Parent $f
+  if (-not $dir) { $dir = '.' }
+  $fence = $false
+  $body = (Get-Content -LiteralPath $f | Where-Object {
+    if ($_ -match '^\s*```') { $fence = -not $fence; $false } else { -not $fence }
+  }) -join "`n"
+  foreach ($m in [regex]::Matches($body, '\]\(([^)]+)\)')) {
+    $t = $m.Groups[1].Value
+    if ($t -match '^(https?:|mailto:|#)') { continue }
+    $p = ($t -split '#')[0]
+    if ($p -and -not (Test-Path -LiteralPath (Join-Path $dir $p))) {
+      "BROKEN: $f -> $t"
+    }
+  }
+}
+```
+
+Check any changed external link separately and record the date it was checked.
+
+Then inspect the full diff and search it for credentials, private planning content,
+personal paths, generated files, and unsupported capability claims. Report the exact
+commands you ran, their results, and any check you skipped.
 
 ## Evidence and claims
 
@@ -84,5 +126,6 @@ runtime behavior.
 
 Follow the [interim conduct expectations](CODE_OF_CONDUCT.md). Do not open a public
 issue containing a vulnerability, credential, private data, or sensitive prompt or
-response. A dedicated private reporting channel is not yet published; this is a
-known governance limitation that must be resolved before accepting sensitive reports.
+response. The [security policy](SECURITY.md) records why a dedicated private
+reporting channel is not yet published and treats that gap as a known governance
+limitation that must be resolved before accepting sensitive reports.

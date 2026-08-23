@@ -25,6 +25,7 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 | Contracts | [docs/contracts/README.md](docs/contracts/README.md) | No public contract accepted yet |
 | Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | No public architecture accepted yet |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
+| Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | Unreleased changes only |
 | License | [LICENSE](LICENSE) | MIT |
 | Conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Interim expectations; formal policy deferred |

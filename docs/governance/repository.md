@@ -17,7 +17,8 @@ artifacts are added to the corresponding indexes.
 | Merge | Squash preferred; merge commit allowed for a meaningful maintained series | Accepted |
 | Conduct | Interim expectations; formal framework waits for a private reporting path | Accepted deferral |
 | Runtime host | No OS, Kubernetes distribution, runtime, or hardware support selected | Pending a tested public ADR |
-| V1 release | Semantic versioning and the high-level gated process in `docs/releases.md` | Accepted process; unexecuted |
+| V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; unexecuted |
+| Security reporting | Public reports prohibited; private intake channel not yet published | Accepted prohibition; channel blocked |
 
 Accepted repository governance does not accept a technical design or prove a
 runtime. A proposal must remain labelled `Proposed` until its owner, alternatives,

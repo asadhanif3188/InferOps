@@ -13,5 +13,7 @@ once versioned releases begin.
 - Public repository purpose and status without functional capability claims.
 - MIT license and contribution, review, commit, conduct, and release conventions.
 - Public indexes for prerequisites, contracts, architecture decisions, and governance.
+- Security-reporting expectations, including the unresolved private-channel blocker.
+- Reproducible POSIX and PowerShell documentation link checks in the contribution guide.
 
 No V1 product capability or versioned release is included in this entry.
