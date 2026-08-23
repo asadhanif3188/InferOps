@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established; one decision accepted in part.
+Status: entry point established; one decision accepted in part, one proposed.
 
 Accepted architecture decisions are indexed here with their status, date, decision
 owner, alternatives, consequences, compatibility impact, and supporting evidence.
@@ -16,11 +16,19 @@ capability, and must not be implemented against as though it were settled.
 | ID | Decision | Status | Date | Evidence |
 |---|---|---|---|---|
 | [0001](decisions/0001-local-development-environment.md) | Local development and Kubernetes environment | Accepted in part | 2026-08-23 | [Host inventory](../proof/environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke proof](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
+| [0002](decisions/0002-model-and-serving-runtime.md) | Model and serving runtime | Proposed | 2026-08-23 | None. Nothing in it has been executed |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
 and minimum host tier are accepted; the task runner, dependency installation
 approach, and recommended host tier are not.
+
+0002 is proposed in full. It compares runtimes and models from their published
+documentation and fixes the thresholds a trial must meet, and it selects nothing.
+No model has been downloaded and no inference has been served by this project. The
+procedure that would change that is
+[the runtime feasibility workflow](../serving/feasibility-workflow.md), which has
+not been run either.
 
 ## Conventions
 

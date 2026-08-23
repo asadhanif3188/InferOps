@@ -37,6 +37,23 @@ once versioned releases begin.
 - Real-runtime evidence that the cluster can be created, exercised, and removed
   repeatably on one Windows host, including four attempts to make the teardown act
   outside its own cluster, all of which were refused.
+- ADR 0002, comparing serving runtimes and open models against the memory, disk,
+  and instruction-set limits the cluster evidence measured. Added as a proposal
+  that selects nothing: it names a proposed primary and a recorded fallback for
+  both runtime and model, and states what would have to be measured to accept
+  either.
+- Twelve numbered pass/fail thresholds, fixed before any candidate is run, and
+  separated into those that disqualify a candidate outright and those that send the
+  trial to a smaller model first.
+- A dated source table behind every third-party claim in ADR 0002, so that a reader
+  can tell a vendor-documented characterisation from a tested one.
+- A bounded feasibility workflow for the trial that would settle ADR 0002:
+  authorisation gate, download and free-space budgets, a stage-by-stage procedure,
+  a one-step step-down rule, explicit abort conditions, and a statement of what the
+  workflow cannot establish even when it passes.
+- An evidence template for recording that trial, requiring an explicit verdict
+  against every threshold, both attempts when a step-down occurs, and a section for
+  what went wrong.
 
 ### Changed
 
@@ -55,6 +72,9 @@ once versioned releases begin.
   documentation path, and separate both from serving, which remains unsupported.
 - The decision-record conventions define `Accepted in part`, which requires a
   per-decision status table.
+- The architecture index, the repository entry points, and the prerequisites now
+  point at the model and serving-runtime evaluation and say plainly that it selects
+  nothing. Serving remains unsupported, and the prerequisites gain no new tool.
 
 ### Fixed
 
