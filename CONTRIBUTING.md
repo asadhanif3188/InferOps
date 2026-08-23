@@ -1,5 +1,8 @@
 # Contributing to InferOps
 
+Status: accepted repository convention; effective for changes merged after this
+guide is merged.
+
 Thank you for helping build InferOps. The repository is currently in its governance
 and decision phase; a merged document is not evidence that a runtime capability
 exists.
@@ -47,11 +50,20 @@ A pull request must:
 - contain no secret, sensitive data, large model artifact, or unsupported claim;
 - leave the branch usable for the capability it owns.
 
+Opening a pull request populates the checklist in
+[.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Fill in every
+section rather than deleting it.
+
 At least one approving maintainer review is required before merge. The author must
 resolve requested changes and rerun affected checks. A reviewer verifies scope,
 public-information safety, test evidence, security implications, and compatibility.
 Exceptions for urgent security fixes must be documented in the pull request and
 reviewed after the fact.
+
+No public maintainer roster or `CODEOWNERS` file is published yet, so a review is
+requested by opening the pull request itself rather than by addressing a named
+reviewer. Publishing that roster is a known governance gap and must be resolved
+before external maintainers are added.
 
 Squash merge is preferred for a single cohesive change. A maintained commit series
 may use a merge commit when preserving independently meaningful commits helps review.
@@ -70,14 +82,21 @@ Documentation changes require, at minimum, a clean whitespace check:
 git diff --check main...HEAD
 ```
 
+Trailing whitespace and hard tabs in Markdown should also return no matches:
+
+```sh
+git ls-files -z '*.md' | xargs -0 grep -n '[[:blank:]]$'
+git ls-files -z '*.md' | xargs -0 grep -n "$(printf '\t')"
+```
+
 Every relative Markdown link must resolve from the directory of the file that
 contains it. Both checks below skip fenced code blocks so that command samples are
 not mistaken for links. On a POSIX shell:
 
 ```sh
-for f in $(git ls-files '*.md'); do
+git ls-files -z '*.md' | while IFS= read -r -d '' f; do
   d=$(dirname "$f")
-  awk '/^```/ { fence = !fence; next } !fence' "$f" |
+  awk '/^[ \t]*```/ { fence = !fence; next } !fence' "$f" |
     grep -oE '\]\([^)]+\)' | sed 's/^](//; s/)$//' |
     while read -r t; do
       case "$t" in http*|mailto:*|\#*) continue ;; esac
@@ -107,6 +126,11 @@ foreach ($f in (git ls-files '*.md')) {
   }
 }
 ```
+
+Both variants share one known limitation: a link target is read up to its first
+closing parenthesis, so a relative path that itself contains a parenthesis is
+truncated and may be reported incorrectly. Keep repository paths free of
+parentheses rather than working around the check.
 
 Check any changed external link separately and record the date it was checked.
 

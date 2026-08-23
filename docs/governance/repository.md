@@ -1,6 +1,7 @@
 # Repository governance
 
-Status: accepted for the public repository skeleton on 2026-08-23.
+Status: accepted for the public repository skeleton on 2026-08-23; each decision
+below takes effect when the change that records it is merged.
 
 This document governs contributions to this repository. Technical contracts and
 architecture decisions become authoritative only when their public, accepted
@@ -19,6 +20,7 @@ artifacts are added to the corresponding indexes.
 | Runtime host | No OS, Kubernetes distribution, runtime, or hardware support selected | Pending a tested public ADR |
 | V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; unexecuted |
 | Security reporting | Public reports prohibited; private intake channel not yet published | Accepted prohibition; channel blocked |
+| Maintainers | Review required, but no public roster or `CODEOWNERS` file exists | Accepted requirement; roster pending |
 
 Accepted repository governance does not accept a technical design or prove a
 runtime. A proposal must remain labelled `Proposed` until its owner, alternatives,

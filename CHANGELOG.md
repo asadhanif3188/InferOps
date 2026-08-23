@@ -15,5 +15,7 @@ once versioned releases begin.
 - Public indexes for prerequisites, contracts, architecture decisions, and governance.
 - Security-reporting expectations, including the unresolved private-channel blocker.
 - Reproducible POSIX and PowerShell documentation link checks in the contribution guide.
+- A pull-request template covering scope, decision impact, validation, and evidence.
+- An explicit record that no public maintainer roster or `CODEOWNERS` file exists yet.
 
 No V1 product capability or versioned release is included in this entry.
