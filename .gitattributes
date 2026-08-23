@@ -1,0 +1,8 @@
+# Normalise stored line endings so that a diff never turns into a whole-file
+# rewrite because two contributors are on different platforms.
+* text=auto
+
+# Shell scripts must be checked out with LF on every platform. A CRLF line
+# ending after the shebang is part of the interpreter path, so a script checked
+# out with CRLF on Windows fails to run at all. This is correctness, not style.
+*.sh text eol=lf

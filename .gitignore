@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# InferOps local development environment
+#   Project-scoped kubeconfig written by scripts/environment/cluster-up.sh. It contains
+#   the local cluster's client certificate and key and must never be committed.
+.kube/
+#   Diagnostics collected by scripts/environment/smoke.sh on failure. Local host state.
+.artifacts/

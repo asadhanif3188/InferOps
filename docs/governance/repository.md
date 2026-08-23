@@ -17,7 +17,9 @@ artifacts are added to the corresponding indexes.
 | Commits | Conventional Commit-style subjects; focused history | Accepted |
 | Merge | Squash preferred; merge commit allowed for a meaningful maintained series | Accepted |
 | Conduct | Interim expectations; formal framework waits for a private reporting path | Accepted deferral |
-| Runtime host | No OS, Kubernetes distribution, runtime, or hardware support selected | [ADR 0001](../architecture/decisions/0001-local-development-environment.md) proposed; acceptance pending executed proof |
+| Development environment | Container runtime, local Kubernetes distribution, isolation, cleanup, and minimum host tier | [ADR 0001](../architecture/decisions/0001-local-development-environment.md) accepted in part on executed proof from one Windows host |
+| Task runner and dependency installation | Not selected | [ADR 0001](../architecture/decisions/0001-local-development-environment.md) D3 and D4 remain proposed; neither has been run |
+| Runtime host for serving | No model runtime, accelerator, or recommended hardware tier selected | Pending; nothing has served a model |
 | V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; unexecuted |
 | Security reporting | Public reports prohibited; private intake channel not yet published | Accepted prohibition; channel blocked |
 | Maintainers | Review required, but no public roster or `CODEOWNERS` file exists | Accepted requirement; roster pending |
@@ -66,3 +68,12 @@ It is a hardware and software inventory of one host. It proves nothing about
 whether a cluster, container, or workload runs. The document checks run when that
 record and ADR 0001 were added are in
 [docs/proof/environment/v1-s0-002-pr1-validation.md](../proof/environment/v1-s0-002-pr1-validation.md).
+
+The first real-runtime evidence this repository holds is
+[docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md](../proof/environment/v1-s0-002-pr2-cluster-smoke.md):
+a local Kubernetes cluster created, a workload deployed and answering a request,
+and both removed with residue verified absent, on one Windows host. It is local
+real-runtime proof of the development environment. It is not proof of inference,
+serving, capacity, or production behaviour, and it covers no other operating
+system. The checks run alongside it are in
+[docs/proof/environment/v1-s0-002-pr2-validation.md](../proof/environment/v1-s0-002-pr2-validation.md).
