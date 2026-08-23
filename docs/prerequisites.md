@@ -1,6 +1,7 @@
 # Supported-host prerequisites
 
-Status: documentation contribution path supported; runtime/deployment host pending.
+Status: documentation contribution path supported; runtime/deployment host pending,
+with one environment decision now proposed and under review.
 
 ## Governance and documentation contributions
 
@@ -25,3 +26,16 @@ selected host before they can be stated as supported.
 
 Until that decision exists, contributors must not infer runtime support from a tool
 installed on a maintainer's machine or from an unexecuted example.
+
+## Proposed runtime prerequisites, not yet accepted
+
+[ADR 0001](architecture/decisions/0001-local-development-environment.md) proposes a
+container runtime, a local Kubernetes distribution, a task runner, a dependency
+installation approach, isolation and cleanup rules, and estimated CPU, memory, and
+disk requirements. It also records the operating systems on which those estimates
+have and have not been measured.
+
+That record is proposed. Its resource figures are estimates rather than measurements,
+and nothing in it has been executed, so it does not change what this page supports.
+It is linked here so that a contributor evaluating the project can see which
+direction is under review and on what evidence.

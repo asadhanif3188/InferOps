@@ -17,7 +17,7 @@ artifacts are added to the corresponding indexes.
 | Commits | Conventional Commit-style subjects; focused history | Accepted |
 | Merge | Squash preferred; merge commit allowed for a meaningful maintained series | Accepted |
 | Conduct | Interim expectations; formal framework waits for a private reporting path | Accepted deferral |
-| Runtime host | No OS, Kubernetes distribution, runtime, or hardware support selected | Pending a tested public ADR |
+| Runtime host | No OS, Kubernetes distribution, runtime, or hardware support selected | [ADR 0001](../architecture/decisions/0001-local-development-environment.md) proposed; acceptance pending executed proof |
 | V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; unexecuted |
 | Security reporting | Public reports prohibited; private intake channel not yet published | Accepted prohibition; channel blocked |
 | Maintainers | Review required, but no public roster or `CODEOWNERS` file exists | Accepted requirement; roster pending |
@@ -59,3 +59,10 @@ repository mutation.
 The initial governance validation is recorded in
 [docs/proof/governance/v1-s0-001-pr1.md](../proof/governance/v1-s0-001-pr1.md).
 It is local static evidence, not runtime or production proof.
+
+The development host measured for ADR 0001 is recorded, redacted, in
+[docs/proof/environment/v1-s0-002-pr1-host-inventory.md](../proof/environment/v1-s0-002-pr1-host-inventory.md).
+It is a hardware and software inventory of one host. It proves nothing about
+whether a cluster, container, or workload runs. The document checks run when that
+record and ADR 0001 were added are in
+[docs/proof/environment/v1-s0-002-pr1-validation.md](../proof/environment/v1-s0-002-pr1-validation.md).
