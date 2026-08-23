@@ -24,8 +24,9 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 | Repository governance | [docs/governance/repository.md](docs/governance/repository.md) | Accepted for this repository skeleton |
 | Supported-host prerequisites | [docs/prerequisites.md](docs/prerequisites.md) | Documentation and local development supported; serving support pending |
 | Local development cluster | [docs/environment/local-cluster.md](docs/environment/local-cluster.md) | Executed and evidenced on one Windows host |
+| Serving runtime and model evaluation | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Candidates compared and thresholds fixed; nothing selected, nothing executed |
 | Contracts | [docs/contracts/README.md](docs/contracts/README.md) | No public contract accepted yet |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision accepted in part |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision accepted in part, one proposed |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | Unreleased changes only |

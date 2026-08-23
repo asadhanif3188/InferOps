@@ -66,6 +66,12 @@ Contributors must not infer serving support from the development environment abo
 A cluster that schedules a static-text workload has demonstrated nothing about
 inference.
 
+[ADR 0002](architecture/decisions/0002-model-and-serving-runtime.md) now compares
+runtime and model candidates and fixes the thresholds a feasibility trial would
+have to meet. It is **proposed**, it selects nothing, and nothing in it has been
+run, so it adds no prerequisite. Do not install a runtime or download a model on
+the strength of it.
+
 ## Not yet decided
 
 The task runner and the dependency installation approach (ADR 0001 D3 and D4)
