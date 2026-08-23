@@ -23,7 +23,7 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 | Repository governance | [docs/governance/repository.md](docs/governance/repository.md) | Accepted for this repository skeleton |
 | Supported-host prerequisites | [docs/prerequisites.md](docs/prerequisites.md) | Documentation-only prerequisites; runtime support pending |
 | Contracts | [docs/contracts/README.md](docs/contracts/README.md) | No public contract accepted yet |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | No public architecture accepted yet |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision proposed; none accepted |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | Unreleased changes only |

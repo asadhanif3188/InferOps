@@ -17,5 +17,17 @@ once versioned releases begin.
 - Reproducible POSIX and PowerShell documentation link checks in the contribution guide.
 - A pull-request template covering scope, decision impact, validation, and evidence.
 - An explicit record that no public maintainer roster or `CODEOWNERS` file exists yet.
+- A decision-record convention and index under `docs/architecture/decisions/`.
+- Proposed ADR 0001, comparing alternatives for the container runtime, the local
+  Kubernetes distribution, the task runner, how dependencies are installed, how the
+  project's workspace stays isolated, how it is torn down, and what a host needs.
+- A redacted inventory of the one development host measured for that decision, with
+  every row marked as either measured or documented.
+- Proposed and explicitly estimated minimum and recommended CPU, memory, and disk
+  figures, kept separate from the prerequisites this repository actually supports.
+- A stated verdict that the one measured host does not meet the recommended tier,
+  rather than an estimate left unchecked against the evidence beside it.
 
-No V1 product capability or versioned release is included in this entry.
+ADR 0001 is proposed, not accepted. No cluster, container, or workload was run, so
+no environment, tool, or resource requirement is supported by this entry. No V1
+product capability or versioned release is included in it.
