@@ -28,6 +28,42 @@ once versioned releases begin.
 - A stated verdict that the one measured host does not meet the recommended tier,
   rather than an estimate left unchecked against the evidence beside it.
 
-ADR 0001 is proposed, not accepted. No cluster, container, or workload was run, so
-no environment, tool, or resource requirement is supported by this entry. No V1
-product capability or versioned release is included in it.
+- A reproducible local development cluster: prerequisite checks, cluster creation
+  from a digest-pinned node image, a hello-world smoke test verified from inside
+  the cluster, scoped teardown, and residue verification, under
+  `scripts/environment/` and `deploy/`.
+- A runbook for that cluster, including what it creates, what survives teardown,
+  and what it does not establish.
+- Real-runtime evidence that the cluster can be created, exercised, and removed
+  repeatably on one Windows host, including four attempts to make the teardown act
+  outside its own cluster, all of which were refused.
+
+### Changed
+
+- ADR 0001 moves from proposed to **accepted in part**. The container runtime, the
+  local Kubernetes distribution, the isolation rules, the cleanup rules, and the
+  minimum host tier are accepted on executed evidence. The task runner, the
+  dependency installation approach, and the recommended host tier are not, and stay
+  proposed.
+- The minimum host tier's CPU, memory, and disk figures are now measured rather
+  than estimated, and its description no longer mentions a mock serving path that
+  does not exist. The recommended tier remains an estimate.
+- The container virtual machine's memory ceiling is measured at 7.60 GiB, replacing
+  the assumed platform default, and the risk that recorded it as unmeasured is
+  closed.
+- Prerequisites now state a supported local development environment alongside the
+  documentation path, and separate both from serving, which remains unsupported.
+- The decision-record conventions define `Accepted in part`, which requires a
+  per-decision status table.
+
+### Fixed
+
+- Two teardown claims that the evidence contradicted: the engine's virtual disk
+  does not return space to the host when a cluster is deleted, and a cluster
+  identity check based on a Kubernetes node label does not work, because the label
+  is on the node container rather than on the node object.
+
+ADR 0001 is accepted only for what was executed, on one Windows host, one
+architecture, one point in time. Linux and macOS remain untested. No model, serving
+runtime, inference, benchmark, ingress, or load-balancing behaviour is proven by
+any entry above, and no V1 product capability or versioned release is included.

@@ -134,6 +134,33 @@ parentheses rather than working around the check.
 
 Check any changed external link separately and record the date it was checked.
 
+### Shell scripts
+
+Changes under `scripts/` must parse and must pass a static analyser at style level:
+
+```sh
+bash -n scripts/environment/*.sh
+shellcheck -x -S style scripts/environment/*.sh
+```
+
+`shellcheck` is not vendored. Install it however your platform prefers; a Python
+distribution of it exists if no system package is convenient.
+
+### Kubernetes manifests
+
+Changes under `deploy/` must parse and must validate against the Kubernetes version
+this project pins:
+
+```sh
+kubeconform -strict -summary -kubernetes-version 1.34.0 deploy/smoke/*.yaml
+```
+
+The kind cluster definition is excluded from that command because its schema is
+kind's rather than Kubernetes'. Validate it by using it.
+
+Container images in manifests must be pinned by digest, not by tag alone. A tag is
+a label that can be moved; a digest is what the engine actually resolves.
+
 Then inspect the full diff and search it for credentials, private planning content,
 personal paths, generated files, and unsupported capability claims. Report the exact
 commands you ran, their results, and any check you skipped.

@@ -5,9 +5,10 @@ workloads easier to describe, operate, and evaluate through explicit contracts a
 reproducible evidence.
 
 > [!IMPORTANT]
-> This repository currently contains governance documentation only. It does not
-> provide a deployable platform, a supported workload contract, a serving runtime,
-> Kubernetes automation, or a released V1 capability.
+> This repository provides governance documentation and a local development
+> environment. It does not provide a deployable platform, a supported workload
+> contract, a serving runtime, or a released V1 capability. Nothing here has served
+> a model.
 
 ## Repository status
 
@@ -21,9 +22,10 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 |---|---|---|
 | Contribution and review | [CONTRIBUTING.md](CONTRIBUTING.md) | Accepted repository convention |
 | Repository governance | [docs/governance/repository.md](docs/governance/repository.md) | Accepted for this repository skeleton |
-| Supported-host prerequisites | [docs/prerequisites.md](docs/prerequisites.md) | Documentation-only prerequisites; runtime support pending |
+| Supported-host prerequisites | [docs/prerequisites.md](docs/prerequisites.md) | Documentation and local development supported; serving support pending |
+| Local development cluster | [docs/environment/local-cluster.md](docs/environment/local-cluster.md) | Executed and evidenced on one Windows host |
 | Contracts | [docs/contracts/README.md](docs/contracts/README.md) | No public contract accepted yet |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision proposed; none accepted |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision accepted in part |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | Unreleased changes only |

@@ -1,0 +1,126 @@
+# Hello-world smoke workload for the InferOps local development cluster.
+#
+# This proves that the cluster schedules a pod, mounts configuration, passes a
+# readiness probe, and routes a ClusterIP Service to it. It serves static text.
+# It is not an inference workload, a serving runtime, or any part of the V1
+# product surface, and nothing may be inferred from it about either.
+#
+# Every object carries the ADR 0001 (D5) isolation markers: an `inferops-`
+# namespace prefix and the `app.kubernetes.io/part-of: inferops` label, so that
+# scoped selection and scoped deletion are always possible.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inferops-smoke
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/managed-by: inferops-env-scripts
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-world-content
+  namespace: inferops-smoke
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: hello-world
+    app.kubernetes.io/managed-by: inferops-env-scripts
+data:
+  # The smoke script asserts on this exact string, so the assertion fails loudly
+  # if the Service ever routes somewhere other than this pod.
+  index.html: |
+    inferops-hello-world-ok
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world
+  namespace: inferops-smoke
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: hello-world
+    app.kubernetes.io/managed-by: inferops-env-scripts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hello-world
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: inferops
+        app.kubernetes.io/name: hello-world
+        app.kubernetes.io/managed-by: inferops-env-scripts
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: httpd
+          # Digest-pinned for the same reason the node image is. busybox is used
+          # because it is small enough to matter on a disk-constrained host and
+          # serves both roles this test needs: HTTP server here, HTTP client in
+          # the verification job below.
+          image: busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+          command: ["httpd"]
+          args: ["-f", "-v", "-p", "8080", "-h", "/var/www"]
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /index.html
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            failureThreshold: 15
+          livenessProbe:
+            httpGet:
+              path: /index.html
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+          volumeMounts:
+            - name: content
+              mountPath: /var/www
+              readOnly: true
+      volumes:
+        - name: content
+          configMap:
+            name: hello-world-content
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world
+  namespace: inferops-smoke
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: hello-world
+    app.kubernetes.io/managed-by: inferops-env-scripts
+spec:
+  # ClusterIP only. kind ships no Service type=LoadBalancer implementation, and
+  # ADR 0001 (D2) records that as a known cost rather than working around it here.
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hello-world
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

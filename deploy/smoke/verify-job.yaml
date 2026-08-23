@@ -1,0 +1,62 @@
+# In-cluster verification for the hello-world smoke workload.
+#
+# The request is made from inside the cluster, on purpose. A host-side
+# port-forward would prove that kubectl can tunnel to a pod; it would not prove
+# that cluster DNS resolves the Service name or that the Service routes to the
+# pod behind it. Those are the two things this job actually exercises.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hello-world-verify
+  namespace: inferops-smoke
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: hello-world-verify
+    app.kubernetes.io/managed-by: inferops-env-scripts
+spec:
+  backoffLimit: 2
+  # Bounded: the job is failed by the control plane rather than retried forever
+  # if the Service never answers.
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: inferops
+        app.kubernetes.io/name: hello-world-verify
+        app.kubernetes.io/managed-by: inferops-env-scripts
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: client
+          image: busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              # Fully qualified Service name: resolution through cluster DNS is
+              # part of what is being proven, not an implementation detail.
+              url="http://hello-world.inferops-smoke.svc.cluster.local:80/index.html"
+              echo "requesting ${url}"
+              body="$(wget -q -T 10 -O - "${url}")"
+              echo "response: ${body}"
+              test "${body}" = "inferops-hello-world-ok"
+              echo "SMOKE_ASSERTION_PASSED"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
