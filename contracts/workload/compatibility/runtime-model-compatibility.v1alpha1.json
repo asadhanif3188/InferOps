@@ -1,0 +1,55 @@
+{
+  "$id": "https://inferops.io/contracts/workload/runtime-model-compatibility.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Runtime and model compatibility matrix, v1alpha1",
+  "description": "Which serving runtimes accept which model artifact formats, and which runtime and model pairs this project has actually executed. A combination that is absent from this file is unsupported until it is added here with evidence; the validator refuses it rather than assuming it works. This file records artifact-format compatibility, which is a necessary condition, not a sufficient one: a pair that appears compatible here may still fail on memory, quantisation, or architecture support.",
+  "artifactFormats": {
+    ".gguf": "gguf",
+    ".safetensors": "safetensors",
+    ".bin": "pytorch-bin"
+  },
+  "runtimes": [
+    {
+      "runtimeId": "llama-cpp-server",
+      "name": "llama.cpp llama-server",
+      "imageRepositories": ["ghcr.io/ggml-org/llama.cpp"],
+      "servingCapability": "inferops-native-serving",
+      "acceptedArtifactFormats": ["gguf"],
+      "status": "selected",
+      "decisionRef": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+      "notes": "GGUF is the format this runtime loads. It does not read safetensors or PyTorch checkpoints without a conversion step, and a conversion step produces a different artifact with a different hash, so it would be a different contract."
+    },
+    {
+      "runtimeId": "vllm-cpu",
+      "name": "vLLM, CPU backend",
+      "imageRepositories": ["docker.io/vllm/vllm-openai", "vllm/vllm-openai-cpu"],
+      "servingCapability": "inferops-native-serving",
+      "acceptedArtifactFormats": ["safetensors", "pytorch-bin"],
+      "status": "recorded-fallback",
+      "decisionRef": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+      "notes": "Recorded in ADR 0002 as the fallback and never executed by this project. The formats listed are the ones vLLM loads directly; its experimental GGUF path is deliberately not listed, because this project has run no trial that would let it claim that path works."
+    },
+    {
+      "runtimeId": "inferops-mock-serving",
+      "name": "Deterministic fixture replayer",
+      "imageRepositories": [],
+      "servingCapability": "inferops-mock-serving",
+      "acceptedArtifactFormats": [],
+      "status": "ci-only",
+      "decisionRef": "docs/serving/mock-and-real-boundary.md",
+      "notes": "Loads no model artifact at all. A mock-llm workload declares no runtime image and no model artifact, so no entry in this matrix applies to it."
+    }
+  ],
+  "executedPairs": [
+    {
+      "runtimeId": "llama-cpp-server",
+      "imageReference": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "modelRepository": "Qwen/Qwen3-1.7B-GGUF",
+      "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "modelFile": "Qwen3-1.7B-Q8_0.gguf",
+      "artifactFormat": "gguf",
+      "evidenceClass": "local real runtime, one Windows host",
+      "proofRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md"
+    }
+  ]
+}

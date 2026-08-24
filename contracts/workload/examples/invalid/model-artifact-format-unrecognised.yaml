@@ -1,0 +1,66 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: the pinned model artifact has no format the matrix recognises.
+#
+# A tar archive is a plausible mistake rather than a contrived one: it is what a
+# mirror hands back, and its digest is as real as any other digest. The schema
+# accepts the filename, because the filename is well-formed. What cannot be
+# established is which runtime could load it, and a workload the platform cannot
+# reason about is refused rather than started and watched.
+#
+# The digest and size below are carried over from the real artifact and are not
+# the digest or size of any archive. Nothing here is a pin on a published file.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: support-assistant
+  version: 0.1.0
+  owner: team-platform-demo
+  description: Invalid fixture. Pins an artifact in no recognised model format.
+
+spec:
+  profile: synchronous-llm
+  environment: local
+
+  model:
+    servingCapability: inferops-native-serving
+    modelRef: qwen3-1-7b-q8-0
+    runtimeProfile: resource-conscious
+
+  resources:
+    cpu: "6"
+    memory: 3Gi
+    accelerator:
+      type: none
+      count: 0
+
+  scaling:
+    minimumReplicas: 1
+    maximumReplicas: 1
+
+  integrations:
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    dataClassification: internal
+    secretRefs: []
+
+  attribution:
+    tenant: demo
+    costCenter: demo-cost-center
+
+  evidence:
+    runbookRef: docs/serving/feasibility-workflow.md
+
+  synchronousLlm:
+    runtime:
+      imageReference: ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+    modelArtifact:
+      repository: Qwen/Qwen3-1.7B-GGUF
+      revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+      file: Qwen3-1.7B-Q8_0.tar
+      sizeBytes: 1834426016
+      sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a

@@ -1,0 +1,67 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: the pinned runtime does not load the pinned model artifact format.
+#
+# vLLM's CPU backend is recorded in ADR 0002 as the fallback runtime. It loads
+# safetensors and PyTorch checkpoints; it does not load the GGUF file this
+# workload pins. Both halves of the document are individually well-formed, and
+# the schema accepts the pair, because the incompatibility is between two fields
+# and is decided by a matrix rather than by a pattern.
+#
+# THE IMAGE DIGEST BELOW IS SYNTHETIC. It is sixty-four zeroes, so that no reader
+# mistakes this fixture for a pin on a published image. Only the repository part
+# of the reference is load-bearing here: it is what selects the matrix row.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: support-assistant
+  version: 0.1.0
+  owner: team-platform-demo
+  description: Invalid fixture. A GGUF artifact pinned to a runtime that cannot load it.
+
+spec:
+  profile: synchronous-llm
+  environment: local
+
+  model:
+    servingCapability: inferops-native-serving
+    modelRef: qwen3-1-7b-q8-0
+    runtimeProfile: resource-conscious
+
+  resources:
+    cpu: "6"
+    memory: 3Gi
+    accelerator:
+      type: none
+      count: 0
+
+  scaling:
+    minimumReplicas: 1
+    maximumReplicas: 1
+
+  integrations:
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    dataClassification: internal
+    secretRefs: []
+
+  attribution:
+    tenant: demo
+    costCenter: demo-cost-center
+
+  evidence:
+    runbookRef: docs/serving/feasibility-workflow.md
+
+  synchronousLlm:
+    runtime:
+      imageReference: docker.io/vllm/vllm-openai@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    modelArtifact:
+      repository: Qwen/Qwen3-1.7B-GGUF
+      revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+      file: Qwen3-1.7B-Q8_0.gguf
+      sizeBytes: 1834426016
+      sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a

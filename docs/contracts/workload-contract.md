@@ -1,9 +1,10 @@
 # WorkloadContract v1alpha1
 
 Status: **accepted contract**, at `v1alpha1` maturity. The schema, its identifier,
-its compatibility rules, and its valid fixtures are published here and validated on
-every change. It describes a workload; it does not deploy one. Nothing in this
-repository reads a WorkloadContract yet, and this document does not claim otherwise.
+its compatibility rules, and its valid and invalid fixtures are published here and
+validated on every change. It describes a workload; it does not deploy one. Nothing
+in this repository reads a WorkloadContract yet, and this document does not claim
+otherwise.
 
 | Property | Value |
 |---|---|
@@ -15,7 +16,26 @@ repository reads a WorkloadContract yet, and this document does not claim otherw
 | Authoring form | YAML, restricted to the JSON-representable subset |
 | Wire form | JSON |
 | Unknown fields | Rejected |
+| Semantic rules | [`tools/contract_validation/`](../../tools/contract_validation/) |
+| Compatibility matrix | [`contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json`](../../contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json) |
 | Tooling decision | [ADR 0003](../architecture/decisions/ADR-0003-workload-contract-schema-tooling.md) |
+
+## Two layers, and why a consumer needs to know which is which
+
+Validation happens in two layers, and the split is not an implementation detail —
+it changes what a consumer gets.
+
+| Layer | What it is | Who has it |
+|---|---|---|
+| **Structural** | The published JSON Schema | Anyone, in any language, by validating against the schema file |
+| **Semantic** | Rules JSON Schema cannot express: comparing two sibling values, consulting a compatibility matrix, judging whether a locator is a pasted credential | Only a consumer that runs the published validator, or reimplements these rules |
+
+[ADR 0003](../architecture/decisions/ADR-0003-workload-contract-schema-tooling.md)
+accepted that split knowingly, and its cost is exactly this: **a consumer
+validating against the raw schema alone accepts documents the platform refuses.**
+The rejection matrix below marks every rule with the layer that applies it, so
+which documents those are is a published fact rather than something discovered by
+having one accepted.
 
 ## What it is for
 
@@ -115,10 +135,19 @@ This schema is the half of it a reviewer does not have to remember. Under
 
 Each of those is a structural constraint, so editing a mock fixture into something
 that reads as real serving does not produce a valid contract. It produces a
-validation failure. The corresponding negative fixtures are the second pull
-request's to add; the constraints themselves are already in the schema, and
-[the tests](../../tests/contracts/test_workload_contract_v1alpha1.py) already assert
-that each rejection happens.
+validation failure.
+[`mock-presented-as-real.yaml`](../../contracts/workload/examples/invalid/mock-presented-as-real.yaml)
+is that edit, committed: it changes the environment, the serving capability, the
+accelerator, and the proof references all at once, and every one of the four is
+refused.
+
+One further rule is semantic rather than structural. A `mock-llm` workload may not
+declare a secret reference at all
+([`mock-with-secret-refs.yaml`](../../contracts/workload/examples/invalid/mock-with-secret-refs.yaml)).
+A fixture replayer reaches nothing that needs a credential, so a mock asking for
+one is either misdescribing itself or is a continuous-integration workload pointed
+at a real secret. The schema cannot see that, because the secret entry is
+structurally perfect.
 
 ### The real profile is pinned to the accepted decision
 
@@ -170,15 +199,53 @@ many real ones are alphanumeric by construction — an AWS access key ID and a
 GitHub-style token both validate against this pattern without a character out of
 place.
 
-So the honest summary is: the pattern is a partial filter that happens to catch
-padded base64, and it is no defence at all against the credential formats most
-likely to be pasted. Closing it needs a semantic check with heuristics behind it,
-which belongs to the validator rather than the schema and is the second pull
-request's work. Until then the real defence is the closed-object rule plus review,
-and this paragraph exists so that nobody mistakes an incidental filter for one.
+So the honest summary of the *pattern* is: it is a partial filter that happens to
+catch padded base64, and it is no defence at all against the credential formats
+most likely to be pasted.
+
+### The semantic check that sits above it
+
+Because the pattern cannot close that gap, a second check does, in the semantic
+layer. It refuses a locator on two grounds, and neither is a proof.
+
+| Ground | What it recognises | Rule |
+|---|---|---|
+| **Published prefix** | The value begins with a prefix that its issuer documents as the start of a credential — `AKIA`, `ghp_`, `xoxb-`, `glpat-`, `hf_`, `eyJ`, and around thirty more | `secret-value-in-locator` |
+| **Opaque segment** | A path segment of at least 20 characters carrying mixed case, digits, and high character entropy: the shape of a string a system issued rather than a name a person chose | `secret-value-in-locator` |
+
+The three conditions in the second row are each there to stop a specific false
+positive rather than because they sounded strict. The length bound clears
+`inferops-serving` and `model-registry`. The digit bound clears
+`TelemetryIngestPathForServing`, which varies its case because somebody typed it
+that way. The entropy bound clears names built from English-like letter
+frequencies. Vault, AWS Secrets Manager, and Google Secret Manager path forms are
+all in the test suite as locators that must *not* be flagged, because a check that
+refuses well-formed references gets switched off within a week and then nothing is
+checked at all.
+
+**What it still does not catch, stated as a measured fact and tested as one:** a
+short or low-entropy secret has the shape of a name. `Winter2026` passes.
+`inferops/telemetry/hunter2` passes. `correcthorsebatterystaple` passes. There is
+a test asserting each of those exact strings passes, so that a future change which
+closes the gap has to come here and rewrite this paragraph rather than leave it
+overstating the check in either direction.
+
+The pattern gap the previous change measured is narrowed by this, not closed. An
+unpadded base64 blob long enough to trip the opaque-segment test is now refused; a
+short one is not.
+
+Two smaller rules complete the block. A duplicate logical name across two secret
+entries is refused (`secret-ref-name-duplicated`), because the workload consumes
+by name and a duplicate makes which provider it reaches undefined. And a
+`mock-llm` workload may declare no secret reference at all
+(`mock-secret-ref-declared`).
 
 Secrets must not appear in logs, traces, metrics, evidence, or screenshots. Local
-development should use synthetic credentials.
+development should use synthetic credentials. **A validation message never
+contains a value read out of the document** — it names the field and the rule and
+stops there — because the field most likely to be refused for looking wrong is the
+field most likely to hold a secret, and an error body is the surface most likely to
+be logged, pasted into a ticket, and kept.
 
 ## Data classification
 
@@ -217,7 +284,45 @@ Everything else is a schema change:
 `apiVersion` is the compatibility axis. It moves along the maturity ladder
 `v1alpha1` → `v1beta1` → `v1`.
 
-### What counts as breaking
+Every change to this contract falls into one of three classes. The class is stated
+in the pull request, and the changelog entry records it.
+
+### Compatible
+
+A previously valid document stays valid, and a previously refused document is
+still refused for the same reason.
+
+- adding an optional field;
+- adding a value to an enum, where the new value does not change how existing
+  values behave;
+- adding a new profile with its own profile block;
+- relaxing a pattern or raising a bound;
+- adding a runtime, an image repository, or an artifact format to the
+  compatibility matrix;
+- adding an invalid fixture for a rule that already exists;
+- editorial changes to descriptions.
+
+Compatible changes need a changelog entry. They do not need a new `apiVersion`.
+
+### Conditionally compatible
+
+A previously valid document stays valid, but something a consumer could reasonably
+have depended on moves. These are the changes that get merged as harmless and are
+discovered later, so they are named rather than folded into the class above.
+
+| Change | Why it is not simply compatible |
+|---|---|
+| **Adding a semantic rule** that refuses a document the schema accepts | A document that validated last week is refused this week, without a schema diff to point at. Conditionally compatible only if no committed valid fixture becomes invalid |
+| **Adding an entry to the compatibility matrix that narrows an existing row** — removing an accepted artifact format, or moving a repository between runtimes | A workload can become unservable without any change to its own document |
+| **Changing a canonical error code, a rule identifier, or a field location** for an existing rejection | The document is refused either way, but a consumer switching on the code or quoting the rule sees different output. The published matrix is the interface here, not just the accept/refuse verdict |
+| **Tightening the credential heuristic** | A locator that passed may start being refused. The gap it closes is real; the change still has to be announced rather than shipped as a fix |
+| **Adding a required field with a defaulting rule** applied by the platform | Valid documents stay valid only for as long as the default holds, and the default is now load-bearing |
+
+A conditionally compatible change requires a changelog entry that says what moved,
+an updated fixture set, and — where a consumer could be relying on the old output
+— a deprecation note. It does not require a new `apiVersion`.
+
+### Breaking
 
 A change is breaking when it removes or renames a required field, changes a field's
 meaning or unit, narrows allowed behaviour without negotiation, changes
@@ -225,14 +330,9 @@ authentication requirements, changes default security or retention behaviour,
 removes a failure mode consumers depend on, changes event type or ordering
 guarantees, or makes previously valid input invalid.
 
-### What is compatible within `v1alpha1`
-
-- adding an optional field;
-- adding a value to an enum, where the new value does not change how existing
-  values behave;
-- adding a new profile with its own profile block;
-- relaxing a pattern or raising a bound;
-- editorial changes to descriptions.
+Concretely, for this contract: removing an enum value, removing a profile, making
+an optional field required without a default, and any change that invalidates a
+committed valid fixture are all breaking.
 
 ### The alpha rule this project does not take
 
@@ -261,32 +361,175 @@ Only one version exists today, so the window has nothing to apply to yet.
 
 ## Rejection and canonical errors
 
-The platform must reject a contract that has any of the following. The right-hand
-column records where the rejection happens today, so that no rule is assumed to be
-enforced when it is not.
+A refusal carries three things, and they are separate on purpose.
 
-| Rejected | Canonical error | Enforced by |
-|---|---|---|
-| Unsupported `apiVersion` | `version-unsupported` | Schema |
-| Missing owner or workload identity | `contract-invalid` | Schema |
-| Unsupported profile | `contract-invalid` | Schema |
-| A field the schema does not define | `contract-invalid` | Schema |
-| Unsupported data classification | `contract-invalid` | Schema |
-| A secret value in a value-shaped field | `contract-invalid` | Schema (no such field exists) |
-| Resource-free workload | `contract-invalid` | Schema |
-| Mock profile presented as real serving | `contract-invalid` | Schema |
-| Replica range where minimum exceeds maximum | `contract-invalid` | **Not yet.** Validator; second pull request |
-| Model and runtime combination known to be incompatible | `contract-invalid` | **Not yet.** Validator; second pull request |
-| Undeclared required capability | `contract-invalid` | **Not yet.** Requires a capability registry that does not exist |
-| A secret value pasted into `reference` | `contract-invalid` | **Partly.** The locator pattern rejects `+` and `=`, so most padded base64 fails; an alphanumeric credential still passes. Validator; second pull request |
-| Policy exception without owner, reason, and expiry | `contract-invalid` | **Not yet.** No policy contract exists |
+| Part | What it is for |
+|---|---|
+| **Canonical code** | The small public vocabulary an HTTP client switches on. It is deliberately coarse and does not grow when a rule is added |
+| **Rule identifier** | Which specific rule refused the document. Stable, quotable in a review, and looked up in the matrix below |
+| **Field location** | Where. A JSON-path address such as `$.spec.scaling` or `$.spec.security.secretRefs[1].name` |
+
+Only two canonical codes are reachable from an offline document check.
+`version-unsupported` means the document is well-formed for a version this
+validator does not implement; `contract-invalid` means everything else. Both are
+**non-retryable**: an invalid document does not become valid on retry. The wider
+code vocabulary belongs to runtime surfaces that can produce it, and none exists
+in this repository.
 
 Canonical error bodies carry `code`, a safe `message`, `requestId`,
-`correlationId`, `retryable`, and optional `retryAfterMs` and `details`. Both codes
-above are non-retryable: an invalid document does not become valid on retry.
+`correlationId`, `retryable`, and optional `retryAfterMs` and `details`.
 
-A message must never expose a secret, an internal stack trace, a prompt, or
-sensitive policy detail.
+**Neither the message nor the field location repeats a value read out of the
+document.** The message is generated from the rule and the schema's own published
+vocabulary rather than passed through from the underlying validator, which embeds
+the offending value in its own text. The field location names fields and property
+names, and an offending property name is echoed only when it is short and does not
+itself look like a pasted credential — `metadata.annotations` is an open map, so
+its keys are as author-controlled as any value.
+
+A test asserts both halves for every invalid fixture, against every string of
+eight characters or more in that document, excluding the schema's own vocabulary.
+Eight is a floor rather than a guarantee: below it a document string is something
+like `6`, `3Gi`, or `demo`, which collides with ordinary English in a message for
+reasons that have nothing to do with disclosure.
+
+A message must also never expose an internal stack trace, a prompt, or sensitive
+policy detail.
+
+### The rule matrix
+
+Every rule this validator can cite. "Layer" is the load-bearing column: a
+`structural` rule is applied by the published schema and therefore by any
+consumer in any language, while a `semantic` rule is applied only by a consumer
+that runs the published validator.
+
+| Rule | Code | Layer | Refuses |
+|---|---|---|---|
+| `contract-version-unsupported` | `version-unsupported` | Structural | `apiVersion` names a contract version this validator does not implement |
+| `field-required` | `contract-invalid` | Structural | A required field is absent — owner, workload identity, resources, telemetry, a profile block |
+| `field-unknown` | `contract-invalid` | Structural | A field the contract version does not define, including a misspelled one |
+| `value-not-permitted` | `contract-invalid` | Structural | A value outside a controlled vocabulary, or forbidden in this position — an unsupported profile, environment, or data classification; a mock claiming native serving |
+| `value-malformed` | `contract-invalid` | Structural | A value that does not match its field's format — a non-DNS-safe identifier, an image pinned by tag, an absolute or traversing path, an unnamespaced annotation key |
+| `value-out-of-range` | `contract-invalid` | Structural | A value outside a permitted length, bound, or item count — including a mock citing real-runtime proof |
+| `value-wrong-type` | `contract-invalid` | Structural | A value of the wrong JSON type |
+| `contract-structure-invalid` | `contract-invalid` | Structural | A structural constraint with no more specific rule. Reaching this is a signal the matrix needs a row, not a catch-all to rely on |
+| `replica-range-inverted` | `contract-invalid` | Semantic | `minimumReplicas` exceeds `maximumReplicas`, so the declared range is empty |
+| `secret-value-in-locator` | `contract-invalid` | Semantic | A secret reference shaped like a pasted credential rather than a locator |
+| `secret-ref-name-duplicated` | `contract-invalid` | Semantic | Two secret entries declare the same logical name |
+| `mock-secret-ref-declared` | `contract-invalid` | Semantic | A `mock-llm` workload declares a secret reference |
+| `runtime-unregistered` | `contract-invalid` | Semantic | The runtime image repository has no entry in the compatibility matrix |
+| `model-artifact-format-unknown` | `contract-invalid` | Semantic | The artifact filename ends in no format extension the matrix recognises |
+| `runtime-model-incompatible` | `contract-invalid` | Semantic | The pinned runtime does not accept the pinned artifact's format |
+
+Fourteen of the fifteen have an invalid fixture demonstrating them. Two do not,
+and saying which is cheaper than letting a reader infer coverage from the absence
+of a file:
+
+- **`value-wrong-type`** is unreachable from a YAML fixture wherever the schema
+  also constrains the value's format, because the pattern or enum fails first and
+  that rule is what surfaces.
+- **`contract-structure-invalid`** is the fallback for a keyword the translation
+  table does not map. A fixture pinning it would pin a defect rather than a rule,
+  so reaching it is a signal to add a row to the table.
+
+A test asserts that those two, and only those two, are the structural rules
+without a fixture. Every **semantic** rule must have one; a test refuses to let an
+unexercised one exist.
+
+### Two properties of a refusal that are easy to lose
+
+**Identical findings are collapsed.** A reason given twice is not two reasons. In
+particular, an annotation key that is both too long and badly shaped is one thing
+being wrong, and it is refused once, under `value-malformed`, rather than once per
+constraint it happens to break.
+
+**Findings sort by array index as a number.** `secretRefs[10]` comes after
+`secretRefs[2]`. String ordering would be equally deterministic and would read as
+wrong, and the reason to sort at all is that a reader can follow the result.
+
+### Rules that are still not enforced
+
+Three rules the integration specification names remain unenforced, for the same
+reason each was unenforced before: the thing they would check against does not
+exist. They are listed here rather than omitted, so that no reader has to discover
+from a passing validation that a rule was aspirational.
+
+| Not enforced | Canonical error it would carry | Blocked on |
+|---|---|---|
+| Undeclared required capability | `contract-invalid` | No capability registry or descriptor exists to validate a `capabilityRef` against |
+| Policy exception without owner, reason, and expiry | `contract-invalid` | No policy contract exists |
+| A tenant claimed without entitlement | `authorization-denied` | Entitlement is not a property of the document. It must be checked by a trusted component against a source this validator does not have |
+
+`authorization-denied` is the only code named on this page that no artifact in this
+repository can emit. It belongs to the platform's canonical vocabulary rather than
+to an offline document check, and it appears here because naming the code a rule
+would carry is more useful than leaving the row blank.
+
+One further limit is a property of an offline check rather than a missing
+capability: **a digest proves what bytes are, not that they are the right bytes.**
+The validator confirms that a pinned artifact's format is one the pinned runtime
+loads. It cannot confirm that the model fits in memory, that the quantisation is
+supported, or that the architecture is implemented. Format compatibility is a
+necessary condition, never a sufficient one, and the compatibility matrix says so
+in its own description.
+
+### Runtime and model compatibility
+
+`runtime-unregistered` and `runtime-model-incompatible` are decided against
+[the published matrix](../../contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json),
+which is data rather than code so that adding a runtime is a reviewable diff.
+
+| Runtime | Image repositories | Accepts | Status |
+|---|---|---|---|
+| `llama-cpp-server` | `ghcr.io/ggml-org/llama.cpp` | `gguf` | Selected in [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md), and the one pair this project has executed |
+| `vllm-cpu` | `docker.io/vllm/vllm-openai`, `vllm/vllm-openai-cpu` | `safetensors`, `pytorch-bin` | Recorded fallback in ADR 0002. **Never executed by this project** |
+| `inferops-mock-serving` | none | none | Loads no artifact. A `mock-llm` workload pins no runtime image and no model artifact, so no runtime row is consulted for one |
+
+Two things the matrix deliberately does not say. vLLM's experimental GGUF path is
+**not** listed among its accepted formats, because this project has run no trial
+that would let it claim that path works. And a repository absent from the table is
+refused rather than assumed workable: the integration specification's rule is that
+an unknown combination is unsupported until certified, and a digest that pins
+uncharacterised bytes is exactly such a combination.
+
+The `executedPairs` list in that file carries one entry — the runtime image digest
+and model revision [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md)
+selected, with a link to the executed feasibility record. A test fails if that
+entry ever stops matching the ADR, and a second test fails if a valid
+`synchronous-llm` fixture ever pins a runtime nobody has run.
+
+## Fixtures, and who owns which
+
+| Set | Location | Rule |
+|---|---|---|
+| **Valid** | [`contracts/workload/examples/valid/`](../../contracts/workload/examples/valid/) | Every file must validate under **both** layers. Picked up automatically from `valid/*.yaml` |
+| **Invalid** | [`contracts/workload/examples/invalid/`](../../contracts/workload/examples/invalid/) | Every file must be refused, for exactly the reasons recorded in the manifest beside them |
+| **Expected rejections** | [`invalid/expected-rejections.json`](../../contracts/workload/examples/invalid/expected-rejections.json) | The published refusal for each invalid fixture: canonical code, rule, field, and which layer refuses |
+| **Response fixtures** | [`contracts/workload/fixtures/`](../../contracts/workload/fixtures/) | Deterministic payloads a contract references. A mock payload identifies itself as a mock from its own contents |
+
+**Ownership.** A fixture belongs to the rule it demonstrates, not to the change
+that happened to add it. Three consequences follow:
+
+- **Adding a rule adds a fixture.** A semantic rule with no invalid fixture is a
+  claim, and a test refuses to let one exist.
+- **Removing or weakening a rule removes its fixture in the same change**, with
+  the compatibility class stated. A fixture left behind for a rule that no longer
+  applies is worse than no fixture, because it still reads as coverage.
+- **A valid fixture is never edited to make a change pass.** If a change would
+  invalidate a committed valid fixture, the change is breaking; that is the
+  definition, and the fixture is the instrument that detects it.
+
+The manifest records each fixture's **layer**, and a test checks the claim rather
+than trusting it: a fixture marked `semantic` must be *accepted* by the bare
+schema. If the schema ever grows strict enough to refuse one, that is a
+strengthening, a conditionally compatible change, and a manifest edit — not a
+silent improvement.
+
+Invalid fixtures contain no credential. Where one has to look like a credential to
+demonstrate the check, the file uses a vendor's own published placeholder or a
+fixed synthetic string, and says so in its header. Synthetic digests are written
+as an obvious run of repeated digits so that no reader mistakes one for a pin on a
+published image.
 
 ## Validation
 
@@ -294,12 +537,26 @@ sensitive policy detail.
 python -m pytest tests/contracts -q
 ```
 
+Or against an arbitrary document, including one that is not a committed fixture:
+
+```sh
+python -m tools.contract_validation path/to/workload.yaml
+python -m tools.contract_validation --json path/to/workload.yaml
+```
+
+The command exits `0` when every document validates and `1` when any is refused,
+and its output is sorted, so two runs over the same document are byte-identical.
+
 The suite reads only files in this repository: no network, no cluster, no model, no
 clock, no randomness. It checks that the schema is a valid draft 2020-12 schema,
 that every object declares its additional-property policy, that each valid fixture
-validates, that fixture references resolve to real files, that the real fixture
-still matches ADR 0002, that the mock cannot be edited into a real-looking contract,
-and that repeated validation of the same document produces identical output.
+validates under both layers, that fixture references resolve to real files, that
+the real fixture still matches ADR 0002, that the mock cannot be edited into a
+real-looking contract, that every invalid fixture is refused with exactly the
+published code, rule, and field, that neither a refusal's message nor its field
+location quotes a value from the document, that every rule the validator can cite
+appears in this document, and that repeated validation of the same document
+produces identical output.
 
 Required packages are `jsonschema` and `pytest`, plus `PyYAML` for the authoring
 form. They are not vendored; install them however your platform prefers. The
@@ -311,10 +568,15 @@ made here.
 - **It deploys nothing.** No controller, adapter, or serving path in this
   repository reads a WorkloadContract.
 - **It certifies nothing.** A valid contract is a well-formed declaration, not
-  evidence that the workload it describes runs.
+  evidence that the workload it describes runs. A pair that the compatibility
+  matrix accepts is a pair whose formats match, not a pair anybody has served.
 - **It has no consumers.** No capability descriptor, registry, or admission path
   exists to validate a `capabilityRef` against.
-- **Its semantic rules are not all enforced yet.** The table above says which.
+- **Its rules are not all enforced.** Three remain blocked on capabilities that do
+  not exist, and the table above says which.
+- **Its two layers are not equally portable.** A consumer validating against the
+  bare schema gets the structural half only. That is a published fact rather than
+  a defect, and the rule matrix marks every row.
 - **Its `$id` is an identifier, not a URL.** Nothing is served at
   `inferops.io`, and a validator must resolve the schema from this repository
   rather than by fetching it. That is normal for JSON Schema and is recorded here

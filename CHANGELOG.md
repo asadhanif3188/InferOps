@@ -10,6 +10,55 @@ once versioned releases begin.
 
 ### Added
 
+- **Enforcement of the workload-contract rules JSON Schema cannot express.** A
+  semantic validation layer above the published schema now applies replica-range
+  ordering, a runtime and model compatibility matrix, duplicate secret names, the
+  rule that a mock may not declare a credential, and a heuristic that refuses a
+  secret pasted into a locator field. Two of these were published as *not enforced*
+  when the schema landed and are enforced now; the pasted-secret rule was published
+  as *partly* enforced and is now enforced as far as a shape heuristic can reach,
+  with the remaining gap measured and tested rather than described. Rules that
+  remain unenforced are still named in the same table that states them.
+- **A published rejection interface for the contract.** Every refusal carries a
+  canonical error code, a stable rule identifier, and a field location such as
+  `$.spec.security.secretRefs[1].name`. All fifteen rules are listed in the
+  contract document, and a test fails if the validator can cite one the document
+  does not publish.
+- **Sixteen invalid fixtures**, each with its expected code, rule, field, and
+  validation layer committed beside it. The manifest is compared field by field on
+  every run, so a change to what a consumer is told fails the build instead of
+  passing as a refactor.
+- **A test that checks which layer refuses each fixture.** A fixture marked
+  `semantic` must be *accepted* by the bare schema; if the schema ever grows strict
+  enough to refuse one, that is a strengthening and a compatibility event rather
+  than a silent improvement. Seven of the sixteen fixtures are semantic-only
+  today, which is the measured cost of validating against the raw schema alone.
+- **A runtime and model compatibility matrix**, as data rather than code. It
+  records what each serving runtime loads, marks vLLM's CPU backend as a recorded
+  fallback nobody has run, deliberately omits vLLM's experimental GGUF path
+  because no trial supports listing it, and carries exactly one executed pair —
+  the runtime digest and model revision ADR 0002 selected, tied to its feasibility
+  record by a test.
+- **Compatibility classes for contract changes: compatible, conditionally
+  compatible, and breaking.** The middle class is the addition. It names the
+  changes that get merged as harmless and discovered later — a new semantic rule, a
+  narrowed matrix row, a moved error code — and requires each to be announced.
+- **Fixture ownership rules.** A fixture belongs to the rule it demonstrates: a new
+  semantic rule must add one, a removed rule takes its own with it, and a valid
+  fixture is never edited to make a change pass.
+- A command-line entry point, `python -m tools.contract_validation`, for validating
+  a document that is not a committed fixture. Sorted output, exit `1` on refusal.
+- A change-validation record for this change, listing all sixteen refusals with
+  their layer, measuring the credential heuristic in both directions — what it
+  catches, what it deliberately leaves alone, and what it still misses — examining
+  every credential-shaped string the change commits, and recording the seven
+  defects a second review found in its own first draft.
+- Identical findings are collapsed, and findings sort by array index as a number,
+  so `secretRefs[10]` follows `secretRefs[2]` rather than preceding it.
+- An offending annotation key is named in a field location only when it is short
+  and does not itself look like a credential. `metadata.annotations` is the
+  contract's one open map, so its keys are as author-controlled as any value.
+
 - **The first public contract: WorkloadContract `v1alpha1`.** A JSON Schema draft
   2020-12 document under `contracts/workload/` covering workload identity, owner,
   profile, environment, model and runtime reference, resources, replica bounds,
@@ -118,6 +167,22 @@ once versioned releases begin.
 
 ### Changed
 
+- **A contract validation message no longer repeats any value read out of the
+  document.** The underlying validator embeds the offending value in its own
+  message; the contract validator now writes its own text instead, because the
+  field most likely to be refused for looking wrong is the field most likely to
+  hold a secret, and an error body is the surface most likely to be logged, pasted
+  into a ticket, and kept. A test asserts it for every invalid fixture.
+- The workload-contract rejection table gains a layer column and a rule
+  identifier for every row. Of its five incompletely enforced entries, the replica
+  range and the runtime and model combination move from "not yet" to enforced, and
+  the pasted secret moves from "partly" to a semantic check whose limits are
+  measured. The remaining two — undeclared required capability and policy
+  exception — are unchanged, and are now stated as blocked on a named missing
+  capability rather than merely deferred.
+- The contracts index no longer lists a compatibility matrix among the artifacts
+  that do not exist, and says how the matrix that now exists is narrower than the
+  cross-project one the integration specification calls for.
 - The contracts index moves from "no public contract accepted" to indexing one
   accepted contract, and now requires an entry to state which of its rules are not
   yet enforced in the same place it states the rule.

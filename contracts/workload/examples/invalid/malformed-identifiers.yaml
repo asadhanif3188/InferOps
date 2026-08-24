@@ -1,0 +1,68 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: four identifiers at once, each malformed in a different way.
+#
+#   metadata.name          not DNS-safe
+#   metadata.version       a movable tag rather than an immutable release identity
+#   metadata.annotations   an annotation key with no DNS namespace in front of it
+#   spec.attribution.tenant  not DNS-safe
+#
+# One fixture carries all four so that the ordering of a multi-finding result is
+# pinned by a test. A refusal a consumer cannot compare between runs is a refusal
+# nobody can quote in a review.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: Support_Assistant
+  version: latest
+  owner: team-platform-demo
+  description: Invalid fixture. Four malformed identifiers in one document.
+  annotations:
+    unnamespaced-key: value-of-an-annotation-with-no-namespace
+
+spec:
+  profile: synchronous-llm
+  environment: local
+
+  model:
+    servingCapability: inferops-native-serving
+    modelRef: qwen3-1-7b-q8-0
+    runtimeProfile: resource-conscious
+
+  resources:
+    cpu: "6"
+    memory: 3Gi
+    accelerator:
+      type: none
+      count: 0
+
+  scaling:
+    minimumReplicas: 1
+    maximumReplicas: 1
+
+  integrations:
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    dataClassification: internal
+    secretRefs: []
+
+  attribution:
+    tenant: Demo Tenant
+    costCenter: demo-cost-center
+
+  evidence:
+    runbookRef: docs/serving/feasibility-workflow.md
+
+  synchronousLlm:
+    runtime:
+      imageReference: ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+    modelArtifact:
+      repository: Qwen/Qwen3-1.7B-GGUF
+      revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+      file: Qwen3-1.7B-Q8_0.gguf
+      sizeBytes: 1834426016
+      sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a

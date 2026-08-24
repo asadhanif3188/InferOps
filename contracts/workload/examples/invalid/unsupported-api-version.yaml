@@ -1,0 +1,66 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: apiVersion names a contract version that does not exist.
+#
+# This is the one rejection in the matrix that does not carry contract-invalid.
+# A document that is well-formed for a version the validator has never seen is a
+# different failure from a document that is malformed, and a client that has to
+# decide whether to upgrade or to fix its input needs the two kept apart.
+#
+# v1alpha2 is used here precisely because it is the version a future breaking
+# change would create. It does not exist today, and this fixture is not a
+# statement that it is planned.
+apiVersion: inferops.io/v1alpha2
+kind: WorkloadContract
+
+metadata:
+  name: support-assistant
+  version: 0.1.0
+  owner: team-platform-demo
+  description: Invalid fixture. Declares a contract version that does not exist.
+
+spec:
+  profile: synchronous-llm
+  environment: local
+
+  model:
+    servingCapability: inferops-native-serving
+    modelRef: qwen3-1-7b-q8-0
+    runtimeProfile: resource-conscious
+
+  resources:
+    cpu: "6"
+    memory: 3Gi
+    accelerator:
+      type: none
+      count: 0
+
+  scaling:
+    minimumReplicas: 1
+    maximumReplicas: 1
+
+  integrations:
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    dataClassification: internal
+    secretRefs: []
+
+  attribution:
+    tenant: demo
+    costCenter: demo-cost-center
+
+  evidence:
+    runbookRef: docs/serving/feasibility-workflow.md
+
+  synchronousLlm:
+    runtime:
+      imageReference: ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+    modelArtifact:
+      repository: Qwen/Qwen3-1.7B-GGUF
+      revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+      file: Qwen3-1.7B-Q8_0.gguf
+      sizeBytes: 1834426016
+      sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a

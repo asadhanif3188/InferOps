@@ -1,0 +1,66 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: the runtime image is not in the published compatibility matrix.
+#
+# The reference is pinned by digest and is perfectly well-formed, which is the
+# point: a digest proves what the bytes are, not that anybody has characterised
+# what they do. The integration specification's rule is that an unknown
+# combination is unsupported until certified, so the validator refuses rather
+# than assuming a runtime it has never seen accepts the artifact.
+#
+# THE REFERENCE BELOW IS SYNTHETIC. example.invalid is a reserved name that can
+# never resolve, and the digest is sixty-four ones.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: support-assistant
+  version: 0.1.0
+  owner: team-platform-demo
+  description: Invalid fixture. Pins a runtime nothing has characterised.
+
+spec:
+  profile: synchronous-llm
+  environment: local
+
+  model:
+    servingCapability: inferops-native-serving
+    modelRef: qwen3-1-7b-q8-0
+    runtimeProfile: resource-conscious
+
+  resources:
+    cpu: "6"
+    memory: 3Gi
+    accelerator:
+      type: none
+      count: 0
+
+  scaling:
+    minimumReplicas: 1
+    maximumReplicas: 1
+
+  integrations:
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    dataClassification: internal
+    secretRefs: []
+
+  attribution:
+    tenant: demo
+    costCenter: demo-cost-center
+
+  evidence:
+    runbookRef: docs/serving/feasibility-workflow.md
+
+  synchronousLlm:
+    runtime:
+      imageReference: example.invalid/unknown-runtime/server@sha256:1111111111111111111111111111111111111111111111111111111111111111
+    modelArtifact:
+      repository: Qwen/Qwen3-1.7B-GGUF
+      revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+      file: Qwen3-1.7B-Q8_0.gguf
+      sizeBytes: 1834426016
+      sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a
