@@ -8,7 +8,7 @@ here is mock, synthetic, or estimated.
 
 Claim boundary: one Windows host, one architecture, one point in time. This
 proves that the environment proposed in
-[ADR 0001](../../architecture/decisions/0001-local-development-environment.md)
+[ADR 0001](../../architecture/decisions/ADR-0001-local-development-environment.md)
 can be created, exercised, and removed. It proves nothing about inference,
 models, serving runtimes, throughput, capacity, ingress, load balancing, or any
 other operating system.

@@ -10,7 +10,7 @@ no whitespace defects, that every relative link resolves, that line endings are
 normalised, and that nothing private or overclaimed is published. It says nothing
 about any serving runtime or model, and its existence must not be read as evidence
 that a candidate was tested. Nothing in
-[ADR 0002](../../architecture/decisions/0002-model-and-serving-runtime.md) has been
+[ADR 0002](../../architecture/decisions/ADR-0002-model-and-serving-runtime.md) has been
 executed.
 
 ## Environment
@@ -110,7 +110,7 @@ property of whoever runs the trial and not of this project.
 
 | File | Change |
 |---|---|
-| `docs/architecture/decisions/0002-model-and-serving-runtime.md` | Added — proposed, selects nothing |
+| `docs/architecture/decisions/0002-model-and-serving-runtime.md` | Added — proposed, selects nothing. Renamed to `ADR-0002-…` by a later change |
 | `docs/serving/feasibility-workflow.md` | Added — procedure, never run |
 | `docs/proof/serving/TEMPLATE-runtime-feasibility.md` | Added — template, holds no results |
 | `docs/proof/serving/v1-s0-003-pr1-validation.md` | Added — this record |

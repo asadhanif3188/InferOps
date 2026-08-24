@@ -1,0 +1,166 @@
+# Model-weight acquisition for the ADR 0002 runtime feasibility trial.
+#
+# This object set creates the trial's namespace and fetches exactly one pinned
+# weight file into a PersistentVolumeClaim. It is a trial fixture, not a V1
+# serving path: a real serving path does not download its own weights at
+# deploy time, and nothing here may be read as a proposal that it should.
+#
+# The download is pinned three ways, because two of them are not enough:
+#   - by repository revision, so the URL cannot drift to a newer commit;
+#   - by expected byte count, so a truncated transfer fails loudly;
+#   - by published SHA-256, so the bytes that ran are the bytes that were
+#     reviewed.
+#
+# The third pin is doing real work here. busybox `wget` reports "TLS
+# certificate validation not implemented", so the transport is not
+# authenticated. The hash comparison is therefore the only thing standing
+# between this job and a substituted file, which is precisely the reason
+# ADR 0002 T2 requires a per-file hash rather than a revision alone.
+#
+# Every object carries the ADR 0001 (D5) isolation markers so that scoped
+# selection and scoped deletion remain possible.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inferops-serving-feasibility
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/managed-by: inferops-serving-feasibility
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-weights
+  namespace: inferops-serving-feasibility
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: model-weights
+    app.kubernetes.io/managed-by: inferops-serving-feasibility
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      # The pinned file is 1.71 GiB. The claim is sized for it plus the
+      # partial file that exists mid-download, and no larger: this volume is
+      # backed by the same disk the ADR 0002 T4 budget is measured against.
+      storage: 4Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fetch-weights
+  namespace: inferops-serving-feasibility
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: fetch-weights
+    app.kubernetes.io/managed-by: inferops-serving-feasibility
+spec:
+  # Zero. A retry would restart a 1.71 GiB transfer on a disk-constrained
+  # host, and a job that succeeded on its third attempt would leave three pods
+  # whose logs disagree about what happened.
+  backoffLimit: 0
+  # The transfer runs at roughly 1 MiB/s from the reference host, so 1.71 GiB
+  # needs about twenty minutes of wall clock before a single retry is counted.
+  # The workflow's 30-minute stage bound was written for an unbounded wait on a
+  # state change, not for a bulk transfer whose size is already capped by T4.
+  # The 2026-08-24 run executed with 1800 here and finished inside it; this
+  # larger bound is the correction that run produced, not the value it used.
+  activeDeadlineSeconds: 5400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: inferops
+        app.kubernetes.io/name: fetch-weights
+        app.kubernetes.io/managed-by: inferops-serving-feasibility
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: fetch
+          image: busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              repo="Qwen/Qwen3-1.7B-GGUF"
+              rev="90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+              file="Qwen3-1.7B-Q8_0.gguf"
+              want_sha="061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+              want_bytes="1834426016"
+              dest="/models/${file}"
+              url="https://huggingface.co/${repo}/resolve/${rev}/${file}"
+
+              # Idempotent: a rerun after a successful fetch must not spend
+              # another 1.71 GiB of transfer to reach the same state.
+              if [ -f "${dest}" ]; then
+                echo "weights already present; verifying rather than refetching"
+              else
+                echo "free space before, as the container sees it:"
+                df -h /models
+                echo "NOTE: on a desktop container VM this figure describes a"
+                echo "sparse virtual disk, not the host volume backing it."
+
+                # A single streamed GET of this file did not survive on this
+                # connection: the first attempt closed prematurely partway
+                # through. The transfer is therefore resumed rather than
+                # restarted, and the attempt count is bounded so that a
+                # genuinely broken endpoint fails the stage instead of looping.
+                start="$(date +%s)"
+                attempt=0
+                while :; do
+                  attempt=$((attempt + 1))
+                  if [ "${attempt}" -gt 60 ]; then
+                    echo "giving up after ${attempt} attempts"
+                    exit 1
+                  fi
+                  wget -c -q -O "${dest}.part" "${url}" ||
+                    echo "attempt ${attempt} interrupted; resuming"
+                  have="$(wc -c < "${dest}.part" 2>/dev/null || echo 0)"
+                  echo "attempt ${attempt}: ${have}/${want_bytes} bytes"
+                  [ "${have}" = "${want_bytes}" ] && break
+                done
+                end="$(date +%s)"
+                echo "transfer elapsed: $((end - start))s over ${attempt} attempt(s)"
+                mv "${dest}.part" "${dest}"
+              fi
+
+              got_bytes="$(wc -c < "${dest}")"
+              echo "expected bytes: ${want_bytes}"
+              echo "actual bytes:   ${got_bytes}"
+              test "${got_bytes}" = "${want_bytes}"
+
+              echo "hashing ${dest} (this reads the whole file)"
+              got_sha="$(sha256sum "${dest}" | cut -d' ' -f1)"
+              echo "expected sha256: ${want_sha}"
+              echo "actual sha256:   ${got_sha}"
+              test "${got_sha}" = "${want_sha}"
+
+              echo "free space after:"
+              df -h /models
+              echo "WEIGHTS_VERIFIED_OK"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 32Mi
+            limits:
+              cpu: "2"
+              memory: 128Mi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: model-weights

@@ -54,9 +54,46 @@ once versioned releases begin.
 - An evidence template for recording that trial, requiring an explicit verdict
   against every threshold, both attempts when a step-down occurs, and a section for
   what went wrong.
+- **A real inference, served locally.** A serving runtime was started in a
+  Kubernetes cluster, loaded an open model whose bytes were verified against the
+  publisher's published SHA-256, and answered chat-completion requests reaching it
+  through cluster DNS and a Service. Recorded in the V1-S0-003-PR2 feasibility
+  record with the runtime's verbatim response, its reported token counts, and every
+  measurement behind the verdicts.
+- Trial manifests under `deploy/serving/feasibility/` — namespace, weight-cache
+  claim, a resumable and hash-verifying acquisition job, the runtime Deployment
+  pinned by image digest, its Service, and an in-cluster probe job. They are
+  apparatus for the trial, not a serving path, and say so in their own comments.
+- Tested hardware requirements for serving this model with this runtime, replacing
+  estimates: AVX2 without AVX-512, no accelerator, a 3 GiB pod memory limit against
+  a 2.167 GiB worst-case charge, ~2.0 GiB of disk, and a 14 s worst-case model load.
+- A change-validation record for this change, kept separate from the runtime
+  evidence so that a static check can never be mistaken for a served request.
+- A published rule for the boundary between mock and real serving evidence,
+  explaining why a mock can never certify real runtime behaviour, what a mock is
+  legitimately for, and five boundary rules that make the distinction operational.
 
 ### Changed
 
+- ADR 0002 moves from proposed to **accepted, with one recorded exception**. One
+  runtime image digest and one immutable model revision are selected, with source
+  and licence for each, on executed proof. Everything written before the trial is
+  preserved unedited, including the thresholds the trial went on to fail.
+- The decision-record conventions define `Accepted, with one recorded exception`,
+  which requires the failed criterion to be named in the record's status banner,
+  argued where a reader will find it, and listed among the consequences.
+- The feasibility workflow moves from "never been run" to executed, and four parts
+  of it were corrected by running it: the cluster bound now permits a single-node
+  local cluster the host already runs; the 30-minute stage bound is split so that a
+  bulk transfer is bounded by size and retries rather than by a wall clock; the
+  free-space bound now requires measuring the host volume rather than a container's
+  view of a sparse virtual disk; and the claim that cached weights survive teardown
+  is corrected to say that where the cache lives decides it.
+- The architecture index, repository entry points, and prerequisites now describe a
+  selected runtime and model instead of an unexecuted comparison, and the
+  prerequisites carry measured serving figures with their limits stated.
+- The two architecture decision records are renamed to an `ADR-` filename prefix.
+  Contents are unchanged by the rename and every reference to them was updated.
 - ADR 0001 moves from proposed to **accepted in part**. The container runtime, the
   local Kubernetes distribution, the isolation rules, the cleanup rules, and the
   minimum host tier are accepted on executed evidence. The task runner, the
@@ -78,6 +115,12 @@ once versioned releases begin.
 
 ### Fixed
 
+- Threshold `T7` was too broad as written. It bundled "the runtime exposes native
+  metrics", which is the runtime's job, with "the runtime counts requests", which is
+  not. The selected runtime provides native token counters and no cumulative request
+  counter, so the threshold failed; it is narrowed for future trials and the
+  request count becomes an obligation on this platform. The narrowing happened after
+  the measurement, and ADR 0002 records that weakness rather than hiding it.
 - Two teardown claims that the evidence contradicted: the engine's virtual disk
   does not return space to the host when a cluster is deleted, and a cluster
   identity check based on a Kubernetes node label does not work, because the label

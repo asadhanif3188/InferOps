@@ -17,8 +17,8 @@ artifacts are added to the corresponding indexes.
 | Commits | Conventional Commit-style subjects; focused history | Accepted |
 | Merge | Squash preferred; merge commit allowed for a meaningful maintained series | Accepted |
 | Conduct | Interim expectations; formal framework waits for a private reporting path | Accepted deferral |
-| Development environment | Container runtime, local Kubernetes distribution, isolation, cleanup, and minimum host tier | [ADR 0001](../architecture/decisions/0001-local-development-environment.md) accepted in part on executed proof from one Windows host |
-| Task runner and dependency installation | Not selected | [ADR 0001](../architecture/decisions/0001-local-development-environment.md) D3 and D4 remain proposed; neither has been run |
+| Development environment | Container runtime, local Kubernetes distribution, isolation, cleanup, and minimum host tier | [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md) accepted in part on executed proof from one Windows host |
+| Task runner and dependency installation | Not selected | [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md) D3 and D4 remain proposed; neither has been run |
 | Runtime host for serving | No model runtime, accelerator, or recommended hardware tier selected | Pending; nothing has served a model |
 | V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; unexecuted |
 | Security reporting | Public reports prohibited; private intake channel not yet published | Accepted prohibition; channel blocked |

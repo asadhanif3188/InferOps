@@ -23,7 +23,7 @@ schedules, routes, and tears down.
 
 Nothing is written to your default kubeconfig, no host-wide engine setting is
 changed, and no administrative rights are required. The two exceptions in the
-last column are stated in [ADR 0001](../architecture/decisions/0001-local-development-environment.md)
+last column are stated in [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md)
 (D6) and are deliberate, not oversights.
 
 ## Prerequisites
@@ -53,7 +53,7 @@ Kubernetes 1.34 build, chosen so that a kubectl bundled with a container desktop
 application stays within the supported one-minor-version client/server skew.
 `scripts/environment/preflight.sh` checks that skew and tells you if yours is outside it.
 
-Host resources: see the tiers in [ADR 0001](../architecture/decisions/0001-local-development-environment.md)
+Host resources: see the tiers in [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md)
 (D7). On Windows and macOS the binding limit is the memory allocated to the
 container virtual machine, not the memory installed in the host. Preflight reads
 the actual allocation and fails if it is below the minimum tier.

@@ -1,7 +1,8 @@
 # Supported-host prerequisites
 
 Status: documentation contribution path supported; local development environment
-supported on one measured Windows host; serving and deployment hosts still pending.
+supported on one measured Windows host; serving requirements measured on that same
+host for one model and runtime, and not yet supported on any other.
 
 ## Governance and documentation contributions
 
@@ -19,7 +20,7 @@ that result is not cross-platform runtime certification.
 
 ## Local development environment
 
-[ADR 0001](architecture/decisions/0001-local-development-environment.md) selects a
+[ADR 0001](architecture/decisions/ADR-0001-local-development-environment.md) selects a
 container runtime, a local Kubernetes distribution, and the isolation and cleanup
 rules that go with them. Those parts of it are accepted, on
 [executed proof](proof/environment/v1-s0-002-pr2-cluster-smoke.md) from one host.
@@ -55,22 +56,41 @@ Two caveats a contributor should know before relying on this:
   virtual disk does not return that space to the host. Repeated cycles are not free
   on a disk-constrained machine.
 
-## Serving, model, and deployment prerequisites
+## Serving and model prerequisites
 
-No model runtime, accelerator, or minimum hardware for serving a model is accepted
-or supported. ADR 0001's **recommended** tier — the one that covers running a real
-model alongside the cluster — is an estimate and has not been measured. The
-reference host does not meet it.
+[ADR 0002](architecture/decisions/ADR-0002-model-and-serving-runtime.md) now selects
+a serving runtime and an immutable model revision, on
+[executed proof](proof/serving/v1-s0-003-pr2-runtime-feasibility.md) from the same
+single Windows host. The figures below are **measured on that host**, for that one
+model at that one quantisation. They are not a supported-platform claim, and no
+second host has ever run this.
 
-Contributors must not infer serving support from the development environment above.
-A cluster that schedules a static-text workload has demonstrated nothing about
-inference.
+| Resource | Measured requirement for serving | Note |
+|---|---|---|
+| CPU instruction set | AVX2 | AVX-512 is **not** required |
+| Accelerator | None | The CPU path is complete on its own |
+| Memory for the serving pod | A 3 GiB limit, against a 2.167 GiB worst-case charge | Do not size this from the runtime's 531 MiB of private memory; the weights are memory-mapped and the difference is not academic |
+| Memory reaching the container VM | 7.60 GiB was sufficient beside a running cluster | This is what was available, not a measured floor |
+| Free disk | ~2.0 GiB added — 1.71 GiB of weights plus a 293.0 MiB runtime image | Plus whatever the cluster itself needs |
+| Network | Enough to fetch 1.71 GiB, resumably | The reference run took 19 minutes and needed a resume partway |
 
-[ADR 0002](architecture/decisions/0002-model-and-serving-runtime.md) now compares
-runtime and model candidates and fixes the thresholds a feasibility trial would
-have to meet. It is **proposed**, it selects nothing, and nothing in it has been
-run, so it adds no prerequisite. Do not install a runtime or download a model on
-the strength of it.
+The model and runtime are both fetched anonymously. **No account, API key, or paid
+subscription is required at any point**, and that was verified rather than assumed.
+
+Two things this does *not* establish, stated because the table above invites the
+opposite reading:
+
+- **Nothing about concurrency or throughput.** Every request in the proof was
+  single and sequential.
+- **Nothing about any other host or operating system.** ADR 0001 D7's
+  **recommended** tier remains an estimate; the serving measurement here sits
+  beside it rather than replacing it.
+
+## Deployment prerequisites
+
+No deployment host, production environment, or supported serving platform is
+accepted. A local cluster that serves one model to one caller has demonstrated
+nothing about production.
 
 ## Not yet decided
 

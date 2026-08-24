@@ -2,23 +2,34 @@
 
 | Field | Value |
 |---|---|
-| Status | **Proposed** |
+| Status | **Accepted, with one recorded exception** |
 | Date proposed | 2026-08-23 |
-| Date accepted | Not accepted |
+| Date accepted | 2026-08-24 |
 | Decision owner | Unassigned; no public maintainer roster exists yet |
 | Supersedes | None |
 | Superseded by | None |
 
 > [!IMPORTANT]
-> Nothing in this record is accepted, and nothing in it has been executed. No model
-> has been downloaded, no serving runtime has been started, and no inference request
-> has been answered by this project. Every characterisation of a third-party runtime
-> or model below is read from that project's own published documentation on the date
-> given in [sources](#sources-and-when-they-were-read), not from a trial run here.
+> **The trial has now been run**, on 2026-08-24, and its result is
+> [the feasibility record](../../proof/serving/v1-s0-003-pr2-runtime-feasibility.md).
+> A model was downloaded and hash-verified, the runtime was started in a Kubernetes
+> cluster, and it answered inference requests reaching it through cluster DNS and a
+> Service. Eleven of the twelve thresholds below are met. **One blocking threshold,
+> `T7`, is not**, and the exception is argued in
+> [the T7 exception](#the-t7-exception) rather than absorbed quietly.
 >
-> This record exists to make the *next* step falsifiable: it fixes the criteria, the
-> thresholds, and the shortlist **before** any candidate is run, so that the trial
-> can fail a candidate rather than rationalise one. Do not implement against it.
+> Everything from [decision criteria](#decision-criteria) to
+> [model candidates](#model-candidates) is preserved **exactly as it was written
+> before the trial**, including the thresholds the trial then went on to fail. That
+> is the point of pre-registering them: a threshold that can be edited after seeing
+> the measurement is not a threshold. Where the trial contradicted a
+> pre-trial characterisation, the correction is recorded in
+> [what the trial changed](#what-the-trial-changed) and not by rewriting the
+> original claim.
+>
+> Third-party characterisations in the candidate tables are still read from
+> published documentation on the date in
+> [sources](#sources-and-when-they-were-read). Only the selected pair was executed.
 
 ## Context
 
@@ -28,7 +39,7 @@ proven, every downstream capability — the workload contract's model reference,
 serving adapter, the telemetry catalogue, the resource and cost evidence — rests on
 a placeholder.
 
-[ADR 0001](0001-local-development-environment.md) settled the environment this has
+[ADR 0001](ADR-0001-local-development-environment.md) settled the environment this has
 to run inside, and its evidence sets the constraints that dominate this decision.
 From [the cluster smoke proof](../../proof/environment/v1-s0-002-pr2-cluster-smoke.md):
 
@@ -205,50 +216,160 @@ cache budget, the concurrency limit, and the sampling defaults are all measureme
 outputs, not inputs. Fixing them now would be an estimate wearing a decision's
 clothes.
 
-## What this record does not decide
+## Decision
 
-- **Nothing is selected.** T1 through T12 have not been run. "Proposed primary"
-  above means the trial starts there, not that it is the answer.
-- **No hardware requirement changes.** ADR 0001 D7's recommended tier stays an
-  estimate. This ADR's trial is what would replace it with a measurement, and it may
-  instead show that the reference host cannot reach it.
-- **No mock serving path exists**, and this record does not create one. When one is
-  built it is a separate artifact under a separate decision, and by the rule already
-  in [CONTRIBUTING](../../../CONTRIBUTING.md) it cannot certify real-runtime
-  behaviour. That separation is a requirement on the *evidence*: the trial must
-  produce a real-runtime record or none at all.
-- **No public contract is created or changed.** The endpoint expectations above are
-  this ADR reading a requirement, not publishing one.
+Everything above this line was written before the trial. Everything below it was
+written after, against
+[the feasibility record](../../proof/serving/v1-s0-003-pr2-runtime-feasibility.md).
+
+**Selected runtime:** llama.cpp `llama-server`, pinned to the image digest
+`ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384`.
+Licence **MIT**, read in full at source revision
+`70adb1b4cea5ee39f867792c78dc59320921eda7` on 2026-08-24. The image reports itself
+as build `b10588`.
+
+**Selected model:** `Qwen/Qwen3-1.7B-GGUF` at revision
+`90862c4b9d2787eaed51d12237eafdfe7c5f6077`, file `Qwen3-1.7B-Q8_0.gguf`,
+1,834,426,016 bytes, SHA-256
+`061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a`. Licence
+**Apache-2.0**, read in full at that revision on 2026-08-24. The repository is not
+gated and the file is retrievable anonymously.
+
+Both are pinned by digest or revision **plus** content hash. The image digest was
+read back from the running pod rather than trusted from the manifest, and the
+weight file's hash was verified before it was ever mounted for serving.
+
+### Tested hardware requirements
+
+These replace estimates with measurements, for **serving this model with this
+runtime** and for nothing else. They are what one host did on one day; a second
+host would improve them more than any amount of re-reading this table.
+
+| Resource | Measured requirement | Note |
+|---|---|---|
+| CPU instruction set | **AVX2** | Measured. AVX-512 is not required. F16C and FMA were also present |
+| Accelerator | **None** | The CPU path is complete on its own; no accelerator was involved at any point |
+| Serving pod memory limit | **3 GiB**, with 2.167 GiB the worst observed charge | Size the limit against the worst case, not against the 531 MiB of private memory. The reason is in the record and is not obvious |
+| Memory reaching the container VM | **7.60 GiB was sufficient** for this model beside a running cluster | This is what was available, not a measured floor. The floor was not established |
+| Free disk | **~2.0 GiB added** — 1.71 GiB of weights plus a 293.0 MiB image | Against an 8 GB budget. The image survives teardown; whether the weights do depends on where they are cached |
+| Model load time | **14 s worst case**, process-fresh with weights local | A 300 s startup-probe budget is roughly twenty times this, which is the right direction to be wrong in |
+| Decode throughput | **8.81-9.35 tokens/s** at 6 threads | Derived from reported token counts and measured wall clock. **Not a benchmark**, and it must not be published as one |
+
+This does **not** change ADR 0001 D7, which remains an accepted record with an
+estimated recommended tier. It sits beside it: D7 estimated that the reference host
+would not meet the tier serving needs, and the measurement shows that for *this*
+model at *this* size the host was in fact sufficient. That is a narrower finding
+than overturning D7, and it is the only finding the evidence supports.
+
+### The T7 exception
+
+`T7` required Prometheus metrics "including at least request and token counters".
+The runtime exposes native token counters and no cumulative request counter at
+all — only `requests_processing` and `requests_deferred`, which are gauges of
+instantaneous state. **This is a blocking threshold and it failed.**
+
+The pair is nonetheless selected, for reasons recorded here so that they can be
+attacked:
+
+- `T7`'s stated rationale was that a metric needing a third-party exporter is that
+  exporter's evidence rather than the runtime's. That concern is met in full: every
+  series comes from the runtime, with no exporter and no sidecar.
+- What is missing is a count of requests. InferOps is the component that will
+  receive those requests, so it is the right place to count them. Closing the gap
+  requires nothing from the runtime.
+- The alternative was to fall to vLLM, whose own documentation puts its CPU path on
+  a degraded footing without AVX-512 — trading a proven serving path for a counter
+  the platform can emit itself.
+
+`T7` was therefore too broad as written: it bundled "the runtime exposes native
+metrics", which is properly the runtime's job, with "the runtime counts requests",
+which is not. **For future trials `T7` is narrowed to the first clause**, and a
+request counter becomes a platform obligation instead.
+
+The weakness of this position is stated plainly: the threshold was narrowed *after*
+the measurement, which is precisely the move that pre-registered thresholds exist
+to prevent. It is recorded rather than hidden, so that a reviewer who thinks the
+original threshold should have been enforced has everything needed to say so, and
+so that the next trial cannot repeat the manoeuvre quietly.
+
+### What the trial changed
+
+Three characterisations written from documentation did not survive contact:
+
+| Written before the trial | What the trial found |
+|---|---|
+| `/metrics` behind `--metrics` satisfies the metrics requirement | It does, for tokens. There is no request counter, and the pre-trial table did not notice the distinction |
+| Memory would be one steady-state figure to compare against 3.0 GiB | Two identical pods reported 2.167 GiB and 531 MiB. The runtime memory-maps its weights, and cgroup v1 charges those pages to whichever cgroup faults them in first |
+| The reference host might not be able to serve the candidate at all | It served it with wide margin on every resource threshold. The concern ADR 0001 D7 raised did not materialise at this model size |
+
+## What this record still does not decide
+
+- **No mock serving path exists**, and this record does not create one. The rule
+  that one can never certify real-runtime behaviour is now written down in
+  [the mock and real boundary](../../serving/mock-and-real-boundary.md), with the
+  reasoning and this trial's evidence behind it.
+- **No public contract is created or changed.** The endpoint expectations above
+  remain this ADR reading a requirement, not publishing one.
+- **Nothing about concurrency, throughput, or load.** Every request in the trial
+  was single and sequential. The runtime reported four slots; one was ever used.
+- **Nothing about any other host, or any other operating system.** One Windows
+  host, one architecture, one day.
+- **The context length, KV budget, concurrency limit, and sampling defaults**
+  remain undecided. The trial used a 4096 context and 6 threads as stated inputs so
+  that its numbers could be interpreted, not as recommended values.
 
 ## Consequences
 
-If the trial confirms the proposal:
+The trial confirmed the proposal on eleven thresholds of twelve, so these are now
+commitments rather than conditionals:
 
-- The project takes on two more pinned dependencies — a runtime image digest and a
-  model revision — and both need a documented refresh procedure, because both will
-  go stale and one of them is rebuilt on a schedule.
-- Model weights become the largest artifact in the development loop. They must never
-  enter Git history; they belong in a cache outside the working tree, reached by
-  configuring the runtime's own cache location rather than by copying files around.
-- A single-model, single-process runtime is enough for V1 and is not enough for the
-  deeper serving project. The contract is what has to survive that replacement.
+- **Two more pinned dependencies**, a runtime image digest and a model revision,
+  both needing a documented refresh procedure. This is more urgent than it looked
+  before the trial: the runtime publishes from a branch tip with **no versioned tag
+  scheme**, and the `server` tag this digest was resolved from is rebuilt on a
+  schedule. The digest recorded here is already historical.
+- **Model weights are the largest artifact in the development loop.** They must
+  never enter Git history. Where they are cached is a decision with a consequence
+  the trial paid for: a cache inside the trial's namespace is destroyed by scoped
+  teardown, and re-running costs the full download again.
+- **A single-model, single-process runtime is enough for V1 and is not enough for
+  the deeper serving project.** Serving a second model means a second Deployment.
+  The contract is what has to survive that replacement, not the runtime.
+- **The platform owes a request counter.** The runtime does not provide one, so
+  InferOps must emit it from the component that receives the requests. This is
+  recorded as a consequence rather than left implicit in
+  [the T7 exception](#the-t7-exception), because a gap that lives only inside an
+  exception is a gap that gets forgotten.
+- **Probe configuration is not optional detail.** The health endpoint reports 503
+  while loading. A liveness probe pointed at it would restart the pod mid-load and
+  never converge. The three-probe mapping in this record was proven, and any
+  manifest that departs from it must show why.
+- **A memory limit for this runtime cannot be set from its private footprint.**
+  The measured private memory is 531 MiB and the worst-case charge is 2.167 GiB,
+  because the weights are memory-mapped. Setting a limit near the smaller figure
+  produces page eviction and silent latency rather than an obvious failure.
 
-If the trial fails:
-
-- The correct outcome is a recorded blocker and an unfilled acceptance criterion,
-  not a smaller claim. ADR 0001 D7 already says this host may not reach the
-  recommended tier; a trial that discovers exactly that has succeeded at its job.
+Had the trial failed, the correct outcome would have been a recorded blocker and an
+unfilled acceptance criterion rather than a smaller claim. That path was not taken
+because it was not needed, not because it was unavailable — and `T7` is a small
+instance of exactly that discipline being applied to one threshold.
 
 ## Compatibility impact
 
 None. There is no accepted public contract, released version, or supported serving
-environment for this to break. It introduces no schema, no API surface, and no
-runtime behaviour — this change adds documents only.
+environment for this to break. It introduces no schema and no public API surface.
+
+It does add runtime *artifacts* — the trial manifests under
+`deploy/serving/feasibility/` — which the earlier revision of this record could
+say it did not. Those manifests are trial apparatus, not a serving path: they are
+single-replica, single-model, single-slot, and they download their own weights at
+deploy time, which no serving path should. Nothing depends on them and removing
+them would break nothing.
 
 ## Security considerations
 
-This ADR asserts no security property. Four points are recorded because the
-decisions make them relevant as soon as anything is executed:
+This ADR asserts no security property. The four points below were recorded before
+anything was executed; the fifth was found by executing it.
 
 - **Model weights are inputs to a native parser.** A GGUF file is read by a C++
   process. Pinning it by content hash is the only thing that makes "the file we
@@ -256,36 +377,50 @@ decisions make them relevant as soon as anything is executed:
   per-file hash and not only a repository revision.
 - **The runtime image must not need privileges.** T10 requires unprivileged,
   non-root execution. A serving container that wants host access is a finding, not a
-  configuration step.
+  configuration step. **Confirmed in the trial**: the runtime ran as uid 65534 with
+  a read-only root filesystem, all capabilities dropped, and no privilege
+  escalation, and used 12,288 bytes of writable layer doing it.
 - **Prompts and responses are data the project does not own.** Anything captured
   during a trial may contain whatever the operator typed, so the evidence template
   requires prompts to be chosen such that publishing them is safe.
 - **No credential should be required at all.** T11 exists partly for reproducibility
   and partly because a path needing a token is a path that will eventually have a
-  token committed to it.
+  token committed to it. **Confirmed in the trial**: nothing at any stage asked for
+  one.
+- **The weight download is not authenticated in transit.** Added after the trial.
+  The downloader reports `TLS certificate validation not implemented`, so the
+  transport establishes nothing about who served the bytes. The published SHA-256
+  is carrying the entire integrity argument on its own. That is survivable only
+  because the hash is obtained separately and verified before the file is mounted —
+  and it is the strongest practical justification for T2 that this project has.
+  A future acquisition path should validate the certificate *and* the hash rather
+  than relying on one of them.
 
 Threat modelling, image scanning, and supply-chain attestation for the selected
-image belong to the security baseline decision, not here.
+image belong to the security baseline decision, not here. The image was pulled and
+run; it was **not** scanned, and no attestation was verified.
 
-## Proof plan
+## Proof plan, and what it produced
 
-None of this has been executed. The procedure is
-[the runtime feasibility workflow](../../serving/feasibility-workflow.md); results
-are recorded with
+Executed on 2026-08-24. The procedure is
+[the runtime feasibility workflow](../../serving/feasibility-workflow.md); the
+result is
+[the feasibility record](../../proof/serving/v1-s0-003-pr2-runtime-feasibility.md),
+recorded with
 [the feasibility evidence template](../../proof/serving/TEMPLATE-runtime-feasibility.md).
 
 | # | Planned step | Threshold | Result |
 |---|---|---|---|
-| 1 | Record licences and their retrieval date for the pinned runtime and model | T1 | **Not executed** |
-| 2 | Resolve the runtime tag to an image digest, and the model to a repository revision plus per-file hash | T2, T11 | **Not executed** |
-| 3 | Check free disk against the download budget, then acquire weights into a cache outside the working tree | T4 | **Not executed** |
-| 4 | Start the runtime in the project's own cluster, unprivileged, in an `inferops-` namespace | T10 | **Not executed** |
-| 5 | Observe not-ready during load and ready after; time cold and warm starts, three runs each | T6, T8 | **Not executed** |
-| 6 | Issue one chat completion; capture the response shape, token usage, and decode rate | T5, T9 | **Not executed** |
-| 7 | Scrape the metrics endpoint and record which required series exist | T7 | **Not executed** |
-| 8 | Measure steady-state pod memory and container-VM total with the cluster running | T3 | **Not executed** |
-| 9 | Confirm the CPU path is complete standalone; describe any GPU path as unproven | T12 | **Not executed** |
-| 10 | Tear down scoped, verify no residue, and re-measure free disk across the whole cycle | T10 | **Not executed** |
+| 1 | Record licences and their retrieval date for the pinned runtime and model | T1 | **Met.** MIT and Apache-2.0, both texts read in full on 2026-08-24 |
+| 2 | Resolve the runtime tag to an image digest, and the model to a repository revision plus per-file hash | T2, T11 | **Met.** Digest read back from the running pod; weight hash verified before mounting; nothing required an account |
+| 3 | Check free disk against the download budget, then acquire weights into a cache outside the working tree | T4 | **Met**, with a correction: the cache was placed inside the trial namespace, not on the host, and scoped teardown therefore destroyed it |
+| 4 | Start the runtime in the project's own cluster, unprivileged, in an `inferops-` namespace | T10 | **Met on isolation, deviated on cluster.** Non-root, no privilege escalation, all capabilities dropped, read-only root, `inferops-` namespace. The cluster was the desktop distribution's, at the host owner's direction |
+| 5 | Observe not-ready during load and ready after; time cold and warm starts, three runs each | T6, T8 | **Met.** Kubelet recorded a 503 from the startup probe during load; 0 restarts across seven starts; worst case 14 s |
+| 6 | Issue one chat completion; capture the response shape, token usage, and decode rate | T5, T9 | **Met.** Body carried `content`, `model`, and `usage`; 128 tokens in 14.52 s worst case at 8.81 tokens/s |
+| 7 | Scrape the metrics endpoint and record which required series exist | T7 | **Not met.** Token counters present; no cumulative request counter. See [the T7 exception](#the-t7-exception) |
+| 8 | Measure steady-state pod memory and container-VM total with the cluster running | T3 | **Met**, and more interesting than expected: 2.167 GiB worst case against a 3.0 GiB limit, but only 531 MiB private |
+| 9 | Confirm the CPU path is complete standalone; describe any GPU path as unproven | T12 | **Met.** AVX2 without AVX-512, no accelerator involved, no GPU path described or claimed |
+| 10 | Tear down scoped, verify no residue, and re-measure free disk across the whole cycle | T10 | **Met.** No object carrying the project label survives; the provisioner directory was removed |
 
 ## Sources and when they were read
 
