@@ -1,0 +1,156 @@
+# llama.cpp `llama-server` under trial against the ADR 0002 thresholds.
+#
+# This manifest is trial apparatus. It is not a V1 serving path, it is not a
+# template for one, and it is deliberately single-replica, single-model, and
+# single-slot. Its purpose is to make T3, T5, T6, T7, T8, T9, T10, and T12
+# produce a verdict.
+#
+# Three choices in here are trial *inputs* rather than decisions, and ADR 0002
+# says so explicitly: the context length, the thread count, and the resource
+# limits. They are written down so the measurement can be interpreted, not
+# because they are recommended values.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama-server
+  namespace: inferops-serving-feasibility
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: llama-server
+    app.kubernetes.io/managed-by: inferops-serving-feasibility
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: llama-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: inferops
+        app.kubernetes.io/name: llama-server
+        app.kubernetes.io/managed-by: inferops-serving-feasibility
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: llama-server
+          # Pinned to the multi-architecture index digest that the `server` tag
+          # resolved to. ADR 0002 records that this tag is rebuilt on a
+          # schedule and that no versioned tag scheme is published, so the tag
+          # is a starting point and the digest is the pin.
+          image: ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+          args:
+            - "--model"
+            - "/models/Qwen3-1.7B-Q8_0.gguf"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8080"
+            # Trial input, not a decision. Bounds the KV cache so that the
+            # memory figure T3 reads is attributable to a stated context
+            # length rather than to whatever the runtime defaulted to.
+            - "--ctx-size"
+            - "4096"
+            # Trial input. The reference host has 6 performance cores; CPU
+            # inference is normally threaded from those rather than from all
+            # 20 logical processors, and the CPU limit below matches.
+            - "--threads"
+            - "6"
+            # T7 requires the runtime's own Prometheus endpoint. Without this
+            # flag there is no /metrics to scrape and the threshold cannot be
+            # tested at all.
+            - "--metrics"
+            # Operator-supplied label. It is what /v1/models will echo back,
+            # so the echo proves the flag was accepted and proves nothing
+            # about which bytes were loaded. The weight file's SHA-256 is
+            # verified separately, and that is the check that carries T2.
+            - "--alias"
+            - "qwen3-1.7b-q8_0"
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # `/health` returns 503 while the model loads and 200 once it can
+          # answer. That is correct readiness behaviour and wrong liveness
+          # behaviour, so the three probes are deliberately not pointed at the
+          # same thing. ADR 0002 proposes exactly this mapping; T6 and T8 are
+          # what test it.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            # 60 x 5s = 300s of load budget. Generous on purpose: the trial
+            # must measure the model's load time, not the probe's patience.
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            # A TCP check, not /health. A liveness probe on an endpoint that
+            # reports 503 during load restarts the pod mid-load and never
+            # converges. Whether the process is alive and whether the model is
+            # ready are different questions and only the first may restart it.
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              # 3Gi is the T3 target, applied as a hard limit rather than
+              # observed after the fact. If the runtime needs more than the
+              # threshold allows, the kernel ends the container and that is
+              # the finding.
+              cpu: "6"
+              memory: 3Gi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: model-weights
+            readOnly: true
+        # The root filesystem is read-only, so anything the runtime writes
+        # needs somewhere to go. An emptyDir keeps it inside the pod and
+        # inside T10's "no host mount other than the model volume".
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llama-server
+  namespace: inferops-serving-feasibility
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: llama-server
+    app.kubernetes.io/managed-by: inferops-serving-feasibility
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: llama-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

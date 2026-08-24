@@ -1,12 +1,18 @@
 # Runtime and model feasibility workflow
 
-Status: **procedure only. It has never been run.** No stage below has been executed
-by this project, no model has been downloaded, and no inference has been served.
-This document is the plan a trial follows, written before the trial so that the
-trial can produce a result rather than a narrative.
+Status: **executed once, on 2026-08-24.** Every stage below has now been run
+against one candidate pair on one host; the result is
+[the V1-S0-003-PR2 feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md).
+This document remains the procedure rather than the result, and it is still
+written to be run again: a record produced three months from now is worth more
+than this one.
+
+Running it changed three of the bounds below and one prerequisite. Those changes
+are marked in place with what the trial found, because a procedure that quietly
+absorbs its own corrections teaches nobody anything.
 
 It exists to serve
-[ADR 0002](../architecture/decisions/0002-model-and-serving-runtime.md), which fixes
+[ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md), which fixes
 the criteria and the thresholds `T1`–`T12` referenced throughout. Read that record
 first; the thresholds are not repeated here.
 
@@ -30,11 +36,12 @@ advice.
 |---|---|---|
 | Single-file download | 3 GB | Above this, a failed trial has cost more than it can justify on a disk-constrained host |
 | Total download for one trial | 8 GB | Matches `T4` |
-| Free-space floor | Abort if the target volume would drop below 5 GB free | ADR 0001 recorded that engine disk growth is not returned on teardown |
+| Free-space floor | Abort if the target volume would drop below 5 GB free. Measure it on the **host** volume, never from inside a container | ADR 0001 recorded that engine disk growth is not returned on teardown. **Clarified after the 2026-08-24 run**, where `df` inside the cluster reported 861 GB free on a sparse virtual disk backed by a host volume with 24 GB. The in-container figure is not a smaller truth; it is the wrong number |
 | Host-wide changes | None beyond the exceptions ADR 0001 D5 already names | A trial does not get to widen an accepted isolation rule |
-| Cluster | The project's own `inferops-dev` cluster only | ADR 0001 D5 |
+| Cluster | The project's own `inferops-dev` cluster, or another single-node local Kubernetes cluster the host owner already runs. Record which, and treat any measurement of *total* host resource use as contaminated by whatever else that cluster hosts | ADR 0001 D5 wants isolation and scoped cleanup, and a namespace delivers both. Requiring a second cluster on a host that already runs one costs memory the trial is trying to measure. **Amended after the 2026-08-24 run**, which used the container desktop distribution's own cluster for exactly that reason |
 | Namespace | One `inferops-` namespace, created by the trial and deleted by it | ADR 0001 D5 and D6 |
-| Duration | If a single stage exceeds 30 minutes, stop and record the timeout as the result | An unbounded wait is not evidence of anything |
+| Duration, waiting on a state change | If a wait for readiness, completion, or deletion exceeds 30 minutes, stop and record the timeout as the result | An unbounded wait is not evidence of anything |
+| Duration, bulk transfer | Bounded by the download budget above and by a resumable retry cap, not by a wall clock | **Added after the 2026-08-24 run.** The original 30-minute rule was written for a wait on a state change and then applied to a download, where it measures the contributor's bandwidth rather than the candidate. A 1.71 GiB file at the ~1 MiB/s that run saw needs roughly half an hour before a single retry is counted |
 
 ### Authorisation gate
 
@@ -56,10 +63,12 @@ not a smaller claim built from documentation.
   a claim that the minimum tier can serve a model. Whether it can is precisely what
   `T3` and `T4` are there to find out, and ADR 0001 D7 already warns that the
   reference host does not meet the tier its own estimate assigned to serving.
-- A model cache directory **outside the repository working tree**, with the free
-  space the bounds above require. Point the acquisition tool at it through its own
-  cache environment variable rather than copying files by hand; nothing about the
-  cache location belongs in this repository or in a commit.
+- A model cache **outside the repository working tree**, with the free space the
+  bounds above require. Nothing about its location belongs in this repository or in
+  a commit. Decide deliberately whether it sits on the host or inside the cluster:
+  a host directory survives teardown and makes a re-run cheap, while an in-cluster
+  volume keeps the trial self-contained and is destroyed with the namespace. Stage 8
+  says what that cost turned out to be.
 - Network access to the runtime's container registry and the model publisher.
 - No account, API key, or paid subscription. If any stage asks for one, that is a
   `T11` failure and the trial stops.
@@ -197,8 +206,15 @@ label — and re-measure free space across the whole cycle rather than only whil
 workload existed. ADR 0001 recorded that the second measurement is the one that
 tells the truth about disk.
 
-The cached weights survive teardown by design, like the cached node image. Say so
-in the record, with their size, rather than leaving a reader to discover it.
+Whether the cached weights survive teardown **depends on where they were put, and
+the answer is not obvious**. A cache on the host outside the working tree survives,
+like the cached node image. A cache inside the trial's own namespace — a
+PersistentVolumeClaim whose storage class reclaims on delete — is destroyed by the
+same scoped teardown that removes everything else, and re-running then pays the
+full download again. **Corrected after the 2026-08-24 run**, which lost 1.71 GiB
+that had taken 19 minutes to fetch, because this document had asserted the first
+case while the trial had built the second. Say which one the trial did, with the
+size, rather than leaving a reader to discover it.
 
 ## Step-down procedure
 

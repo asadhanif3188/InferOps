@@ -11,7 +11,7 @@ workload was run.
 
 ## Why this record exists
 
-[ADR 0001](../../architecture/decisions/0001-local-development-environment.md)
+[ADR 0001](../../architecture/decisions/ADR-0001-local-development-environment.md)
 proposes a local development and Kubernetes environment. Its acceptance criteria
 require host facts to be measured rather than guessed. This file separates what was
 measured from what the ADR assumes, so a reviewer can tell the two apart.

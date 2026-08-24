@@ -11,7 +11,7 @@ it as though it were an answer.
 It is the recording format for
 [the runtime feasibility workflow](../../serving/feasibility-workflow.md), against
 the thresholds in
-[ADR 0002](../../architecture/decisions/0002-model-and-serving-runtime.md).
+[ADR 0002](../../architecture/decisions/ADR-0002-model-and-serving-runtime.md).
 
 ---
 

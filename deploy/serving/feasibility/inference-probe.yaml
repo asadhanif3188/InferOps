@@ -1,0 +1,105 @@
+# In-cluster exercise of the runtime under trial.
+#
+# Every request below is made from inside the cluster, through cluster DNS and
+# the ClusterIP Service, for the reason the hello-world verification job
+# already records: a host-side port-forward proves that kubectl can tunnel to a
+# pod. It does not prove that the Service name resolves or that the Service
+# routes to the pod behind it, and those are the parts of the path the platform
+# will actually depend on.
+#
+# The job collects the evidence for T5, T7, and T9 in one pass so that all
+# three describe the same running process rather than three separate ones.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: inference-probe
+  namespace: inferops-serving-feasibility
+  labels:
+    app.kubernetes.io/part-of: inferops
+    app.kubernetes.io/name: inference-probe
+    app.kubernetes.io/managed-by: inferops-serving-feasibility
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: inferops
+        app.kubernetes.io/name: inference-probe
+        app.kubernetes.io/managed-by: inferops-serving-feasibility
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: probe
+          image: busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              base="http://llama-server.inferops-serving-feasibility.svc.cluster.local:80"
+
+              echo "=== health ==="
+              wget -q -S -O - "${base}/health" 2>&1
+
+              echo
+              echo "=== GET /v1/models ==="
+              wget -q -O - "${base}/v1/models"
+
+              echo
+              echo "=== GET /props ==="
+              wget -q -O - "${base}/props"
+
+              # The prompt is fixed, neutral, and contains no host detail, no
+              # personal data, and nothing that would embarrass anyone when a
+              # stranger reads it in a public repository - because one will.
+              # Thinking is disabled: this model emits reasoning tokens by
+              # default, which would consume the 128-token budget T9 measures
+              # against and turn a latency floor into a truncation test.
+              req='{"model":"qwen3-1.7b-q8_0","messages":[{"role":"user","content":"In one sentence, what is Kubernetes?"}],"temperature":0,"max_tokens":128,"chat_template_kwargs":{"enable_thinking":false}}'
+
+              echo
+              echo "=== POST /v1/chat/completions, three runs ==="
+              for run in 1 2 3; do
+                echo "--- run ${run} ---"
+                # busybox `time` reports real time to hundredths, which is the
+                # best resolution available here; its `date` has no %N.
+                time wget -q -O /tmp/resp.json \
+                  --header 'Content-Type: application/json' \
+                  --post-data "${req}" \
+                  "${base}/v1/chat/completions"
+                cat /tmp/resp.json
+                echo
+              done
+
+              echo
+              echo "=== GET /metrics ==="
+              wget -q -O - "${base}/metrics"
+
+              echo
+              echo "INFERENCE_PROBE_COMPLETED"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 500m
+              memory: 64Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 16Mi
