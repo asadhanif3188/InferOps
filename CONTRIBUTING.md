@@ -146,6 +146,33 @@ shellcheck -x -S style scripts/environment/*.sh
 `shellcheck` is not vendored. Install it however your platform prefers; a Python
 distribution of it exists if no system package is convenient.
 
+### Contract schemas and fixtures
+
+Changes under `contracts/` or `tests/contracts/` must pass the contract suite:
+
+```sh
+python -m pytest tests/contracts -q
+```
+
+It reads only files in this repository — no network, no cluster, no model, no
+clock, no randomness — so a run that passes on one machine passes on every machine
+with the same files. It checks that each schema is a valid draft 2020-12 schema,
+that every object in it declares an additional-property policy, that each valid
+fixture validates, that repository-relative references in a fixture resolve, that
+a fixture pinned to an accepted decision still matches it, and that repeated
+validation of the same document produces identical output.
+
+It requires `jsonschema`, `pytest`, and `PyYAML`. Like `shellcheck` and
+`kubeconform`, they are not vendored; install them however your platform prefers.
+The schema language, authoring form, and validator are settled in
+[ADR 0003](docs/architecture/decisions/ADR-0003-workload-contract-schema-tooling.md).
+The repository-wide Python and packaging toolchain is not, and this suite does not
+settle it.
+
+A change that adds a field to a published schema also updates
+[the contract package changelog](contracts/CHANGELOG.md) and the contract's own
+document, and states its compatibility classification in the pull request.
+
 ### Kubernetes manifests
 
 Changes under `deploy/` must parse and must validate against the Kubernetes version

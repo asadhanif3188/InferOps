@@ -10,6 +10,46 @@ once versioned releases begin.
 
 ### Added
 
+- **The first public contract: WorkloadContract `v1alpha1`.** A JSON Schema draft
+  2020-12 document under `contracts/workload/` covering workload identity, owner,
+  profile, environment, model and runtime reference, resources, replica bounds,
+  platform integrations, security classification, secret references, attribution,
+  and evidence links. It describes a workload; nothing in this repository reads one.
+- A closed additional-property policy on every object in that schema, so an unknown
+  field is a validation error rather than a silently accepted typo, and a test that
+  fails if any object is ever added without declaring its policy.
+- Structural pinning for the real serving profile: the runtime image by digest, and
+  the model by upstream revision **and** per-file content hash. The valid fixture
+  carries the exact digest and revision ADR 0002 selected, and a test fails if the
+  fixture and the accepted decision ever disagree.
+- A `mock-llm` profile that cannot be edited into something that reads as real
+  serving: the schema confines it to the `ci` environment and the mock serving
+  capability, requires it to label itself in its own contents, and caps its
+  real-runtime proof references at zero. Three tests assert each rejection.
+- A secret-reference block requiring a provider, a locator, an owner, and a rotation
+  responsibility — and no field anywhere in the schema that a secret value could be
+  written into.
+- `metadata.annotations` as the contract's single, explicitly non-normative
+  extension point, with keys namespaced to a DNS domain.
+- Published versioning and compatibility rules for the contract, including the
+  deliberate refusal of the usual alpha licence to break compatibility freely: a
+  breaking change gets a new `apiVersion` even at alpha maturity.
+- A rejection table that names, for every rule the platform must enforce, whether it
+  is enforced by the schema today or is not yet enforced at all, and maps each to its
+  canonical error code.
+- Valid fixtures for the `synchronous-llm` and `mock-llm` profiles, a
+  secret-reference shape example, and a deterministic mock chat-completion response
+  fixture that identifies itself as a mock from its own contents.
+- A deterministic contract test suite under `tests/contracts/`, reading only files in
+  this repository: no network, no cluster, no model, no clock, no randomness.
+- ADR 0003, selecting JSON Schema draft 2020-12, YAML authoring restricted to the
+  JSON-representable subset, an off-the-shelf conformant validator, and no code
+  generation in V1 — after comparing CUE, OpenAPI schema objects, Protocol Buffers,
+  Kubernetes CRD schemas, and draft-07.
+- A contract-package changelog, versioned separately from the project.
+- A change-validation record for this change, including a thirty-four-mutation
+  rejection spot check whose three accepted mutations are the three rules the
+  contract document already declares unenforced.
 - Public repository purpose and status without functional capability claims.
 - MIT license and contribution, review, commit, conduct, and release conventions.
 - Public indexes for prerequisites, contracts, architecture decisions, and governance.
@@ -75,6 +115,15 @@ once versioned releases begin.
 
 ### Changed
 
+- The contracts index moves from "no public contract accepted" to indexing one
+  accepted contract, and now requires an entry to state which of its rules are not
+  yet enforced in the same place it states the rule.
+- The repository entry points and status banner record one published contract schema
+  and keep saying that no component consumes it.
+- The decision-record conventions now name the `ADR-NNNN-short-slug.md` filename
+  form the records already use.
+- The contribution guide gains the contract-schema validation commands and the
+  packages they need, alongside the existing shell and manifest checks.
 - ADR 0002 moves from proposed to **accepted, with one recorded exception**. One
   runtime image digest and one immutable model revision are selected, with source
   and licence for each, on executed proof. Everything written before the trial is

@@ -1,0 +1,427 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inferops.io/contracts/workload/workload-contract.v1alpha1.schema.json",
+  "title": "WorkloadContract v1alpha1",
+  "description": "The declarative interface an application team uses to describe one InferOps workload. This schema is structural only: cross-field rules that JSON Schema cannot express are stated in docs/contracts/workload-contract.md and are not enforced here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {
+      "description": "Contract group and maturity version. A breaking change requires a new value here, never a redefinition of this one.",
+      "const": "inferops.io/v1alpha1"
+    },
+    "kind": {
+      "const": "WorkloadContract"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "spec": {
+      "$ref": "#/$defs/spec"
+    }
+  },
+  "$defs": {
+    "dnsLabel": {
+      "description": "A DNS-safe stable identifier, lowercase, as required for workload, owner, tenant, and capability identity.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    },
+    "kebabCaseName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "digestPinnedImageReference": {
+      "description": "An OCI image reference pinned by digest. A tag alone is a movable label and is not accepted.",
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$"
+    },
+    "sha256Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "sha256Hex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40,64}$"
+    },
+    "repositoryPath": {
+      "description": "A path relative to the repository root. Absolute paths, parent traversal, and drive letters are rejected so that a contract cannot carry a personal filesystem path.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$",
+      "not": {
+        "pattern": "(^|/)\\.\\.(/|$)"
+      }
+    },
+    "kubernetesQuantity": {
+      "description": "A resource quantity in documented Kubernetes units, for example 500m, 2, 2Gi, or 1500Mi.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32,
+      "pattern": "^[0-9]+(\\.[0-9]+)?(m|k|M|G|T|P|E|Ki|Mi|Gi|Ti|Pi|Ei)?$"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "owner"],
+      "properties": {
+        "name": {
+          "description": "workload_id. Stable, DNS-safe, and unique within an environment.",
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "version": {
+          "description": "workload_version. An immutable release identity: a semantic version or an image reference pinned by digest.",
+          "oneOf": [
+            { "$ref": "#/$defs/semanticVersion" },
+            { "$ref": "#/$defs/digestPinnedImageReference" }
+          ]
+        },
+        "owner": {
+          "description": "owner_id. The owning team's stable platform catalogue identifier. A workload without an owner has nobody to page.",
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "annotations": {
+          "description": "The single extension point of this contract. Keys are namespaced to a DNS domain the annotator controls. Values are non-normative: the platform must not change behaviour because of one.",
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "maxLength": 253,
+            "pattern": "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?/[a-z0-9]([-a-z0-9._]*[a-z0-9])?$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "environment",
+        "model",
+        "resources",
+        "scaling",
+        "integrations",
+        "security",
+        "attribution",
+        "evidence"
+      ],
+      "properties": {
+        "profile": {
+          "description": "The workload profile. mock-llm exists for deterministic contract tests in continuous integration and can never certify real serving.",
+          "enum": ["synchronous-llm", "mock-llm"]
+        },
+        "environment": {
+          "description": "Deployment environment, from a controlled vocabulary.",
+          "enum": ["ci", "local", "dev", "staging", "production"]
+        },
+        "model": { "$ref": "#/$defs/model" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "scaling": { "$ref": "#/$defs/scaling" },
+        "integrations": { "$ref": "#/$defs/integrations" },
+        "security": { "$ref": "#/$defs/security" },
+        "attribution": { "$ref": "#/$defs/attribution" },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "synchronousLlm": { "$ref": "#/$defs/synchronousLlm" },
+        "mockLlm": { "$ref": "#/$defs/mockLlm" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "profile": { "const": "synchronous-llm" } },
+            "required": ["profile"]
+          },
+          "then": {
+            "required": ["synchronousLlm"],
+            "not": { "required": ["mockLlm"] },
+            "properties": {
+              "model": {
+                "properties": {
+                  "servingCapability": { "const": "inferops-native-serving" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "profile": { "const": "mock-llm" } },
+            "required": ["profile"]
+          },
+          "then": {
+            "required": ["mockLlm"],
+            "not": { "required": ["synchronousLlm"] },
+            "properties": {
+              "environment": { "const": "ci" },
+              "model": {
+                "properties": {
+                  "servingCapability": { "const": "inferops-mock-serving" }
+                }
+              },
+              "resources": {
+                "properties": {
+                  "accelerator": {
+                    "properties": {
+                      "type": { "const": "none" },
+                      "count": { "const": 0 }
+                    }
+                  }
+                }
+              },
+              "evidence": {
+                "properties": {
+                  "proofRefs": {
+                    "description": "A mock workload has no real-runtime proof, so it may not cite any. This is the schema-level half of the mock and real serving boundary.",
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "model": {
+      "description": "The common model and runtime reference. Anything specific to one profile lives in that profile's own block, never here.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["servingCapability", "modelRef", "runtimeProfile"],
+      "properties": {
+        "servingCapability": {
+          "description": "capability_id of the serving capability this workload binds to.",
+          "enum": ["inferops-native-serving", "inferops-mock-serving"]
+        },
+        "modelRef": {
+          "description": "The registered model identity within the platform catalogue. The bytes behind it are pinned in the profile block, not here.",
+          "$ref": "#/$defs/kebabCaseName"
+        },
+        "runtimeProfile": {
+          "description": "The runtime sizing intent. It expresses what the workload is asking for, not what any host was measured to deliver.",
+          "enum": ["resource-conscious", "balanced", "throughput-oriented"]
+        }
+      }
+    },
+    "resources": {
+      "description": "Explicit resource declaration. There is no default: an unsized workload is rejected rather than guessed at.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu", "memory", "accelerator"],
+      "properties": {
+        "cpu": { "$ref": "#/$defs/kubernetesQuantity" },
+        "memory": { "$ref": "#/$defs/kubernetesQuantity" },
+        "accelerator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "count"],
+          "properties": {
+            "type": {
+              "enum": ["none", "integrated-gpu", "nvidia-gpu", "amd-gpu"]
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 64
+            }
+          }
+        }
+      }
+    },
+    "scaling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimumReplicas", "maximumReplicas"],
+      "properties": {
+        "minimumReplicas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "maximumReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "integrations": {
+      "description": "Declared platform dependencies. Telemetry is not optional: a workload the platform cannot observe cannot be operated.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["telemetry"],
+      "properties": {
+        "modelAccess": { "$ref": "#/$defs/integration" },
+        "telemetry": { "$ref": "#/$defs/integration" },
+        "evaluation": { "$ref": "#/$defs/integration" }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityRef", "required"],
+      "properties": {
+        "capabilityRef": {
+          "description": "capability_id of the depended-on capability.",
+          "$ref": "#/$defs/kebabCaseName"
+        },
+        "required": {
+          "description": "true when the workload cannot perform its declared function without this capability.",
+          "type": "boolean"
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataClassification", "secretRefs"],
+      "properties": {
+        "dataClassification": {
+          "enum": ["public", "internal", "confidential", "restricted"]
+        },
+        "secretRefs": {
+          "description": "References to secrets, never secret values. Every member object is closed, so there is no field a value could be written into.",
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/secretReference" }
+        }
+      }
+    },
+    "secretReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "provider", "reference", "owner", "rotation"],
+      "properties": {
+        "name": {
+          "description": "The logical name the workload uses to consume this secret.",
+          "$ref": "#/$defs/kebabCaseName"
+        },
+        "provider": {
+          "enum": ["kubernetes-secret", "external-secret", "file-mount"]
+        },
+        "reference": {
+          "description": "A locator for the secret. Whitespace, quotes, and assignment characters are excluded so that the shapes a pasted value usually takes cannot be written here. This is a constraint, not a proof: see the contract document for what it does not catch.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/#-]*$"
+        },
+        "owner": {
+          "description": "owner_id of the team responsible for this secret's contents.",
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "rotation": {
+          "description": "Who is responsible for rotating it. Unstated rotation responsibility is how a credential outlives the person who created it.",
+          "enum": ["platform-managed", "owner-managed", "external-managed"]
+        }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant", "costCenter"],
+      "properties": {
+        "tenant": {
+          "description": "tenant_id. Declared here, but validated or injected by a trusted platform component rather than trusted from this document.",
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "costCenter": { "$ref": "#/$defs/kebabCaseName" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runbookRef"],
+      "properties": {
+        "runbookRef": {
+          "description": "Repository-relative path to the operational procedure for this workload.",
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "proofRefs": {
+          "description": "Repository-relative paths to executed-proof records supporting this workload's claims.",
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        }
+      }
+    },
+    "synchronousLlm": {
+      "description": "Fields specific to the synchronous-llm profile. Present only for that profile.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "modelArtifact"],
+      "properties": {
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["imageReference"],
+          "properties": {
+            "imageReference": { "$ref": "#/$defs/digestPinnedImageReference" }
+          }
+        },
+        "modelArtifact": {
+          "description": "The exact bytes to be served, pinned by upstream revision and by content hash. Either alone is insufficient: a revision names what was published, a hash names what arrived.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repository", "revision", "file", "sizeBytes", "sha256"],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 253,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)+$"
+            },
+            "revision": { "$ref": "#/$defs/sha256Hex" },
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
+            "sizeBytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": { "$ref": "#/$defs/sha256Digest" }
+          }
+        }
+      }
+    },
+    "mockLlm": {
+      "description": "Fields specific to the mock-llm profile. Present only for that profile, and self-labelling so that a reader who sees only this block still knows what it is.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ciOnly", "determinism", "fixtureRef"],
+      "properties": {
+        "ciOnly": {
+          "description": "Always true. Written into the artifact rather than inferred from the directory it sits in, so that the label survives being copied.",
+          "const": true
+        },
+        "determinism": {
+          "description": "How the mock produces responses. Only fixed fixtures are permitted, because a mock that varies is a mock nobody can assert against.",
+          "const": "fixed-fixture"
+        },
+        "fixtureRef": {
+          "description": "Repository-relative path to the deterministic response fixture this mock replays.",
+          "$ref": "#/$defs/repositoryPath"
+        }
+      }
+    }
+  }
+}

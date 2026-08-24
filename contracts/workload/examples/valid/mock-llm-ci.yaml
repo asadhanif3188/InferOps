@@ -1,0 +1,59 @@
+# A mock-llm workload. THIS IS A MOCK. It cannot certify real serving behaviour,
+# and the schema is built so that it cannot be edited into something that looks
+# as though it could: the mock-llm profile is pinned to the ci environment and to
+# the mock serving capability, and it is forbidden from citing real-runtime proof.
+#
+# The rule this fixture obeys is in docs/serving/mock-and-real-boundary.md.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: support-assistant-mock
+  version: 0.1.0
+  owner: team-platform-demo
+  description: Deterministic contract-test double. Never evidence of real serving.
+
+spec:
+  profile: mock-llm
+  environment: ci
+
+  model:
+    servingCapability: inferops-mock-serving
+    modelRef: mock-fixed-fixture
+    runtimeProfile: resource-conscious
+
+  resources:
+    # Sized for a fixture replayer, not for a model. No weights are loaded.
+    cpu: 250m
+    memory: 128Mi
+    accelerator:
+      type: none
+      count: 0
+
+  scaling:
+    minimumReplicas: 1
+    maximumReplicas: 1
+
+  integrations:
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    # A mock never holds real data and never requires real credentials.
+    dataClassification: public
+    secretRefs: []
+
+  attribution:
+    tenant: demo
+    costCenter: portfolio
+
+  evidence:
+    runbookRef: docs/serving/mock-and-real-boundary.md
+    # proofRefs is deliberately absent. Under the mock-llm profile the schema
+    # caps it at zero entries, so this workload cannot cite runtime proof at all.
+
+  mockLlm:
+    ciOnly: true
+    determinism: fixed-fixture
+    fixtureRef: contracts/workload/fixtures/mock-llm-chat-completion.response.json

@@ -1,0 +1,27 @@
+{
+  "_inferopsMock": {
+    "isMock": true,
+    "notice": "Deterministic mock fixture. No model produced this. It is not evidence of real serving behaviour, latency, token accounting, or model quality.",
+    "boundaryRule": "docs/serving/mock-and-real-boundary.md"
+  },
+  "id": "chatcmpl-inferops-mock-0001",
+  "object": "chat.completion",
+  "created": 0,
+  "model": "inferops-mock-serving",
+  "system_fingerprint": "inferops-mock-fixed-fixture",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "This is a deterministic InferOps mock fixture, not model output."
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0
+  }
+}

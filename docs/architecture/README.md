@@ -1,17 +1,18 @@
 # Architecture and decision records
 
 Status: entry point established; one decision accepted in part, one accepted with a
-recorded exception.
+recorded exception, one accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
 owner, alternatives, consequences, compatibility impact, and supporting evidence.
 Superseded decisions remain available and link to their replacement.
 
-The local development and Kubernetes environment is partly settled, and a model and
-serving runtime are now selected on executed proof. No infrastructure ownership
-boundary or application architecture is selected yet. A proposed decision record is
-a subject for review, not a supported capability, and must not be implemented
-against as though it were settled.
+The local development and Kubernetes environment is partly settled, a model and
+serving runtime are now selected on executed proof, and the schema language and
+validation approach behind the first public contract are settled. No infrastructure
+ownership boundary or application architecture is selected yet. A proposed decision
+record is a subject for review, not a supported capability, and must not be
+implemented against as though it were settled.
 
 ## Decision records
 
@@ -19,6 +20,7 @@ against as though it were settled.
 |---|---|---|---|---|
 | [0001](decisions/ADR-0001-local-development-environment.md) | Local development and Kubernetes environment | Accepted in part | 2026-08-23 | [Host inventory](../proof/environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke proof](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
 | [0002](decisions/ADR-0002-model-and-serving-runtime.md) | Model and serving runtime | Accepted, with one recorded exception | 2026-08-24 | [Runtime feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
+| [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -37,10 +39,17 @@ The procedure it followed is
 [the runtime feasibility workflow](../serving/feasibility-workflow.md), which the
 same trial amended in four places where running it showed the procedure was wrong.
 
+0003 settles how contract schemas are written and validated: JSON Schema draft
+2020-12, YAML authoring restricted to the JSON-representable subset, an
+off-the-shelf conformant validator, and no code generation in V1. It deliberately
+does **not** select the repository-wide Python, packaging, or continuous-integration
+toolchain, which remain open.
+
 ## Conventions
 
-Records live in [decisions/](decisions/) as `NNNN-short-slug.md`, numbered in the
-order they are proposed. A number is never reused, and a withdrawn record is kept
+Records live in [decisions/](decisions/) as `ADR-NNNN-short-slug.md`, where `NNNN`
+is a zero-padded four-digit sequence number, numbered in the order they are
+proposed. A number is never reused, and a withdrawn record is kept
 and marked rather than deleted.
 
 Each record states its status, the date it was proposed, the date it was accepted if
