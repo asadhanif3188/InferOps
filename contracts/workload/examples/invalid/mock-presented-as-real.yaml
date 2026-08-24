@@ -1,0 +1,67 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: a mock-llm workload edited to read as real serving.
+#
+# This is the fixture the mock and real serving boundary exists for. It takes the
+# valid CI mock and changes exactly the four things somebody would change to make
+# a mock look like proof:
+#
+#   spec.environment              ci -> production
+#   spec.model.servingCapability  mock -> native
+#   spec.resources.accelerator    none/0 -> nvidia-gpu/1
+#   spec.evidence.proofRefs       empty -> cites a real runtime feasibility record
+#
+# Every one of the four is refused by the schema, so the boundary holds without
+# depending on a reviewer noticing. The proof record cited below is real; citing
+# it from a mock is the thing being refused.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: support-assistant-mock
+  version: 0.1.0
+  owner: team-platform-demo
+  description: Invalid fixture. A mock dressed up as real serving.
+
+spec:
+  profile: mock-llm
+  environment: production
+
+  model:
+    servingCapability: inferops-native-serving
+    modelRef: mock-fixed-fixture
+    runtimeProfile: resource-conscious
+
+  resources:
+    cpu: 250m
+    memory: 128Mi
+    accelerator:
+      type: nvidia-gpu
+      count: 1
+
+  scaling:
+    minimumReplicas: 1
+    maximumReplicas: 1
+
+  integrations:
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    dataClassification: public
+    secretRefs: []
+
+  attribution:
+    tenant: demo
+    costCenter: demo-cost-center
+
+  evidence:
+    runbookRef: docs/serving/mock-and-real-boundary.md
+    proofRefs:
+      - docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md
+
+  mockLlm:
+    ciOnly: true
+    determinism: fixed-fixture
+    fixtureRef: contracts/workload/fixtures/mock-llm-chat-completion.response.json

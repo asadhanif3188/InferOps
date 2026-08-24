@@ -28,5 +28,13 @@ was aspirational.
 ## Not yet published
 
 No capability descriptor, runtime descriptor, model-access API, evaluation result,
-cost record, policy decision, or compatibility matrix exists. Each will be added
-when the capability behind it exists rather than in advance.
+cost record, or policy decision exists. Each will be added when the capability
+behind it exists rather than in advance.
+
+A **runtime and model compatibility matrix** does exist, at
+[`contracts/workload/compatibility/`](../../contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json).
+It is narrower than the cross-project compatibility matrix the integration
+specification calls for: it records which artifact formats each serving runtime
+loads and which single runtime-and-model pair this project has executed. It
+records no provider, no provider version, and no certification level, because no
+provider project and no certification process exist yet.

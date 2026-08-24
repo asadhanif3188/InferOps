@@ -34,7 +34,7 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 | Serving runtime and model feasibility | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Procedure executed once; one runtime and model revision selected |
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; no component consumes it |
-| Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, fixtures, versioning and compatibility rules published |
+| Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
 | Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision accepted in part, one accepted with a recorded exception, one accepted |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published |

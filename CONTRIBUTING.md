@@ -148,19 +148,31 @@ distribution of it exists if no system package is convenient.
 
 ### Contract schemas and fixtures
 
-Changes under `contracts/` or `tests/contracts/` must pass the contract suite:
+Changes under `contracts/`, `tools/contract_validation/`, or `tests/contracts/`
+must pass the contract suite:
 
 ```sh
 python -m pytest tests/contracts -q
 ```
 
-It reads only files in this repository — no network, no cluster, no model, no
-clock, no randomness — so a run that passes on one machine passes on every machine
-with the same files. It checks that each schema is a valid draft 2020-12 schema,
-that every object in it declares an additional-property policy, that each valid
-fixture validates, that repository-relative references in a fixture resolve, that
-a fixture pinned to an accepted decision still matches it, and that repeated
-validation of the same document produces identical output.
+Run it from the repository root, which is where the root `conftest.py` makes
+`tools.contract_validation` importable. To validate a document that is not a
+committed fixture:
+
+```sh
+python -m tools.contract_validation path/to/workload.yaml
+```
+
+The suite reads only files in this repository — no network, no cluster, no model,
+no clock, no randomness — so a run that passes on one machine passes on every
+machine with the same files. It checks that each schema is a valid draft 2020-12
+schema, that every object in it declares an additional-property policy, that each
+valid fixture validates, that repository-relative references in a fixture resolve,
+that a fixture pinned to an accepted decision still matches it, that every invalid
+fixture is refused with exactly the canonical error code, rule identifier, and
+field location committed beside it, that no refusal message repeats a value read
+out of the document, and that repeated validation of the same document produces
+identical output.
 
 It requires `jsonschema`, `pytest`, and `PyYAML`. Like `shellcheck` and
 `kubeconform`, they are not vendored; install them however your platform prefers.
@@ -171,7 +183,18 @@ settle it.
 
 A change that adds a field to a published schema also updates
 [the contract package changelog](contracts/CHANGELOG.md) and the contract's own
-document, and states its compatibility classification in the pull request.
+document, and states its compatibility classification in the pull request. The
+three classes — compatible, conditionally compatible, and breaking — are defined in
+[the WorkloadContract document](docs/contracts/workload-contract.md); a change that
+alters a canonical error code, a rule identifier, or a field location is at least
+conditionally compatible even though the accept-or-refuse verdict is unchanged.
+
+A change that adds a validation rule adds an invalid fixture demonstrating it,
+with its expected refusal recorded in
+[`contracts/workload/examples/invalid/expected-rejections.json`](contracts/workload/examples/invalid/expected-rejections.json).
+A rule with no fixture that fails because of it is a claim, and the suite refuses
+to let one exist. A valid fixture is never edited to make a change pass: a change
+that would invalidate one is breaking by definition.
 
 ### Kubernetes manifests
 

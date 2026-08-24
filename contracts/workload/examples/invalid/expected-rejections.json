@@ -1,0 +1,210 @@
+{
+  "title": "Expected rejections for the WorkloadContract v1alpha1 invalid fixtures",
+  "description": "Every file under this directory must be refused, and must be refused for exactly the reasons recorded here. The test suite compares this manifest with the validator's output field by field, so a change that alters a canonical error code, a rule identifier, or a field location fails the build instead of quietly changing what consumers are told.",
+  "layers": {
+    "structural": "The published JSON Schema alone refuses the document. Any draft 2020-12 validator in any language reaches the same conclusion.",
+    "semantic": "The published JSON Schema alone ACCEPTS the document. It is refused only by the rules JSON Schema cannot express, which ADR 0003 placed in a validation layer above the schema. These fixtures are the evidence that the layer is load-bearing rather than decorative."
+  },
+  "fixtures": {
+    "duplicate-secret-ref-name.yaml": {
+      "layer": "semantic",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "secret-ref-name-duplicated",
+          "field": "$.spec.security.secretRefs[1].name"
+        }
+      ]
+    },
+    "malformed-identifiers.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.annotations.unnamespaced-key"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.name"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.metadata.version"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.spec.attribution.tenant"
+        }
+      ]
+    },
+    "missing-owner.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.metadata.owner"
+        }
+      ]
+    },
+    "model-artifact-format-unrecognised.yaml": {
+      "layer": "semantic",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "model-artifact-format-unknown",
+          "field": "$.spec.synchronousLlm.modelArtifact.file"
+        }
+      ]
+    },
+    "mock-presented-as-real.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.spec.environment"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-out-of-range",
+          "field": "$.spec.evidence.proofRefs"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.spec.model.servingCapability"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.spec.resources.accelerator.count"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.spec.resources.accelerator.type"
+        }
+      ]
+    },
+    "mock-with-secret-refs.yaml": {
+      "layer": "semantic",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "mock-secret-ref-declared",
+          "field": "$.spec.security.secretRefs"
+        }
+      ]
+    },
+    "owner-not-dns-safe.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.owner"
+        }
+      ]
+    },
+    "replica-range-inverted.yaml": {
+      "layer": "semantic",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "replica-range-inverted",
+          "field": "$.spec.scaling"
+        }
+      ]
+    },
+    "resource-free-workload.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.spec.resources"
+        }
+      ]
+    },
+    "runtime-model-incompatible.yaml": {
+      "layer": "semantic",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "runtime-model-incompatible",
+          "field": "$.spec.synchronousLlm.modelArtifact.file"
+        }
+      ]
+    },
+    "runtime-unregistered.yaml": {
+      "layer": "semantic",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "runtime-unregistered",
+          "field": "$.spec.synchronousLlm.runtime.imageReference"
+        }
+      ]
+    },
+    "secret-value-in-locator.yaml": {
+      "layer": "semantic",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "secret-value-in-locator",
+          "field": "$.spec.security.secretRefs[0].reference"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "secret-value-in-locator",
+          "field": "$.spec.security.secretRefs[1].reference"
+        }
+      ]
+    },
+    "secret-value-in-value-field.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.spec.security.secretRefs[0].value"
+        }
+      ]
+    },
+    "unknown-field.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.spec.scaling.maxiumumReplicas"
+        }
+      ]
+    },
+    "unsupported-api-version.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "version-unsupported",
+          "rule": "contract-version-unsupported",
+          "field": "$.apiVersion"
+        }
+      ]
+    },
+    "unsupported-profile.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.spec.profile"
+        }
+      ]
+    }
+  }
+}

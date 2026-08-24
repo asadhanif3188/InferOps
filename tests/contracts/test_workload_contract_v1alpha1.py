@@ -4,9 +4,10 @@ Every check here reads files from this repository and nothing else. No network,
 no cluster, no model, no clock, no randomness: a run that passes today must pass
 identically on a machine that has never had internet access.
 
-Invalid fixtures and the semantic rules JSON Schema cannot express - the replica
-range, the model and runtime compatibility matrix, plaintext-secret detection -
-are owned by the second pull request of this story and are not asserted here.
+This suite covers the schema and the documents that must validate. Invalid
+fixtures, canonical error codes, and the semantic rules JSON Schema cannot express
+- the replica range, the runtime and model compatibility matrix, pasted-secret
+detection - live in `test_workload_contract_validation.py` beside it.
 """
 
 from __future__ import annotations
