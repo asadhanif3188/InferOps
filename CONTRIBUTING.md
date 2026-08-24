@@ -170,9 +170,9 @@ schema, that every object in it declares an additional-property policy, that eac
 valid fixture validates, that repository-relative references in a fixture resolve,
 that a fixture pinned to an accepted decision still matches it, that every invalid
 fixture is refused with exactly the canonical error code, rule identifier, and
-field location committed beside it, that no refusal message repeats a value read
-out of the document, and that repeated validation of the same document produces
-identical output.
+field location committed beside it, that neither a refusal's message nor its
+field location repeats a value read out of the document, and that repeated
+validation of the same document produces identical output.
 
 It requires `jsonschema`, `pytest`, and `PyYAML`. Like `shellcheck` and
 `kubeconform`, they are not vendored; install them however your platform prefers.
@@ -192,9 +192,11 @@ conditionally compatible even though the accept-or-refuse verdict is unchanged.
 A change that adds a validation rule adds an invalid fixture demonstrating it,
 with its expected refusal recorded in
 [`contracts/workload/examples/invalid/expected-rejections.json`](contracts/workload/examples/invalid/expected-rejections.json).
-A rule with no fixture that fails because of it is a claim, and the suite refuses
-to let one exist. A valid fixture is never edited to make a change pass: a change
-that would invalidate one is breaking by definition.
+For a **semantic** rule the suite enforces this: an unexercised one fails the
+build. Two structural rules deliberately have no fixture, and
+[the contract document](docs/contracts/workload-contract.md) names both and says
+why. A valid fixture is never edited to make a change pass: a change that would
+invalidate one is breaking by definition.
 
 ### Kubernetes manifests
 

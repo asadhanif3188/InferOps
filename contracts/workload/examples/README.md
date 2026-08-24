@@ -85,4 +85,5 @@ no fixture, is a test failure.
 A fixture belongs to the rule it demonstrates rather than to the change that added
 it: adding a semantic rule adds a fixture, removing a rule removes its fixture in
 the same change, and a valid fixture is never edited to make a change pass — a
-change that would invalidate one is breaking by definition.
+change that would invalidate one is breaking by definition. Two structural rules
+have no fixture on purpose; the contract document names them and says why.

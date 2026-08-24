@@ -225,10 +225,14 @@ checked at all.
 
 **What it still does not catch, stated as a measured fact and tested as one:** a
 short or low-entropy secret has the shape of a name. `Winter2026` passes.
-`hunter2` passes. `correcthorsebatterystaple` passes. There is a test asserting
-each of those passes, so that a future change which closes the gap has to come
-here and rewrite this paragraph rather than leave it overstating the check in
-either direction.
+`inferops/telemetry/hunter2` passes. `correcthorsebatterystaple` passes. There is
+a test asserting each of those exact strings passes, so that a future change which
+closes the gap has to come here and rewrite this paragraph rather than leave it
+overstating the check in either direction.
+
+The pattern gap the previous change measured is narrowed by this, not closed. An
+unpadded base64 blob long enough to trip the opaque-segment test is now refused; a
+short one is not.
 
 Two smaller rules complete the block. A duplicate logical name across two secret
 entries is refused (`secret-ref-name-duplicated`), because the workload consumes
@@ -373,10 +377,24 @@ code vocabulary belongs to runtime surfaces that can produce it, and none exists
 in this repository.
 
 Canonical error bodies carry `code`, a safe `message`, `requestId`,
-`correlationId`, `retryable`, and optional `retryAfterMs` and `details`. **A
-message never contains a value read out of the document**, and a test asserts it
-for every invalid fixture. A message must also never expose an internal stack
-trace, a prompt, or sensitive policy detail.
+`correlationId`, `retryable`, and optional `retryAfterMs` and `details`.
+
+**Neither the message nor the field location repeats a value read out of the
+document.** The message is generated from the rule and the schema's own published
+vocabulary rather than passed through from the underlying validator, which embeds
+the offending value in its own text. The field location names fields and property
+names, and an offending property name is echoed only when it is short and does not
+itself look like a pasted credential — `metadata.annotations` is an open map, so
+its keys are as author-controlled as any value.
+
+A test asserts both halves for every invalid fixture, against every string of
+eight characters or more in that document, excluding the schema's own vocabulary.
+Eight is a floor rather than a guarantee: below it a document string is something
+like `6`, `3Gi`, or `demo`, which collides with ordinary English in a message for
+reasons that have nothing to do with disclosure.
+
+A message must also never expose an internal stack trace, a prompt, or sensitive
+policy detail.
 
 ### The rule matrix
 
@@ -403,6 +421,32 @@ that runs the published validator.
 | `model-artifact-format-unknown` | `contract-invalid` | Semantic | The artifact filename ends in no format extension the matrix recognises |
 | `runtime-model-incompatible` | `contract-invalid` | Semantic | The pinned runtime does not accept the pinned artifact's format |
 
+Fourteen of the fifteen have an invalid fixture demonstrating them. Two do not,
+and saying which is cheaper than letting a reader infer coverage from the absence
+of a file:
+
+- **`value-wrong-type`** is unreachable from a YAML fixture wherever the schema
+  also constrains the value's format, because the pattern or enum fails first and
+  that rule is what surfaces.
+- **`contract-structure-invalid`** is the fallback for a keyword the translation
+  table does not map. A fixture pinning it would pin a defect rather than a rule,
+  so reaching it is a signal to add a row to the table.
+
+A test asserts that those two, and only those two, are the structural rules
+without a fixture. Every **semantic** rule must have one; a test refuses to let an
+unexercised one exist.
+
+### Two properties of a refusal that are easy to lose
+
+**Identical findings are collapsed.** A reason given twice is not two reasons. In
+particular, an annotation key that is both too long and badly shaped is one thing
+being wrong, and it is refused once, under `value-malformed`, rather than once per
+constraint it happens to break.
+
+**Findings sort by array index as a number.** `secretRefs[10]` comes after
+`secretRefs[2]`. String ordering would be equally deterministic and would read as
+wrong, and the reason to sort at all is that a reader can follow the result.
+
 ### Rules that are still not enforced
 
 Three rules the integration specification names remain unenforced, for the same
@@ -415,6 +459,11 @@ from a passing validation that a rule was aspirational.
 | Undeclared required capability | `contract-invalid` | No capability registry or descriptor exists to validate a `capabilityRef` against |
 | Policy exception without owner, reason, and expiry | `contract-invalid` | No policy contract exists |
 | A tenant claimed without entitlement | `authorization-denied` | Entitlement is not a property of the document. It must be checked by a trusted component against a source this validator does not have |
+
+`authorization-denied` is the only code named on this page that no artifact in this
+repository can emit. It belongs to the platform's canonical vocabulary rather than
+to an offline document check, and it appears here because naming the code a rule
+would carry is more useful than leaving the row blank.
 
 One further limit is a property of an offline check rather than a missing
 capability: **a digest proves what bytes are, not that they are the right bytes.**
@@ -434,7 +483,7 @@ which is data rather than code so that adding a runtime is a reviewable diff.
 |---|---|---|---|
 | `llama-cpp-server` | `ghcr.io/ggml-org/llama.cpp` | `gguf` | Selected in [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md), and the one pair this project has executed |
 | `vllm-cpu` | `docker.io/vllm/vllm-openai`, `vllm/vllm-openai-cpu` | `safetensors`, `pytorch-bin` | Recorded fallback in ADR 0002. **Never executed by this project** |
-| `inferops-mock-serving` | none | none | Loads no artifact. No matrix row applies to a `mock-llm` workload |
+| `inferops-mock-serving` | none | none | Loads no artifact. A `mock-llm` workload pins no runtime image and no model artifact, so no runtime row is consulted for one |
 
 Two things the matrix deliberately does not say. vLLM's experimental GGUF path is
 **not** listed among its accepted formats, because this project has run no trial
@@ -504,9 +553,10 @@ that every object declares its additional-property policy, that each valid fixtu
 validates under both layers, that fixture references resolve to real files, that
 the real fixture still matches ADR 0002, that the mock cannot be edited into a
 real-looking contract, that every invalid fixture is refused with exactly the
-published code, rule, and field, that no refusal message quotes a value from the
-document, that every rule the validator can cite appears in this document, and
-that repeated validation of the same document produces identical output.
+published code, rule, and field, that neither a refusal's message nor its field
+location quotes a value from the document, that every rule the validator can cite
+appears in this document, and that repeated validation of the same document
+produces identical output.
 
 Required packages are `jsonschema` and `pytest`, plus `PyYAML` for the authoring
 form. They are not vendored; install them however your platform prefers. The

@@ -15,9 +15,9 @@ Three things are asserted that a plain "this must fail" test would not catch:
 2. **Exactly what the refusal says.** Code, rule, and field are compared against a
    committed manifest, so a message a reviewer quoted last month still means the
    same thing.
-3. **That a refusal cannot leak.** No finding message may contain a value read out
-   of the document, because an error body is the surface most likely to be logged
-   and kept.
+3. **That a refusal cannot leak.** Neither half of a finding - the message or the
+   field location - may contain a value read out of the document, because an error
+   body is the surface most likely to be logged and kept.
 """
 
 from __future__ import annotations
@@ -220,7 +220,7 @@ def test_a_raw_schema_consumer_reaches_the_same_verdict_on_structural_fixtures(
 ):
     """What a consumer validating against the bare schema file actually sees."""
     if manifest()["fixtures"][path.name]["layer"] != "structural":
-        return
+        pytest.skip("semantic-layer fixture; the bare schema is expected to accept it")
     validator = Draft202012Validator(load_schema())
     assert list(validator.iter_errors(load_document(path)))
 
@@ -241,33 +241,51 @@ def scalar_strings(node: Any) -> list[str]:
 
 
 def schema_declared_strings() -> set[str]:
-    """Every string the schema itself names: enum members, consts, and the like.
+    """Every string that appears anywhere in the schema document.
 
-    These are public vocabulary. A message may repeat one - saying that a
-    `mock-llm` workload may not hold a credential is the whole point of the
-    message - and doing so discloses nothing, because the value came from the
-    published schema rather than from the document.
+    That is broader than the enum and const vocabulary - it also takes titles,
+    descriptions, and patterns - and the breadth is deliberate: exclusion needs an
+    exact whole-string match against a document value, so a description sentence
+    can only ever exempt a document value identical to that whole sentence.
+
+    The set exists because a message may legitimately repeat public vocabulary.
+    Saying that a `mock-llm` workload may not hold a credential is the point of the
+    message, and it discloses nothing, because the value came from the published
+    schema rather than from the document.
     """
     return set(scalar_strings(load_schema()))
 
 
+#: The floor for what counts as a value worth protecting. Below it a document
+#: string is something like `6`, `3Gi`, or `demo`, which collides with ordinary
+#: English in a message for reasons that have nothing to do with disclosure.
+LEAK_CHECK_MINIMUM_LENGTH = 8
+
+
 @pytest.mark.parametrize("path", invalid_paths(), ids=lambda p: p.name)
-def test_no_finding_message_quotes_a_value_from_the_document(path: Path):
+def test_no_finding_quotes_a_value_from_the_document(path: Path):
     """The rule that keeps an error body safe to log.
 
     The field most likely to be refused for looking wrong is the field most
-    likely to hold a secret, so the message says what was wrong and never what
-    the value was.
+    likely to hold a secret, so a refusal says what was wrong and never what the
+    value was. Both halves of a finding are checked: the message, and the field
+    location - which is where an offending property name would otherwise land,
+    and `metadata.annotations` is an open map whose keys the author writes.
     """
     document = load_document(path)
     vocabulary = schema_declared_strings()
     values = [
-        s for s in scalar_strings(document) if len(s) >= 8 and s not in vocabulary
+        s
+        for s in scalar_strings(document)
+        if len(s) >= LEAK_CHECK_MINIMUM_LENGTH and s not in vocabulary
     ]
     for found in validate(document):
         for value in values:
             assert value not in found.message, (
                 f"{found.rule} echoed a document value into its message"
+            )
+            assert value not in found.field, (
+                f"{found.rule} echoed a document value into its field location"
             )
 
 
@@ -281,6 +299,69 @@ def test_the_credential_locator_finding_names_no_credential():
         assert reference not in rendered
         # Not even the distinctive part of it.
         assert reference.split("/")[-1] not in rendered
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "ghp_0000000000000000000000000000000000",
+        "AKIAIOSFODNN7EXAMPLE",
+        "inferops.io/" + "A" * 300,
+    ],
+    ids=["credential-prefix", "aws-placeholder", "overlong"],
+)
+def test_an_annotation_key_that_should_not_be_repeated_is_not_repeated(key: str):
+    """`metadata.annotations` is the contract's one open map.
+
+    Its keys are as author-controlled as any value, so a pasted token in a key is
+    a realistic mistake rather than a contrived one. The refusal still happens and
+    still says where; it just declines to quote the key back.
+    """
+    document = load_document(VALID_DIR / "synchronous-llm-local.yaml")
+    document["metadata"]["annotations"] = {key: "x"}
+    findings = validate(document)
+    assert findings, "a malformed annotation key must still be refused"
+    for found in findings:
+        assert key not in found.field
+        assert key not in found.message
+    assert any(f.field == "$.metadata.annotations" for f in findings)
+
+
+def test_one_bad_property_name_produces_one_finding():
+    """A key that breaks two constraints at once is still one thing being wrong.
+
+    Taking the rule from the inner keyword of a propertyNames subschema would
+    refuse such a key twice, under two rule identifiers, with the same message
+    under each - which makes a published rule identifier mean less than it says.
+    """
+    document = load_document(VALID_DIR / "synchronous-llm-local.yaml")
+    # Too long for maxLength and malformed against the pattern, simultaneously.
+    document["metadata"]["annotations"] = {"NOT A NAMESPACE " * 20: "x"}
+    findings = [f for f in validate(document) if f.field.startswith("$.metadata.anno")]
+    assert len(findings) == 1, findings
+    assert findings[0].rule == "value-malformed"
+
+
+def test_findings_are_ordered_by_array_index_as_a_number():
+    """Ten entries in one array must not sort before two."""
+    document = load_document(VALID_DIR / "synchronous-llm-secret-refs.yaml")
+    document["spec"]["security"]["secretRefs"] = [
+        {
+            "name": "same-name-everywhere",
+            "provider": "kubernetes-secret",
+            "reference": "inferops-serving/model-registry#token",
+            "owner": "team-platform-demo",
+            "rotation": "owner-managed",
+        }
+        for _ in range(12)
+    ]
+    indexes = [
+        int(f.field.split("[")[1].split("]")[0])
+        for f in validate(document)
+        if "secretRefs[" in f.field
+    ]
+    assert indexes == sorted(indexes), indexes
+    assert indexes == list(range(1, 12))
 
 
 # --------------------------------------------------------------------------
@@ -383,6 +464,20 @@ def test_every_matrix_reference_resolves_in_this_repository():
         assert (REPO_ROOT / ref).is_file(), f"matrix references missing {ref}"
 
 
+def test_no_matrix_extension_is_a_suffix_of_another():
+    """Otherwise which format wins depends on iteration order.
+
+    Today no extension shadows another. The day one does - `.tar.gz` beside `.gz`,
+    `.q4.bin` beside `.bin` - the lookup must pick the specific one, and this test
+    is what makes that a decision rather than an accident.
+    """
+    extensions = sorted(load_compatibility_matrix()["artifactFormats"])
+    overlapping = [
+        (a, b) for a in extensions for b in extensions if a != b and a.endswith(b)
+    ]
+    assert overlapping == [], overlapping
+
+
 def test_matrix_accepted_formats_are_declared_formats():
     matrix = load_compatibility_matrix()
     known = set(matrix["artifactFormats"].values())
@@ -436,13 +531,47 @@ def test_no_canonical_code_this_validator_emits_is_retryable():
     assert not any(CANONICAL_ERROR_CODES.values())
 
 
-def test_the_rule_registry_and_the_manifest_do_not_drift_apart():
-    """Every semantic rule must have a fixture. An untested rule is a claim."""
-    exercised = {
+def exercised_rules() -> set[str]:
+    return {
         expected["rule"]
         for entry in manifest()["fixtures"].values()
         for expected in entry["expected"]
     }
+
+
+def test_the_rule_registry_and_the_manifest_do_not_drift_apart():
+    """Every semantic rule must have a fixture. An untested rule is a claim."""
     semantic = {identifier for identifier, rule in RULES.items() if rule.semantic}
-    unexercised = sorted(semantic - exercised)
+    unexercised = sorted(semantic - exercised_rules())
     assert unexercised == [], f"semantic rules with no invalid fixture: {unexercised}"
+
+
+#: Structural rules that no fixture exercises, and why each is allowed to have
+#: none. The contract document publishes the same two, so a reader is never left
+#: to infer coverage from the absence of a fixture.
+STRUCTURAL_RULES_WITHOUT_A_FIXTURE = {
+    # A JSON type error is unreachable from a YAML fixture wherever the schema
+    # also constrains the value's format: the pattern or enum fails first, and
+    # the pattern rule is what surfaces.
+    "value-wrong-type",
+    # The fallback for a keyword the translation table does not map. Reaching it
+    # means the table needs a row, so a fixture pinning it would pin a defect.
+    "contract-structure-invalid",
+}
+
+
+def test_the_structural_rules_without_a_fixture_are_the_two_we_declared():
+    """The coverage gap is fixed in size, and it is this one.
+
+    The manifest test above only binds semantic rules. This one stops the
+    structural half from quietly growing rules nothing demonstrates.
+    """
+    structural = {identifier for identifier, rule in RULES.items() if not rule.semantic}
+    unexercised = structural - exercised_rules()
+    assert unexercised == STRUCTURAL_RULES_WITHOUT_A_FIXTURE, sorted(unexercised)
+
+
+def test_the_uncovered_structural_rules_are_named_in_the_contract_document():
+    published = CONTRACT_DOC.read_text(encoding="utf-8")
+    for identifier in STRUCTURAL_RULES_WITHOUT_A_FIXTURE:
+        assert f"`{identifier}`" in published

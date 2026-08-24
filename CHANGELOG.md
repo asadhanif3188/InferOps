@@ -14,8 +14,10 @@ once versioned releases begin.
   semantic validation layer above the published schema now applies replica-range
   ordering, a runtime and model compatibility matrix, duplicate secret names, the
   rule that a mock may not declare a credential, and a heuristic that refuses a
-  secret pasted into a locator field. Three of these were published as *stated but
-  not enforced* when the schema landed; they are enforced now, and the rules that
+  secret pasted into a locator field. Two of these were published as *not enforced*
+  when the schema landed and are enforced now; the pasted-secret rule was published
+  as *partly* enforced and is now enforced as far as a shape heuristic can reach,
+  with the remaining gap measured and tested rather than described. Rules that
   remain unenforced are still named in the same table that states them.
 - **A published rejection interface for the contract.** Every refusal carries a
   canonical error code, a stable rule identifier, and a field location such as
@@ -29,8 +31,8 @@ once versioned releases begin.
 - **A test that checks which layer refuses each fixture.** A fixture marked
   `semantic` must be *accepted* by the bare schema; if the schema ever grows strict
   enough to refuse one, that is a strengthening and a compatibility event rather
-  than a silent improvement. Six fixtures are semantic-only today, which is the
-  measured cost of validating against the raw schema alone.
+  than a silent improvement. Seven of the sixteen fixtures are semantic-only
+  today, which is the measured cost of validating against the raw schema alone.
 - **A runtime and model compatibility matrix**, as data rather than code. It
   records what each serving runtime loads, marks vLLM's CPU backend as a recorded
   fallback nobody has run, deliberately omits vLLM's experimental GGUF path
@@ -48,8 +50,14 @@ once versioned releases begin.
   a document that is not a committed fixture. Sorted output, exit `1` on refusal.
 - A change-validation record for this change, listing all sixteen refusals with
   their layer, measuring the credential heuristic in both directions — what it
-  catches, what it deliberately leaves alone, and what it still misses — and
-  examining every credential-shaped string the change commits.
+  catches, what it deliberately leaves alone, and what it still misses — examining
+  every credential-shaped string the change commits, and recording the seven
+  defects a second review found in its own first draft.
+- Identical findings are collapsed, and findings sort by array index as a number,
+  so `secretRefs[10]` follows `secretRefs[2]` rather than preceding it.
+- An offending annotation key is named in a field location only when it is short
+  and does not itself look like a credential. `metadata.annotations` is the
+  contract's one open map, so its keys are as author-controlled as any value.
 
 - **The first public contract: WorkloadContract `v1alpha1`.** A JSON Schema draft
   2020-12 document under `contracts/workload/` covering workload identity, owner,
@@ -166,9 +174,12 @@ once versioned releases begin.
   hold a secret, and an error body is the surface most likely to be logged, pasted
   into a ticket, and kept. A test asserts it for every invalid fixture.
 - The workload-contract rejection table gains a layer column and a rule
-  identifier for every row, and its three "not yet enforced" entries for replica
-  ranges, runtime and model compatibility, and pasted secrets are now enforced.
-  What remains unenforced is stated as blocked on a named missing capability.
+  identifier for every row. Of its five incompletely enforced entries, the replica
+  range and the runtime and model combination move from "not yet" to enforced, and
+  the pasted secret moves from "partly" to a semantic check whose limits are
+  measured. The remaining two — undeclared required capability and policy
+  exception — are unchanged, and are now stated as blocked on a named missing
+  capability rather than merely deferred.
 - The contracts index no longer lists a compatibility matrix among the artifacts
   that do not exist, and says how the matrix that now exists is narrower than the
   cross-project one the integration specification calls for.

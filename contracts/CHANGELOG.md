@@ -49,9 +49,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Published compatibility classes for changes to this contract: compatible,
   **conditionally compatible**, and breaking, with the class of each change
   recorded in its changelog entry from here on.
-- Fixture ownership rules: a rule without an invalid fixture is refused by a test,
-  a removed rule takes its fixture with it, and a valid fixture is never edited to
-  make a change pass.
+- Fixture ownership rules: a **semantic** rule without an invalid fixture is
+  refused by a test, a removed rule takes its fixture with it, and a valid fixture
+  is never edited to make a change pass. Two structural rules have no fixture by
+  design, and both are named in the contract document.
+
+- Deterministic ordering of findings by array index as a number, and collapsing of
+  identical findings, so that one fault produces one refusal and a list of them
+  reads in sequence.
 
 ### Changed
 
@@ -61,6 +66,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   for looking wrong is the field most likely to hold a secret. Compatibility
   classification: **conditionally compatible** — the verdict is unchanged and the
   message text is not.
+- A field location no longer repeats an offending `metadata.annotations` key when
+  that key is over-long or is itself shaped like a credential. Annotations are the
+  contract's one open map, so a key there is as author-controlled as a value.
+  Compatibility classification: **conditionally compatible** — the refusal still
+  happens and still says where, one level up.
 
 ### Not yet present
 

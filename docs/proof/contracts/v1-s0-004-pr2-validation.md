@@ -11,9 +11,9 @@ repository reads one.
 Claim boundary: every valid fixture inherited from the first pull request still
 validates under both layers; every invalid fixture is refused with exactly the
 canonical error code, rule identifier, and field location published beside it;
-each fixture's declared validation layer is the layer that actually refuses it; no
-refusal message repeats a value read out of the document; and the published diff
-carries no private or overclaimed content.
+each fixture's declared validation layer is the layer that actually refuses it;
+neither a refusal's message nor its field location repeats a value read out of the
+document; and the published diff carries no private or overclaimed content.
 
 ## Environment
 
@@ -34,7 +34,7 @@ carries no private or overclaimed content.
 
 ```text
 python -m pytest tests/contracts -q
-190 passed
+191 passed, 7 skipped
 ```
 
 Split across the two files:
@@ -44,11 +44,17 @@ python -m pytest tests/contracts/test_workload_contract_v1alpha1.py -q
 37 passed
 
 python -m pytest tests/contracts/test_workload_contract_validation.py -q
-153 passed
+154 passed, 7 skipped
 ```
 
 The 37 are the first pull request's schema suite, unchanged except for a docstring
-that pointed forward to work this change lands. The 153 are new.
+that pointed forward to work this change lands. The remaining 161 are new.
+
+The seven skips are deliberate and visible. One test asks what a consumer
+validating against the bare schema file sees, which is a question only the nine
+structural fixtures have an answer to; the seven semantic fixtures skip it by
+name. They are reported as skipped rather than silently returning, so that a
+reader of the summary line is not told that seven assertions ran when none did.
 
 ### What the new suite actually asserts
 
@@ -58,13 +64,14 @@ that pointed forward to work this change lands. The 153 are new.
 | Locator false positives | The secret-reference example's two locators survive the credential heuristic, as do Vault, AWS Secrets Manager, and Google Secret Manager path forms |
 | Manifest agreement | Every invalid fixture is in the manifest and the reverse; every expected rule is a registered rule; every expected code is a canonical code and carries that rule's code |
 | Exact refusal | Each of the sixteen fixtures produces exactly the `(code, rule, field)` list committed beside it, in that order |
-| Determinism | Five validations of each invalid fixture produce identical output; the command-line entry point produces byte-identical output across runs |
+| Determinism | Five validations of each invalid fixture produce identical output, in one order, with array indices ordered as numbers. The command-line entry point's determinism is checked by hand rather than by the suite; see below |
 | Layer claim | A fixture declared `structural` must be refused by the bare schema; one declared `semantic` must be **accepted** by it and refused only above it |
 | Non-retryable | Every finding on every invalid fixture reports `retryable: false` |
-| No leakage | No finding message contains any string of eight characters or more read out of the document, excluding the schema's own published vocabulary |
+| No leakage | Neither a finding's message nor its field location contains any string of eight characters or more read out of the document, excluding the schema's own published vocabulary. Separately: an annotation key that is over-long or credential-shaped is refused without being repeated back |
 | Credential heuristic | Eleven credential shapes are caught; six locator shapes are not; three documented gaps are asserted to still be gaps |
 | Compatibility matrix | Shape, unique runtime identifiers, no repository mapped to two runtimes, every reference resolves to a real file, accepted formats are declared formats, the single executed pair matches ADR 0002, and every real valid fixture pins a runtime that pair covers |
-| Document agreement | Every rule the validator can cite appears in the contract document; every canonical code it can emit appears there; no code it emits is retryable; every semantic rule has an invalid fixture |
+| Document agreement | Every rule the validator can cite appears in the contract document; every canonical code it can emit appears there; no code it emits is retryable; every semantic rule has an invalid fixture; the two structural rules that have none are exactly the two the document names |
+| Single refusal per fault | An annotation key that breaks two constraints at once produces one finding under one rule, not one per constraint |
 
 ### Command-line validation
 
@@ -81,9 +88,10 @@ Against the valid fixtures alone the same command exits `0`.
 
 ### The sixteen refusals, as published
 
-Six of these are refused by rules the published schema cannot express. Those six
-are the measured cost of validating against the raw schema alone, and a test fails
-if any of them starts being caught structurally without the manifest saying so.
+**Seven** of these are refused by rules the published schema cannot express, and
+nine by the schema itself. Those seven are the measured cost of validating against
+the raw schema alone, and a test fails if any of them starts being caught
+structurally without the manifest saying so.
 
 | Fixture | Layer | Code | Rule | Field |
 |---|---|---|---|---|
@@ -91,11 +99,11 @@ if any of them starts being caught structurally without the manifest saying so.
 | `missing-owner.yaml` | Structural | `contract-invalid` | `field-required` | `$.metadata.owner` |
 | `resource-free-workload.yaml` | Structural | `contract-invalid` | `field-required` | `$.spec.resources` |
 | `owner-not-dns-safe.yaml` | Structural | `contract-invalid` | `value-malformed` | `$.metadata.owner` |
-| `malformed-identifiers.yaml` | Structural | `contract-invalid` | `value-malformed` ×3, `value-not-permitted` | `$.metadata.annotations.unnamespaced-key`, `$.metadata.name`, `$.metadata.version`, `$.spec.attribution.tenant` |
+| `malformed-identifiers.yaml` | Structural | `contract-invalid` | `value-malformed`, `value-malformed`, `value-not-permitted`, `value-malformed` | `$.metadata.annotations.unnamespaced-key`, `$.metadata.name`, `$.metadata.version`, `$.spec.attribution.tenant` |
 | `unsupported-profile.yaml` | Structural | `contract-invalid` | `value-not-permitted` | `$.spec.profile` |
 | `unknown-field.yaml` | Structural | `contract-invalid` | `field-unknown` | `$.spec.scaling.maxiumumReplicas` |
 | `secret-value-in-value-field.yaml` | Structural | `contract-invalid` | `field-unknown` | `$.spec.security.secretRefs[0].value` |
-| `mock-presented-as-real.yaml` | Structural | `contract-invalid` | `value-not-permitted` ×4, `value-out-of-range` | `$.spec.environment`, `$.spec.evidence.proofRefs`, `$.spec.model.servingCapability`, `$.spec.resources.accelerator.count`, `$.spec.resources.accelerator.type` |
+| `mock-presented-as-real.yaml` | Structural | `contract-invalid` | `value-not-permitted`, `value-out-of-range`, then `value-not-permitted` ×3 | `$.spec.environment`, `$.spec.evidence.proofRefs`, `$.spec.model.servingCapability`, `$.spec.resources.accelerator.count`, `$.spec.resources.accelerator.type` |
 | `replica-range-inverted.yaml` | **Semantic** | `contract-invalid` | `replica-range-inverted` | `$.spec.scaling` |
 | `secret-value-in-locator.yaml` | **Semantic** | `contract-invalid` | `secret-value-in-locator` ×2 | `$.spec.security.secretRefs[0].reference`, `$.spec.security.secretRefs[1].reference` |
 | `duplicate-secret-ref-name.yaml` | **Semantic** | `contract-invalid` | `secret-ref-name-duplicated` | `$.spec.security.secretRefs[1].name` |
@@ -104,10 +112,24 @@ if any of them starts being caught structurally without the manifest saying so.
 | `runtime-unregistered.yaml` | **Semantic** | `contract-invalid` | `runtime-unregistered` | `$.spec.synchronousLlm.runtime.imageReference` |
 | `model-artifact-format-unrecognised.yaml` | **Semantic** | `contract-invalid` | `model-artifact-format-unknown` | `$.spec.synchronousLlm.modelArtifact.file` |
 
-The first pull request's evidence record listed three mutations it accepted, and
-named each as the second pull request's work. All three are now refused:
-`replica-range-inverted.yaml`, `secret-value-in-locator.yaml`, and
-`runtime-model-incompatible.yaml` are those three mutations, committed.
+### What the previous change accepted, and what happens to it now
+
+The first pull request's evidence record listed three mutations it accepted and
+named each as this change's work. **Two are now refused outright; the third is
+narrowed rather than closed**, and saying so is the point of running the check
+instead of asserting it.
+
+| Mutation PR1 accepted | Now |
+|---|---|
+| `minimumReplicas: 5`, `maximumReplicas: 2` | **Refused.** `replica-range-inverted.yaml` |
+| A model and runtime pair that does not go together | **Refused.** `runtime-model-incompatible.yaml` |
+| An unpadded base64 string in a secret locator, and any alphanumeric credential | **Partly.** The exact string PR1 used, `aHVudGVyMg`, still passes: it is ten characters, below the opaque-segment bound. A longer blob of the same kind is refused, and so is any of the thirty-odd published credential prefixes |
+
+The third row disagrees with the first draft of this paragraph, which said all
+three were closed. `aHVudGVyMg` was run against the new layer and passed. The gap
+that remains is the one
+[the contract document](../../contracts/workload-contract.md) states and three
+tests pin.
 
 ### The credential heuristic, measured rather than asserted
 
@@ -130,10 +152,12 @@ path, a Google Secret Manager resource name, a locator containing
 refuses well-formed references is switched off within a week, and then nothing is
 checked at all.
 
-**Still missed, asserted as still missed:** `Winter2026`, `hunter2`, and
-`correcthorsebatterystaple` all pass. A short or low-entropy secret has the shape
-of a name, and no shape heuristic separates the two. There is a test asserting each
-passes, so a future change that closes the gap has to come to
+**Still missed, asserted as still missed:** `Winter2026`,
+`inferops/telemetry/hunter2`, and `correcthorsebatterystaple` all pass, and so
+does the ten-character `aHVudGVyMg` from the previous change's record. A short or
+low-entropy secret has the shape of a name, and no shape heuristic separates the
+two. There is a test asserting each of the three committed strings passes, so a
+future change that closes the gap has to come to
 [the contract document](../../contracts/workload-contract.md) and rewrite the
 paragraph rather than leave it overstating the check.
 
@@ -164,8 +188,8 @@ trailing blank and no hard tab in either.**
 
 The POSIX link check from [CONTRIBUTING](../../../CONTRIBUTING.md) was run over
 every tracked Markdown file. **No broken target.** This change adds links that
-cross directory boundaries in both directions — from `contracts/` into `docs/` and
-`tools/`, and from `docs/contracts/` into `contracts/`, `tools/`, and `tests/` — so
+cross directory boundaries in both directions — from `docs/contracts/` into
+`contracts/` and `tools/`, and from `contracts/` into `docs/` and `tests/` — so
 the check mattered.
 
 No in-page anchor is introduced by this change.
@@ -196,9 +220,10 @@ Every new file reports `i/lf`. Git normalises on checkout under the existing
 
 ## Diff inspection
 
-The full staged diff — 34 files: 5 Markdown modified, 1 Markdown added, 16 YAML
-fixtures added, 2 JSON files added, 5 Python modules added, 1 Python test module
-added, 1 Python test module modified — was read in full and searched.
+The full staged diff — **35 files, 26 added and 9 modified**: 8 Markdown modified,
+1 Markdown added, 16 YAML fixtures added, 2 JSON files added, 6 Python modules
+added, 1 Python test module added, 1 Python test module modified — was read in
+full and searched.
 
 | Looked for | Found |
 |---|---|
@@ -285,7 +310,7 @@ nothing else in this repository.
 | `tools/contract_validation/__main__.py` | Added — command-line entry point |
 | `tools/contract_validation/__init__.py`, `tools/__init__.py` | Added — package surface |
 | `conftest.py` | Added — makes the repository root importable, since no packaging exists |
-| `tests/contracts/test_workload_contract_validation.py` | Added — the rejection suite |
+| `tests/contracts/test_workload_contract_validation.py` | Added — the rejection suite, including the layer, leak, ordering, and single-refusal checks a second review asked for |
 | `docs/proof/contracts/v1-s0-004-pr2-validation.md` | Added — this record |
 | `docs/contracts/workload-contract.md` | Two-layer split, the rule matrix, conditionally compatible changes, fixture ownership, the semantic secret check, corrected rejection table |
 | `contracts/workload/examples/README.md` | Invalid fixture table, layer explanation, fixture ownership |
@@ -296,6 +321,50 @@ nothing else in this repository.
 | `CHANGELOG.md` | Recorded the above |
 | `README.md` | Entry-point description for the contract document |
 | `tests/contracts/test_workload_contract_v1alpha1.py` | Docstring only — it pointed forward at work this change lands |
+
+## What a second review changed
+
+Three independent reviews were run over the first commit of this change: one on the
+Python, one on its security posture, and one that checked every claim in this
+document against the files. The security review found nothing. The other two found
+seven defects between them, and all seven are fixed in the second commit.
+
+**Two were real bugs in the validator.**
+
+| Defect | Effect | Fix |
+|---|---|---|
+| The rule identifier for a property-name failure was taken from the inner JSON Schema keyword | An annotation key that was both too long and badly shaped was refused **twice**, under two different rule identifiers, with the same message under each. A published rule identifier that can arrive in pairs means less than it says | Every constraint inside a `propertyNames` subschema now maps to one rule, `value-malformed`, and identical findings are collapsed |
+| An offending property name was copied verbatim into the field location | `metadata.annotations` is the contract's one open map, so its keys are as author-controlled as any value. A pasted token in a key was echoed back in full — into the one part of a finding the leak test did not check | A key is echoed only when it is short and does not itself look like a credential; otherwise the finding names the parent object. The leak test now checks the field location as well as the message |
+
+**Three were defects in how the work reported itself.**
+
+- A test skipped seven of its sixteen parametrized cases with a bare `return`, so
+  they were counted as passed. They now call `pytest.skip`, which is why this
+  record reports `191 passed, 7 skipped` rather than a single larger number.
+- Findings sorted by string, so `secretRefs[10]` came before `secretRefs[2]`.
+  Deterministic, and unreadable. Indices now sort as numbers.
+- The two loaders returned a shared mutable dictionary from an `lru_cache`. Nothing
+  mutated it, and nothing guarded against it either, in a module whose entire claim
+  is determinism. Each caller now gets its own copy.
+
+**Four were false or unsupported claims in this document and its siblings**, each
+corrected in place rather than softened:
+
+| Claim | Reality |
+|---|---|
+| "Six fixtures are refused only by the semantic layer" | **Seven.** Nine are structural |
+| "All three mutations the previous change accepted are now refused" | **Two of three.** The third is narrowed, not closed; see the table above |
+| "34 files: 5 Markdown modified, 5 Python modules added" | **35 files**, 8 Markdown modified, 6 Python modules added. The stated breakdown did not sum to its own total |
+| "A rule with no fixture is refused by a test" | True for **semantic** rules only. Two structural rules have no fixture, and the contract document now names both and says why |
+
+One further claim was credited to the test suite that only a by-hand check
+supports: the command-line entry point's determinism. Nothing under `tests/`
+invokes it. The table above now says so, and the by-hand result stands where it was
+already recorded.
+
+The reason this section exists is the same reason the previous change carried one.
+A record that reports only what a first draft got right is not evidence; it is
+advertising.
 
 ## What this change leaves undone
 

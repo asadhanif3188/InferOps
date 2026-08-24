@@ -47,16 +47,16 @@ present. They will be added when the capability behind each exists, not in advan
 1. **Every schema declares its dialect and its `$id`.** An `$id` is a namespace,
    not a retrieval URL; nothing is served at `inferops.io`.
 2. **Every schema ships valid *and* invalid fixtures**, and every fixture is
-   checked on every change. A rule with no fixture that fails because of it is a
-   claim rather than a rule.
+   checked on every change. A semantic rule with no fixture that fails because of
+   it is a claim rather than a rule, and the suite refuses to let one exist.
 3. **A refusal is published, not just produced.** Each invalid fixture's canonical
    error code, rule identifier, and field location are committed beside it and
    compared on every run, so what a consumer is told cannot drift silently.
 4. **Unknown fields are rejected.** Every object declares its additional-property
    policy explicitly rather than inheriting a default.
 5. **A contract references secrets and never carries one.** No schema here defines
-   a field a secret value belongs in, and no validation message repeats a value
-   read out of a document.
+   a field a secret value belongs in, and no part of a validation finding — its
+   message or its field location — repeats a value read out of a document.
 6. **A mock artifact says so in its own contents**, so that the label survives
    being copied out of the directory it sits in.
 

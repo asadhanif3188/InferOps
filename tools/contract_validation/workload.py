@@ -23,6 +23,7 @@ documents that live in this repository.
 
 from __future__ import annotations
 
+import copy
 import json
 import math
 import re
@@ -32,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError
 
 from .errors import Finding, finding
 
@@ -80,17 +82,37 @@ _KEYWORD_RULES: dict[str, str] = {
 }
 
 _REQUIRED_NAME = re.compile(r"'([^']+)' is a required property")
+# Unexpected property names are read back out of the validator's own message, which
+# embeds each one through repr(). A name containing an apostrophe makes repr() switch
+# to double quotes and this pattern miss it; the effect is a coarser field location
+# for that one name, never a wrong one.
 _QUOTED_NAME = re.compile(r"'([^']+)'")
+_DIGIT_RUN = re.compile(r"(\d+)")
 
 
 @lru_cache(maxsize=1)
-def load_schema() -> dict[str, Any]:
+def _cached_schema() -> dict[str, Any]:
     return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
 @lru_cache(maxsize=1)
-def load_compatibility_matrix() -> dict[str, Any]:
+def _cached_compatibility_matrix() -> dict[str, Any]:
     return json.loads(COMPATIBILITY_MATRIX_PATH.read_text(encoding="utf-8"))
+
+
+def load_schema() -> dict[str, Any]:
+    """The published schema, parsed. Each caller gets its own copy.
+
+    The parse is cached; the result is not shared. A caller that mutated a shared
+    document would change what every later validation in the same process decides,
+    which is precisely the non-determinism this module promises not to have.
+    """
+    return copy.deepcopy(_cached_schema())
+
+
+def load_compatibility_matrix() -> dict[str, Any]:
+    """The published runtime and model matrix, parsed, copied per caller."""
+    return copy.deepcopy(_cached_compatibility_matrix())
 
 
 def _validator() -> Draft202012Validator:
@@ -109,7 +131,7 @@ def _permitted(values: Any) -> str:
     return json.dumps(values)
 
 
-def _safe_message(error: Any) -> str:
+def _safe_message(error: ValidationError) -> str:
     """Describe a structural failure without quoting anything from the document.
 
     The validator's own message embeds the offending value. That is helpful in a
@@ -155,17 +177,38 @@ def _safe_message(error: Any) -> str:
     return "value violates a structural constraint of this contract version"
 
 
-def _is_property_name_error(error: Any) -> bool:
+def _is_property_name_error(error: ValidationError) -> bool:
     """True when the failure is about a key rather than about a value.
 
     A `propertyNames` subschema is descended into, so the error that surfaces
-    carries the inner keyword - `pattern`, usually - and nothing in `validator`
-    says the instance is a key. The schema path is what says it.
+    carries the inner keyword - `pattern` or `maxLength` - and nothing in
+    `validator` says the instance is a key. The schema path is what says it.
     """
     return "propertyNames" in list(error.schema_path)
 
 
-def _fields_for(error: Any) -> list[str]:
+#: A property name longer than this is not a name anybody chose. `metadata.
+#: annotations` is the contract's one open map, so its keys are as
+#: author-controlled as any value, and a pasted token is a realistic mistake in a
+#: free-text key. Beyond this bound the key is not echoed back.
+_MAX_ECHOED_KEY_LENGTH = 64
+
+
+def _safe_to_echo(key: str) -> bool:
+    """Whether an offending property name can be repeated in a field location.
+
+    A closed object's keys come from a fixed vocabulary and are always safe. The
+    annotations map is open, so the same judgement the semantic layer applies to a
+    secret locator is applied here - not as a validation rule, the verdict is
+    already decided, but as a redaction rule on what the refusal is allowed to say.
+    """
+    return (
+        len(key) <= _MAX_ECHOED_KEY_LENGTH
+        and looks_like_a_pasted_credential(key) is None
+    )
+
+
+def _fields_for(error: ValidationError) -> list[str]:
     """Where the failure is, one entry per field the error actually names."""
     base = error.json_path
     if error.validator == "required":
@@ -173,22 +216,34 @@ def _fields_for(error: Any) -> list[str]:
         return [f"{base}.{match.group(1)}"] if match else [base]
     if error.validator in ("additionalProperties", "unevaluatedProperties"):
         names = sorted(set(_QUOTED_NAME.findall(error.message)))
-        return [f"{base}.{name}" for name in names] or [base]
+        return [f"{base}.{name}" for name in names if _safe_to_echo(name)] or [base]
     if _is_property_name_error(error) and isinstance(error.instance, str):
         # The instance under a propertyNames constraint is the offending key
         # itself. Naming it turns "something in annotations is wrong" into an
-        # address. A key is a field name, never a value, so printing it is safe.
-        return [f"{base}.{error.instance}"]
+        # address, which is worth having whenever the key can be repeated safely.
+        return [f"{base}.{error.instance}"] if _safe_to_echo(error.instance) else [base]
     return [base]
+
+
+def _rule_for(error: ValidationError) -> str:
+    """Which published rule refused this, given a JSON Schema keyword."""
+    if error.json_path == "$.apiVersion" and error.validator == "const":
+        return "contract-version-unsupported"
+    if _is_property_name_error(error):
+        # Every constraint inside a propertyNames subschema - pattern, maxLength,
+        # type - is one rule to a reader: the key is not a well-formed name. Taking
+        # the rule from the inner keyword instead would let a key that is both too
+        # long and badly shaped be refused twice, under two rule identifiers, with
+        # the same message under each.
+        return "value-malformed"
+    return _KEYWORD_RULES.get(error.validator, "contract-structure-invalid")
 
 
 def structural_findings(document: Any) -> list[Finding]:
     """Findings from the published schema, translated into canonical rules."""
     findings: list[Finding] = []
     for error in _validator().iter_errors(document):
-        rule = _KEYWORD_RULES.get(error.validator, "contract-structure-invalid")
-        if error.json_path == "$.apiVersion" and error.validator == "const":
-            rule = "contract-version-unsupported"
+        rule = _rule_for(error)
         message = _safe_message(error)
         findings.extend(finding(rule, field, message) for field in _fields_for(error))
     return findings
@@ -296,7 +351,14 @@ def looks_like_a_pasted_credential(value: str) -> str | None:
 
 
 def _artifact_format(filename: str, matrix: dict[str, Any]) -> str | None:
-    for extension, name in sorted(matrix["artifactFormats"].items()):
+    # Longest extension first, so that adding a compound one - `.tar.gz` beside
+    # `.gz`, `.q4.bin` beside `.bin` - selects the specific format rather than
+    # whichever happened to sort first. Alphabetical order would be a silent
+    # mis-selection the day the matrix gains an overlapping pair.
+    formats = sorted(
+        matrix["artifactFormats"].items(), key=lambda kv: (-len(kv[0]), kv[0])
+    )
+    for extension, name in formats:
         if filename.lower().endswith(extension):
             return name
     return None
@@ -466,15 +528,31 @@ def semantic_findings(document: Any) -> list[Finding]:
 # --------------------------------------------------------------------------
 
 
+def _sort_key(found: Finding) -> tuple[object, ...]:
+    """Order findings by field, reading array indices as numbers rather than text.
+
+    Plain string ordering puts `secretRefs[10]` before `secretRefs[2]`, which is
+    stable but reads as wrong, and the reason to sort at all is that a reader can
+    follow the result.
+    """
+    parts = tuple(
+        int(part) if part.isdigit() else part for part in _DIGIT_RUN.split(found.field)
+    )
+    return (parts, found.rule, found.code, found.message)
+
+
 def validate(document: Any) -> list[Finding]:
     """Validate one contract document. Returns findings, sorted, possibly empty.
 
     Sorting is part of the contract this function offers: two runs over the same
     document return the same list in the same order, so a result is quotable in a
-    review and comparable in a test.
+    review and comparable in a test. Identical findings are collapsed, because a
+    reason given twice is not two reasons.
     """
-    return sorted([*structural_findings(document), *semantic_findings(document)])
+    found = {*structural_findings(document), *semantic_findings(document)}
+    return sorted(found, key=_sort_key)
 
 
 def is_valid(document: Any) -> bool:
+    """True when validate() finds nothing to refuse."""
     return not validate(document)
