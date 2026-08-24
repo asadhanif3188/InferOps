@@ -194,11 +194,26 @@ thing only a diff review catches.
 
 ## Review pass
 
-This change was reviewed a second time after it was written, against the evidence
-it cites rather than against itself. What that pass found is recorded in
-[the feasibility record's corrections section](v1-s0-003-pr2-runtime-feasibility.md#failures-surprises-and-corrections),
-including a verdict-table figure that had been written before the measurement
-existed and was replaced with the measured value.
+This change was reviewed a second time after it was written and committed, against
+the evidence it cites rather than against itself. The pass was told to look for
+figures that disagree between files, claims stronger than one trial supports,
+status blurring, leakage, and manifests whose comments describe behaviour they do
+not have.
+
+It found **four defects, all real**, and they are recorded in full in
+[the feasibility record's corrections section](v1-s0-003-pr2-runtime-feasibility.md#failures-surprises-and-corrections):
+one figure that disagreed with its own derivation, one verdict claiming a larger
+sample than was measured, and two cases of a document describing a correction that
+the manifest beside it had never received.
+
+The last two are the useful ones, and they share a shape. In both, the prose was
+correct about what *should* be true and the artifact had not been updated to match,
+so the two halves of the change disagreed while each looked right on its own. That
+is not a class of defect a link checker, a schema validator, or a whitespace check
+can find, and it is the argument for the second pass existing at all.
+
+It found no leakage, no status blurring, and no overclaiming in `README.md` or
+`docs/prerequisites.md`.
 
 ## Limitations
 

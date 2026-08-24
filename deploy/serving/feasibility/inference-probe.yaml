@@ -9,6 +9,13 @@
 #
 # The job collects the evidence for T5, T7, and T9 in one pass so that all
 # three describe the same running process rather than three separate ones.
+#
+# T9 needs two batches, not one, and the reason is worth stating. The threshold
+# is written against a 128-token completion. Asking this model a short question
+# produces a correct answer in far fewer tokens than that, so the natural batch
+# measures something T9 was not written about. The second batch sets
+# `ignore_eos` so the runtime must emit the full budget, which is the only way
+# to test the threshold as written rather than a smaller thing that resembles it.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -75,6 +82,23 @@ spec:
                   --post-data "${req}" \
                   "${base}/v1/chat/completions"
                 cat /tmp/resp.json
+                echo
+              done
+
+              # T9 as written: a full 128-token completion. `ignore_eos` stops the
+              # runtime ending early, so the budget is actually spent. Without
+              # this the threshold would be reported as met on a 23-token sample.
+              forced='{"model":"qwen3-1.7b-q8_0","messages":[{"role":"user","content":"In one sentence, what is Kubernetes?"}],"temperature":0,"max_tokens":128,"ignore_eos":true,"chat_template_kwargs":{"enable_thinking":false}}'
+
+              echo
+              echo "=== POST /v1/chat/completions, forced 128 tokens, three runs ==="
+              for run in 1 2 3; do
+                echo "--- forced-128 run ${run} ---"
+                time wget -q -O /tmp/forced.json \
+                  --header 'Content-Type: application/json' \
+                  --post-data "${forced}" \
+                  "${base}/v1/chat/completions"
+                cat /tmp/forced.json
                 echo
               done
 

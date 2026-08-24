@@ -50,12 +50,12 @@ before this run are material, and neither is buried:
 |---|---|---|---|
 | T1 licence | **Met** | Runtime MIT; model Apache-2.0. Both licence texts read in full on 2026-08-24 | No acceptable-use policy, field-of-use limit, user-count clause, or download gate in either |
 | T2 immutable pins | **Met** | Image `sha256:100de626…`, read back from the running pod; model revision `90862c4b…`; weight SHA-256 verified after download | The pin was verified against what ran, not against what was requested |
-| T3 memory fit | **Met** | Pod 2.167 GiB against a 3.0 GiB limit; container VM ~3.75 GiB of 7.60 GiB | Only 555 MiB of the pod figure is anonymous. See [the memory reading](#the-memory-figure-is-not-what-it-looks-like) |
+| T3 memory fit | **Met** | Pod 2.167 GiB against a 3.0 GiB limit; container VM ~3.83 GiB of 7.60 GiB | Only 555 MiB of the pod figure is anonymous. See [the memory reading](#the-memory-figure-is-not-what-it-looks-like) |
 | T4 disk fit | **Met** | 1.71 GiB weights + 293.0 MiB image = ~2.0 GiB added, against an 8 GB budget | Host free space did not fall below the 5 GB floor at any point |
 | T5 API shape | **Met** | `choices[0].message.content`, `model`, and `usage` token counts all present | `GET /v1/models` reports the pinned model |
 | T6 readiness semantics | **Met** | Kubelet recorded `Startup probe failed: HTTP probe failed with statuscode: 503` during load; 0 restarts across 7 starts | The three-probe mapping ADR 0002 proposed works as proposed |
 | T7 metrics | **Not met as written** | Token counters present; **no cumulative request counter** — only `requests_processing` and `requests_deferred` gauges | Blocking. See [T7](#t7-metrics-the-one-threshold-that-failed) |
-| T8 startup | **Met** | Worst case 14 s; best 5 s, across seven process-fresh starts | Targets were 180 s and 90 s. A page-cache-cold start could not be produced on this host; see [failures](#failures-surprises-and-corrections) |
+| T8 startup | **Met** | Worst case 14 s, best 5 s, across the four starts that were timed | Targets were 180 s and 90 s. A page-cache-cold start could not be produced on this host; see [failures](#failures-surprises-and-corrections) |
 | T9 latency floor | **Met** | 128-token completion, worst case 14.52 s, decode 8.81 tokens/s | Targets were 120 s and 2 tokens/s |
 | T10 packaging and cleanup | **Met** | Non-root uid 65534, no privilege escalation, all capabilities dropped, read-only root, no host mount; scoped teardown left no residue | Writable layer used 12,288 bytes across the whole run |
 | T11 no credential required | **Met** | Every artifact fetched anonymously; no account, key, or licence acceptance at any point | |
@@ -235,6 +235,11 @@ during resource measurement — seven in total.** That is the `T6` result that
 matters most: the probe mapping ADR 0002 proposed keeps a slow load from
 restarting the pod.
 
+Load *times* were captured for the four starts in the table only. The three further
+starts were observed for restart count alone, so the 14 s and 5 s figures describe
+four measurements and not seven. The zero-restart result is the one that covers
+all seven.
+
 The not-ready transition was captured directly from the control plane rather than
 by polling:
 
@@ -322,7 +327,28 @@ rather than assumed.
 Those three stopped naturally at 23 tokens, so they do **not** exercise the
 "128-token completion" that `T9` is written against. Rather than report a
 128-token threshold as met on a 23-token sample, the threshold was tested
-directly, by setting `ignore_eos` so the runtime must emit the full budget:
+directly, by setting `ignore_eos` so the runtime must emit the full budget.
+
+Those runs were issued from a separate pod in the same namespace, using the same
+image, the same non-root security context, and the same Service URL, against the
+same running server. The request differed from the one above by exactly one field:
+
+```json
+{"model":"qwen3-1.7b-q8_0",
+ "messages":[{"role":"user","content":"In one sentence, what is Kubernetes?"}],
+ "temperature":0,"max_tokens":128,"ignore_eos":true,
+ "chat_template_kwargs":{"enable_thinking":false}}
+```
+
+Reported `usage` and `timings` from the first of those runs, verbatim:
+
+```json
+"usage":{"completion_tokens":128,"prompt_tokens":20,"total_tokens":148,
+ "prompt_tokens_details":{"cached_tokens":19}},
+"timings":{"cache_n":19,"prompt_n":1,"prompt_ms":195.592,
+ "predicted_n":128,"predicted_ms":13796.474,
+ "predicted_per_second":9.205250558947164}
+```
 
 | Run | Wall clock | Completion tokens reported | Derived decode rate |
 |---:|---:|---:|---:|
@@ -337,6 +363,19 @@ The decode rate is derived from the runtime's reported token counts and the
 measured wall clock. It describes one model, one quantisation, one host, one
 thread count, and one day. **It is not a benchmark and must not be published as
 one.**
+
+Two gaps in this stage are stated rather than left to be noticed:
+
+- **The completion text of the forced runs was not retained**, only their `usage`
+  and `timings`. `T9` is a threshold on token count and elapsed time, so the
+  retained fields are the ones it is judged on — but the workflow asks for the
+  full response verbatim, and for these three runs that was not done.
+- **The forced runs were issued ad hoc**, from a pod created by hand rather than
+  from a manifest in this repository. That made the measurement unreproducible
+  from the repository alone. `deploy/serving/feasibility/inference-probe.yaml`
+  now performs both batches, so a re-run reproduces the figure this verdict rests
+  on; the committed manifest is therefore ahead of what was executed, and that is
+  recorded here rather than presented as though the run had used it.
 
 Response shape against `T5`: `choices[0].message.content` **present** and
 non-empty; `model` **present**; `usage` token counts **present**, carrying
@@ -567,11 +606,22 @@ Six things went wrong or came out differently than the plan assumed.
    `T8`'s 14 s worst case should be read as a floor rather than as the worst a
    first-ever start can do.
 
-One further correction belongs here because it was caught in review of this record
-rather than in the run: an earlier draft of the verdict table carried a cold-start
-figure that had been written before the measurement existed. It was replaced with
-the measured values above. The check that caught it is the reason the template
-forbids leaving placeholders in a filled record.
+Five further corrections belong here because they were caught reviewing this record
+rather than by running the trial. They are listed because a review that found
+nothing would have been a review not worth running:
+
+| Found in review | Correction |
+|---|---|
+| The verdict table carried a cold-start figure written **before** the measurement existed | Replaced with the measured values. The template forbids placeholders in a filled record precisely so this cannot survive |
+| The verdict table gave whole-VM use as ~3.75 GiB while Stage 7 derived ~3.83 GiB from the same reading | Both now read ~3.83 GiB, the figure the arithmetic in Stage 7 actually produces |
+| `T8`'s verdict claimed a 14 s / 5 s range "across seven process-fresh starts". Only four starts were timed; the other three were observed for restart count | Narrowed to the four that were timed. The zero-restart result still covers all seven |
+| The acquisition manifest still carried the 30-minute wall-clock deadline that this record describes as the *wrong* bound for a bulk transfer | The manifest now carries the corrected bound, and says in place that the run executed with the old one |
+| The committed probe job did not perform the forced 128-token runs that `T9`'s verdict rests on, while its own comment claimed it collected the `T9` evidence | The job now performs both batches, and Stage 5 records that the executed runs were ad hoc and that their completion text was not retained |
+
+The fourth and fifth of those are the ones worth dwelling on. Both are cases where
+a **document described a correction that the artifact beside it had not received**,
+so a reader trusting the prose would have been misled by the manifest, and a reader
+trusting the manifest would have been misled by the prose.
 
 ## Limitations
 

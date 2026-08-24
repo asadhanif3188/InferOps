@@ -59,7 +59,13 @@ spec:
   # host, and a job that succeeded on its third attempt would leave three pods
   # whose logs disagree about what happened.
   backoffLimit: 0
-  activeDeadlineSeconds: 1800
+  # The transfer runs at roughly 1 MiB/s from the reference host, so 1.71 GiB
+  # needs about twenty minutes of wall clock before a single retry is counted.
+  # The workflow's 30-minute stage bound was written for an unbounded wait on a
+  # state change, not for a bulk transfer whose size is already capped by T4.
+  # The 2026-08-24 run executed with 1800 here and finished inside it; this
+  # larger bound is the correction that run produced, not the value it used.
+  activeDeadlineSeconds: 5400
   template:
     metadata:
       labels:
