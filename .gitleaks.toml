@@ -1,0 +1,61 @@
+# Gitleaks configuration for InferOps
+# This file defines exceptions for test fixtures and synthetic credentials
+# that are deliberately used in validation tests but do not authenticate against anything
+
+[allowlist]
+# Paths containing test fixtures and synthetic credentials used to prove validation behavior
+paths = [
+    "tests/contracts/",
+    "docs/proof/",
+]
+
+# AWS placeholder keys from AWS documentation
+# These are not real keys - they are the official examples used in AWS docs
+[[allowlist.regexes]]
+description = "AWS official placeholder access key (AKIA pattern)"
+regex = "AKIAIOSFODNN7EXAMPLE"
+
+[[allowlist.regexes]]
+description = "AWS official placeholder session credential (ASIA pattern)"
+regex = "ASIAIOSFODNN7EXAMPLE"
+
+# Synthetic credentials with trailing zeros - deliberately fake test values
+# These follow credential format prefixes but use zero-padding to ensure
+# they cannot authenticate against any real service
+
+[[allowlist.regexes]]
+description = "GitHub PAT synthetic test value (all zeros)"
+regex = "ghp_[0]{34}"
+
+[[allowlist.regexes]]
+description = "GitHub PAT (new format) synthetic test value"
+regex = "github_pat_[0]{26}"
+
+[[allowlist.regexes]]
+description = "GitLab PAT synthetic test value"
+regex = "glpat-[0]{20}"
+
+[[allowlist.regexes]]
+description = "Hugging Face synthetic test value"
+regex = "hf_[0]{36}"
+
+[[allowlist.regexes]]
+description = "Slack bot synthetic test value"
+regex = "xoxb-[0]{12}-[0]{12}-[0]{6}"
+
+[[allowlist.regexes]]
+description = "OpenAI API key synthetic test value"
+regex = "sk-[0]{34}"
+
+[[allowlist.regexes]]
+description = "Google API key synthetic test value"
+regex = "AIza[0]{33}"
+
+[[allowlist.regexes]]
+description = "JWT header (unsigned, universally published)"
+regex = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+
+# Synthetic credential in path format used for testing path-based credential detection
+[[allowlist.regexes]]
+description = "Synthetic credential in path format for testing"
+regex = "inferops/telemetry/[A-Za-z0-9]{30}"
