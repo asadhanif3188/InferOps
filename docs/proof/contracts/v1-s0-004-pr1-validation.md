@@ -110,11 +110,48 @@ gaps rather than to discover it:
 | Accepted today | Why | Owner |
 |---|---|---|
 | `minimumReplicas: 5`, `maximumReplicas: 2` | JSON Schema cannot compare two sibling values | Second pull request |
-| A base64-shaped string in a secret locator | Indistinguishable from a short opaque locator without heuristics | Second pull request |
+| An **unpadded** base64 string in a secret locator, and any alphanumeric credential | Not distinguishable from a locator without heuristics. Padded base64 is mostly rejected already — see below | Second pull request |
 | A model and runtime pair that does not go together | Needs a compatibility matrix that does not exist | Second pull request |
 
 Publishing this table is the point of the check: a rule stated in a document and
 not applied by the schema is worth less than a rule stated as unenforced.
+
+### The secret-locator gap, measured
+
+A second-eye review of this change objected that the base64 row above was too
+coarse, and it was right. The claim was checked rather than argued, against the
+locator pattern the schema actually applies:
+
+```text
+pattern: ^[A-Za-z0-9][A-Za-z0-9._:/#-]*$
+```
+
+That character set excludes `+` and `=` — the 63rd symbol and the padding of the
+standard base64 alphabet. Four hundred random secrets of 16-32 bytes were encoded
+and tested against it:
+
+| Input | Passes the locator pattern |
+|---|---:|
+| Standard base64, with padding | **71 / 400** |
+| Base64 of a length that is a multiple of three, so unpadded | **279 / 400** |
+| `aHVudGVyMg==` | rejected |
+| `s3cr3t+val/ue=` | rejected |
+| An AWS-style access key ID | **passes** |
+| A GitHub-style alphanumeric token | **passes** |
+
+Two corrections follow, and both are now in
+[the contract document](../../contracts/workload-contract.md). The schema is
+**stricter** than the earlier wording admitted: most padded base64 already fails
+today, by pattern, not by future work. And it is **weaker** where it matters more:
+any alphanumeric credential passes untouched, and several widely used credential
+formats are alphanumeric by construction.
+
+The one-off mutation that was recorded as accepted used `aHVudGVyMg` without
+padding, which is in the 279. The row above is corrected to say so rather than to
+imply that base64 passes generally.
+
+This is why the check was run instead of asserted. The original sentence was
+defensible, sounded careful, and was wrong in both directions at once.
 
 ### Whitespace, blanks, and hard tabs
 

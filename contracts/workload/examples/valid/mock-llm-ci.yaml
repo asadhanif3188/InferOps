@@ -46,7 +46,7 @@ spec:
 
   attribution:
     tenant: demo
-    costCenter: portfolio
+    costCenter: demo-cost-center
 
   evidence:
     runbookRef: docs/serving/mock-and-real-boundary.md

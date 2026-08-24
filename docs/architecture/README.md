@@ -49,8 +49,8 @@ toolchain, which remain open.
 
 Records live in [decisions/](decisions/) as `ADR-NNNN-short-slug.md`, where `NNNN`
 is a zero-padded four-digit sequence number, numbered in the order they are
-proposed. A number is never reused, and a withdrawn record is kept
-and marked rather than deleted.
+proposed. A number is never reused, and a withdrawn record is kept and marked
+rather than deleted.
 
 Each record states its status, the date it was proposed, the date it was accepted if
 it was, its decision owner, the alternatives that were compared, the consequences of

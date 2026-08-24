@@ -155,13 +155,27 @@ into, and adding one is a schema change that goes through review. The `reference
 field is additionally constrained to a locator character set with no whitespace,
 quotes, or assignment characters.
 
-**What that does not do**, stated so that nobody relies on more than exists: a
-base64 blob is a valid string in that character set. The schema cannot tell a
-locator from a short opaque secret that happens to look like one. Detecting that is
-a semantic check with heuristics behind it, it belongs to the validator rather than
-the schema, and it is the second pull request's work. Until it lands, the defence
-against a pasted secret is the closed-object rule plus review — and this paragraph
-exists so that the gap is visible rather than assumed away.
+**What that does not do** is worth measuring rather than hand-waving, because the
+answer is not the obvious one in either direction.
+
+The locator character set excludes `+` and `=`, which are exactly the two
+characters standard base64 uses for its 63rd symbol and its padding. Over 400
+random secrets of 16-32 bytes, base64-encoded with padding, **71 passed the pattern
+and 329 were rejected** — so most of a pasted base64 blob already fails today. Drop
+the padding by choosing an input length that is a multiple of three and it inverts:
+**279 of 400 pass**.
+
+The larger hole is not base64 at all. **Any alphanumeric credential passes**, and
+many real ones are alphanumeric by construction — an AWS access key ID and a
+GitHub-style token both validate against this pattern without a character out of
+place.
+
+So the honest summary is: the pattern is a partial filter that happens to catch
+padded base64, and it is no defence at all against the credential formats most
+likely to be pasted. Closing it needs a semantic check with heuristics behind it,
+which belongs to the validator rather than the schema and is the second pull
+request's work. Until then the real defence is the closed-object rule plus review,
+and this paragraph exists so that nobody mistakes an incidental filter for one.
 
 Secrets must not appear in logs, traces, metrics, evidence, or screenshots. Local
 development should use synthetic credentials.
@@ -264,7 +278,7 @@ enforced when it is not.
 | Replica range where minimum exceeds maximum | `contract-invalid` | **Not yet.** Validator; second pull request |
 | Model and runtime combination known to be incompatible | `contract-invalid` | **Not yet.** Validator; second pull request |
 | Undeclared required capability | `contract-invalid` | **Not yet.** Requires a capability registry that does not exist |
-| A secret value pasted into `reference` | `contract-invalid` | **Not yet.** Validator; second pull request |
+| A secret value pasted into `reference` | `contract-invalid` | **Partly.** The locator pattern rejects `+` and `=`, so most padded base64 fails; an alphanumeric credential still passes. Validator; second pull request |
 | Policy exception without owner, reason, and expiry | `contract-invalid` | **Not yet.** No policy contract exists |
 
 Canonical error bodies carry `code`, a safe `message`, `requestId`,

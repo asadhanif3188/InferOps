@@ -160,8 +160,8 @@ constrains how the first schema is written, which lands in
 
 ## Evidence
 
-Documented and executed, on 2026-08-24, on the same Windows host as the earlier
-Sprint 0 records:
+Documented and executed, on 2026-08-24, on the same Windows host as every earlier
+record in this repository:
 
 | Component | Version |
 |---|---|

@@ -49,7 +49,10 @@ once versioned releases begin.
 - A contract-package changelog, versioned separately from the project.
 - A change-validation record for this change, including a thirty-four-mutation
   rejection spot check whose three accepted mutations are the three rules the
-  contract document already declares unenforced.
+  contract document already declares unenforced, and a measurement of how much of
+  the secret-locator gap the schema's pattern already closes — which turned out to
+  be more than the first draft claimed for padded base64 and less than it claimed
+  for alphanumeric credentials.
 - Public repository purpose and status without functional capability claims.
 - MIT license and contribution, review, commit, conduct, and release conventions.
 - Public indexes for prerequisites, contracts, architecture decisions, and governance.
