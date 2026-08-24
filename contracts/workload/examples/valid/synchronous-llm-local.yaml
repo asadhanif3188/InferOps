@@ -1,0 +1,67 @@
+# A synchronous-llm workload bound to the runtime image digest and model revision
+# selected in ADR 0002. Every pinned value below is copied from that record, so a
+# drift between this fixture and the accepted decision is a test failure rather
+# than something a reader has to notice.
+#
+# This is a contract example. It is not a deployable workload: no serving path,
+# controller, or adapter exists in this repository that would act on it.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: support-assistant
+  version: 0.1.0
+  owner: team-platform-demo
+  description: Example synchronous LLM workload used to exercise the v1alpha1 contract.
+
+spec:
+  profile: synchronous-llm
+  environment: local
+
+  model:
+    servingCapability: inferops-native-serving
+    modelRef: qwen3-1-7b-q8-0
+    runtimeProfile: resource-conscious
+
+  resources:
+    # Matched to the request and limit the feasibility trial actually ran under.
+    cpu: "6"
+    memory: 3Gi
+    accelerator:
+      type: none
+      count: 0
+
+  scaling:
+    minimumReplicas: 1
+    maximumReplicas: 1
+
+  integrations:
+    # No model-access or evaluation capability exists in V1, so neither is
+    # declared. Declaring a dependency on something that does not exist would be
+    # the same overclaim this contract is meant to prevent.
+    telemetry:
+      capabilityRef: platform-telemetry
+      required: true
+
+  security:
+    dataClassification: internal
+    secretRefs: []
+
+  attribution:
+    tenant: demo
+    costCenter: demo-cost-center
+
+  evidence:
+    runbookRef: docs/serving/feasibility-workflow.md
+    proofRefs:
+      - docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md
+
+  synchronousLlm:
+    runtime:
+      imageReference: ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+    modelArtifact:
+      repository: Qwen/Qwen3-1.7B-GGUF
+      revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+      file: Qwen3-1.7B-Q8_0.gguf
+      sizeBytes: 1834426016
+      sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a

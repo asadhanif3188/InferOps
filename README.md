@@ -5,9 +5,10 @@ workloads easier to describe, operate, and evaluate through explicit contracts a
 reproducible evidence.
 
 > [!IMPORTANT]
-> This repository provides governance documentation and a local development
-> environment. It does not provide a deployable platform, a supported workload
-> contract, a serving runtime, or a released V1 capability.
+> This repository provides governance documentation, a local development
+> environment, and one published workload contract schema. It does not provide a
+> deployable platform, a serving runtime, or a released V1 capability. The contract
+> describes a workload; nothing here reads one.
 >
 > A serving runtime and model **have** now been selected and proven once, on one
 > host, under
@@ -32,8 +33,9 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 | Local development cluster | [docs/environment/local-cluster.md](docs/environment/local-cluster.md) | Executed and evidenced on one Windows host |
 | Serving runtime and model feasibility | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Procedure executed once; one runtime and model revision selected |
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
-| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | No public contract accepted yet |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision accepted in part, one accepted with a recorded exception |
+| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; no component consumes it |
+| Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, fixtures, versioning and compatibility rules published |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision accepted in part, one accepted with a recorded exception, one accepted |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | Unreleased changes only |
