@@ -198,6 +198,39 @@ build. Two structural rules deliberately have no fixture, and
 why. A valid fixture is never edited to make a change pass: a change that would
 invalidate one is breaking by definition.
 
+### Architecture ownership inventory
+
+Changes under `docs/architecture/` or `tests/architecture/` must pass the
+architecture suite:
+
+```sh
+python -m pytest tests/architecture -q
+```
+
+It reads only files in this repository and needs `pytest` alone. It checks the
+committed ownership inventory
+[`docs/architecture/resource-ownership.v1alpha1.json`](docs/architecture/resource-ownership.v1alpha1.json):
+that every resource has exactly one owner, that the Terraform and Helm sets do not
+intersect, that each resource's lifecycle is one its owner actually has, that no
+resource claims to survive the operation that destroys it, that a survival list is a
+prefix of the teardown blast-radius ordering, that prerequisites outlive releases and
+release resources do not outlive prerequisites, that a derived resource has no tool
+owner, that a resource with no owner is deferred out of V1, that evidence is cited
+only by rows marked implemented, and that
+[the ownership document](docs/architecture/resource-ownership.md) and the data
+publish the same identifiers in both directions.
+
+It checks a design commitment, not an implementation. No Terraform configuration
+and no Helm chart exists, so nothing here can establish that the inventory
+describes them. A change that adds a resource adds a row; a change that moves one
+between owners is an architecture change and needs
+[ADR 0004](docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
+updated with it.
+
+A change touching components, ownership, deployment, telemetry, trust boundaries,
+or scope also works through
+[the boundary review checklist](docs/architecture/boundary-review-checklist.md).
+
 ### Kubernetes manifests
 
 Changes under `deploy/` must parse and must validate against the Kubernetes version

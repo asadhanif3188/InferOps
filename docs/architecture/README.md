@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established; one decision accepted in part, one accepted with a
+Status: entry point established; two decisions accepted in part, one accepted with a
 recorded exception, one accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
@@ -8,11 +8,23 @@ owner, alternatives, consequences, compatibility impact, and supporting evidence
 Superseded decisions remain available and link to their replacement.
 
 The local development and Kubernetes environment is partly settled, a model and
-serving runtime are now selected on executed proof, and the schema language and
-validation approach behind the first public contract are settled. No infrastructure
-ownership boundary or application architecture is selected yet. A proposed decision
-record is a subject for review, not a supported capability, and must not be
-implemented against as though it were settled.
+serving runtime are now selected on executed proof, the schema language and
+validation approach behind the first public contract are settled, and the component
+and resource-ownership boundaries are now decided for components that do not exist
+yet. A proposed decision record is a subject for review, not a supported capability,
+and must not be implemented against as though it were settled.
+
+## Architecture documents
+
+These describe the V1 design. Every component below the contract layer is unbuilt.
+
+| Document | What it covers |
+|---|---|
+| [System architecture](system-architecture.md) | Context, components, inference request flow, deployment flow, telemetry and evidence flow, trust boundaries |
+| [Resource ownership](resource-ownership.md) | Which tool owns which resource, with lifecycle and handoff rules |
+| [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) | The authoritative form of that inventory, validated by `tests/architecture/` |
+| [Project boundaries](project-boundaries.md) | Where this project stops, and what belongs to gateway or deeper serving work instead |
+| [Boundary review checklist](boundary-review-checklist.md) | The questions a reviewer applies to all of the above |
 
 ## Decision records
 
@@ -21,11 +33,14 @@ implemented against as though it were settled.
 | [0001](decisions/ADR-0001-local-development-environment.md) | Local development and Kubernetes environment | Accepted in part | 2026-08-23 | [Host inventory](../proof/environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke proof](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
 | [0002](decisions/ADR-0002-model-and-serving-runtime.md) | Model and serving runtime | Accepted, with one recorded exception | 2026-08-24 | [Runtime feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
 | [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
+| [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
 and minimum host tier are accepted; the task runner, dependency installation
-approach, and recommended host tier are not.
+approach, and recommended host tier are not. In 0004, six decisions are accepted
+and one — who owns telemetry collection and an ingress or load-balancer
+implementation — is explicitly not made.
 
 0002 selects one runtime image digest and one immutable model revision, on evidence
 from a trial that was executed on 2026-08-24: a model was downloaded and
@@ -44,6 +59,17 @@ same trial amended in four places where running it showed the procedure was wron
 off-the-shelf conformant validator, and no code generation in V1. It deliberately
 does **not** select the repository-wide Python, packaging, or continuous-integration
 toolchain, which remain open.
+
+0004 decides boundaries for components that do not exist. It fixes the component
+decomposition and which direction dependencies may point, puts the serving runtime
+in its own deployment rather than a sidecar, splits resource ownership so that
+Terraform owns what outlives a release and Helm owns the release, makes the model
+cache a prerequisite, maps five trust boundaries without implementing a single
+control, and states where this project stops. The ownership half is committed as
+data and checked by a test; the component half has no code to check it against.
+**One decision inside it is deliberately not made**: nobody owns a telemetry
+collector or an ingress implementation, and both are deferred rather than assigned
+for tidiness.
 
 ## Conventions
 
