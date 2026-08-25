@@ -76,6 +76,14 @@ Run the smallest complete check set available for the changed files. No reposito
 task runner, linter, or continuous-integration lane is selected yet, so the checks
 below are run manually until those tooling decisions are accepted and published.
 
+Which check proves which public claim, where each one is allowed to run, and what a
+passing result may be used to certify are settled in
+[the test and CI strategy](docs/testing/test-strategy.md) and
+[ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
+Read them before adding a test, and read
+[the certification levels](docs/testing/certification.md) before citing one as
+evidence.
+
 Documentation changes require, at minimum, a clean whitespace check:
 
 ```text
@@ -231,6 +239,73 @@ A change touching components, ownership, deployment, telemetry, trust boundaries
 or scope also works through
 [the boundary review checklist](docs/architecture/boundary-review-checklist.md).
 
+### Test lanes and markers
+
+[`pytest.ini`](pytest.ini) registers a marker for every test layer the strategy
+defines, refuses an unregistered one, and deselects by default every marker belonging
+to a layer that needs a cluster or a model. Running pytest with no marker expression
+is therefore the default lane, and it downloads no model and touches no cluster:
+
+```sh
+python -m pytest -q
+```
+
+Selecting one layer, or opting into one that the default lane excludes, is a marker
+expression:
+
+```sh
+python -m pytest -m contract -q
+python -m pytest -m realruntime -q
+```
+
+`unit`, `adapter`, `mockintegration`, `cluster`, `realruntime`, `failure`, and `load`
+currently select nothing, because the layers behind them have no code yet. That is
+the intended state: the marker exists so that the first test of its kind is written
+under it rather than into whichever suite was already open.
+
+A new test module belongs to exactly one layer and declares that layer's marker at
+module level:
+
+```python
+pytestmark = pytest.mark.contract
+```
+
+A module under a layer's declared paths that omits its marker fails the strategy
+suite, because a marker nothing is marked with selects nothing, silently.
+
+Adding a test that needs a cluster or a model means adding it to a layer outside the
+default lane. Adding a public claim means adding a row to
+[the claim and test matrix](docs/testing/claim-test-matrix.md) with a test layer, an
+environment, a required certification level, and an evidence owner; a claim with none
+of those fails the build.
+
+### Test strategy and certification
+
+Changes under `docs/testing/`, `tests/testing/`, or `pytest.ini` must pass the
+strategy suite:
+
+```sh
+python -m pytest tests/testing -q
+```
+
+It reads only files in this repository and needs `pytest` alone. It checks the
+committed strategy
+[`docs/testing/test-strategy.v1alpha1.json`](docs/testing/test-strategy.v1alpha1.json):
+that every claim names a test layer, an environment, and an evidence owner; that no
+layer certifies above the ceiling its evidence class allows, so a mock cannot support
+a C2 claim; that no C2-or-above claim is satisfied by a mock, a simulation, or an
+estimate; that no layer needing a cluster or a model sits in the default lane; that
+every marker belonging to such a layer is deselected by the committed default
+expression and no default-lane marker is; that every module under a layer's paths
+carries its marker; that a claim cites evidence only when it is certified and only
+from layers that are implemented; that a lane claims automation only by naming a
+workflow file that exists; and that the three published documents and the data agree
+in both directions.
+
+It checks a strategy, not a test suite. Six of the eleven layers it describes have
+no code, and nothing here can distinguish a layer that is honestly planned from one
+that will never be written.
+
 ### Kubernetes manifests
 
 Changes under `deploy/` must parse and must validate against the Kubernetes version
@@ -257,6 +332,13 @@ limitations, and failure diagnostics for executed proof. Label evidence accurate
 documented/unexecuted, mock, synthetic, estimated, local real runtime, cloud real
 runtime, or production experience. A mock or document review cannot certify real
 runtime behavior.
+
+[The certification document](docs/testing/certification.md) states the ceiling each
+label carries, the explicit CPU and GPU forms of the real-runtime labels, and what a
+record certifying real behaviour has to contain. Evidence that certifies a published
+claim is committed under `docs/proof/` and kept for as long as the claim stands; a
+lane's raw output expires and may never be cited as the evidence for a published
+claim.
 
 ## Conduct and security
 

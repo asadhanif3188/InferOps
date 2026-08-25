@@ -24,6 +24,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.architecture
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARCHITECTURE_DIR = REPO_ROOT / "docs" / "architecture"
 INVENTORY_PATH = ARCHITECTURE_DIR / "resource-ownership.v1alpha1.json"

@@ -22,6 +22,8 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
+pytestmark = pytest.mark.contract
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_DIR = REPO_ROOT / "contracts" / "workload"
 SCHEMA_PATH = CONTRACT_DIR / "workload-contract.v1alpha1.schema.json"

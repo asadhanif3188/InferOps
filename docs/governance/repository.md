@@ -21,6 +21,8 @@ artifacts are added to the corresponding indexes.
 | Task runner and dependency installation | Not selected | [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md) D3 and D4 remain proposed; neither has been run |
 | Component and resource-ownership boundaries | Component decomposition, dependency direction, and the Terraform/Helm/controller ownership split | [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md) accepted in part; the ownership inventory is machine-checked and no component it describes is built |
 | Telemetry collection and ingress ownership | Not selected | [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md) D7 records both as unowned and defers them out of V1 |
+| Test, CI, and certification strategy | Test layers, lanes, markers, certification levels, and evidence retention | [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md) accepted in part; the strategy is machine-checked and six of its eleven test layers have no code |
+| Continuous-integration service and capable runner | Not selected | [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md) D6 records both as undecided; no workflow file exists and every lane is run by hand |
 | Runtime host for serving | No model runtime, accelerator, or recommended hardware tier selected | Pending; nothing has served a model |
 | V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; unexecuted |
 | Security reporting | Public reports prohibited; private intake channel not yet published | Accepted prohibition; channel blocked |
@@ -70,6 +72,13 @@ It is a hardware and software inventory of one host. It proves nothing about
 whether a cluster, container, or workload runs. The document checks run when that
 record and ADR 0001 were added are in
 [docs/proof/environment/v1-s0-002-pr1-validation.md](../proof/environment/v1-s0-002-pr1-validation.md).
+
+The checks run when the test and certification strategy was added are in
+[docs/proof/testing/v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md).
+It is local static evidence for that change: the strategy suite runs, deliberate
+corruptions of the strategy are refused, and the marker configuration is compared
+against the strategy in both directions. It certifies no runtime behaviour and no
+unwritten test layer.
 
 The first real-runtime evidence this repository holds is
 [docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md](../proof/environment/v1-s0-002-pr2-cluster-smoke.md):
