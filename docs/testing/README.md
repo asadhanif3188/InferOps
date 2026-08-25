@@ -21,6 +21,10 @@ decides it.
 | [Claim and test matrix](claim-test-matrix.md) | Every public claim, with its layers, environment, required level, and evidence owner |
 | [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json) | The authoritative form of all three, validated by [`tests/testing/`](../../tests/testing/) |
 
+The same `docs` marker also collects [`tests/telemetry/`](../../tests/telemetry/),
+which holds [the telemetry catalog](../telemetry/telemetry-catalog.md) to its own
+rules. Both are committed data checked against the documents describing them.
+
 ## The short version
 
 The lane every change goes through downloads no model, touches no cluster, and needs

@@ -10,6 +10,56 @@ once versioned releases begin.
 
 ### Added
 
+- **A telemetry catalog in which a field's placement is derived rather than chosen**,
+  in [ADR 0006](docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
+  and two documents under `docs/telemetry/`. Every attribute declares a sensitivity
+  class and a cardinality class, and its permitted placements are the intersection of
+  what those two allow. The two content classes have an **empty** placement list, so
+  "no prompt in telemetry" is arithmetic rather than a rule a reviewer applies to the
+  seventh field somebody adds.
+- **Thirteen metrics for seven required signal families, and a budget that is
+  counted.** Availability, errors, latency, throughput, model load, tokens, and
+  resource use each have at least one active metric; an eighth family, identity, is
+  carried by a single `_build_info` gauge so that immutable versions are recorded
+  without multiplying every other series by them. Each metric's maximum series count
+  is recomputed by the suite from its labels and bucket count — 5,519 against a
+  ceiling of 10,000 — so adding a label is a visible number in a diff.
+- **Five fields refused as metric labels, each for a stated reason.** A correlation
+  identifier because uniqueness is its purpose; a tenant identifier because a metrics
+  store labelled by tenant is a customer list; a pod name and a workload version
+  because both grow without bound over a retention window; a duration because a
+  measurement is a value and never a key. Three of them are bounded and safe-looking,
+  which is why the class does the deciding.
+- **A log record with no free-form message field.** Records are identified by a
+  bounded event identifier and carry named fields. Prose that varies per request is
+  the field into which a caller's data eventually arrives, and the field no query can
+  match on reliably.
+- **The runtime's measured series, mapped, including the one that is absent.** Fifteen
+  native series from the selected serving runtime are published with what each maps
+  to, and a test compares every name against
+  [the trial that measured them](docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md).
+  The missing cumulative request counter — the threshold ADR 0002 records as failed —
+  is recorded as absent, with the platform metric that covers it named beside it.
+- **Content capture that has no flag to turn it on.** Prompts and responses are not
+  captured, and enabling capture would need a classification, a redaction
+  specification, a retention window, an access control, and a lawful basis with a
+  deletion path. None exists, and a flag would have been the whole decision delegated
+  to whoever set it during an incident.
+- **Four evidence templates with seven mandatory sections**, under
+  `docs/proof/templates/`, indexed by a new [`docs/proof/README.md`](docs/proof/README.md).
+  Classification, provenance, environment, method, results, limitations, and
+  authorisation, each checked by a test that reads the template. The experiment
+  template registers the method and the failure condition before the run.
+- **Two rules that admit they are enforced by review alone.** That an upstream error
+  body is not passed through verbatim, and that no operating figure is published as a
+  benchmark. Thirteen others name a test, and the suite fails if a rule names a test
+  that does not exist.
+- **One new public claim, at the narrowest level that is honest.** The claim and test
+  matrix gains `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label`,
+  certified at C0 by the documentation layer. It certifies a committed document and
+  nothing about a running system, because nothing in this repository emits a single
+  signal.
+
 - **A test and certification strategy that decides what a passing test may be used
   to claim**, in [ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
   and three documents under `docs/testing/`. Eleven test layers, four lanes,

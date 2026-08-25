@@ -1,0 +1,1323 @@
+{
+  "$id": "https://inferops.io/telemetry/telemetry-catalog.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 telemetry and evidence catalog, v1alpha1",
+  "description": "Every signal V1 is allowed to emit, the operational or proof question each one answers, and the sensitivity and cardinality that decide where it may be placed. A field's placement is not a preference: it is derived from its sensitivity class and its cardinality class, and a placement neither class permits is a defect the suite refuses. Nothing in this repository emits any of it; emissionStatus says so, and no row may claim otherwise.",
+  "decisionRef": "docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md",
+  "documentRef": "docs/telemetry/telemetry-catalog.md",
+  "redactionRef": "docs/telemetry/redaction.md",
+  "evidenceTemplatesRef": "docs/proof/README.md",
+  "architectureRef": "docs/architecture/system-architecture.md",
+  "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
+
+  "emissionStatus": {
+    "state": "nothing-emits",
+    "meaning": "No component in this repository emits a metric, a log record, or a span. Every metric and attribute below is a specification for a component that does not exist. The only signals ever observed are the serving runtime's own, in one recorded trial, and they are listed separately under runtimeNativeSeries.",
+    "collector": "not selected; who owns a collector and store is an open question in ADR 0004 and is deliberately not answered here"
+  },
+
+  "cardinalityBudget": {
+    "perMetricMaxSeries": 2000,
+    "totalMaxSeries": 10000,
+    "rationale": "A budget nobody writes down is never exceeded either, because nobody is counting. These two numbers are what the suite counts against: every metric's declared maxSeries is recomputed from its labels and refused if it disagrees or exceeds the per-metric ceiling, and the sum over active metrics is refused if it exceeds the total.",
+    "basis": "One API deployment and one serving runtime on the single-node local cluster this project targets. It is a ceiling for V1's stated environment, not a capacity claim about any store."
+  },
+
+  "placements": [
+    {
+      "placementId": "resource-attribute",
+      "meaning": "Attached once to everything an emitting process emits, and never varied per request.",
+      "retention": "as long as the signal it is attached to"
+    },
+    {
+      "placementId": "metric-label",
+      "meaning": "A label on an operational metric. Every distinct combination of label values is a separate time series a store keeps for its whole retention window.",
+      "retention": "the metric store's retention window"
+    },
+    {
+      "placementId": "info-label",
+      "meaning": "A label on an identity metric, which emits exactly one series per emitting process whatever its labels say. It is how immutable version identity is published without multiplying every other metric by it.",
+      "retention": "the metric store's retention window"
+    },
+    {
+      "placementId": "log-field",
+      "meaning": "A named field of a structured log record.",
+      "retention": "the log store's retention window, which is shorter than a metric's and has to be stated before content of any kind is written to it"
+    },
+    {
+      "placementId": "trace-attribute",
+      "meaning": "An attribute on a span.",
+      "retention": "the trace store's retention window"
+    },
+    {
+      "placementId": "evidence-field",
+      "meaning": "A field in a committed evidence record under docs/proof/. Public, permanent, and not deletable in any useful sense.",
+      "retention": "for as long as the claim it supports stands, which is indefinite"
+    }
+  ],
+
+  "sensitivityClasses": [
+    {
+      "classId": "operational",
+      "meaning": "A value this project generates about its own operation. It describes the platform, not the caller and not the caller's data.",
+      "allowedPlacements": ["resource-attribute", "metric-label", "info-label", "log-field", "trace-attribute", "evidence-field"]
+    },
+    {
+      "classId": "caller-supplied-identifier",
+      "meaning": "An identifier that reached this project through a validated workload document: a workload name, an owner, a model identifier. It is not secret and it is not free text, because the contract already constrains its form.",
+      "allowedPlacements": ["resource-attribute", "metric-label", "info-label", "log-field", "trace-attribute", "evidence-field"]
+    },
+    {
+      "classId": "tenant-attributable",
+      "meaning": "An identifier that attributes activity to a customer. It is not secret and it is not content, and it is still the field that turns a metrics store into a customer list and an evidence record into a disclosure.",
+      "allowedPlacements": ["log-field", "trace-attribute"]
+    },
+    {
+      "classId": "request-scoped-identifier",
+      "meaning": "An identifier minted per request or per span: a correlation identifier, a trace identifier, a span identifier. Its whole purpose is to be unique, which is exactly what makes it unusable as a metric label.",
+      "allowedPlacements": ["log-field", "trace-attribute", "evidence-field"]
+    },
+    {
+      "classId": "user-content",
+      "meaning": "A prompt, a response, a chat history, or a provider error body that may quote one. This is data the project does not own and cannot classify on the caller's behalf.",
+      "allowedPlacements": []
+    },
+    {
+      "classId": "secret",
+      "meaning": "Credential material, or a value read out of a place credential material is kept.",
+      "allowedPlacements": []
+    }
+  ],
+
+  "cardinalityClasses": [
+    {
+      "classId": "singleton",
+      "meaning": "One value per emitting process.",
+      "minDistinctValues": 1,
+      "maxDistinctValues": 1,
+      "allowedPlacements": ["resource-attribute", "metric-label", "info-label", "log-field", "trace-attribute", "evidence-field"]
+    },
+    {
+      "classId": "bounded-small",
+      "meaning": "An enumeration fixed by a specification. It grows only when a specification changes, and a reviewer sees it grow.",
+      "minDistinctValues": 2,
+      "maxDistinctValues": 32,
+      "allowedPlacements": ["resource-attribute", "metric-label", "info-label", "log-field", "trace-attribute", "evidence-field"]
+    },
+    {
+      "classId": "bounded-deployment",
+      "meaning": "Bounded by how many workloads, models, or runtimes are deployed at one time. It is bounded at any instant and it is not bounded over history, which is why the budget is stated per deployment.",
+      "minDistinctValues": 2,
+      "maxDistinctValues": 128,
+      "allowedPlacements": ["resource-attribute", "metric-label", "info-label", "log-field", "trace-attribute", "evidence-field"]
+    },
+    {
+      "classId": "bounded-schema",
+      "meaning": "Bounded by the size of a published schema: a field location is one of the places the schema has. Large enough that it is a log field and never a label.",
+      "minDistinctValues": 2,
+      "maxDistinctValues": 512,
+      "allowedPlacements": ["log-field", "trace-attribute", "evidence-field"]
+    },
+    {
+      "classId": "unbounded",
+      "meaning": "The set of values grows without limit: per request, per restart, or per release. A pod name is in this class, because a restarted pod is a new name and nothing retires the old one.",
+      "minDistinctValues": null,
+      "maxDistinctValues": null,
+      "allowedPlacements": ["resource-attribute", "info-label", "log-field", "trace-attribute", "evidence-field"]
+    },
+    {
+      "classId": "measurement",
+      "meaning": "A number that is measured rather than chosen. It is the value of a signal and never the key of one.",
+      "minDistinctValues": null,
+      "maxDistinctValues": null,
+      "allowedPlacements": ["log-field", "trace-attribute", "evidence-field"]
+    }
+  ],
+
+  "emitters": [
+    {
+      "emitterId": "inferops-api",
+      "name": "The InferOps API",
+      "exists": false,
+      "notes": "Unbuilt. It is the component that receives an inference request, so it is the only component positioned to count one."
+    },
+    {
+      "emitterId": "inferops-adapter",
+      "name": "The serving-runtime adapter",
+      "exists": false,
+      "notes": "Unbuilt. It is the only component that sees the boundary between the platform and the runtime, so upstream failure and model readiness are its to report."
+    },
+    {
+      "emitterId": "inferops-validator",
+      "name": "The workload contract validator",
+      "exists": true,
+      "notes": "Exists as a library and a command, and emits nothing: it is invoked by a person or a test, not by a running service."
+    },
+    {
+      "emitterId": "serving-runtime",
+      "name": "The selected serving runtime",
+      "exists": true,
+      "notes": "Exposes its own Prometheus text-format series on the same endpoint as its API. What it exposes was measured once, on one host; runtimeNativeSeries lists exactly that and nothing more."
+    }
+  ],
+
+  "signalFamilies": [
+    {
+      "familyId": "availability",
+      "question": "Is the platform answering requests at all, and is the model behind it ready?",
+      "required": true
+    },
+    {
+      "familyId": "errors",
+      "question": "What fraction of requests fail, and which named failure is responsible?",
+      "required": true
+    },
+    {
+      "familyId": "latency",
+      "question": "How long does a request take, and how much of that is spent waiting rather than working?",
+      "required": true
+    },
+    {
+      "familyId": "throughput",
+      "question": "How many requests are in flight, and how many complete per unit of time?",
+      "required": true
+    },
+    {
+      "familyId": "model-load",
+      "question": "How long does a model take to become servable, and how often does that fail?",
+      "required": true
+    },
+    {
+      "familyId": "tokens",
+      "question": "How many tokens went in and came out, where the runtime reports them?",
+      "required": true
+    },
+    {
+      "familyId": "resource-use",
+      "question": "How much memory and processor time does the emitting process consume?",
+      "required": true
+    },
+    {
+      "familyId": "identity",
+      "question": "Exactly which build, model revision, and runtime image produced everything else on this page?",
+      "required": true
+    },
+    {
+      "familyId": "cost",
+      "question": "What did a period of operation cost, separating measured usage from estimated allocation?",
+      "required": false
+    }
+  ],
+
+  "correlation": {
+    "standard": "W3C Trace Context",
+    "assignment": "The correlation identifier is assigned at the edge, by the first InferOps component to see the request, before anything downstream can fail. A refusal is then as traceable as a success, which is the case that matters: an unhandled request that never reached a handler is exactly the one nobody can find afterwards.",
+    "reuseAcrossRetries": "A retry reuses the correlation identifier and takes a new span. The two questions are different — 'what happened to this piece of work' and 'what happened on this attempt' — and one identifier cannot answer both.",
+    "asyncRule": "Across an asynchronous boundary the producer and consumer spans are linked rather than nested, and the correlation identifier is carried in the message envelope. V1 has no asynchronous boundary; the rule is stated so that the first one added does not invent its own.",
+    "placementRule": "The correlation identifier, the trace identifier, and the span identifier are log fields and span attributes. None of them is ever a metric label.",
+    "headers": [
+      {
+        "name": "traceparent",
+        "direction": "inbound and outbound",
+        "required": false,
+        "purpose": "Carries the W3C trace context when a caller already has one. Absent, the edge starts a new trace rather than refusing the request."
+      },
+      {
+        "name": "tracestate",
+        "direction": "inbound and outbound",
+        "required": false,
+        "purpose": "Carries vendor-specific trace state through unchanged. This project neither reads nor writes entries in it."
+      },
+      {
+        "name": "X-InferOps-Correlation-ID",
+        "direction": "inbound and outbound",
+        "required": false,
+        "purpose": "Carries a business correlation identifier that survives retries and asynchronous transitions, which a span identifier deliberately does not. Echoed on every response, including a refusal."
+      }
+    ],
+    "v1Status": "specified",
+    "limitation": "No tracer, exporter, propagator, or SDK is selected, and no component reads or writes any of these headers. This is a propagation rule with nothing propagating."
+  },
+
+  "attributes": [
+    {
+      "attributeId": "service-name",
+      "name": "service.name",
+      "layer": "resource",
+      "question": "Which component emitted this?",
+      "sensitivity": "operational",
+      "cardinality": "singleton",
+      "maxDistinctValues": 1,
+      "identityOnly": false,
+      "placements": ["resource-attribute", "log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Named as the OpenTelemetry semantic convention spells it, so that adopting a collector later is a configuration change rather than a rename."
+    },
+    {
+      "attributeId": "service-version",
+      "name": "service.version",
+      "layer": "resource",
+      "question": "Which build of that component, exactly?",
+      "sensitivity": "operational",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": true,
+      "placements": ["resource-attribute", "info-label", "log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Unbounded over history: versions accumulate and nothing retires an old one. It is an identity attribute, so it reaches metrics only through the identity metric."
+    },
+    {
+      "attributeId": "deployment-environment",
+      "name": "deployment.environment",
+      "layer": "resource",
+      "question": "Is this a development host, and may a result from it be cited as anything else?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 4,
+      "identityOnly": false,
+      "placements": ["resource-attribute", "metric-label", "info-label", "log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "V1 has exactly one environment, `dev`. The field exists anyway, because the failure it prevents is a figure from a laptop being read as a figure from somewhere else."
+    },
+    {
+      "attributeId": "capability-id",
+      "name": "inferops.capability.id",
+      "layer": "resource",
+      "question": "Which declared capability is this process serving?",
+      "sensitivity": "operational",
+      "cardinality": "singleton",
+      "maxDistinctValues": 1,
+      "identityOnly": true,
+      "placements": ["resource-attribute", "info-label", "log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": null
+    },
+    {
+      "attributeId": "release-id",
+      "name": "inferops.release.id",
+      "layer": "resource",
+      "question": "Which release installed this, so that a regression can be tied to the change that shipped it?",
+      "sensitivity": "operational",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": true,
+      "placements": ["resource-attribute", "info-label", "log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Releases accumulate, so this is unbounded and reaches metrics only as an identity label."
+    },
+    {
+      "attributeId": "pod-name",
+      "name": "k8s.pod.name",
+      "layer": "resource",
+      "question": "Which replica produced this record, when one replica is behaving differently from the others?",
+      "sensitivity": "operational",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["resource-attribute", "log-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Unbounded, and the reason is worth stating: a restarted pod is a new name, so a pod label grows a metric's series count once per restart forever. It is a log field."
+    },
+    {
+      "attributeId": "model-revision",
+      "name": "inferops.model.revision",
+      "layer": "resource",
+      "question": "Which immutable model revision produced this, given that a model identifier alone does not pin one?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 8,
+      "identityOnly": true,
+      "placements": ["resource-attribute", "info-label", "log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "The distinction the contract already draws between a model identifier and the revision that pins it. A result recorded without this is not reproducible."
+    },
+    {
+      "attributeId": "runtime-image-digest",
+      "name": "inferops.runtime.image.digest",
+      "layer": "resource",
+      "question": "Which runtime image, by digest rather than by a tag somebody can move?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 8,
+      "identityOnly": true,
+      "placements": ["resource-attribute", "info-label", "log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": null
+    },
+    {
+      "attributeId": "workload-id",
+      "name": "inferops.workload.id",
+      "layer": "request",
+      "question": "Which workload is this request for, and which workload is failing?",
+      "sensitivity": "caller-supplied-identifier",
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 25,
+      "identityOnly": false,
+      "placements": ["metric-label", "log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "The contract constrains it to a DNS-safe name, so it is bounded in form as well as in count. The budget of 25 is a deployment ceiling, not a product limit."
+    },
+    {
+      "attributeId": "workload-version",
+      "name": "inferops.workload.version",
+      "layer": "request",
+      "question": "Which version of that workload document was in force?",
+      "sensitivity": "caller-supplied-identifier",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Deliberately not a metric label. Workload versions accumulate for as long as the workload exists, and a label that grows once per deployment is a label that eventually costs more than the metric is worth."
+    },
+    {
+      "attributeId": "owner-id",
+      "name": "inferops.owner.id",
+      "layer": "request",
+      "question": "Who is accountable for this workload when it has to be turned off?",
+      "sensitivity": "caller-supplied-identifier",
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 25,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Not a metric label, because ownership is a property of the workload and joins to it. Two labels that always vary together are one label and a lookup."
+    },
+    {
+      "attributeId": "tenant-id",
+      "name": "inferops.tenant.id",
+      "layer": "request",
+      "question": "Which tenant's activity was this, when a workload serves more than one?",
+      "sensitivity": "tenant-attributable",
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 50,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Excluded from metrics and from evidence records by its sensitivity class, not by anyone's discretion. A tenant label makes a metrics store a customer list, and an evidence record is public and permanent."
+    },
+    {
+      "attributeId": "model-id",
+      "name": "inferops.model.id",
+      "layer": "request",
+      "question": "Which model served this, when more than one is deployed?",
+      "sensitivity": "caller-supplied-identifier",
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 5,
+      "identityOnly": false,
+      "placements": ["metric-label", "info-label", "log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": null
+    },
+    {
+      "attributeId": "runtime-id",
+      "name": "inferops.runtime.id",
+      "layer": "request",
+      "question": "Which serving runtime answered, so that a runtime-specific failure is attributable to it?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 3,
+      "identityOnly": false,
+      "placements": ["metric-label", "info-label", "log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "The registered runtime identifier the compatibility matrix already uses, including the mock runtime, which is how a mock result stays visibly a mock result."
+    },
+    {
+      "attributeId": "outcome",
+      "name": "inferops.outcome",
+      "layer": "request",
+      "question": "Did this succeed, and if not, was the fault the caller's, ours, or a timeout?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 4,
+      "identityOnly": false,
+      "placements": ["metric-label", "log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Four values: success, client-error, server-error, timeout. A timeout is separated from a server error because the two are operated differently and averaging them hides both."
+    },
+    {
+      "attributeId": "error-code",
+      "name": "inferops.error.code",
+      "layer": "request",
+      "question": "Which named failure was it, in the vocabulary the caller was given?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 12,
+      "identityOnly": false,
+      "placements": ["metric-label", "log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Carries a canonical code, never a message and never a provider's text. The inference error vocabulary is not published yet, so this field declares a budget rather than a value list, and the gap is recorded as a limitation."
+    },
+    {
+      "attributeId": "rule-id",
+      "name": "inferops.rule.id",
+      "layer": "request",
+      "question": "Which validation rule is rejecting the documents people are actually writing?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 24,
+      "identityOnly": false,
+      "placements": ["metric-label", "log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "valueSourceRef": "contracts/workload/examples/invalid/expected-rejections.json",
+      "notes": "Its value set is the published rule identifiers of the workload contract, which is why this is one of the few labels whose bound can be checked against something committed rather than asserted."
+    },
+    {
+      "attributeId": "field-path",
+      "name": "inferops.field.path",
+      "layer": "request",
+      "question": "Where in the document was the problem?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-schema",
+      "maxDistinctValues": 200,
+      "identityOnly": false,
+      "placements": ["log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "A location in the schema, never the value found there. The contract validator already refuses to repeat a value read out of a document back to the caller, and a log record is the same surface with a longer memory."
+    },
+    {
+      "attributeId": "component",
+      "name": "inferops.component",
+      "layer": "request",
+      "question": "Which internal component failed a readiness check?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 6,
+      "identityOnly": false,
+      "placements": ["metric-label", "log-field", "trace-attribute"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": null
+    },
+    {
+      "attributeId": "token-direction",
+      "name": "inferops.token.direction",
+      "layer": "request",
+      "question": "Were these tokens read or written?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 2,
+      "identityOnly": false,
+      "placements": ["metric-label", "log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Two values: input and output. One counter with a direction beats two counters whose names diverge."
+    },
+    {
+      "attributeId": "finish-reason",
+      "name": "inferops.finish.reason",
+      "layer": "request",
+      "question": "Why did generation stop — did the caller get a whole answer or a truncated one?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 6,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Deliberately carried by no metric. A rate of finish reasons answers no operational question anyone has asked yet, and a label that exists because it could exist is the way a cardinality budget is spent without a decision."
+    },
+    {
+      "attributeId": "correlation-id",
+      "name": "inferops.correlation.id",
+      "layer": "request",
+      "question": "Which pieces of work, across retries and components, belong to the same request?",
+      "sensitivity": "request-scoped-identifier",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Permitted in an evidence record because a record cites a specific run and the identifier is how a reader finds it. It is not permitted as a label anywhere."
+    },
+    {
+      "attributeId": "trace-id",
+      "name": "trace.id",
+      "layer": "request",
+      "question": "Which trace was this span part of?",
+      "sensitivity": "request-scoped-identifier",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": null
+    },
+    {
+      "attributeId": "span-id",
+      "name": "span.id",
+      "layer": "request",
+      "question": "Which attempt or operation was this, within the trace?",
+      "sensitivity": "request-scoped-identifier",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": null
+    },
+    {
+      "attributeId": "duration-ms",
+      "name": "inferops.duration.ms",
+      "layer": "record",
+      "question": "How long did this particular operation take, for the one request being read about?",
+      "sensitivity": "operational",
+      "cardinality": "measurement",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "A measurement, and measurements are values. A duration used as a metric label produces one series per distinct millisecond, which is the fastest way there is to make a metrics store unusable."
+    },
+    {
+      "attributeId": "http-status",
+      "name": "http.response.status_code",
+      "layer": "record",
+      "question": "What did the caller actually receive?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 16,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Bounded and safe as a label, and still not one: outcome is the dimension the metrics are cut by, and two labels that mean the same thing get used inconsistently."
+    },
+    {
+      "attributeId": "timestamp",
+      "name": "timestamp",
+      "layer": "record",
+      "question": "When did this happen?",
+      "sensitivity": "operational",
+      "cardinality": "measurement",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "RFC 3339, UTC, with millisecond precision. A local-time log record is one that cannot be joined with anything."
+    },
+    {
+      "attributeId": "level",
+      "name": "level",
+      "layer": "record",
+      "question": "How urgent is this record?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 5,
+      "identityOnly": false,
+      "placements": ["log-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Five values: debug, info, warn, error, fatal."
+    },
+    {
+      "attributeId": "event",
+      "name": "inferops.event",
+      "layer": "record",
+      "question": "What kind of thing happened, in a form a query can match?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 32,
+      "identityOnly": false,
+      "placements": ["log-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "A stable identifier such as `inference.completed` or `model.load.failed`. It exists so that a log record is queryable without matching on free-form message text, which is the field most likely to acquire a caller's data by accident."
+    },
+    {
+      "attributeId": "retry-count",
+      "name": "inferops.retry.count",
+      "layer": "request",
+      "question": "How many attempts did this piece of work take?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 8,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute"],
+      "v1Status": "deferred",
+      "deferralReason": "V1 has no retry and no fallback path. The field is registered so the first retry that is added reports itself in the agreed shape rather than inventing one.",
+      "notes": null
+    },
+    {
+      "attributeId": "cost-record-id",
+      "name": "inferops.cost.record.id",
+      "layer": "request",
+      "question": "Which cost record accounts for this request?",
+      "sensitivity": "operational",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["log-field", "evidence-field"],
+      "v1Status": "deferred",
+      "deferralReason": "No cost method is defined yet. Naming the field here would not make one exist, and defining its semantics is a separate decision that has not been taken.",
+      "notes": null
+    },
+    {
+      "attributeId": "evaluation-decision",
+      "name": "inferops.evaluation.decision",
+      "layer": "request",
+      "question": "What did an evaluation gate decide about this response?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 4,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute"],
+      "v1Status": "deferred",
+      "deferralReason": "There is no evaluation capability in this project and none is in scope for V1. The field is registered so that a future integration adopts the name rather than coining a second one.",
+      "notes": null
+    }
+  ],
+
+  "forbiddenFields": [
+    {
+      "fieldId": "prompt",
+      "name": "the request prompt or chat history",
+      "sensitivity": "user-content",
+      "whyItIsTempting": "It is the single most useful thing to have when reproducing a bad answer, which is exactly why it ends up in a log line during an incident and stays there afterwards.",
+      "ruleRef": "no-user-content-is-telemetry"
+    },
+    {
+      "fieldId": "completion",
+      "name": "the model response, whole or truncated",
+      "sensitivity": "user-content",
+      "whyItIsTempting": "A truncated response looks harmless and is not: a prefix of a customer's data is a customer's data, and truncation is not redaction.",
+      "ruleRef": "no-user-content-is-telemetry"
+    },
+    {
+      "fieldId": "provider-error-body",
+      "name": "an upstream error body passed through verbatim",
+      "sensitivity": "user-content",
+      "whyItIsTempting": "It is the surface most likely to be logged, pasted into a ticket, and kept, and a runtime that echoes the offending input into its error text turns a pass-through into a content capture nobody decided on.",
+      "ruleRef": "no-provider-error-body-is-passed-through"
+    },
+    {
+      "fieldId": "secret-value",
+      "name": "the value behind a secret reference",
+      "sensitivity": "secret",
+      "whyItIsTempting": "A debugging session wants to know whether the credential was the right one, and the fastest way to answer that is the one that publishes it.",
+      "ruleRef": "no-secret-is-telemetry"
+    },
+    {
+      "fieldId": "authorization-header",
+      "name": "an inbound Authorization or API-key header",
+      "sensitivity": "secret",
+      "whyItIsTempting": "Whole-header logging is a one-line change and captures this without anyone choosing to.",
+      "ruleRef": "no-secret-is-telemetry"
+    },
+    {
+      "fieldId": "document-value",
+      "name": "a value read out of a submitted workload document",
+      "sensitivity": "user-content",
+      "whyItIsTempting": "Quoting the offending value makes an error message clearer, and it is how a secret placed in the wrong field gets copied into a log store. The field location is published instead; the value never is.",
+      "ruleRef": "no-user-content-is-telemetry"
+    }
+  ],
+
+  "metrics": [
+    {
+      "metricId": "build-info",
+      "name": "inferops_build_info",
+      "kind": "info",
+      "instrument": "gauge",
+      "unit": "1",
+      "question": "Exactly which build, model revision, and runtime image produced every other series on this endpoint?",
+      "families": ["identity"],
+      "emitter": "inferops-api",
+      "labels": ["service-version", "capability-id", "release-id", "deployment-environment", "model-id", "model-revision", "runtime-id", "runtime-image-digest"],
+      "seriesModel": "one-per-process",
+      "buckets": null,
+      "maxSeries": 25,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": "Always 1. Its labels are identity, and putting them here rather than on every operational metric is the difference between recording immutable versions and multiplying every series by them."
+    },
+    {
+      "metricId": "inference-requests",
+      "name": "inferops_inference_requests_total",
+      "kind": "operational",
+      "instrument": "counter",
+      "unit": "1",
+      "question": "Is the platform serving requests, what fraction of them succeed, and how many complete per unit of time?",
+      "families": ["availability", "errors", "throughput"],
+      "emitter": "inferops-api",
+      "labels": ["workload-id", "model-id", "outcome"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 500,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": "The series the selected runtime does not have. Its T7 gap is a missing cumulative request counter, and the component that receives the requests is the correct place to count them."
+    },
+    {
+      "metricId": "inference-errors",
+      "name": "inferops_inference_errors_total",
+      "kind": "operational",
+      "instrument": "counter",
+      "unit": "1",
+      "question": "Which named failure is responsible for the failures, and for which workload?",
+      "families": ["errors"],
+      "emitter": "inferops-api",
+      "labels": ["workload-id", "error-code"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 300,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": "Deliberately a second counter rather than an error-code label on the first. Carrying both on one counter multiplies to tens of thousands of series to answer two questions that are never asked at the same time."
+    },
+    {
+      "metricId": "inference-request-duration",
+      "name": "inferops_inference_request_duration_seconds",
+      "kind": "operational",
+      "instrument": "histogram",
+      "unit": "s",
+      "question": "How long does a request take end to end, at the tail rather than on average?",
+      "families": ["latency"],
+      "emitter": "inferops-api",
+      "labels": ["workload-id", "model-id"],
+      "seriesModel": "label-product",
+      "buckets": 12,
+      "maxSeries": 1750,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": "Bucket boundaries are chosen for a CPU-only local runtime whose measured floor is tens of seconds, not for a hosted accelerator. Outcome is not a label here: the budget is better spent on buckets than on separating the latency of failures, which the error counter already counts."
+    },
+    {
+      "metricId": "inference-queue-duration",
+      "name": "inferops_inference_queue_duration_seconds",
+      "kind": "operational",
+      "instrument": "histogram",
+      "unit": "s",
+      "question": "How much of that time was spent waiting for a slot rather than generating?",
+      "families": ["latency", "throughput"],
+      "emitter": "inferops-adapter",
+      "labels": ["workload-id", "model-id"],
+      "seriesModel": "label-product",
+      "buckets": 10,
+      "maxSeries": 1500,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": ["llamacpp:requests_deferred"],
+      "notes": "The one decomposition of latency that changes what an operator does: waiting means add capacity, generating means the model is the cost. The runtime's deferred-request gauge shows that queueing happens and not how long any request waited."
+    },
+    {
+      "metricId": "inference-requests-in-flight",
+      "name": "inferops_inference_requests_in_flight",
+      "kind": "operational",
+      "instrument": "gauge",
+      "unit": "1",
+      "question": "How much work is in progress right now, and is it saturating?",
+      "families": ["throughput", "availability"],
+      "emitter": "inferops-api",
+      "labels": ["workload-id", "model-id"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 125,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": ["llamacpp:requests_processing"],
+      "notes": null
+    },
+    {
+      "metricId": "inference-tokens",
+      "name": "inferops_inference_tokens_total",
+      "kind": "operational",
+      "instrument": "counter",
+      "unit": "1",
+      "question": "How many tokens were read and written, where the runtime reports them?",
+      "families": ["tokens"],
+      "emitter": "inferops-api",
+      "labels": ["workload-id", "model-id", "token-direction"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 250,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": ["llamacpp:prompt_tokens_total", "llamacpp:tokens_predicted_total"],
+      "notes": "Counted from the usage fields of the response where the runtime supplies them, and absent rather than estimated where it does not. A token count derived by tokenising a prompt locally is an estimate, and an estimate certifies nothing."
+    },
+    {
+      "metricId": "model-load-duration",
+      "name": "inferops_model_load_duration_seconds",
+      "kind": "operational",
+      "instrument": "histogram",
+      "unit": "s",
+      "question": "How long does a model take to become servable after a start, and how often does that fail?",
+      "families": ["model-load"],
+      "emitter": "inferops-adapter",
+      "labels": ["model-id", "runtime-id", "outcome"],
+      "seriesModel": "label-product",
+      "buckets": 10,
+      "maxSeries": 720,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": "The measured difference between a cold and a warm start on the trial host was large enough that a single figure would have been misleading, which is why this is a histogram rather than a gauge of the last load."
+    },
+    {
+      "metricId": "model-ready",
+      "name": "inferops_model_ready",
+      "kind": "operational",
+      "instrument": "gauge",
+      "unit": "1",
+      "question": "Is the model behind this workload servable right now?",
+      "families": ["availability", "model-load"],
+      "emitter": "inferops-adapter",
+      "labels": ["workload-id", "model-id"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 125,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": "1 or 0. The architecture already treats a not-ready model as a canonical refusal rather than a hang, and this is the series that says how long it was in that state."
+    },
+    {
+      "metricId": "readiness-check-failures",
+      "name": "inferops_readiness_check_failures_total",
+      "kind": "operational",
+      "instrument": "counter",
+      "unit": "1",
+      "question": "Which component is failing its readiness check, when the platform is refusing traffic?",
+      "families": ["availability"],
+      "emitter": "inferops-api",
+      "labels": ["workload-id", "component"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 150,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": null
+    },
+    {
+      "metricId": "workload-document-rejections",
+      "name": "inferops_workload_document_rejections_total",
+      "kind": "operational",
+      "instrument": "counter",
+      "unit": "1",
+      "question": "Which validation rule is rejecting the documents people are actually writing?",
+      "families": ["errors"],
+      "emitter": "inferops-validator",
+      "labels": ["rule-id"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 24,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": "A rule that rejects everybody is a contract defect, and it is invisible without this. The workload is not a label: attribution belongs in the log record, and a rejection is by definition a document that may not have a usable workload name in it."
+    },
+    {
+      "metricId": "process-resident-memory",
+      "name": "inferops_process_resident_memory_bytes",
+      "kind": "operational",
+      "instrument": "gauge",
+      "unit": "By",
+      "question": "How much memory is the emitting process holding?",
+      "families": ["resource-use"],
+      "emitter": "inferops-api",
+      "labels": [],
+      "seriesModel": "one-per-process",
+      "buckets": null,
+      "maxSeries": 25,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": "The process's own view. Container and node resource use is a different measurement from a different source, and no such source exists here: the local cluster runs no metrics server, and the feasibility trial had to read a pod's memory from its cgroup by hand."
+    },
+    {
+      "metricId": "process-cpu",
+      "name": "inferops_process_cpu_seconds_total",
+      "kind": "operational",
+      "instrument": "counter",
+      "unit": "s",
+      "question": "How much processor time is the emitting process consuming?",
+      "families": ["resource-use"],
+      "emitter": "inferops-api",
+      "labels": [],
+      "seriesModel": "one-per-process",
+      "buckets": null,
+      "maxSeries": 25,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "runtimeSeries": [],
+      "notes": null
+    },
+    {
+      "metricId": "time-to-first-token",
+      "name": "inferops_inference_time_to_first_token_seconds",
+      "kind": "operational",
+      "instrument": "histogram",
+      "unit": "s",
+      "question": "How long does a caller wait before anything arrives?",
+      "families": ["latency"],
+      "emitter": "inferops-api",
+      "labels": ["workload-id", "model-id"],
+      "seriesModel": "label-product",
+      "buckets": 10,
+      "maxSeries": 1500,
+      "v1Status": "deferred",
+      "deferralReason": "V1 has no streaming path. Without one, time to first token is the same measurement as request duration, and publishing it as though it were a second signal would be a fabrication rather than a metric.",
+      "runtimeSeries": [],
+      "notes": null
+    },
+    {
+      "metricId": "inference-retries",
+      "name": "inferops_inference_retries_total",
+      "kind": "operational",
+      "instrument": "counter",
+      "unit": "1",
+      "question": "How often is work being retried or sent to a fallback?",
+      "families": ["errors"],
+      "emitter": "inferops-adapter",
+      "labels": ["workload-id", "outcome"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 100,
+      "v1Status": "deferred",
+      "deferralReason": "There is no retry and no fallback path in V1. A counter that can only ever read zero is worse than no counter, because a flat line reads as a healthy system rather than an absent feature.",
+      "runtimeSeries": [],
+      "notes": null
+    },
+    {
+      "metricId": "cost-records",
+      "name": "inferops_cost_records_total",
+      "kind": "operational",
+      "instrument": "counter",
+      "unit": "1",
+      "question": "How many cost records were produced for a period?",
+      "families": ["cost"],
+      "emitter": "inferops-api",
+      "labels": ["workload-id"],
+      "seriesModel": "label-product",
+      "buckets": null,
+      "maxSeries": 25,
+      "v1Status": "deferred",
+      "deferralReason": "No cost method is defined. Emitting a count of cost records before deciding what a cost record is would fix the wrong thing first.",
+      "runtimeSeries": [],
+      "notes": null
+    }
+  ],
+
+  "runtimeNativeSeries": {
+    "emitter": "serving-runtime",
+    "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+    "measuredOn": "2026-08-24",
+    "classification": "local-real-cpu",
+    "caveat": "One scrape, on one host, on one day, from one runtime image digest. Every series below was observed in that record and none was inferred from documentation. The mapping is what the integration contract asks a capability descriptor to publish; it is not a claim that anything consumes it.",
+    "series": [
+      {"seriesName": "llamacpp:prompt_tokens_total", "instrument": "counter", "mapsTo": "inference-tokens", "note": "Input tokens. The direction label distinguishes it from the completion counter."},
+      {"seriesName": "llamacpp:tokens_predicted_total", "instrument": "counter", "mapsTo": "inference-tokens", "note": "Output tokens."},
+      {"seriesName": "llamacpp:prompt_tokens_cached_total", "instrument": "counter", "mapsTo": null, "note": "Prompt cache hits. No InferOps metric maps to it: it answers a runtime tuning question, not a platform operating one."},
+      {"seriesName": "llamacpp:prompt_seconds_total", "instrument": "counter", "mapsTo": null, "note": "Prefill time. Related to latency and not the same measurement, so it is recorded rather than folded in."},
+      {"seriesName": "llamacpp:tokens_predicted_seconds_total", "instrument": "counter", "mapsTo": null, "note": "Decode time."},
+      {"seriesName": "llamacpp:n_decode_total", "instrument": "counter", "mapsTo": null, "note": "Decode steps."},
+      {"seriesName": "llamacpp:n_tokens_max", "instrument": "gauge", "mapsTo": null, "note": "Largest context observed."},
+      {"seriesName": "llamacpp:prompt_tokens_seconds", "instrument": "gauge", "mapsTo": null, "note": "A derived rate. V1 may publish no throughput figure, so it is recorded and not surfaced."},
+      {"seriesName": "llamacpp:predicted_tokens_seconds", "instrument": "gauge", "mapsTo": null, "note": "A derived rate, with the same restriction."},
+      {"seriesName": "llamacpp:requests_processing", "instrument": "gauge", "mapsTo": "inference-requests-in-flight", "note": "Instantaneous in-flight count."},
+      {"seriesName": "llamacpp:requests_deferred", "instrument": "gauge", "mapsTo": "inference-queue-duration", "note": "Instantaneous queue depth. It shows that queueing happened, never how long a request waited."},
+      {"seriesName": "llamacpp:n_busy_slots_per_decode", "instrument": "gauge", "mapsTo": null, "note": "Slot occupancy."},
+      {"seriesName": "llamacpp:spec_decode_num_draft_tokens_total", "instrument": "counter", "mapsTo": null, "note": "Speculative decoding, unused in the trial configuration; read zero throughout."},
+      {"seriesName": "llamacpp:spec_decode_num_accepted_tokens_total", "instrument": "counter", "mapsTo": null, "note": "Speculative decoding, unused."},
+      {"seriesName": "llamacpp:spec_decode_num_drafts_total", "instrument": "counter", "mapsTo": null, "note": "Speculative decoding, unused."}
+    ],
+    "absentSeries": [
+      {
+        "description": "a cumulative request counter",
+        "coveredBy": "inference-requests",
+        "note": "The runtime exposes two gauges with `requests` in the name and no counter. A gauge reading zero between requests cannot be summed, rated, or alerted on. This is the threshold ADR 0002 records as failed, and the platform closes it by counting the requests it receives itself."
+      }
+    ]
+  },
+
+  "logRecord": {
+    "format": "One JSON object per line, UTF-8, no multi-line records. A stack trace is a single escaped field, not a run of lines that a collector will split into unrelated records.",
+    "levels": ["debug", "info", "warn", "error", "fatal"],
+    "messageRule": "There is no free-form message field. A record is identified by its `inferops.event` value and carries named fields; prose that varies per request is the field into which a caller's data eventually arrives, and it is also the field no query can match on reliably.",
+    "requiredFields": ["timestamp", "level", "event", "service-name", "correlation-id"],
+    "conditionalFields": [
+      {"fieldId": "workload-id", "condition": "when the record concerns a workload that has been identified"},
+      {"fieldId": "workload-version", "condition": "when the record concerns a specific version of a workload document"},
+      {"fieldId": "owner-id", "condition": "when the record concerns a workload that has been identified"},
+      {"fieldId": "tenant-id", "condition": "when the workload declares a tenant and the log store's retention and access policy has been stated"},
+      {"fieldId": "model-id", "condition": "when a model was selected"},
+      {"fieldId": "runtime-id", "condition": "when a runtime answered or refused"},
+      {"fieldId": "outcome", "condition": "when the record closes a request"},
+      {"fieldId": "error-code", "condition": "when the outcome is not success"},
+      {"fieldId": "rule-id", "condition": "when the record reports a contract validation refusal"},
+      {"fieldId": "field-path", "condition": "when the record reports a contract validation refusal"},
+      {"fieldId": "http-status", "condition": "when a response was sent"},
+      {"fieldId": "duration-ms", "condition": "when the record closes a timed operation"},
+      {"fieldId": "trace-id", "condition": "when a trace context is in scope"},
+      {"fieldId": "span-id", "condition": "when a trace context is in scope"},
+      {"fieldId": "finish-reason", "condition": "when generation completed"},
+      {"fieldId": "pod-name", "condition": "when running under Kubernetes"}
+    ],
+    "v1Status": "specified",
+    "limitation": "No logger, no formatter, and no redacting sink exists. This is the shape a record must have when something writes one, and nothing writes one."
+  },
+
+  "contentCapture": {
+    "defaultState": "disabled",
+    "meaning": "Prompts, responses, chat histories, and provider error bodies are not captured. Not sampled, not truncated, not hashed into a field that a determined reader could attack — absent.",
+    "requiresBeforeEnabling": [
+      "a data classification for what would be captured, written by someone entitled to classify it",
+      "a redaction specification naming what is removed and what survives",
+      "a stated retention window shorter than the metric store's",
+      "an access control naming who may read it",
+      "a documented lawful basis and a subject-deletion path"
+    ],
+    "policyStatus": "not defined",
+    "policyRef": "docs/telemetry/redaction.md",
+    "note": "None of the five exists. Until all five do, there is no configuration flag to turn this on, because a flag would be the whole decision."
+  },
+
+  "prohibitions": [
+    {
+      "ruleId": "no-user-content-is-telemetry",
+      "statement": "No prompt, response, chat history, or value read out of a submitted document is emitted as a metric, a log field, a span attribute, or an evidence field.",
+      "rationale": "It is data the project does not own and cannot classify on the caller's behalf, and a telemetry store is the one place from which it is never deleted.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_forbidden_field_is_allowed_nowhere"
+    },
+    {
+      "ruleId": "no-secret-is-telemetry",
+      "statement": "No credential, key, token, or value read out of a secret reference is emitted anywhere.",
+      "rationale": "A secret in a log store is a secret that has to be rotated, and nobody finds out in time.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_forbidden_field_is_allowed_nowhere"
+    },
+    {
+      "ruleId": "no-unbounded-value-is-a-metric-label",
+      "statement": "No attribute whose cardinality class is unbounded or measurement is used as an operational metric label.",
+      "rationale": "Each distinct label combination is a series the store keeps for its whole retention window, and an unbounded label is an unbounded bill and an unqueryable store.",
+      "enforcement": "test",
+      "enforcedBy": "test_no_operational_metric_label_is_unbounded"
+    },
+    {
+      "ruleId": "no-request-identifier-is-a-metric-label",
+      "statement": "No correlation identifier, trace identifier, span identifier, or request identifier is a metric label of any kind.",
+      "rationale": "Their purpose is uniqueness. A unique label is one series per request.",
+      "enforcement": "test",
+      "enforcedBy": "test_no_metric_label_is_a_request_scoped_identifier"
+    },
+    {
+      "ruleId": "no-tenant-identifier-is-a-metric-label-or-evidence-field",
+      "statement": "A tenant identifier is a log field and a span attribute. It is not a metric label and it is not written into a committed evidence record.",
+      "rationale": "A metrics store labelled by tenant is a customer list with a retention window, and an evidence record is public and permanent.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_tenant_identifier_stays_out_of_metrics_and_evidence"
+    },
+    {
+      "ruleId": "identity-belongs-on-an-identity-metric",
+      "statement": "An attribute marked identityOnly appears only as a label of a metric whose kind is info, and never as an operational metric label.",
+      "rationale": "Immutable versions have to be recorded, and recording them on every metric multiplies every series by the release history. One identity series answers the question once.",
+      "enforcement": "test",
+      "enforcedBy": "test_identity_attributes_appear_only_on_an_identity_metric"
+    },
+    {
+      "ruleId": "placement-follows-sensitivity-and-cardinality",
+      "statement": "An attribute's placements are a subset of what both its sensitivity class and its cardinality class allow.",
+      "rationale": "Placement decided case by case is placement decided by whoever is in a hurry. Deriving it from two declared classes makes an unsafe placement a failing test rather than a judgement call.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_placement_is_allowed_by_both_classes"
+    },
+    {
+      "ruleId": "every-signal-answers-a-stated-question",
+      "statement": "Every attribute and every metric states the operational or proof question it answers, and no signal exists because it was available.",
+      "rationale": "A catalogue assembled from what a library happens to expose is a cost with no reader. The question is what makes a signal removable when it stops being read.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_signal_states_the_question_it_answers"
+    },
+    {
+      "ruleId": "every-metric-stays-inside-the-cardinality-budget",
+      "statement": "Each metric's declared maximum series count is recomputed from its labels and its bucket count, must agree, and must stay inside the per-metric ceiling; the sum over active metrics stays inside the total.",
+      "rationale": "A budget nobody counts against is not a budget. Recomputing it in the suite means adding a label is a visible cost rather than an invisible one.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_metric_stays_inside_the_series_budget"
+    },
+    {
+      "ruleId": "every-required-family-is-covered",
+      "statement": "Every signal family marked required is covered by at least one metric that is not deferred.",
+      "rationale": "Availability, errors, latency, throughput, model load, tokens, and resource use are the seven questions this catalogue exists to answer. A family with no metric is a gap, and a gap is easier to see in a test than in prose.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_required_family_is_covered_by_an_active_metric"
+    },
+    {
+      "ruleId": "a-deferred-signal-says-why",
+      "statement": "Every deferred attribute and metric carries a reason, and no active one carries one.",
+      "rationale": "A deferral without a reason is indistinguishable from an oversight, and it is the form in which scope quietly reappears.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_deferred_signal_says_why_and_an_active_one_does_not"
+    },
+    {
+      "ruleId": "no-runtime-series-is-claimed-that-was-not-measured",
+      "statement": "Every native runtime series this catalogue names appears in the record that measured it, and the missing request counter is recorded as absent with the metric that covers it.",
+      "rationale": "A mapping table is the easiest place in a repository to publish a series that does not exist, because nobody scrapes a document.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_runtime_series_appears_in_the_record_that_measured_it"
+    },
+    {
+      "ruleId": "content-capture-requires-a-policy-that-does-not-exist",
+      "statement": "Content capture is disabled by default and cannot be enabled by configuration. Enabling it requires five artifacts, none of which exists.",
+      "rationale": "A capture flag with no classification, redaction, retention, access rule, or deletion path behind it is a decision made by whoever sets it during an incident.",
+      "enforcement": "test",
+      "enforcedBy": "test_content_capture_is_disabled_and_has_no_policy_to_enable_it"
+    },
+    {
+      "ruleId": "no-provider-error-body-is-passed-through",
+      "statement": "An upstream error body is not logged verbatim and not returned to the caller. A canonical error code and the platform's own message are.",
+      "rationale": "A runtime that quotes the offending input in its error text turns a pass-through into a content capture nobody decided on.",
+      "enforcement": "review",
+      "enforcedBy": null
+    },
+    {
+      "ruleId": "no-figure-here-is-a-published-benchmark",
+      "statement": "Latency, throughput, and capacity series exist to operate the platform. V1 publishes no figure derived from them.",
+      "rationale": "The project boundaries forbid publishing a performance figure in V1, and a dashboard screenshot is a publication.",
+      "enforcement": "review",
+      "enforcedBy": null
+    }
+  ],
+
+  "evidenceTemplates": [
+    {
+      "templateId": "experiment",
+      "path": "docs/proof/templates/TEMPLATE-experiment.md",
+      "purpose": "Registers what will be measured, how, and what result would count as a failure, before the run happens.",
+      "v1Status": "published",
+      "recordsProduced": 0
+    },
+    {
+      "templateId": "environment",
+      "path": "docs/proof/templates/TEMPLATE-environment.md",
+      "purpose": "Records the host, the immutable component versions, and the digests a result depends on, so that a later run can be compared to this one.",
+      "v1Status": "published",
+      "recordsProduced": 0
+    },
+    {
+      "templateId": "raw-result",
+      "path": "docs/proof/templates/TEMPLATE-raw-result.md",
+      "purpose": "Describes a machine-readable result set, its schema, its hash, and what was removed from it before it was committed.",
+      "v1Status": "published",
+      "recordsProduced": 0
+    },
+    {
+      "templateId": "claim-evidence",
+      "path": "docs/proof/templates/TEMPLATE-claim-evidence.md",
+      "purpose": "Binds one public claim to the evidence for it, the certification level that evidence can support, and the limitations that travel with it.",
+      "v1Status": "published",
+      "recordsProduced": 0
+    }
+  ],
+
+  "evidenceSections": [
+    {
+      "sectionId": "classification",
+      "heading": "Classification and certification",
+      "why": "The weakest label the record actually supports, and the ceiling that label carries. A record without it is read at whatever strength the reader wants."
+    },
+    {
+      "sectionId": "provenance",
+      "heading": "Provenance",
+      "why": "The immutable versions: repository revision, image digests, model revision, and tool versions. A result whose inputs are named by a moving tag is not reproducible."
+    },
+    {
+      "sectionId": "environment",
+      "heading": "Environment",
+      "why": "The host, operating system, resources, and cluster the run happened on. Two of this project's accepted records are true of exactly one machine, and say so here."
+    },
+    {
+      "sectionId": "method",
+      "heading": "Method",
+      "why": "The exact commands, in the order they were run, including the ones that failed. A method that cannot be re-executed is a description of a result rather than evidence for one."
+    },
+    {
+      "sectionId": "results",
+      "heading": "Results",
+      "why": "What was observed, with measured values labelled as measured and derived values labelled as derived."
+    },
+    {
+      "sectionId": "limitations",
+      "heading": "Limitations",
+      "why": "What the record does not establish. This is the section that stops a result being cited for something adjacent to what it measured."
+    },
+    {
+      "sectionId": "authorisation",
+      "heading": "Authorisation",
+      "why": "Who authorised a run that costs money, downloads a large artifact, or touches something outside the contributor's own machine, and when. 'Not required' is an answer; silence is not."
+    }
+  ],
+
+  "limitations": [
+    {
+      "limitationId": "nothing-emits",
+      "statement": "No component in this repository emits a metric, a log record, or a span. Every metric, attribute, and log rule here specifies behaviour for components that do not exist."
+    },
+    {
+      "limitationId": "no-collector",
+      "statement": "No collector, store, dashboard, or alerting path is selected, and who would own one is an open question in ADR 0004 that this record deliberately does not answer."
+    },
+    {
+      "limitationId": "no-tracer",
+      "statement": "The correlation rules are specified against W3C Trace Context, and no tracer, propagator, exporter, or SDK is chosen. Nothing propagates anything."
+    },
+    {
+      "limitationId": "no-redacting-sink",
+      "statement": "Redaction is a rule and not a mechanism. There is no redacting logger, no field allowlist in code, and no test that inspects a real log line, because there are no log lines."
+    },
+    {
+      "limitationId": "no-container-resource-source",
+      "statement": "Container and node resource use has no source. The local cluster runs no metrics server, and the one recorded measurement of a pod's memory was read from its cgroup by hand."
+    },
+    {
+      "limitationId": "no-runtime-request-counter",
+      "statement": "The selected serving runtime exposes no cumulative request counter. This was measured, it is the threshold ADR 0002 records as failed, and the platform's own counter is the plan rather than a fix to the runtime."
+    },
+    {
+      "limitationId": "no-inference-error-vocabulary",
+      "statement": "The canonical error codes for inference are not published yet; only the contract validator's are. The error-code label therefore carries a cardinality budget rather than a value list, and the budget is an estimate."
+    },
+    {
+      "limitationId": "budget-is-not-measured",
+      "statement": "The cardinality budget is arithmetic over declared bounds, not a measurement of a running system. It establishes that the catalogue is internally affordable, not that any store was tested with it."
+    },
+    {
+      "limitationId": "templates-have-produced-nothing",
+      "statement": "The four evidence templates have produced no record. They are a format, and a format is not evidence."
+    },
+    {
+      "limitationId": "no-published-figures",
+      "statement": "The latency, throughput, and capacity signals exist to operate the platform. V1 publishes no figure derived from any of them, and this catalogue does not lift that restriction."
+    }
+  ]
+}
