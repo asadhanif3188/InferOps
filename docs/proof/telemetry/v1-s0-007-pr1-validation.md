@@ -10,7 +10,7 @@ here is evidence that this is a good catalog, and nothing here is evidence that 
 component will ever emit what it describes.
 
 Claim boundary: the committed telemetry catalog is internally consistent under every
-rule the suite states; fifty-five deliberate corruptions of it — in the data, in two
+rule the suite states; fifty-nine deliberate corruptions of it — in the data, in two
 published documents, in the proof index, in an evidence template, and in the test
 strategy data — are each refused; every native runtime series the catalog names
 appears in the record that measured it; every relative link resolves; the existing
@@ -48,10 +48,10 @@ alone.
 
 ```text
 python -m pytest tests/telemetry -q
-406 passed
+408 passed
 ```
 
-Sixty-nine test functions, parametrised across six placements, six sensitivity
+Seventy-one test functions, parametrised across six placements, six sensitivity
 classes, six cardinality classes, four emitters, nine signal families, thirty-two
 attributes, six forbidden fields, sixteen metrics, fifteen prohibitions, four
 templates, seven required evidence sections, ten limitations, fifteen native runtime
@@ -71,7 +71,7 @@ The documentation layer now names two directories, `tests/testing` and
 
 ```text
 python -m pytest tests -q
-1387 passed, 7 skipped
+1389 passed, 7 skipped
 ```
 
 The seven skips are the pre-existing contract-suite skips and are unchanged by this
@@ -166,7 +166,7 @@ the intersection for anything in them is empty and no placement is possible.
 
 ## Deliberate corruptions, each refused
 
-Fifty-five mutations were applied one at a time to a working copy, the suite was run,
+Fifty-nine mutations were applied one at a time to a working copy, the suite was run,
 and the file was restored. Every one failed the suite. None survived.
 
 ### Content and sensitivity — 8
@@ -180,9 +180,10 @@ and the file was restored. Every one failed the suite. None survived.
 - the pod name becomes a metric label
 - a duration becomes a metric label
 
-### Cardinality and budget — 7
+### Cardinality and budget — 8
 
 - the release identifier is put on an operational metric
+- an identity attribute is quietly made an ordinary metric label
 - a label is added without updating the series count
 - a metric's declared series count is quietly raised
 - a metric exceeds the per-metric ceiling
@@ -199,9 +200,10 @@ and the file was restored. Every one failed the suite. None survived.
 - an active metric acquires a deferral reason
 - an unbounded attribute is given a bound
 
-### Overclaiming — 7
+### Overclaiming — 8
 
 - a runtime series nobody measured is published
+- a metric is assigned to the runtime whose series are already evidence
 - the missing request counter is quietly dropped
 - a runtime series claims to be an InferOps metric
 - the catalog claims something emits it
@@ -234,9 +236,11 @@ and the file was restored. Every one failed the suite. None survived.
 - the runtime evidence reference points nowhere
 - a document reference points nowhere
 
-### Documents against data — 11
+### Documents against data — 13
 
 - the catalog document drops a metric
+- the catalog document mislabels a field as identity-only
+- the catalog document claims a field may be a metric label when it may not
 - the catalog document invents an attribute
 - the catalog document renames a runtime series
 - the redaction document drops a rule
@@ -251,6 +255,28 @@ and the file was restored. Every one failed the suite. None survived.
 The mutation harness itself is not committed. It reads and restores files in the
 working tree and produces no artifact this repository keeps; the list above is the
 record of what it found.
+
+## What a second review found
+
+The change was reviewed independently after the first commit, against the diff and
+the files it touches, with the reviewer asked to hunt for overclaim, contradiction,
+tests that do not bite, and leakage. It found three defects, all real, all fixed in
+the second commit:
+
+| Severity | Defect | Fix |
+|---|---|---|
+| High | A test named `test_no_metric_is_claimed_to_be_emitted_by_a_component_that_exists` asserted the same condition twice and could not fail for the reason its name gave | Replaced with a check that bites: no metric may be assigned to the emitter whose series are recorded as measured evidence |
+| High | The catalog document said the last four resource attributes were identity-only; `k8s.pod.name` is not one, and reaches no metric at all | The table gained an explicit column, the prose was corrected, and two tests now compare that column and the metric-label column against the data |
+| Medium | The new claim's statement said a tenant identifier, a request identifier, and an unbounded value have "no permitted placement", when each is permitted in logs and traces and excluded only from a metric label | Statement and matrix prose reworded to separate the two cases |
+
+The first is the one worth recording. A vacuous test is worse than a missing one,
+because it appears in the count and in the list of rules that claim enforcement. The
+suite already refuses a rule that names a test which does not exist; it cannot refuse
+a rule that names a test which exists and asserts nothing, and this repository has now
+had one.
+
+Four mutations were added to cover the two new checks, which is why the corruption
+count is fifty-nine rather than the fifty-five in the first commit.
 
 ## What the diff was reviewed for
 
@@ -279,7 +305,7 @@ not own:
 - **No signal was emitted or observed.** This suite reads documents. The check that
   would matter — that a real log record carries only permitted fields — needs a logger
   that does not exist.
-- **The mutation set is not exhaustive.** Fifty-five corruptions were chosen because
+- **The mutation set is not exhaustive.** Fifty-nine corruptions were chosen because
   each represents a mistake somebody would plausibly make. A corruption nobody thought
   of is a corruption that was not tested.
 - **The cardinality budget is not measured.** No metrics store has been tested with

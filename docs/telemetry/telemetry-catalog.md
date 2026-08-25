@@ -108,21 +108,31 @@ the same reason. Both are useful, and both are log fields.
 
 Attached once per emitting process, and never varied per request.
 
-| Field | Question it answers | Sensitivity | Cardinality |
-|---|---|---|---|
-| `service.name` | Which component emitted this? | `operational` | `singleton` |
-| `service.version` | Which build of that component, exactly? | `operational` | `unbounded` |
-| `deployment.environment` | Is this a development host, and may a result from it be cited as anything else? | `operational` | `bounded-small` |
-| `inferops.capability.id` | Which declared capability is this process serving? | `operational` | `singleton` |
-| `inferops.release.id` | Which release installed this, so that a regression ties to the change that shipped it? | `operational` | `unbounded` |
-| `k8s.pod.name` | Which replica produced this record, when one replica behaves differently? | `operational` | `unbounded` |
-| `inferops.model.revision` | Which immutable model revision produced this? | `operational` | `bounded-small` |
-| `inferops.runtime.image.digest` | Which runtime image, by digest rather than by a movable tag? | `operational` | `bounded-small` |
+| Field | Question it answers | Sensitivity | Cardinality | Identity only? |
+|---|---|---|---|---|
+| `service.name` | Which component emitted this? | `operational` | `singleton` | no |
+| `service.version` | Which build of that component, exactly? | `operational` | `unbounded` | yes |
+| `deployment.environment` | Is this a development host, and may a result from it be cited as anything else? | `operational` | `bounded-small` | no |
+| `inferops.capability.id` | Which declared capability is this process serving? | `operational` | `singleton` | yes |
+| `inferops.release.id` | Which release installed this, so that a regression ties to the change that shipped it? | `operational` | `unbounded` | yes |
+| `k8s.pod.name` | Which replica produced this record, when one replica behaves differently? | `operational` | `unbounded` | no |
+| `inferops.model.revision` | Which immutable model revision produced this? | `operational` | `bounded-small` | yes |
+| `inferops.runtime.image.digest` | Which runtime image, by digest rather than by a movable tag? | `operational` | `bounded-small` | yes |
 
-The last four of these are marked identity-only: they reach metrics through the
-identity metric and never as an operational label. That distinction is what lets a
-record pin immutable versions without multiplying every series by the release
-history.
+Five of these are identity-only: the service version, the capability, the release,
+the model revision, and the runtime image digest. They reach metrics through the
+identity metric and never as an operational label, which is what lets a record pin
+immutable versions without multiplying every series by the release history. That is a
+property of the data rather than a description — an identity-only attribute may not
+declare `metric-label` at all, and a test refuses one that does.
+
+`k8s.pod.name` is **not** among them, and the difference is worth being exact about.
+It is unbounded for the same reason the release identifier is — a restarted pod is a
+new name and nothing retires the old one — but it is not identity: it varies between
+replicas of the same build, so putting it on the identity metric would stop that
+metric being one series per build. It is a log field, and it reaches no metric at
+all. The column above is compared against the catalog data by a test, so this table
+cannot say one thing while the data says another.
 
 ## 4. Request attributes
 

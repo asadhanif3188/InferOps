@@ -191,6 +191,8 @@ METRIC_BY_ID = {row["metricId"]: row for row in METRICS}
 PROHIBITION_BY_ID = {row["ruleId"]: row for row in PROHIBITIONS}
 TEMPLATE_BY_ID = {row["templateId"]: row for row in TEMPLATES}
 
+ATTRIBUTE_NAMES = {row["name"] for row in ATTRIBUTES}
+
 ACTIVE_METRICS = [row for row in METRICS if row["v1Status"] != "deferred"]
 ACTIVE_ATTRIBUTES = [row for row in ATTRIBUTES if row["v1Status"] != "deferred"]
 
@@ -712,13 +714,80 @@ def test_the_catalog_states_that_nothing_emits_it() -> None:
     assert CATALOG["emissionStatus"]["collector"].strip()
 
 
-def test_no_metric_is_claimed_to_be_emitted_by_a_component_that_exists() -> None:
-    """A metric whose emitter is unbuilt is a specification, and so is every other."""
+def test_no_metric_borrows_the_credibility_of_a_component_that_exists() -> None:
+    """The runtime is the only emitter here that emits anything at all.
+
+    What it emits is recorded separately, under an evidence reference, because it
+    was measured. A metric assigned to it would be a native series wearing an
+    InferOps name — a specification for an unbuilt component made to look like a
+    scrape that already happened.
+    """
+    assert CATALOG["emissionStatus"]["state"] == "nothing-emits"
     for metric in METRICS:
-        emitter = EMITTER_BY_ID[metric["emitter"]]
-        assert metric["v1Status"] in SIGNAL_STATUSES, metric["metricId"]
-        if not emitter["exists"]:
-            assert metric["v1Status"] in SIGNAL_STATUSES, metric["metricId"]
+        assert metric["emitter"] != RUNTIME_SERIES["emitter"], {
+            "metric": metric["metricId"],
+            "assigned to the emitter whose series are recorded as evidence": (
+                RUNTIME_SERIES["emitter"]
+            ),
+        }
+
+
+def yes_no_column(document: str, header: str) -> dict[str, bool]:
+    """Read a `yes`/`no` column keyed by the attribute name in the first cell.
+
+    The document repeats two derived properties in prose form — whether an
+    attribute is identity-only, and whether it may be a metric label. Prose that
+    restates data is prose that drifts from it, so the column is parsed and
+    compared rather than trusted.
+    """
+    answers: dict[str, bool] = {}
+    column: int | None = None
+    for line in document.splitlines():
+        if not line.startswith("|"):
+            column = None
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if header in cells:
+            column = cells.index(header)
+            continue
+        if column is None or column >= len(cells):
+            continue
+        name = cells[0].strip("`")
+        if name not in ATTRIBUTE_NAMES:
+            continue
+        if cells[column] in ("yes", "no"):
+            answers[name] = cells[column] == "yes"
+    return answers
+
+
+def test_the_document_agrees_with_the_data_on_what_is_identity_only(
+    catalog_document: str,
+) -> None:
+    published = yes_no_column(catalog_document, "Identity only?")
+    expected = {
+        row["name"]: row["identityOnly"]
+        for row in ATTRIBUTES
+        if row["layer"] == "resource"
+    }
+    assert published == expected, {
+        "in the document": published,
+        "in the data": expected,
+    }
+
+
+def test_the_document_agrees_with_the_data_on_what_may_be_a_metric_label(
+    catalog_document: str,
+) -> None:
+    published = yes_no_column(catalog_document, "Metric label?")
+    expected = {
+        row["name"]: "metric-label" in row["placements"]
+        for row in ATTRIBUTES
+        if row["layer"] == "request" and row["v1Status"] != "deferred"
+    }
+    assert published == expected, {
+        "in the document": published,
+        "in the data": expected,
+    }
 
 
 def test_every_runtime_series_appears_in_the_record_that_measured_it() -> None:

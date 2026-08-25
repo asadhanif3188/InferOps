@@ -50,11 +50,15 @@ Each of these rests on an executed record in [`docs/proof/`](../proof/).
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | real-runtime-smoke | capable-host | C2 | serving |
 | `the-model-artifact-matches-its-published-hash` | real-runtime-smoke | capable-host | C2 | serving |
 
-The telemetry row is the newest and the narrowest. It certifies that the committed
-telemetry catalog cannot admit a prompt, a secret, a tenant identifier, a request
-identifier, or an unbounded metric label, and that every metric in it stays inside a
-declared series budget. It establishes nothing about a running system, because
-nothing in this repository emits a single signal.
+The telemetry row is the newest and the narrowest, and its wording is exact for a
+reason. A prompt, a response, a provider error body, and a secret have **no**
+permitted placement in the committed catalog at all. A tenant identifier, a
+correlation or trace identifier, and any unbounded or measured value are a narrower
+case: they are permitted in logs and traces and excluded from metric labels, with a
+tenant identifier excluded from committed evidence records as well. Collapsing the
+two into "cannot admit" would overclaim the second half. The row also certifies that
+every metric stays inside a declared series budget — and it establishes nothing about
+a running system, because nothing in this repository emits a single signal.
 
 Three of the others are worth reading with their limitations attached. The cluster claim
 was executed on **one** Windows host and covers no other operating system. The two
