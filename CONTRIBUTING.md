@@ -335,7 +335,12 @@ runtime behavior.
 
 [The certification document](docs/testing/certification.md) states the ceiling each
 label carries, the explicit CPU and GPU forms of the real-runtime labels, and what a
-record certifying real behaviour has to contain. Evidence that certifies a published
+record certifying real behaviour has to contain. It adds one label to the list above,
+`local-static`, for a deterministic check over files in this repository, and it
+records that `production experience` is a label V1 cannot reach: there is no
+organizational production to draw it from, and public-cloud execution is not
+production operation. Where the two lists differ, the certification document is the
+one a layer is assigned from. Evidence that certifies a published
 claim is committed under `docs/proof/` and kept for as long as the claim stands; a
 lane's raw output expires and may never be cited as the evidence for a published
 claim.

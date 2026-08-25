@@ -264,9 +264,12 @@ once versioned releases begin.
   No assertion in them changed, and `python -m pytest tests -q` collects and reports
   exactly what it did before, plus this change's own suite.
 - CONTRIBUTING gains a lane and marker section, a strategy-suite section, and a
-  pointer from its evidence vocabulary to the ceiling each label carries. The
-  statement that no continuous-integration lane is selected is unchanged, because it
-  is still true.
+  pointer from its evidence vocabulary to the ceiling each label carries. The two
+  vocabularies are reconciled where they differ rather than left to contradict each
+  other: `local-static` is added for a deterministic check over repository files, and
+  `production experience` is recorded as a label V1 cannot reach rather than silently
+  dropped. The statement that no continuous-integration lane is selected is unchanged,
+  because it is still true.
 - The governance decision table records the test and certification strategy as
   accepted in part, and records the continuous-integration service and capable-runner
   labelling as not selected rather than leaving them unmentioned.

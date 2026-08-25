@@ -55,9 +55,13 @@ paid GPUs**, a cloud suite is manual or runs on an explicitly authorized labelle
 runner, and an absence of paid capacity fails or skips the cloud-specific
 certification honestly. It never falls back to a mock.
 
-`production-experience` is deliberately absent. Public-cloud execution is not
-production operation, and there is no organizational production to draw the label
-from. Adding it would create exactly the misuse it is named after.
+`production-experience` is a published label and it is deliberately absent from the
+table above, because the table lists the classes this strategy may assign to a layer
+and no layer here can produce production experience. There is no organizational
+production to draw it from, and public-cloud execution is not production operation.
+It stays part of the evidence vocabulary [CONTRIBUTING](../../CONTRIBUTING.md)
+publishes — unreachable rather than unmentioned — so that a future record cannot
+reintroduce it as though the question had never been asked.
 
 ## Why a mock stops at C1
 
