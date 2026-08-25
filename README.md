@@ -35,7 +35,10 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; no component consumes it |
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | One decision accepted in part, one accepted with a recorded exception, one accepted |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Two decisions accepted in part, one accepted with a recorded exception, one accepted |
+| V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; every component below the contract layer is unbuilt |
+| Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked; no Terraform or Helm exists |
+| Project boundaries | [docs/architecture/project-boundaries.md](docs/architecture/project-boundaries.md) | Accepted scope rule; two serving capabilities and no gateway or deep-serving work |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | Unreleased changes only |

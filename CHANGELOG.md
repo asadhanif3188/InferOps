@@ -10,6 +10,49 @@ once versioned releases begin.
 
 ### Added
 
+- **A V1 system architecture**, in six diagrams with the narrative behind each:
+  system context, components and the direction dependencies may point, the
+  inference request flow including what happens when the model is not ready, the
+  workload deployment flow with ownership bands, the telemetry and evidence flow,
+  and a trust boundary map. Every component below the contract layer is marked
+  unbuilt, because it is.
+- **A resource ownership inventory as data, not prose**, under
+  `docs/architecture/`. Thirty resources, each with exactly one owner, a lifecycle,
+  what creates and destroys it, which teardown operations it survives, who
+  references it without owning it, and the handoff rule that applies at its edge.
+- **A test suite that makes the ownership boundary a property rather than an
+  intention.** It asserts single ownership, that the Terraform and Helm sets do not
+  intersect, that a resource's lifecycle is one its owner actually has, that no
+  resource claims to survive the operation that destroys it, that prerequisites
+  outlive releases and release resources do not outlive prerequisites, that a
+  derived object has no tool owner, that a resource with no owner is deferred out of
+  V1, that evidence is cited only by rows marked implemented, and that the ownership
+  document publishes every row in the data.
+- **ADR 0004**, deciding component decomposition and dependency direction, the
+  serving runtime as a separate deployment rather than a sidecar, the
+  Terraform/Helm/controller ownership split, the model cache as a prerequisite, the
+  trust boundary map, and where this project stops — after comparing a
+  Helm-owns-everything layout, a Terraform-owns-everything layout, a GitOps
+  controller, Kustomize, a Kubernetes controller with a custom resource, and four
+  placements for the model cache.
+- **An explicit non-decision inside that record.** Nobody owns a telemetry
+  collector, and nobody owns an ingress controller or load-balancer implementation.
+  Both are recorded with an `undecided` owner and deferred, and a test refuses to
+  let an unowned resource sit inside V1 scope.
+- **An overlap found by drawing the boundary, and closed before it could bite.** The
+  accepted cleanup rules let a label-scoped teardown delete any project-labelled
+  object, which would put a Terraform-owned prerequisite inside the blast radius of
+  a routine partial teardown. It is not a live defect — the implemented teardown is
+  bound to one smoke-test namespace — and the resolution, a lifecycle label a sweep
+  must exclude, is specified as a constraint on work that has not started rather
+  than implemented here.
+- **A project boundaries document**, stating that this project owns exactly two
+  serving capabilities, that routing between providers is gateway work, that
+  multi-model serving and batching are deeper serving work, and that V1 may publish
+  no throughput, latency, capacity, or benchmark figure at all.
+- **A boundary review checklist** of twenty-six questions across ownership,
+  component boundaries, serving and evidence claims, scope, and public safety — the
+  human half of a boundary whose mechanical half is a test.
 - **Enforcement of the workload-contract rules JSON Schema cannot express.** A
   semantic validation layer above the published schema now applies replica-range
   ordering, a runtime and model compatibility matrix, duplicate secret names, the
@@ -167,6 +210,15 @@ once versioned releases begin.
 
 ### Changed
 
+- The architecture index no longer says that no infrastructure ownership boundary
+  and no application architecture is selected. Both are now selected, for components
+  that do not exist, and the index says that too.
+- The governance decision table records the component and ownership boundary as
+  accepted in part, and records telemetry collection and ingress ownership as not
+  selected rather than leaving them unmentioned.
+- The contribution guide gains the architecture suite, what it checks, and the
+  explicit statement that it checks a design commitment rather than an
+  implementation.
 - **A contract validation message no longer repeats any value read out of the
   document.** The underlying validator embeds the offending value in its own
   message; the contract validator now writes its own text instead, because the
