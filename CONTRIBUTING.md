@@ -306,6 +306,45 @@ It checks a strategy, not a test suite. Six of the eleven layers it describes ha
 no code, and nothing here can distinguish a layer that is honestly planned from one
 that will never be written.
 
+### Telemetry catalog and evidence templates
+
+Changes under `docs/telemetry/`, `docs/proof/templates/`, `docs/proof/README.md`, or
+`tests/telemetry/` must pass the telemetry suite:
+
+```sh
+python -m pytest tests/telemetry -q
+```
+
+It reads only files in this repository and needs `pytest` alone. It checks the
+committed catalog
+[`docs/telemetry/telemetry-catalog.v1alpha1.json`](docs/telemetry/telemetry-catalog.v1alpha1.json):
+that every attribute and metric states the operational or proof question it answers;
+that every field's declared placements are a subset of what its sensitivity class and
+its cardinality class both allow, so a prompt, a secret, a correlation identifier, a
+tenant identifier, and a measured duration are each excluded from a metric label by
+derivation rather than by review; that identity attributes reach metrics only through
+the identity metric; that every metric's maximum series count recomputes from its
+labels and bucket count and stays inside the per-metric and total budgets; that every
+required signal family has an active metric behind it; that a deferred signal says
+why and an active one does not; that every native runtime series the catalog names
+appears in
+[the record that measured it](docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md);
+that every rule claiming a test names one that exists; that content capture is
+disabled and has no policy that could enable it; that each evidence template carries
+every required section exactly once; and that the two published documents and the
+data agree in both directions.
+
+It checks a catalog, not a running system. Nothing in this repository emits a metric,
+a log record, or a span, and no log line has ever been inspected because none has
+been written.
+
+A change that adds a signal adds a row with a stated question, a sensitivity class,
+and a cardinality class; a change that adds a metric label adds series to a budget
+the suite counts. A change that would place a field somewhere neither of its classes
+permits is a change that has to reclassify the field in public first. The decision
+behind all of it is
+[ADR 0006](docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md).
+
 ### Kubernetes manifests
 
 Changes under `deploy/` must parse and must validate against the Kubernetes version
@@ -332,6 +371,18 @@ limitations, and failure diagnostics for executed proof. Label evidence accurate
 documented/unexecuted, mock, synthetic, estimated, local real runtime, cloud real
 runtime, or production experience. A mock or document review cannot certify real
 runtime behavior.
+
+Records are written from the templates in
+[`docs/proof/templates/`](docs/proof/templates/) — an experiment record, an
+environment record, a raw-result record, and a claim-and-evidence record — each of
+which carries classification, provenance, environment, method, results, limitations,
+and authorisation. Copy a template; never edit one to hold a result. The experiment
+template registers the method and the failure condition **before** the run, which is
+the ordering that separates a measurement from a search for a supporting number.
+What is excluded from a record, and why, is in
+[the redaction rules](docs/telemetry/redaction.md): a tenant identifier is a log
+field and does not belong in a committed record, and raw output is promoted into one
+redacted rather than copied.
 
 [The certification document](docs/testing/certification.md) states the ceiling each
 label carries, the explicit CPU and GPU forms of the real-runtime labels, and what a

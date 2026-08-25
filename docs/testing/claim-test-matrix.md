@@ -4,7 +4,7 @@ Status: **accepted matrix**, in
 [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
 It lists every public claim V1 intends to make, the test layers behind it, the
 environment it is proven in, the certification level it needs, and who owns its
-evidence. Nine of eighteen claims are certified today. The rest are commitments, and
+evidence. Ten of nineteen claims are certified today. The rest are commitments, and
 the difference is the point of the table.
 
 The authoritative form is
@@ -45,11 +45,22 @@ Each of these rests on an executed record in [`docs/proof/`](../proof/).
 | `published-documents-link-only-to-things-that-exist` | documentation | repository-only | C0 | documentation |
 | `the-published-strategy-and-its-data-cannot-drift-apart` | documentation | repository-only | C0 | documentation |
 | `the-default-lane-cannot-execute-a-real-model` | documentation | repository-only | C0 | documentation |
+| `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | documentation | repository-only | C0 | security |
 | `a-local-cluster-is-created-and-removed-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | real-runtime-smoke | capable-host | C2 | serving |
 | `the-model-artifact-matches-its-published-hash` | real-runtime-smoke | capable-host | C2 | serving |
 
-Three of these are worth reading with their limitations attached. The cluster claim
+The telemetry row is the newest and the narrowest, and its wording is exact for a
+reason. A prompt, a response, a provider error body, and a secret have **no**
+permitted placement in the committed catalog at all. A tenant identifier, a
+correlation or trace identifier, and any unbounded or measured value are a narrower
+case: they are permitted in logs and traces and excluded from metric labels, with a
+tenant identifier excluded from committed evidence records as well. Collapsing the
+two into "cannot admit" would overclaim the second half. The row also certifies that
+every metric stays inside a declared series budget — and it establishes nothing about
+a running system, because nothing in this repository emits a single signal.
+
+Three of the others are worth reading with their limitations attached. The cluster claim
 was executed on **one** Windows host and covers no other operating system. The two
 serving claims come from **one** trial, on one host, on one day, whose record is
 accepted with a pre-registered threshold explicitly not met. And the hash claim is

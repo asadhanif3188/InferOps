@@ -124,8 +124,12 @@ runs today.
 
 `documentation` checks that every relative link resolves, that no published file
 carries trailing whitespace or a hard tab, and that the machine-readable strategy and
-the documents describing it publish the same identifiers. Its pytest half runs today;
-its link and whitespace half is the shell check in
+the documents describing it publish the same identifiers. It covers two directories —
+[`tests/testing/`](../../tests/testing/) for this strategy and
+[`tests/telemetry/`](../../tests/telemetry/) for
+[the telemetry catalog](../telemetry/telemetry-catalog.md) — because both are
+committed data checked against the documents that describe them. Its pytest half runs
+today; its link and whitespace half is the shell check in
 [CONTRIBUTING](../../CONTRIBUTING.md).
 
 `security-scan` refuses a change carrying a credential, a model artifact, generated

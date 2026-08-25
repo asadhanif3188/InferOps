@@ -460,10 +460,12 @@
       "environment": "repository-only",
       "marker": "docs",
       "paths": [
-        "tests/testing"
+        "tests/testing",
+        "tests/telemetry"
       ],
       "commands": [
         "python -m pytest tests/testing -q",
+        "python -m pytest tests/telemetry -q",
         "the link and whitespace checks in CONTRIBUTING"
       ],
       "evidenceClass": "local-static",
@@ -545,6 +547,20 @@
       "evidenceOwner": "documentation",
       "v1Status": "certified",
       "evidenceRef": "docs/proof/testing/v1-s0-006-pr1-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label",
+      "statement": "No prompt, response, provider error body, or secret has any permitted placement in the committed telemetry catalog; a tenant identifier, a request-scoped identifier, and an unbounded or measured value are each excluded from a metric label, and a tenant identifier is excluded from a committed evidence record as well; and every metric stays inside a declared cardinality budget.",
+      "layers": [
+        "documentation"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "security",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
       "deferralReason": null
     },
     {

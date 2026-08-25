@@ -400,10 +400,17 @@ Three rules this flow fixes:
 - **High-cardinality request data does not belong in a metric label.** Correlation
   identifiers, prompts, and tenant-supplied strings are log fields, not label values.
 
-What is deliberately deferred: which metrics exist, their names, their labels and
-cardinality budget, the log schema, retention, and what a claim needs before it may
-cite a run. Those are the telemetry-and-evidence and the test-and-certification
-decisions, and pre-empting them here would produce a catalogue nobody had reviewed.
+What was deferred here is now decided elsewhere. Which metrics exist, their names,
+their labels and cardinality budget, and the log schema are in
+[the telemetry catalog](../telemetry/telemetry-catalog.md); what a claim needs before
+it may cite a run is in [the test strategy](../testing/test-strategy.md) and
+[the certification levels](../testing/certification.md). Both are catalogues of
+components that do not exist yet, and both say so.
+
+Nothing about the three rules above changed when they were written down in detail.
+The catalog turns the third one into arithmetic — a field's placement is derived from
+its sensitivity and its cardinality rather than chosen — and gives the second one an
+empty placement list rather than a convention.
 
 ## 6. Trust boundaries
 

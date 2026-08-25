@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established; three decisions accepted in part, one accepted with a
+Status: entry point established; four decisions accepted in part, one accepted with a
 recorded exception, one accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
@@ -35,6 +35,7 @@ These describe the V1 design. Every component below the contract layer is unbuil
 | [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
 | [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
 | [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, and six of its eleven test layers have no code |
+| [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Change validation](../proof/telemetry/v1-s0-007-pr1-validation.md); the catalog is machine-checked, and nothing in this repository emits a single signal |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -43,7 +44,10 @@ approach, and recommended host tier are not. In 0004, six decisions are accepted
 and one — who owns telemetry collection and an ingress or load-balancer
 implementation — is explicitly not made. In 0005, five decisions are accepted and
 one — which continuous-integration service runs the lanes, and what labels a capable
-runner — is explicitly not made.
+runner — is explicitly not made. In 0006, six decisions are accepted, one — what would
+allow prompt and response capture — is explicitly not made, and one — the telemetry
+toolchain and who owns a collector — is deliberately left to 0004's open question
+rather than answered in passing.
 
 0002 selects one runtime image digest and one immutable model revision, on evidence
 from a trial that was executed on 2026-08-24: a model was downloaded and
@@ -73,6 +77,22 @@ data and checked by a test; the component half has no code to check it against.
 **One decision inside it is deliberately not made**: nobody owns a telemetry
 collector or an ingress implementation, and both are deferred rather than assigned
 for tidiness.
+
+0006 decides what a running V1 would say about itself: correlation over W3C Trace
+Context assigned at the edge, a field registry in which every attribute declares a
+sensitivity class and a cardinality class, thirteen active metrics covering seven
+required signal families plus an identity metric, a per-metric and total cardinality
+budget the suite recomputes rather than trusts, structured logs with no free-form
+message field, and four evidence templates with seven mandatory sections. Its central
+mechanism is that **placement is derived rather than chosen**: a field's permitted
+placements are the intersection of what its two classes allow, and the two content
+classes have an empty list — which is what makes "no prompt in telemetry" arithmetic
+instead of a convention somebody has to remember.
+
+It emits **nothing**. No component here writes a metric, a log record, or a span, no
+collector or store is selected, and the only signals ever observed are the serving
+runtime's own, in one trial, on one host. Two of its fifteen rules are marked
+enforced by review alone rather than promoted to tested.
 
 0005 decides how V1 is tested and what a passing result may be used to claim: eleven
 test layers, four lanes, a ceiling on each layer's evidence class, certification at
