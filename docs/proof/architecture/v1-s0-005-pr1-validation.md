@@ -9,10 +9,10 @@ served. Nothing here is evidence that the architecture works, because almost non
 it is built.
 
 Claim boundary: the committed ownership inventory is internally consistent under
-every rule the suite states; twenty-nine deliberate corruptions of it are refused;
-the architecture documents and the inventory cannot drift apart without a test
-failing; every relative link resolves; and the published diff carries no private,
-generated, or overclaimed content.
+every rule the suite states; thirty-two deliberate corruptions of it are refused;
+the architecture documents and the inventory cannot drift apart in either direction
+without a test failing; every relative link resolves; and the published diff carries
+no private, generated, or overclaimed content.
 
 **What this record does not establish.** There is no Terraform configuration and no
 Helm chart in this repository, so nothing compares the inventory to an
@@ -43,16 +43,16 @@ contract tests, which need them. The architecture suite this change adds needs
 
 ```text
 python -m pytest tests/architecture -q
-326 passed
+357 passed
 ```
 
-Twenty-five test functions, parametrised across eight owners and thirty resources.
+Twenty-seven test functions, parametrised across eight owners and thirty resources.
 
 ### The full suite, to show nothing else moved
 
 ```text
 python -m pytest tests -q
-517 passed, 7 skipped
+548 passed, 7 skipped
 ```
 
 Before this change the same command reported `191 passed, 7 skipped`. The seven
@@ -67,12 +67,15 @@ ruff check .
 All checks passed!
 
 ruff format --check .
-47 files already formatted
+48 files already formatted
 ```
 
 `ruff` is not a selected repository tool — no linter or continuous-integration lane
 has been chosen — but the existing Python in this repository is clean under it, and
-a new file that was not would be a gratuitous inconsistency.
+a new file that was not would be a gratuitous inconsistency. The count is 48 rather
+than the nine tracked Python files because `ruff format` also inspects Markdown for
+embedded Python; nothing in this repository's Markdown contains any, so every one of
+the 39 Markdown files reports formatted without anything being reformatted.
 
 ### Inventory shape
 
@@ -116,18 +119,28 @@ file under `scripts/`, so `kubeconform` and `shellcheck` have nothing to look at
 |---|---|
 | Shape | The inventory declares its identifier and contract version; every owner and every resource carries every required field and no undeclared one; no required string is empty; identifiers are unique and are lowercase hyphenated slugs |
 | Single ownership | `owner` is one string and names a declared owner. A second owner is not expressible |
-| The acceptance criterion | The set of Terraform-owned resources and the set of Helm-owned resources are disjoint, asserted directly rather than inferred from the field's type |
+| The property that matters most | The set of Terraform-owned resources and the set of Helm-owned resources are disjoint, asserted directly rather than inferred from the field's type |
 | Reference is not ownership | Every referrer is a declared owner, and no resource lists its own owner among its referrers |
 | No dead owners | Every declared owner owns at least one resource, and every declared lifecycle is used |
 | Lifecycle agreement | A resource's lifecycle is the lifecycle its owner declares |
 | Survival | Survival claims are drawn from the declared operations, contain no duplicate, and never include the operation that destroys the resource |
+| Blast radius | A survival list is a prefix of the operation ordering, which escalates from a pod restart to deleting the cluster. A resource that survives a wider operation must survive every narrower one |
 | Tool ownership means tool destruction | A Terraform- or Helm-owned resource is created and destroyed by its own tool's commands, not by delegation |
 | Layering | Every prerequisite survives `helm uninstall`; no release resource survives `terraform destroy` or a scoped object teardown |
 | Derived objects | Every derived resource is owned by the control plane and is destroyed by no tool command |
 | Status and evidence | `v1Status` is from the controlled vocabulary; an implemented resource cites a record that exists; a planned or deferred resource cites nothing; a resource with no owner is deferred out of V1 |
-| Document agreement | The ownership document publishes every resource and every owner in the data, and both architecture documents cite the inventory rather than restating it |
+| Document agreement | Both directions. The ownership document publishes every resource and every owner in the data, and every identifier the document publishes in a table's first column exists in the data. Both architecture documents cite the inventory rather than restating it |
 
-## Twenty-nine-mutation rejection spot check
+Two of these are weaker than they look, and the suite says so in its own docstrings
+rather than leaving a reader to find out. **The "never survives what destroys it"
+check can only fail where `destroyedBy` names one of the five declared operations**;
+for roughly half the inventory it is descriptive prose — a contributor, a controller,
+an upstream publisher — and the assertion is vacuous for those rows. The blast-radius
+check was added for exactly that reason and is the one that bites on every row. And
+**the document-agreement check reads identifiers, not prose**: a table row whose
+description has drifted from the `handoff` text in the data passes.
+
+## Thirty-two-mutation rejection spot check
 
 A passing suite proves that the inventory as written satisfies it. It does not prove
 the suite would notice if the inventory were wrong. Each mutation below was applied
@@ -142,6 +155,9 @@ restored afterwards. Nothing in the mutation harness is committed.
 | Let a release resource survive a scoped object teardown | Refused |
 | Let the model cache claim die with a release | Refused |
 | Let a resource survive the operation that destroys it | Refused |
+| Let a resource skip an operation and claim a wider one | Refused |
+| Reorder a survival list so it is no longer a prefix of the ordering | Refused |
+| Delete a resource from the data and leave it in the document | Refused |
 | Bring an unowned resource into V1 scope | Refused |
 | Let a planned resource cite evidence | Refused |
 | Remove the evidence an implemented resource cites | Refused |
@@ -167,16 +183,21 @@ restored afterwards. Nothing in the mutation harness is committed.
 | Express `owner` as a list of two owners | Refused |
 
 ```text
-accepted mutations: 0 of 29
+accepted mutations: 0 of 32
 ```
 
 The last row is the one worth reading twice. Making ownership a list of two owners
-is the exact failure the acceptance criterion forbids, and the suite refuses the
+is the exact failure this change is measured against, and the suite refuses the
 *representation* rather than the value, which is why it cannot be worked around by
 choosing two owners that happen not to overlap elsewhere.
 
+Three of these mutations were added after a review found the suite weaker than the
+document beside it claimed. Deleting a resource from the data while leaving it in
+the prose was **accepted** by the first version of this suite, and the document said
+it would not be — that is the defect the reverse check and this row now close.
+
 What this spot check does **not** establish: that the rules the suite enforces are
-the right rules. Twenty-nine refusals show the checks are live. They say nothing
+the right rules. Thirty-two refusals show the checks are live. They say nothing
 about a boundary the inventory does not model at all.
 
 ## Private-information review of the diff
@@ -210,11 +231,11 @@ files this change does not touch.
   are unchanged by this pull request, and the lifecycle label that resolves the
   overlap is specified and unimplemented.
 
-## Acceptance criteria
+## What this change set out to do, and whether it did
 
-| Criterion | Status |
+| Goal | Status |
 |---|---|
-| Architecture distinguishes platform, serving, infrastructure, telemetry, evidence, and integrations | **Met.** Six diagrams and their narrative, with a stated split between telemetry and evidence and an explicit statement that a declared integration is not a provided one |
-| Terraform and Helm ownership do not overlap | **Met, and enforced.** Single ownership is unrepresentable otherwise, disjointness is asserted directly, and a two-owner mutation is refused |
-| Native serving and future-project boundaries are explicit | **Met.** Two serving capabilities, three boundary rules, and a review checklist that turns them into questions |
-| No resource has ambiguous lifecycle ownership | **Met, with the ambiguity named rather than hidden.** Two resources have no owner; both carry an explicit `undecided` owner and both are deferred out of V1, which a test enforces |
+| A reader can tell the platform, the serving path, the infrastructure beneath it, telemetry, evidence, and declared integrations apart | **Met.** Six diagrams and their narrative, with telemetry and evidence deliberately separated and an explicit statement that a capability a contract may name is not one this project provides |
+| Two tools never contend for one resource | **Met, and enforced.** A second owner is not expressible; disjointness is asserted directly anyway; and a mutation that tries to express two owners is refused |
+| The one serving path this project owns is distinguishable from work that belongs elsewhere | **Met.** Two serving capabilities, three boundary rules with the reasoning behind each, and a checklist that turns them into questions a reviewer can answer |
+| Every resource has an unambiguous lifecycle owner | **Met, with the ambiguity named rather than hidden.** Two resources have no owner. Both carry an explicit `undecided` owner and both are deferred out of V1, which a test enforces rather than a convention |

@@ -23,11 +23,13 @@ once versioned releases begin.
 - **A test suite that makes the ownership boundary a property rather than an
   intention.** It asserts single ownership, that the Terraform and Helm sets do not
   intersect, that a resource's lifecycle is one its owner actually has, that no
-  resource claims to survive the operation that destroys it, that prerequisites
-  outlive releases and release resources do not outlive prerequisites, that a
-  derived object has no tool owner, that a resource with no owner is deferred out of
-  V1, that evidence is cited only by rows marked implemented, and that the ownership
-  document publishes every row in the data.
+  resource claims to survive the operation that destroys it, that a survival list is
+  a prefix of the teardown blast-radius ordering — the check that catches a
+  plausible-looking claim rather than a malformed one — that prerequisites outlive
+  releases and release resources do not outlive prerequisites, that a derived object
+  has no tool owner, that a resource with no owner is deferred out of V1, that
+  evidence is cited only by rows marked implemented, and that the ownership document
+  and the data publish the same identifiers in both directions.
 - **ADR 0004**, deciding component decomposition and dependency direction, the
   serving runtime as a separate deployment rather than a sidecar, the
   Terraform/Helm/controller ownership split, the model cache as a prerequisite, the
@@ -39,17 +41,18 @@ once versioned releases begin.
   collector, and nobody owns an ingress controller or load-balancer implementation.
   Both are recorded with an `undecided` owner and deferred, and a test refuses to
   let an unowned resource sit inside V1 scope.
-- **An overlap found by drawing the boundary, and closed before it could bite.** The
+- **An overlap found by drawing the boundary, and specified rather than fixed.** The
   accepted cleanup rules let a label-scoped teardown delete any project-labelled
   object, which would put a Terraform-owned prerequisite inside the blast radius of
   a routine partial teardown. It is not a live defect — the implemented teardown is
   bound to one smoke-test namespace — and the resolution, a lifecycle label a sweep
-  must exclude, is specified as a constraint on work that has not started rather
-  than implemented here.
+  must exclude, is written down as a constraint on work that has not started. It is
+  implemented nowhere, the environment scripts are unchanged, and it is carried as
+  an open risk rather than as a fix.
 - **A project boundaries document**, stating that this project owns exactly two
-  serving capabilities, that routing between providers is gateway work, that
-  multi-model serving and batching are deeper serving work, and that V1 may publish
-  no throughput, latency, capacity, or benchmark figure at all.
+  serving capabilities, that standing in front of a choice of providers is gateway
+  work, that engineering the runtime's own behaviour is deeper serving work, and
+  that V1 may publish no throughput, latency, capacity, or benchmark figure at all.
 - **A boundary review checklist** of twenty-six questions across ownership,
   component boundaries, serving and evidence claims, scope, and public safety — the
   human half of a boundary whose mechanical half is a test.

@@ -212,12 +212,13 @@ committed ownership inventory
 [`docs/architecture/resource-ownership.v1alpha1.json`](docs/architecture/resource-ownership.v1alpha1.json):
 that every resource has exactly one owner, that the Terraform and Helm sets do not
 intersect, that each resource's lifecycle is one its owner actually has, that no
-resource claims to survive the operation that destroys it, that prerequisites
-outlive releases and release resources do not outlive prerequisites, that a derived
-resource has no tool owner, that a resource with no owner is deferred out of V1,
-that evidence is cited only by rows marked implemented, and that
-[the ownership document](docs/architecture/resource-ownership.md) publishes every
-row in the data.
+resource claims to survive the operation that destroys it, that a survival list is a
+prefix of the teardown blast-radius ordering, that prerequisites outlive releases and
+release resources do not outlive prerequisites, that a derived resource has no tool
+owner, that a resource with no owner is deferred out of V1, that evidence is cited
+only by rows marked implemented, and that
+[the ownership document](docs/architecture/resource-ownership.md) and the data
+publish the same identifiers in both directions.
 
 It checks a design commitment, not an implementation. No Terraform configuration
 and no Helm chart exists, so nothing here can establish that the inventory

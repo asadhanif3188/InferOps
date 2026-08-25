@@ -8,8 +8,14 @@ allowed to own when they are written.
 
 The authoritative form of this document is data, not prose:
 [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json). The tables
-here explain it. A test fails if the two disagree, so a row deleted from one and
-left in the other is a build failure rather than something a reader has to notice.
+here explain it, and a test compares the two in both directions: every identifier in
+the data must appear in this document, and every identifier this document publishes
+in a table's first column must exist in the data. A row added to one and forgotten
+in the other is a build failure rather than something a reader has to notice.
+
+What that comparison does not do is read the prose. A table row can carry a
+description that has drifted from the `handoff` text in the data, and no test will
+say so.
 
 ## What ownership means here
 
@@ -137,22 +143,35 @@ inside one.
 
 ## Teardown, and why the order is not a preference
 
+Five operations, ordered by how much they touch. Each subsumes the one before it.
+
 ```text
-   helm uninstall     -> the release goes. The namespace, its metadata,
-                         and the model cache survive.
+   pod restart             -> a pod goes and comes back. Nothing declared
+                              is affected.
 
-   terraform destroy  -> the prerequisites go. Deleting the namespace
-                         cascades, so anything still installed dies with
-                         it. This is not the routine uninstall path.
+   helm uninstall          -> the release goes. The namespace, its
+                              metadata, and the model cache survive.
 
-   cluster teardown   -> the cluster goes, by the environment scripts.
-                         Neither tool may do this.
+   scoped object teardown  -> project-labelled objects in the project's
+                              namespaces go. This is the sweep the
+                              overlap below is about.
+
+   terraform destroy       -> the prerequisites go. Deleting the namespace
+                              cascades, so anything still installed dies
+                              with it. This is not the routine uninstall
+                              path.
+
+   cluster teardown        -> the cluster goes, by the environment
+                              scripts. Neither tool may do this.
 ```
 
-The inventory records, per resource, which of these operations it survives, and a
-test refuses a row that claims to survive the operation that destroys it.
+The inventory records, per resource, which of these it survives. Two tests read
+those records: one refuses a row that claims to survive the operation that destroys
+it, and one refuses a row whose survival list is not a prefix of the ordering above
+— because a resource that survives a wider operation must survive every narrower
+one.
 
-## An overlap this design found, and closed
+## An overlap this design found, and specified a fix for
 
 The accepted cleanup rules describe partial teardown as deleting *"only objects
 matching the project label selector inside `inferops-` namespaces"*. Every object
@@ -167,8 +186,9 @@ the sweep is generalised to match the accepted wording or Terraform is written.
 
 The resolution is a second label. Prerequisites carry a lifecycle marker that a
 scoped sweep must exclude; release objects carry the marker that a sweep may match.
-`namespace-metadata` is where the prerequisite marker is set. Two constraints follow
-and are recorded as constraints rather than as work done here:
+`namespace-metadata` is where the prerequisite marker is set. **Nothing here
+implements it.** The scripts are unchanged by this document, and the two constraints
+below are recorded as constraints on work that has not started:
 
 - the environment scripts' scoped teardown must exclude the prerequisite marker
   before it is ever generalised beyond the smoke namespace;
@@ -182,11 +202,20 @@ The mechanical parts are tested; the judgement parts are not. Both are listed in
 
 Checked by `tests/architecture/test_resource_ownership.py`: single ownership,
 Terraform and Helm disjointness, lifecycle agreement between a resource and its
-owner, survival claims drawn from the declared operations, no resource surviving
-its own destruction, prerequisites outliving releases, release objects not
-outliving prerequisites, derived resources having no tool owner, an unowned
-resource being deferred, evidence cited only by implemented rows, and the document
-publishing every row in the data.
+owner, survival claims drawn from the declared operations and forming a prefix of
+the blast-radius ordering above, no resource surviving its own destruction,
+prerequisites outliving releases, release objects not outliving prerequisites,
+derived resources having no tool owner, an unowned resource being deferred,
+evidence cited only by implemented rows, and the document and the data publishing
+the same identifiers in both directions.
+
+The blast-radius check is the one worth understanding, because it is what catches a
+plausible-looking survival claim rather than a malformed one. The operations above
+escalate: an uninstall removes what a restart would have left, destroying the
+namespace cascades over what an uninstall removed, and deleting the cluster takes
+all of it. So a resource that survives a wider operation survives every narrower
+one, and a survival list that skips an operation and claims a larger one is
+refused.
 
 Not checked by anything, because there is nothing to check it against: that the
 inventory describes the Terraform and Helm that get written. That check arrives with

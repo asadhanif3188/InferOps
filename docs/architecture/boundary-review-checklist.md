@@ -56,12 +56,12 @@ for in writing rather than pass over.
 
 ## D. Scope
 
-- [ ] **D1.** Does this change route between model providers, hold provider
-      credentials, issue keys, or enforce budgets or rate limits? That is gateway
-      work and does not belong here.
-- [ ] **D2.** Does it add multi-model serving, batching, autoscaling on
-      inference-specific signals, or accelerator capacity work? That is deeper
-      serving work and does not belong here.
+- [ ] **D1.** Does this change put a choice between model providers, custody of a
+      provider's credential, or a spend or request limit inside this project? That
+      is gateway work and does not belong here.
+- [ ] **D2.** Does it engineer the runtime's own behaviour — several models in one
+      process, more throughput from one, traffic handed between versions, hardware
+      allocated to demand? That is deeper serving work and does not belong here.
 - [ ] **D3.** Does any V1 code path require a capability this project does not
       implement?
 - [ ] **D4.** Does it publish a contract for a capability that does not exist yet?

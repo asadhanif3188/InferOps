@@ -163,11 +163,12 @@ namespace and sweeps nothing else, and no prerequisite exists to sweep. It becom
 one the moment either the sweep is generalised to match the accepted wording or
 Terraform is written.
 
-The resolution is a lifecycle label that a scoped sweep must exclude, set on the
-namespace metadata Terraform owns, plus a platform namespace distinct from the
-smoke-test namespace the environment scripts already delete outright. Both are
-recorded as constraints on the implementation. **Neither is implemented here**, and
-this record does not modify the environment scripts.
+A resolution is specified: a lifecycle label that a scoped sweep must exclude, set on
+the namespace metadata Terraform owns, plus a platform namespace distinct from the
+smoke-test namespace the environment scripts already delete outright. **Neither is
+implemented, here or anywhere.** This record does not modify the environment scripts,
+and the overlap is closed on paper only — which is why it is carried as an open risk
+rather than as a fix.
 
 ## D4 — The model cache is a prerequisite, not a release resource
 
@@ -215,13 +216,14 @@ the security baseline decision, which does not exist yet.
 [the project boundaries document](../project-boundaries.md).
 
 The short form: this project serves one real open model through one selected runtime,
-plus a mock that may never certify anything. It does not route between providers, hold
-provider credentials, issue keys, or enforce budgets — that is gateway work. It does
-not do multi-model serving, batching, autoscaling on inference-specific signals, or
-accelerator capacity engineering — that is deeper serving work. And it publishes no
-throughput, latency, capacity, or benchmark figure, because the only such number it
-holds came from a single sequential request on one CPU host and is recorded as
-explicitly not a benchmark.
+plus a mock that may never certify anything. It does not stand in front of a choice
+of providers, hold their credentials, or meter what a caller may spend against them —
+that is gateway work. It does not engineer the runtime's own behaviour, whether that
+means several models in one process, more throughput from one, traffic handed between
+versions, or hardware allocated to demand — that is deeper serving work. And it
+publishes no throughput, latency, capacity, or benchmark figure, because the only such
+number it holds came from a single sequential request on one CPU host and is recorded
+as explicitly not a benchmark.
 
 This reserves nothing and plans nothing elsewhere. It states where this project
 stops.
@@ -312,15 +314,17 @@ record in this repository. The full record is
 
 ```text
 python -m pytest tests/architecture -q
+357 passed
 ```
 
 What that result establishes: the ownership inventory is internally consistent, no
 resource has two owners, Terraform's set and Helm's set do not intersect, every
-survival claim is drawn from the declared operations and never contradicts the
-operation that destroys the resource, prerequisites outlive releases, release
-objects do not outlive prerequisites, derived resources have no tool owner, an
-unowned resource is deferred, evidence is cited only by implemented rows, and the
-ownership document publishes every row in the data.
+survival claim is drawn from the declared operations, forms a prefix of the
+blast-radius ordering, and never contradicts the operation that destroys the
+resource, prerequisites outlive releases, release objects do not outlive
+prerequisites, derived resources have no tool owner, an unowned resource is
+deferred, evidence is cited only by implemented rows, and the ownership document and
+the inventory publish the same identifiers in both directions.
 
 What it establishes about any Terraform configuration or Helm chart: **nothing.**
 Neither exists. This is a check on a design commitment, not on an implementation,

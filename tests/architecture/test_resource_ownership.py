@@ -7,11 +7,13 @@ What this suite can and cannot establish is worth stating, because the gap is th
 whole point. It establishes that the ownership inventory is internally consistent:
 that no resource has two owners, that Terraform's set and Helm's set do not
 intersect, that every resource declares a lifecycle its owner actually has, that a
-resource is never listed as surviving the operation that destroys it, and that the
-document beside the inventory publishes every row. It establishes nothing about
-any Terraform configuration or Helm chart, because neither exists. The inventory
-is a design commitment, and this suite is what stops the commitment drifting
-before there is an implementation to check it against.
+survival claim is a prefix of the teardown blast-radius ordering and never includes
+the operation that destroys the resource, and that the document beside the inventory
+and the inventory itself publish the same identifiers in both directions.
+
+It establishes nothing about any Terraform configuration or Helm chart, because
+neither exists. The inventory is a design commitment, and this suite is what stops
+the commitment drifting before there is an implementation to check it against.
 """
 
 from __future__ import annotations
@@ -33,6 +35,12 @@ EXPECTED_CONTRACT_VERSION = "inferops.io/v1alpha1"
 
 # Identifiers are lowercase, hyphen-separated, and safe anywhere a name is needed.
 SLUG = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
+
+# An identifier as the document publishes it: an inline code span in the first
+# column of a Markdown table row.
+FIRST_TABLE_COLUMN = re.compile(
+    r"^\|\s*`([a-z0-9][a-z0-9-]*)`\s*\|", flags=re.MULTILINE
+)
 
 # The two layers whose overlap the parent decision forbids outright.
 TOOL_OWNERS = ("terraform", "helm")
@@ -150,7 +158,7 @@ def test_owner_is_a_single_declared_owner(resource: dict) -> None:
 
 
 def test_terraform_and_helm_own_disjoint_sets() -> None:
-    """The acceptance criterion, asserted directly rather than inferred.
+    """The property the inventory exists to guarantee, asserted rather than inferred.
 
     Single ownership already makes an overlap unrepresentable. This stays because
     the property is the one a reviewer is looking for, and because a future
@@ -210,8 +218,40 @@ def test_survival_is_drawn_from_the_declared_operations(resource: dict) -> None:
 
 @pytest.mark.parametrize("resource", RESOURCES, ids=lambda r: r["resourceId"])
 def test_a_resource_never_survives_what_destroys_it(resource: dict) -> None:
+    """Only bites where `destroyedBy` names a declared operation.
+
+    Roughly half the inventory is destroyed by something that is not one of the
+    five operations -- a contributor, a controller, an upstream publisher -- and
+    for those rows this assertion cannot fail. The ordering test below is what
+    carries the weight for them.
+    """
     assert resource["destroyedBy"] not in resource["survives"], (
         f"resource '{resource['resourceId']}' claims to survive its own destruction"
+    )
+
+
+@pytest.mark.parametrize("resource", RESOURCES, ids=lambda r: r["resourceId"])
+def test_survival_respects_the_teardown_blast_radius_ordering(resource: dict) -> None:
+    """`operations` is ordered by escalating blast radius, and survival is monotone.
+
+    A pod restart touches least; deleting the cluster touches most, and every
+    operation in between subsumes the one before it -- an uninstall removes what a
+    restart would have left, destroying the namespace cascades over what an
+    uninstall removed, and deleting the cluster takes all of it. So anything that
+    survives one operation must survive every smaller one, which makes a valid
+    `survives` list a prefix of `operations`.
+
+    This is the check that catches a plausible-looking survival claim. It is not
+    tautological for any row: an entry that skips an operation and claims a larger
+    one fails here regardless of who owns it or what destroys it.
+    """
+    operations = INVENTORY["operations"]
+    survives = resource["survives"]
+    expected_prefix = operations[: len(survives)]
+    assert survives == expected_prefix, (
+        f"resource '{resource['resourceId']}' claims to survive {survives}, which is "
+        f"not a prefix of the blast-radius ordering {operations}. A resource that "
+        "survives a wider operation survives every narrower one."
     )
 
 
@@ -326,6 +366,22 @@ def test_the_ownership_document_publishes_every_owner(
     owner: dict, ownership_document: str
 ) -> None:
     assert owner["ownerId"] in ownership_document, owner["ownerId"]
+
+
+def test_the_document_publishes_no_identifier_the_inventory_lacks(
+    ownership_document: str,
+) -> None:
+    """The other direction: a row deleted from the data and left in the prose.
+
+    The document publishes every identifier in the first column of a table, as an
+    inline code span. Reading only that position keeps this precise: prose, other
+    columns, and Kubernetes kinds are not scanned, and the inventory's own field
+    names are camel case and cannot match the slug pattern.
+    """
+    known = set(resource_ids()) | set(OWNER_BY_ID)
+    published = set(FIRST_TABLE_COLUMN.findall(ownership_document))
+    assert published, "no identifier column found; the document layout changed"
+    assert published <= known, sorted(published - known)
 
 
 def test_the_architecture_documents_cite_the_inventory() -> None:

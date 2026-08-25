@@ -41,11 +41,12 @@ The reviewable consequence: **no V1 code path may require a capability this proj
 does not implement.** A contract that declares one is describing an intent; a
 component that depends on one is describing a dependency, and V1 has none.
 
-### 2. Multiplexing across providers is not this project's problem
+### 2. Standing between a caller and a choice of providers is not this project's job
 
-A component that routes between model providers, holds provider credentials, issues
-virtual keys, enforces budgets or rate limits, or falls back from one provider to
-another is a gateway. V1 has no such component and must not grow one incrementally.
+Anything that sits in front of more than one model provider — deciding which one
+answers, holding the credential each one needs, or metering what a caller is allowed
+to spend against them — is a gateway. V1 has no such component and must not grow one
+incrementally.
 
 The distinction is not about ambition; it is about what a serving claim means. This
 project's serving evidence names one runtime digest and one model revision, on one
@@ -58,11 +59,12 @@ If such a component is ever built, it attaches through the contract's model-acce
 capability and appears in this architecture as an external provider — the same shape
 as any other capability this project does not own.
 
-### 3. Making one runtime work is not the same as making runtimes fast
+### 3. Making one runtime work is not the same as engineering the runtime
 
-Advanced runtime engineering — multi-model serving, request batching, continuous
-rollout, autoscaling on inference-specific signals, accelerator capacity planning —
-is deeper serving work. V1 does not do it and cannot claim it.
+Work whose subject is the runtime's own behaviour — getting one process to hold
+several models, to answer more requests per second than it does, to hand traffic
+from one version to the next, or to be given hardware in proportion to demand — is
+deeper serving work. V1 does not do it and cannot claim it.
 
 The selected runtime is a single-model, single-process server. Serving a second model
 means a second deployment. That is the correct scope for V1, and it is also exactly
