@@ -10,6 +10,53 @@ once versioned releases begin.
 
 ### Added
 
+- **A test and certification strategy that decides what a passing test may be used
+  to claim**, in [ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
+  and three documents under `docs/testing/`. Eleven test layers, four lanes,
+  certification at C0 to C2, and a claim/test matrix in which every public claim names
+  a test layer, an environment, a required level, and an evidence owner. Nine of
+  eighteen claims are certified today and each cites a record already in this
+  repository.
+- **The mock boundary as a mechanism rather than a rule.** Each layer declares what it
+  runs against as an evidence class, and each class carries a hard ceiling on the
+  certification level a result from it may support. A mock stops at C1. Three tests
+  enforce it: no layer may certify above its class, no claim requiring C2 may be
+  satisfied by a mock or a simulation, and a layer labelled with an unreal class may
+  not also declare that it needs a real model. The rule was already accepted in words;
+  this is the first time it holds without anybody remembering it.
+- **A committed pytest configuration whose default lane cannot run a real model.**
+  [`pytest.ini`](pytest.ini) registers a marker for every layer, refuses an
+  unregistered one, and deselects `cluster`, `realruntime`, `failure`, and `load` by
+  default. A test compares that expression against the strategy in both directions: a
+  marker belonging to a layer outside the default lane must be excluded, and a marker
+  belonging to a layer inside it must not be. Seven of the ten markers currently select
+  nothing, because the layers behind them have no code, and the strategy says so
+  rather than implying otherwise.
+- **A check that catches the mistake the other checks cannot.** Every test module under
+  a layer's declared paths must carry that layer's marker at module level, because a
+  marker nothing is marked with selects nothing, silently. The markers and the strategy
+  can agree perfectly while `pytest -m contract` collects zero tests.
+- **An evidence retention rule with a boundary in it.** A lane's raw output expires —
+  30 days for the cheap lanes, 90 for the expensive ones — and may never be cited as
+  the evidence for a published claim. A record that certifies a claim is committed
+  under `docs/proof/` and kept for as long as the claim stands. Raw output a claim
+  depends on is promoted into such a record, redacted, before the window closes. Two
+  tests hold the line: a claim may cite a record only when it is certified, and a
+  certified claim may rest only on layers that are actually implemented.
+- **A capacity lane that is defined precisely so that it stays shut.** V1 may publish
+  no throughput, latency, capacity, or benchmark figure. The load layer, its lane, and
+  the claim it would support are all written down and all deferred, so publishing a
+  capacity figure means deleting a deferral in three places rather than adding a test.
+- **Two deliberate refusals to overclaim.** A lane may call itself automated only by
+  naming a workflow file that exists, and no workflow file exists — so every lane is
+  recorded as run by hand. And the security-scan layer is recorded as `planned` rather
+  than `implemented`, because a committed scan configuration is not a recorded run.
+- **Forty-three deliberate corruptions, each refused.** Mutations across the strategy
+  data, the pytest configuration, the three published documents, and an existing test
+  module were applied one at a time; every one failed the suite. They are listed by
+  category in
+  [the change validation record](docs/proof/testing/v1-s0-006-pr1-validation.md).
+
 - **A V1 system architecture**, in six diagrams with the narrative behind each:
   system context, components and the direction dependencies may point, the
   inference request flow including what happens when the model is not ready, the
@@ -212,6 +259,20 @@ once versioned releases begin.
   legitimately for, and five boundary rules that make the distinction operational.
 
 ### Changed
+
+- Three existing test modules now declare the marker of the layer that owns them.
+  No assertion in them changed, and `python -m pytest tests -q` collects and reports
+  exactly what it did before, plus this change's own suite.
+- CONTRIBUTING gains a lane and marker section, a strategy-suite section, and a
+  pointer from its evidence vocabulary to the ceiling each label carries. The two
+  vocabularies are reconciled where they differ rather than left to contradict each
+  other: `local-static` is added for a deterministic check over repository files, and
+  `production experience` is recorded as a label V1 cannot reach rather than silently
+  dropped. The statement that no continuous-integration lane is selected is unchanged,
+  because it is still true.
+- The governance decision table records the test and certification strategy as
+  accepted in part, and records the continuous-integration service and capable-runner
+  labelling as not selected rather than leaving them unmentioned.
 
 - The architecture index no longer says that no infrastructure ownership boundary
   and no application architecture is selected. Both are now selected, for components

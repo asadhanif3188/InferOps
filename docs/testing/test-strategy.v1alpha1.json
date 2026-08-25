@@ -1,0 +1,752 @@
+{
+  "$id": "https://inferops.io/testing/test-strategy.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 test, lane, and certification strategy, v1alpha1",
+  "description": "Which test layer proves which public claim, in which execution lane, at what strength, and who owns the evidence. Certification level describes proof strength; the execution environment describes where the proof ran; the two are never conflated. A layer may not certify above the ceiling its evidence class allows, which is how a mock is prevented from certifying real runtime behaviour. Most rows are commitments for work that does not exist yet; v1Status says which is which, and a claim may cite evidence only once it is certified.",
+  "decisionRef": "docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md",
+  "documentRef": "docs/testing/test-strategy.md",
+  "certificationRef": "docs/testing/certification.md",
+  "matrixRef": "docs/testing/claim-test-matrix.md",
+  "pytestConfigRef": "pytest.ini",
+  "certificationLevels": [
+    {
+      "levelId": "C0",
+      "name": "Schema",
+      "meaning": "Documents, schemas, and inventories in this repository are internally consistent and validate. Nothing is executed against a runtime.",
+      "rank": 0,
+      "v1Scope": true
+    },
+    {
+      "levelId": "C1",
+      "name": "Mock",
+      "meaning": "A consumer passes a deterministic contract suite against a labelled mock provider. It proves something about the consumer and the contract, and nothing about a provider.",
+      "rank": 1,
+      "v1Scope": true
+    },
+    {
+      "levelId": "C2",
+      "name": "Real controlled",
+      "meaning": "A real provider works in a controlled, reproducible environment carrying an explicit environment label. The highest level V1 may claim.",
+      "rank": 2,
+      "v1Scope": true
+    },
+    {
+      "levelId": "C3",
+      "name": "Failure",
+      "meaning": "Timeout, denial, unavailability, retry, and recovery are proven against a real provider. Out of V1 scope.",
+      "rank": 3,
+      "v1Scope": false
+    },
+    {
+      "levelId": "C4",
+      "name": "Composed",
+      "meaning": "End-to-end integration across at least two real projects is proven. Out of V1 scope; there is no second project.",
+      "rank": 4,
+      "v1Scope": false
+    }
+  ],
+  "evidenceClasses": [
+    {
+      "classId": "documented-unexecuted",
+      "meaning": "A statement in a document that nothing has run. It is the correct label for a design commitment and it certifies nothing at all.",
+      "maxCertification": null
+    },
+    {
+      "classId": "local-static",
+      "meaning": "A deterministic check over files in this repository: schema validation, fixture comparison, inventory consistency, link and whitespace checks. No network, no cluster, no model, no clock, no randomness.",
+      "maxCertification": "C0"
+    },
+    {
+      "classId": "mock",
+      "meaning": "A result produced against a labelled mock provider that loads no model.",
+      "maxCertification": "C1"
+    },
+    {
+      "classId": "synthetic",
+      "meaning": "A result produced against generated inputs or a simulated environment rather than the real one.",
+      "maxCertification": "C1"
+    },
+    {
+      "classId": "estimated",
+      "meaning": "A number derived by calculation rather than measurement. It may inform a decision and may never certify one.",
+      "maxCertification": null
+    },
+    {
+      "classId": "local-real-cpu",
+      "meaning": "Executed on a contributor's own machine against the real component, on CPU, with versions and commands recorded.",
+      "maxCertification": "C2"
+    },
+    {
+      "classId": "cloud-real-cpu",
+      "meaning": "Executed on authorized cloud CPU capacity against the real component, with provider, region, node shape, budget, and verified cleanup recorded.",
+      "maxCertification": "C2"
+    },
+    {
+      "classId": "cloud-real-gpu",
+      "meaning": "Executed on authorized cloud GPU capacity against the real component, with the accelerator stack, allocation mode, budget window, and verified cleanup recorded. Not used anywhere in V1.",
+      "maxCertification": "C2"
+    }
+  ],
+  "environments": {
+    "repository-only": "A checkout and a Python interpreter. No container engine, no cluster, no network, no model.",
+    "local-kubernetes": "The local kind cluster created by the environment scripts on a contributor's machine. No model is downloaded.",
+    "capable-host": "A host with the disk, memory, and time budget to hold the pinned model artifact and run the pinned runtime image. Either a contributor's machine following the documented manual procedure, or an explicitly labelled and authorized runner."
+  },
+  "lanes": [
+    {
+      "laneId": "default-checks",
+      "name": "Default checks",
+      "purpose": "Everything that can be proven from a checkout alone, run on every change, cheap enough that nobody is tempted to skip it.",
+      "trigger": "every change, before review",
+      "environment": "repository-only",
+      "modelDownload": "none",
+      "clusterRequired": false,
+      "authorizationRequired": false,
+      "optIn": false,
+      "timeoutMinutes": 15,
+      "prerequisites": [
+        "Python 3.12 with pytest, jsonschema, and PyYAML",
+        "git"
+      ],
+      "artifacts": [
+        "test session output",
+        "the list of checks skipped and why"
+      ],
+      "artifactRetentionDays": 30,
+      "failureDiagnostics": "The failing assertion, the identifier of the row or fixture that failed, and the exact command to reproduce it from a clean checkout. No lane-specific state is needed to reproduce a failure here, which is the point of the lane.",
+      "automated": false,
+      "workflowRef": null,
+      "v1Status": "manual",
+      "notes": "Run by hand from CONTRIBUTING today. No continuous-integration lane is configured in this repository."
+    },
+    {
+      "laneId": "cluster-smoke",
+      "name": "Cluster smoke",
+      "purpose": "Prove that the local environment produces a working cluster and removes it again, without loading a model.",
+      "trigger": "opt-in, on a change to the environment scripts, manifests, or chart",
+      "environment": "local-kubernetes",
+      "modelDownload": "none",
+      "clusterRequired": true,
+      "authorizationRequired": false,
+      "optIn": true,
+      "timeoutMinutes": 30,
+      "prerequisites": [
+        "a container engine",
+        "kind and kubectl",
+        "the host tier recorded in the prerequisites document"
+      ],
+      "artifacts": [
+        "cluster and workload descriptions",
+        "pod logs",
+        "the residue verification output"
+      ],
+      "artifactRetentionDays": 30,
+      "failureDiagnostics": "Collected on failure into the ignored local artifacts directory: node and pod descriptions, events, and container logs. A failed run leaves the cluster in place for inspection and says so; teardown is a separate deliberate step.",
+      "automated": false,
+      "workflowRef": null,
+      "v1Status": "manual",
+      "notes": "Executed once end to end on one Windows host by the environment scripts."
+    },
+    {
+      "laneId": "real-runtime",
+      "name": "Real runtime",
+      "purpose": "The only lane that may produce a C2 serving claim. It downloads the pinned model artifact, verifies its hash, and serves real inference.",
+      "trigger": "manual, or an explicitly labelled and authorized capable runner",
+      "environment": "capable-host",
+      "modelDownload": "full",
+      "clusterRequired": true,
+      "authorizationRequired": true,
+      "optIn": true,
+      "timeoutMinutes": 90,
+      "prerequisites": [
+        "the disk headroom for the pinned model artifact, measured on the real backing volume rather than reported by df inside the cluster",
+        "the pinned runtime image digest",
+        "the pinned model revision and its published per-file hash",
+        "explicit authorization to spend the time and, where a runner is paid, the money"
+      ],
+      "artifacts": [
+        "the resolved image digest and model revision",
+        "the computed and published artifact hashes",
+        "runtime startup and readiness logs",
+        "the request and response transcript with prompts and completions removed",
+        "the completed evidence record"
+      ],
+      "artifactRetentionDays": 90,
+      "failureDiagnostics": "The stage that failed, named: download, hash verification, image pull, model load, readiness, request, or teardown. Model load and readiness failures additionally record the readiness endpoint's status over time, because a runtime that answers 503 while loading is correct readiness behaviour and wrong liveness behaviour, and the two are indistinguishable from a single sample.",
+      "automated": false,
+      "workflowRef": null,
+      "v1Status": "manual",
+      "notes": "The documented manual procedure is the feasibility workflow, which has been executed once. No labelled runner exists."
+    },
+    {
+      "laneId": "capacity",
+      "name": "Capacity",
+      "purpose": "Sustained-load and capacity measurement. Defined so that the boundary around it is explicit, and deferred out of V1 unrun.",
+      "trigger": "not triggered in V1",
+      "environment": "capable-host",
+      "modelDownload": "full",
+      "clusterRequired": true,
+      "authorizationRequired": true,
+      "optIn": true,
+      "timeoutMinutes": 240,
+      "prerequisites": [
+        "everything the real-runtime lane requires",
+        "a hardware class the project is willing to name in public",
+        "a decision that publishing a capacity figure is in scope, which V1 has explicitly refused"
+      ],
+      "artifacts": [
+        "the workload profile",
+        "the raw per-request record",
+        "the environment record"
+      ],
+      "artifactRetentionDays": 90,
+      "failureDiagnostics": "Not applicable; the lane is not run in V1.",
+      "automated": false,
+      "workflowRef": null,
+      "v1Status": "deferred",
+      "notes": "V1 may publish no throughput, latency, capacity, or benchmark figure. This lane exists in the strategy so that adding one is a visible decision rather than an accident."
+    }
+  ],
+  "evidenceOwners": [
+    {
+      "ownerId": "contracts",
+      "name": "The owner of the published contracts and their rejection interface",
+      "responsibility": "Keeps the schema, fixtures, and canonical refusals in step with what the validator actually does."
+    },
+    {
+      "ownerId": "architecture",
+      "name": "The owner of the architecture records and the ownership inventory",
+      "responsibility": "Keeps the committed boundary data and the documents describing it from drifting apart."
+    },
+    {
+      "ownerId": "environment",
+      "name": "The owner of the local development environment",
+      "responsibility": "Keeps cluster creation, smoke, and teardown reproducible on a documented host tier."
+    },
+    {
+      "ownerId": "serving",
+      "name": "The owner of the serving runtime selection and its evidence",
+      "responsibility": "Produces and maintains real-runtime records, and refuses to let a mock stand in for one."
+    },
+    {
+      "ownerId": "platform",
+      "name": "The owner of the platform domain, adapters, API, and deployment rendering",
+      "responsibility": "Owns the tests for components that do not exist yet, and the claims they will have to support."
+    },
+    {
+      "ownerId": "security",
+      "name": "The owner of the public-information boundary and secret handling",
+      "responsibility": "Owns the scan configuration, the redaction rules, and the evidence that neither history nor telemetry carries something it should not."
+    },
+    {
+      "ownerId": "documentation",
+      "name": "The owner of published documentation and its verification",
+      "responsibility": "Owns link, whitespace, and claim-accuracy checks over everything this repository publishes."
+    }
+  ],
+  "layers": [
+    {
+      "layerId": "unit",
+      "name": "Unit",
+      "purpose": "Exercise one domain rule in isolation, with no adapter, no cluster, and no runtime. The dependency rule exists so that this layer is possible at all.",
+      "lane": "default-checks",
+      "environment": "repository-only",
+      "marker": "unit",
+      "paths": [],
+      "commands": [
+        "python -m pytest -m unit -q"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "requiresModel": false,
+      "requiresCluster": false,
+      "publishable": true,
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "notes": "No domain code exists yet, so the marker is registered and unused. That is the honest state: registering it now is what stops the first domain test being written into whichever suite happens to be open."
+    },
+    {
+      "layerId": "contract-and-schema",
+      "name": "Contract and schema",
+      "purpose": "Validate the published schema, every valid and invalid fixture, and the exact refusal a consumer is given for each rule.",
+      "lane": "default-checks",
+      "environment": "repository-only",
+      "marker": "contract",
+      "paths": [
+        "tests/contracts"
+      ],
+      "commands": [
+        "python -m pytest tests/contracts -q"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "requiresModel": false,
+      "requiresCluster": false,
+      "publishable": true,
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
+      "notes": null
+    },
+    {
+      "layerId": "architecture-inventory",
+      "name": "Architecture inventory",
+      "purpose": "Hold the committed ownership boundary to its own rules, and keep the inventory and the documents describing it from drifting apart.",
+      "lane": "default-checks",
+      "environment": "repository-only",
+      "marker": "architecture",
+      "paths": [
+        "tests/architecture"
+      ],
+      "commands": [
+        "python -m pytest tests/architecture -q"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "requiresModel": false,
+      "requiresCluster": false,
+      "publishable": true,
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/architecture/v1-s0-005-pr1-validation.md",
+      "notes": null
+    },
+    {
+      "layerId": "adapter",
+      "name": "Serving adapter",
+      "purpose": "Prove that each adapter implements the interface the domain owns, including the mock adapter's obligation to identify itself as a mock.",
+      "lane": "default-checks",
+      "environment": "repository-only",
+      "marker": "adapter",
+      "paths": [],
+      "commands": [
+        "python -m pytest -m adapter -q"
+      ],
+      "evidenceClass": "mock",
+      "maxCertification": "C1",
+      "requiresModel": false,
+      "requiresCluster": false,
+      "publishable": true,
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "notes": "An adapter suite runs against the interface, not against a runtime. Its ceiling is C1 even for the real adapter, because what it exercises is the shape of the call rather than the thing on the other end of it."
+    },
+    {
+      "layerId": "mock-integration",
+      "name": "Mock integration",
+      "purpose": "Run the API end to end against the mock adapter: correlation propagation, canonical errors, redaction, and the not-ready path, deterministically and on every change.",
+      "lane": "default-checks",
+      "environment": "repository-only",
+      "marker": "mockintegration",
+      "paths": [],
+      "commands": [
+        "python -m pytest -m mockintegration -q"
+      ],
+      "evidenceClass": "mock",
+      "maxCertification": "C1",
+      "requiresModel": false,
+      "requiresCluster": false,
+      "publishable": true,
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "notes": "This is the layer most at risk of being read as more than it is. It proves the consumer and the contract; it proves nothing about a provider."
+    },
+    {
+      "layerId": "kubernetes-smoke",
+      "name": "Kubernetes smoke",
+      "purpose": "Prove the cluster half of the environment: a cluster is created, a workload is scheduled and answers, and teardown leaves no residue. No model is involved.",
+      "lane": "cluster-smoke",
+      "environment": "local-kubernetes",
+      "marker": "cluster",
+      "paths": [],
+      "commands": [
+        "bash scripts/environment/cluster-up.sh",
+        "bash scripts/environment/smoke.sh",
+        "bash scripts/environment/verify-clean.sh"
+      ],
+      "evidenceClass": "local-real-cpu",
+      "maxCertification": "C2",
+      "requiresModel": false,
+      "requiresCluster": true,
+      "publishable": true,
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md",
+      "notes": "Real, and about the environment only. A cluster smoke result may never be cited in support of a serving claim."
+    },
+    {
+      "layerId": "real-runtime-smoke",
+      "name": "Real runtime smoke",
+      "purpose": "The only layer that may support a C2 serving claim: the pinned model artifact is downloaded and hash-verified, the pinned runtime image serves a real completion in a cluster, and the pod is removed.",
+      "lane": "real-runtime",
+      "environment": "capable-host",
+      "marker": "realruntime",
+      "paths": [],
+      "commands": [
+        "the procedure in docs/serving/feasibility-workflow.md"
+      ],
+      "evidenceClass": "local-real-cpu",
+      "maxCertification": "C2",
+      "requiresModel": true,
+      "requiresCluster": true,
+      "publishable": true,
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "notes": "Executed once, on one host, on one day. One pre-registered threshold was not met and the record says so."
+    },
+    {
+      "layerId": "failure-and-resilience",
+      "name": "Failure and resilience",
+      "purpose": "Provoke the failures the architecture names as canonical errors — model not ready, runtime unreachable, timeout — against the real runtime rather than against an anticipated mock.",
+      "lane": "real-runtime",
+      "environment": "capable-host",
+      "marker": "failure",
+      "paths": [],
+      "commands": [
+        "python -m pytest -m failure -q"
+      ],
+      "evidenceClass": "local-real-cpu",
+      "maxCertification": "C2",
+      "requiresModel": true,
+      "requiresCluster": true,
+      "publishable": true,
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "notes": "Full C3 failure certification — denial, retry, and recovery proven exhaustively — is out of V1 scope. What V1 needs from this layer is that each canonical error is produced by the condition it names."
+    },
+    {
+      "layerId": "capacity-and-load",
+      "name": "Capacity and load",
+      "purpose": "Sustained-load measurement. Defined and deferred, so that publishing a capacity figure requires deleting a deferral rather than adding a test.",
+      "lane": "capacity",
+      "environment": "capable-host",
+      "marker": "load",
+      "paths": [],
+      "commands": [
+        "python -m pytest -m load -q"
+      ],
+      "evidenceClass": "local-real-cpu",
+      "maxCertification": "C2",
+      "requiresModel": true,
+      "requiresCluster": true,
+      "publishable": false,
+      "v1Status": "deferred",
+      "evidenceRef": null,
+      "notes": "V1 may publish no throughput, latency, capacity, or benchmark figure. The marker is registered and deselected by default so that a load test cannot arrive quietly in the default lane."
+    },
+    {
+      "layerId": "security-scan",
+      "name": "Security scan",
+      "purpose": "Refuse a change that carries a credential, a model artifact, generated host state, or a personal filesystem path into public history.",
+      "lane": "default-checks",
+      "environment": "repository-only",
+      "marker": null,
+      "paths": [],
+      "commands": [
+        "gitleaks detect --config .gitleaks.toml --no-banner",
+        "git diff --check main...HEAD"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "requiresModel": false,
+      "requiresCluster": false,
+      "publishable": true,
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "notes": "A scan configuration and an allowlist are committed. No recorded run of the scanner exists, so this layer is planned rather than implemented, and the difference is deliberate: a configuration file is not a result."
+    },
+    {
+      "layerId": "documentation",
+      "name": "Documentation verification",
+      "purpose": "Prove that every relative link resolves, that no published document carries trailing whitespace or a hard tab, and that the machine-readable strategy and the documents describing it publish the same identifiers.",
+      "lane": "default-checks",
+      "environment": "repository-only",
+      "marker": "docs",
+      "paths": [
+        "tests/testing"
+      ],
+      "commands": [
+        "python -m pytest tests/testing -q",
+        "the link and whitespace checks in CONTRIBUTING"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "requiresModel": false,
+      "requiresCluster": false,
+      "publishable": true,
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/testing/v1-s0-006-pr1-validation.md",
+      "notes": null
+    }
+  ],
+  "claims": [
+    {
+      "claimId": "an-invalid-workload-document-is-refused-with-a-published-reason",
+      "statement": "Every document the validator refuses is refused with a canonical error code, a stable rule identifier, and a field location that the contract document publishes.",
+      "layers": [
+        "contract-and-schema"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "contracts",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-rejection-interface-cannot-change-without-a-failing-build",
+      "statement": "A change to any canonical code, rule identifier, or field location a consumer is given fails the build rather than passing as a refactor.",
+      "layers": [
+        "contract-and-schema"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "contracts",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "no-resource-in-the-architecture-has-two-owners",
+      "statement": "The committed ownership inventory assigns exactly one owner to every resource, and the Terraform and Helm sets do not intersect.",
+      "layers": [
+        "architecture-inventory"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "architecture",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/architecture/v1-s0-005-pr1-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "published-documents-link-only-to-things-that-exist",
+      "statement": "Every relative link in every published document resolves from the directory of the file containing it.",
+      "layers": [
+        "documentation"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "documentation",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/testing/v1-s0-006-pr1-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-published-strategy-and-its-data-cannot-drift-apart",
+      "statement": "The machine-readable strategy and the documents describing it publish the same lane, layer, and claim identifiers in both directions.",
+      "layers": [
+        "documentation"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "documentation",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/testing/v1-s0-006-pr1-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-default-lane-cannot-execute-a-real-model",
+      "statement": "The default lane downloads no model, and every marker belonging to a layer outside it is deselected by the committed pytest configuration.",
+      "layers": [
+        "documentation"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "documentation",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/testing/v1-s0-006-pr1-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+      "statement": "The environment scripts create a working local cluster, schedule a workload that answers a request, and remove both with residue verified absent.",
+      "layers": [
+        "kubernetes-smoke"
+      ],
+      "environment": "local-kubernetes",
+      "requiredCertification": "C2",
+      "requiresRealModel": false,
+      "evidenceOwner": "environment",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-selected-runtime-serves-a-real-completion-in-a-cluster",
+      "statement": "The pinned runtime image, holding the pinned model revision, answers a real inference request inside a Kubernetes cluster.",
+      "layers": [
+        "real-runtime-smoke"
+      ],
+      "environment": "capable-host",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "serving",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-model-artifact-matches-its-published-hash",
+      "statement": "The downloaded model artifact's computed hash equals the hash published for the pinned revision, which is the whole of the integrity argument for a transfer whose downloader does not validate certificates.",
+      "layers": [
+        "real-runtime-smoke"
+      ],
+      "environment": "capable-host",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "serving",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-platform-serves-a-workload-the-contract-describes",
+      "statement": "A validated WorkloadContract document results in a deployed workload that answers an inference request through the platform API against the real runtime.",
+      "layers": [
+        "unit",
+        "adapter",
+        "mock-integration",
+        "real-runtime-smoke"
+      ],
+      "environment": "capable-host",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "platform",
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "deferralReason": null
+    },
+    {
+      "claimId": "deployment-values-derive-only-from-a-validated-document",
+      "statement": "Chart values are produced from a validated domain object and from nothing else; no cluster object is read as the source of truth for a field the contract defines.",
+      "layers": [
+        "unit",
+        "mock-integration"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C1",
+      "requiresRealModel": false,
+      "evidenceOwner": "platform",
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-mock-serving-path-identifies-itself-as-a-mock",
+      "statement": "The mock adapter and every artifact it produces are identifiable as a mock from the artifact itself, not from the directory it sits in.",
+      "layers": [
+        "adapter",
+        "mock-integration"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C1",
+      "requiresRealModel": false,
+      "evidenceOwner": "serving",
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "deferralReason": null
+    },
+    {
+      "claimId": "a-model-that-is-not-ready-is-a-canonical-error",
+      "statement": "A request arriving while the runtime is still loading its weights returns the canonical model-not-ready error rather than a timeout, a restart, or a 503 the caller has to interpret.",
+      "layers": [
+        "adapter",
+        "mock-integration",
+        "failure-and-resilience"
+      ],
+      "environment": "capable-host",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "platform",
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "deferralReason": null
+    },
+    {
+      "claimId": "an-unreachable-runtime-is-a-canonical-error",
+      "statement": "The API stays healthy and returns the canonical unavailable error when the serving runtime cannot be reached, which is the failure mode the separate-deployment decision created.",
+      "layers": [
+        "adapter",
+        "mock-integration",
+        "failure-and-resilience"
+      ],
+      "environment": "capable-host",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "platform",
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "deferralReason": null
+    },
+    {
+      "claimId": "no-prompt-response-or-secret-reaches-a-log-or-a-metric",
+      "statement": "No prompt, completion, credential, or unbounded identifier appears in a log line, a metric label, or a committed artifact.",
+      "layers": [
+        "unit",
+        "mock-integration",
+        "security-scan",
+        "real-runtime-smoke"
+      ],
+      "environment": "capable-host",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "security",
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "deferralReason": null
+    },
+    {
+      "claimId": "no-credential-or-model-artifact-enters-public-history",
+      "statement": "The published history carries no credential, model artifact, generated host state, or personal filesystem path.",
+      "layers": [
+        "security-scan"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "security",
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "deferralReason": null
+    },
+    {
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "statement": "Installing and uninstalling one release leaves the prerequisite layer intact and leaves nothing of the release behind.",
+      "layers": [
+        "kubernetes-smoke"
+      ],
+      "environment": "local-kubernetes",
+      "requiredCertification": "C2",
+      "requiresRealModel": false,
+      "evidenceOwner": "environment",
+      "v1Status": "planned",
+      "evidenceRef": null,
+      "deferralReason": null
+    },
+    {
+      "claimId": "sustained-throughput-and-capacity-under-load",
+      "statement": "The platform sustains a stated request rate at a stated latency on a stated hardware class.",
+      "layers": [
+        "capacity-and-load"
+      ],
+      "environment": "capable-host",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "serving",
+      "v1Status": "deferred",
+      "evidenceRef": null,
+      "deferralReason": "V1 may publish no throughput, latency, capacity, or benchmark figure. Making one runtime work is not the same as engineering the runtime, and a capacity claim would be a claim about a runtime this project did not write."
+    }
+  ],
+  "evidenceRetention": {
+    "certifyingRecordRoot": "docs/proof",
+    "certifyingRecords": "A record that certifies a public claim is committed under docs/proof and retained for as long as the claim stands. It is retained in the repository's history rather than in a lane's artifact store, because an artifact store that expires cannot support a claim that does not.",
+    "laneArtifacts": "A lane's raw output is retained for the period the lane declares and then expires. It exists to diagnose a failure, not to support a claim. Nothing may cite an expiring artifact as the evidence for a published claim.",
+    "promotion": "Raw output that a claim depends on is promoted into a committed record before the lane's retention window closes, with prompts, completions, credentials, and host identifiers removed. A claim whose evidence was never promoted is uncertified, and the correct response is to rerun the lane.",
+    "supersession": "A superseded record is kept and marked rather than deleted, so that a reader arriving from an old link finds the correction rather than a missing file."
+  }
+}

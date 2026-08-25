@@ -40,6 +40,8 @@ from tools.contract_validation.workload import (
     structural_findings,
 )
 
+pytestmark = pytest.mark.contract
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_DIR = REPO_ROOT / "contracts" / "workload"
 VALID_DIR = CONTRACT_DIR / "examples" / "valid"

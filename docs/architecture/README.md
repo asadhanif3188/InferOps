@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established; two decisions accepted in part, one accepted with a
+Status: entry point established; three decisions accepted in part, one accepted with a
 recorded exception, one accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
@@ -34,13 +34,16 @@ These describe the V1 design. Every component below the contract layer is unbuil
 | [0002](decisions/ADR-0002-model-and-serving-runtime.md) | Model and serving runtime | Accepted, with one recorded exception | 2026-08-24 | [Runtime feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
 | [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
 | [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
+| [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, and six of its eleven test layers have no code |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
 and minimum host tier are accepted; the task runner, dependency installation
 approach, and recommended host tier are not. In 0004, six decisions are accepted
 and one — who owns telemetry collection and an ingress or load-balancer
-implementation — is explicitly not made.
+implementation — is explicitly not made. In 0005, five decisions are accepted and
+one — which continuous-integration service runs the lanes, and what labels a capable
+runner — is explicitly not made.
 
 0002 selects one runtime image digest and one immutable model revision, on evidence
 from a trial that was executed on 2026-08-24: a model was downloaded and
@@ -70,6 +73,15 @@ data and checked by a test; the component half has no code to check it against.
 **One decision inside it is deliberately not made**: nobody owns a telemetry
 collector or an ingress implementation, and both are deferred rather than assigned
 for tidiness.
+
+0005 decides how V1 is tested and what a passing result may be used to claim: eleven
+test layers, four lanes, a ceiling on each layer's evidence class, certification at
+C0 to C2, and evidence retention that separates an expiring lane artifact from a
+committed certifying record. Its central rule — a mock may never certify real runtime
+behaviour — was already accepted in words; what this record adds is a mechanism, in
+committed data and a marker expression that a test compares against it in both
+directions. It configures **no** continuous integration: there is no workflow file in
+this repository, and a lane may claim automation only by naming one that exists.
 
 ## Conventions
 
