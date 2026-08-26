@@ -12,7 +12,7 @@ method, and nothing here is evidence about what running an inference workload co
 Claim boundary: the committed cost method is internally consistent under every rule
 the suite states; the worked example's amounts, shares, and unit costs recompute in
 exact decimal from the declared reservations and rates and close against the capacity
-they allocate; seventy-two deliberate corruptions of it — in the method data, in two
+they allocate; seventy-four deliberate corruptions of it — in the method data, in two
 published documents, in the telemetry catalog, and in the test strategy data — are
 each refused; every telemetry signal the method names appears in the catalog that
 declares it; every relative link resolves; the existing suites are unchanged in
@@ -50,15 +50,15 @@ and the arithmetic uses only the standard library's `decimal` module.
 
 ```text
 python -m pytest tests/cost -q
-286 passed
+288 passed
 ```
 
-Seventy-two test functions, parametrised across three bases, three allocation methods,
+Seventy-three test functions, parametrised across three bases, three allocation methods,
 three residual treatments, twelve units, four rate-card classes, one published rate
 card, four confidence levels, six confidence rules, twenty-four inputs, ten outputs,
-six missing-data reasons, twenty-nine record-shape fields, fourteen rules, three
-telemetry gaps, two open questions, twelve limitations, and two worked-example
-records.
+six missing-data reasons, thirty record-shape fields, fourteen rules, three
+telemetry gaps, two open questions, twelve limitations, two worked-example records,
+and two counterfactual lines.
 
 ### The strategy suite, which this change adds a claim and a path to
 
@@ -85,12 +85,12 @@ Unchanged in count and in behaviour. The two edits change prose inside two
 
 ```text
 python -m pytest tests -q
-1685 passed, 7 skipped
+1687 passed, 7 skipped
 ```
 
 The seven skips are the pre-existing contract-suite skips and are unchanged by this
 change. The previous total on `main` was 1,389 passed and 7 skipped: the cost suite
-adds 286, and the strategy suite gains 10 parametrised cases from the new claim row.
+adds 288, and the strategy suite gains 10 parametrised cases from the new claim row.
 
 ### Formatting and lint
 
@@ -132,7 +132,7 @@ The relative-link check from CONTRIBUTING, run over every tracked Markdown file:
 (no BROKEN lines)
 ```
 
-Every relative link in the five new documents and the eleven modified ones resolves
+Every relative link in the five new documents and the ten modified ones resolves
 from the directory of the file containing it. No external link was added by this
 change.
 
@@ -197,7 +197,7 @@ string of exactly six places.
 
 ## Deliberate corruptions, each refused
 
-Seventy-two mutations were applied one at a time to a working copy, the suite was run,
+Seventy-four mutations were applied one at a time to a working copy, the suite was run,
 and the file was restored. Every one failed the suite. None survived.
 
 ### Basis and the vocabulary of a bill — 6
@@ -209,7 +209,7 @@ and the file was restored. Every one failed the suite. None survived.
 - the invoice basis is marked reachable
 - the allocation basis is marked unreachable
 
-### Allocation and the residual — 7
+### Allocation and the residual — 9
 
 - two allocation methods are selected
 - no allocation method is selected
@@ -218,6 +218,8 @@ and the file was restored. Every one failed the suite. None survived.
 - the residual is discarded
 - the residual is spread and the lines stop closing
 - a prerequisite line is charged to a workload
+- a counterfactual amount stops matching the treatment it names
+- the selected treatment acquires a counterfactual
 
 ### The arithmetic — 13
 
@@ -307,8 +309,8 @@ recorded here because the distinction matters. "A declared input is required by
 nothing" originally removed a telemetry gap in order to orphan the accelerator input;
 that input is also named by the deferred allocation method, so nothing was orphaned
 and the suite correctly passed. Rewritten to add an input that genuinely nothing
-references, it fails with the expected message. The seventy-two above are the counts
-after that correction.
+references, it fails with the expected message. The seventy-four above are the counts
+after that correction and after the two mutations the second review's fix required.
 
 The mutation harness itself is not committed. It reads and restores files in the
 working tree and produces no artifact this repository keeps; the list above is the
@@ -318,8 +320,29 @@ record of what it found.
 
 The change was reviewed independently after the first commit, against the diff and the
 files it touches, with the reviewer asked to hunt for overclaim, contradiction, tests
-that do not bite, and leakage. What it found and what was done about it is recorded in
-the second commit and summarised here after that review completed.
+that do not bite, and leakage. It found five defects, all real, all fixed in the second
+commit:
+
+| Severity | Defect | Fix |
+|---|---|---|
+| High | This section existed in the first commit, written in the past tense, asserting that an independent review had happened and found things | Removed from the record until the review had actually run. It is written here, in the second commit, from what the review found |
+| Medium | The worked example claimed that spreading the residual would raise the first workload's unit cost "by a factor of three and a half". The correct factor is 3.2, and no test guarded the sentence because the suite only recomputes six-decimal figures | The counterfactual is now data: both rejected treatments declare what the first workload would have been charged under them, and a test recomputes each from the treatment it names |
+| Medium | The record-shape field count in this document said twenty-nine; the committed method declares thirty | Corrected |
+| Medium | This document said eleven modified documents; ten Markdown files are modified | Corrected |
+| Low | `test_no_unavailable_input_is_replaced_by_a_zero` asserted a strict subset of what the bidirectional missing-data test already asserted, so no corruption could distinguish them | Deleted, and the property it named moved into the surviving test's docstring where it is actually established |
+
+The first two are the ones worth recording. A record that describes its own review
+before the review has happened is the same defect this repository has already had once
+in a different form — a test that appears in a count while establishing nothing — and it
+is worse here, because the overclaim is about the check rather than inside it.
+
+The second is the more interesting failure. Every six-decimal figure in the worked
+example is recomputed by the suite, which is precisely why the one wrong number in it
+was a **ratio written out in words**: the guard was arithmetic, and the error was
+prose. The fix was not to correct the sentence but to move the quantity into the data,
+where the same guard reaches it. Two mutations were added to cover the new check, which
+is why the corruption count is seventy-four rather than the seventy-two of the first
+commit.
 
 ## What the diff was reviewed for
 
@@ -360,10 +383,11 @@ own:
   measurements of anything. No amount in this change may be cited as a cost.
 - **The `actual` basis is untested in every sense.** No invoice, billing export, or
   provider account exists, so the rules about one are specification only.
-- **The mutation set is not exhaustive.** Seventy-two corruptions were chosen because
+- **The mutation set is not exhaustive.** Seventy-four corruptions were chosen because
   each represents a mistake somebody would plausibly make. A corruption nobody thought
   of is a corruption that was not tested, and the first pass produced one mutation that
-  was written wrongly rather than one that survived.
+  was written wrongly rather than one that survived, and the second review found a wrong
+  number that no mutation of the data could have reached, because it was prose.
 - **The minimum denominators are arbitrary.** One hundred requests and ten thousand
   tokens are declared, not derived, and the method says so in its own limitations.
 - **Node capacity is declared, not read.** Nothing in this repository reads allocatable

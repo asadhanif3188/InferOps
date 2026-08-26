@@ -1469,6 +1469,20 @@
         "note": "This record exists to exercise the two missing-data paths. Forty requests is below the declared minimum, so the request unit cost is null rather than a rate; no token telemetry exists for a mock profile, so the token unit cost is null rather than zero. The amount itself is unaffected, because an allocation does not depend on traffic."
       }
     ],
+    "counterfactuals": [
+      {
+        "treatmentId": "spread-pro-rata",
+        "recordId": "example-cost-0001",
+        "amount": "0.320000",
+        "note": "What the first workload would have been charged had the residual been divided in proportion to what each workload reserved. It is stated as data rather than prose so that the argument against this treatment is arithmetic the suite recomputes, and not a ratio somebody estimated."
+      },
+      {
+        "treatmentId": "discard",
+        "recordId": "example-cost-0001",
+        "amount": "0.100000",
+        "note": "What the first workload would have been charged had the residual been dropped. The amount is unchanged, which is the point: discarding leaves the workload lines identical and the machine unaccounted for."
+      }
+    ],
     "unallocated": {
       "amount": "0.275000",
       "shareOfNodeCapacity": "0.687500",

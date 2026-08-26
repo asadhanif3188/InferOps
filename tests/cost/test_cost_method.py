@@ -205,6 +205,7 @@ GAPS = METHOD["telemetryMapping"]["gaps"]
 OPEN_QUESTIONS = METHOD["openQuestions"]
 EXAMPLE = METHOD["workedExample"]
 EXAMPLE_RECORDS = EXAMPLE["records"]
+COUNTERFACTUALS = EXAMPLE["counterfactuals"]
 DENOMINATORS = METHOD["denominatorRules"]
 
 BASIS_BY_ID = {row["basisId"]: row for row in BASES}
@@ -727,6 +728,12 @@ USAGE_INPUT_BY_RECORD_KEY = {
 def test_a_null_output_carries_a_reason_and_a_reason_carries_a_null(
     record: dict,
 ) -> None:
+    """Both directions, because only one of them catches a substituted zero.
+
+    An input declared unavailable must actually be null - which is what refuses a
+    zero written in place of an absent signal - and an input that is null must be
+    declared unavailable, which is what refuses a null nobody accounted for.
+    """
     unavailable = set(record["completeness"]["unavailableInputs"])
     reasons = set(record["completeness"]["reasons"])
 
@@ -754,14 +761,6 @@ def test_a_null_output_carries_a_reason_and_a_reason_carries_a_null(
         assert reasons & set(output["nullWhen"]), (
             f"{record['recordId']}.{key} is null and no declared reason explains it"
         )
-
-
-def test_no_unavailable_input_is_replaced_by_a_zero() -> None:
-    for record in EXAMPLE_RECORDS:
-        for input_id in record["completeness"]["unavailableInputs"]:
-            for key, mapped in USAGE_INPUT_BY_RECORD_KEY.items():
-                if mapped == input_id:
-                    assert record["usage"][key] is None, (record["recordId"], key)
 
 
 def test_every_reason_the_method_calls_common_is_one_the_method_uses() -> None:
@@ -858,6 +857,39 @@ def test_the_workload_lines_and_the_residual_close_against_the_node() -> None:
     assert quantise(workloads + residual) == node
     assert EXAMPLE["totals"]["closes"] is True
     assert Decimal(EXAMPLE["totals"]["nodeCapacityAmount"]) == node
+
+
+@pytest.mark.parametrize("row", COUNTERFACTUALS, ids=lambda row: row["treatmentId"])
+def test_every_counterfactual_recomputes_from_the_treatment_it_names(
+    row: dict,
+) -> None:
+    """The argument against a rejected treatment is arithmetic, not an estimate."""
+    treatment = next(
+        item for item in TREATMENTS if item["treatmentId"] == row["treatmentId"]
+    )
+    assert treatment["selected"] is False, row["treatmentId"]
+    record = next(
+        item for item in EXAMPLE_RECORDS if item["recordId"] == row["recordId"]
+    )
+    amount = Decimal(record["cost"]["amount"])
+    workloads = sum(Decimal(item["cost"]["amount"]) for item in EXAMPLE_RECORDS)
+    residual = Decimal(EXAMPLE["unallocated"]["amount"])
+    if row["treatmentId"] == "spread-pro-rata":
+        expected = quantise(amount + residual * (amount / workloads))
+    elif row["treatmentId"] == "discard":
+        expected = amount
+    else:
+        raise AssertionError(f"no recomputation for {row['treatmentId']}")
+    assert Decimal(row["amount"]) == expected, row["treatmentId"]
+
+
+def test_every_rejected_treatment_has_a_counterfactual() -> None:
+    named = {row["treatmentId"] for row in COUNTERFACTUALS}
+    unselected = {row["treatmentId"] for row in TREATMENTS if not row["selected"]}
+    assert named == unselected, {
+        "unselected without a counterfactual": sorted(unselected - named),
+        "counterfactual for a selected treatment": sorted(named - unselected),
+    }
 
 
 def test_every_share_recomputes_against_the_node() -> None:

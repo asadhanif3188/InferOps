@@ -130,8 +130,8 @@ useless as an efficiency measure.
 
 Sixty-nine per cent of the machine was reserved by nobody, and it is the largest
 number on the page. Spreading it across the two workloads would have raised the
-first workload's cost per thousand requests by a factor of three and a half without
-anything about that workload changing; discarding it would have left the two
+first workload's amount from 0.100000 to 0.320000, and its cost per thousand requests
+with it, without anything about that workload changing; discarding it would have left the two
 workload lines summing to 0.125000 against a machine costing 0.400000, with nothing
 to name the gap.
 
