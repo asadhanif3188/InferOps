@@ -124,11 +124,13 @@ runs today.
 
 `documentation` checks that every relative link resolves, that no published file
 carries trailing whitespace or a hard tab, and that the machine-readable strategy and
-the documents describing it publish the same identifiers. It covers two directories —
-[`tests/testing/`](../../tests/testing/) for this strategy and
+the documents describing it publish the same identifiers. It covers three directories —
+[`tests/testing/`](../../tests/testing/) for this strategy,
 [`tests/telemetry/`](../../tests/telemetry/) for
-[the telemetry catalog](../telemetry/telemetry-catalog.md) — because both are
-committed data checked against the documents that describe them. Its pytest half runs
+[the telemetry catalog](../telemetry/telemetry-catalog.md), and
+[`tests/cost/`](../../tests/cost/) for
+[the cost method](../cost/cost-method.md) — because each is committed data
+checked against the documents that describe it. Its pytest half runs
 today; its link and whitespace half is the shell check in
 [CONTRIBUTING](../../CONTRIBUTING.md).
 

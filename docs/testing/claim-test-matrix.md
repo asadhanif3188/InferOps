@@ -4,7 +4,7 @@ Status: **accepted matrix**, in
 [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
 It lists every public claim V1 intends to make, the test layers behind it, the
 environment it is proven in, the certification level it needs, and who owns its
-evidence. Ten of nineteen claims are certified today. The rest are commitments, and
+evidence. Eleven of twenty claims are certified today. The rest are commitments, and
 the difference is the point of the table.
 
 The authoritative form is
@@ -46,11 +46,23 @@ Each of these rests on an executed record in [`docs/proof/`](../proof/).
 | `the-published-strategy-and-its-data-cannot-drift-apart` | documentation | repository-only | C0 | documentation |
 | `the-default-lane-cannot-execute-a-real-model` | documentation | repository-only | C0 | documentation |
 | `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | documentation | repository-only | C0 | security |
+| `a-cost-figure-cannot-be-presented-as-a-bill` | documentation | repository-only | C0 | documentation |
 | `a-local-cluster-is-created-and-removed-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | real-runtime-smoke | capable-host | C2 | serving |
 | `the-model-artifact-matches-its-published-hash` | real-runtime-smoke | capable-host | C2 | serving |
 
-The telemetry row is the newest and the narrowest, and its wording is exact for a
+The cost row is the newest, and its scope is exactly the committed method. It
+certifies that every amount there declares a basis, that only an invoice-backed basis
+may carry the vocabulary or the reference of an invoice, that every unit cost carries
+the count it was divided by and vanishes below a declared minimum, that a record's
+confidence is recomputed from its own inputs rather than read from a field its
+producer filled in, and that the worked example's arithmetic closes against the
+capacity it allocates. It certifies **nothing about what anything costs**: the only
+rate card in this repository is synthetic, no invoice has ever been read, and no
+component computes a cost record. The example's own confidence is `none`, derived
+rather than assigned.
+
+The telemetry row is narrow in the same way, and its wording is exact for a
 reason. A prompt, a response, a provider error body, and a secret have **no**
 permitted placement in the committed catalog at all. A tenant identifier, a
 correlation or trace identifier, and any unbounded or measured value are a narrower

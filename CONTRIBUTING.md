@@ -345,6 +345,44 @@ permits is a change that has to reclassify the field in public first. The decisi
 behind all of it is
 [ADR 0006](docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md).
 
+### Cost method and worked example
+
+Changes under `docs/cost/` or `tests/cost/` must pass the cost suite:
+
+```sh
+python -m pytest tests/cost -q
+```
+
+It reads only files in this repository and needs `pytest` alone. It checks the
+committed method
+[`docs/cost/cost-method.v1alpha1.json`](docs/cost/cost-method.v1alpha1.json): that
+every amount declares a basis and that only an invoice-backed basis may carry the
+vocabulary or the reference of an invoice; that exactly one allocation method and one
+residual treatment are selected and the unselected ones say why; that every price
+source is committed rather than fetched and the synthetic one says so in its own
+contents; that each record's confidence is the lowest ceiling its own inputs allow,
+recomputed rather than read; that an unavailable input is null with a declared reason
+and never a zero; that every unit cost carries the count it was divided by and is null
+below the declared minimum; that every input names a signal the telemetry catalog
+declares or records that none exists; that whether a record field may be committed is
+derived from the sensitivity class the telemetry catalog gave it, which is what keeps
+a tenant identifier out of every record here; that no binary float appears anywhere in
+the method; and that the worked example's amounts, shares, and unit costs recompute in
+exact decimal and close against the capacity they allocate.
+
+It checks a method, not a cost. Nothing in this repository computes, emits, or reads a
+cost record, no invoice has ever been seen, and the only rate card committed here is
+synthetic, so every amount the suite verifies is arithmetically correct and
+economically meaningless.
+
+A change that adds an input adds the signal it would come from or records that none
+exists. A change that adds an amount to the worked example adds a number the suite
+recomputes; a figure typed into a document that the arithmetic does not produce is a
+failing test. The decision behind all of it is
+[ADR 0007](docs/architecture/decisions/ADR-0007-inference-cost-method.md), and the
+rule it cannot enforce is the one that matters most: V1 publishes this method and a
+synthetic example, and no figure for what running an inference workload costs.
+
 ### Kubernetes manifests
 
 Changes under `deploy/` must parse and must validate against the Kubernetes version

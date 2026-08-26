@@ -23,6 +23,7 @@ nominate its own strength.
 | Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md) |
 | Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md) |
 | Telemetry | [`v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md) |
+| Cost | [`v1-s0-008-pr1-validation.md`](cost/v1-s0-008-pr1-validation.md) |
 
 ## Templates
 

@@ -461,11 +461,13 @@
       "marker": "docs",
       "paths": [
         "tests/testing",
-        "tests/telemetry"
+        "tests/telemetry",
+        "tests/cost"
       ],
       "commands": [
         "python -m pytest tests/testing -q",
         "python -m pytest tests/telemetry -q",
+        "python -m pytest tests/cost -q",
         "the link and whitespace checks in CONTRIBUTING"
       ],
       "evidenceClass": "local-static",
@@ -561,6 +563,20 @@
       "evidenceOwner": "security",
       "v1Status": "certified",
       "evidenceRef": "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "a-cost-figure-cannot-be-presented-as-a-bill",
+      "statement": "Every amount in the committed cost method declares a basis; only an invoice-backed basis may carry the vocabulary or the reference of an invoice; every unit cost carries the denominator it was divided by and is null below a declared minimum; every record's confidence is the lowest ceiling its own inputs allow rather than a value its producer asserted; and the worked example's amounts, shares, and unit costs are recomputed in exact decimal and close against the capacity they allocate.",
+      "layers": [
+        "documentation"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "documentation",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/cost/v1-s0-008-pr1-validation.md",
       "deferralReason": null
     },
     {

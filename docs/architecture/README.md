@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established; four decisions accepted in part, one accepted with a
+Status: entry point established; five decisions accepted in part, one accepted with a
 recorded exception, one accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
@@ -36,6 +36,7 @@ These describe the V1 design. Every component below the contract layer is unbuil
 | [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
 | [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, and six of its eleven test layers have no code |
 | [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Change validation](../proof/telemetry/v1-s0-007-pr1-validation.md); the catalog is machine-checked, and nothing in this repository emits a single signal |
+| [0007](decisions/ADR-0007-inference-cost-method.md) | Inference cost-calculation method | Accepted in part | 2026-08-26 | [Change validation](../proof/cost/v1-s0-008-pr1-validation.md); the method and its worked example are machine-checked, and nothing in this repository computes a cost record |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -47,7 +48,9 @@ one — which continuous-integration service runs the lanes, and what labels a c
 runner — is explicitly not made. In 0006, six decisions are accepted, one — what would
 allow prompt and response capture — is explicitly not made, and one — the telemetry
 toolchain and who owns a collector — is deliberately left to 0004's open question
-rather than answered in passing.
+rather than answered in passing. In 0007, eleven decisions are accepted and two —
+which provider rate cards a comparison would use, and which component computes a cost
+record — are not.
 
 0002 selects one runtime image digest and one immutable model revision, on evidence
 from a trial that was executed on 2026-08-24: a model was downloaded and
@@ -102,6 +105,22 @@ behaviour — was already accepted in words; what this record adds is a mechanis
 committed data and a marker expression that a test compares against it in both
 directions. It configures **no** continuous integration: there is no workflow file in
 this repository, and a lane may claim automation only by naming one that exists.
+
+0007 decides how a V1 cost figure is produced and what it may be called: three bases
+of which only an allocation is reachable, allocation by reserved capacity rather than
+observed use, unreserved capacity reported as its own line so that the parts close
+against the machine, half-open UTC windows split at a change of reservation, prices
+committed rather than fetched, decimal money rounded once, a missing input recorded as
+null with a reason instead of a zero, and confidence derived from a record's own
+inputs rather than typed by its producer.
+
+The consequence it refuses to soften: **every cost figure this project can produce
+today has confidence `none`.** The only rate card committed here is synthetic, no
+invoice has ever been read, and no component computes a cost record. It also records
+one boundary consequence that is easy to miss — a cost per thousand requests is an
+hourly reservation divided by an hour of traffic, so the rule against publishing a
+throughput figure is also a rule against publishing a cost-per-request figure. Two of
+its fourteen rules are enforced by review alone.
 
 ## Conventions
 

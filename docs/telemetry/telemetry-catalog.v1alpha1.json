@@ -672,7 +672,7 @@
       "identityOnly": false,
       "placements": ["log-field", "evidence-field"],
       "v1Status": "deferred",
-      "deferralReason": "No cost method is defined yet. Naming the field here would not make one exist, and defining its semantics is a separate decision that has not been taken.",
+      "deferralReason": "The cost method that gives this field its meaning is now defined, in ADR 0007. Nothing computes, emits, or reads a cost record, so there is no value for the field to carry.",
       "notes": null
     },
     {
@@ -1021,7 +1021,7 @@
       "buckets": null,
       "maxSeries": 25,
       "v1Status": "deferred",
-      "deferralReason": "No cost method is defined. Emitting a count of cost records before deciding what a cost record is would fix the wrong thing first.",
+      "deferralReason": "The cost method is now defined, in ADR 0007, and no component computes or emits a cost record. A counter that can only ever read zero would describe an absent capability as a quiet one.",
       "runtimeSeries": [],
       "notes": null
     }

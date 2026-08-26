@@ -31,6 +31,12 @@ No capability descriptor, runtime descriptor, model-access API, evaluation resul
 cost record, or policy decision exists. Each will be added when the capability
 behind it exists rather than in advance.
 
+A **cost record** is the one of those whose shape is now written down. [The cost
+method](../cost/cost-method.md) publishes the fields a record would carry, as part
+of the method rather than as a schema here, because nothing computes or consumes
+one. That is the rule above applied rather than an exception to it: publishing a
+schema would create a versioned commitment to a consumer that does not exist.
+
 A **runtime and model compatibility matrix** does exist, at
 [`contracts/workload/compatibility/`](../../contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json).
 It is narrower than the cross-project compatibility matrix the integration
