@@ -1,0 +1,1589 @@
+{
+  "$id": "https://inferops.io/cost/cost-method.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 inference cost-calculation method, v1alpha1",
+  "description": "How a V1 inference cost figure is produced: which basis it carries, how a share of a machine is allocated to a workload, what happens to capacity nobody reserved, which time window it covers, where its prices came from, what units and precision it uses, what it does when an input is missing, and how much confidence it is allowed to claim. The method is committed as data so that every number in the worked example is arithmetic a test recomputes rather than a figure somebody typed. Nothing in this repository computes a cost record.",
+  "decisionRef": "docs/architecture/decisions/ADR-0007-inference-cost-method.md",
+  "documentRef": "docs/cost/cost-method.md",
+  "workedExampleRef": "docs/cost/worked-example.md",
+  "telemetryCatalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "workloadContractRef": "contracts/workload/workload-contract.v1alpha1.schema.json",
+  "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
+  "boundariesRef": "docs/architecture/project-boundaries.md",
+
+  "computationStatus": {
+    "state": "nothing-computes",
+    "meaning": "No component in this repository computes, emits, stores, or reads a cost record. Every rule below specifies behaviour for a producer that does not exist, and the only numbers this project holds are the synthetic ones in the worked example.",
+    "producer": "not selected; which component computes a cost record and who owns it is an open question, and the resource-ownership inventory assigns the work to nobody",
+    "invoicesRead": 0,
+    "costRecordsProduced": 0
+  },
+
+  "bases": [
+    {
+      "basisId": "actual",
+      "meaning": "A figure taken from a provider's invoice or billing export for the period it covers.",
+      "requires": "an invoice or billing export from the party that charged for the capacity",
+      "v1Reachable": false,
+      "unreachableReason": "This project has never been billed for anything. It runs on a local single-node cluster on a contributor's own machine, and no provider account, invoice, or billing export exists.",
+      "maxConfidence": "high",
+      "notes": "The word billing, and every synonym for it, belongs to this basis alone."
+    },
+    {
+      "basisId": "allocated",
+      "meaning": "A price applied to the capacity a workload reserved, whether or not it used any of it.",
+      "requires": "a price source, a node capacity declaration, and the workload's declared resource requests and replica count",
+      "v1Reachable": true,
+      "unreachableReason": null,
+      "maxConfidence": "low",
+      "notes": "The only basis V1 can reach, because reserved capacity is declared in a document rather than measured on a host."
+    },
+    {
+      "basisId": "estimated",
+      "meaning": "A price applied to observed utilisation over the window rather than to what was reserved.",
+      "requires": "a price source and measured processor, memory, or accelerator utilisation integrated over the window",
+      "v1Reachable": false,
+      "unreachableReason": "The local cluster runs no metrics server, no collector, and no store. Container and node resource use has no source, which the telemetry catalog already records as a limitation, so there is nothing to integrate over a window.",
+      "maxConfidence": "medium",
+      "notes": "Named and specified here so that the first component to measure utilisation produces this basis deliberately rather than relabelling an allocation."
+    }
+  ],
+
+  "basisRules": [
+    "A record carries exactly one basis.",
+    "Amounts on different bases are never summed into one total.",
+    "A record whose basis is not `actual` carries no provider invoice reference, and no field that would let one be inferred."
+  ],
+
+  "allocationMethods": [
+    {
+      "methodId": "requested-resource-share",
+      "meaning": "A workload is charged for the share of a node's allocatable capacity that it reserved: its processor and memory requests, multiplied by its replica count, multiplied by the window length.",
+      "inputsRequired": [
+        "workload-cpu-request",
+        "workload-memory-request",
+        "workload-accelerator-count",
+        "workload-replica-count",
+        "window-start",
+        "window-end",
+        "price-source"
+      ],
+      "selected": true,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "whyChosen": "Reserved capacity is what the scheduler refuses to give to anything else, so it is the quantity a workload actually consumes from a fixed machine. It is also the only quantity V1 can obtain, because it is declared in a validated document rather than measured on a host.",
+      "honestCost": "A workload that reserves four processor cores and uses a tenth of one is charged the same as a workload that uses all four. That is correct capacity accounting and useless efficiency accounting, and it is a property of the method rather than a defect in it."
+    },
+    {
+      "methodId": "observed-utilisation-share",
+      "meaning": "A workload is charged for the share of the node's capacity it was measured to use, integrated over the window.",
+      "inputsRequired": [
+        "cpu-seconds",
+        "memory-byte-seconds",
+        "accelerator-seconds",
+        "window-start",
+        "window-end",
+        "price-source"
+      ],
+      "selected": false,
+      "v1Status": "deferred",
+      "deferralReason": "Every input it needs is unavailable. There is no metrics server, no collector, and no store, so no utilisation integral exists to allocate from.",
+      "whyChosen": null,
+      "honestCost": "It rewards a workload for reserving capacity it does not use, which is a cost the reserving workload has already imposed on everything else on the node."
+    },
+    {
+      "methodId": "request-count-share",
+      "meaning": "A node's cost is divided between workloads in proportion to the requests each one served.",
+      "inputsRequired": ["requests"],
+      "selected": false,
+      "v1Status": "rejected",
+      "deferralReason": null,
+      "whyChosen": null,
+      "honestCost": "It makes one workload's unit cost depend on how busy its neighbours were. A workload whose traffic halves while nothing else changes appears to double in price, which is a statement about the neighbours rather than about the workload."
+    }
+  ],
+
+  "residualTreatments": [
+    {
+      "treatmentId": "report-separately",
+      "meaning": "Capacity no workload reserved is reported as its own line, attributed to the environment rather than to any workload.",
+      "selected": true,
+      "why": "It is the only treatment under which the workload lines and the residual add up to the node, so a reader can see both the unit costs and the fact that most of the machine was idle. Making the idle share visible is the point: it is usually the largest number on the page."
+    },
+    {
+      "treatmentId": "spread-pro-rata",
+      "meaning": "Unreserved capacity is divided between workloads in proportion to what each reserved.",
+      "selected": false,
+      "why": "It makes a workload's unit cost depend on how empty the machine was, so the same workload doing the same work changes price when an unrelated workload is removed. It also hides idle capacity in numbers that look like workload costs."
+    },
+    {
+      "treatmentId": "discard",
+      "meaning": "Unreserved capacity is not costed at all.",
+      "selected": false,
+      "why": "The workload lines then sum to less than the machine, and the gap is invisible. This is the treatment that makes a unit cost look defensible while the environment quietly costs several times the sum of its parts."
+    }
+  ],
+
+  "sharedCostRules": [
+    {
+      "ruleId": "unreserved-capacity-is-a-line-not-a-rounding-error",
+      "statement": "Node capacity that no workload reserved is reported as an `unallocated` line attributed to the environment.",
+      "why": "A cost model whose parts do not sum to the whole is a cost model whose gap nobody has to explain."
+    },
+    {
+      "ruleId": "a-prerequisite-resource-is-not-a-workload-cost",
+      "statement": "Storage and other resources whose lifecycle is longer than a release - the model cache above all - are attributed to the prerequisite layer, not to the workload that happens to mount them.",
+      "why": "The model cache deliberately outlives the release that uses it, so that uninstalling does not force a re-download over a transport whose downloader does not validate certificates. A cost that survives the workload is not the workload's cost, and charging it to a workload would make deleting the workload look like a saving it is not."
+    },
+    {
+      "ruleId": "a-control-plane-cost-is-environment-cost",
+      "statement": "Cluster control-plane and platform overhead is environment cost. It is neither spread across workloads nor omitted.",
+      "why": "It is real, it is shared, and dividing it produces per-workload numbers that move when the workload count changes."
+    }
+  ],
+
+  "windowRules": {
+    "interval": "half-open: the window includes its start instant and excludes its end instant, so adjacent windows neither overlap nor leave a gap",
+    "timeZone": "UTC only",
+    "format": "RFC 3339 with an explicit Z offset",
+    "defaultLength": "PT1H",
+    "minimumLength": "PT1M",
+    "maximumLength": "P1D",
+    "alignmentRule": "A window of the default length starts on the hour.",
+    "shapeChangeRule": "If a workload's resource requests, accelerator count, or replica count changed inside a window, the window is split at the change and one record is produced per segment. The method has no defensible way to average an allocation across a shape change, and averaging one would produce a number that describes no state the system was ever in.",
+    "shapeChangeEnforcement": "review",
+    "partialWindowRule": "A workload that existed for part of the window is charged for the part it existed, and the record records the window as incomplete.",
+    "clockSource": "the producing component's own clock, recorded in the record; no clock is reconciled against any other"
+  },
+
+  "units": [
+    {
+      "unitId": "cpu-core-hour",
+      "priced": true,
+      "meaning": "One processor core reserved or used for one hour.",
+      "definition": "Kubernetes processor quantities are millicores; 1000m is one core. A quantity is converted to cores by dividing by 1000 before any price is applied.",
+      "appliesTo": "processor"
+    },
+    {
+      "unitId": "memory-gibibyte-hour",
+      "priced": true,
+      "meaning": "One gibibyte of memory reserved or used for one hour.",
+      "definition": "One gibibyte is 2^30 bytes. Kubernetes memory quantities are binary, so 2Gi is 2 gibibytes and never 2 gigabytes; reading one as the other introduces a 7.4 per cent error in every memory line, silently.",
+      "appliesTo": "memory"
+    },
+    {
+      "unitId": "storage-gibibyte-hour",
+      "priced": true,
+      "meaning": "One gibibyte of persistent storage claimed for one hour.",
+      "definition": "Separate from memory because it is priced separately and because its lifecycle is different: a claim survives the release that mounted it.",
+      "appliesTo": "storage"
+    },
+    {
+      "unitId": "accelerator-device-hour",
+      "priced": true,
+      "meaning": "One accelerator device reserved or used for one hour.",
+      "definition": "Accelerators are whole devices in V1. There is no fractional device, no time-slicing, and no multi-instance partitioning, because the workload contract allocates whole devices by count.",
+      "appliesTo": "accelerator"
+    },
+    {
+      "unitId": "request",
+      "priced": false,
+      "meaning": "One inference request accepted by the platform, whatever its outcome.",
+      "definition": "A refused request is still a request: it consumed the capacity that refused it. Counting only successes would make a failing workload look cheap.",
+      "appliesTo": "denominators"
+    },
+    {
+      "unitId": "token",
+      "priced": false,
+      "meaning": "One token as counted by the serving runtime's own tokeniser.",
+      "definition": "Input and output tokens are counted separately and summed only for a combined denominator. No token count is derived from a character or word count.",
+      "appliesTo": "denominators"
+    },
+    {
+      "unitId": "second",
+      "priced": false,
+      "meaning": "One second of wall-clock time.",
+      "definition": "Used for durations that describe a window rather than a reservation, and never priced directly.",
+      "appliesTo": "durations"
+    },
+    {
+      "unitId": "count",
+      "priced": false,
+      "meaning": "A whole number of things.",
+      "definition": "Replica counts and device counts. Never fractional.",
+      "appliesTo": "declarations"
+    },
+    {
+      "unitId": "instant",
+      "priced": false,
+      "meaning": "A point in time.",
+      "definition": "RFC 3339 with an explicit Z offset. UTC only.",
+      "appliesTo": "windows"
+    },
+    {
+      "unitId": "identifier",
+      "priced": false,
+      "meaning": "A name that identifies a thing rather than measures one.",
+      "definition": "Carried through to the record unchanged and never arithmetic.",
+      "appliesTo": "identity"
+    },
+    {
+      "unitId": "currency",
+      "priced": false,
+      "meaning": "An amount of money in the record's declared currency.",
+      "definition": "A decimal string at the record scale. One currency per record.",
+      "appliesTo": "amounts"
+    },
+    {
+      "unitId": "ratio",
+      "priced": false,
+      "meaning": "A dimensionless proportion between zero and one.",
+      "definition": "A decimal string at the ratio scale. Never a percentage in the data; a document may render one.",
+      "appliesTo": "shares"
+    }
+  ],
+
+  "money": {
+    "representation": "decimal string",
+    "recordScale": 6,
+    "roundingMode": "half-even",
+    "roundingPoint": "once, at the end of a computation; never on an intermediate value",
+    "currencyRule": "One currency per record, declared in the record. No conversion, no exchange rate, and no mixed-currency total.",
+    "whyNotFloat": "Binary floating point cannot represent a tenth exactly. Summing hundreds of minute-level allocations in a float drifts, and a cost model that disagrees with itself on re-run is worse than no cost model.",
+    "whyNotMinorUnits": "Rounding to a currency's minor unit is a billing operation, and V1 never bills. Records keep six decimal places so that a fraction of a cent per record is neither rounded into existence nor out of it.",
+    "derivedScale": 6,
+    "ratioScale": 6
+  },
+
+  "priceSourceClasses": [
+    {
+      "classId": "provider-list-price",
+      "meaning": "A published rate card from a named provider, captured at a stated version and date.",
+      "maxConfidence": "medium",
+      "v1Status": "none published",
+      "requirements": [
+        "a provider identity",
+        "a region or scope",
+        "a capture date",
+        "the captured values committed as data rather than fetched"
+      ]
+    },
+    {
+      "classId": "negotiated-price",
+      "meaning": "A contracted rate that differs from the list price.",
+      "maxConfidence": "high",
+      "v1Status": "none published",
+      "requirements": [
+        "a contract reference the record may not quote",
+        "an authorised holder of that contract"
+      ]
+    },
+    {
+      "classId": "amortised-hardware",
+      "meaning": "A local machine's purchase price, power, and lifetime reduced to an hourly rate.",
+      "maxConfidence": "low",
+      "v1Status": "none published",
+      "requirements": [
+        "a purchase price",
+        "an assumed lifetime",
+        "an assumed utilisation",
+        "a power tariff"
+      ]
+    },
+    {
+      "classId": "synthetic-illustrative",
+      "meaning": "Invented rates that exist to demonstrate the arithmetic.",
+      "maxConfidence": "none",
+      "v1Status": "one published",
+      "requirements": ["the artifact says inside itself that it is synthetic"]
+    }
+  ],
+
+  "priceSources": [
+    {
+      "priceSourceId": "synthetic-illustrative-v1",
+      "class": "synthetic-illustrative",
+      "name": "Synthetic illustrative rate card",
+      "currency": "USD",
+      "version": "1",
+      "effectiveDate": "2026-08-26",
+      "retrieval": "committed",
+      "selfIdentifies": true,
+      "maxConfidence": "none",
+      "scope": "the worked example in this repository, and nothing else",
+      "publishable": false,
+      "rates": [
+        { "unit": "cpu-core-hour", "ratePerHour": "0.040000" },
+        { "unit": "memory-gibibyte-hour", "ratePerHour": "0.005000" },
+        { "unit": "accelerator-device-hour", "ratePerHour": "1.200000" },
+        { "unit": "storage-gibibyte-hour", "ratePerHour": "0.000100" }
+      ],
+      "notes": "Every rate here is invented. The numbers were chosen to be round enough that the worked example's arithmetic can be followed by hand, and they correspond to no provider, no region, no contract, and no machine. A record priced from this source is structurally valid and economically meaningless, and the confidence rules cap it at none for exactly that reason."
+    }
+  ],
+
+  "priceSourceRules": [
+    {
+      "ruleId": "no-price-is-fetched-at-runtime",
+      "statement": "Every price a record uses comes from a source committed to this repository. Nothing retrieves a price over a network while computing.",
+      "why": "A price that moves makes a cost figure irreproducible, and a re-run that produces a different number is not a re-run. It also makes the computation depend on an external service being reachable and honest."
+    },
+    {
+      "ruleId": "a-price-source-is-identified-by-version-and-date",
+      "statement": "A record names the price source identifier, its version, and its effective date. A source without all three cannot be cited.",
+      "why": "Two records that disagree are either a change in usage or a change in price, and without the version there is no way to tell which."
+    },
+    {
+      "ruleId": "a-synthetic-rate-card-declares-its-class-in-its-own-contents",
+      "statement": "A synthetic rate card declares its class inside the artifact, not in the directory it sits in or the document that links to it.",
+      "why": "The same rule the mock serving boundary already applies: a label that lives outside the artifact does not survive the artifact being copied out of it."
+    }
+  ],
+
+  "confidenceLevels": [
+    {
+      "levelId": "none",
+      "rank": 0,
+      "meaning": "The amount is structurally valid and economically meaningless. It demonstrates the arithmetic and may not be read as what anything costs."
+    },
+    {
+      "levelId": "low",
+      "rank": 1,
+      "meaning": "A real price applied to declared capacity. It says what the reserved capacity would be charged at that rate, and nothing about what was used."
+    },
+    {
+      "levelId": "medium",
+      "rank": 2,
+      "meaning": "A real price applied to measured utilisation over a complete window."
+    },
+    {
+      "levelId": "high",
+      "rank": 3,
+      "meaning": "Taken from an invoice for the period it covers."
+    }
+  ],
+
+  "confidenceRules": [
+    {
+      "ruleId": "high-requires-a-provider-invoice",
+      "when": { "basis": ["allocated", "estimated"] },
+      "ceiling": "medium",
+      "why": "Only a bill establishes what was charged. Everything else is a model of it."
+    },
+    {
+      "ruleId": "an-allocation-is-not-a-measurement",
+      "when": { "basis": "allocated" },
+      "ceiling": "low",
+      "why": "An allocation states what was reserved. Whether any of it was used is a question it does not answer."
+    },
+    {
+      "ruleId": "an-estimate-without-measured-utilisation-is-an-allocation",
+      "when": { "basis": "estimated", "hasMeasuredUtilisation": false },
+      "ceiling": "low",
+      "why": "A record labelled estimated whose utilisation inputs are all declared is an allocation wearing a better word."
+    },
+    {
+      "ruleId": "a-synthetic-rate-card-carries-no-confidence",
+      "when": { "priceSourceClass": "synthetic-illustrative" },
+      "ceiling": "none",
+      "why": "The arithmetic can be checked; the prices are invented, so the amount describes nothing."
+    },
+    {
+      "ruleId": "an-incomplete-window-caps-at-low",
+      "when": { "windowComplete": false },
+      "ceiling": "low",
+      "why": "A window missing part of its data produces a total that is lower than the truth by an unknown amount, which is the direction that flatters."
+    },
+    {
+      "ruleId": "an-unsplit-shape-change-carries-no-confidence",
+      "when": { "shapeChangedInWindow": true },
+      "ceiling": "none",
+      "why": "An allocation averaged across a change in reservation describes a machine state that never existed."
+    }
+  ],
+
+  "confidenceDerivation": "The confidence of a record is the lowest ceiling among the rules whose conditions all hold for it. It is never asserted by the producer and never raised by hand; a record whose declared confidence differs from the derived one fails the suite.",
+
+  "inputs": [
+    {
+      "inputId": "window-start",
+      "name": "period.start",
+      "kind": "window",
+      "required": true,
+      "unit": "instant",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "The producing component's own clock. Nothing measures it.",
+      "sensitivity": "operational",
+      "question": "When does the accounting period begin?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "window-end",
+      "name": "period.end",
+      "kind": "window",
+      "required": true,
+      "unit": "instant",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "The producing component's own clock. Nothing measures it.",
+      "sensitivity": "operational",
+      "question": "When does it end, exclusively?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "node-allocatable-cpu",
+      "name": "capacity.cpuCores",
+      "kind": "capacity",
+      "required": true,
+      "unit": "cpu-core-hour",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "No metric reports node allocatable capacity, and nothing in this repository reads it from a cluster.",
+      "sensitivity": "operational",
+      "question": "How much processor capacity is there to allocate from?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "node-allocatable-memory",
+      "name": "capacity.memoryGibibytes",
+      "kind": "capacity",
+      "required": true,
+      "unit": "memory-gibibyte-hour",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "No metric reports node allocatable capacity, and nothing in this repository reads it from a cluster.",
+      "sensitivity": "operational",
+      "question": "How much memory is there to allocate from?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "node-allocatable-accelerator",
+      "name": "capacity.acceleratorDevices",
+      "kind": "capacity",
+      "required": true,
+      "unit": "accelerator-device-hour",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "No metric reports accelerator capacity, and the one executed serving trial this project holds ran on a processor with no accelerator at all.",
+      "sensitivity": "operational",
+      "question": "How many accelerator devices are there to allocate from?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "workload-cpu-request",
+      "name": "spec.resources.cpu",
+      "kind": "declaration",
+      "required": true,
+      "unit": "cpu-core-hour",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "Read from the validated workload document, which requires it in every environment and refuses a workload that omits it.",
+      "sensitivity": "operational",
+      "question": "How much processor capacity did this workload reserve per replica?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "workload-memory-request",
+      "name": "spec.resources.memory",
+      "kind": "declaration",
+      "required": true,
+      "unit": "memory-gibibyte-hour",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "Read from the validated workload document.",
+      "sensitivity": "operational",
+      "question": "How much memory did this workload reserve per replica?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "workload-accelerator-count",
+      "name": "spec.resources.accelerator.count",
+      "kind": "declaration",
+      "required": true,
+      "unit": "accelerator-device-hour",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "Read from the validated workload document.",
+      "sensitivity": "operational",
+      "question": "How many accelerator devices did this workload reserve per replica?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "workload-replica-count",
+      "name": "deployment.replicas",
+      "kind": "declaration",
+      "required": true,
+      "unit": "count",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "The replica count in force during the window. The workload document declares a minimum and a maximum, which are a range and not a number; a record uses the count actually deployed and splits the window if it changed.",
+      "sensitivity": "operational",
+      "question": "How many copies of this reservation existed during the window?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "price-source",
+      "name": "cost.priceSourceId",
+      "kind": "price",
+      "required": true,
+      "unit": "identifier",
+      "source": "declared",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "Committed data. Never fetched.",
+      "sensitivity": "operational",
+      "question": "Which rate card produced these amounts, at which version and date?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "requests",
+      "name": "usage.requests",
+      "kind": "usage",
+      "required": false,
+      "unit": "request",
+      "source": "measured",
+      "telemetrySignal": "inferops_inference_requests_total",
+      "telemetryCoverage": "full",
+      "coverageNote": "The platform counts the requests it receives. This is the counter the selected serving runtime does not expose and the platform produces itself, which the telemetry catalog already records.",
+      "sensitivity": "operational",
+      "question": "How many requests is this amount being divided by?",
+      "v1Available": false,
+      "unavailableReason": "no-telemetry-source"
+    },
+    {
+      "inputId": "input-tokens",
+      "name": "usage.inputTokens",
+      "kind": "usage",
+      "required": false,
+      "unit": "token",
+      "source": "measured",
+      "telemetrySignal": "inferops_inference_tokens_total",
+      "telemetryCoverage": "partial",
+      "coverageNote": "Carried on the token counter under the input direction. The selected runtime does expose a prompt-token counter, so this is one of the few usage inputs with a real source behind it, once anything scrapes it.",
+      "sensitivity": "operational",
+      "question": "How many input tokens did this workload process?",
+      "v1Available": false,
+      "unavailableReason": "no-telemetry-source"
+    },
+    {
+      "inputId": "output-tokens",
+      "name": "usage.outputTokens",
+      "kind": "usage",
+      "required": false,
+      "unit": "token",
+      "source": "measured",
+      "telemetrySignal": "inferops_inference_tokens_total",
+      "telemetryCoverage": "partial",
+      "coverageNote": "Carried on the same counter under the output direction.",
+      "sensitivity": "operational",
+      "question": "How many output tokens did it produce?",
+      "v1Available": false,
+      "unavailableReason": "no-telemetry-source"
+    },
+    {
+      "inputId": "cpu-seconds",
+      "name": "usage.cpuSeconds",
+      "kind": "usage",
+      "required": false,
+      "unit": "cpu-core-hour",
+      "source": "unavailable",
+      "telemetrySignal": "inferops_process_cpu_seconds_total",
+      "telemetryCoverage": "partial",
+      "coverageNote": "The named counter is process-scoped and belongs to the platform process. The serving runtime is a separate deployment that emits no such counter, and container and node resource use has no source at all, which the telemetry catalog records as a limitation. This input is the reason the estimated basis is unreachable.",
+      "sensitivity": "operational",
+      "question": "How much processor time did this workload actually consume?",
+      "v1Available": false,
+      "unavailableReason": "no-telemetry-source"
+    },
+    {
+      "inputId": "memory-byte-seconds",
+      "name": "usage.memoryByteSeconds",
+      "kind": "usage",
+      "required": false,
+      "unit": "memory-gibibyte-hour",
+      "source": "unavailable",
+      "telemetrySignal": "inferops_process_resident_memory_bytes",
+      "telemetryCoverage": "partial",
+      "coverageNote": "The named signal is an instantaneous gauge. Turning a gauge into an integral over a window needs a store, a scrape interval, and a stated interpolation rule, and none of the three is selected.",
+      "sensitivity": "operational",
+      "question": "How much memory did this workload actually hold, over time?",
+      "v1Available": false,
+      "unavailableReason": "no-telemetry-source"
+    },
+    {
+      "inputId": "accelerator-seconds",
+      "name": "usage.acceleratorSeconds",
+      "kind": "usage",
+      "required": false,
+      "unit": "accelerator-device-hour",
+      "source": "unavailable",
+      "telemetrySignal": null,
+      "telemetryCoverage": "none",
+      "coverageNote": "No metric in the telemetry catalog reports accelerator use, and no accelerator has ever been used by this project.",
+      "sensitivity": "operational",
+      "question": "How much accelerator time did this workload consume?",
+      "v1Available": false,
+      "unavailableReason": "no-telemetry-source"
+    },
+    {
+      "inputId": "ready-seconds",
+      "name": "usage.readySeconds",
+      "kind": "usage",
+      "required": false,
+      "unit": "second",
+      "source": "derived",
+      "telemetrySignal": "inferops_model_ready",
+      "telemetryCoverage": "partial",
+      "coverageNote": "Derived by integrating a readiness gauge, with the same store and interpolation problem as memory. A workload that was not ready still reserved its capacity, so this input changes no amount; it exists so that a record can say how much of the window the reservation was able to serve at all.",
+      "sensitivity": "operational",
+      "question": "For how much of the window could this reservation answer a request?",
+      "v1Available": false,
+      "unavailableReason": "no-telemetry-source"
+    },
+    {
+      "inputId": "workload-id",
+      "name": "identity.workloadId",
+      "kind": "identity",
+      "required": true,
+      "unit": "identifier",
+      "source": "declared",
+      "telemetrySignal": "inferops.workload.id",
+      "telemetryCoverage": "full",
+      "coverageNote": "A declared catalog attribute.",
+      "sensitivity": "caller-supplied-identifier",
+      "question": "Which workload is this record about?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "owner-id",
+      "name": "identity.ownerId",
+      "kind": "identity",
+      "required": true,
+      "unit": "identifier",
+      "source": "declared",
+      "telemetrySignal": "inferops.owner.id",
+      "telemetryCoverage": "full",
+      "coverageNote": "A declared catalog attribute.",
+      "sensitivity": "caller-supplied-identifier",
+      "question": "Who is accountable for this cost?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "tenant-id",
+      "name": "identity.tenantId",
+      "kind": "identity",
+      "required": false,
+      "unit": "identifier",
+      "source": "declared",
+      "telemetrySignal": "inferops.tenant.id",
+      "telemetryCoverage": "full",
+      "coverageNote": "A declared catalog attribute, classed tenant-attributable, which is why it may not appear in a committed record.",
+      "sensitivity": "tenant-attributable",
+      "question": "Whose activity does this cost attribute to?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "environment",
+      "name": "identity.environment",
+      "kind": "identity",
+      "required": true,
+      "unit": "identifier",
+      "source": "declared",
+      "telemetrySignal": "deployment.environment",
+      "telemetryCoverage": "full",
+      "coverageNote": "A declared catalog attribute.",
+      "sensitivity": "operational",
+      "question": "Is this a development host, and may this figure be cited as anything else?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "model-id",
+      "name": "identity.modelId",
+      "kind": "identity",
+      "required": true,
+      "unit": "identifier",
+      "source": "declared",
+      "telemetrySignal": "inferops.model.id",
+      "telemetryCoverage": "full",
+      "coverageNote": "A declared catalog attribute.",
+      "sensitivity": "caller-supplied-identifier",
+      "question": "Which model was this capacity reserved for?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "runtime-id",
+      "name": "identity.runtimeId",
+      "kind": "identity",
+      "required": true,
+      "unit": "identifier",
+      "source": "declared",
+      "telemetrySignal": "inferops.runtime.id",
+      "telemetryCoverage": "full",
+      "coverageNote": "A declared catalog attribute.",
+      "sensitivity": "operational",
+      "question": "Which serving runtime held it?",
+      "v1Available": true,
+      "unavailableReason": null
+    },
+    {
+      "inputId": "cost-record-id",
+      "name": "recordId",
+      "kind": "identity",
+      "required": true,
+      "unit": "identifier",
+      "source": "declared",
+      "telemetrySignal": "inferops.cost.record.id",
+      "telemetryCoverage": "full",
+      "coverageNote": "The catalog registered this attribute and deferred it, so that the first code to need the name would adopt the agreed one. This method is what gives it a meaning; nothing has produced a value for it.",
+      "sensitivity": "operational",
+      "question": "Which cost record is this, so that a request can be tied back to it?",
+      "v1Available": false,
+      "unavailableReason": "no-producer"
+    }
+  ],
+
+  "outputs": [
+    {
+      "outputId": "reserved-cpu-core-hours",
+      "name": "reserved.cpuCoreHours",
+      "unit": "cpu-core-hour",
+      "formula": "cpuRequestCores * replicas * windowHours",
+      "dependsOn": [
+        "workload-cpu-request",
+        "workload-replica-count",
+        "window-start",
+        "window-end"
+      ],
+      "scale": 6,
+      "question": "How much processor capacity did this workload hold out of circulation?",
+      "nullWhen": []
+    },
+    {
+      "outputId": "reserved-memory-gibibyte-hours",
+      "name": "reserved.memoryGibibyteHours",
+      "unit": "memory-gibibyte-hour",
+      "formula": "memoryRequestGibibytes * replicas * windowHours",
+      "dependsOn": [
+        "workload-memory-request",
+        "workload-replica-count",
+        "window-start",
+        "window-end"
+      ],
+      "scale": 6,
+      "question": "How much memory did it hold out of circulation?",
+      "nullWhen": []
+    },
+    {
+      "outputId": "reserved-accelerator-device-hours",
+      "name": "reserved.acceleratorDeviceHours",
+      "unit": "accelerator-device-hour",
+      "formula": "acceleratorCount * replicas * windowHours",
+      "dependsOn": [
+        "workload-accelerator-count",
+        "workload-replica-count",
+        "window-start",
+        "window-end"
+      ],
+      "scale": 6,
+      "question": "How many device-hours did it hold?",
+      "nullWhen": []
+    },
+    {
+      "outputId": "workload-amount",
+      "name": "cost.amount",
+      "unit": "currency",
+      "formula": "reservedCpuCoreHours * rate(cpu-core-hour) + reservedMemoryGibibyteHours * rate(memory-gibibyte-hour) + reservedAcceleratorDeviceHours * rate(accelerator-device-hour)",
+      "dependsOn": [
+        "reserved-cpu-core-hours",
+        "reserved-memory-gibibyte-hours",
+        "reserved-accelerator-device-hours",
+        "price-source"
+      ],
+      "scale": 6,
+      "question": "What does the capacity this workload reserved cost at the stated rates?",
+      "nullWhen": []
+    },
+    {
+      "outputId": "node-capacity-amount",
+      "name": "capacity.amount",
+      "unit": "currency",
+      "formula": "(allocatableCpuCores * rate(cpu-core-hour) + allocatableMemoryGibibytes * rate(memory-gibibyte-hour) + allocatableAcceleratorDevices * rate(accelerator-device-hour)) * windowHours",
+      "dependsOn": [
+        "node-allocatable-cpu",
+        "node-allocatable-memory",
+        "node-allocatable-accelerator",
+        "price-source",
+        "window-start",
+        "window-end"
+      ],
+      "scale": 6,
+      "question": "What does the whole machine cost for this window?",
+      "nullWhen": []
+    },
+    {
+      "outputId": "unallocated-amount",
+      "name": "unallocated.amount",
+      "unit": "currency",
+      "formula": "nodeCapacityAmount - sum(workloadAmounts)",
+      "dependsOn": ["node-capacity-amount", "workload-amount"],
+      "scale": 6,
+      "question": "What is the machine costing for capacity nobody reserved?",
+      "nullWhen": []
+    },
+    {
+      "outputId": "prerequisite-amount",
+      "name": "prerequisite.amount",
+      "unit": "currency",
+      "formula": "prerequisiteStorageGibibytes * windowHours * rate(storage-gibibyte-hour)",
+      "dependsOn": ["price-source", "window-start", "window-end"],
+      "scale": 6,
+      "question": "What do the resources that outlive a release cost for this window?",
+      "nullWhen": []
+    },
+    {
+      "outputId": "share-of-node-capacity",
+      "name": "derived.shareOfNodeCapacity",
+      "unit": "ratio",
+      "formula": "workloadAmount / nodeCapacityAmount",
+      "dependsOn": ["workload-amount", "node-capacity-amount"],
+      "scale": 6,
+      "question": "How much of the machine is this workload holding?",
+      "nullWhen": []
+    },
+    {
+      "outputId": "cost-per-thousand-requests",
+      "name": "derived.costPerThousandRequests",
+      "unit": "currency",
+      "formula": "workloadAmount / requests * 1000",
+      "dependsOn": ["workload-amount", "requests"],
+      "scale": 6,
+      "question": "What does a thousand requests cost, at this reservation and this traffic?",
+      "nullWhen": ["no-telemetry-source", "below-minimum-sample"]
+    },
+    {
+      "outputId": "cost-per-million-tokens",
+      "name": "derived.costPerMillionTokens",
+      "unit": "currency",
+      "formula": "workloadAmount / (inputTokens + outputTokens) * 1000000",
+      "dependsOn": ["workload-amount", "input-tokens", "output-tokens"],
+      "scale": 6,
+      "question": "What does a million tokens cost, at this reservation and this traffic?",
+      "nullWhen": ["no-telemetry-source", "below-minimum-sample"]
+    }
+  ],
+
+  "denominatorRules": {
+    "minimumRequestsForUnitCost": 100,
+    "minimumTokensForUnitCost": 10000,
+    "statement": "A unit cost is reported only when its denominator reaches the stated minimum, and a reported unit cost always carries the denominator it was divided by.",
+    "why": "A cost per thousand requests computed from four requests is a statement about four requests wearing the units of a rate. Carrying the denominator makes that visible without having to know the rule.",
+    "honesty": "Both minimums are declared, not derived. No analysis produced 100 or 10,000; they are round numbers chosen to be obviously too small to publish from, and a better-founded threshold would need traffic this project has never had."
+  },
+
+  "missingDataRules": {
+    "statement": "An input that is not available is recorded as unavailable with a reason, and every output that depends on it is null. An unavailable input is never substituted with zero, with a default, or with a value from another window.",
+    "why": "Zero is a measurement. Writing zero tokens where there is no token telemetry produces a record that says the workload processed nothing, and a cost per million tokens computed from it would be a division by a fiction.",
+    "completenessRule": "Every record lists the inputs that were unavailable. A record with no unavailable inputs says so explicitly rather than omitting the field."
+  },
+
+  "missingDataReasons": [
+    {
+      "reasonId": "no-telemetry-source",
+      "meaning": "No component emits the signal this input would come from, or no collector reads it.",
+      "v1Common": true
+    },
+    {
+      "reasonId": "runtime-does-not-expose",
+      "meaning": "The serving runtime does not publish the quantity, and no platform component derives it.",
+      "v1Common": false
+    },
+    {
+      "reasonId": "below-minimum-sample",
+      "meaning": "The denominator exists but is below the declared minimum for a unit cost.",
+      "v1Common": false
+    },
+    {
+      "reasonId": "outside-window",
+      "meaning": "The value exists but belongs to a period this record does not cover.",
+      "v1Common": false
+    },
+    {
+      "reasonId": "input-conflict",
+      "meaning": "Two sources disagree and the method has no rule for choosing between them.",
+      "v1Common": false
+    },
+    {
+      "reasonId": "no-producer",
+      "meaning": "Nothing computes this record, so the field has never been populated by anything.",
+      "v1Common": true
+    }
+  ],
+
+  "recordShape": {
+    "note": "This is the method's output shape, published here as part of the method. It is not a contract: no schema for it is published under contracts/, because no component produces or consumes one and the contract package adds a schema when the capability behind it exists rather than in advance.",
+    "fields": [
+      {
+        "fieldId": "record-id",
+        "path": "recordId",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Identifies this record so a request can be tied back to it."
+      },
+      {
+        "fieldId": "method-version",
+        "path": "method.version",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Which version of this method produced the record."
+      },
+      {
+        "fieldId": "period-start",
+        "path": "period.start",
+        "type": "instant",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Inclusive start of the accounting window, in UTC."
+      },
+      {
+        "fieldId": "period-end",
+        "path": "period.end",
+        "type": "instant",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Exclusive end of the accounting window, in UTC."
+      },
+      {
+        "fieldId": "identity-workload",
+        "path": "identity.workloadId",
+        "type": "string",
+        "required": true,
+        "sensitivity": "caller-supplied-identifier",
+        "committedRecordAllowed": true,
+        "meaning": "The workload this record accounts for."
+      },
+      {
+        "fieldId": "identity-owner",
+        "path": "identity.ownerId",
+        "type": "string",
+        "required": true,
+        "sensitivity": "caller-supplied-identifier",
+        "committedRecordAllowed": true,
+        "meaning": "Who is accountable for it."
+      },
+      {
+        "fieldId": "identity-environment",
+        "path": "identity.environment",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Which environment it ran in."
+      },
+      {
+        "fieldId": "identity-tenant",
+        "path": "identity.tenantId",
+        "type": "string",
+        "required": false,
+        "sensitivity": "tenant-attributable",
+        "committedRecordAllowed": false,
+        "meaning": "Whose activity it attributes to. Populated at runtime and excluded from any record committed to this repository."
+      },
+      {
+        "fieldId": "identity-model",
+        "path": "identity.modelId",
+        "type": "string",
+        "required": true,
+        "sensitivity": "caller-supplied-identifier",
+        "committedRecordAllowed": true,
+        "meaning": "Which model the capacity was reserved for."
+      },
+      {
+        "fieldId": "identity-runtime",
+        "path": "identity.runtimeId",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Which serving runtime held it."
+      },
+      {
+        "fieldId": "reserved-cpu",
+        "path": "reserved.cpuCoreHours",
+        "type": "decimal",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Processor capacity reserved across the window."
+      },
+      {
+        "fieldId": "reserved-memory",
+        "path": "reserved.memoryGibibyteHours",
+        "type": "decimal",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Memory reserved across the window."
+      },
+      {
+        "fieldId": "reserved-accelerator",
+        "path": "reserved.acceleratorDeviceHours",
+        "type": "decimal",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Accelerator devices reserved across the window."
+      },
+      {
+        "fieldId": "usage-requests",
+        "path": "usage.requests",
+        "type": "integer-or-null",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Requests served, or null with a reason."
+      },
+      {
+        "fieldId": "usage-input-tokens",
+        "path": "usage.inputTokens",
+        "type": "integer-or-null",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Input tokens, or null with a reason."
+      },
+      {
+        "fieldId": "usage-output-tokens",
+        "path": "usage.outputTokens",
+        "type": "integer-or-null",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Output tokens, or null with a reason."
+      },
+      {
+        "fieldId": "usage-cpu-seconds",
+        "path": "usage.cpuSeconds",
+        "type": "decimal-or-null",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Measured processor time, or null with a reason."
+      },
+      {
+        "fieldId": "usage-memory-byte-seconds",
+        "path": "usage.memoryByteSeconds",
+        "type": "decimal-or-null",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Measured memory-time integral, or null with a reason."
+      },
+      {
+        "fieldId": "usage-accelerator-seconds",
+        "path": "usage.acceleratorSeconds",
+        "type": "decimal-or-null",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Measured accelerator time, or null with a reason."
+      },
+      {
+        "fieldId": "cost-amount",
+        "path": "cost.amount",
+        "type": "decimal-string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "The amount, as a decimal string at the record scale."
+      },
+      {
+        "fieldId": "cost-currency",
+        "path": "cost.currency",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "ISO 4217 code. One per record."
+      },
+      {
+        "fieldId": "cost-scale",
+        "path": "cost.amountScale",
+        "type": "integer",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Decimal places the amount is stated to."
+      },
+      {
+        "fieldId": "cost-basis",
+        "path": "cost.basis",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "actual, allocated, or estimated. Exactly one."
+      },
+      {
+        "fieldId": "cost-allocation-method",
+        "path": "cost.allocationMethod",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Which allocation method produced it."
+      },
+      {
+        "fieldId": "cost-price-source",
+        "path": "cost.priceSourceId",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Which rate card, at which version and date."
+      },
+      {
+        "fieldId": "cost-price-source-class",
+        "path": "cost.priceSourceClass",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "What kind of rate card it is, which caps the confidence."
+      },
+      {
+        "fieldId": "cost-confidence",
+        "path": "cost.confidence",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Derived from the rules, never asserted."
+      },
+      {
+        "fieldId": "derived-unit-costs",
+        "path": "derived",
+        "type": "object",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Unit costs, each with its denominator, each null when its denominator is unavailable or too small."
+      },
+      {
+        "fieldId": "completeness",
+        "path": "completeness",
+        "type": "object",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Which inputs were unavailable and why."
+      },
+      {
+        "fieldId": "assumptions-ref",
+        "path": "evidence.assumptionsRef",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "Where the method behind this record is published."
+      }
+    ]
+  },
+
+  "prohibitions": [
+    {
+      "ruleId": "no-estimate-is-a-bill",
+      "statement": "An amount whose basis is not actual is never described as billing, an invoice, a charge, or spend, and never carries a provider invoice reference.",
+      "rationale": "The distance between a model of a cost and a cost is the whole subject of this record, and one word closes it.",
+      "enforcement": "test",
+      "enforcedBy": "test_only_an_actual_basis_may_reference_an_invoice"
+    },
+    {
+      "ruleId": "an-estimate-and-an-allocation-are-never-summed",
+      "statement": "A total is computed within one basis. Two amounts on different bases are two numbers.",
+      "rationale": "A sum across bases produces a figure that is neither measured nor reserved, and nothing downstream can tell which half it should distrust.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_total_is_computed_within_one_basis"
+    },
+    {
+      "ruleId": "no-price-is-fetched-at-runtime",
+      "statement": "Every price comes from a source committed to this repository. No computation retrieves a price over a network.",
+      "rationale": "A moving price makes a re-run produce a different number, and a number that cannot be reproduced cannot be evidence.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_price_source_is_committed_rather_than_fetched"
+    },
+    {
+      "ruleId": "a-synthetic-rate-card-declares-its-class-in-its-own-contents",
+      "statement": "A synthetic rate card declares its class inside the artifact.",
+      "rationale": "A label that lives in the directory name does not survive the file being copied out of it.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_synthetic_price_source_identifies_itself"
+    },
+    {
+      "ruleId": "confidence-is-derived-not-asserted",
+      "statement": "A record's confidence is the lowest ceiling among the applicable rules, recomputed rather than read.",
+      "rationale": "Confidence typed by the producer is confidence the producer wanted.",
+      "enforcement": "test",
+      "enforcedBy": "test_declared_confidence_equals_derived_confidence"
+    },
+    {
+      "ruleId": "an-unavailable-input-is-null-with-a-reason",
+      "statement": "A missing input is null and carries a reason; every null output has a reason and every reason belongs to a null output or a null input.",
+      "rationale": "Zero is a measurement, and substituting it turns an absent signal into a claim that nothing happened.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_null_output_carries_a_reason_and_a_reason_carries_a_null"
+    },
+    {
+      "ruleId": "unreserved-capacity-is-reported-not-spread",
+      "statement": "Capacity nobody reserved is its own line, and the workload lines plus the residual equal the machine exactly.",
+      "rationale": "A model whose parts do not sum to the whole hides the largest number on the page.",
+      "enforcement": "test",
+      "enforcedBy": "test_the_workload_lines_and_the_residual_close_against_the_node"
+    },
+    {
+      "ruleId": "a-unit-cost-carries-its-denominator",
+      "statement": "A reported unit cost states the request or token count it was divided by, and is null below the declared minimum.",
+      "rationale": "A rate computed from four requests looks exactly like a rate computed from four million.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_unit_cost_carries_its_denominator_or_is_null"
+    },
+    {
+      "ruleId": "money-is-decimal-never-binary-float",
+      "statement": "Every amount and rate in the committed method is a decimal string at a declared scale.",
+      "rationale": "A tenth has no binary representation, and a cost model that disagrees with itself on re-run is not a cost model.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_amount_and_rate_is_a_decimal_string"
+    },
+    {
+      "ruleId": "a-committed-record-carries-no-tenant-identifier",
+      "statement": "No record committed to this repository carries a tenant identifier, in the worked example or anywhere else.",
+      "rationale": "The telemetry catalog classes a tenant identifier as tenant-attributable, which has no permitted placement in a committed evidence record: such a record is public and permanent, and a tenant list with a retention window of forever is not what anybody intended by adding an attribution field.",
+      "enforcement": "test",
+      "enforcedBy": "test_no_committed_record_carries_a_tenant_identifier"
+    },
+    {
+      "ruleId": "the-model-cache-is-a-prerequisite-cost",
+      "statement": "Resources whose lifecycle is longer than a release are attributed to the prerequisite layer, not to a workload.",
+      "rationale": "The model cache outlives the release on purpose. Charging it to a workload makes deleting the workload look like a saving that does not occur.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_prerequisite_line_is_attributed_outside_every_workload"
+    },
+    {
+      "ruleId": "every-required-input-names-a-source-or-records-that-none-exists",
+      "statement": "Each input either names a signal the telemetry catalog declares, or records that no source exists and why.",
+      "rationale": "An input with an unstated source is an input somebody will assume is available.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_input_names_a_declared_signal_or_no_source_at_all"
+    },
+    {
+      "ruleId": "no-cost-figure-is-published-from-v1",
+      "statement": "V1 publishes this method and a synthetic worked example. It publishes no figure for what running an inference workload costs.",
+      "rationale": "A cost per thousand requests is a throughput figure with a price attached, and the project boundaries forbid publishing a throughput figure. The prohibition is not a formality here: dividing an hourly reservation by an hour of traffic publishes that traffic.",
+      "enforcement": "review",
+      "enforcedBy": null
+    },
+    {
+      "ruleId": "a-window-in-which-the-shape-changed-is-split",
+      "statement": "A record never averages an allocation across a change in resource requests or replica count.",
+      "rationale": "The average describes a machine state that never existed, and it is indistinguishable in the output from a state that did.",
+      "enforcement": "review",
+      "enforcedBy": null
+    }
+  ],
+
+  "workedExample": {
+    "classification": "synthetic",
+    "warning": "Every number in this example is invented. The capacities, the reservations, the traffic, and above all the prices correspond to no machine, no provider, and no measurement this project has ever taken. It exists to show that the arithmetic closes and that a missing input produces a null rather than a zero.",
+    "environmentId": "synthetic-single-node",
+    "priceSourceId": "synthetic-illustrative-v1",
+    "basis": "allocated",
+    "allocationMethod": "requested-resource-share",
+    "currency": "USD",
+    "amountScale": 6,
+    "window": {
+      "start": "2026-08-26T00:00:00Z",
+      "end": "2026-08-26T01:00:00Z",
+      "hours": "1.000000",
+      "complete": true
+    },
+    "capacity": {
+      "cpuCores": "8.000000",
+      "memoryGibibytes": "16.000000",
+      "acceleratorDevices": "0.000000",
+      "amount": "0.400000"
+    },
+    "prerequisite": {
+      "resourceId": "model-cache-claim",
+      "storageGibibytes": "5.000000",
+      "amount": "0.000500",
+      "attributedTo": "prerequisite-layer",
+      "note": "The model cache claim outlives any release that mounts it, so its cost belongs to the environment's prerequisite layer and to no workload."
+    },
+    "records": [
+      {
+        "recordId": "example-cost-0001",
+        "identity": {
+          "workloadId": "support-assistant",
+          "ownerId": "team-platform-demo",
+          "environment": "dev",
+          "modelId": "example-open-model",
+          "runtimeId": "example-serving-runtime"
+        },
+        "declaration": {
+          "cpuRequest": "1",
+          "memoryRequest": "2Gi",
+          "acceleratorType": "none",
+          "acceleratorCount": 0,
+          "replicas": 2
+        },
+        "reserved": {
+          "cpuCoreHours": "2.000000",
+          "memoryGibibyteHours": "4.000000",
+          "acceleratorDeviceHours": "0.000000"
+        },
+        "usage": {
+          "requests": 1200,
+          "inputTokens": 480000,
+          "outputTokens": 96000,
+          "cpuSeconds": null,
+          "memoryByteSeconds": null,
+          "acceleratorSeconds": null
+        },
+        "cost": {
+          "amount": "0.100000",
+          "basis": "allocated",
+          "confidence": "none"
+        },
+        "derived": {
+          "shareOfNodeCapacity": "0.250000",
+          "costPerThousandRequests": "0.083333",
+          "costPerThousandRequestsDenominator": 1200,
+          "costPerMillionTokens": "0.173611",
+          "costPerMillionTokensDenominator": 576000
+        },
+        "completeness": {
+          "unavailableInputs": [
+            "cpu-seconds",
+            "memory-byte-seconds",
+            "accelerator-seconds"
+          ],
+          "reasons": ["no-telemetry-source"]
+        },
+        "facts": {
+          "basis": "allocated",
+          "priceSourceClass": "synthetic-illustrative",
+          "hasMeasuredUtilisation": false,
+          "windowComplete": true,
+          "shapeChangedInWindow": false
+        },
+        "note": "The traffic figures are synthetic and exist only to give the unit costs a denominator. The three unavailable inputs are exactly the ones an estimated basis would need, which is why this record is allocated."
+      },
+      {
+        "recordId": "example-cost-0002",
+        "identity": {
+          "workloadId": "mock-llm-ci",
+          "ownerId": "team-platform-demo",
+          "environment": "ci",
+          "modelId": "mock-model",
+          "runtimeId": "mock-serving-runtime"
+        },
+        "declaration": {
+          "cpuRequest": "500m",
+          "memoryRequest": "1Gi",
+          "acceleratorType": "none",
+          "acceleratorCount": 0,
+          "replicas": 1
+        },
+        "reserved": {
+          "cpuCoreHours": "0.500000",
+          "memoryGibibyteHours": "1.000000",
+          "acceleratorDeviceHours": "0.000000"
+        },
+        "usage": {
+          "requests": 40,
+          "inputTokens": null,
+          "outputTokens": null,
+          "cpuSeconds": null,
+          "memoryByteSeconds": null,
+          "acceleratorSeconds": null
+        },
+        "cost": {
+          "amount": "0.025000",
+          "basis": "allocated",
+          "confidence": "none"
+        },
+        "derived": {
+          "shareOfNodeCapacity": "0.062500",
+          "costPerThousandRequests": null,
+          "costPerThousandRequestsDenominator": 40,
+          "costPerMillionTokens": null,
+          "costPerMillionTokensDenominator": null
+        },
+        "completeness": {
+          "unavailableInputs": [
+            "input-tokens",
+            "output-tokens",
+            "cpu-seconds",
+            "memory-byte-seconds",
+            "accelerator-seconds"
+          ],
+          "reasons": ["below-minimum-sample", "no-telemetry-source"]
+        },
+        "facts": {
+          "basis": "allocated",
+          "priceSourceClass": "synthetic-illustrative",
+          "hasMeasuredUtilisation": false,
+          "windowComplete": true,
+          "shapeChangedInWindow": false
+        },
+        "note": "This record exists to exercise the two missing-data paths. Forty requests is below the declared minimum, so the request unit cost is null rather than a rate; no token telemetry exists for a mock profile, so the token unit cost is null rather than zero. The amount itself is unaffected, because an allocation does not depend on traffic."
+      }
+    ],
+    "counterfactuals": [
+      {
+        "treatmentId": "spread-pro-rata",
+        "recordId": "example-cost-0001",
+        "amount": "0.320000",
+        "note": "What the first workload would have been charged had the residual been divided in proportion to what each workload reserved. It is stated as data rather than prose so that the argument against this treatment is arithmetic the suite recomputes, and not a ratio somebody estimated."
+      },
+      {
+        "treatmentId": "discard",
+        "recordId": "example-cost-0001",
+        "amount": "0.100000",
+        "note": "What the first workload would have been charged had the residual been dropped. The amount is unchanged, which is the point: discarding leaves the workload lines identical and the machine unaccounted for."
+      }
+    ],
+    "unallocated": {
+      "amount": "0.275000",
+      "shareOfNodeCapacity": "0.687500",
+      "note": "Sixty-nine per cent of the machine was reserved by nobody. It is the largest line in the example, and every treatment other than reporting it separately would have hidden it inside a unit cost."
+    },
+    "totals": {
+      "workloadAmountSum": "0.125000",
+      "nodeCapacityAmount": "0.400000",
+      "closes": true,
+      "environmentAmount": "0.400500",
+      "note": "The two workload lines plus the unallocated line equal the node capacity line exactly. The environment total adds the prerequisite storage line, which belongs to no workload."
+    }
+  },
+
+  "telemetryMapping": {
+    "statement": "Every usage and identity input names the telemetry signal that would supply it, or records that no signal exists. A test checks each named signal against the committed telemetry catalog, so an input cannot claim a source the catalog does not declare.",
+    "gaps": [
+      {
+        "gapId": "no-container-or-node-resource-metric",
+        "affects": ["cpu-seconds", "memory-byte-seconds"],
+        "statement": "The catalog's two process metrics describe the emitting process, not a container or a node, and the local cluster runs no metrics server.",
+        "consequence": "The estimated basis and the observed-utilisation-share allocation method are both unreachable in V1."
+      },
+      {
+        "gapId": "no-accelerator-metric",
+        "affects": ["accelerator-seconds"],
+        "statement": "No metric in the catalog reports accelerator use, and no accelerator has been used by this project.",
+        "consequence": "An accelerator line can be allocated from a declaration and never estimated from use."
+      },
+      {
+        "gapId": "no-collector-reads-anything",
+        "affects": ["requests", "input-tokens", "output-tokens", "ready-seconds"],
+        "statement": "The signals these inputs name are specified and emitted by nothing. No collector, store, or scrape exists.",
+        "consequence": "Every usage input is unavailable today, whatever its coverage says. Coverage describes what the catalog would supply, not what exists."
+      }
+    ]
+  },
+
+  "openQuestions": [
+    {
+      "questionId": "which-provider-price-sources",
+      "statement": "Which provider rate cards a comparison against hosted capacity would be priced from, at which regions and versions.",
+      "status": "not decided",
+      "why": "No provider is selected and no account exists. Committing a rate card for a provider this project has never used would publish a number with the shape of evidence and none of the substance."
+    },
+    {
+      "questionId": "who-computes-a-cost-record",
+      "statement": "Which component computes and emits a cost record, and who owns it.",
+      "status": "not decided, and not this record's to decide",
+      "why": "The resource-ownership inventory assigns this to nobody, and the same inventory already leaves a telemetry collector unowned. A method that quietly nominated an owner would answer an architecture question in a cost document."
+    }
+  ],
+
+  "limitations": [
+    {
+      "limitationId": "nothing-computes",
+      "statement": "No component in this repository computes, emits, stores, or reads a cost record. Every rule here specifies behaviour for a producer that does not exist."
+    },
+    {
+      "limitationId": "no-invoice-has-ever-been-read",
+      "statement": "The actual basis is unreachable. This project has no provider account, no invoice, and no billing export, so nothing here has ever been compared against what anybody was charged."
+    },
+    {
+      "limitationId": "the-only-rate-card-is-synthetic",
+      "statement": "Every rate committed here is invented. Amounts computed from it are structurally valid and economically meaningless, and the confidence rules cap them at none for that reason."
+    },
+    {
+      "limitationId": "no-utilisation-source",
+      "statement": "There is no metrics server, collector, or store, so processor, memory, and accelerator utilisation have no source and the estimated basis cannot be produced."
+    },
+    {
+      "limitationId": "allocation-overcharges-idleness",
+      "statement": "Allocation by reservation charges a workload for capacity it did not use. That is the definition of the method rather than a defect in it, and it makes these figures capacity accounting rather than efficiency accounting."
+    },
+    {
+      "limitationId": "capacity-is-declared-not-read",
+      "statement": "Node allocatable capacity is a declared input. Nothing in this repository reads it from a cluster, so a record can be produced against a machine that does not exist."
+    },
+    {
+      "limitationId": "minimum-samples-are-arbitrary",
+      "statement": "The minimum denominators of 100 requests and 10,000 tokens are declared, not derived. No analysis produced them."
+    },
+    {
+      "limitationId": "a-unit-cost-is-a-throughput-figure",
+      "statement": "Cost per thousand requests is an hourly reservation divided by an hour of traffic, which publishes the traffic. V1 may publish neither, so the method exists here without a figure attached to it."
+    },
+    {
+      "limitationId": "no-local-host-rate-is-honest",
+      "statement": "A contributor's own machine has no hourly price. Hardware amortisation, power, and lifetime assumptions would each be a guess, and multiplying four guesses produces a number with more decimal places than meaning. That is why the only committed rate card is labelled synthetic rather than local."
+    },
+    {
+      "limitationId": "no-currency-conversion",
+      "statement": "One currency per record, no exchange rates, and no mixed-currency totals. A multi-currency estimate needs a rate source with a date, which is a second price-source problem this method does not solve."
+    },
+    {
+      "limitationId": "no-egress-or-network-cost",
+      "statement": "Network egress, load balancing, and ingress are not priced. The local cluster ships no ingress controller and no load balancer, which the ownership inventory already records as an open cost."
+    },
+    {
+      "limitationId": "the-example-is-not-a-measurement",
+      "statement": "The worked example's traffic figures are chosen numbers. No request in it was served and no token in it was generated."
+    }
+  ]
+}

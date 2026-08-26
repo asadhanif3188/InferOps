@@ -163,8 +163,11 @@ an omitted metric gets reinvented under a different name. Time to first token is
 deferred because V1 has no streaming path and it would be the same measurement as
 request duration; a retry counter is deferred because there is no retry path and a
 counter that can only read zero looks like a healthy system rather than an absent
-feature; a cost-record counter is deferred because no cost method exists, and defining one
-is a separate decision that has not been taken.
+feature; a cost-record counter is deferred because nothing computes or emits a cost
+record. That last deferral was originally recorded here as "no cost method exists",
+which [ADR 0007](ADR-0007-inference-cost-method.md) has since made false; the
+deferral stands, and its reason is corrected in the catalog data and in this
+sentence rather than left to read as though the method were still missing.
 
 Two structural choices carry the reasoning that generalises:
 

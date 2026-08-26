@@ -10,6 +10,56 @@ once versioned releases begin.
 
 ### Added
 
+- **A cost method in which an estimate cannot become a bill by accident**, in
+  [ADR 0007](docs/architecture/decisions/ADR-0007-inference-cost-method.md) and two
+  documents under `docs/cost/`. Every amount declares a basis — an invoice, an
+  allocation, or an estimate — and only an invoice-backed basis may carry the
+  vocabulary or the reference of one. Two of the three bases are unreachable here and
+  the method says why: `actual` needs a provider account this project has never had,
+  and `estimated` needs utilisation telemetry no component emits.
+- **Allocation by what a workload reserved, with the honest cost written down.** A
+  workload is charged for its processor, memory, and accelerator requests times its
+  replicas times the window, because reserved capacity is what the scheduler withholds
+  from everything else and because it is the only quantity a validated workload
+  document can supply. A workload reserving four cores and using a tenth of one is
+  charged what a workload saturating four is charged, which makes these figures
+  capacity accounting and not efficiency accounting.
+- **Idle capacity as a line rather than an absence.** Capacity nobody reserved is
+  reported separately, and the workload lines plus that residual must close against
+  the machine exactly — a test requires it. In the worked example the residual is 69
+  per cent of the node, the largest number on the page and the one both alternative
+  treatments would have hidden inside a unit cost.
+- **Confidence that is derived rather than asserted.** Four levels, six ceiling rules,
+  and a derivation the suite recomputes from each record's own inputs. The consequence
+  is stated rather than softened: every cost figure this project can produce today has
+  confidence `none`, because the reachable basis is an allocation and the only rate
+  card committed here is synthetic.
+- **Prices committed, versioned, dated, and invented.** Nothing fetches a price at
+  runtime, because a price that moves makes a figure irreproducible. One rate card is
+  published, `synthetic-illustrative-v1`, whose every rate is made up and which says so
+  inside the artifact rather than in the directory holding it. A provider card would be
+  a number with the shape of evidence for a provider this project has never used, and a
+  development host has no hourly price at all.
+- **A missing input as a null with a reason, never a zero.** Six reason codes, a
+  correspondence checked in both directions, and a minimum denominator — 100 requests
+  or 10,000 tokens — below which a unit cost is null rather than a rate. Both minimums
+  are recorded as declared rather than derived, because they are.
+- **A worked synthetic example that is arithmetic rather than typing.** One hour, one
+  node, two workloads, a residual, and a prerequisite storage line; every amount,
+  share, and unit cost recomputed in exact decimal by
+  [`tests/cost/`](tests/cost/). Money is a decimal string at a scale of six, rounded
+  half-even once, and a test walks the whole method to establish that not one binary
+  float appears in it.
+- **A tenant identifier that cannot reach a committed record, by derivation.** Whether
+  a cost-record field may appear in a record committed here is read from the
+  sensitivity class the telemetry catalog already gave it, so `identity.tenantId` is
+  absent from the worked example because its class has no evidence placement — not
+  because somebody remembered to remove it.
+- **One new public claim, at the narrowest level that is honest.** The claim and test
+  matrix gains `a-cost-figure-cannot-be-presented-as-a-bill`, certified at C0 by the
+  documentation layer. It certifies a committed method and nothing about what anything
+  costs, because no component computes a cost record and no invoice has ever been read.
+
 - **A telemetry catalog in which a field's placement is derived rather than chosen**,
   in [ADR 0006](docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
   and two documents under `docs/telemetry/`. Every attribute declares a sensitivity
@@ -310,6 +360,13 @@ once versioned releases begin.
 
 ### Changed
 
+- Two deferrals in the telemetry catalog keep their status and lose a reason that is no
+  longer true. `inferops.cost.record.id` and `inferops_cost_records_total` were
+  deferred on the grounds that no cost method existed;
+  [ADR 0007](docs/architecture/decisions/ADR-0007-inference-cost-method.md) defines
+  one, so both are now deferred on the accurate grounds that nothing computes or emits
+  a cost record. No name, class, placement, or budget changes, and neither signal
+  becomes active.
 - Three existing test modules now declare the marker of the layer that owns them.
   No assertion in them changed, and `python -m pytest tests -q` collects and reports
   exactly what it did before, plus this change's own suite.
