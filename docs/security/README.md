@@ -80,10 +80,11 @@ nobody has performed.
 ## Reserved vocabulary
 
 Twelve terms — the adjectives of a posture rather than the names of properties — may
-appear in these documents only inside a sentence that denies them, and a test refuses
-one that does not. The list and the reason for each entry are in
-[the control matrix](control-matrix.md). It catches a listed word in these documents;
-a claim made in a word nobody listed is not caught by anything here.
+appear in every Markdown document committed here only inside a sentence that denies
+them, and a test refuses one that does not. The list and the reason for each entry are
+in [the control matrix](control-matrix.md). It catches a listed word in a Markdown
+document; a claim made in a word nobody listed, or in a file that is not Markdown, is
+not caught by anything here.
 
 ## Changing any of it
 

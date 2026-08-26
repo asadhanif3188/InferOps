@@ -202,7 +202,10 @@ enforced by review alone, and are marked as such rather than quietly promoted.
 
 Each tested rule names its test, and the suite fails if a rule names one this module
 does not define. A rule cannot claim enforcement it does not have — which is the
-rule the whole document is an instance of.
+rule the whole document is an instance of, and which an independent review of this
+change caught it breaking: two of the rules above described a scope wider than the
+test behind them actually read. Both the tests and the statements were corrected
+rather than one of them.
 
 The four review-only ones are the four that need either a component or a person's
 judgement. Two are about what an unwritten component does with a value; one is about
@@ -212,9 +215,15 @@ review is enforced only when the reviewer remembers it.
 
 ## Reserved vocabulary
 
-Twelve terms may appear in these documents and in the committed data only inside a
-sentence that denies them. A test splits each document into sentences, skips fenced
-code, and fails on a reserved term in a sentence carrying no denial.
+Twelve terms may appear in every Markdown document committed here, and in the
+committed data, only inside a sentence that denies them. A test joins wrapped lines
+back into sentences, skips fenced code, and fails on a reserved term in a sentence
+carrying no denial.
+
+The scan reads every Markdown file in this repository rather than only the security
+documents, and a second test fails if that coverage narrows. The narrower version was
+the first one written, and it would have passed while the top-level README described a
+posture this project does not have.
 
 | Term | Why it is reserved |
 |---|---|
@@ -231,8 +240,8 @@ code, and fails on a reserved term in a sentence carrying no denial.
 | `battle-tested` | It claims operational history this project does not have |
 | `bank-grade` | It claims a standard nobody defines and nobody assessed |
 
-The list catches a listed word in these documents. A claim made in a word nobody
-listed, or made in a slide, is not caught by anything here.
+The list catches a listed word in a Markdown document. A claim made in a word nobody
+listed, in a file that is not Markdown, or in a slide is not caught by anything here.
 
 ## Related records
 

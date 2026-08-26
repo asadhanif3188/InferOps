@@ -58,7 +58,7 @@ which need it. The security suite this change adds needs `pytest` and `PyYAML` a
 
 ```text
 python -m pytest tests/security -q
-509 passed
+584 passed
 ```
 
 ### The strategy suite, which this change adds a claim and a path to
@@ -72,7 +72,7 @@ python -m pytest tests/testing -q
 
 ```text
 python -m pytest -q
-2206 passed, 7 skipped
+2281 passed, 7 skipped
 ```
 
 The seven skips are the pre-existing ones: layers whose markers are deselected by
@@ -226,16 +226,21 @@ that and `DR-05` carries the gap.
 
 ### Overclaiming
 
-Twelve reserved terms, checked sentence by sentence over four security documents, the
-decision record, and every prose string in the committed data — with fenced code
-skipped, and with identifier, path, and symbol fields excluded because a reserved word
+Twelve reserved terms, checked sentence by sentence over **every Markdown document
+committed here** — sixty-six of them — and over every prose string in the committed
+data. Fenced code is skipped, wrapped lines are joined back into sentences before
+splitting, and identifier, path, and symbol fields are excluded because a reserved word
 inside a test function name asserts nothing. A term in a sentence carrying no denial
-fails the suite.
+fails the suite, and a second test fails if the set of documents scanned ever narrows
+to exclude the ones a reader meets first.
 
-Also checked: no threat carries a likelihood, severity, or risk score; every deferred
-risk states what may not be claimed, in a sentence that denies something; at least one
-rule admits it is enforced by review alone; and no string anywhere in the baseline
-matches a published credential prefix.
+Also checked: ten counts stated in prose across four documents are recomputed from the
+data and compared with whitespace normalised, so a number can drift only by failing;
+every control status count the index publishes matches the data, including whether that
+status may be called implemented; no threat carries a likelihood, severity, or risk
+score; every deferred risk states what may not be claimed, in a sentence that denies
+something; at least one rule admits it is enforced by review alone; and no string
+anywhere in the baseline matches a published credential prefix.
 
 ## Deliberate corruptions, each refused
 
@@ -243,8 +248,11 @@ Each corruption was applied to a file in this repository, the suite was run, and
 file was restored. A corruption the suite does not refuse would be a gap in the suite,
 not a pass.
 
-Eighty-eight corruptions were applied and **eighty-eight were refused**. Two of the
-first eighty-five survived and both are recorded below rather than quietly fixed.
+One hundred and ten corruptions were applied and **all one hundred and ten were
+refused**. That number is the result of two passes. Three corruptions survived along
+the way, all three are recorded below rather than quietly fixed, and the twenty-five
+corruptions added after the first pass exist because an independent review found gaps
+the first eighty-five did not reach.
 
 ### The derivation — 10
 
@@ -329,6 +337,31 @@ hardened; the threat model claiming a penetration test; the decision record losi
 required section; and `SECURITY.md` quietly publishing a reporting channel that does
 not exist.
 
+### The gaps an independent review found — 11
+
+`SECURITY.md` claiming the project is secure; the top-level README claiming a hardened
+platform; `CONTRIBUTING` claiming an audited codebase; the changelog claiming a
+compliant release; an architecture record claiming a hardened boundary — none of which
+the first version of the vocabulary check would have caught, because it read five
+documents and none of those five was among them. A mount-style personal path
+(`/mnt/c/Users/...`) and a Windows personal path, neither of which the first version of
+the path pattern matched. The configuration-backed control denying that it rests on a
+configuration; a second control claiming to rest on one without carrying the
+disclaimer; the Markdown-only limitation removed; and the vocabulary scan itself
+narrowed back to the security documents, which the suite now refuses.
+
+### Counts stated in prose — 11
+
+The decision record misstating how many controls exist and how many are enforced, and
+misstating the review-only rule count; the register misstating how many risks block
+production use and how many risks it holds; the control matrix misstating how many
+controls are enforced, its own rule split, and the reserved-term count; the threat
+model misstating how many threats and how many assets it holds; and the index both
+misstating a status count and claiming a review-only status may be called implemented.
+
+Before the review, none of these was checked by anything. A table row is compared by
+identifier; a sentence saying "twenty-two of thirty-two" was compared by nothing.
+
 ### The test strategy — 6
 
 The documentation layer no longer collecting this suite; the layer no longer running
@@ -343,29 +376,74 @@ baseline says it says.
 
 ## What a second review found
 
-The first pass produced eighty-five corruptions, of which **two survived**. Both are
-worth recording because they are different kinds of finding.
+Two reviews ran against this change: a mutation pass, and an independent adversarial
+read of the whole diff. Both found real defects, and the most serious one was found by
+the second.
 
-**One was a real gap in the suite.** The register's exception check asserted only that
-each exception identifier appeared *somewhere* in the document. Deleting the section
-that argues `EX-03` — its residual risk, its compensating control, and when it should
-be revisited — left the summary row intact and the suite passed. That is precisely the
-failure this whole record is built to prevent: an index entry surviving while the
-argument behind it is deleted reads as handled and is not. The check now requires both
-the table row and a section heading, and two corruptions cover it.
+### What the mutation pass found
 
-**One was a broken corruption rather than a surviving defect.** The mutation that was
-supposed to promote the baseline claim to `C2` inserted a duplicate JSON key ahead of
-the real one, and the later key won, so the file was never actually changed. A
-corruption that does not corrupt anything proves nothing, and counting it as a pass
-would have been the more comfortable reading. It was rewritten to parse the strategy
-data and edit the value, and four further strategy corruptions were added alongside
-it — reassigning the claim to a layer that is not implemented, stripping its evidence
-record, changing its owner, and removing the suite's command from the layer. All five
-are refused.
+The first pass produced eighty-five corruptions, of which **two survived**.
 
-The corruption count is therefore eighty-eight rather than the eighty-five of the
-first pass, and one test is stricter than it was.
+**One was a real gap.** The register's exception check asserted only that each
+exception identifier appeared *somewhere* in the document. Deleting the section that
+argues `EX-03` — its residual risk, its compensating control, and when it should be
+revisited — left the summary row intact and the suite passed. An index entry surviving
+while the argument behind it is deleted reads as handled and is not. The check now
+requires both the table row and a section heading.
+
+**One was a broken corruption rather than a surviving defect.** The mutation meant to
+promote the baseline claim to `C2` inserted a duplicate JSON key ahead of the real one,
+and the later key won, so the file was never changed. A corruption that does not
+corrupt anything proves nothing, and counting it as a pass would have been the more
+comfortable reading. It was rewritten to parse the strategy data, and four further
+strategy corruptions were added alongside it.
+
+### What the independent review found
+
+**One defect was CRITICAL, and it was this record's own central failure occurring
+inside the control against it.** The reserved-vocabulary check read five documents: the
+four under `docs/security/` and the decision record. The decision record's own summary,
+the suite's docstring, and the `no-security-posture-is-claimed` rule all described it as
+covering *this repository*. The reviewer demonstrated the gap rather than asserting it:
+appending "InferOps is secure and production-ready." to `SECURITY.md`, and separately to
+the top-level `README.md`, left the suite fully green both times.
+
+Those are the two documents a reader reaches first, and neither lives under
+`docs/security/`. A check scoped to the documents least likely to overclaim, described
+as though it were scoped to all of them, is exactly `T-18` — a control believed because
+it is written down. **The fix widens the check rather than narrowing the claim**: it now
+reads every Markdown document committed here, a second test fails if that coverage
+narrows, and five corruptions cover it.
+
+Widening it required fixing the sentence splitter as well. It split on newlines, so a
+sentence wrapping across a hard line break had its denial cut away from the term it
+denied — reporting a formatting choice as a claim. It now joins wrapped lines back into
+sentences, and `rather than` and `instead of` were added to the denial vocabulary,
+because "X rather than hardened tooling" is a denial and was being read as an assertion.
+
+**Three further findings were HIGH.** The rule `a-configuration-is-not-a-result` was
+stated generally and enforced against one hardcoded control identifier; it now iterates
+every control that declares it rests on a configuration, and a second test holds that
+declaration against what the control's verification actually reads. Every count stated
+in prose across the four documents — "twenty-two of thirty-two", "ten of the twelve",
+"fifteen rules" — was compared by nothing and could drift freely; ten such sentences are
+now recomputed from the data, and eleven corruptions cover them. And the personal-path
+pattern required a path to begin at `/Users/` or `/home/`, so `/mnt/c/Users/...` — the
+realistic shape on the Windows-plus-POSIX-shell host this work was done on — passed;
+the pattern now matches the segment wherever it appears.
+
+**One was MEDIUM and is now resolved.** Two committed records described the same test's
+scope differently. Both now say what the widened test actually does.
+
+**One LOW finding was not acted on.** The reviewer read the blank line between this
+change's changelog block and the preceding one as inconsistent spacing. It is the
+existing convention: every story group in `CHANGELOG.md` is separated from the next by
+a blank line, and closing the gap would have introduced an inconsistency rather than
+removed one.
+
+The corruption count is therefore one hundred and ten rather than the eighty-five of
+the first pass, one test is stricter than it was, four tests are new, and two committed
+statements are narrower and true rather than broad and false.
 
 ## What the diff was reviewed for
 
@@ -377,7 +455,7 @@ first pass, and one test is stricter than it was.
 | Generated files or host state | None. Cache directories remain ignored, and a test now refuses a committed file under any of them |
 | Model artifacts | None, and a test now refuses a file with a model artifact extension |
 | Real vulnerabilities, incidents, or exploit detail | None. Every abuse case is built out of this project's own assets, and no real credential, customer, prompt, host, or incident appears as an illustration |
-| A capability claim not supported by evidence | None found. Every document states that nothing here defends a running system, and ten controls are published as having no verification at all |
+| A capability claim not supported by evidence | One was found by an independent review and fixed: the reserved-vocabulary check was described as covering this repository and read five documents. The check was widened rather than the claim narrowed. Every document states that nothing here defends a running system, and ten controls are published as having no verification at all |
 | Scope beyond this pull request | None. No component, chart, policy object, scanner configuration, or admission rule is added |
 
 Nine additions deserve naming explicitly because they touch files this change does
@@ -436,8 +514,14 @@ less than it appears to.
 - **The corruption set is not exhaustive either.** Each corruption represents a
   mistake somebody would plausibly make; a corruption nobody thought of is a
   corruption that was not tested.
-- **The reserved-term check is narrow.** It catches a listed word in six documents. A
-  claim made in a word nobody listed, or made in a slide, survives it untouched.
+- **The reserved-term check is narrow in a different way than it was.** It now reads
+  every Markdown document committed here, which is what an independent review of this
+  change required. It still catches only a listed word, only in Markdown, and only in
+  this repository: a claim made in a word nobody listed, in a file that is not Markdown,
+  or in a slide survives it untouched.
+- **The count check covers ten sentences, not every sentence.** A number stated in prose
+  that is not one of the ten is compared by nothing, and the same limitation that
+  applied to all of them before this review still applies to the eleventh.
 - **Four rules are enforced by review alone**, and a review is enforced only when the
   reviewer remembers it.
 - **There is nowhere to report a problem privately.** A reader who finds a real gap in

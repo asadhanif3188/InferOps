@@ -60,8 +60,15 @@ once versioned releases begin.
   remains undefended anyway, and when it should be revisited.
 - **Twelve reserved terms that may appear only inside a denial.** The adjectives of a
   posture rather than the names of properties, refused by a sentence-level test over
-  the security documents and the committed data. It catches a listed word in those
-  documents and nothing else, which is stated rather than glossed over.
+  **every Markdown document committed here** and the committed data. The first version
+  read only the security documents, which would have passed while the top-level README
+  or `SECURITY.md` described a posture this project does not have — the exact failure
+  the baseline exists to prevent, occurring inside the control against it. A second
+  test now fails if that coverage narrows.
+- **Every count these documents state in prose is recomputed from the data.** A table
+  row was already compared by identifier; a sentence saying "twenty-two of thirty-two"
+  was compared by nothing. Ten such sentences now fail the suite if the data moves
+  underneath them, which is the rule the cost method already applies to a figure.
 - **Three trust boundaries that pointed forward now point at a record.** `B3`, `B4`,
   and `B5` in the system architecture were owned by "the security baseline decision".
   That decision now exists, and a test compares the two documents verbatim so they

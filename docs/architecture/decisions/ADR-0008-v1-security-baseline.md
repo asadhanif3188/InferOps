@@ -308,9 +308,9 @@ was really done.
 ## D12 — Reserved vocabulary
 
 Twelve terms — the adjectives of a posture rather than the names of properties — may
-appear in these documents and in the committed data only inside a sentence that
-denies them. A test splits each document into sentences, skipping fenced code, and
-fails on a reserved term in a sentence carrying no denial.
+appear in **every Markdown document committed here**, and in the committed data, only
+inside a sentence that denies them. A test joins wrapped lines back into sentences,
+skips fenced code, and fails on a reserved term in a sentence carrying no denial.
 
 The list is not a style preference. Each term is one somebody reaches for while
 writing a heading, none of them changes a property, and each converts a set of
@@ -318,8 +318,19 @@ narrow checks into a claim about a system. It is the same mechanism [the cost
 method](../../cost/cost-method.md) uses to keep the vocabulary of an invoice
 attached to the one basis entitled to it.
 
-Its limits are real and worth stating: it catches a listed word in these documents.
-A claim made in a word nobody listed, or made in a slide, survives it untouched.
+**The scope of the scan is itself a decision, and the first version of it was
+wrong.** This rule was originally enforced over the four security documents and this
+record — which would have passed while the top-level README, `SECURITY.md`, or an
+architecture record described a posture this project does not have. Those are the
+documents a reader reaches first, and none of them lives under `docs/security/`. A
+check scoped to the documents least likely to overclaim is the failure `T-18` names,
+occurring inside the control for `T-18`. The scan now reads every Markdown document
+committed here, and a second test fails if that coverage narrows.
+
+Its limits are still real and worth stating: it catches a listed word in a Markdown
+document. A claim made in a word nobody listed, in a file that is not Markdown, or in
+a slide survives it untouched, and `the-vocabulary-check-reads-markdown-only` records
+that as a limitation rather than leaving it implied.
 
 ## D13 — Who signs off a control: not decided
 

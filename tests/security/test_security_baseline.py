@@ -10,10 +10,17 @@ strategy already committed beside it, and above all that a control's status is
 declares determine its status through a committed table, the test function or
 shell guard it names has to exist, the evidence record it names has to be
 committed, and a declared status that disagrees with the derived one is a
-failing test rather than a judgement call. It also holds the manifests this
-repository publishes to six pod-security properties and to the rule that none of
-them exposes a service outside the cluster, and it refuses the vocabulary of a
-security posture anywhere it is not being denied.
+failing test rather than a judgement call. It also holds every manifest this
+repository publishes to eight pod-security assertions, a digest pin, and the rule
+that none of them exposes a service outside the cluster; it recomputes from the
+data every count those documents state in prose; and it refuses the vocabulary of
+a security posture in any sentence of any Markdown document committed here, and
+in the baseline data, that is not denying it.
+
+That last scope is deliberate, and it was widened after a review found it too
+narrow. A vocabulary check reading only `docs/security/` would pass while the
+top-level README described a posture this project does not have -- which is the
+failure T-18 names, happening inside the control for T-18.
 
 What it does not establish is that anything is defended. No component in this
 repository authenticates a caller, authorises a request, enforces a network
@@ -94,9 +101,13 @@ TEST_DEF = "def {symbol}("
 DIGEST_PINNED = re.compile(r"@sha256:[0-9a-f]{64}$")
 
 # A personal filesystem path: a Windows user directory, a POSIX home directory,
-# or a drive-letter path into either.
+# or either of those reached through a mount point. The mount case is not
+# hypothetical here - this project is developed on Windows through a POSIX
+# shell, where a home directory is routinely written `/mnt/c/Users/...`, so a
+# pattern anchored to the start of a path would miss the realistic shape.
 PERSONAL_PATH = re.compile(
-    r"[A-Za-z]:[\\/](?:Users|home)[\\/]|(?<![A-Za-z0-9_.-])/(?:Users|home)/[A-Za-z0-9._-]+/",
+    r"[A-Za-z]:[\\/](?:Users|home)[\\/]"
+    r"|[\\/](?:Users|home)[\\/][A-Za-z0-9._-]+[\\/]",
     flags=re.IGNORECASE,
 )
 
@@ -108,11 +119,14 @@ DENIAL = re.compile(
     r"|reserved|forbidden|forbids|prohibit(?:s|ed|ion)?|denie[sd]|deny|denial"
     r"|stops?|blocked|blocker|gap|overclaim(?:s|ed|ing)?|claim(?:s|ed)? nothing"
     r"|may not|must not|does not|do not|is not|are not|has not|have not|had not"
-    r"|would not|will not|cannot be)\b",
+    r"|would not|will not|cannot be|rather than|instead of)\b",
     flags=re.IGNORECASE,
 )
 
 FENCE = re.compile(r"^[ \t]*```")
+
+# A Markdown list item marker, which starts a new unit of prose.
+LIST_ITEM = re.compile(r"^(?:[-*+]|\d+\.)\s")
 
 REQUIRED_ACTOR_FIELDS = (
     "actorId",
@@ -163,6 +177,7 @@ REQUIRED_CONTROL_FIELDS = (
     "verification",
     "runtimeScope",
     "specifiedFor",
+    "restsOnAConfiguration",
     "v1Status",
     "owner",
     "evidenceRef",
@@ -289,20 +304,45 @@ def _strip_fences(text: str) -> str:
 
 
 def _sentences(text: str) -> list[str]:
-    """Split prose into sentences, keeping a Markdown table row whole.
+    """Split prose into sentences, joining lines that a sentence wraps across.
 
-    A table row is one unit of meaning here: the reserved-term table pairs a
-    term with the reason it is reserved, and splitting the row in half would
-    separate a term from its denial.
+    Two units are kept whole rather than split. A Markdown table row is one
+    unit of meaning: the reserved-term table pairs a term with the reason it is
+    reserved, and splitting the row would separate a term from its denial. And
+    a sentence that wraps across a hard line break is one sentence: splitting on
+    the newline would cut a denial away from the term it denies, which reports a
+    formatting choice as a claim.
     """
     out: list[str] = []
-    for line in text.split("\n"):
-        if line.lstrip().startswith("|"):
-            out.append(line)
-            continue
-        for piece in re.split(r"(?<=[.!?])\s+", line):
+    paragraph: list[str] = []
+
+    def flush() -> None:
+        if not paragraph:
+            return
+        joined = " ".join(paragraph)
+        for piece in re.split(r"(?<=[.!?])\s+", joined):
             if piece.strip():
                 out.append(piece)
+        paragraph.clear()
+
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith(">"):
+            # A blockquote wraps like any other prose; the marker is not content.
+            stripped = stripped.lstrip("> ").strip()
+        if not stripped:
+            flush()
+            continue
+        if stripped.startswith(("|", "#")):
+            flush()
+            out.append(line)
+            continue
+        if LIST_ITEM.match(stripped):
+            # A list item starts a unit; joining it to the item above would put
+            # one item's denial in front of another item's claim.
+            flush()
+        paragraph.append(stripped)
+    flush()
     return out
 
 
@@ -792,18 +832,41 @@ def test_every_declared_status_is_used_and_the_unused_scope_is_the_absent_one() 
 
 
 def test_a_control_that_rests_on_a_configuration_says_what_it_does_not_verify() -> None:
-    control = next(
-        row
-        for row in CONTROLS
-        if row["controlId"] == "no-credential-or-artifact-in-public-history"
-    )
-    assert "not a result" in control["whatItDoesNotVerify"]
+    """Checked for every configuration-backed control, not for one by name.
+
+    Hardcoding the single control that has this shape today would pass forever
+    and would say nothing about the second one somebody adds.
+    """
+    backed = [row for row in CONTROLS if row["restsOnAConfiguration"]]
+    assert backed, "no control declares that it rests on a configuration"
+    for row in backed:
+        assert "not a result" in row["whatItDoesNotVerify"], (
+            f"{row['controlId']} rests on a configuration and does not say that a "
+            "configuration is not a result"
+        )
     layer = next(row for row in STRATEGY["layers"] if row["layerId"] == "security-scan")
     assert layer["v1Status"] == "planned", (
         "a scan configuration is committed and no run of the scanner is recorded, "
         "so the security-scan layer stays planned"
     )
     assert BASELINE["securityStatus"]["secretScannerRunsRecorded"] == 0
+
+
+def test_the_control_that_reads_the_scan_configuration_is_the_one_that_declares_it() -> (
+    None
+):
+    """The flag is data, so it is checked against what the verification does.
+
+    A control could set the flag to false and keep its disclaimer-free wording,
+    which is why the flag itself is held to the file the verification reads.
+    """
+    for row in CONTROLS:
+        symbol = row["verification"]["symbol"] or ""
+        reads_configuration = "secret_scan_configuration" in symbol
+        assert row["restsOnAConfiguration"] == reads_configuration, (
+            f"{row['controlId']} declares restsOnAConfiguration="
+            f"{row['restsOnAConfiguration']} and its verification says otherwise"
+        )
 
 
 def test_the_status_derivation_covers_every_reachable_combination() -> None:
@@ -1211,6 +1274,149 @@ def test_the_control_matrix_publishes_every_status_and_its_meaning() -> None:
         assert f"`{status_id}`" in body, f"the matrix does not explain {status_id}"
 
 
+# Counts that appear in prose rather than in a table row. The cost method
+# already establishes the rule these follow: a figure typed into a document
+# that the data does not produce is a failing test. A table row is compared by
+# identifier elsewhere; a sentence saying "twenty-two of thirty-two" is not
+# compared by anything unless it is compared here.
+NUMBER_WORDS = {
+    2: "two",
+    3: "three",
+    4: "four",
+    5: "five",
+    6: "six",
+    8: "eight",
+    10: "ten",
+    11: "eleven",
+    12: "twelve",
+    15: "fifteen",
+    22: "twenty-two",
+    32: "thirty-two",
+}
+
+
+def _word(value: int) -> str:
+    assert value in NUMBER_WORDS, (
+        f"no word for {value}; the data moved further than expected"
+    )
+    return NUMBER_WORDS[value]
+
+
+def _counts() -> dict[str, int]:
+    enforced = sum(
+        1 for row in CONTROLS if STATUS_BY_ID[row["v1Status"]]["mayBeCalledImplemented"]
+    )
+    return {
+        "controls": len(CONTROLS),
+        "enforced": enforced,
+        "unenforced": len(CONTROLS) - enforced,
+        "threats": len(THREATS),
+        "categories": len({row["category"] for row in THREATS}),
+        "assets": len(ASSETS),
+        "boundaries": len(BOUNDARIES),
+        "risks": len(RISKS),
+        "blocking": sum(1 for row in RISKS if row["blocksProductionUse"]),
+        "exceptions": len(EXCEPTIONS),
+        "rules": len(PROHIBITIONS),
+        "tested_rules": sum(1 for row in PROHIBITIONS if row["enforcedBy"] == "test"),
+        "review_rules": sum(1 for row in PROHIBITIONS if row["enforcedBy"] == "review"),
+        "terms": len(RESERVED_TERMS),
+    }
+
+
+def _expected_sentences() -> list[tuple[Path, str]]:
+    """Build every prose count from the data, then look for it in the document.
+
+    Whitespace is normalised on both sides before comparing, so a sentence may
+    wrap wherever it wants; the number is what has to match.
+    """
+    n = _counts()
+    controls = _word(n["controls"])
+    enforced = _word(n["enforced"])
+    unenforced = _word(n["unenforced"])
+    rules = _word(n["rules"])
+    tested = _word(n["tested_rules"])
+    review = _word(n["review_rules"])
+    risks = _word(n["risks"])
+
+    decision_controls = (
+        f"**{controls.capitalize()} controls exist, and {enforced} of them are "
+        "enforced by something.**"
+    )
+    decision_rules = (
+        f"**{review.capitalize()} of {rules} rules are enforced by review alone**"
+    )
+    matrix_controls = (
+        f"{enforced.capitalize()} of {controls} controls are enforced by something. "
+        f"The other {unenforced} are the reason"
+    )
+    matrix_rules = (
+        f"{rules.capitalize()} rules. {tested.capitalize()} are enforced by a test over "
+        f"the committed baseline. {review.capitalize()} are enforced by review alone"
+    )
+    matrix_terms = (
+        f"{_word(n['terms']).capitalize()} terms may appear in every Markdown document"
+    )
+    threats = (
+        f"{_word(n['threats']).capitalize()}, in {_word(n['categories'])} categories."
+    )
+    assets = f"{_word(n['assets']).capitalize()} things worth protecting."
+    blocking = (
+        f"{_word(n['blocking']).capitalize()} of the {risks} block production use."
+    )
+    register = (
+        f"{risks.capitalize()} risks V1 carries rather than reduces, and "
+        f"{_word(n['exceptions'])} weaknesses"
+    )
+    index = (
+        f"{enforced.capitalize()} of {controls} controls are enforced by something. "
+        f"{unenforced.capitalize()} are not"
+    )
+
+    return [
+        (DECISION_PATH, decision_controls),
+        (DECISION_PATH, decision_rules),
+        (CONTROL_MATRIX_PATH, matrix_controls),
+        (CONTROL_MATRIX_PATH, matrix_rules),
+        (CONTROL_MATRIX_PATH, matrix_terms),
+        (THREAT_MODEL_PATH, threats),
+        (THREAT_MODEL_PATH, assets),
+        (DEFERRED_RISK_PATH, blocking),
+        (DEFERRED_RISK_PATH, register),
+        (SECURITY_DIR / "README.md", index),
+    ]
+
+
+@pytest.mark.parametrize(
+    "path,sentence",
+    _expected_sentences(),
+    ids=lambda value: (
+        value.name if isinstance(value, Path) else " ".join(str(value).split())[:60]
+    ),
+)
+def test_every_count_a_document_states_is_recomputed_from_the_data(
+    path: Path, sentence: str
+) -> None:
+    body = " ".join(path.read_text(encoding="utf-8").split())
+    expected = " ".join(sentence.split())
+    assert expected in body, (
+        f"{path.name} does not contain the sentence the data produces:\n  {expected!r}\n"
+        "A count typed into a document that the data does not produce is a failing test."
+    )
+
+
+def test_the_status_counts_the_index_publishes_match_the_data() -> None:
+    body = (SECURITY_DIR / "README.md").read_text(encoding="utf-8")
+    for status_id, status in STATUS_BY_ID.items():
+        count = sum(1 for row in CONTROLS if row["v1Status"] == status_id)
+        expected = f"| `{status_id}` | {count} |"
+        assert expected in body, f"the index does not publish {expected!r}"
+        published_flag = "yes" if status["mayBeCalledImplemented"] else "no"
+        assert f"{expected} {published_flag} |" in body, (
+            f"the index disagrees with the data on whether {status_id} may be called implemented"
+        )
+
+
 def test_the_decision_record_carries_the_sections_this_project_requires() -> None:
     body = DECISION_PATH.read_text(encoding="utf-8")
     for heading in (
@@ -1229,12 +1435,15 @@ def test_the_decision_record_carries_the_sections_this_project_requires() -> Non
 # Overclaiming
 # --------------------------------------------------------------------------
 
-SCANNED_DOCUMENTS = (
-    THREAT_MODEL_PATH,
-    CONTROL_MATRIX_PATH,
-    DEFERRED_RISK_PATH,
-    DECISION_PATH,
-    SECURITY_DIR / "README.md",
+# Every Markdown document committed here, not just the security ones.
+#
+# Scoping this to `docs/security/` would have been the comfortable choice and a
+# defect: the documents most likely to describe a posture the project does not
+# have are the ones a reader reaches first - the top-level README, SECURITY.md,
+# the changelog, and an architecture record - and none of those lives under
+# `docs/security/`.
+SCANNED_DOCUMENTS = tuple(
+    path for path in REPOSITORY_FILES if path.suffix.lower() == ".md"
 )
 
 
@@ -1244,7 +1453,36 @@ def _reserved_pattern(term: str) -> re.Pattern:
     )
 
 
-@pytest.mark.parametrize("path", SCANNED_DOCUMENTS, ids=lambda path: path.name)
+def test_the_vocabulary_check_reaches_the_documents_a_reader_meets_first() -> None:
+    """The scan's coverage is itself a claim, so it is checked rather than stated.
+
+    A reserved-term check scoped to the security documents would pass while the
+    top-level README described a posture this project does not have, which is
+    the failure T-18 names happening inside the control for T-18.
+    """
+    scanned = {path.relative_to(REPO_ROOT).as_posix() for path in SCANNED_DOCUMENTS}
+    for required in (
+        "README.md",
+        "SECURITY.md",
+        "CONTRIBUTING.md",
+        "CHANGELOG.md",
+        "docs/architecture/system-architecture.md",
+        "docs/security/threat-model.md",
+        "docs/security/control-matrix.md",
+        "docs/security/deferred-risks.md",
+        "docs/security/README.md",
+        "docs/architecture/decisions/ADR-0008-v1-security-baseline.md",
+        "docs/proof/security/v1-s0-009-pr1-validation.md",
+    ):
+        assert required in scanned, f"the vocabulary check does not read {required}"
+    assert len(scanned) >= 60, (
+        "the walk found too few documents to be reading the repository"
+    )
+
+
+@pytest.mark.parametrize(
+    "path", SCANNED_DOCUMENTS, ids=lambda path: path.relative_to(REPO_ROOT).as_posix()
+)
 def test_a_reserved_term_appears_only_where_it_is_denied(path: Path) -> None:
     prose = _strip_fences(path.read_text(encoding="utf-8"))
     offenders: list[str] = []
@@ -1318,6 +1556,8 @@ def test_the_baseline_declares_a_limitation_for_every_gap_it_admits() -> None:
         "no security assessment",
         "apparatus",
         "review alone",
+        "markdown",
+        "strong test from a weak one",
     ):
         assert phrase in statements, f"no limitation covers {phrase!r}"
 

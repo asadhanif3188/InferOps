@@ -406,8 +406,9 @@ risk; that the five boundaries the architecture maps are reproduced here verbati
 the sixth says why it extends them; that every YAML document under `deploy/` is
 pinned by digest, carries eight pod-security assertions, and declares no Ingress,
 NodePort, or LoadBalancer; that nothing generated, personal, or model-shaped is
-committed; and that a reserved vocabulary of twelve terms appears in the security
-documents only inside a sentence that denies it.
+committed; that every count those documents state in prose is recomputed from the
+data; and that a reserved vocabulary of twelve terms appears in **every Markdown
+document committed here** only inside a sentence that denies it.
 
 It checks a baseline, not a system. Nothing in this repository authenticates a
 caller, authorises a request, enforces a network policy, or applies a security
@@ -417,7 +418,9 @@ and no assessment by an outside party has ever been performed.
 
 A change that adds a control names the verification for it or declares that it has
 none — there is no third option, and the derivation is what makes that true rather
-than a convention. A change that adds a threat names a control or the register entry
+than a convention. A change that adds a security document is scanned for the reserved
+vocabulary automatically, because the scan reads every Markdown file rather than a
+list somebody has to remember to extend. A change that adds a threat names a control or the register entry
 that carries it. A change that removes a register entry adds the control that replaces
 it; that last rule is enforced by review alone and is marked as such. The decision
 behind all of it is
