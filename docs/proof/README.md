@@ -24,6 +24,7 @@ nominate its own strength.
 | Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md) |
 | Telemetry | [`v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md) |
 | Cost | [`v1-s0-008-pr1-validation.md`](cost/v1-s0-008-pr1-validation.md) |
+| Security | [`v1-s0-009-pr1-validation.md`](security/v1-s0-009-pr1-validation.md) |
 
 ## Templates
 

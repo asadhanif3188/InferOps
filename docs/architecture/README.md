@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established; five decisions accepted in part, one accepted with a
+Status: entry point established; six decisions accepted in part, one accepted with a
 recorded exception, one accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
@@ -25,6 +25,7 @@ These describe the V1 design. Every component below the contract layer is unbuil
 | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) | The authoritative form of that inventory, validated by `tests/architecture/` |
 | [Project boundaries](project-boundaries.md) | Where this project stops, and what belongs to gateway or deeper serving work instead |
 | [Boundary review checklist](boundary-review-checklist.md) | The questions a reviewer applies to all of the above |
+| [Security baseline](../security/README.md) | The threats these boundaries face, the controls that exist, and the risks V1 carries |
 
 ## Decision records
 
@@ -37,6 +38,7 @@ These describe the V1 design. Every component below the contract layer is unbuil
 | [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, and six of its eleven test layers have no code |
 | [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Change validation](../proof/telemetry/v1-s0-007-pr1-validation.md); the catalog is machine-checked, and nothing in this repository emits a single signal |
 | [0007](decisions/ADR-0007-inference-cost-method.md) | Inference cost-calculation method | Accepted in part | 2026-08-26 | [Change validation](../proof/cost/v1-s0-008-pr1-validation.md); the method and its worked example are machine-checked, and nothing in this repository computes a cost record |
+| [0008](decisions/ADR-0008-v1-security-baseline.md) | V1 threat model and security baseline | Accepted in part | 2026-08-26 | [Change validation](../proof/security/v1-s0-009-pr1-validation.md); the baseline is machine-checked, and nothing in this repository defends a running system |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -50,7 +52,9 @@ allow prompt and response capture — is explicitly not made, and one — the te
 toolchain and who owns a collector — is deliberately left to 0004's open question
 rather than answered in passing. In 0007, eleven decisions are accepted and two —
 which provider rate cards a comparison would use, and which component computes a cost
-record — are not.
+record — are not. In 0008, twelve decisions are accepted and two — who signs off a
+control, and whether a renderer or an admission policy enforces a pod-security
+property — are not.
 
 0002 selects one runtime image digest and one immutable model revision, on evidence
 from a trial that was executed on 2026-08-24: a model was downloaded and
@@ -105,6 +109,27 @@ behaviour — was already accepted in words; what this record adds is a mechanis
 committed data and a marker expression that a test compares against it in both
 directions. It configures **no** continuous integration: there is no workflow file in
 this repository, and a lane may claim automation only by naming one that exists.
+
+0008 decides what V1 protects and from whom: the architecture's five trust boundaries
+adopted verbatim plus a sixth for publication, six pod-security properties and a
+digest pin enforced over every manifest here, least exposure at the caller boundary,
+secrets referenced rather than carried, content and secrets with no telemetry
+placement, and a reserved vocabulary that may appear only inside a denial.
+
+Its central mechanism is that **a control's status is derived rather than asserted**:
+the enforcement kind and runtime scope a control declares determine its status through
+a committed table, the test function or shell guard it names has to exist, and a
+control claiming an implemented status has to name a committed evidence record. That
+is the same shape as 0007's derived confidence, applied to the failure that a written
+control is counted as an enforced one.
+
+It defends **nothing that is running**. Twenty-two of its thirty-two controls are
+enforced by something and ten are not; twelve risks are carried rather than reduced,
+ten of them blocking production use; four exceptions are recorded with a compensating
+control each; and the pod-security properties hold over five YAML files that are
+smoke and trial apparatus rather than over any pod this platform deployed. No
+scanner has been run and recorded, and no assessment by an outside party has ever been
+performed. Four of its fifteen rules are enforced by review alone.
 
 0007 decides how a V1 cost figure is produced and what it may be called: three bases
 of which only an allocation is reachable, allocation by reserved capacity rather than

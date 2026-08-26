@@ -462,12 +462,14 @@
       "paths": [
         "tests/testing",
         "tests/telemetry",
-        "tests/cost"
+        "tests/cost",
+        "tests/security"
       ],
       "commands": [
         "python -m pytest tests/testing -q",
         "python -m pytest tests/telemetry -q",
         "python -m pytest tests/cost -q",
+        "python -m pytest tests/security -q",
         "the link and whitespace checks in CONTRIBUTING"
       ],
       "evidenceClass": "local-static",
@@ -577,6 +579,20 @@
       "evidenceOwner": "documentation",
       "v1Status": "certified",
       "evidenceRef": "docs/proof/cost/v1-s0-008-pr1-validation.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "a-security-control-cannot-claim-enforcement-it-does-not-have",
+      "statement": "Every control in the committed security baseline derives its status from the verification it names rather than asserting one; a control naming an automated test or a script guard names one that exists, and a control claiming an implemented status names an evidence record that is committed; no control claims to act inside a running system; every threat names a control or the deferred risk that carries it, and every recorded exception names a compensating control and its residual risk; every manifest this repository publishes is pinned by digest, carries eight pod-security assertions, and exposes no service outside the cluster; and the reserved vocabulary of a security posture appears in these documents only where it is denied.",
+      "layers": [
+        "documentation"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "security",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
       "deferralReason": null
     },
     {

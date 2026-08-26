@@ -4,7 +4,7 @@ Status: **accepted matrix**, in
 [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
 It lists every public claim V1 intends to make, the test layers behind it, the
 environment it is proven in, the certification level it needs, and who owns its
-evidence. Eleven of twenty claims are certified today. The rest are commitments, and
+evidence. Twelve of twenty-one claims are certified today. The rest are commitments, and
 the difference is the point of the table.
 
 The authoritative form is
@@ -47,6 +47,7 @@ Each of these rests on an executed record in [`docs/proof/`](../proof/).
 | `the-default-lane-cannot-execute-a-real-model` | documentation | repository-only | C0 | documentation |
 | `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | documentation | repository-only | C0 | security |
 | `a-cost-figure-cannot-be-presented-as-a-bill` | documentation | repository-only | C0 | documentation |
+| `a-security-control-cannot-claim-enforcement-it-does-not-have` | documentation | repository-only | C0 | security |
 | `a-local-cluster-is-created-and-removed-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | real-runtime-smoke | capable-host | C2 | serving |
 | `the-model-artifact-matches-its-published-hash` | real-runtime-smoke | capable-host | C2 | serving |
@@ -61,6 +62,26 @@ capacity it allocates. It certifies **nothing about what anything costs**: the o
 rate card in this repository is synthetic, no invoice has ever been read, and no
 component computes a cost record. The example's own confidence is `none`, derived
 rather than assigned.
+
+The security row is the newest, and it is the narrowest of the three. It certifies
+that every control in the committed baseline derives its status from the verification
+it names rather than asserting one; that a control naming an automated test or a shell
+guard names one that exists, and a control claiming an implemented status names an
+evidence record that is committed; that no control claims to act inside a running
+system; that every threat names a control or the deferred risk carrying it, and every
+recorded exception names a compensating control and its residual risk; that every
+manifest this repository publishes is pinned by digest, carries eight pod-security
+assertions, and exposes no service outside the cluster; and that the reserved
+vocabulary of a security posture appears in those documents only where it is denied.
+
+It certifies **nothing about whether anything is defended.** Nothing in this
+repository authenticates a caller, authorises a request, enforces a network policy, or
+applies a security context to a pod it deployed; no secret scanner, image scanner, or
+dependency auditor has been run and recorded; and no assessment by an outside party
+has ever been performed. Ten of its thirty-two controls have no verification at all,
+twelve risks are carried rather than reduced, and the eight manifest assertions are
+properties of five YAML files that are smoke and trial apparatus rather than of any
+pod this platform deployed.
 
 The telemetry row is narrow in the same way, and its wording is exact for a
 reason. A prompt, a response, a provider error body, and a secret have **no**

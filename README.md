@@ -35,20 +35,22 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; no component consumes it |
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
-| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Five decisions accepted in part, one accepted with a recorded exception, one accepted |
+| Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Six decisions accepted in part, one accepted with a recorded exception, one accepted |
 | V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; every component below the contract layer is unbuilt |
 | Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked; no Terraform or Helm exists |
 | Project boundaries | [docs/architecture/project-boundaries.md](docs/architecture/project-boundaries.md) | Accepted scope rule; two serving capabilities and no gateway or deep-serving work |
 | Test and CI strategy | [docs/testing/test-strategy.md](docs/testing/test-strategy.md) | Strategy accepted and machine-checked; five of eleven test layers exist and no CI lane is configured |
 | Certification levels | [docs/testing/certification.md](docs/testing/certification.md) | Accepted definition; V1 certifies at C0 to C2 and a mock stops at C1 |
-| Claim and test matrix | [docs/testing/claim-test-matrix.md](docs/testing/claim-test-matrix.md) | Eleven of twenty public claims certified; the rest are commitments |
+| Claim and test matrix | [docs/testing/claim-test-matrix.md](docs/testing/claim-test-matrix.md) | Twelve of twenty-one public claims certified; the rest are commitments |
 | Telemetry and evidence | [docs/telemetry/README.md](docs/telemetry/README.md) | Catalog accepted and machine-checked; nothing in this repository emits a metric, a log record, or a span |
 | Redaction rules | [docs/telemetry/redaction.md](docs/telemetry/redaction.md) | Accepted rule, unenforced in code; content capture is disabled and has no policy that could enable it |
 | Cost method | [docs/cost/README.md](docs/cost/README.md) | Method accepted and machine-checked; the only rate card is synthetic and nothing in this repository computes a cost record |
 | Worked cost example | [docs/cost/worked-example.md](docs/cost/worked-example.md) | Every figure synthetic and recomputed by the suite; confidence `none` and no figure for what anything costs |
+| Threat model and security baseline | [docs/security/README.md](docs/security/README.md) | Baseline accepted and machine-checked; nothing here defends a running system, and twelve risks are carried rather than reduced |
+| Deferred security risks | [docs/security/deferred-risks.md](docs/security/deferred-risks.md) | Twelve risks and four accepted exceptions; ten of the twelve block production use |
 | Evidence records and templates | [docs/proof/README.md](docs/proof/README.md) | Four templates published; a template is a format and has produced no record |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
-| Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published |
+| Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published, which is a gap the baseline records |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | Unreleased changes only |
 | License | [LICENSE](LICENSE) | MIT |
 | Conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Interim expectations; formal policy deferred |
