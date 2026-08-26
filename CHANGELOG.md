@@ -10,6 +10,68 @@ once versioned releases begin.
 
 ### Added
 
+- **A threat model in which a control cannot claim enforcement it does not have**, in
+  [ADR 0008](docs/architecture/decisions/ADR-0008-v1-security-baseline.md) and three
+  documents under `docs/security/`. Every control declares how it is verified and
+  where it acts, and its status is the value a committed table gives for that pair —
+  never a word somebody typed. A control naming an automated test names the file and
+  the function, and the suite fails if the function is not defined; a control claiming
+  an implemented status names an evidence record, and the suite fails if the record is
+  not committed. The failure this exists for is not a false claim: it is a list of
+  twenty controls, four of which have tests, being counted as twenty by a reader six
+  months later.
+- **Thirty-two controls, twenty-two of them enforced by something, and the split
+  published.** Ten act over committed documents, ten over manifests, two on the host
+  through the environment scripts, three by review alone, three are specified for
+  components that do not exist, and four are deferred outright. The distribution is
+  the finding, and no status that may be called implemented exists without a record
+  behind it.
+- **Eight pod-security assertions and a digest pin, promoted from habit to property.**
+  Every YAML document under `deploy/` was already non-root, read-only-rooted,
+  capability-dropped, seccomp-profiled, token-free, escalation-free, and pinned by
+  digest. A test now parses every one of them and fails if that stops being true. What
+  it establishes is stated exactly: these are properties of five committed files that
+  are smoke and trial apparatus, and this platform deploys none of them.
+- **Least exposure at the caller boundary, and no pretence that it is access
+  control.** No manifest here declares an Ingress, a NodePort, or a LoadBalancer, and
+  a test refuses one that would. Reaching anything needs a deliberate port-forward
+  from a machine that already holds the cluster's credential. It identifies nobody and
+  limits nothing once something is inside, which is why authentication and rate
+  limiting are register entries rather than paragraphs.
+- **A sixth trust boundary, for publication.** The architecture maps the five a
+  running system crosses; this project crosses a sixth on every commit, and it is the
+  only one whose failures cannot be undone. Four properties are tested at it: nothing
+  generated is committed, no file carries a personal filesystem path, no file carries
+  a model artifact extension, and the secret-scan allowlist resolves. The fifth thing
+  a reader would assume is tested is not — **no run of the scanner is recorded**, and
+  a configuration file is not a result.
+- **A deferred-risk register that is long on purpose.** Twelve risks V1 carries rather
+  than reduces — no authentication, no rate limit, no tenant validation, no network
+  policy, no admission control, an unauthenticated artifact transport, no dependency
+  lockfile, no image scanning, no artifact availability, no secret lifecycle, no
+  recorded scanner run, and nothing logged at all. Ten of the twelve block production
+  use. Each declares why, what would have to be true, and — the field that does the
+  work — what may not be claimed while it stands.
+- **Four exceptions argued rather than absorbed.** The model download's transport
+  reports certificate validation as disabled; the cluster identity guard is satisfied
+  by a second cluster given this project's name; the secret-scan allowlist covers two
+  directories wholesale; and the pod-security properties hold over apparatus rather
+  than over a serving path. Each names a compensating control that exists, what
+  remains undefended anyway, and when it should be revisited.
+- **Twelve reserved terms that may appear only inside a denial.** The adjectives of a
+  posture rather than the names of properties, refused by a sentence-level test over
+  the security documents and the committed data. It catches a listed word in those
+  documents and nothing else, which is stated rather than glossed over.
+- **Three trust boundaries that pointed forward now point at a record.** `B3`, `B4`,
+  and `B5` in the system architecture were owned by "the security baseline decision".
+  That decision now exists, and a test compares the two documents verbatim so they
+  cannot drift.
+- **One new public claim, at the narrowest level that is honest.** The claim and test
+  matrix gains `a-security-control-cannot-claim-enforcement-it-does-not-have`,
+  certified at C0 by the documentation layer and owned by security. It certifies a
+  committed baseline and nothing about whether anything is defended. Two existing
+  security claims stay `planned`, and a test now holds them there.
+
 - **A cost method in which an estimate cannot become a bill by accident**, in
   [ADR 0007](docs/architecture/decisions/ADR-0007-inference-cost-method.md) and two
   documents under `docs/cost/`. Every amount declares a basis — an invoice, an

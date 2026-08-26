@@ -383,6 +383,50 @@ failing test. The decision behind all of it is
 rule it cannot enforce is the one that matters most: V1 publishes this method and a
 synthetic example, and no figure for what running an inference workload costs.
 
+### Threat model and security baseline
+
+Changes under `docs/security/`, `tests/security/`, or `deploy/` must pass the
+security suite:
+
+```sh
+python -m pytest tests/security -q
+```
+
+It reads only files in this repository and needs `pytest` and `PyYAML`. It checks the
+committed baseline
+[`docs/security/security-baseline.v1alpha1.json`](docs/security/security-baseline.v1alpha1.json):
+that every control's status is **derived** from the enforcement kind and runtime
+scope it declares rather than asserted, through a table committed beside the
+controls; that a control naming an automated test or a shell guard names one that is
+actually defined, and one claiming an implemented status names an evidence record
+that is actually committed; that no control claims to act inside a running system;
+that every threat names a control or the deferred risk that carries it, and every
+recorded exception names a compensating control that exists and states its residual
+risk; that the five boundaries the architecture maps are reproduced here verbatim and
+the sixth says why it extends them; that every YAML document under `deploy/` is
+pinned by digest, carries eight pod-security assertions, and declares no Ingress,
+NodePort, or LoadBalancer; that nothing generated, personal, or model-shaped is
+committed; and that a reserved vocabulary of twelve terms appears in the security
+documents only inside a sentence that denies it.
+
+It checks a baseline, not a system. Nothing in this repository authenticates a
+caller, authorises a request, enforces a network policy, or applies a security
+context to a pod it deployed, because nothing here deploys a pod or serves a request.
+No secret scanner, image scanner, or dependency auditor has been run and recorded,
+and no assessment by an outside party has ever been performed.
+
+A change that adds a control names the verification for it or declares that it has
+none — there is no third option, and the derivation is what makes that true rather
+than a convention. A change that adds a threat names a control or the register entry
+that carries it. A change that removes a register entry adds the control that replaces
+it; that last rule is enforced by review alone and is marked as such. The decision
+behind all of it is
+[ADR 0008](docs/architecture/decisions/ADR-0008-v1-security-baseline.md), and the
+document it exists to protect is
+[the deferred-risk register](docs/security/deferred-risks.md): a register that shrinks
+because the project wants to look further along is the failure this suite cannot
+catch.
+
 ### Kubernetes manifests
 
 Changes under `deploy/` must parse and must validate against the Kubernetes version
@@ -396,7 +440,9 @@ The kind cluster definition is excluded from that command because its schema is
 kind's rather than Kubernetes'. Validate it by using it.
 
 Container images in manifests must be pinned by digest, not by tag alone. A tag is
-a label that can be moved; a digest is what the engine actually resolves.
+a label that can be moved; a digest is what the engine actually resolves. The
+security suite above checks this over every YAML document under `deploy/`, alongside
+the eight pod-security assertions every manifest here carries.
 
 Then inspect the full diff and search it for credentials, private planning content,
 personal paths, generated files, and unsupported capability claims. Report the exact

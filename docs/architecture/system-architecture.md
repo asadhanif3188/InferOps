@@ -415,10 +415,18 @@ empty placement list rather than a convention.
 ## 6. Trust boundaries
 
 > [!WARNING]
-> This section maps boundaries. It does **not** implement controls, and no control
-> named here exists. A threat model, the control set, and their verification are a
-> separate decision that this architecture does not make. Naming a boundary is not
-> defending it.
+> This section maps boundaries. It does **not** implement controls. Naming a boundary
+> is not defending it.
+>
+> The threat model, the control set, and their verification are a separate decision,
+> and it has since been made:
+> [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) and
+> [the security baseline](../security/threat-model.md) adopt these five boundaries
+> unchanged — a test compares the two documents verbatim — and add a sixth for
+> publication, which a running system does not cross and this project crosses on
+> every commit. What that record establishes is narrow: nothing in this repository
+> authenticates a caller, authorises a request, enforces a network policy, or applies
+> a security context to a pod it deployed.
 
 ```text
   ==================== outside anything this project controls =========
@@ -472,9 +480,9 @@ empty placement list rather than a convention.
 |---|---|---|---|
 | B1 artifact | Container images, model weights | Digest and hash pinning, hash verified before use | The pinning rules in ADR 0002 |
 | B2 cluster | Every platform action on Kubernetes | Cluster identity guard and scoped teardown, in the environment scripts | ADR 0001 D5 and D6 |
-| B3 namespace | Everything a release installs | Nothing. A network policy is planned and its enforcement by the local cluster's network plugin is untested | The security baseline decision |
-| B4 workload | Process privilege inside a pod | Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none | The security baseline decision |
-| B5 caller | Inference requests and their responses | **Nothing.** There is no authentication, no authorization, no rate limit, and no tenant isolation | The security baseline decision |
+| B3 namespace | Everything a release installs | Nothing. A network policy is planned and its enforcement by the local cluster's network plugin is untested | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
+| B4 workload | Process privilege inside a pod | Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
+| B5 caller | Inference requests and their responses | **Nothing.** There is no authentication, no authorization, no rate limit, and no tenant isolation | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
 
 The tenant field is the one worth calling out here, because getting it wrong is how
 multi-tenancy leaks. A tenant written into a contract is a **request**, not an
@@ -482,6 +490,11 @@ assertion. It must be validated against the owning team's entitlement before it 
 used for isolation, attribution, or authorisation, and it must never be trusted
 because a client supplied it. Nothing validates it today, and B5 is where that
 validation would have to live.
+
+That rule now has a home rather than only a paragraph: it is `T-08` in
+[the threat model](../security/threat-model.md), the control for it is
+`specified-only` because the component that would apply it does not exist, and
+`DR-03` carries what stays open.
 
 ## 7. What this architecture is not
 
@@ -510,3 +523,4 @@ validation would have to live.
 | The runtime and model it serves | [ADR 0002](decisions/ADR-0002-model-and-serving-runtime.md) |
 | The contract it starts from | [WorkloadContract v1alpha1](../contracts/workload-contract.md) |
 | Why a mock may not certify serving | [The mock and real serving boundary](../serving/mock-and-real-boundary.md) |
+| The threats these boundaries face, and what is done about them | [The V1 security baseline](../security/README.md) |

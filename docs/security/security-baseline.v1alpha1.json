@@ -1,0 +1,1700 @@
+{
+  "$id": "https://inferops.io/security/security-baseline.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 threat model and security baseline, v1alpha1",
+  "description": "What V1 is protecting, who it is protected from, where the boundaries are, which controls this repository actually enforces, who verifies each one, and which risks are deferred out of V1 rather than defended. The baseline is committed as data so that a control's status is derived from the verification it names rather than asserted by whoever wrote it down. Nothing here authenticates a caller, authorises a request, or applies a security context to a pod this platform deployed, because this platform deploys none.",
+  "decisionRef": "docs/architecture/decisions/ADR-0008-v1-security-baseline.md",
+  "documentRef": "docs/security/threat-model.md",
+  "controlMatrixRef": "docs/security/control-matrix.md",
+  "deferredRiskRef": "docs/security/deferred-risks.md",
+  "architectureRef": "docs/architecture/system-architecture.md",
+  "telemetryCatalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "redactionRef": "docs/telemetry/redaction.md",
+  "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
+  "workloadContractRef": "contracts/workload/workload-contract.v1alpha1.schema.json",
+  "reportingRef": "SECURITY.md",
+
+  "securityStatus": {
+    "state": "nothing-enforces-at-runtime",
+    "meaning": "No component in this repository authenticates a caller, authorises a request, terminates a connection, enforces a network policy, admits or rejects a pod, or applies a security context to a workload it deployed - because no component in this repository deploys a workload or serves a request. What is enforced today is enforced over committed files, over manifests, and by two host scripts. That is a real and narrow thing, and the difference between it and a defended system is the subject of the deferred-risk register.",
+    "controlsEnforcedInARunningSystem": 0,
+    "secretScannerRunsRecorded": 0,
+    "securityAssessmentsPerformed": 0,
+    "penetrationTestsPerformed": 0,
+    "vulnerabilityReportsReceived": 0,
+    "vulnerabilityReportsPossible": false,
+    "privateReportingChannel": "not published. SECURITY.md records the gap and docs/governance/repository.md records it as a governance blocker; until it exists this project cannot accept a confidential report.",
+    "note": "These counts are zero rather than absent. A missing count reads as an unmeasured one, and an unmeasured one reads as a positive by anybody skimming."
+  },
+
+  "actors": [
+    {
+      "actorId": "workload-owner",
+      "name": "An application team that authors a workload contract",
+      "trustedTo": "author a document, own the secret material its references point at, and name the team accountable for the workload.",
+      "notTrustedTo": "assert a tenant, a security classification, or an entitlement. Every one of those is a request written into a document, and nothing in V1 validates any of them against an authority.",
+      "reachesBoundaries": [
+        "B3"
+      ]
+    },
+    {
+      "actorId": "platform-contributor",
+      "name": "A contributor who runs the cluster, the checks, and the evidence",
+      "trustedTo": "operate their own machine and their own cluster.",
+      "notTrustedTo": "be incapable of a mistake. The environment guards exist because a stale context and a mistyped command are the realistic failure, not because a contributor is an attacker.",
+      "reachesBoundaries": [
+        "B2",
+        "B6"
+      ]
+    },
+    {
+      "actorId": "artifact-publisher",
+      "name": "A container image or model publisher",
+      "trustedTo": "nothing.",
+      "notTrustedTo": "serve the same bytes twice under the same name. What is trusted is a digest and a per-file hash committed in this repository, and neither of them is the publisher.",
+      "reachesBoundaries": [
+        "B1"
+      ]
+    },
+    {
+      "actorId": "artifact-transport",
+      "name": "The network path that delivers an image or a weight file",
+      "trustedTo": "nothing.",
+      "notTrustedTo": "be authenticated. In the one executed trial the downloader reported that certificate validation was disabled, which is recorded as an accepted exception rather than as a defended condition.",
+      "reachesBoundaries": [
+        "B1"
+      ]
+    },
+    {
+      "actorId": "caller",
+      "name": "Anything that can reach the inference socket",
+      "trustedTo": "nothing, and identified as nothing.",
+      "notTrustedTo": "be who it says it is, because nothing asks. There is no authentication, no authorisation, and no rate limit at this boundary, so a caller is unidentified by construction rather than by oversight.",
+      "reachesBoundaries": [
+        "B5"
+      ]
+    },
+    {
+      "actorId": "public-reader",
+      "name": "Anyone reading the public repository or its history",
+      "trustedTo": "read everything that is committed, forever, including anything that was committed and later deleted.",
+      "notTrustedTo": "be a party this project can ask to forget something. This is why the control at the publication boundary is what is committed rather than what is retracted.",
+      "reachesBoundaries": [
+        "B6"
+      ]
+    }
+  ],
+
+  "boundaries": [
+    {
+      "boundaryId": "B1",
+      "name": "The artifact boundary",
+      "whatCrosses": "Container images, model weights",
+      "enforcedToday": "Digest and hash pinning, hash verified before use",
+      "notDefended": "Availability, and the authenticity of the transport. The published hash carries the whole integrity argument for the transfer rather than acting as a redundant check on it.",
+      "mappedInArchitecture": true,
+      "owner": "serving"
+    },
+    {
+      "boundaryId": "B2",
+      "name": "The cluster boundary",
+      "whatCrosses": "Every platform action on Kubernetes",
+      "enforcedToday": "Cluster identity guard and scoped teardown, in the environment scripts",
+      "notDefended": "A second kind cluster deliberately given this project's name satisfies every check. The guard defends against a mistake, not against a deliberate act.",
+      "mappedInArchitecture": true,
+      "owner": "environment"
+    },
+    {
+      "boundaryId": "B3",
+      "name": "The namespace boundary",
+      "whatCrosses": "Everything a release installs",
+      "enforcedToday": "Nothing. A network policy is planned and its enforcement by the local cluster's network plugin is untested",
+      "notDefended": "Traffic between namespaces, and traffic leaving the cluster. No policy object exists, and no release exists to carry one.",
+      "mappedInArchitecture": true,
+      "owner": "security"
+    },
+    {
+      "boundaryId": "B4",
+      "name": "The workload boundary",
+      "whatCrosses": "Process privilege inside a pod",
+      "enforcedToday": "Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none",
+      "notDefended": "Anything a pod this platform has not deployed does, and anything the kernel or the container runtime does not isolate. No admission control exists.",
+      "mappedInArchitecture": true,
+      "owner": "security"
+    },
+    {
+      "boundaryId": "B5",
+      "name": "The caller boundary",
+      "whatCrosses": "Inference requests and their responses",
+      "enforcedToday": "**Nothing.** There is no authentication, no authorization, no rate limit, and no tenant isolation",
+      "notDefended": "Everything. Least exposure is the only property this repository can hold at this boundary today, and it holds it by publishing no manifest that exposes a service outside the cluster.",
+      "mappedInArchitecture": true,
+      "owner": "security"
+    },
+    {
+      "boundaryId": "B6",
+      "name": "The publication boundary",
+      "whatCrosses": "Every file, record, and message this project commits or pushes in public",
+      "enforcedToday": "Ignore rules for host state and the project kubeconfig, a committed secret-scan configuration, and a suite that refuses a tenant identifier or a personal filesystem path in a committed file",
+      "notDefended": "Anything a scanner would have caught, because no scanner run is recorded, and anything only a reader would recognise as private.",
+      "mappedInArchitecture": false,
+      "owner": "security",
+      "extendsArchitecture": "The architecture maps the five boundaries a running system crosses. This project crosses a sixth on every commit, and a permanent public record is the one disclosure that cannot be withdrawn, so the baseline maps it here rather than leaving it unnamed."
+    }
+  ],
+
+  "assets": [
+    {
+      "assetId": "model-artifact",
+      "name": "The pinned model weight file",
+      "whatItIs": "One GGUF weight file, roughly 1.7 GiB, named by an immutable revision and a per-file SHA-256 committed in this repository.",
+      "boundary": "B1",
+      "worstCase": "Substituted weights serve attacker-chosen output while every downstream figure, record, and evidence file continues to describe the model that was supposed to be there.",
+      "ownedBy": "an external publisher; this project owns only the pin"
+    },
+    {
+      "assetId": "runtime-image",
+      "name": "The pinned serving runtime image",
+      "whatItIs": "One multi-architecture image index digest for the selected serving runtime, and one digest for the utility image the trial manifests use.",
+      "boundary": "B1",
+      "worstCase": "A replaced image runs attacker code with the model, the volume, and the cluster network already granted to it.",
+      "ownedBy": "an external publisher; this project owns only the digest"
+    },
+    {
+      "assetId": "workload-document",
+      "name": "A submitted workload contract document",
+      "whatItIs": "A YAML or JSON document authored outside the platform, describing a workload's identity, model, resources, ownership, and declared secret references.",
+      "boundary": "B3",
+      "worstCase": "A document that is trusted rather than validated becomes deployment values, and a field a caller controls becomes a property the platform asserts.",
+      "ownedBy": "workload-owner"
+    },
+    {
+      "assetId": "secret-material",
+      "name": "The credential material a contract refers to",
+      "whatItIs": "The values behind `spec.security.secretRefs`. The contract carries the locator; the value lives somewhere this project does not read.",
+      "boundary": "B3",
+      "worstCase": "A value pasted into a locator field is committed to a document store, echoed into a rejection message, and copied into a log - three surfaces, one mistake.",
+      "ownedBy": "workload-owner"
+    },
+    {
+      "assetId": "prompt-and-response-content",
+      "name": "Prompts, responses, and anything quoting them",
+      "whatItIs": "Data that reaches the platform in a request and leaves it in a response, including a provider error body that may quote either.",
+      "boundary": "B5",
+      "worstCase": "Content the project does not own and cannot classify on the caller's behalf is written to a store nobody set a retention window on.",
+      "ownedBy": "the caller, and whoever the caller answers to"
+    },
+    {
+      "assetId": "telemetry-signals",
+      "name": "The metrics, logs, and spans a running V1 would emit",
+      "whatItIs": "The catalog of signals in docs/telemetry/. None is emitted; the asset is the specification and the discipline attached to it.",
+      "boundary": "B3",
+      "worstCase": "A field that should not have been written is not fixed by deleting the code that wrote it. It is fixed by finding every store that received it, inside a retention window nobody was tracking.",
+      "ownedBy": "security"
+    },
+    {
+      "assetId": "evidence-record",
+      "name": "A committed evidence record",
+      "whatItIs": "A record under docs/proof/ that a public claim rests on. Public, permanent, and not deletable in any useful sense.",
+      "boundary": "B6",
+      "worstCase": "A record promoted without redaction publishes a tenant identifier, a host detail, or a fragment of content, permanently, in the artifact whose purpose is to be trusted.",
+      "ownedBy": "security"
+    },
+    {
+      "assetId": "public-history",
+      "name": "The published git history",
+      "whatItIs": "Every commit this project has pushed, including the ones later reverted.",
+      "boundary": "B6",
+      "worstCase": "A credential, a model artifact, host state, or private planning material enters a history that cannot be un-published, only rotated around.",
+      "ownedBy": "security"
+    },
+    {
+      "assetId": "contributor-kubeconfig",
+      "name": "The project-scoped kubeconfig",
+      "whatItIs": "A kubeconfig written under `.kube/` by the environment scripts. It carries the local cluster's client certificate and key.",
+      "boundary": "B2",
+      "worstCase": "Committed, it publishes a working client credential for a cluster on a contributor's machine.",
+      "ownedBy": "platform-contributor"
+    },
+    {
+      "assetId": "local-cluster",
+      "name": "The contributor's local Kubernetes cluster",
+      "whatItIs": "A single-node kind cluster created and destroyed by the environment scripts. It belongs to the machine, not to the platform.",
+      "boundary": "B2",
+      "worstCase": "A scoped operation reaches a cluster this project did not create and deletes objects somebody else depends on.",
+      "ownedBy": "platform-contributor"
+    },
+    {
+      "assetId": "model-cache-volume",
+      "name": "The model cache claim",
+      "whatItIs": "A prerequisite volume holding one hash-verified artifact, with a lifecycle longer than any release.",
+      "boundary": "B3",
+      "worstCase": "A cache that survives an uninstall holds bytes that were verified once, and a consumer that trusts the cache rather than the hash inherits whatever is in it.",
+      "ownedBy": "environment"
+    }
+  ],
+
+  "threats": [
+    {
+      "threatId": "T-01",
+      "title": "The weight file is substituted in transit",
+      "category": "tampering",
+      "assetId": "model-artifact",
+      "boundaryId": "B1",
+      "actorId": "artifact-transport",
+      "abuseCase": "The acquisition job fetches the weight file over a transport whose certificate is not validated. Anything positioned on that path returns a different file of the same name.",
+      "impact": "Every result produced afterwards describes a model nobody selected, and the trial record that cites the revision is wrong without being detectably wrong.",
+      "controls": [
+        "verify-artifact-hash-before-use",
+        "pin-model-revision"
+      ],
+      "residualRisk": "The hash is the entire integrity argument for the transfer. It is committed in this repository rather than fetched alongside the file, which is the only reason the argument closes at all.",
+      "deferredRiskRef": "DR-06"
+    },
+    {
+      "threatId": "T-02",
+      "title": "A moving tag resolves to a different image",
+      "category": "tampering",
+      "assetId": "runtime-image",
+      "boundaryId": "B1",
+      "actorId": "artifact-publisher",
+      "abuseCase": "The selected runtime publishes no versioned tag scheme and rebuilds its `server` tag on a schedule. A manifest naming the tag runs whatever was built most recently.",
+      "impact": "Two runs of the same manifest execute different code, and a record that names the tag cannot be reproduced or refuted.",
+      "controls": [
+        "pin-image-by-digest",
+        "verify-artifact-provenance"
+      ],
+      "residualRisk": "A digest fixes what runs; it establishes nothing about what is in it. No image vulnerability scan and no provenance attestation is verified.",
+      "deferredRiskRef": "DR-08"
+    },
+    {
+      "threatId": "T-03",
+      "title": "A publisher withdraws or cannot serve an artifact",
+      "category": "denial-of-service",
+      "assetId": "model-artifact",
+      "boundaryId": "B1",
+      "actorId": "artifact-publisher",
+      "abuseCase": "The pinned revision or digest stops being served. Nothing in this project mirrors, caches durably, or re-publishes either.",
+      "impact": "The reproduction path for every existing serving record stops working, and the records become unrepeatable rather than untrue.",
+      "controls": [],
+      "residualRisk": "Undefended and accepted. Publishers are outside the availability boundary, which the architecture already states.",
+      "deferredRiskRef": "DR-09"
+    },
+    {
+      "threatId": "T-04",
+      "title": "A secret value is pasted into a workload document",
+      "category": "information-disclosure",
+      "assetId": "secret-material",
+      "boundaryId": "B3",
+      "actorId": "workload-owner",
+      "abuseCase": "An author puts the credential itself into the locator field, or into a value field, because it is faster than wiring up a reference.",
+      "impact": "The credential enters a document store, a review thread, and any log that quotes the document.",
+      "controls": [
+        "refuse-a-secret-value-in-a-contract"
+      ],
+      "residualRisk": "The heuristic catches a published credential prefix and a high-entropy opaque segment. A short, low-entropy secret has the shape of a name and passes.",
+      "deferredRiskRef": null
+    },
+    {
+      "threatId": "T-05",
+      "title": "A refusal quotes the value it refused",
+      "category": "information-disclosure",
+      "assetId": "secret-material",
+      "boundaryId": "B3",
+      "actorId": "workload-owner",
+      "abuseCase": "A validator makes its error message clearer by including the offending value, which is exactly the value most likely to be a credential.",
+      "impact": "The rejection interface becomes a disclosure channel, and the disclosure is copied wherever the error is.",
+      "controls": [
+        "never-echo-a-document-value-in-a-refusal"
+      ],
+      "residualRisk": "Enforced for the contract validator, which is the only component that exists. Any future component that reads a document inherits the rule and not the test.",
+      "deferredRiskRef": null
+    },
+    {
+      "threatId": "T-06",
+      "title": "A secret or a prompt is written to a log, a metric, or a trace",
+      "category": "information-disclosure",
+      "assetId": "prompt-and-response-content",
+      "boundaryId": "B3",
+      "actorId": "platform-contributor",
+      "abuseCase": "During an incident somebody logs the whole request, or the whole inbound header set, because that is a one-line change and the answer is needed now.",
+      "impact": "Content and credential material land in a store with a retention window nobody chose for that purpose.",
+      "controls": [
+        "no-secret-or-content-has-a-telemetry-placement",
+        "content-capture-is-disabled-and-has-no-enabling-path"
+      ],
+      "residualRisk": "The catalog is checked; no logger exists to check. The property that matters - that a real record carries only permitted fields - has no test because it has no subject.",
+      "deferredRiskRef": "DR-12"
+    },
+    {
+      "threatId": "T-07",
+      "title": "An upstream error body is passed through verbatim",
+      "category": "information-disclosure",
+      "assetId": "prompt-and-response-content",
+      "boundaryId": "B5",
+      "actorId": "artifact-publisher",
+      "abuseCase": "The runtime echoes the offending input into its error text, and the adapter returns that text unchanged, so a pass-through becomes a content capture nobody decided on.",
+      "impact": "Caller content is republished to a caller who may not be the same caller.",
+      "controls": [
+        "do-not-pass-through-a-provider-error-body"
+      ],
+      "residualRisk": "Enforced by review alone. The component that would do this has not been written, so there is nothing for a test to read.",
+      "deferredRiskRef": null
+    },
+    {
+      "threatId": "T-08",
+      "title": "A tenant identifier supplied by a caller is trusted",
+      "category": "elevation-of-privilege",
+      "assetId": "workload-document",
+      "boundaryId": "B5",
+      "actorId": "workload-owner",
+      "abuseCase": "A document names a tenant, and a component uses that name to decide isolation, attribution, or authorisation without checking the author's entitlement to it.",
+      "impact": "One tenant's activity is attributed to, or authorised as, another. This is the specific shape multi-tenancy leaks take.",
+      "controls": [
+        "a-tenant-is-a-request-not-an-assertion",
+        "no-tenant-identifier-in-a-committed-record"
+      ],
+      "residualRisk": "Nothing validates a tenant, because there is no entitlement source and no component that would consult one. The rule is specified for a component that does not exist.",
+      "deferredRiskRef": "DR-03"
+    },
+    {
+      "threatId": "T-09",
+      "title": "An unidentified caller reaches the inference API",
+      "category": "spoofing",
+      "assetId": "prompt-and-response-content",
+      "boundaryId": "B5",
+      "actorId": "caller",
+      "abuseCase": "Anything that can reach the socket sends a request. Nothing asks who it is, nothing decides whether it may, and nothing limits how often.",
+      "impact": "Unbounded use of a workload's model and capacity, with no record of who did it.",
+      "controls": [
+        "least-exposure-no-manifest-publishes-a-service",
+        "authenticate-and-authorise-a-caller"
+      ],
+      "residualRisk": "Least exposure is a reduction in reachability, not an access control. Anyone who can run a port-forward against the cluster is inside it.",
+      "deferredRiskRef": "DR-01"
+    },
+    {
+      "threatId": "T-10",
+      "title": "A caller exhausts the runtime's capacity",
+      "category": "denial-of-service",
+      "assetId": "local-cluster",
+      "boundaryId": "B5",
+      "actorId": "caller",
+      "abuseCase": "The selected runtime is single-process and reported four slots in the one trial. A caller sending concurrent long-context requests occupies all of them.",
+      "impact": "Every other caller receives a timeout, and the platform has no queue to report.",
+      "controls": [
+        "limit-what-one-caller-may-consume"
+      ],
+      "residualRisk": "Undefended. No rate limit, no quota, no concurrency limit, and no measurement of behaviour under concurrency exists - the one trial was single and sequential.",
+      "deferredRiskRef": "DR-02"
+    },
+    {
+      "threatId": "T-11",
+      "title": "A container runs with more privilege than it needs",
+      "category": "elevation-of-privilege",
+      "assetId": "local-cluster",
+      "boundaryId": "B4",
+      "actorId": "artifact-publisher",
+      "abuseCase": "A manifest omits a security context, so the image's own default applies: root, a writable root filesystem, the default capability set, and a mounted service account token.",
+      "impact": "A compromised process starts from root inside the pod with a cluster credential already mounted.",
+      "controls": [
+        "run-as-non-root",
+        "forbid-privilege-escalation",
+        "read-only-root-filesystem",
+        "drop-all-capabilities",
+        "seccomp-runtime-default",
+        "do-not-mount-a-service-account-token"
+      ],
+      "residualRisk": "Enforced over every manifest committed here, and observed once in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none, and no admission control exists to enforce it for a pod it does not own.",
+      "deferredRiskRef": "DR-05"
+    },
+    {
+      "threatId": "T-12",
+      "title": "A pod talks to anything it likes inside and outside the cluster",
+      "category": "information-disclosure",
+      "assetId": "local-cluster",
+      "boundaryId": "B3",
+      "actorId": "artifact-publisher",
+      "abuseCase": "With no network policy, a pod reaches every service in every namespace and every address the node can route to.",
+      "impact": "A compromised runtime exfiltrates whatever it can read, and reaches services the workload was never meant to see.",
+      "controls": [
+        "network-policy-in-the-release-namespace"
+      ],
+      "residualRisk": "Specified for a chart that does not exist, and the local cluster's network plugin has never been tested for whether it enforces a policy at all.",
+      "deferredRiskRef": "DR-04"
+    },
+    {
+      "threatId": "T-13",
+      "title": "A platform action reaches a cluster this project did not create",
+      "category": "elevation-of-privilege",
+      "assetId": "local-cluster",
+      "boundaryId": "B2",
+      "actorId": "platform-contributor",
+      "abuseCase": "An ambient KUBECONFIG or a stale context points at a contributor's real cluster, and a scoped delete runs against it.",
+      "impact": "Objects somebody else depends on are removed by a command that looked local.",
+      "controls": [
+        "refuse-to-act-on-a-cluster-this-project-did-not-create",
+        "scope-every-kubectl-call-to-the-project-kubeconfig"
+      ],
+      "residualRisk": "The guard confirms that every node the API server reports is a container kind labelled for this cluster. A second kind cluster deliberately given the same name satisfies it.",
+      "deferredRiskRef": null
+    },
+    {
+      "threatId": "T-14",
+      "title": "The project kubeconfig is committed",
+      "category": "information-disclosure",
+      "assetId": "contributor-kubeconfig",
+      "boundaryId": "B6",
+      "actorId": "platform-contributor",
+      "abuseCase": "A convenience commit, or an over-broad `git add`, includes the `.kube/` directory the scripts write.",
+      "impact": "A working client certificate and key for a cluster on a contributor's machine is published permanently.",
+      "controls": [
+        "ignore-and-refuse-generated-host-state",
+        "no-credential-or-artifact-in-public-history"
+      ],
+      "residualRisk": "The ignore rule and the suite cover the path the scripts write. A kubeconfig copied somewhere else under a different name is caught by a scanner nobody has run.",
+      "deferredRiskRef": "DR-11"
+    },
+    {
+      "threatId": "T-15",
+      "title": "A credential or a model artifact enters public history",
+      "category": "information-disclosure",
+      "assetId": "public-history",
+      "boundaryId": "B6",
+      "actorId": "platform-contributor",
+      "abuseCase": "A test fixture, a debugging file, or a downloaded weight file is committed and later deleted, which removes it from the tree and not from the history.",
+      "impact": "A published credential must be rotated rather than retracted, and a published artifact cannot be either.",
+      "controls": [
+        "no-credential-or-artifact-in-public-history",
+        "ignore-and-refuse-generated-host-state"
+      ],
+      "residualRisk": "A scan configuration is committed and no run of the scanner is recorded, so this control's strongest half is a file rather than a result. The configuration also allowlists two directories wholesale.",
+      "deferredRiskRef": "DR-11"
+    },
+    {
+      "threatId": "T-16",
+      "title": "Private planning material is published",
+      "category": "information-disclosure",
+      "assetId": "public-history",
+      "boundaryId": "B6",
+      "actorId": "platform-contributor",
+      "abuseCase": "Unpublished strategy, a private prompt, a future-project queue, or a personal filesystem path is quoted into a public document because it was the source at hand.",
+      "impact": "Material the project chose not to publish is published, and a reader cannot tell which parts were deliberate.",
+      "controls": [
+        "no-personal-filesystem-path-in-a-committed-file",
+        "review-the-public-diff-for-private-material"
+      ],
+      "residualRisk": "A path is a pattern and is checkable. Private content is not, and the control for it is a reviewer who remembers to look.",
+      "deferredRiskRef": null
+    },
+    {
+      "threatId": "T-17",
+      "title": "An evidence record discloses something permanently",
+      "category": "information-disclosure",
+      "assetId": "evidence-record",
+      "boundaryId": "B6",
+      "actorId": "platform-contributor",
+      "abuseCase": "Raw output is promoted into a committed record as a copy rather than as a redaction, carrying a tenant identifier, an account detail, or a fragment of content with it.",
+      "impact": "The artifact whose purpose is to be trusted becomes the one disclosure that cannot be withdrawn.",
+      "controls": [
+        "no-tenant-identifier-in-a-committed-record",
+        "redact-before-promoting-raw-output"
+      ],
+      "residualRisk": "Whether a field may be committed is derived from the sensitivity class the telemetry catalog gave it, which covers the fields that catalog names. Redaction on promotion is enforced by review.",
+      "deferredRiskRef": null
+    },
+    {
+      "threatId": "T-18",
+      "title": "A control is believed because it is written down",
+      "category": "repudiation",
+      "assetId": "evidence-record",
+      "boundaryId": "B6",
+      "actorId": "public-reader",
+      "abuseCase": "A control appears in a document, nobody records what verifies it, and a later reader cites the document as evidence that the control holds.",
+      "impact": "The project publishes a security posture it does not have, which is the failure this whole baseline exists to prevent.",
+      "controls": [
+        "derive-a-control-status-from-its-verification",
+        "no-security-claim-without-a-named-verification"
+      ],
+      "residualRisk": "The derivation checks that a named verification exists and that a status matches it. It cannot check that the verification is a good one.",
+      "deferredRiskRef": null
+    },
+    {
+      "threatId": "T-19",
+      "title": "A dependency is resolved rather than pinned",
+      "category": "tampering",
+      "assetId": "public-history",
+      "boundaryId": "B1",
+      "actorId": "artifact-publisher",
+      "abuseCase": "There is no lockfile and no packaging manifest, so every contributor's Python dependency set is whatever the index served on the day they installed it.",
+      "impact": "A compromised or simply different dependency version changes what the checks do, and the recorded tool versions in a record are the only trace.",
+      "controls": [
+        "pin-every-dependency-with-a-committed-lockfile"
+      ],
+      "residualRisk": "Undefended. The dependency-installation decision is proposed and not accepted, and no lockfile exists to enforce.",
+      "deferredRiskRef": "DR-07"
+    },
+    {
+      "threatId": "T-20",
+      "title": "Nothing records who did what",
+      "category": "repudiation",
+      "assetId": "telemetry-signals",
+      "boundaryId": "B5",
+      "actorId": "caller",
+      "abuseCase": "A request is served, or refused, and no log record, span, or counter exists to say it happened.",
+      "impact": "No incident can be reconstructed, and no claim about what the platform did can be checked against what it did.",
+      "controls": [
+        "record-what-the-platform-did"
+      ],
+      "residualRisk": "Undefended, and it is the deferral that most limits every other control here: a control whose failure leaves no trace cannot be shown to have held.",
+      "deferredRiskRef": "DR-12"
+    },
+    {
+      "threatId": "T-21",
+      "title": "A stale cache is trusted instead of a hash",
+      "category": "tampering",
+      "assetId": "model-cache-volume",
+      "boundaryId": "B3",
+      "actorId": "platform-contributor",
+      "abuseCase": "The cache outlives a release by design. A consumer that finds a file of the right name and skips verification inherits whatever put it there.",
+      "impact": "A verification that happened once is treated as a property that holds forever.",
+      "controls": [
+        "verify-artifact-hash-before-use"
+      ],
+      "residualRisk": "The acquisition job verifies before the bytes are used. Nothing re-verifies a cache on later use, because nothing else reads the cache yet.",
+      "deferredRiskRef": null
+    },
+    {
+      "threatId": "T-22",
+      "title": "A secret reference names a place nobody manages",
+      "category": "information-disclosure",
+      "assetId": "secret-material",
+      "boundaryId": "B3",
+      "actorId": "workload-owner",
+      "abuseCase": "A reference points at a Kubernetes secret, an external secret, or a file mount, and nothing checks that it exists, who may read it, when it expires, or whether it is rotated.",
+      "impact": "The platform reports a workload as correctly configured while its credential is shared, permanent, or absent.",
+      "controls": [
+        "refuse-a-secret-value-in-a-contract"
+      ],
+      "residualRisk": "The contract constrains the shape of a locator and nothing beyond it. No secret manager, rotation policy, or expiry check exists.",
+      "deferredRiskRef": "DR-10"
+    }
+  ],
+
+  "enforcementKinds": [
+    {
+      "kindId": "automated-test",
+      "meaning": "A test in this repository reads the thing the control is about and fails if the property does not hold. The control names the file and the test function, and the suite fails if either is missing.",
+      "enforcementLevel": "automated"
+    },
+    {
+      "kindId": "script-guard",
+      "meaning": "A shell function in the environment scripts refuses to continue when the property does not hold. The control names the script and the function, and the suite fails if either is missing.",
+      "enforcementLevel": "automated"
+    },
+    {
+      "kindId": "review",
+      "meaning": "A reviewer applies the rule. Nothing reads it, and a review is enforced only when the reviewer remembers it.",
+      "enforcementLevel": "review"
+    },
+    {
+      "kindId": "none",
+      "meaning": "Nothing verifies this control. It is a specification or a deferral.",
+      "enforcementLevel": "none"
+    }
+  ],
+
+  "runtimeScopes": [
+    {
+      "scopeId": "repository-only",
+      "meaning": "The control acts on files committed to this repository and on nothing else."
+    },
+    {
+      "scopeId": "host-scripts",
+      "meaning": "The control acts when a contributor runs the environment scripts on their own machine."
+    },
+    {
+      "scopeId": "trial-apparatus",
+      "meaning": "The control acts on the manifests this repository publishes, all of which are smoke or trial apparatus. No manifest here is a V1 serving path."
+    },
+    {
+      "scopeId": "running-system",
+      "meaning": "The control acts inside a system this platform deployed and is serving requests. **No control in V1 has this scope**, because no such system exists."
+    }
+  ],
+
+  "controlStatuses": [
+    {
+      "statusId": "enforced-over-documents",
+      "meaning": "A test in this repository fails if the property stops holding over committed files.",
+      "mayBeCalledImplemented": true
+    },
+    {
+      "statusId": "enforced-over-manifests",
+      "meaning": "A test fails if any manifest this repository publishes stops carrying the property. It says nothing about a pod this platform deployed.",
+      "mayBeCalledImplemented": true
+    },
+    {
+      "statusId": "enforced-on-the-host",
+      "meaning": "An environment script refuses to continue when the property does not hold, on the machine of whoever runs it.",
+      "mayBeCalledImplemented": true
+    },
+    {
+      "statusId": "review-enforced",
+      "meaning": "A reviewer applies it. Nothing else does.",
+      "mayBeCalledImplemented": false
+    },
+    {
+      "statusId": "specified-only",
+      "meaning": "The rule is decided and written down for a component that does not exist. Nothing enforces it, and nothing can until the component is built.",
+      "mayBeCalledImplemented": false
+    },
+    {
+      "statusId": "deferred",
+      "meaning": "V1 takes no action here. The risk is carried and recorded rather than reduced.",
+      "mayBeCalledImplemented": false
+    }
+  ],
+
+  "statusDerivation": {
+    "statement": "A control's status is the value this table gives for its enforcement level and its runtime scope. It is never asserted by whoever wrote the control down, and a control whose declared status disagrees with the derived one is a failing test rather than a judgement call.",
+    "rules": [
+      {
+        "enforcementLevel": "automated",
+        "runtimeScope": "repository-only",
+        "status": "enforced-over-documents"
+      },
+      {
+        "enforcementLevel": "automated",
+        "runtimeScope": "trial-apparatus",
+        "status": "enforced-over-manifests"
+      },
+      {
+        "enforcementLevel": "automated",
+        "runtimeScope": "host-scripts",
+        "status": "enforced-on-the-host"
+      },
+      {
+        "enforcementLevel": "review",
+        "runtimeScope": "repository-only",
+        "status": "review-enforced"
+      },
+      {
+        "enforcementLevel": "review",
+        "runtimeScope": "trial-apparatus",
+        "status": "review-enforced"
+      },
+      {
+        "enforcementLevel": "review",
+        "runtimeScope": "host-scripts",
+        "status": "review-enforced"
+      }
+    ],
+    "noneRule": "An enforcement level of `none` derives `specified-only` when the control names the component it is specified for, and `deferred` when it names none. A control cannot be both: a specification without a subject is a deferral wearing a specification's clothes.",
+    "runningSystemRule": "No control may declare the `running-system` scope while securityStatus reports that nothing enforces at runtime. The suite refuses one."
+  },
+
+  "controls": [
+    {
+      "controlId": "pin-image-by-digest",
+      "statement": "Every container image in every manifest this repository publishes is named by an immutable digest, not by a tag alone.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-02"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_every_manifest_image_is_pinned_by_digest"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "serving",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "That the image behind the digest is free of vulnerabilities, or that its build is attested. Nothing scans an image here and nothing verifies a provenance statement."
+    },
+    {
+      "controlId": "pin-model-revision",
+      "statement": "A model artifact is fetched by an immutable revision, never by a branch or a moving pointer.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-01"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_the_model_acquisition_job_pins_a_revision_and_verifies_a_hash"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "serving",
+      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "whatItDoesNotVerify": "That the revision still resolves, or that the publisher will serve it again."
+    },
+    {
+      "controlId": "verify-artifact-hash-before-use",
+      "statement": "A downloaded model artifact's SHA-256 is computed and compared against the value committed here before any consumer is allowed to read the bytes.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-01",
+        "T-21"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_the_model_acquisition_job_pins_a_revision_and_verifies_a_hash"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "serving",
+      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "whatItDoesNotVerify": "That the published hash is itself authentic. It is trusted because it is committed in this repository, not because it was fetched securely."
+    },
+    {
+      "controlId": "refuse-a-secret-value-in-a-contract",
+      "statement": "A workload contract carries references to secrets and never a secret. A locator shaped like a pasted credential is refused with a published rule identifier.",
+      "boundaryId": "B3",
+      "threats": [
+        "T-04",
+        "T-22"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/contracts/test_workload_contract_validation.py",
+        "symbol": "test_a_credential_shaped_locator_is_caught"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "contracts",
+      "evidenceRef": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
+      "whatItDoesNotVerify": "That the locator points at a secret that exists, that anybody may read it, or that it is rotated. A short, low-entropy secret has the shape of a name and passes."
+    },
+    {
+      "controlId": "never-echo-a-document-value-in-a-refusal",
+      "statement": "A refusal publishes the field location and the rule identifier. It never repeats a value read out of the submitted document.",
+      "boundaryId": "B3",
+      "threats": [
+        "T-05"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/contracts/test_workload_contract_validation.py",
+        "symbol": "test_no_finding_quotes_a_value_from_the_document"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "contracts",
+      "evidenceRef": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
+      "whatItDoesNotVerify": "The behaviour of any component other than the contract validator, which is the only one that exists."
+    },
+    {
+      "controlId": "no-secret-or-content-has-a-telemetry-placement",
+      "statement": "The six fields the telemetry catalog forbids - a prompt, a completion, a provider error body, a secret value, an authorization header, and a document value - have an empty placement list in the committed catalog, so there is nowhere any of them may be written.",
+      "boundaryId": "B3",
+      "threats": [
+        "T-06"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/telemetry/test_telemetry_catalog.py",
+        "symbol": "test_a_forbidden_field_is_allowed_nowhere"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "security",
+      "evidenceRef": "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
+      "whatItDoesNotVerify": "That a log line carries only permitted fields. No logger, formatter, or sink exists, and no log line has ever been inspected."
+    },
+    {
+      "controlId": "content-capture-is-disabled-and-has-no-enabling-path",
+      "statement": "Prompt and response capture is off, and there is no flag that turns it on. Five artifacts would have to exist first, and none does.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-06"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/telemetry/test_telemetry_catalog.py",
+        "symbol": "test_content_capture_is_disabled_and_has_no_policy_to_enable_it"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "security",
+      "evidenceRef": "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
+      "whatItDoesNotVerify": "That anything would honour the setting, since nothing captures anything."
+    },
+    {
+      "controlId": "no-tenant-identifier-in-a-committed-record",
+      "statement": "A tenant identifier is a log field and a span attribute, and it is never written into a record committed under docs/proof/.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-08",
+        "T-17"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/cost/test_cost_method.py",
+        "symbol": "test_no_committed_record_carries_a_tenant_identifier"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "security",
+      "evidenceRef": "docs/proof/cost/v1-s0-008-pr1-validation.md",
+      "whatItDoesNotVerify": "Anything about a field the telemetry catalog does not classify. The permission is derived from a sensitivity class, so an unclassified field has no derivation."
+    },
+    {
+      "controlId": "do-not-pass-through-a-provider-error-body",
+      "statement": "An upstream error body is mapped to a canonical error. It is never returned, logged, or recorded verbatim.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-07"
+      ],
+      "verification": {
+        "kind": "review",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "review-enforced",
+      "owner": "platform",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything. The adapter that would do this has not been written, so there is nothing for a test to read and the rule is carried by a reviewer."
+    },
+    {
+      "controlId": "refuse-to-act-on-a-cluster-this-project-did-not-create",
+      "statement": "Before any operation that deletes objects inside a cluster, the scripts confirm that every node the reachable API server reports is a container kind labelled for this project's cluster, and refuse to continue otherwise.",
+      "boundaryId": "B2",
+      "threats": [
+        "T-13"
+      ],
+      "verification": {
+        "kind": "script-guard",
+        "ref": "scripts/environment/lib.sh",
+        "symbol": "inferops::assert_target_cluster"
+      },
+      "runtimeScope": "host-scripts",
+      "specifiedFor": null,
+      "v1Status": "enforced-on-the-host",
+      "owner": "environment",
+      "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md",
+      "whatItDoesNotVerify": "That the cluster is the one the contributor meant. A second kind cluster deliberately given this project's name satisfies every check."
+    },
+    {
+      "controlId": "scope-every-kubectl-call-to-the-project-kubeconfig",
+      "statement": "kubectl is only ever invoked through a wrapper that passes this project's kubeconfig and context explicitly, so no invocation can inherit an ambient one.",
+      "boundaryId": "B2",
+      "threats": [
+        "T-13"
+      ],
+      "verification": {
+        "kind": "script-guard",
+        "ref": "scripts/environment/lib.sh",
+        "symbol": "inferops::kubectl"
+      },
+      "runtimeScope": "host-scripts",
+      "specifiedFor": null,
+      "v1Status": "enforced-on-the-host",
+      "owner": "environment",
+      "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md",
+      "whatItDoesNotVerify": "Anything a contributor runs by hand outside the scripts."
+    },
+    {
+      "controlId": "run-as-non-root",
+      "statement": "Every pod specification in every manifest this repository publishes sets `runAsNonRoot: true`.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-11"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_every_pod_spec_carries_every_required_pod_security_field"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "Anything about a pod this platform deployed. It deploys none, and no admission control exists to enforce this for a pod it does not own."
+    },
+    {
+      "controlId": "forbid-privilege-escalation",
+      "statement": "Every container in every manifest this repository publishes sets `allowPrivilegeEscalation: false`.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-11"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_every_container_carries_every_required_container_security_field"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "Anything about a pod this platform deployed."
+    },
+    {
+      "controlId": "read-only-root-filesystem",
+      "statement": "Every container in every manifest this repository publishes sets `readOnlyRootFilesystem: true`, and writes to a declared volume instead.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-11"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_every_container_carries_every_required_container_security_field"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "That a declared volume is any less writable than a root filesystem."
+    },
+    {
+      "controlId": "drop-all-capabilities",
+      "statement": "Every container in every manifest this repository publishes drops all Linux capabilities and adds none back.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-11"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_every_container_carries_every_required_container_security_field"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "Anything the kernel grants without a capability."
+    },
+    {
+      "controlId": "seccomp-runtime-default",
+      "statement": "Every pod specification in every manifest this repository publishes selects the container runtime's default seccomp profile rather than running unconfined.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-11"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_every_pod_spec_carries_every_required_pod_security_field"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "Which syscalls the runtime's default profile actually blocks on any given host."
+    },
+    {
+      "controlId": "do-not-mount-a-service-account-token",
+      "statement": "Every pod specification in every manifest this repository publishes sets `automountServiceAccountToken: false`. No workload here talks to the Kubernetes API.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-11"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_every_pod_spec_carries_every_required_pod_security_field"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "Anything about a credential mounted some other way."
+    },
+    {
+      "controlId": "least-exposure-no-manifest-publishes-a-service",
+      "statement": "No manifest this repository publishes declares an Ingress, a NodePort, or a LoadBalancer. Reaching anything here requires a deliberate port-forward from a machine that already holds the cluster's credential.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-09"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_no_manifest_exposes_a_service_outside_the_cluster"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "That anything is authenticated. This is a reduction in reachability and not an access control, and anyone who can port-forward is inside it."
+    },
+    {
+      "controlId": "a-tenant-is-a-request-not-an-assertion",
+      "statement": "A tenant identifier written into a contract is validated against the owning team's entitlement before it is used for isolation, attribution, or authorisation.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-08"
+      ],
+      "verification": {
+        "kind": "none",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": "the platform API and domain, neither of which exists",
+      "v1Status": "specified-only",
+      "owner": "platform",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything. There is no entitlement source to validate against and no component that would consult one."
+    },
+    {
+      "controlId": "network-policy-in-the-release-namespace",
+      "statement": "A release installs a default-deny network policy and opens only the paths the workload needs.",
+      "boundaryId": "B3",
+      "threats": [
+        "T-12"
+      ],
+      "verification": {
+        "kind": "none",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": "the Helm chart, which has not been written",
+      "v1Status": "specified-only",
+      "owner": "platform",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything, and one thing beyond that: whether the local cluster's network plugin enforces a policy object at all has never been tested."
+    },
+    {
+      "controlId": "ignore-and-refuse-generated-host-state",
+      "statement": "The project kubeconfig, collected diagnostics, and every tool cache are ignored by version control, and no file committed here lives under any of those paths.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-14",
+        "T-15"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_no_committed_file_is_generated_host_state"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "That the same content was not committed somewhere else under a different name."
+    },
+    {
+      "controlId": "no-credential-or-artifact-in-public-history",
+      "statement": "A secret-scan configuration and an allowlist are committed, every allowlisted path exists, and no tracked file carries a model artifact extension.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-14",
+        "T-15"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_the_secret_scan_configuration_is_committed_and_its_allowlist_resolves"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "That a scanner has ever been run over this history. No run is recorded, the security-scan layer of the test strategy is `planned` for exactly that reason, and a configuration file is not a result."
+    },
+    {
+      "controlId": "no-personal-filesystem-path-in-a-committed-file",
+      "statement": "No file committed here carries a Windows user directory, a POSIX home directory, or another personal filesystem path.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-16"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_no_committed_file_carries_a_personal_filesystem_path"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "Private content that is not shaped like a path, which is most private content."
+    },
+    {
+      "controlId": "review-the-public-diff-for-private-material",
+      "statement": "Before a change is published, its diff is read for unpublished strategy, private prompts, future-project material, and anything else the project chose not to publish.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-16"
+      ],
+      "verification": {
+        "kind": "review",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "review-enforced",
+      "owner": "security",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Anything a reviewer does not recognise as private, and anything in a change nobody reviewed."
+    },
+    {
+      "controlId": "redact-before-promoting-raw-output",
+      "statement": "Raw output that a claim depends on is promoted into a committed record as a redaction, never as a copy.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-17"
+      ],
+      "verification": {
+        "kind": "review",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "review-enforced",
+      "owner": "security",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "That a redaction removed everything it should have. Nothing reads a promoted record against the raw output it came from."
+    },
+    {
+      "controlId": "derive-a-control-status-from-its-verification",
+      "statement": "A control's status is computed from the enforcement kind and runtime scope it declares, and the suite refuses a control whose declared status disagrees, whose named test function does not exist, or whose named evidence record is not committed.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-18"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_declared_control_status_equals_derived_control_status"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "That the named verification is a good one. A weak test that exists satisfies this control exactly as well as a strong one."
+    },
+    {
+      "controlId": "no-security-claim-without-a-named-verification",
+      "statement": "The reserved vocabulary of a security posture - secure, hardened, compliant, audited, and the rest - may appear in this project's security documents only in a sentence that denies it.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-18"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_security_baseline.py",
+        "symbol": "test_a_reserved_term_appears_only_where_it_is_denied"
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "enforced-over-documents",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "whatItDoesNotVerify": "A claim made in a word the list does not hold, or made anywhere other than these documents."
+    },
+    {
+      "controlId": "authenticate-and-authorise-a-caller",
+      "statement": "A caller is identified, and a request is authorised against what that caller may do.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-09"
+      ],
+      "verification": {
+        "kind": "none",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "deferred",
+      "owner": "platform",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything. No authentication or authorisation component exists, none is designed, and V1 does not add one."
+    },
+    {
+      "controlId": "limit-what-one-caller-may-consume",
+      "statement": "A rate limit, a quota, or a concurrency limit bounds what one caller can take.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-10"
+      ],
+      "verification": {
+        "kind": "none",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "deferred",
+      "owner": "platform",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything. Behaviour under concurrency has never been measured, so there is not even a number a limit could be set from."
+    },
+    {
+      "controlId": "pin-every-dependency-with-a-committed-lockfile",
+      "statement": "Every tool dependency is resolved from a committed lockfile rather than from an index.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-19"
+      ],
+      "verification": {
+        "kind": "none",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "deferred",
+      "owner": "environment",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything. The dependency-installation decision is proposed and not accepted, and no lockfile or packaging manifest exists."
+    },
+    {
+      "controlId": "verify-artifact-provenance",
+      "statement": "An image signature or build attestation is verified before the image is run.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-02"
+      ],
+      "verification": {
+        "kind": "none",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": null,
+      "v1Status": "deferred",
+      "owner": "serving",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything. A digest establishes what ran and says nothing about who built it or how."
+    },
+    {
+      "controlId": "record-what-the-platform-did",
+      "statement": "Every request, refusal, and control decision leaves a record somebody can read afterwards.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-20"
+      ],
+      "verification": {
+        "kind": "none",
+        "ref": null,
+        "symbol": null
+      },
+      "runtimeScope": "repository-only",
+      "specifiedFor": "the platform API, which does not exist",
+      "v1Status": "specified-only",
+      "owner": "security",
+      "evidenceRef": null,
+      "whatItDoesNotVerify": "Everything. The telemetry catalog specifies the record; no component writes one."
+    }
+  ],
+
+  "deferredRisks": [
+    {
+      "riskId": "DR-01",
+      "statement": "No caller is authenticated and no request is authorised.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-09"
+      ],
+      "whyDeferred": "V1's caller boundary is a port-forward from a machine that already holds the cluster's credential. Adding an authentication component would be a platform capability with no consumer, and it would have to be designed against a deployment model this project does not have.",
+      "whatWouldHaveToBeTrue": "An identity source, a decision point, a credential lifecycle, and a deployment model in which the API is reachable by something other than a port-forward.",
+      "notClaimed": "No document in this repository may describe V1 as access-controlled, protected, or restricted at the caller boundary.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-02",
+      "statement": "There is no rate limit, quota, or concurrency limit.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-10"
+      ],
+      "whyDeferred": "The one executed trial was single and sequential; the runtime reported four slots and one was ever used. A limit set now would be a number with no measurement behind it.",
+      "whatWouldHaveToBeTrue": "A measurement of behaviour under concurrency, which the deferred capacity-and-load layer would produce and which V1 does not run.",
+      "notClaimed": "No availability, capacity, or resilience property is claimed at this boundary.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-03",
+      "statement": "A tenant identifier is never validated against an entitlement.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-08"
+      ],
+      "whyDeferred": "There is no entitlement source, no tenant registry, and no component that would consult one. The rule is recorded so that the first component to read the field inherits it.",
+      "whatWouldHaveToBeTrue": "An authority that can answer whether a given author may name a given tenant, and a component positioned to ask it before the value is used.",
+      "notClaimed": "No isolation, attribution, or multi-tenancy property is claimed.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-04",
+      "statement": "No network policy exists, and whether the local cluster's network plugin would enforce one has never been tested.",
+      "boundaryId": "B3",
+      "threats": [
+        "T-12"
+      ],
+      "whyDeferred": "A policy object belongs to a release, and no chart exists to carry it. Committing one now would produce a manifest nothing installs and a control nothing applies.",
+      "whatWouldHaveToBeTrue": "A Helm chart, and an executed test showing that a policy denies traffic on the cluster this project actually uses. The second is the one that is easy to skip.",
+      "notClaimed": "No network isolation property is claimed at any boundary.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-05",
+      "statement": "No pod security property is enforced for a pod this platform deploys, and no admission control exists.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-11"
+      ],
+      "whyDeferred": "This platform deploys no pod. The six pod-security properties are enforced over every manifest committed here, which is a repository property rather than a cluster one.",
+      "whatWouldHaveToBeTrue": "A rendering path that produces pod specifications, and an admission policy in the cluster that refuses one that does not carry the properties.",
+      "notClaimed": "No document may describe a workload this platform deployed as constrained, because it has deployed none.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-06",
+      "statement": "The transport that delivers a model artifact is not authenticated, and the published hash carries the whole integrity argument.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-01"
+      ],
+      "whyDeferred": "The downloader used in the one executed trial reports that certificate validation is disabled. This is recorded as an accepted exception in ADR 0002 rather than as a defended condition, and replacing the downloader is serving work this PR does not do.",
+      "whatWouldHaveToBeTrue": "An acquisition path that validates the transport, so that the committed hash becomes a redundant check rather than the only one.",
+      "notClaimed": "No supply-chain integrity property beyond the hash comparison is claimed.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-07",
+      "statement": "There is no dependency lockfile and no packaging manifest.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-19"
+      ],
+      "whyDeferred": "ADR 0001 D4 proposes an approach and does not accept one, and ADR 0003 deliberately leaves the packaging tool open. Committing a lockfile would settle both in passing.",
+      "whatWouldHaveToBeTrue": "An accepted dependency-installation decision, and a lockfile a check can be run against.",
+      "notClaimed": "No reproducibility property is claimed for the tool chain that runs the checks.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-08",
+      "statement": "No image is scanned for vulnerabilities and no provenance statement is verified.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-02"
+      ],
+      "whyDeferred": "There is no continuous-integration lane to run a scanner in, and a scan run once by hand would age into a claim that outlives its result.",
+      "whatWouldHaveToBeTrue": "A configured lane, a scanner with a recorded version, and a policy for what a finding blocks.",
+      "notClaimed": "No vulnerability count, severity distribution, or scan score is published, and none may be.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-09",
+      "statement": "Artifact availability is not defended.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-03"
+      ],
+      "whyDeferred": "The architecture already places publishers outside the availability boundary. Mirroring an artifact is a distribution decision with a licence question attached, and V1 does not make one.",
+      "whatWouldHaveToBeTrue": "A durable mirror this project is entitled to publish, and a policy for what happens when a pinned revision disappears.",
+      "notClaimed": "No availability or reproducibility-over-time property is claimed.",
+      "blocksProductionUse": false
+    },
+    {
+      "riskId": "DR-10",
+      "statement": "No secret manager, rotation policy, or expiry check exists behind a secret reference.",
+      "boundaryId": "B3",
+      "threats": [
+        "T-22"
+      ],
+      "whyDeferred": "The contract publishes a locator and three provider kinds. Nothing in V1 reads a secret, so there is no consumer for a lifecycle.",
+      "whatWouldHaveToBeTrue": "A component that resolves a reference, and an owner accountable for what is behind it.",
+      "notClaimed": "No secret-management property is claimed beyond the shape of a locator.",
+      "blocksProductionUse": true
+    },
+    {
+      "riskId": "DR-11",
+      "statement": "No run of a secret scanner over this history is recorded.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-14",
+        "T-15"
+      ],
+      "whyDeferred": "The scanner is not installed on the host this work was done on, and there is no lane to run it in. A configuration file is committed and a configuration file is not a result.",
+      "whatWouldHaveToBeTrue": "An executed run with a recorded scanner version and its output, which would move the security-scan layer of the test strategy from `planned` to `implemented`.",
+      "notClaimed": "The claim `no-credential-or-model-artifact-enters-public-history` stays `planned` and may not be cited.",
+      "blocksProductionUse": false
+    },
+    {
+      "riskId": "DR-12",
+      "statement": "Nothing is logged, so nothing can be reconstructed.",
+      "boundaryId": "B5",
+      "threats": [
+        "T-06",
+        "T-20"
+      ],
+      "whyDeferred": "No logger, formatter, or sink exists, and the telemetry catalog specifies a record for a component that has not been written.",
+      "whatWouldHaveToBeTrue": "A logger that emits the specified record, a store with a stated retention window, and a test that a real record carries only permitted fields.",
+      "notClaimed": "No auditability, traceability, or incident-reconstruction property is claimed, and no control here may be described as observed.",
+      "blocksProductionUse": true
+    }
+  ],
+
+  "exceptions": [
+    {
+      "exceptionId": "EX-01",
+      "statement": "The model acquisition job in the one executed trial used a downloader that reports TLS certificate validation as disabled.",
+      "acceptedIn": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+      "compensatingControl": "verify-artifact-hash-before-use",
+      "residualRisk": "The published SHA-256 is the entire integrity argument for the transfer rather than a redundant check on it. It closes only because the hash is committed in this repository rather than fetched over the same transport.",
+      "revisitedWhen": "The acquisition path is replaced by one that validates the transport, which is serving work outside this decision.",
+      "deferredRiskRef": "DR-06"
+    },
+    {
+      "exceptionId": "EX-02",
+      "statement": "The cluster identity guard is satisfied by a second kind cluster deliberately given this project's name.",
+      "acceptedIn": "docs/architecture/decisions/ADR-0001-local-development-environment.md",
+      "compensatingControl": "refuse-to-act-on-a-cluster-this-project-did-not-create",
+      "residualRisk": "The guard defends against a stale context and a mistyped command, which are the realistic failures on a contributor's own machine. It does not defend against a contributor who sets out to defeat it, and nothing on that machine could.",
+      "revisitedWhen": "The scripts act on a cluster somebody other than the contributor owns, which V1 does not do.",
+      "deferredRiskRef": null
+    },
+    {
+      "exceptionId": "EX-03",
+      "statement": "The secret-scan configuration allowlists two directories wholesale by path, because the fixtures in them are deliberately credential-shaped.",
+      "acceptedIn": ".github/secret-scanning-allowlist.md",
+      "compensatingControl": "no-credential-or-artifact-in-public-history",
+      "residualRisk": "A real credential committed under either allowlisted path would not be flagged by a run of the scanner - if one were ever run, which it has not been.",
+      "revisitedWhen": "A scanner run is recorded, at which point the allowlist should narrow from two directories to the specific fixture values it exists for.",
+      "deferredRiskRef": "DR-11"
+    },
+    {
+      "exceptionId": "EX-04",
+      "statement": "The six pod-security properties are enforced over manifests that are smoke and trial apparatus, not over a serving path.",
+      "acceptedIn": "docs/architecture/decisions/ADR-0008-v1-security-baseline.md",
+      "compensatingControl": "run-as-non-root",
+      "residualRisk": "The enforcement is real and its subject is small. Every manifest this repository publishes carries the properties, and this repository publishes no manifest that serves a V1 workload.",
+      "revisitedWhen": "A rendering path produces pod specifications, at which point the check must move from committed manifests to rendered output and be joined by admission control.",
+      "deferredRiskRef": "DR-05"
+    }
+  ],
+
+  "prohibitions": [
+    {
+      "ruleId": "no-security-posture-is-claimed",
+      "statement": "No document in this repository states or implies that InferOps is secure, hardened, audited, compliant, certified, or production-ready.",
+      "enforcedBy": "test",
+      "testRef": "test_a_reserved_term_appears_only_where_it_is_denied"
+    },
+    {
+      "ruleId": "documented-is-not-implemented",
+      "statement": "A control is never described as implemented because it is written down. Its status is derived from the verification it names.",
+      "enforcedBy": "test",
+      "testRef": "test_declared_control_status_equals_derived_control_status"
+    },
+    {
+      "ruleId": "a-configuration-is-not-a-result",
+      "statement": "A committed scan configuration, policy file, or allowlist may not be cited as a scan result, and a control that rests on one says what it does not verify.",
+      "enforcedBy": "test",
+      "testRef": "test_a_control_that_rests_on_a_configuration_says_what_it_does_not_verify"
+    },
+    {
+      "ruleId": "no-control-claims-a-record-that-does-not-exist",
+      "statement": "Every evidence record a control names is a file committed under docs/proof/.",
+      "enforcedBy": "test",
+      "testRef": "test_every_evidence_reference_is_a_committed_record"
+    },
+    {
+      "ruleId": "no-control-acts-inside-a-running-system",
+      "statement": "No control declares the running-system scope while nothing in this repository serves a request.",
+      "enforcedBy": "test",
+      "testRef": "test_no_control_claims_to_act_inside_a_running_system"
+    },
+    {
+      "ruleId": "no-user-content-or-secret-is-recorded",
+      "statement": "No prompt, response, chat history, provider error body, or secret value is captured as telemetry or committed as evidence.",
+      "enforcedBy": "test",
+      "testRef": "test_every_field_the_catalog_forbids_is_covered_by_a_control"
+    },
+    {
+      "ruleId": "no-manifest-exposes-a-service",
+      "statement": "No manifest published here declares an Ingress, a NodePort, or a LoadBalancer service.",
+      "enforcedBy": "test",
+      "testRef": "test_no_manifest_exposes_a_service_outside_the_cluster"
+    },
+    {
+      "ruleId": "no-personal-path-or-host-state-is-committed",
+      "statement": "No file committed here carries a personal filesystem path, and no file committed here is generated host state.",
+      "enforcedBy": "test",
+      "testRef": "test_no_committed_file_carries_a_personal_filesystem_path"
+    },
+    {
+      "ruleId": "every-exception-carries-a-compensating-control-and-a-residual-risk",
+      "statement": "A recorded exception names a compensating control that exists and states what remains undefended.",
+      "enforcedBy": "test",
+      "testRef": "test_every_exception_names_a_compensating_control_and_a_residual_risk"
+    },
+    {
+      "ruleId": "every-threat-is-controlled-or-deferred-in-public",
+      "statement": "A threat either names a control or names the deferred risk that carries it. A threat with neither is a threat nobody decided about.",
+      "enforcedBy": "test",
+      "testRef": "test_every_threat_names_a_control_or_a_deferred_risk"
+    },
+    {
+      "ruleId": "no-security-claim-outruns-its-certification-level",
+      "statement": "The public claim this baseline supports is certified at C0 by the documentation layer, and no security claim in the matrix rests on a layer that cannot reach the level it requires.",
+      "enforcedBy": "test",
+      "testRef": "test_the_baseline_claim_is_certified_at_the_level_its_layer_can_reach"
+    },
+    {
+      "ruleId": "a-tenant-supplied-value-is-never-trusted",
+      "statement": "A tenant, security classification, or entitlement written into a document is treated as a request until an authority confirms it.",
+      "enforcedBy": "review",
+      "testRef": null
+    },
+    {
+      "ruleId": "no-vulnerability-figure-is-published",
+      "statement": "V1 publishes no vulnerability count, severity distribution, scan score, or posture rating. There is no scan to derive one from.",
+      "enforcedBy": "review",
+      "testRef": null
+    },
+    {
+      "ruleId": "a-deferred-risk-leaves-the-register-only-with-a-control",
+      "statement": "A deferred risk is removed only when a control that reduces it is added in the same change. It is never removed because it became inconvenient to publish.",
+      "enforcedBy": "review",
+      "testRef": null
+    },
+    {
+      "ruleId": "no-sensitive-example-is-used",
+      "statement": "Threats and abuse cases are described with the project's own assets. No real credential, customer, prompt, host, or incident is used as an illustration.",
+      "enforcedBy": "review",
+      "testRef": null
+    }
+  ],
+
+  "reservedTerms": [
+    {
+      "term": "secure",
+      "whyReserved": "It is the word a reader takes as the whole conclusion, and nothing here supports it."
+    },
+    {
+      "term": "hardened",
+      "whyReserved": "It describes a process that was applied to a system, and no system exists."
+    },
+    {
+      "term": "audited",
+      "whyReserved": "It names an activity by an outside party that has never happened here."
+    },
+    {
+      "term": "compliant",
+      "whyReserved": "It implies a named regime and an assessment against it. No regime is named here and no assessment has been performed."
+    },
+    {
+      "term": "compliance",
+      "whyReserved": "The same claim in a noun, which is how it usually arrives, and it is no more supported."
+    },
+    {
+      "term": "secured",
+      "whyReserved": "The same claim in a past tense that implies somebody finished the job; nobody did."
+    },
+    {
+      "term": "enterprise-grade",
+      "whyReserved": "It is a claim about an audience rather than a property, and a claim that names no property cannot be checked."
+    },
+    {
+      "term": "production-ready",
+      "whyReserved": "V1 is single node, single replica, single model, on one host, with no control at the caller boundary."
+    },
+    {
+      "term": "zero trust",
+      "whyReserved": "It names an architecture with identity at its centre, and there is no identity here at all."
+    },
+    {
+      "term": "penetration test",
+      "whyReserved": "None has been performed, and the phrase reads as a result even in a sentence about scheduling one."
+    },
+    {
+      "term": "battle-tested",
+      "whyReserved": "It claims operational history this project does not have."
+    },
+    {
+      "term": "bank-grade",
+      "whyReserved": "It claims a standard nobody defines and nobody assessed."
+    }
+  ],
+
+  "openQuestions": [
+    {
+      "questionId": "who-owns-security-verification",
+      "question": "Which person, rather than which role, signs off a security control and its evidence?",
+      "whyNotAnswered": "There is no public maintainer roster or CODEOWNERS file. The seven evidence owners in the test strategy are roles, and this baseline uses them as roles. Naming a person is blocked on the same governance gap that blocks naming a reviewer."
+    },
+    {
+      "questionId": "where-does-admission-control-live",
+      "question": "When a rendering path exists, is a pod-security property enforced by the renderer, by an admission policy in the cluster, or by both?",
+      "whyNotAnswered": "Neither the renderer nor the chart exists, and answering it now would decide a component boundary that ADR 0004 owns rather than this record."
+    }
+  ],
+
+  "limitations": [
+    {
+      "limitationId": "nothing-runs",
+      "statement": "No control here has ever acted inside a system serving a request. What is enforced is enforced over committed files, over manifests, and by two host scripts."
+    },
+    {
+      "limitationId": "no-scanner-run",
+      "statement": "No secret scanner, image scanner, or dependency auditor has been run and recorded. The configuration for the first is committed; the other two have no configuration."
+    },
+    {
+      "limitationId": "no-assessment",
+      "statement": "No security assessment, review by an outside party, or penetration test has been performed. A document review is not a security assessment."
+    },
+    {
+      "limitationId": "manifests-are-apparatus",
+      "statement": "Every manifest the pod-security controls act on is smoke or trial apparatus. None is a V1 serving path, and the properties they carry are not properties of anything this platform deployed."
+    },
+    {
+      "limitationId": "one-host-one-trial",
+      "statement": "The runtime observations behind B1 and B4 come from one trial, on one Windows host, on one day. Nothing here has been reproduced on a second machine or a second operating system."
+    },
+    {
+      "limitationId": "review-only-rules",
+      "statement": "Four of the fifteen rules are enforced by review alone, and a review is enforced only when the reviewer remembers it. They are marked rather than promoted."
+    },
+    {
+      "limitationId": "threats-are-not-exhaustive",
+      "statement": "Twenty-two threats were enumerated because each is a failure somebody would plausibly reach. A threat nobody thought of is a threat nobody modelled, and no methodology here guarantees coverage."
+    },
+    {
+      "limitationId": "no-likelihood-or-severity-score",
+      "statement": "No threat carries a likelihood, a severity, or a risk score. Every such number here would be invented, and an invented number applied consistently still ranks nothing."
+    },
+    {
+      "limitationId": "derivation-checks-existence-not-quality",
+      "statement": "The status derivation confirms that a named test function exists and that a status matches its enforcement kind. It cannot tell a strong test from a weak one."
+    },
+    {
+      "limitationId": "no-reporting-channel",
+      "statement": "There is no private vulnerability reporting channel, so this project cannot accept a confidential report about any gap named here."
+    }
+  ]
+}
