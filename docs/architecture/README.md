@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established; six decisions accepted in part, one accepted with a
+Status: entry point established; seven decisions accepted in part, one accepted with a
 recorded exception, two accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
@@ -40,6 +40,7 @@ These describe the V1 design. Every component below the contract layer is unbuil
 | [0007](decisions/ADR-0007-inference-cost-method.md) | Inference cost-calculation method | Accepted in part | 2026-08-26 | [Change validation](../proof/cost/v1-s0-008-pr1-validation.md); the method and its worked example are machine-checked, and nothing in this repository computes a cost record |
 | [0008](decisions/ADR-0008-v1-security-baseline.md) | V1 threat model and security baseline | Accepted in part | 2026-08-26 | [Change validation](../proof/security/v1-s0-009-pr1-validation.md); the baseline is machine-checked, and nothing in this repository defends a running system |
 | [0009](decisions/ADR-0009-python-toolchain.md) | InferOps Python toolchain | Accepted | 2026-08-27 | [Change validation](../proof/toolchain/v1-s0-011-pr1-validation.md); every tool named was run on this repository, and it supersedes ADR 0001 D3 and D4 |
+| [0010](decisions/ADR-0010-inference-api-compatibility-surface.md) | V1 inference API compatibility surface | Accepted in part | 2026-08-27 | [Change validation](../proof/serving/v1-s0-012-pr1-validation.md); the surface is machine-checked against the record that measured the runtime, and nothing in this repository serves a request |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -55,7 +56,8 @@ rather than answered in passing. In 0007, eleven decisions are accepted and two 
 which provider rate cards a comparison would use, and which component computes a cost
 record — are not. In 0008, twelve decisions are accepted and two — who signs off a
 control, and whether a renderer or an admission policy enforces a pod-security
-property — are not.
+property — are not. In 0010, eight decisions are accepted and one — whether the decided
+surface is ever published as a contract artifact, and by what mechanism — is not.
 
 0002 selects one runtime image digest and one immutable model revision, on evidence
 from a trial that was executed on 2026-08-24: a model was downloaded and
@@ -147,6 +149,29 @@ one boundary consequence that is easy to miss — a cost per thousand requests i
 hourly reservation divided by an hour of traffic, so the rule against publishing a
 throughput figure is also a rule against publishing a cost-per-request figure. Two of
 its fourteen rules are enforced by review alone.
+
+0010 decides what the platform's own inference API looks like from outside, one story
+before the adapter interface is frozen and two before the API is written: a **frozen
+subset** of the OpenAI HTTP API shape at the `/v1` prefix, five endpoints, the request
+and response fields of each, an `x_inferops` extension member beside the
+`X-InferOps-` header prefix, streaming declared `false` and token usage declared
+`true`, and a mapping from runtime behaviour to canonical error codes in which six of
+the thirteen codes are recorded as **never emitted in V1**, with a reason each.
+
+Two properties of it are worth reading before relying on it. The compatibility is a
+**shape read on a date** — 2026-08-24, from the response bodies in the feasibility
+record, with no vendor documentation consulted for any of it — and not a commitment to
+track what the upstream surface does next; that freeze is the answer to the strongest objection
+against the choice, which is that the shape is not this project's to version. And
+**one error row was observed and eight are specifications**, because the lane that
+would provoke a real failure does not exist. The record marks every row either way, and
+a test refuses a row claiming an observation the trial did not record.
+
+It **serves nothing**. No component listens on a port, no OpenAPI document is
+published, and `contracts/` is untouched. It also carries ADR 0002's `T7` exception
+forward as a stated obligation rather than a discharged one: the runtime has no
+cumulative request counter, so the API owes one, and the metric it owes already exists
+in the telemetry catalog and is emitted by nothing.
 
 ## Conventions
 

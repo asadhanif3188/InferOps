@@ -10,6 +10,55 @@ once versioned releases begin.
 
 ### Added
 
+- **A decided inference API surface, one story before anything freezes against it**,
+  in [ADR 0010](docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md)
+  and [the surface document](docs/serving/inference-api-surface.md). The user-facing
+  API is a **frozen subset** of the OpenAI HTTP API shape at the `/v1` prefix: five
+  endpoints, the request and response fields of each, and everything outside it
+  recorded as out of scope with a reason rather than left unmentioned. This is the
+  decision `V1-S1-002` would otherwise have made by guessing an adapter signature and
+  `V1-S1-005` would have made by typing a route.
+- **A compatibility target that is a shape read on a date, not a promise to track
+  one.** The strongest objection to adopting a compatible surface is that it is not
+  this project's to version, so upstream movement becomes a break imposed on it. The
+  answer is the freeze: the field lists are enumerated here, read from the response
+  bodies the runtime actually returned on 2026-08-24 rather than from vendor
+  documentation, and anything upstream adds later arrives only if a superseding record
+  decides it should. The project-native alternative is compared on six criteria rather
+  than dismissed, and the criterion it wins is recorded as won.
+- **Streaming and token usage as declared capabilities rather than assumptions.**
+  Streaming is `false`, published where a caller can read it, and refused with an
+  explicit `retryable: false` because retrying does not make a capability appear.
+  Token usage is `true` on the strength of the `usage` object the trial recorded, and
+  it is `null` rather than estimated or zero-filled when an adapter does not supply
+  it. Whether the selected runtime *can* stream was never exercised by the trial, and
+  the record asserts nothing about it in either direction.
+- **A canonical error mapping in which one row was observed and eight are
+  specifications**, marked either way, plus **six of the thirteen canonical codes
+  recorded as never emitted in V1** — each with a reason, because a code listed with
+  no condition behind it is a claim that something checks for it. A test refuses a
+  code that is neither mapped nor refused, refuses one that is both, and refuses a row
+  claiming an observation the feasibility record does not contain.
+- **ADR 0002's `T7` exception carried forward as an obligation rather than discharged.**
+  The selected runtime exposes no cumulative request counter, so InferOps owes one.
+  This record binds `inferops_inference_requests_total` and
+  `inferops_inference_errors_total` — which already exist in the telemetry catalog
+  with that reason in their notes — to this surface and to these codes. It adds no
+  metric, and neither is emitted by anything.
+- **An extension namespace, and the two halves of it kept apart.** `x_inferops` is one
+  object-valued body member carrying what the compatibility target has no place for;
+  `X-InferOps-` is the header prefix carrying transport metadata. No request-body
+  extension member is defined, because correlation and workload metadata belong in
+  headers a trusted component validates. Every response names the `adapterKind` that
+  served it, which is the mock and real boundary made visible at the one place a
+  reader looks.
+- **`tests/serving/test_inference_api_surface.py`**, 184 checks over the committed
+  surface, the decision, the document, the feasibility record, and the telemetry
+  catalog. It also refuses a contract artifact for this surface appearing under
+  `contracts/`, which is the rule the whole record is built around: **nothing is
+  published until something serves it.** Nothing in this
+  repository listens on a port, registers a route, or answers a request.
+
 - **A Python toolchain that was executed before it was accepted**, in
   [ADR 0009](docs/architecture/decisions/ADR-0009-python-toolchain.md). A packaging
   layout, a dependency manager, a lockfile policy, a linter, a formatter, and a type
