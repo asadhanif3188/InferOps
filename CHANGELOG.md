@@ -10,6 +10,40 @@ once versioned releases begin.
 
 ### Added
 
+- **A Python toolchain that was executed before it was accepted**, in
+  [ADR 0009](docs/architecture/decisions/ADR-0009-python-toolchain.md). A packaging
+  layout, a dependency manager, a lockfile policy, a linter, a formatter, and a type
+  checker are each named, each configured in a committed file, and each run on this
+  repository with its command and result recorded. This is the decision Sprint 1
+  would otherwise have made by writing its first package, and the two halves of
+  ADR 0001 that proposed a task runner and a dependency manager and never installed
+  either are superseded by it.
+- **A distribution that exists rather than a layout that is described.**
+  `src/inferops/` is a deliberately empty package, and a wheel and a source
+  distribution were built from it and their contents inspected. The wheel contains
+  `inferops/__init__.py` and its metadata and nothing else; `tools/` and `tests/`
+  stay outside it on purpose, and the source distribution's include patterns are
+  anchored to the repository root because an unanchored one ships whatever it found
+  at any depth.
+- **A committed `uv.lock` with 136 artifact hashes**, resolved across environment
+  markers rather than for the platform that ran the resolver, plus a
+  `requires-python` constraint on the 3.12 series and a `.python-version` that pins
+  the series rather than a patch release. The recorded way to run a check is
+  `uv run --locked`, which fails rather than silently re-resolving.
+- **A rejection recorded as a decision.** No task runner is adopted. ADR 0009 D7
+  argues it out — ADR 0001's own record said the margin between its candidates was
+  preference rather than capability, `uv run --locked` already supplies the command
+  prefix a runner would have wrapped, and a runner does not ship the utilities its
+  recipes call — and a test refuses a `Taskfile`, a `justfile`, a `Makefile`, a
+  `noxfile.py`, or a `tasks.py` appearing without that record changing.
+- **The record is checked against the configuration it decided.**
+  `tests/testing/test_toolchain.py` reads the two tables ADR 0009 publishes and
+  compares them against `pyproject.toml` and `uv.lock`. A dependency bumped without
+  updating the record fails; a version typed into the record that the lockfile does
+  not pin fails. It also asserts what did **not** move: `pyproject.toml` declares no
+  pytest table, and the eleven markers and the default marker expression are still
+  in `pytest.ini`.
+
 - **A threat model in which a control cannot claim enforcement it does not have**, in
   [ADR 0008](docs/architecture/decisions/ADR-0008-v1-security-baseline.md) and three
   documents under `docs/security/`. Every control declares how it is verified and
@@ -428,6 +462,34 @@ once versioned releases begin.
   legitimately for, and five boundary rules that make the distinction operational.
 
 ### Changed
+
+- **`DR-07` is narrowed rather than retired, and its control stays deferred.** The
+  register entry used to say no dependency lockfile and no packaging manifest
+  existed; both now exist, so that half is gone. The half that remains is stated
+  instead: nothing here observes which inputs a check actually resolved, the
+  non-Python tools are pinned by prose rather than by the lockfile, and no
+  dependency scanner has ever been run. `pin-every-dependency-with-a-committed-lockfile`
+  therefore keeps its `deferred` status, because a committed file is not a result.
+  Twelve risks, thirty-two controls, and every published count are unchanged.
+- **The publication boundary now knows about `.venv/`, `build/`, and `dist/`.** The
+  security suite walked all three as candidates for publication, so a project
+  virtual environment created by the newly adopted dependency manager would have
+  failed two of its checks on files belonging to third-party packages. All three are
+  ignored by version control and the test that says so now covers them.
+- **Four Python files were edited to satisfy the linter and the type checker**, and
+  none of them changed behaviour: two list concatenations, one if-else assignment, a
+  generator annotated as returning `object`, a `sum()` with no typed start value, and
+  a validator keyword the stubs type as possibly unset being used as a dictionary
+  key. The suite passes with the same test count it had before.
+- **`uv.lock` is pinned to LF in `.gitattributes`**, for the same reason the
+  existing shell-script rule is there: `uv` writes it with LF on every platform, and
+  a Windows checkout under `text=auto` would receive CRLF and have the whole file
+  rewritten by the next `uv lock`.
+- **`pytest.ini` and `conftest.py` carry accurate reasons.** Both explained
+  themselves by reference to a packaging decision that had not been made. Both now
+  explain themselves by reference to the one that has: the pytest configuration
+  stays where it is because ADR 0005 made it load-bearing, and the root `conftest.py`
+  stays because `tools/` is deliberately outside the distribution.
 
 - Two deferrals in the telemetry catalog keep their status and lose a reason that is no
   longer true. `inferops.cost.record.id` and `inferops_cost_records_total` were

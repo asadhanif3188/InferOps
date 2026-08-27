@@ -42,7 +42,7 @@ publish. No test can enforce that, and the rule is marked `review` in
 | DR-04 | No network policy exists, and the local plugin's enforcement is untested | B3 | yes |
 | DR-05 | No pod security property is enforced for a pod this platform deploys | B4 | yes |
 | DR-06 | The transport delivering a model artifact is not authenticated | B1 | yes |
-| DR-07 | There is no dependency lockfile and no packaging manifest | B1 | yes |
+| DR-07 | No check is verified to have resolved from the committed lockfile | B1 | yes |
 | DR-08 | No image is scanned and no provenance statement is verified | B1 | yes |
 | DR-09 | Artifact availability is not defended | B1 | no |
 | DR-10 | No secret manager, rotation policy, or expiry check exists | B3 | yes |
@@ -133,19 +133,32 @@ that the committed hash becomes a redundant check rather than the only one.
 **Not claimed.** No supply-chain integrity property beyond the hash comparison is
 claimed. See `EX-01`, which states the one reason the argument closes at all.
 
-### DR-07 — There is no dependency lockfile and no packaging manifest
+### DR-07 — No check is verified to have resolved from the committed lockfile
 
-**Why deferred.** ADR 0001 D4 proposes an approach without accepting one, and ADR
-0003 deliberately leaves the packaging tool open. Committing a lockfile would settle
-both in passing, which is the kind of decision leak this project spends effort
-avoiding.
+Narrowed on 2026-08-27, and not retired. This entry used to say that no dependency
+lockfile and no packaging manifest existed.
+[ADR 0009](../architecture/decisions/ADR-0009-python-toolchain.md) accepted a
+dependency manager, committed a `pyproject.toml` and a hash-bearing `uv.lock`, and
+ran every tool it named — so that half is gone. The half that remains is the half
+that mattered.
 
-**What would have to be true.** An accepted dependency-installation decision, and a
-lockfile a check can run against.
+**Why deferred.** The lockfile is an input, not an observation. Nothing in this
+repository records which inputs a given check actually resolved, because there is no
+lane to record it in; `uv run --locked` refuses a run that would change the lock, and
+that refusal happens on a contributor's machine where nothing here can see it. The
+lockfile also pins Python distributions only: `shellcheck`, `kubeconform`, `kind`,
+`kubectl`, and the container engine are pinned by prose in the prerequisites
+document. And no dependency scanner has ever been run over any of it.
+
+**What would have to be true.** A lane that resolves from the lockfile and fails when
+the resolution would change it, a pinning approach for the tools that are not Python
+distributions, and a recorded run of a dependency scanner with its version and its
+output.
 
 **Not claimed.** No reproducibility property is claimed for the tool chain that runs
-the checks. The recorded tool versions in each evidence record are the only trace of
-what a result was produced with.
+the checks. A committed lockfile is an available input and is not evidence that any
+check used it, and the recorded tool versions in each evidence record remain the only
+trace of what a result was produced with.
 
 ### DR-08 — No image is scanned and no provenance statement is verified
 

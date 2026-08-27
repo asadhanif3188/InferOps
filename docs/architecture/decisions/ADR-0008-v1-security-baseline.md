@@ -241,8 +241,17 @@ the sentence worth keeping, because a hash published alongside the file it descr
 defends against corruption and against nothing else.
 
 Two further supply-chain gaps are deferred rather than papered over. Nothing scans an
-image or verifies a build attestation (`DR-08`), and there is no dependency lockfile
-because ADR 0001 D4 proposes an approach without accepting one (`DR-07`).
+image or verifies a build attestation (`DR-08`), and no check is verified to have run
+from the committed dependency lockfile (`DR-07`).
+
+`DR-07` was narrowed on 2026-08-27 rather than retired.
+[ADR 0009](ADR-0009-python-toolchain.md) accepted a dependency manager and committed
+a hash-bearing lockfile, so the half of that risk which said no lockfile exists is
+gone. The half that remains is the half that mattered: nothing here observes which
+inputs a check actually resolved, the non-Python tools this project depends on are
+pinned by prose rather than by that file, and no dependency scanner has ever been
+run. The control `pin-every-dependency-with-a-committed-lockfile` therefore stays
+`deferred`, because a committed file is not a result.
 
 ## D8 — The cluster boundary is guarded by identity, not by a name
 

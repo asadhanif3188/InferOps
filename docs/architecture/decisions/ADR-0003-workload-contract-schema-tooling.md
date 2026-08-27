@@ -62,7 +62,16 @@ schemas from this repository.
 
 **Accepted as a boundary.** Choosing `pytest` to drive contract validation does not
 select the project's Python packaging, linting, typing, or test toolchain, and does
-not select a continuous-integration lane. Those remain open.
+not select a continuous-integration lane.
+
+Amended 2026-08-27. The boundary this decision draws is unchanged and still holds:
+nothing about the schema tooling settled the repository toolchain. What has changed
+is what lies on the other side of it. Packaging, linting, typing, and dependency
+management were settled afterwards, on their own evidence, by
+[ADR 0009](ADR-0009-python-toolchain.md) — which also leaves
+`tools/contract_validation` outside the distribution, so the path this record names
+is unchanged. The continuous-integration lane remains open, in
+[ADR 0005](ADR-0005-test-ci-and-certification-strategy.md) D6.
 
 ## Alternatives considered
 

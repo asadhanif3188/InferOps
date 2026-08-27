@@ -72,9 +72,55 @@ implemented outcome without overstating it.
 
 ## Validation
 
-Run the smallest complete check set available for the changed files. No repository
-task runner, linter, or continuous-integration lane is selected yet, so the checks
-below are run manually until those tooling decisions are accepted and published.
+Run the smallest complete check set available for the changed files. Every check
+below is run **by hand**: no continuous-integration lane, workflow file, or capable
+runner is selected, and
+[ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
+D6 leaves that open on purpose. No task runner is selected either, and that one is
+settled rather than open —
+[ADR 0009](docs/architecture/decisions/ADR-0009-python-toolchain.md) D7 rejects one,
+so the list below is the list.
+
+### The toolchain, and how to get it
+
+[ADR 0009](docs/architecture/decisions/ADR-0009-python-toolchain.md) selects the
+packaging layout, the dependency manager, the lockfile policy, the linter, the
+formatter, and the type checker, and every one of them was run on this repository
+before it was accepted. Install [uv](https://docs.astral.sh/uv/), then:
+
+```sh
+uv sync --locked
+```
+
+That creates `.venv/` from the committed [`uv.lock`](uv.lock) — the same versions
+every recorded result was produced with — and fails rather than re-resolving if the
+lockfile would have to change. Run the checks through it:
+
+```sh
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked python -m mypy
+uv run --locked python -m pytest -q
+```
+
+`--locked` is not decoration. Without it a run may quietly re-resolve, and a check
+whose inputs were resolved fresh measures the package index as much as it measures
+the repository.
+
+Adding or changing a dependency is two steps, and the second cannot be skipped: edit
+the relevant group in [`pyproject.toml`](pyproject.toml), then run `uv lock`. Review
+the resulting `uv.lock` diff — it is the file that decides what every check ran
+against.
+
+`python -m pytest` without `uv` still works and is still accepted for a
+documentation-only change. It runs against whatever versions are on your machine,
+which is why a recorded result always names the command that produced it.
+
+Two conventions the linter and the type checker carry, stated because they are
+easier to keep than to restore. `E501` is switched off and the formatter owns line
+length, so run `ruff format` rather than rewrapping by hand. And there is no
+`# type: ignore` anywhere in this repository; when the first one is needed it should
+carry the reason beside it.
 
 Which check proves which public claim, where each one is allowed to run, and what a
 passing result may be used to certify are settled in
@@ -182,12 +228,14 @@ field location committed beside it, that neither a refusal's message nor its
 field location repeats a value read out of the document, and that repeated
 validation of the same document produces identical output.
 
-It requires `jsonschema`, `pytest`, and `PyYAML`. Like `shellcheck` and
-`kubeconform`, they are not vendored; install them however your platform prefers.
-The schema language, authoring form, and validator are settled in
-[ADR 0003](docs/architecture/decisions/ADR-0003-workload-contract-schema-tooling.md).
-The repository-wide Python and packaging toolchain is not, and this suite does not
-settle it.
+It requires `jsonschema`, `pytest`, and `PyYAML`. All three are in the `test`
+dependency group and are installed by `uv sync --locked`; like `shellcheck` and
+`kubeconform` they are not vendored, and installing them another way is fine. The
+schema language, authoring form, and validator are settled in
+[ADR 0003](docs/architecture/decisions/ADR-0003-workload-contract-schema-tooling.md),
+and the repository-wide Python and packaging toolchain is settled separately in
+[ADR 0009](docs/architecture/decisions/ADR-0009-python-toolchain.md); this suite
+settles neither.
 
 A change that adds a field to a published schema also updates
 [the contract package changelog](contracts/CHANGELOG.md) and the contract's own
@@ -240,6 +288,12 @@ or scope also works through
 [the boundary review checklist](docs/architecture/boundary-review-checklist.md).
 
 ### Test lanes and markers
+
+The pytest configuration lives in [`pytest.ini`](pytest.ini) and stays there.
+`pyproject.toml` declares no pytest table, ADR 0009 D8 decided that deliberately,
+and a test refuses one — because the marker expression below is the mechanism
+behind "the default lane cannot execute a real model", and a mechanism is worth
+keeping where a reader will look for it.
 
 [`pytest.ini`](pytest.ini) registers a marker for every test layer the strategy
 defines, refuses an unregistered one, and deselects by default every marker belonging
@@ -429,6 +483,31 @@ document it exists to protect is
 [the deferred-risk register](docs/security/deferred-risks.md): a register that shrinks
 because the project wants to look further along is the failure this suite cannot
 catch.
+
+### The toolchain itself
+
+Changes to [`pyproject.toml`](pyproject.toml), [`uv.lock`](uv.lock),
+[`.python-version`](.python-version), `src/`, or `tests/testing/test_toolchain.py`
+must pass the strategy suite above, which now also reads
+[ADR 0009](docs/architecture/decisions/ADR-0009-python-toolchain.md) and compares
+its two published tables against the configuration they describe. A dependency
+bumped without updating that record fails, and so does a version typed into the
+record that the lockfile does not pin.
+
+The same suite refuses a `Taskfile`, a `justfile`, a `Makefile`, a `noxfile.py`, and
+a `tasks.py`. Adopting a task runner is an amendment to ADR 0009 D7 with an argument
+attached, not a new file.
+
+A change that alters the packaging layout also rebuilds the distribution and
+inspects what came out of it:
+
+```sh
+uv build
+```
+
+The wheel must contain the `inferops` package and its metadata and nothing else; the
+source distribution is anchored to the repository root, because an unanchored
+include pattern matches at every depth and quietly ships whatever it found.
 
 ### Kubernetes manifests
 
