@@ -92,12 +92,16 @@ _DIGIT_RUN = re.compile(r"(\d+)")
 
 @lru_cache(maxsize=1)
 def _cached_schema() -> dict[str, Any]:
-    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema: dict[str, Any] = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    return schema
 
 
 @lru_cache(maxsize=1)
 def _cached_compatibility_matrix() -> dict[str, Any]:
-    return json.loads(COMPATIBILITY_MATRIX_PATH.read_text(encoding="utf-8"))
+    matrix: dict[str, Any] = json.loads(
+        COMPATIBILITY_MATRIX_PATH.read_text(encoding="utf-8")
+    )
+    return matrix
 
 
 def load_schema() -> dict[str, Any]:
@@ -236,7 +240,14 @@ def _rule_for(error: ValidationError) -> str:
         # long and badly shaped be refused twice, under two rule identifiers, with
         # the same message under each.
         return "value-malformed"
-    return _KEYWORD_RULES.get(error.validator, "contract-structure-invalid")
+    # `validator` is the failing keyword, and the validator library types it as
+    # possibly unset. An unset keyword is not a keyword this table knows, so both
+    # paths end at the same rule; the branch exists so that is stated rather than
+    # relied upon.
+    keyword = error.validator
+    if not isinstance(keyword, str):
+        return "contract-structure-invalid"
+    return _KEYWORD_RULES.get(keyword, "contract-structure-invalid")
 
 
 def structural_findings(document: Any) -> list[Finding]:
@@ -355,9 +366,8 @@ def _artifact_format(filename: str, matrix: dict[str, Any]) -> str | None:
     # `.gz`, `.q4.bin` beside `.bin` - selects the specific format rather than
     # whichever happened to sort first. Alphabetical order would be a silent
     # mis-selection the day the matrix gains an overlapping pair.
-    formats = sorted(
-        matrix["artifactFormats"].items(), key=lambda kv: (-len(kv[0]), kv[0])
-    )
+    artifact_formats: dict[str, str] = matrix["artifactFormats"]
+    formats = sorted(artifact_formats.items(), key=lambda kv: (-len(kv[0]), kv[0]))
     for extension, name in formats:
         if filename.lower().endswith(extension):
             return name
@@ -366,7 +376,8 @@ def _artifact_format(filename: str, matrix: dict[str, Any]) -> str | None:
 
 def _runtime_for(image_reference: str, matrix: dict[str, Any]) -> dict[str, Any] | None:
     repository = image_reference.split("@", 1)[0]
-    for runtime in matrix["runtimes"]:
+    runtimes: list[dict[str, Any]] = matrix["runtimes"]
+    for runtime in runtimes:
         if repository in runtime["imageRepositories"]:
             return runtime
     return None

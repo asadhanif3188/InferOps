@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterator
 from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 
@@ -254,7 +255,7 @@ def gibibytes(quantity: str) -> Decimal:
     raise AssertionError(f"unsupported memory quantity: {quantity}")
 
 
-def walk(node: object) -> object:
+def walk(node: object) -> Iterator[tuple[str | None, object]]:
     """Yield every scalar in the committed method, for whole-document checks."""
     if isinstance(node, dict):
         for key, value in node.items():
@@ -579,7 +580,9 @@ def test_only_an_actual_basis_may_reference_an_invoice() -> None:
 def test_every_total_is_computed_within_one_basis() -> None:
     bases = {record["cost"]["basis"] for record in EXAMPLE_RECORDS}
     assert bases == {EXAMPLE["basis"]}, bases
-    total = sum(Decimal(record["cost"]["amount"]) for record in EXAMPLE_RECORDS)
+    total = sum(
+        (Decimal(record["cost"]["amount"]) for record in EXAMPLE_RECORDS), Decimal(0)
+    )
     assert quantise(total) == Decimal(EXAMPLE["totals"]["workloadAmountSum"])
 
 
@@ -695,10 +698,8 @@ def test_no_basis_claims_more_confidence_than_its_rules_allow() -> None:
             "windowComplete": True,
             "shapeChangedInWindow": False,
         }
-        if basis["basisId"] == "actual":
-            expected = "high"
-        else:
-            expected = derived_confidence(facts)
+        is_actual = basis["basisId"] == "actual"
+        expected = "high" if is_actual else derived_confidence(facts)
         assert basis["maxConfidence"] == expected, basis["basisId"]
 
 
@@ -850,7 +851,9 @@ def test_the_node_capacity_amount_recomputes_from_the_declared_capacity() -> Non
 
 def test_the_workload_lines_and_the_residual_close_against_the_node() -> None:
     node = Decimal(EXAMPLE["capacity"]["amount"])
-    workloads = sum(Decimal(row["cost"]["amount"]) for row in EXAMPLE_RECORDS)
+    workloads = sum(
+        (Decimal(row["cost"]["amount"]) for row in EXAMPLE_RECORDS), Decimal(0)
+    )
     residual = Decimal(EXAMPLE["unallocated"]["amount"])
     assert quantise(workloads) == Decimal(EXAMPLE["totals"]["workloadAmountSum"])
     assert quantise(node - workloads) == residual

@@ -229,8 +229,16 @@ REQUIRED_CONTAINER_SECURITY = {
     "securityContext.readOnlyRootFilesystem": True,
 }
 
-# Directory prefixes that hold generated host state or tool caches. Nothing
-# under any of them may be committed, and each has to be named in .gitignore.
+# Directory prefixes that hold generated host state, tool caches, the project
+# virtual environment, or build output. Nothing under any of them may be
+# committed, and each has to be named in .gitignore.
+#
+# The environment and the build directories were added when ADR 0009 adopted a
+# dependency manager and a build backend. They are not a widening of what may be
+# published: `.venv/` holds an installed third party's files, several of which
+# carry the interpreter path of whichever machine created them, and `dist/` and
+# `build/` hold artifacts a build produced. Reading them as candidates for
+# publication was a check reporting on somebody else's code.
 IGNORED_PREFIXES = (
     ".kube/",
     ".artifacts/",
@@ -238,6 +246,9 @@ IGNORED_PREFIXES = (
     ".mypy_cache/",
     ".pytest_cache/",
     "__pycache__/",
+    ".venv/",
+    "build/",
+    "dist/",
 )
 
 # Extensions a model artifact arrives in. None belongs in public history.
@@ -386,12 +397,12 @@ def _prose_strings(node: object, path: tuple[str, ...] = ()) -> list[tuple[str, 
                 continue
             if key.endswith(("Id", "Ref")):
                 continue
-            found.extend(_prose_strings(value, path + (key,)))
+            found.extend(_prose_strings(value, (*path, key)))
     elif isinstance(node, list):
         for index, value in enumerate(node):
             if isinstance(value, str):
                 continue
-            found.extend(_prose_strings(value, path + (str(index),)))
+            found.extend(_prose_strings(value, (*path, str(index))))
     elif isinstance(node, str):
         found.append((".".join(path), node))
     return found

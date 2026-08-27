@@ -1,9 +1,11 @@
 """Make the repository root importable so that `tools.*` resolves in tests.
 
-The repository has no Python packaging yet - ADR 0003 explicitly does not settle
-one - so there is nothing to install and no entry point to rely on. This file is
-the smallest thing that lets `python -m pytest` from the repository root import
-the contract validator without a `PYTHONPATH` incantation in every command.
+The repository does have Python packaging now - ADR 0009 settled it - but `tools/`
+is deliberately outside the distribution: it is repository tooling, and nothing
+that installs `inferops` should acquire it. So there is still nothing to install
+that would make `tools.contract_validation` importable, and this file remains the
+smallest thing that lets `python -m pytest` from the repository root import the
+contract validator without a `PYTHONPATH` incantation in every command.
 """
 
 from __future__ import annotations

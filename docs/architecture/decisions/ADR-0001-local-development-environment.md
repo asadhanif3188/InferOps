@@ -7,17 +7,23 @@
 | Date accepted | 2026-08-23, for D1, D2, D5, D6, and the minimum tier of D7 only |
 | Decision owner | Unassigned; no public maintainer roster exists yet |
 | Supersedes | None |
-| Superseded by | None |
+| Superseded by | [ADR 0009](ADR-0009-python-toolchain.md), for D3 and D4 only |
 
 > [!IMPORTANT]
 > This record is **accepted in part**. The container runtime, the local Kubernetes
 > distribution, the isolation rules, the cleanup rules, and the minimum host tier
 > were executed and are supported by
 > [runtime evidence](../../proof/environment/v1-s0-002-pr2-cluster-smoke.md).
-> The task runner (D3), the dependency installation approach (D4), and the
-> recommended host tier (D7) were **not** executed and remain proposed. The
+> The recommended host tier (D7) was **not** executed and remains proposed. The
 > per-decision table below is authoritative; do not read the acceptance of one
 > decision here as acceptance of its neighbours.
+>
+> D3 and D4 were proposed here and never executed, and both are now
+> **superseded** by [ADR 0009](ADR-0009-python-toolchain.md), which decided the
+> Python toolchain and ran every tool it named. ADR 0009 **rejects** the task
+> runner D3 proposed and **accepts** the dependency manager D4 proposed. Read
+> ADR 0009 for either; the sections below are kept for the alternatives they
+> assessed and no longer state this project's decision.
 
 ## Decision status
 
@@ -25,8 +31,8 @@
 |---|---|---|---|
 | D1 | Container runtime: a Docker-API-compatible engine | **Accepted**, for the reference implementation only | Engine reached, versions captured, cluster and workload run on it |
 | D2 | Local Kubernetes distribution: kind | **Accepted** | Cluster created from a digest-pinned image four times; hello-world served a request twice |
-| D3 | Task runner: Task (go-task) | **Proposed** | None. Not installed, not run |
-| D4 | Dependency installation: uv with a committed lockfile | **Proposed** | None. No `pyproject.toml` or lockfile exists yet |
+| D3 | Task runner: Task (go-task) | **Superseded** by ADR 0009 D7, which rejects a task runner | None. Never installed, never run |
+| D4 | Dependency installation: uv with a committed lockfile | **Superseded** by ADR 0009 D2 and D3, which accept and execute it | None here. The evidence is in ADR 0009 and its validation record |
 | D5 | Isolation | **Accepted** | Scoping rules exercised; four attempts to act outside the project's own cluster were refused |
 | D6 | Cleanup | **Accepted** | Full and partial teardown exercised; residue verified absent five times |
 | D7 | Host resource requirements | **Minimum tier accepted; recommended tier proposed** | Minimum tier measured on one Windows host. The recommended tier remains an estimate |
@@ -182,7 +188,10 @@ documented as a known divergence rather than hidden.
 
 ### D3 — Task runner: Task (go-task)
 
-Status: **proposed**. Nothing here has been installed or run.
+Status: **superseded** by [ADR 0009](ADR-0009-python-toolchain.md) D7, which
+rejects a task runner for V1. Nothing here was ever installed or run. The
+alternatives assessed below stand and are the reason ADR 0009 does not repeat
+them; the conclusion below does not.
 
 | Alternative | Assessment |
 |---|---|
@@ -215,8 +224,10 @@ certification strategy.
 
 ### D4 — Dependency installation: uv with a committed lockfile
 
-Status: **proposed**. No `pyproject.toml`, lockfile, or pinned interpreter exists
-in this repository yet, so nothing here has been exercised either.
+Status: **superseded** by [ADR 0009](ADR-0009-python-toolchain.md) D2 and D3,
+which accept uv, commit a lockfile, pin the interpreter series, and record the
+executed proof. Nothing here was exercised when this was written; the alternatives
+assessed below stand, and ADR 0009 carries the decision and the evidence.
 
 | Alternative | Assessment |
 |---|---|
@@ -425,7 +436,8 @@ For the decisions now accepted:
   [the local cluster runbook](../../environment/local-cluster.md).
 - The project takes on five pinned tool dependencies — a container engine, kind,
   `kubectl`, Task, and uv — plus Git as an unpinned prerequisite, and of those only
-  the first two are so far accepted and in use. `kubectl` matters more than its size
+  the first two were accepted and in use when this was written. Of the other two,
+  [ADR 0009](ADR-0009-python-toolchain.md) later accepted uv and rejected Task. `kubectl` matters more than its size
   suggests: on the measured host the only one present is bundled with the desktop
   application and moves with it. The project has taken the second of the two paths
   it named — it does not pin its own `kubectl`, and instead pins a node image whose
@@ -500,8 +512,9 @@ measurement was taken across a whole cycle rather than only while the cluster
 existed, which is what revealed that host free space is not returned by teardown.
 
 Steps 1–8 cover D1, D2, D5, D6, and the minimum tier of D7. They do not touch D3
-or D4, which is why those remain proposed. Accepting them requires their own
-evidence and their own PR.
+or D4, which is why those were left proposed here. Both were settled later, with
+their own evidence and their own change, in
+[ADR 0009](ADR-0009-python-toolchain.md).
 
 ## Risks, assumptions, and open questions
 

@@ -56,6 +56,30 @@ Two caveats a contributor should know before relying on this:
   virtual disk does not return that space to the host. Repeated cycles are not free
   on a disk-constrained machine.
 
+## Python checks
+
+[ADR 0009](architecture/decisions/ADR-0009-python-toolchain.md) selects the
+packaging layout, the dependency manager, the lockfile policy, the linter, the
+formatter, and the type checker, and each of them was executed on this repository
+before it was accepted. Running the checks the recorded way needs two things:
+
+| Tool | Version | Notes |
+|---|---|---|
+| uv | `0.9.16` was used | A single binary, installed by the contributor. Not pinned by anything in this repository |
+| CPython 3.12 series | `3.12.12` was provisioned | uv provisions its own redistributable build; it does not adopt the interpreter already on the host |
+
+Everything else — `ruff`, `mypy`, `pytest`, `jsonschema`, and `PyYAML` — is pinned
+by the committed [`uv.lock`](../uv.lock) and installed by `uv sync --locked`. The
+exact versions are published in
+[ADR 0009](architecture/decisions/ADR-0009-python-toolchain.md), and
+[the contribution guide](../CONTRIBUTING.md) lists the commands.
+
+No task runner is required, and none is selected. No continuous-integration service
+is required, and none is selected either.
+
+`shellcheck` and `kubeconform` are still separate installs and are still not pinned
+by the lockfile, because neither is a Python distribution.
+
 ## Serving and model prerequisites
 
 [ADR 0002](architecture/decisions/ADR-0002-model-and-serving-runtime.md) now selects
@@ -94,7 +118,14 @@ nothing about production.
 
 ## Not yet decided
 
-The task runner and the dependency installation approach (ADR 0001 D3 and D4)
-remain proposed. Neither has been installed or exercised, so neither is a
-prerequisite. The environment scripts in this repository are POSIX shell for that
-reason.
+ADR 0001 D3 and D4 no longer sit here. Both were superseded on 2026-08-27 by
+[ADR 0009](architecture/decisions/ADR-0009-python-toolchain.md), which rejected the
+task runner and accepted, executed, and pinned the dependency manager. The
+environment scripts in this repository remain POSIX shell, which is now a
+consequence of there being no task runner rather than of the question being open.
+
+What is still undecided is the continuous-integration service and what labels a
+capable runner — [ADR 0005](architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
+D6. No workflow file exists, no runner is labelled, and every check in this
+repository is one a contributor runs by hand and records the result of. ADR 0001 D7's
+**recommended** host tier also remains an estimate rather than a measurement.

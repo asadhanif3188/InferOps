@@ -1,0 +1,126 @@
+# Packaging, dependency, lint, format, and type-check configuration for InferOps.
+#
+# ADR 0009 decides what is configured here and supersedes ADR 0001 D3 and D4.
+# Read that record before changing a value in this file; the tool versions it
+# names are checked against this file by tests/testing/test_toolchain.py.
+#
+# One thing this file deliberately does NOT configure: pytest. ADR 0005 made the
+# committed marker set and the default marker expression load-bearing, and its
+# consequences record that moving them into a pyproject.toml would settle ADR
+# 0001 D3 and D4 in passing. Those two are now settled on purpose, and the
+# pytest configuration still stays in pytest.ini - where a reader looking for
+# the default lane will find it, and where it has been since ADR 0005.
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "inferops"
+version = "0.0.0"
+description = "A Kubernetes-native platform for operating LLM inference workloads."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "InferOps contributors" }]
+keywords = ["kubernetes", "llm", "inference", "platform"]
+# The distribution is built and installed locally. It is not published to any
+# package index in V1, and this classifier is what refuses an upload that tried.
+classifiers = [
+    "Private :: Do Not Upload",
+    "Development Status :: 1 - Planning",
+    "Programming Language :: Python :: 3.12",
+]
+# Empty on purpose. The distribution carries no runtime dependency because it
+# carries no runtime code yet. A dependency added here is a dependency every
+# consumer of InferOps inherits; the check tooling below is not one of those.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/asadhanif3188/InferOps"
+Source = "https://github.com/asadhanif3188/InferOps"
+Changelog = "https://github.com/asadhanif3188/InferOps/blob/main/CHANGELOG.md"
+
+# PEP 735 dependency groups. These are development inputs: they are locked and
+# installed, and they are not part of the distribution's metadata, so nothing
+# that depends on `inferops` acquires a linter.
+[dependency-groups]
+test = [
+    "pytest>=8.3.4,<9",
+    "jsonschema>=4.23,<5",
+    "PyYAML>=6.0.2,<7",
+]
+checks = [
+    "ruff>=0.16.1,<0.17",
+    "mypy>=2.3,<3",
+    "types-PyYAML>=6.0.12,<7",
+    "types-jsonschema>=4.23,<5",
+]
+dev = [{ include-group = "test" }, { include-group = "checks" }]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/inferops"]
+
+[tool.hatch.build.targets.sdist]
+# Anchored to the repository root on purpose. An unanchored `README.md` here
+# matches every README.md at every depth, and the source distribution silently
+# acquires eight documentation files that are not part of it.
+include = ["/src", "/pyproject.toml", "/README.md", "/LICENSE", "/CHANGELOG.md"]
+
+[tool.uv]
+# The lockfile is the source of truth for what a check ran against, so a
+# resolution that would change it is an explicit act rather than a side effect
+# of running a command.
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+# Generated host state. None of it is committed; excluding it here keeps a stale
+# cache from turning into a lint failure.
+extend-exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import order, UP pyupgrade, B bugbear,
+# SIM simplify, RUF ruff-specific. Chosen because every rule in the set is
+# mechanically fixable or mechanically obvious; a rule that needs an argument
+# every time it fires is a rule that gets suppressed rather than obeyed.
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF"]
+# The formatter owns line length. E501 is left off because the only lines it can
+# still reach after `ruff format` has run are long string literals the formatter
+# is not allowed to split - and the usual response to that is a `noqa`, which
+# buys nothing. `line-length` above is not decorative: the formatter enforces it
+# everywhere it is able to.
+ignore = ["E501"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src", "tools", "tests", "conftest.py"]
+# `tests/` has no `__init__.py` - pytest collects it by path - so mypy is told
+# where the roots are, or it names two modules the same thing and refuses both.
+mypy_path = ["src", "."]
+explicit_package_bases = true
+strict = true
+warn_unreachable = true
+# A missing stub is a fact about the environment, and silence about it is how a
+# type check quietly stops checking a third of its imports.
+ignore_missing_imports = false
+
+# The test suites are checked, and they are not held to `strict`. Strict mode's
+# demands - a parameter annotation on every fixture, a type argument on every
+# `dict` read out of a JSON document - buy little in a suite whose subject is
+# committed data, and the price is annotating several hundred lines of accepted
+# code inside the change that adopts the checker. What remains switched on is
+# the part that finds real defects: an unreachable assertion, a misspelled
+# attribute, a comparison that cannot be true.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_any_generics = false
+disallow_untyped_decorators = false
+warn_return_any = false

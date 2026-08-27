@@ -526,12 +526,12 @@
       "assetId": "public-history",
       "boundaryId": "B1",
       "actorId": "artifact-publisher",
-      "abuseCase": "There is no lockfile and no packaging manifest, so every contributor's Python dependency set is whatever the index served on the day they installed it.",
+      "abuseCase": "A committed lockfile pins the Python tool chain, and nothing observes whether a given contributor resolved from it. A contributor who installs another way gets whatever the index served that day, and the tools that are not Python distributions are pinned by prose in a document rather than by that file at all.",
       "impact": "A compromised or simply different dependency version changes what the checks do, and the recorded tool versions in a record are the only trace.",
       "controls": [
         "pin-every-dependency-with-a-committed-lockfile"
       ],
-      "residualRisk": "Undefended. The dependency-installation decision is proposed and not accepted, and no lockfile exists to enforce.",
+      "residualRisk": "Reduced and undefended. ADR 0009 accepted the dependency manager and committed a hash-bearing lockfile, so a reproducible input now exists; no lane verifies that any check used it, and no dependency scanner has been run. See DR-07.",
       "deferredRiskRef": "DR-07"
     },
     {
@@ -1100,7 +1100,7 @@
     },
     {
       "controlId": "ignore-and-refuse-generated-host-state",
-      "statement": "The project kubeconfig, collected diagnostics, and every tool cache are ignored by version control, and no file committed here lives under any of those paths.",
+      "statement": "The project kubeconfig, collected diagnostics, every tool cache, the project virtual environment, and the build output directories are ignored by version control, and no file committed here lives under any of those paths.",
       "boundaryId": "B6",
       "threats": [
         "T-14",
@@ -1298,7 +1298,7 @@
       "v1Status": "deferred",
       "owner": "environment",
       "evidenceRef": null,
-      "whatItDoesNotVerify": "Everything. The dependency-installation decision is proposed and not accepted, and no lockfile or packaging manifest exists."
+      "whatItDoesNotVerify": "Everything that matters here. ADR 0009 accepted the dependency manager and committed the lockfile, so the input exists; nothing in this repository observes a resolution, so the control is unverified and stays deferred. The lockfile also covers Python distributions only."
     },
     {
       "controlId": "verify-artifact-provenance",
@@ -1417,14 +1417,14 @@
     },
     {
       "riskId": "DR-07",
-      "statement": "There is no dependency lockfile and no packaging manifest.",
+      "statement": "No check is verified to have resolved its inputs from the committed dependency lockfile, and the non-Python tools this project depends on are not pinned by it at all.",
       "boundaryId": "B1",
       "threats": [
         "T-19"
       ],
-      "whyDeferred": "ADR 0001 D4 proposes an approach and does not accept one, and ADR 0003 deliberately leaves the packaging tool open. Committing a lockfile would settle both in passing.",
-      "whatWouldHaveToBeTrue": "An accepted dependency-installation decision, and a lockfile a check can be run against.",
-      "notClaimed": "No reproducibility property is claimed for the tool chain that runs the checks.",
+      "whyDeferred": "ADR 0009 accepted a dependency manager and committed a hash-bearing lockfile, so the half of this risk that said no lockfile exists is gone. What is left needs a lane. Nothing observes which inputs a check actually resolved, and shellcheck, kubeconform, kind, kubectl and the container engine are named in prose rather than pinned by that file. No dependency scanner has been run either.",
+      "whatWouldHaveToBeTrue": "A lane that resolves from the lockfile and fails when the resolution would change it, a pinning approach for the tools that are not Python distributions, and a recorded run of a dependency scanner.",
+      "notClaimed": "No reproducibility property is claimed for the tool chain that runs the checks. A committed lockfile is an available input and is not evidence that any check used it.",
       "blocksProductionUse": true
     },
     {

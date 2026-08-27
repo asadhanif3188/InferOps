@@ -6,3 +6,8 @@
 # ending after the shebang is part of the interpreter path, so a script checked
 # out with CRLF on Windows fails to run at all. This is correctness, not style.
 *.sh text eol=lf
+
+# uv writes the lockfile with LF on every platform. Without this, a Windows
+# checkout receives CRLF and the next `uv lock` rewrites the whole file, which
+# turns a no-op into a diff.
+uv.lock text eol=lf

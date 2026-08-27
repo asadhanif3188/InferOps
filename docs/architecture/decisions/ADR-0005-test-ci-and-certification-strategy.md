@@ -206,6 +206,10 @@ closed accidentally.
   tests, and that is the honest state rather than a defect.
 - A second `pytest.ini` decision is now load-bearing: adding a `pyproject.toml` later
   must not move this configuration into it without reopening ADR 0001 D3 and D4.
+  That condition was met on 2026-08-27. [ADR 0009](ADR-0009-python-toolchain.md)
+  reopened ADR 0001 D3 and D4, superseded both, and added a `pyproject.toml` — and
+  its D8 leaves the marker set and the default marker expression in `pytest.ini`
+  untouched. The permission this bullet attaches a condition to was not taken.
 
 ## Compatibility impact
 
