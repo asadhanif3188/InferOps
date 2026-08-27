@@ -283,9 +283,17 @@ def test_the_default_marker_expression_still_deselects_every_capable_host_lane()
 
 
 def test_the_record_states_that_continuous_integration_is_still_undecided() -> None:
+    """D9 is a scope boundary, and the question behind it stays open either way.
+
+    Checked case-insensitively on the second half: the row calls the boundary
+    accepted and the service undecided, and it is the second that a reader must
+    not lose. A record that adopted a linter, a formatter, a type checker, and a
+    lockfile is exactly the record somebody will assume turned on a pipeline.
+    """
     status = _section("Decision status")
-    assert "| D9 |" in status
-    assert "**Not decided**" in status
+    row = next(line for line in status.splitlines() if line.startswith("| D9 |"))
+    assert "boundary" in row.lower()
+    assert "not decided" in row.lower()
     assert "ADR 0005 D6" in DECISION
 
 

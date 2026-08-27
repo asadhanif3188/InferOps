@@ -400,7 +400,7 @@ defends the other's job.
 | A capability claim not supported by evidence | None found. Every tool named was run and its output is above; the task runner is recorded as rejected rather than as pending; and the continuous-integration gap is stated in the decision, the contribution guide, and the prerequisites |
 | Scope beyond this pull request | None. No Sprint 1 capability, no component, no workflow file, no scanner configuration, and no schema change |
 
-Seven changes touch files this PR does not own, and each is named here because a
+Eight changes touch files this PR does not own, and each is named here because a
 reviewer should see them deliberately rather than find them:
 
 - **`docs/architecture/decisions/ADR-0001-local-development-environment.md`** — D3
@@ -421,16 +421,68 @@ reviewer should see them deliberately rather than find them:
   controls, twenty-two enforced by something. The control
   `ignore-and-refuse-generated-host-state` gains three directories in its statement.
 - **`tests/security/test_security_baseline.py`** — three entries added to the list
-  of generated-state prefixes. The suite's 585 tests all pass, and the change
+  of generated-state prefixes. The suite's 586 tests all pass, and the change
   narrows what the walk reads to files this project could actually publish.
 - **`tests/cost/test_cost_method.py`** and **`tools/contract_validation/workload.py`**
   — the linter and type-checker fixes tabulated above. Each is behaviour-preserving
   and both suites pass with unchanged counts.
+- **`docs/governance/repository.md`** replaces one row. It listed the task runner and
+  the dependency installation together as "Not selected", citing ADR 0001 D3 and D4 as
+  still proposed. Both halves are now decided and they are decided in opposite
+  directions, so one row cannot carry them: the task runner is rejected and the
+  toolchain is accepted and executed.
 - **`.gitattributes`** gains one rule, for the same reason the existing `*.sh` rule
   is there. `uv` writes the lockfile with LF on every platform; under `text=auto` a
   Windows checkout would receive CRLF and the next `uv lock` would rewrite the whole
   file, turning a no-op into a diff. `.gitignore` gains a trailing slash on `.venv`
   so that the publication-boundary check can name the directory exactly.
+
+## What a second review found
+
+An independent review of the first commit re-ran every command in this record,
+measured the pre-change baseline in a disposable worktree at `main`, and tested the
+`tests.*` type-check relaxation by experiment rather than by reading it. It confirmed
+every number above except one, and found four defects. All four are fixed in the
+second commit on this branch.
+
+| Defect | What was wrong | Fix |
+|---|---|---|
+| The security baseline disagreed with itself | `DR-07` was narrowed and the threat that references it, `T-19`, was not. Its `abuseCase` still said "There is no lockfile and no packaging manifest" and its `residualRisk` still said "the dependency-installation decision is proposed and not accepted", both false as of this change. No test cross-checks a threat's prose against the risk it links to, so nothing caught it | Both fields rewritten to the narrowed risk: the input exists, the resolution is unobserved, and the non-Python tools are outside the lockfile |
+| This record disagreed with its own transcript | The command output above reports the security suite at 586 tests; a paragraph 140 lines later said 585 | Corrected to 586, which is also what `584 + 2` gives |
+| The architecture index disagreed with its own table | Its status line said "one accepted" while the table it introduces now lists two fully accepted records | Corrected to "two accepted" |
+| The governance index reported a superseded fact as current | One row said ADR 0001 D3 and D4 "remain proposed; neither has been run" | Replaced with two rows, because the two halves are now decided in opposite directions |
+
+A fifth item was raised at low confidence and is worth recording because the
+resolution went the other way. ADR 0009's status is `Accepted` while its D9 was
+labelled "**Not decided**", which looks like the condition under which
+[the architecture index](../../architecture/README.md) requires `Accepted in part`.
+It is not: that status is defined for a record with a decision that **remains
+proposed**, and ADR 0009 has none — seven decisions are accepted and executed, one is
+a rejection, and D9 is a scope boundary of the kind ADR 0003 D6 already established
+and was itself labelled `Accepted as a boundary` for. D9 is relabelled to match that
+precedent and says why in its own section; the status stays `Accepted`, and the
+service behind D9 stays undecided. A corruption confirms the test still refuses a D9
+row that stops saying so.
+
+One further inconsistency was found in `docs/governance/repository.md` and is
+**deliberately not fixed here**: its "Runtime host for serving" row still says no
+model runtime is selected, which ADR 0002 made false before this story existed. It
+predates this change, it belongs to the serving decision rather than the toolchain
+one, and fixing it inside this PR would widen a diff that already reaches further
+than a reader expects. It is recorded here so that it is not mistaken for something
+this change introduced.
+
+What the review verified independently and found correct: every command result above,
+every per-suite count, the 136 lockfile hashes, the 43 tests in the new module, the
+2281 pre-change baseline measured in a worktree at `main` rather than inferred, the
+agreement of `requires-python`, `uv.lock`, and `.python-version`, the absence of any
+`# type: ignore`, the absence of any task-runner file, the unchanged security counts,
+the reserved-vocabulary scan over both new documents, the leakage grep over the whole
+diff, and that the four behaviour-preserving source edits change no behaviour. It
+also proved by experiment that the `tests.*` mypy override is a real relaxation
+rather than a pattern that silently matches nothing: an untyped function added under
+`tests/` produced no finding, and the same function added under `tools/` produced
+`no-untyped-def`.
 
 ## Limitations
 
@@ -463,6 +515,11 @@ reviewer should see them deliberately rather than find them:
 - **The corruption set is not exhaustive.** Each corruption represents a mistake
   somebody would plausibly make. A corruption nobody thought of is one that was not
   tested.
+- **Prose in the security baseline is not cross-checked against the prose it
+  references.** A threat and the deferred risk it links to can disagree, and the
+  suite will pass. That is how `T-19` survived the first commit saying the opposite
+  of the `DR-07` beside it, and the fix here corrects the text without adding the
+  check that would have caught it.
 
 ## Authorisation
 

@@ -1,7 +1,7 @@
 # Architecture and decision records
 
 Status: entry point established; six decisions accepted in part, one accepted with a
-recorded exception, one accepted.
+recorded exception, two accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
 owner, alternatives, consequences, compatibility impact, and supporting evidence.

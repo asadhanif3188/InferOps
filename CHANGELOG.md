@@ -481,6 +481,18 @@ once versioned releases begin.
   generator annotated as returning `object`, a `sum()` with no typed start value, and
   a validator keyword the stubs type as possibly unset being used as a dictionary
   key. The suite passes with the same test count it had before.
+- **Four records that a second review found disagreeing with themselves.** Narrowing
+  `DR-07` left the threat that references it, `T-19`, still saying that no lockfile
+  and no packaging manifest exist — a single machine-checked JSON document
+  contradicting itself, with no test cross-checking a threat's prose against the risk
+  it links to. The architecture index's status line said "one accepted" above a table
+  listing two. The governance index still reported ADR 0001 D3 and D4 as proposed and
+  unrun, and now carries two rows because the two halves are decided in opposite
+  directions. And the toolchain validation record contradicted its own command
+  output by one test. ADR 0009 D9 is also relabelled from "Not decided" to "Accepted
+  as a boundary", the status ADR 0003 D6 already established for a scope statement,
+  with the record saying why its own status is `Accepted` rather than `Accepted in
+  part`. The service behind D9 remains undecided.
 - **`uv.lock` is pinned to LF in `.gitattributes`**, for the same reason the
   existing shell-script rule is there: `uv` writes it with LF on every platform, and
   a Windows checkout under `text=auto` would receive CRLF and have the whole file

@@ -526,12 +526,12 @@
       "assetId": "public-history",
       "boundaryId": "B1",
       "actorId": "artifact-publisher",
-      "abuseCase": "There is no lockfile and no packaging manifest, so every contributor's Python dependency set is whatever the index served on the day they installed it.",
+      "abuseCase": "A committed lockfile pins the Python tool chain, and nothing observes whether a given contributor resolved from it. A contributor who installs another way gets whatever the index served that day, and the tools that are not Python distributions are pinned by prose in a document rather than by that file at all.",
       "impact": "A compromised or simply different dependency version changes what the checks do, and the recorded tool versions in a record are the only trace.",
       "controls": [
         "pin-every-dependency-with-a-committed-lockfile"
       ],
-      "residualRisk": "Undefended. The dependency-installation decision is proposed and not accepted, and no lockfile exists to enforce.",
+      "residualRisk": "Reduced and undefended. ADR 0009 accepted the dependency manager and committed a hash-bearing lockfile, so a reproducible input now exists; no lane verifies that any check used it, and no dependency scanner has been run. See DR-07.",
       "deferredRiskRef": "DR-07"
     },
     {

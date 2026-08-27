@@ -37,7 +37,7 @@
 | D6 | Type checker: `mypy`, strict over InferOps-owned source | **Accepted**, and executed | Run over 15 source files; 243 findings under the first configuration, 11 under the accepted one, all resolved |
 | D7 | Task runner: none adopted | **Rejected**, as a decision | Nothing to execute. The argument is below, and a test refuses a task-runner file appearing without this record changing |
 | D8 | The pytest configuration stays in `pytest.ini` | **Accepted**, and executed | The marker set and the default marker expression are unchanged, and the suite runs under them |
-| D9 | Continuous integration is not selected here | **Not decided**, deliberately | Nothing. ADR 0005 D6 remains open and nothing in this record narrows it |
+| D9 | Continuous integration is not selected here | **Accepted as a boundary.** The service itself stays **not decided** | Nothing, and nothing is claimed. ADR 0005 D6 remains open and this record does not narrow it |
 
 ## Context
 
@@ -270,8 +270,15 @@ strategy in both directions and would fail if any of it moved.
 
 ### D9 — Continuous integration is not selected here
 
-**Not decided.** No continuous-integration service is selected, no workflow file
-exists, and no runner is labelled capable.
+**Accepted as a boundary**, in the sense ADR 0003 D6 uses: what this record accepts
+is that it does not decide the question, and the question itself stays **not
+decided**. No continuous-integration service is selected, no workflow file exists,
+and no runner is labelled capable.
+
+This is why the record's status is `Accepted` rather than `Accepted in part`. That
+status is reserved for a record with a decision that **remains proposed**, and there
+is none here: seven decisions are accepted and executed, one is a rejection, and this
+one is a scope boundary.
 [ADR 0005](ADR-0005-test-ci-and-certification-strategy.md) D6 remains open, and
 every command in this record and in the contribution guide is one a contributor
 runs by hand and records the result of.
