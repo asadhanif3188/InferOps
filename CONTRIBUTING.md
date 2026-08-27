@@ -484,6 +484,45 @@ document it exists to protect is
 because the project wants to look further along is the failure this suite cannot
 catch.
 
+### Inference API surface
+
+Changes under `docs/serving/` or `tests/serving/` must pass the serving-surface
+suite:
+
+```sh
+python -m pytest tests/serving -q
+```
+
+It reads only files in this repository and needs `pytest`. It checks the committed
+surface
+[`docs/serving/inference-api-surface.v1alpha1.json`](docs/serving/inference-api-surface.v1alpha1.json):
+that every one of the thirteen canonical error codes is either mapped to a condition
+or recorded as never emitted with a reason, and never both, so that a code cannot be
+dropped by being forgotten; that a `retryable` value differing from the canonical
+default is marked an override rather than left looking like a discrepancy; that a row
+claiming the trial observed a field, an endpoint, or a failure names a string the
+feasibility record or the runtime decision actually contains, and a row that was not
+observed cites no evidence; that a capability declares what supports it and agrees
+with the deferral already recorded in the telemetry catalog; that every serving-contract
+role is covered by an in-scope endpoint or by a stated equivalent; that every field
+the runtime returned and this surface drops was actually seen and says why; that the
+request counter this surface owes exists in the telemetry catalog and its error
+counter is labelled by the code the mapping produces; and that the decision, the
+document, and the data publish the same endpoints, codes, and capability names.
+
+It checks a decision, not an API. **Nothing in this repository listens on a port,
+registers a route, or answers a request.** No OpenAPI document is published, nothing
+was added to [`contracts/`](contracts/), and a test refuses a contract artifact for
+this surface appearing there without the record changing. A shape stated in these
+documents is a decision a reviewer can argue with; it becomes an interface when
+`V1-S1-005` serves it.
+
+A change that adds an endpoint states its serving-contract role and says what serves
+it, and "none" is the only answer this repository can honestly give today. A change
+that removes one records it as out of scope with a reason rather than deleting the
+row. The decision behind all of it is
+[ADR 0010](docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md).
+
 ### The toolchain itself
 
 Changes to [`pyproject.toml`](pyproject.toml), [`uv.lock`](uv.lock),

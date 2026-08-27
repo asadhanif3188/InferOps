@@ -1,0 +1,485 @@
+{
+  "$id": "https://inferops.io/serving/inference-api-surface.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 inference API compatibility surface, v1alpha1",
+  "description": "The compatibility target of the user-facing InferOps inference API, the exact endpoint subset V1 serves, the request and response shapes of each one, the capabilities the surface declares rather than assumes, the extension namespace for what the compatibility target does not define, and the mapping from observable runtime behaviour to canonical error codes. This is a decision about shape. Nothing in this repository serves any of it; implementationStatus says so and no row may claim otherwise.",
+  "decisionRef": "docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md",
+  "documentRef": "docs/serving/inference-api-surface.md",
+  "runtimeDecisionRef": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+  "runtimeEvidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+  "boundaryRef": "docs/serving/mock-and-real-boundary.md",
+  "architectureRef": "docs/architecture/system-architecture.md",
+  "telemetryRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "securityRef": "docs/security/security-baseline.v1alpha1.json",
+
+  "implementationStatus": {
+    "state": "nothing-serves",
+    "meaning": "No component in this repository listens on a port, registers a route, or answers a request. Every endpoint and every shape below is a specification for a component that does not exist. V1-S1-005 implements it; this record decides it.",
+    "publishedArtifacts": "none. No OpenAPI document, no JSON Schema for a request or a response body, and no addition to contracts/ is made by this record. A shape stated here is a decision a reviewer can argue with, not an interface a client may bind to."
+  },
+
+  "compatibilityTarget": {
+    "targetId": "openai-chat-completions-subset",
+    "name": "The OpenAI HTTP API shape, restricted to a frozen subset",
+    "pathPrefix": "/v1",
+    "prefixMeaning": "The /v1 prefix belongs to the compatibility target's shape and is not an InferOps version claim. InferOps versions this surface through contractVersion, which is inferops.io/v1alpha1 and moves independently of the prefix.",
+    "shapeReadFrom": "The response bodies recorded in the runtime feasibility record on 2026-08-24, not from vendor documentation.",
+    "boundedBy": "The field lists in this file. Compatibility is a shape borrowed on a date and frozen here; it is not a commitment to track what the upstream surface does next.",
+    "specificationBasis": "The integration specification, which states that an OpenAI-compatible API should be used when it does not hide required platform behaviour, and that provider-specific extensions may be exposed through a namespaced extension field."
+  },
+
+  "extensionNamespace": {
+    "bodyMember": "x_inferops",
+    "bodyMemberMeaning": "One object-valued member carrying everything the compatibility target has no place for. snake_case matches the surrounding body; the x_ prefix marks it as an extension and collides with no member observed in the runtime's own responses.",
+    "headerPrefix": "X-InferOps-",
+    "headerPrefixMeaning": "The transport metadata the integration specification names for HTTP integrations: request id, correlation id, workload id, workload version, environment. A different namespace from the body member, with a different purpose, and named here so the two are not confused.",
+    "requestExtensionDefined": false,
+    "requestExtensionReason": "V1 defines no request-body extension member. Correlation and workload metadata travel in headers, and the integration specification requires that security-sensitive values are validated or injected by a trusted component rather than trusted because a client sent them. A request member a caller fills in would be the wrong place for all of it."
+  },
+
+  "endpoints": [
+    {
+      "endpointId": "chat-completions",
+      "method": "POST",
+      "path": "/v1/chat/completions",
+      "origin": "compatibility-target",
+      "purpose": "One synchronous, non-streaming chat completion.",
+      "servingContractRole": "inference",
+      "v1Status": "in-scope",
+      "servedBy": "none. V1-S1-005 owns the implementation.",
+      "runtimeCounterpart": "POST /v1/chat/completions",
+      "runtimeCounterpartObserved": true
+    },
+    {
+      "endpointId": "models-list",
+      "method": "GET",
+      "path": "/v1/models",
+      "origin": "compatibility-target",
+      "purpose": "The one model this deployment serves, plus the runtime descriptor in the extension namespace.",
+      "servingContractRole": "model-and-runtime-metadata",
+      "v1Status": "in-scope",
+      "servedBy": "none. V1-S1-005 owns the implementation.",
+      "runtimeCounterpart": "GET /v1/models",
+      "runtimeCounterpartObserved": true
+    },
+    {
+      "endpointId": "health-live",
+      "method": "GET",
+      "path": "/health/live",
+      "origin": "inferops-native",
+      "purpose": "Whether the InferOps process is alive. It answers nothing about the model.",
+      "servingContractRole": "liveness",
+      "v1Status": "in-scope",
+      "servedBy": "none. V1-S1-005 owns the implementation.",
+      "runtimeCounterpart": null,
+      "runtimeCounterpartObserved": false
+    },
+    {
+      "endpointId": "health-ready",
+      "method": "GET",
+      "path": "/health/ready",
+      "origin": "inferops-native",
+      "purpose": "Whether the selected adapter can accept an inference request now.",
+      "servingContractRole": "readiness",
+      "v1Status": "in-scope",
+      "servedBy": "none. V1-S1-005 owns the implementation.",
+      "runtimeCounterpart": "GET /health",
+      "runtimeCounterpartObserved": true
+    },
+    {
+      "endpointId": "metrics",
+      "method": "GET",
+      "path": "/metrics",
+      "origin": "inferops-native",
+      "purpose": "InferOps's own metrics in Prometheus text format, including the request counter the runtime does not have.",
+      "servingContractRole": "metrics",
+      "v1Status": "in-scope",
+      "servedBy": "none. V1-S1-005 and the telemetry work own the implementation.",
+      "runtimeCounterpart": "GET /metrics",
+      "runtimeCounterpartObserved": true
+    }
+  ],
+
+  "outOfScope": [
+    {
+      "subject": "/v1/completions",
+      "origin": "compatibility-target",
+      "reason": "The legacy text-completion shape. Serving it doubles the request surface the adapter has to satisfy for one runtime and one chat model, and the chat shape answers the same question."
+    },
+    {
+      "subject": "/v1/embeddings",
+      "origin": "compatibility-target",
+      "reason": "The pinned model is a chat model. Serving embeddings needs a second model, and ADR 0002 records the selected runtime as a single-model single-process server, so it also needs a second Deployment. Neither is decided."
+    },
+    {
+      "subject": "/v1/responses",
+      "origin": "compatibility-target",
+      "reason": "A newer upstream shape. Adopting it means tracking a surface that is still moving, which is the thing the frozen-subset decision refuses."
+    },
+    {
+      "subject": "/v1/models/{id}",
+      "origin": "compatibility-target",
+      "reason": "Retrieving one model by identifier answers the same question as the list endpoint when a deployment serves exactly one model, and V1 serves exactly one."
+    },
+    {
+      "subject": "/v1/audio, /v1/images, /v1/moderations, /v1/files, /v1/batches, /v1/fine_tuning, /v1/assistants, /v1/vector_stores and everything under them",
+      "origin": "compatibility-target",
+      "reason": "No model, no component, and no storage exists for any of them, and none is in V1 scope."
+    },
+    {
+      "subject": "a graceful-shutdown endpoint",
+      "origin": "serving-contract",
+      "reason": "Section 12.1 requires graceful shutdown or an equivalent, and the equivalent is chosen: SIGTERM handling that flips readiness false, drains what is in flight, and exits. An HTTP endpoint that stops a process would be an unauthenticated remote-stop control on a surface ADR 0008 D4 accepts with no authentication in V1."
+    },
+    {
+      "subject": "/props, /completion, /slots, /infill, /tokenize, /detokenize, /embedding and every other runtime-native path",
+      "origin": "serving-runtime",
+      "reason": "The runtime's own surface is not proxied. Passing a runtime-specific path through the platform API puts a runtime shape in front of callers and defeats the runtime-neutral adapter interface. Of these, only /props was observed in the feasibility trial; the rest were not enumerated there and nothing here relies on them existing."
+    }
+  ],
+
+  "capabilities": [
+    {
+      "capabilityId": "streaming",
+      "question": "May a caller receive tokens incrementally?",
+      "v1Value": false,
+      "declaredAt": "GET /v1/models, x_inferops.capabilities.streaming",
+      "requestField": "stream",
+      "onUnsupportedRequest": "capability-unavailable",
+      "evidenceRef": null,
+      "basis": "V1 has no streaming path. The telemetry catalog already defers inferops_inference_time_to_first_token_seconds for exactly this reason, and this record does not create the path that would un-defer it.",
+      "runtimeObserved": false,
+      "runtimeNote": "Whether the selected runtime can stream was not exercised by the feasibility trial. This record asserts nothing about it, in either direction."
+    },
+    {
+      "capabilityId": "token-usage",
+      "question": "Does a response carry the token counts the runtime derived?",
+      "v1Value": true,
+      "declaredAt": "GET /v1/models, x_inferops.capabilities.tokenUsage",
+      "requestField": null,
+      "onUnsupportedRequest": null,
+      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "basis": "The trial recorded usage carrying prompt_tokens, completion_tokens, and total_tokens on a real completion, and ADR 0002 T5 required it as a blocking threshold.",
+      "runtimeObserved": true,
+      "runtimeNote": "Reported by the runtime from its own tokeniser. A count InferOps derives by tokenising a prompt itself is an estimate; usage is null when the adapter did not supply it, and is never estimated into a number."
+    },
+    {
+      "capabilityId": "deterministic-sampling",
+      "question": "Does temperature 0 return the same content for the same request?",
+      "v1Value": true,
+      "declaredAt": "GET /v1/models, x_inferops.capabilities.deterministicSampling",
+      "requestField": "temperature",
+      "onUnsupportedRequest": null,
+      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "basis": "Three runs at temperature 0 returned byte-identical content in the trial. That is one model on one host on one day, and it is the only support this flag has.",
+      "runtimeObserved": true,
+      "runtimeNote": "Observed, not guaranteed. A caller may not read this as a promise across model, quantisation, thread count, or runtime build."
+    },
+    {
+      "capabilityId": "multi-model",
+      "question": "May a caller choose between models?",
+      "v1Value": false,
+      "declaredAt": "GET /v1/models, x_inferops.capabilities.multiModel",
+      "requestField": "model",
+      "onUnsupportedRequest": "contract-invalid",
+      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "basis": "ADR 0002 records the selected runtime as a single-model single-process server. One deployment serves one model, so the model field is checked against it rather than used to select.",
+      "runtimeObserved": true,
+      "runtimeNote": "The trial's GET /v1/models reported exactly one model identifier."
+    }
+  ],
+
+  "requestFields": [
+    {
+      "endpointId": "chat-completions",
+      "field": "model",
+      "type": "string",
+      "required": true,
+      "v1Behaviour": "Compared against the served model identifier. A mismatch is refused with contract-invalid; it is not used to select a model.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "messages",
+      "type": "array of objects carrying role and content",
+      "required": true,
+      "v1Behaviour": "role is one of system, user, assistant. content is a string; the array-of-parts form is outside the frozen subset and is refused with contract-invalid.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "max_tokens",
+      "type": "integer",
+      "required": false,
+      "v1Behaviour": "Upper bound on generated tokens. A value above the deployment's configured ceiling is refused with contract-invalid rather than silently clamped.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "temperature",
+      "type": "number",
+      "required": false,
+      "v1Behaviour": "Passed to the adapter. 0 is the value the determinism observation was made at.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "stream",
+      "type": "boolean",
+      "required": false,
+      "v1Behaviour": "Accepted only as false. true is refused with capability-unavailable and a retryable override of false, because retrying does not make a capability appear.",
+      "observedInTrial": false
+    }
+  ],
+
+  "unknownFieldPolicy": {
+    "policy": "refuse",
+    "code": "contract-invalid",
+    "meaning": "A member of a request body that is not in requestFields is refused, and the refusal names the member. The integration specification requires unknown fields to be handled according to a declared policy; this is the declaration.",
+    "rationale": "Silently ignoring a parameter that changes the result is worse than refusing it. A caller who sends n and receives one choice, or sends stop and receives text past the stop sequence, has been given a wrong answer rather than an error.",
+    "cost": "Clients that send upstream defaults such as top_p, n, presence_penalty, or stop are refused until they stop sending them. That is a real reduction in the reach the compatibility target was chosen for, and it is accepted rather than hidden.",
+    "rejectedAlternative": "Accept unknown members and echo the ignored ones back in the extension namespace. Rejected because it makes the wrong answer the default outcome for a caller who does not read the echo."
+  },
+
+  "responseFields": [
+    {
+      "endpointId": "chat-completions",
+      "field": "id",
+      "v1Behaviour": "The completion identifier, generated by InferOps rather than passed through from the runtime.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "object",
+      "v1Behaviour": "The literal chat.completion.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "created",
+      "v1Behaviour": "Unix seconds at which InferOps produced the response.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "model",
+      "v1Behaviour": "The served model identifier.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "choices",
+      "v1Behaviour": "Exactly one element, carrying index, message with role and content, and finish_reason. V1 never returns more than one choice, because n is outside the frozen subset.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "usage",
+      "v1Behaviour": "prompt_tokens, completion_tokens, and total_tokens where the adapter supplied them; null, with the capability flag saying why, where it did not. Never estimated and never zero-filled.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "chat-completions",
+      "field": "x_inferops",
+      "v1Behaviour": "requestId, correlationId, contractVersion, adapterKind, and modelRef. The extension namespace, described in extensionNamespace.",
+      "observedInTrial": false
+    },
+    {
+      "endpointId": "models-list",
+      "field": "object",
+      "v1Behaviour": "The literal list.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "models-list",
+      "field": "data",
+      "v1Behaviour": "Exactly one element, carrying id, object, created, and owned_by.",
+      "observedInTrial": true
+    },
+    {
+      "endpointId": "models-list",
+      "field": "x_inferops",
+      "v1Behaviour": "The runtime descriptor the integration specification requires, plus the declared capability set.",
+      "observedInTrial": false
+    }
+  ],
+
+  "notPassedThrough": [
+    {
+      "field": "system_fingerprint",
+      "seenAs": "b10588-70adb1b4c, in the trial's recorded response",
+      "reason": "A runtime build string on every completion. Runtime identity belongs in the runtime descriptor and in the build-info metric, where it is published once rather than on every response."
+    },
+    {
+      "field": "timings",
+      "seenAs": "prompt_ms, predicted_ms, and predicted_per_second, in the trial's recorded response",
+      "reason": "Runtime-specific, and a per-request timing figure on a public response is a throughput claim by another route. ADR 0002 already refuses to publish the decode rate it measured."
+    },
+    {
+      "field": "prompt_tokens_details",
+      "seenAs": "cached_tokens, in the trial's recorded response",
+      "reason": "A prompt-cache statistic of the runtime's. Outside the frozen subset for V1: not emitted, and not refused when a caller sends nothing."
+    }
+  ],
+
+  "errorMapping": [
+    {
+      "conditionId": "model-loading",
+      "condition": "The runtime reports not-ready while the model loads.",
+      "observedInTrial": true,
+      "observation": "The control plane recorded a startup probe failing with statuscode 503 during the first load.",
+      "code": "model-not-ready",
+      "retryable": true,
+      "retryableOverride": false
+    },
+    {
+      "conditionId": "runtime-unreachable",
+      "condition": "The runtime's Service or pod does not accept a connection.",
+      "observedInTrial": false,
+      "observation": null,
+      "code": "capability-unavailable",
+      "retryable": true,
+      "retryableOverride": false
+    },
+    {
+      "conditionId": "runtime-timeout",
+      "condition": "The runtime does not answer within the adapter's deadline.",
+      "observedInTrial": false,
+      "observation": null,
+      "code": "upstream-timeout",
+      "retryable": true,
+      "retryableOverride": false
+    },
+    {
+      "conditionId": "caller-deadline",
+      "condition": "The caller's own deadline expires before a response is produced.",
+      "observedInTrial": false,
+      "observation": null,
+      "code": "request-timeout",
+      "retryable": true,
+      "retryableOverride": false
+    },
+    {
+      "conditionId": "request-outside-subset",
+      "condition": "The request body carries a member outside the frozen subset, a role outside the accepted set, a non-string content, a model that is not the served model, or a max_tokens above the configured ceiling.",
+      "observedInTrial": false,
+      "observation": null,
+      "code": "contract-invalid",
+      "retryable": false,
+      "retryableOverride": false
+    },
+    {
+      "conditionId": "streaming-requested",
+      "condition": "The request sets stream to true.",
+      "observedInTrial": false,
+      "observation": null,
+      "code": "capability-unavailable",
+      "retryable": false,
+      "retryableOverride": true
+    },
+    {
+      "conditionId": "unsupported-contract-version",
+      "condition": "The caller names a contract or API version this deployment does not support.",
+      "observedInTrial": false,
+      "observation": null,
+      "code": "version-unsupported",
+      "retryable": false,
+      "retryableOverride": false
+    },
+    {
+      "conditionId": "runtime-error-response",
+      "condition": "The runtime answers with a status other than 2xx and other than the 503 that means loading.",
+      "observedInTrial": false,
+      "observation": null,
+      "code": "internal-error",
+      "retryable": true,
+      "retryableOverride": false
+    },
+    {
+      "conditionId": "runtime-unparseable-response",
+      "condition": "The runtime answers 2xx with a body the adapter cannot read into the shape above.",
+      "observedInTrial": false,
+      "observation": null,
+      "code": "internal-error",
+      "retryable": true,
+      "retryableOverride": false
+    }
+  ],
+
+  "codesNotEmitted": [
+    {
+      "code": "authentication-required",
+      "reason": "ADR 0008 D4 accepts least exposure at the caller boundary with no authentication in V1. A code for a check that does not run would be a claim that it does."
+    },
+    {
+      "code": "authorization-denied",
+      "reason": "As for authentication-required. There is no identity to authorize."
+    },
+    {
+      "code": "policy-denied",
+      "reason": "No policy engine is selected. The integration specification leaves that choice open and this record does not close it."
+    },
+    {
+      "code": "rate-limited",
+      "reason": "V1 has no rate limiter. The runtime's own deferral series is a gauge of instantaneous state, not a limit InferOps enforces."
+    },
+    {
+      "code": "budget-exceeded",
+      "reason": "No budget is enforced anywhere, and ADR 0007 records that every cost figure this project can produce has confidence none."
+    },
+    {
+      "code": "evaluation-failed",
+      "reason": "A release-gate outcome rather than an inference-time condition. It is not this API's to emit."
+    }
+  ],
+
+  "requestCounting": {
+    "runtimeGap": "The selected runtime exposes no cumulative request counter. ADR 0002 T7 is a blocking threshold and it failed on exactly this, and the record was accepted with the failure argued rather than absorbed.",
+    "runtimeSeriesPresent": [
+      "llamacpp:requests_processing",
+      "llamacpp:requests_deferred"
+    ],
+    "whyThoseDoNotClose": "Both are gauges of instantaneous state. A gauge reading zero between requests cannot be summed, rated, or alerted on the way a counter can.",
+    "platformObligation": "InferOps receives the requests, so InferOps counts them.",
+    "metric": "inferops_inference_requests_total",
+    "errorMetric": "inferops_inference_errors_total",
+    "decidedElsewhere": "Both metrics already exist in the telemetry catalog with this reason recorded against them. This record adds no metric; it binds the existing entries to this surface and to the error codes above."
+  },
+
+  "adapterConsequences": [
+    {
+      "consequenceId": "translation-at-the-edge",
+      "statement": "The API is shaped like the compatibility target at its edge and the adapter interface is runtime-neutral, so the translation happens in the API layer.",
+      "why": "An adapter interface taking a compatibility-target request type would put that shape inside the platform domain, and the architecture's dependency rule forbids exactly that leak."
+    },
+    {
+      "consequenceId": "synchronous-signature",
+      "statement": "The adapter interface V1-S1-002 freezes exposes one synchronous, non-streaming generate call.",
+      "why": "Streaming is declared false. An interface carrying a streaming method nothing implements is an assumption dressed as a capability."
+    },
+    {
+      "consequenceId": "optional-usage",
+      "statement": "The adapter returns token usage as an optional value rather than a required one.",
+      "why": "A required field forces a mock to invent numbers, and the mock and real boundary names token accounting as one of the properties a mock cannot honestly reproduce."
+    },
+    {
+      "consequenceId": "declared-capabilities",
+      "statement": "The adapter declares its capability set, and the API publishes what the selected adapter declared rather than a constant.",
+      "why": "A capability that is a constant in the API is an assumption. One the adapter declares is a fact about the thing that will actually serve the request."
+    },
+    {
+      "consequenceId": "adapter-kind-in-response",
+      "statement": "Every response names the adapter kind that served it, in the extension namespace.",
+      "why": "Which adapter served a response decides what the response may be used to claim. Leaving that to deployment configuration makes the mock and real boundary invisible at the only place a reader looks."
+    }
+  ],
+
+  "notDecidedHere": [
+    "The context length, KV budget, concurrency limit, and sampling defaults. ADR 0002 left all four undecided and this record does not fill them in.",
+    "The max_tokens ceiling a deployment configures, which depends on the context length above.",
+    "Authentication, authorization, rate limiting, and quota at the caller boundary.",
+    "Any asynchronous or event-carried inference shape, which is V2 work.",
+    "The transport a caller reaches the API over from outside the cluster. The accepted local cluster ships no ingress controller and no load-balancer implementation.",
+    "Whether a published contract artifact for this surface is ever added to contracts/, and by what mechanism. The integration specification leaves the publication mechanism open."
+  ]
+}

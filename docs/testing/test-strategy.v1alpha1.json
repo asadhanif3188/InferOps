@@ -463,7 +463,8 @@
         "tests/testing",
         "tests/telemetry",
         "tests/cost",
-        "tests/security"
+        "tests/security",
+        "tests/serving"
       ],
       "commands": [
         "python -m pytest tests/testing -q",
