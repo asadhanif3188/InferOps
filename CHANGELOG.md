@@ -52,11 +52,11 @@ once versioned releases begin.
   headers a trusted component validates. Every response names the `adapterKind` that
   served it, which is the mock and real boundary made visible at the one place a
   reader looks.
-- **`tests/serving/test_inference_api_surface.py`**, 178 checks over the committed
+- **`tests/serving/test_inference_api_surface.py`**, 184 checks over the committed
   surface, the decision, the document, the feasibility record, and the telemetry
   catalog. It also refuses a contract artifact for this surface appearing under
-  `contracts/`, which is the rule the whole record is built around: **no endpoint and
-  no schema is published in advance of a component that serves it.** Nothing in this
+  `contracts/`, which is the rule the whole record is built around: **nothing is
+  published until something serves it.** Nothing in this
   repository listens on a port, registers a route, or answers a request.
 
 - **A Python toolchain that was executed before it was accepted**, in

@@ -500,9 +500,9 @@ that every one of the thirteen canonical error codes is either mapped to a condi
 or recorded as never emitted with a reason, and never both, so that a code cannot be
 dropped by being forgotten; that a `retryable` value differing from the canonical
 default is marked an override rather than left looking like a discrepancy; that a row
-claiming the trial observed a field, an endpoint, or a failure names a string the
-feasibility record or the runtime decision actually contains, and a row that was not
-observed cites no evidence; that a capability declares what supports it and agrees
+claiming the trial observed a field names one the feasibility record carries as a JSON
+member key inside a fenced block — not a word that happens to appear in its prose — and
+a row that was not observed cites no evidence; that a capability declares what supports it and agrees
 with the deferral already recorded in the telemetry catalog; that every serving-contract
 role is covered by an in-scope endpoint or by a stated equivalent; that every field
 the runtime returned and this surface drops was actually seen and says why; that the

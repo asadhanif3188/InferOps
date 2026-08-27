@@ -23,9 +23,9 @@
     "name": "The OpenAI HTTP API shape, restricted to a frozen subset",
     "pathPrefix": "/v1",
     "prefixMeaning": "The /v1 prefix belongs to the compatibility target's shape and is not an InferOps version claim. InferOps versions this surface through contractVersion, which is inferops.io/v1alpha1 and moves independently of the prefix.",
-    "shapeReadFrom": "The response bodies recorded in the runtime feasibility record on 2026-08-24, not from vendor documentation.",
+    "shapeReadFrom": "The response bodies recorded in the runtime feasibility record on 2026-08-24. No vendor documentation was read for any of it.",
     "boundedBy": "The field lists in this file. Compatibility is a shape borrowed on a date and frozen here; it is not a commitment to track what the upstream surface does next.",
-    "specificationBasis": "The integration specification, which states that an OpenAI-compatible API should be used when it does not hide required platform behaviour, and that provider-specific extensions may be exposed through a namespaced extension field."
+    "specificationBasis": "The integration specification prefers a compatible API over an invented one, on the condition that it does not hide behaviour the platform is required to expose, and it allows what the target does not define to live in a namespaced extension. Both halves of that condition are what D1 and D5 are answering."
   },
 
   "extensionNamespace": {
@@ -60,7 +60,9 @@
       "v1Status": "in-scope",
       "servedBy": "none. V1-S1-005 owns the implementation.",
       "runtimeCounterpart": "GET /v1/models",
-      "runtimeCounterpartObserved": true
+      "runtimeCounterpartObserved": true,
+      "responseShapeObserved": false,
+      "responseShapeNote": "The trial called this endpoint and the record shows what came back, but what it shows is the runtime's own model metadata rather than a list envelope. The endpoint was observed; its response envelope was not, and every field of it below is a specification."
     },
     {
       "endpointId": "health-live",
@@ -129,7 +131,7 @@
     {
       "subject": "a graceful-shutdown endpoint",
       "origin": "serving-contract",
-      "reason": "Section 12.1 requires graceful shutdown or an equivalent, and the equivalent is chosen: SIGTERM handling that flips readiness false, drains what is in flight, and exits. An HTTP endpoint that stops a process would be an unauthenticated remote-stop control on a surface ADR 0008 D4 accepts with no authentication in V1."
+      "reason": "The integration specification requires graceful shutdown or an equivalent, and the equivalent is chosen: SIGTERM handling that flips readiness false, drains what is in flight, and exits. An HTTP endpoint that stops a process would be an unauthenticated remote-stop control on a surface ADR 0008 D4 accepts with no authentication in V1."
     },
     {
       "subject": "/props, /completion, /slots, /infill, /tokenize, /detokenize, /embedding and every other runtime-native path",
@@ -288,13 +290,13 @@
       "endpointId": "models-list",
       "field": "object",
       "v1Behaviour": "The literal list.",
-      "observedInTrial": true
+      "observedInTrial": false
     },
     {
       "endpointId": "models-list",
       "field": "data",
       "v1Behaviour": "Exactly one element, carrying id, object, created, and owned_by.",
-      "observedInTrial": true
+      "observedInTrial": false
     },
     {
       "endpointId": "models-list",
@@ -318,7 +320,7 @@
     {
       "field": "prompt_tokens_details",
       "seenAs": "cached_tokens, in the trial's recorded response",
-      "reason": "A prompt-cache statistic of the runtime's. Outside the frozen subset for V1: not emitted, and not refused when a caller sends nothing."
+      "reason": "A prompt-cache statistic of the runtime's, and a response member rather than a request one, so the refusal policy for unknown request members does not reach it. It is simply outside the frozen subset for V1 and is not emitted."
     }
   ],
 
@@ -478,7 +480,7 @@
     "The context length, KV budget, concurrency limit, and sampling defaults. ADR 0002 left all four undecided and this record does not fill them in.",
     "The max_tokens ceiling a deployment configures, which depends on the context length above.",
     "Authentication, authorization, rate limiting, and quota at the caller boundary.",
-    "Any asynchronous or event-carried inference shape, which is V2 work.",
+    "Any asynchronous or event-carried inference shape. V1 serves one synchronous request at a time and decides nothing about any other form.",
     "The transport a caller reaches the API over from outside the cluster. The accepted local cluster ships no ingress controller and no load-balancer implementation.",
     "Whether a published contract artifact for this surface is ever added to contracts/, and by what mechanism. The integration specification leaves the publication mechanism open."
   ]

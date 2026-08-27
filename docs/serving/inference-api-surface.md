@@ -32,7 +32,7 @@ mistake this section exists to prevent.
 
 The shape was read from the response bodies the selected runtime actually returned in
 [the feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) on
-2026-08-24, not from vendor documentation. Compatibility here is a shape borrowed on a
+2026-08-24. No vendor documentation was read for any of it. Compatibility here is a shape borrowed on a
 date and written down; it is not a commitment to track what the upstream surface does
 next.
 
@@ -117,9 +117,14 @@ until they stop sending them.
 
 | Field | V1 behaviour | Observed in the trial |
 |---|---|---|
-| `object` | The literal `list` | yes |
-| `data` | Exactly one element: `id`, `object`, `created`, `owned_by` | yes |
+| `object` | The literal `list` | no |
+| `data` | Exactly one element: `id`, `object`, `created`, `owned_by` | no |
 | `x_inferops` | The runtime descriptor the model-serving contract requires, plus the declared capability set below | no |
+
+**Nothing in that table was observed, and the reason is worth stating.** The trial did
+call this endpoint, and the record shows what came back — but what it shows is the
+runtime's own model metadata, printed as text, not a list envelope. So the endpoint is
+evidenced and its response shape is not. Every field above is a specification.
 
 ## The extension namespace
 
@@ -233,7 +238,8 @@ written, so the consequences are stated rather than left to be inferred.
   which ADR 0002 left open — and therefore the `max_tokens` ceiling that depends on
   the first.
 - Authentication, authorization, rate limiting, and quota.
-- Any asynchronous or event-carried inference shape. That is V2 work.
+- Any asynchronous or event-carried inference shape. V1 serves one synchronous
+  request at a time and decides nothing about any other form.
 - How a caller outside the cluster reaches the API. The accepted local cluster ships
   no ingress controller and no load-balancer implementation.
 - Whether this surface is ever published as a contract artifact, and by what

@@ -7,8 +7,9 @@ What this suite establishes is that the decided surface is internally consistent
 that it agrees with the records already committed beside it: that every canonical
 error code in the integration contract is either mapped to a condition or recorded as
 never emitted, with a reason, so that a code can never be quietly dropped; that a row
-claiming the trial observed something names a string the feasibility record actually
-contains; that every capability is declared with what supports it, and that a
+claiming the trial observed a field names one the feasibility record carries as a JSON
+member key inside a fenced block, rather than a word that happens to appear in its
+prose; that every capability is declared with what supports it, and that a
 capability claiming runtime observation cites the record that observed it; that the
 serving contract's required endpoint roles are each covered by an in-scope endpoint or
 by a stated equivalent; that a `retryable` value differing from the canonical default
@@ -68,6 +69,12 @@ EXPECTED_CONTRACT_VERSION = "inferops.io/v1alpha1"
 
 SLUG = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
 
+# A value as the surface prints it in `seenAs`: a runtime field name or a build
+# string, both of which carry an underscore or a hyphen. Ordinary prose words in the
+# same sentence do not, which is what keeps this from asserting that "response" and
+# "trial" appear in the record.
+IDENTIFIER_LIKE = re.compile(r"[A-Za-z0-9]+[_-][A-Za-z0-9_-]+")
+
 SURFACE = json.loads(SURFACE_PATH.read_text(encoding="utf-8"))
 DOCUMENT = DOCUMENT_PATH.read_text(encoding="utf-8")
 DECISION = DECISION_PATH.read_text(encoding="utf-8")
@@ -79,6 +86,17 @@ RUNTIME_DECISION = RUNTIME_DECISION_PATH.read_text(encoding="utf-8")
 # thresholds that were registered before it ran and then met. Neither is vendor
 # documentation, which is the source this surface may not cite.
 RUNTIME_EVIDENCE = FEASIBILITY + RUNTIME_DECISION
+
+# Only the fenced blocks of the feasibility record, which is where the bodies it
+# captured verbatim actually live.
+#
+# The first version of this check searched the whole record for the field name, and
+# that was too weak in a way worth recording: `data` matched the sentence "contains no
+# host detail and no personal data", and `object` matched the chat completion's
+# `"object":"chat.completion"` while being claimed for a different endpoint. A field
+# name appearing somewhere in the prose is not evidence that a response carried it.
+FENCE = re.compile(r"^```[a-z]*$(.*?)^```$", flags=re.MULTILINE | re.DOTALL)
+FENCED_BLOCKS = " ".join(FENCE.findall(FEASIBILITY))
 TELEMETRY = json.loads(TELEMETRY_PATH.read_text(encoding="utf-8"))
 STRATEGY = json.loads(STRATEGY_PATH.read_text(encoding="utf-8"))
 
@@ -169,7 +187,27 @@ def test_the_path_prefix_is_not_presented_as_an_inferops_version() -> None:
 def test_the_compatibility_shape_was_read_from_the_evidence_not_from_a_vendor() -> None:
     read_from = SURFACE["compatibilityTarget"]["shapeReadFrom"]
     assert "feasibility record" in read_from
-    assert "not from vendor documentation" in read_from
+    assert "No vendor documentation was read" in read_from
+
+
+def test_the_compatibility_target_states_what_bounds_it_and_what_permits_it() -> None:
+    """Both were carried as data no check read, and one of them is the decision."""
+    target = SURFACE["compatibilityTarget"]
+    assert SLUG.match(target["targetId"]), target["targetId"]
+    assert len(target["name"]) > 20
+    assert "frozen" in target["boundedBy"]
+    assert "not a commitment to track" in target["boundedBy"]
+    assert len(target["specificationBasis"]) > 60
+
+
+def test_the_surface_says_what_it_is_and_what_it_is_for() -> None:
+    assert len(SURFACE["title"]) > 20
+    assert "Nothing in this repository serves any of it" in SURFACE["description"]
+
+
+def test_the_telemetry_pointer_in_the_data_is_the_file_the_suite_reads() -> None:
+    """Otherwise the pointer and the checked file can drift apart in silence."""
+    assert (REPO_ROOT / SURFACE["telemetryRef"]) == TELEMETRY_PATH
 
 
 # --------------------------------------------------------------------------
@@ -227,10 +265,17 @@ def test_graceful_shutdown_is_recorded_as_an_equivalent_rather_than_forgotten() 
 
 @pytest.mark.parametrize("endpoint", ENDPOINTS, ids=lambda row: row["endpointId"])
 def test_an_endpoint_claiming_an_observed_counterpart_names_one(endpoint: dict) -> None:
-    if not endpoint["runtimeCounterpartObserved"]:
-        assert endpoint["runtimeCounterpart"] is None or endpoint["path"] == "/metrics"
-        return
-    assert endpoint["runtimeCounterpart"], endpoint["endpointId"]
+    """The flag and the name have to agree in both directions.
+
+    An earlier version excused `/metrics` from the unobserved branch. That branch was
+    unreachable, because `/metrics` is marked observed - and had the flag ever been
+    flipped, the exemption would have excused precisely the claim this check exists to
+    refuse. A special case with no case is worse than no check.
+    """
+    if endpoint["runtimeCounterpartObserved"]:
+        assert endpoint["runtimeCounterpart"], endpoint["endpointId"]
+    else:
+        assert endpoint["runtimeCounterpart"] is None, endpoint["endpointId"]
 
 
 @pytest.mark.parametrize(
@@ -385,12 +430,47 @@ def test_every_shape_row_belongs_to_an_in_scope_endpoint(row: dict) -> None:
 def test_a_field_claimed_observed_appears_in_the_feasibility_record(row: dict) -> None:
     """The distinction the whole record rests on, made checkable.
 
-    A field marked observed was read from a response body the trial recorded. A field
-    marked unobserved is a specification. Only the first kind may name the record.
+    A field marked observed was read from a body the trial captured. A field marked
+    unobserved is a specification. Only the first kind may name the record, and it has
+    to appear as a JSON member key inside a fenced block rather than as a word
+    somewhere in the surrounding prose.
     """
-    assert row["field"] in FEASIBILITY, (
-        f"{row['endpointId']}.{row['field']} claims the trial observed it, and the "
-        "feasibility record does not contain the name"
+    assert f'"{row["field"]}"' in FENCED_BLOCKS, (
+        f"{row['endpointId']}.{row['field']} claims the trial observed it, and no "
+        "fenced block in the feasibility record carries it as a member key"
+    )
+
+
+def test_no_field_of_the_models_endpoint_is_claimed_observed() -> None:
+    """The endpoint was called. Its response envelope was never captured.
+
+    The trial printed the runtime's own model metadata as text for this endpoint, not
+    a list envelope, so `object`, `data`, and everything under them are specifications.
+    Marking them observed because the endpoint was reached is the slippage the
+    observed column exists to catch, and it is pinned here because it happened once.
+    """
+    for row in RESPONSE_FIELDS:
+        if row["endpointId"] != "models-list":
+            continue
+        assert row["observedInTrial"] is False, row["field"]
+    endpoint = next(row for row in ENDPOINTS if row["endpointId"] == "models-list")
+    assert endpoint["runtimeCounterpartObserved"] is True
+    assert endpoint["responseShapeObserved"] is False
+    assert len(endpoint["responseShapeNote"]) > 40
+
+
+def test_the_observation_check_reads_something() -> None:
+    """A regex that matches nothing turns every check built on it into a pass.
+
+    This is the guard for the check above rather than a check on the surface: if the
+    feasibility record's fencing changes and the pattern stops matching, every field
+    claiming observation would be verified against an empty string and would pass.
+    """
+    assert len(FENCED_BLOCKS) > 1000, len(FENCED_BLOCKS)
+    assert '"usage"' in FENCED_BLOCKS
+    assert '"data"' not in FENCED_BLOCKS, (
+        "the record now carries a `data` member key, and the /v1/models envelope "
+        "rows have to be re-examined rather than left marked unobserved"
     )
 
 
@@ -410,8 +490,22 @@ def test_the_unknown_field_policy_is_declared_with_its_cost() -> None:
 
 @pytest.mark.parametrize("row", NOT_PASSED_THROUGH, ids=lambda row: row["field"])
 def test_a_dropped_runtime_field_was_actually_seen(row: dict) -> None:
-    assert row["field"] in FEASIBILITY, row["field"]
+    assert f'"{row["field"]}"' in FENCED_BLOCKS, row["field"]
     assert len(row["reason"]) > 40, row["field"]
+
+
+@pytest.mark.parametrize("row", NOT_PASSED_THROUGH, ids=lambda row: row["field"])
+def test_the_values_a_dropped_field_was_seen_as_are_in_the_record(row: dict) -> None:
+    """These values are republished to a reader, so they are claims like any other.
+
+    `seenAs` is the only place this surface prints something the runtime actually
+    returned. It was carried as data nothing read, which is how a value drifts from
+    the record it came from without anyone noticing.
+    """
+    tokens = IDENTIFIER_LIKE.findall(row["seenAs"])
+    assert tokens, f"{row['field']} names no value it was seen as"
+    for token in tokens:
+        assert token in FEASIBILITY, f"{row['field']} was seen as {token}, nowhere"
 
 
 def test_no_dropped_field_is_also_a_response_field() -> None:
@@ -579,6 +673,16 @@ def test_the_request_counter_this_surface_owns_already_exists_in_the_catalog() -
     assert counting["metric"] in names, counting["metric"]
     assert counting["errorMetric"] in names, counting["errorMetric"]
     assert "adds no metric" in counting["decidedElsewhere"]
+    assert "InferOps" in counting["platformObligation"]
+    assert set(counting) == {
+        "runtimeGap",
+        "runtimeSeriesPresent",
+        "whyThoseDoNotClose",
+        "platformObligation",
+        "metric",
+        "errorMetric",
+        "decidedElsewhere",
+    }, sorted(counting)
 
 
 def test_the_error_metric_is_labelled_by_the_code_this_mapping_produces() -> None:
@@ -648,22 +752,30 @@ def test_the_decision_publishes_every_in_scope_endpoint(endpoint: dict) -> None:
 
 
 @pytest.mark.parametrize("row", CODES_NOT_EMITTED, ids=lambda row: row["code"])
-def test_the_document_lists_every_code_that_is_never_emitted(row: dict) -> None:
+def test_both_documents_list_every_code_that_is_never_emitted(row: dict) -> None:
     assert f"`{row['code']}`" in DOCUMENT, row["code"]
+    assert f"`{row['code']}`" in DECISION, row["code"]
 
 
 @pytest.mark.parametrize("row", ERROR_MAPPING, ids=lambda row: row["conditionId"])
-def test_the_document_lists_every_mapped_code(row: dict) -> None:
+def test_both_documents_list_every_mapped_code(row: dict) -> None:
     assert f"`{row['code']}`" in DOCUMENT, row["code"]
+    assert f"`{row['code']}`" in DECISION, row["code"]
 
 
 @pytest.mark.parametrize("row", CAPABILITIES, ids=lambda row: row["capabilityId"])
-def test_the_document_publishes_every_capability_by_the_name_it_is_declared_at(
-    row: dict,
-) -> None:
-    """A reader needs the member name a response carries, not the internal slug."""
+def test_every_capability_is_published_and_decided(row: dict) -> None:
+    """A published capability with no decision behind it is a flag nobody stands for.
+
+    The document is checked because a reader needs the member name a response carries,
+    not the internal slug. The decision is checked because two capabilities were once
+    published here and named nowhere in the record that is supposed to have decided
+    them, and nothing caught it.
+    """
     member = row["declaredAt"].rsplit(".", 1)[-1]
-    assert f"`{member}`" in DOCUMENT, member
+    path = row["declaredAt"].split(", ", 1)[-1]
+    assert f"`{member}`" in DOCUMENT, f"{member} is not published to a reader"
+    assert path in DECISION, f"{path} is published and never decided"
 
 
 def test_the_document_and_the_decision_both_refuse_to_claim_a_served_surface() -> None:

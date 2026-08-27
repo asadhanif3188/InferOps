@@ -471,6 +471,7 @@
         "python -m pytest tests/telemetry -q",
         "python -m pytest tests/cost -q",
         "python -m pytest tests/security -q",
+        "python -m pytest tests/serving -q",
         "the link and whitespace checks in CONTRIBUTING"
       ],
       "evidenceClass": "local-static",

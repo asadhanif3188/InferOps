@@ -160,8 +160,8 @@ the thirteen codes are recorded as **never emitted in V1**, with a reason each.
 
 Two properties of it are worth reading before relying on it. The compatibility is a
 **shape read on a date** — 2026-08-24, from the response bodies in the feasibility
-record rather than from vendor documentation — and not a commitment to track what the
-upstream surface does next; that freeze is the answer to the strongest objection
+record, with no vendor documentation consulted for any of it — and not a commitment to
+track what the upstream surface does next; that freeze is the answer to the strongest objection
 against the choice, which is that the shape is not this project's to version. And
 **one error row was observed and eight are specifications**, because the lane that
 would provoke a real failure does not exist. The record marks every row either way, and

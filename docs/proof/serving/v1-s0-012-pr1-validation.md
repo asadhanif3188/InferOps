@@ -75,7 +75,15 @@ causes were real and are recorded here rather than repaired silently.
 | `test_an_observed_runtime_counterpart_appears_in_the_record[chat-completions]` | The surface claimed the trial observed `POST /v1/chat/completions`, and the **feasibility record does not contain that path**. The trial recorded the request and response bodies for that endpoint but never wrote the path; the path appears in ADR 0002's `T5` row instead | The check now reads the feasibility record **and** ADR 0002, which are the two sources the surface is permitted to read runtime behaviour from. Vendor documentation is still excluded, which is the property the check exists for |
 | `test_the_document_publishes_every_capability_with_its_value` × 3 | The document publishes capabilities by the member name a response carries — `tokenUsage`, `deterministicSampling`, `multiModel` — and the check demanded the internal slug | The check now derives the member name from the capability's own `declaredAt` and looks for that, which is the name a reader needs |
 
-Result after both changes: **178 passed**.
+Result after both changes: **178 passed**. A later independent review found a third
+defect in this same suite and in the record it checks; both the finding and what it
+changed are in [what a second review found](#what-a-second-review-found).
+
+The suite reports **184 passed** after the second pass, up from 178: the two response
+fields that stopped claiming observation removed two parameter cases, and the checks
+the second pass added — for the capability decisions, the republished values, the
+compatibility target's own fields, the telemetry pointer, and the surface's own
+description — added eight.
 
 The first of those two is the one worth keeping in view. The check was written to stop
 the surface citing an endpoint that only vendor documentation says exists, and the
@@ -90,8 +98,9 @@ python -m pytest -q
 uv run --locked python -m pytest -q
 ```
 
-Result: **2506 passed, 7 skipped** on both. The skips are the pre-existing ones the
-default marker expression produces; this change adds none. The `uv run --locked` form
+Result: **2513 passed, 7 skipped** at the end, from 2506 before this change added a
+suite. The skips are the pre-existing ones the default marker expression produces;
+this change adds none. The `uv run --locked` form
 is the recorded one, because it resolves nothing and runs against the committed
 lockfile.
 
@@ -119,8 +128,8 @@ Result on the first run:
   you are reading was added.
 - `mypy`: **Success, no issues found in 16 source files**, first run and final run.
 
-The suite was re-run after both fixes: 2506 passed, 7 skipped, and 2507 passed once
-this record existed for the evidence-index check to read.
+The suite was re-run after both fixes, and again after every change the second review
+prompted. Final: **2513 passed, 7 skipped**.
 
 ### 5. Whitespace, tabs, and links
 
@@ -176,7 +185,7 @@ Grouped by the failure each group exists to prevent.
 | Nothing claims to be served | `implementationStatus` is `nothing-serves`; every endpoint's `servedBy` starts with `none`; both documents refuse the claim in prose; `contracts/` carries no artifact for this surface | The single most likely drift for a record that describes an API in detail: a reader, or a later author, taking the description for an implementation |
 | Every canonical code is accounted for | Thirteen codes transcribed independently into the suite; each must be mapped or refused, never both, never neither; every refusal states a reason over forty characters | A code disappearing by being forgotten, which produces a shorter list and no error |
 | A `retryable` value that differs from the default is argued | Each mapped row's `retryable` is compared against the canonical default and must carry `retryableOverride` exactly when it differs; the one override is asserted to be the streaming refusal | A consumer written from the specification's default column silently retrying a request that can never succeed, with nothing in either record marking the difference |
-| Observation is distinguished from specification | Every field, endpoint, and error row marked observed must name a string the feasibility record or ADR 0002 contains; an unobserved capability must cite no evidence; exactly one error row may claim observation and it must be the 503 | A shape written from expectation being read as a shape read from a response — the distinction this whole record rests on |
+| Observation is distinguished from specification | An observed **field** must appear as a JSON member key inside a fenced block of the feasibility record; an observed **endpoint** must be named by that record or ADR 0002; an unobserved capability must cite no evidence; exactly one error row may claim observation and it must be the 503; no field of `/v1/models` may claim it at all; and the fenced-block extraction is itself asserted non-empty | A shape written from expectation being read as a shape read from a response — the distinction this whole record rests on, and the one a substring check was not strong enough to protect |
 | Capabilities are declared, not assumed | Each declares a question, a value, where it is published, and what supports it; streaming is required to assert nothing about the runtime; the streaming value is compared against the deferral reason already in the telemetry catalog | Two accepted records disagreeing about whether V1 streams, and a capability flag with nothing behind it |
 | The serving contract's roles are covered | The five required roles must each be covered by an in-scope endpoint; graceful shutdown must appear as a stated equivalent naming `SIGTERM` | A required role being satisfied by silence |
 | Dropped runtime fields were actually seen, and say why | Each of the three names a string the feasibility record contains and states a reason; none may also be a response field | A field being dropped without a record of what it was or why |
@@ -184,7 +193,7 @@ Grouped by the failure each group exists to prevent.
 | The three documents agree | Every endpoint path, every mapped and refused code, and every capability member name must appear in the document and the decision; the decision must carry the seven sections a record here requires | The data and the prose drifting apart, which is how a decision quietly becomes two decisions |
 | The suite is reachable | The documentation layer of the test strategy must name `tests/serving`, and this module must declare that layer's marker | A suite no lane runs, which passes by never being collected |
 
-**178 checks. All pass.**
+**184 checks. All pass.**
 
 ### What it does not establish
 
@@ -206,7 +215,7 @@ The full staged diff was read before this record was written.
 
 | Looked for | Result |
 |---|---|
-| Private planning content — backlog, prompts, story text, future-project queues, positioning, unpublished strategy | **None.** Story and PR identifiers appear (`V1-S0-012`, `V1-S1-002`, `V1-S1-005`), and those already appear throughout the public repository's changelog and records. No planning document is quoted, named by filename, or paraphrased at length |
+| Private planning content — backlog, prompts, story text, future-project queues, positioning, unpublished strategy | **Two leaks were found on the second pass and removed.** See [what a second review found](#what-a-second-review-found). What remains: story identifiers `V1-S0-012`, `V1-S1-002`, and `V1-S1-005`, which are **new to this repository** — only `V1-S0-001` through `V1-S0-011` appear on `main` — and are kept deliberately, with the reasoning below. No planning document is quoted, named, or paraphrased |
 | Local filesystem paths, host names, user names | **None.** Every path in the diff is repository-relative |
 | Credentials, tokens, keys | **None.** Nothing in this change authenticates to anything |
 | Model artifacts, weights, generated state | **None.** No binary is added |
@@ -215,6 +224,30 @@ The full staged diff was read before this record was written.
 | Scope expansion | **None.** No route, no handler, no OpenAPI document, no `contracts/` entry, and no Sprint 1 capability |
 | A performance figure published as a claim | **None**, and one was actively refused: `timings` is recorded as not passed through precisely so that a per-request decode figure does not reach a public response |
 | Reserved security vocabulary outside a denial | Clean. The suite that scans every Markdown file in the repository passes |
+
+### The three forward story identifiers, and why they stay
+
+`V1-S1-002` and `V1-S1-005` name work that has not started, and they appear here for
+the first time in this repository. That is worth stopping on rather than waving
+through, because "identifiers for unstarted work" is a fair description of a private
+queue.
+
+They stay, for two reasons and with one boundary:
+
+- **They are load-bearing, not decorative.** The whole point of this decision is that
+  it lands one story before an interface is frozen and two before an API is written.
+  A record that says "a later story will freeze an adapter against this" and cannot
+  say which one has removed the only detail that makes the timing checkable.
+- **The scheme is already public.** Every evidence record in this repository is named
+  after a story, `main` carries eleven of them, and the toolchain record already
+  discusses Sprint 1 by name. What is new is two positions in a sequence, not the
+  existence of the sequence.
+
+**The boundary**: two identifiers and what this decision owes them. No list of Sprint 1
+stories, no ordering, no dependency register, no dates, and nothing about any story
+this decision does not directly constrain. An earlier draft crossed that line by
+reproducing a dependency relation from the planning source, and the second pass
+removed it.
 
 ### The one edit that is not a new file, and why it is in scope
 
@@ -237,14 +270,108 @@ not available.
 
 ## What a second review found
 
-The change was read a second time, against the acceptance criteria rather than against
-the diff. Three things were found and fixed before commit.
+The change was read twice more: once against the acceptance criteria while it was being
+written, and once by an independent review after the first commit. Both passes are
+recorded, because what the second one found was more serious than what the first one
+did.
+
+### The first pass, before the first commit
 
 | Found | Why it mattered | What was done |
 |---|---|---|
 | The root `README.md` map still said "Six decisions accepted in part" | The architecture index gained a seventh partial acceptance in this change, and the two would have disagreed on the first page a reader reaches | The count was corrected, and a row for the surface document was added to the same table |
 | `docs/proof/README.md` listed the Serving row without this record | The evidence index is where a reader looks for what exists, and a record not indexed is a record nobody finds | The row now names this file |
 | The `requestCounting` block had been drafted with a malformed key containing a space | It parsed as JSON but was dead data no check would ever read, which is the quiet form of an unenforced rule | Removed before the file was written; the suite now asserts the block's contents |
+| Every reference to the private planning source carried a title-cased document name and a numbered section | The public repository's established convention is the lowercase, unnumbered phrase, and a section number publishes the internal structure of a document that is not public | Seven references in the data file and one in the ADR were rewritten to the existing convention |
+
+### The second pass, after the first commit
+
+**One finding was a genuine evidence-class violation, and it is the kind this record
+exists to prevent.**
+
+The `/v1/models` response fields `object` and `data` were marked **observed in the
+trial**. They were not. The trial did call that endpoint, and the record shows what came
+back — but what it shows is the runtime's own model metadata printed as text, not a list
+envelope. Neither `object` nor `data` appears in it for that endpoint.
+
+Worse, the check that was supposed to catch exactly this **passed them**, for two
+different accidental reasons:
+
+- `object` matched because the chat completion's own body carries that member. The
+  check had no notion of which endpoint a field belonged to.
+- `data` matched because the record contains the sentence "contains no host detail and
+  no personal data". A word in prose was being accepted as evidence that a response
+  carried a field.
+
+What was done, in three parts rather than one:
+
+| Part | Change |
+|---|---|
+| The claim | Both fields are now marked **not observed**, and the surface, the document, and the ADR each say why: the endpoint is evidenced, its response envelope is not |
+| The check | An observed field must now appear as a **JSON member key inside a fenced block** of the record, not as a substring of the whole file. `data` no longer passes, and a word in prose no longer counts as a captured field |
+| The guard | A test asserts the fenced-block extraction is non-empty and still finds a known member key, because a pattern that silently matches nothing turns every check built on it into a pass. It also fails deliberately if `data` ever does appear as a member key, so that the `/v1/models` rows are re-examined rather than left unobserved out of habit |
+
+A dedicated test now pins the finding: no field of the `models-list` endpoint may claim
+observation, and the endpoint itself carries `responseShapeObserved: false` with the
+reason beside it.
+
+The narrower fix — marking the two fields correctly and leaving the check alone — was
+available and was rejected. The check had already been widened once during this change,
+for a related over-attribution at the endpoint level, and widening it a second time
+without also making it sharper would have been the second repair of the same weakness.
+
+**Two private-information leaks, found only because the reviewer read the private
+source alongside the public diff.** Both are the kind that a diff-only reading cannot
+catch, and both are removed:
+
+| Leak | What was published | What was done |
+|---|---|---|
+| An eight-word span reproduced verbatim from the private planning source, in ADR 0010's Context, together with a phrase naming that source by a distinctive fragment of its title | The sentence disclosed both the wording and the existence of a tracked blocker register | Rewritten in this record's own voice. The requirement is still stated; the source's wording and title are not |
+| Two normative sentences of the integration specification reproduced near-verbatim in the surface data, differing only in spelling and casing | The repository's convention everywhere else is loose restatement in the record's own voice, never sentence-level reproduction | Restated in the record's own voice |
+
+A third, smaller one was removed with them. Three files deferred asynchronous
+inference by naming a later programme — a label that appears nowhere on `main` and
+that the sentence did not need. All three now read "V1 serves one synchronous request
+at a time and decides nothing about any other form", which says the same thing without
+disclosing a roadmap to say it.
+
+**Two capabilities were published with no decision behind them.** `/v1/models`
+declares four capabilities and ADR 0010 decided two: `deterministicSampling` and
+`multiModel` were named nowhere in the record that is supposed to have decided them.
+D7 now covers all three of the non-streaming capabilities, with what supports each and
+what it may not be read as, and a test requires every published capability to name its
+declaration point in the decision. **That test fails against the previous commit**,
+which is the property it exists for.
+
+The proof record had also claimed the suite checked capability names and error codes
+against the decision as well as the document. It did not — both checked the document
+alone. Rather than soften the claim, the checks were made true: codes and capabilities
+are now checked against both.
+
+Three further findings from the same pass, all fixed:
+
+| Found | What was wrong | What was done |
+|---|---|---|
+| ADR 0010's consequences said six unreachable codes were "two-thirds of the code list" | Six of thirteen is nearly half, not two-thirds. It was the one derived proportion in an otherwise exactly-counted record, and no test checked it | Rewritten as "six of the thirteen" and "nearly half" |
+| The test strategy's documentation layer gained `tests/serving` in its `paths` but not in its `commands` | The machine-readable record would have named five directories and four commands. Nothing cross-checks the two, so the drift would have been silent | The command was added |
+| One reference to the private specification survived with a section number, and the `prompt_tokens_details` note described a response field as though the request-refusal policy reached it | The first is the leak the first pass was meant to have finished; the second is a sentence that does not parse against D4 | Both rewritten |
+| ADR 0010's Context said "nine decisions are accepted" | The index records two accepted outright, six in part, and one with a recorded exception, in a register whose whole point is that distinction | Rewritten to the actual breakdown |
+| One test branch excused `/metrics` from the unobserved-counterpart check | The branch was unreachable, and had the flag ever been flipped it would have excused exactly the claim the check exists to refuse | The special case was removed and the check now holds in both directions |
+| Nine keys in the surface data were read by no check, including the values `seenAs` republishes to a reader | Dead data is how a value drifts from the record it came from without anyone noticing, and `seenAs` carries the only observed values this surface prints | Every one is now asserted, and the five republished values are checked against the record that observed them |
+
+**One gap is recorded rather than fixed.** Nothing cross-checks a test layer's `paths`
+against its `commands`, so the drift above could recur. Closing that means changing the
+suite that belongs to ADR 0005, which is outside this PR's boundary. It is reported here
+rather than fixed quietly or left unsaid.
+
+**What the second pass says about the first.** The first pass read the change against
+its acceptance criteria and found four presentational defects. The second read it
+against the private source and against the committed tree, and found a false evidence
+claim, two leaks, two undecided capabilities, and two checks that did not do what this
+record said they did. The difference is not diligence, it is standpoint: a reviewer who
+only reads the diff cannot catch a sentence that is wrong about something outside it.
+That is the argument for the second pass existing, and it is recorded because the first
+pass's own summary would otherwise read as though the change had been nearly clean.
 
 Two things were considered and deliberately **not** changed:
 
