@@ -80,12 +80,14 @@ class InferenceResult:
     Attributes:
         content: The generated content as a string.
         model: The model used for inference.
+        adapter_kind: Which adapter kind (e.g., "mock", "real") served this result.
         usage: Token usage for this request (may be None if token tracking is not a declared capability).
         finish_reason: Why generation stopped (e.g., "stop", "length").
     """
 
     content: str
     model: str
+    adapter_kind: str
     usage: TokenUsage | None = None
     finish_reason: str | None = None
 
@@ -94,6 +96,12 @@ class InferenceResult:
             raise InvalidValueError("content must not be None")
         if not self.model:
             raise InvalidValueError("model must not be empty")
+        if not self.adapter_kind:
+            raise InvalidValueError("adapter_kind must not be empty")
+        if not re.match(r"^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$", self.adapter_kind):
+            raise InvalidValueError(
+                f"adapter_kind must be lowercase kebab-case: {self.adapter_kind}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,3 +148,36 @@ class AdapterConfiguration:
             raise InvalidValueError("timeout_ms must be positive")
         if self.max_tokens is not None and self.max_tokens <= 0:
             raise InvalidValueError("max_tokens must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class TelemetryMapping:
+    """Mapping of adapter telemetry to platform metrics.
+
+    Maps adapter-reported metrics and errors to canonical telemetry identifiers.
+
+    Attributes:
+        request_counter_enabled: Whether the adapter tracks cumulative requests.
+        error_code: The canonical error code for error classification (if an error occurred).
+        token_usage: Optional token usage if the adapter reported it.
+    """
+
+    request_counter_enabled: bool = False
+    error_code: str | None = None
+    token_usage: TokenUsage | None = None
+
+    def __post_init__(self) -> None:
+        if self.error_code is not None and not self.error_code:
+            raise InvalidValueError("error_code must not be empty string")
+        allowed_error_codes = {
+            "model-not-ready",
+            "request-timeout",
+            "upstream-timeout",
+            "rate-limited",
+            "capability-unavailable",
+            "internal-error",
+        }
+        if self.error_code is not None and self.error_code not in allowed_error_codes:
+            raise InvalidValueError(
+                f"error_code must be one of {allowed_error_codes}, got {self.error_code}"
+            )

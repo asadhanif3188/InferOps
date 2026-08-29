@@ -36,7 +36,10 @@ CONTRACT_DIR = REPO_ROOT / "contracts" / "workload"
 VALID_EXAMPLES_DIR = CONTRACT_DIR / "examples" / "valid"
 INVALID_EXAMPLES_DIR = CONTRACT_DIR / "examples" / "invalid"
 EXPECTED_REJECTIONS_PATH = INVALID_EXAMPLES_DIR / "expected-rejections.json"
-MATRIX_PATH = CONTRACT_DIR / "compatibility" / "runtime-model-compatibility.v1alpha1.json"
+MATRIX_PATH = (
+    CONTRACT_DIR / "compatibility" / "runtime-model-compatibility.v1alpha1.json"
+)
+
 
 # Initialize the matrix loader (file I/O is done here, outside the domain module)
 def _load_matrix() -> dict[str, Any]:
@@ -76,7 +79,9 @@ def valid_document(request: pytest.FixtureRequest) -> dict[str, Any]:
     return load_document(request.param)
 
 
-@pytest.fixture(params=invalid_example_paths(), ids=example_ids(invalid_example_paths()))
+@pytest.fixture(
+    params=invalid_example_paths(), ids=example_ids(invalid_example_paths())
+)
 def invalid_document(request: pytest.FixtureRequest) -> tuple[Path, dict[str, Any]]:
     """An invalid fixture to test, with its path."""
     path = request.param
@@ -116,9 +121,9 @@ def test_fixture_appears_in_expected_rejections(
     """Every invalid fixture should appear in the expected rejections."""
     path, _ = invalid_document
     fixture_name = path.stem + ".yaml"
-    assert (
-        fixture_name in expected_rejections["fixtures"]
-    ), f"Fixture {fixture_name} not documented in expected-rejections.json"
+    assert fixture_name in expected_rejections["fixtures"], (
+        f"Fixture {fixture_name} not documented in expected-rejections.json"
+    )
 
 
 def test_semantic_invalid_fixtures_fail_with_correct_rule(
@@ -153,13 +158,12 @@ def test_semantic_invalid_fixtures_fail_with_correct_rule(
 
         # Find matching error
         matching_errors = [
-            e for e in errors
-            if e.rule_id == expected_rule and e.field == our_field
+            e for e in errors if e.rule_id == expected_rule and e.field == our_field
         ]
 
-        assert (
-            len(matching_errors) > 0
-        ), f"Expected error with rule_id={expected_rule} and field={our_field} for {fixture_name}, got errors: {[e.as_dict() for e in errors]}"
+        assert len(matching_errors) > 0, (
+            f"Expected error with rule_id={expected_rule} and field={our_field} for {fixture_name}, got errors: {[e.as_dict() for e in errors]}"
+        )
 
 
 def test_no_validation_error_contains_document_values(
@@ -188,9 +192,9 @@ def test_no_validation_error_contains_document_values(
         reason = error.reason.lower()
         for value in document_values:
             if len(str(value)) >= MINIMUM_INTERESTING_LENGTH:
-                assert (
-                    str(value).lower() not in reason
-                ), f"Error reason contains document value: {error.reason}"
+                assert str(value).lower() not in reason, (
+                    f"Error reason contains document value: {error.reason}"
+                )
 
 
 def test_validation_carries_request_context(
@@ -318,8 +322,6 @@ def test_runtime_model_incompatible_is_detected() -> None:
     assert len(compat_errors) > 0
 
 
-
-
 # --------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------
@@ -351,3 +353,75 @@ def _extract_all_string_values(obj: Any, values: set[str] | None = None) -> set[
         values.add(obj)
 
     return values
+
+
+# --------------------------------------------------------------------------
+# Credential detection agreement tests
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "credential_value,should_be_rejected",
+    [
+        # AWS access keys (AKIA prefix) - synthetic, not real
+        ("AKIA2EWNZL4O7UPQWFVK_test", True),
+        ("AKIA_synthetic_key_pattern", True),
+        # GitHub personal tokens (ghp_ prefix) - synthetic
+        ("ghp_test1234567890abcdefghijklmnopqr", True),
+        ("ghp_synthetic_pattern", True),
+        # GitLab tokens (glpat- prefix) - synthetic
+        ("glpat-synthetic-pattern-1234567890", True),
+        # Hugging Face tokens (hf_ prefix) - synthetic
+        ("hf_synthetic_token_pattern_0987654321", True),
+        # Slack tokens (xoxb- prefix) - synthetic pattern only
+        ("xoxb-synthetic-test-pattern", True),
+        # JWT/JWE tokens (eyJ prefix) - synthetic
+        ("eyJhbGciOiJ_synthetic_jwt_token", True),
+        # Bearer tokens - synthetic
+        ("bearer synthetic_abc123def456ghi789", True),
+        # Basic auth - synthetic
+        ("basic synthetic_user:password", True),
+        # PEM certificates/keys - structure only
+        ("-----BEGIN CERTIFICATE-----", True),
+        ("-----END RSA PRIVATE KEY-----", True),
+        # High-entropy tokens (mixed case + digits, 20+ chars) - synthetic
+        ("Zx4Kq9TbLm2Rd7Wf1Hs3Nv8Yc6Ej0Pa", True),
+        ("aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV", True),
+        # Legitimate references (should not be rejected)
+        ("kubernetes.io/my-secret", False),
+        ("secret-ref-name", False),
+        ("my_secret_name", False),
+        ("secret123", False),
+        ("vault:kv/data/my-secret", False),
+    ],
+)
+def test_credential_detection_consistency(
+    credential_value: str, should_be_rejected: bool
+) -> None:
+    """Verify credential detection is consistent for representative patterns."""
+    from inferops.domain.workload.validation import _looks_like_secret_value
+
+    result = _looks_like_secret_value(credential_value)
+    assert result == should_be_rejected, (
+        f"Credential detection inconsistent for {credential_value}: got {result}, expected {should_be_rejected}"
+    )
+
+
+def test_credential_detection_rejects_no_legitimate_secrets() -> None:
+    """Verify that legitimate secret locators are not falsely rejected."""
+    from inferops.domain.workload.validation import _looks_like_secret_value
+
+    legitimate_refs = [
+        "kubernetes.io/database-password",
+        "vault:kv/data/prod-api-key",
+        "secret-store:my-secret-v1",
+        "aws-secretsmanager:prod/api-key",
+        "hashicorp-vault:secret/data/api-key",
+        "my_app_secret",
+        "app-secret-1",
+        "secret_name_2024",
+    ]
+
+    for ref in legitimate_refs:
+        result = _looks_like_secret_value(ref)
+        assert result is False, f"Legitimate secret reference falsely rejected: {ref}"

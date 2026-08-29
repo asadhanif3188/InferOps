@@ -20,11 +20,11 @@ import pytest
 from inferops.domain import RequestContext
 from inferops.domain.serving import (
     AdapterConfiguration,
-    CapabilityUnavailableError,
     InferenceResult,
     ModelMetadata,
     RuntimeMetadata,
     ServingAdapterTestDouble,
+    TelemetryMapping,
     TokenUsage,
 )
 
@@ -163,6 +163,20 @@ class TestInference:
         assert isinstance(result, InferenceResult)
         assert isinstance(result.content, str)
         assert isinstance(result.model, str)
+        assert isinstance(result.adapter_kind, str)
+
+    async def test_infer_result_includes_adapter_kind(
+        self,
+        adapter: ServingAdapterTestDouble,
+        test_context: RequestContext,
+        test_config: AdapterConfiguration,
+    ) -> None:
+        """Verify inference result always includes adapter kind."""
+        await adapter.initialize(test_config, test_context)
+        result = await adapter.infer("test prompt", test_context)
+
+        assert result.adapter_kind is not None
+        assert result.adapter_kind == "mock"
 
     async def test_infer_result_respects_capability_declaration(
         self,
@@ -211,21 +225,29 @@ class TestInference:
             await adapter.infer("test prompt", test_context)
 
 
-class TestStreaming:
-    """Tests for streaming capability."""
+class TestStreamingCapability:
+    """Tests for streaming as a declared capability (not a contract method)."""
 
-    async def test_streaming_fails_when_not_supported(
+    async def test_streaming_declared_as_unsupported_capability(
         self,
         adapter: ServingAdapterTestDouble,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify streaming raises CapabilityUnavailableError when not supported."""
-        adapter.should_support_streaming = False
+        """Verify streaming is declared as a capability in V1."""
         await adapter.initialize(test_config, test_context)
+        caps = await adapter.get_capabilities()
+        cap_names = {c.name for c in caps}
 
-        with pytest.raises(CapabilityUnavailableError):
-            await adapter.stream("test prompt", test_context)
+        assert "streaming" in cap_names
+        streaming_cap = next(c for c in caps if c.name == "streaming")
+        assert streaming_cap.supported is False
+
+    async def test_no_stream_method_on_protocol(self) -> None:
+        """Verify no stream method exists on the adapter protocol."""
+        from inferops.domain.serving import ServingAdapter
+
+        assert not hasattr(ServingAdapter, "stream")
 
 
 class TestMetadata:
@@ -303,3 +325,108 @@ class TestErrorMapping:
         mapped = await adapter.map_error_to_canonical(error)
 
         assert isinstance(mapped, ModelNotReadyError)
+
+    async def test_map_error_sanitizes_sensitive_data(
+        self,
+        adapter: ServingAdapterTestDouble,
+    ) -> None:
+        """Verify error mapping does not leak sensitive data."""
+        sensitive_msg = "ghp_1234567890abcdefghijklmnopqrst"
+        error = ValueError(sensitive_msg)
+        mapped = await adapter.map_error_to_canonical(error)
+
+        assert sensitive_msg not in mapped.message
+        assert "test" not in str(error) or "internal-error" in mapped.message
+
+
+class TestContextPropagation:
+    """Tests for request context propagation."""
+
+    async def test_error_preserves_request_context(
+        self,
+        adapter: ServingAdapterTestDouble,
+        test_config: AdapterConfiguration,
+    ) -> None:
+        """Verify errors preserve request and correlation IDs."""
+        from inferops.domain.serving import ModelNotReadyError
+
+        adapter.model_ready = False
+        await adapter.initialize(test_config, RequestContext())
+        context_with_ids = RequestContext(
+            request_id="test-req-123",
+            correlation_id="test-corr-456",
+        )
+
+        with pytest.raises(ModelNotReadyError) as exc_info:
+            await adapter.infer("test", context_with_ids)
+
+        error = exc_info.value
+        assert error.context.request_id == "test-req-123"
+        assert error.context.correlation_id == "test-corr-456"
+
+
+class TestTelemetryMapping:
+    """Tests for telemetry mapping."""
+
+    async def test_get_telemetry_mapping_returns_mapping(
+        self,
+        adapter: ServingAdapterTestDouble,
+        test_context: RequestContext,
+        test_config: AdapterConfiguration,
+    ) -> None:
+        """Verify get_telemetry_mapping returns a TelemetryMapping."""
+        await adapter.initialize(test_config, test_context)
+        mapping = await adapter.get_telemetry_mapping()
+
+        assert isinstance(mapping, TelemetryMapping)
+        assert isinstance(mapping.request_counter_enabled, bool)
+
+    async def test_telemetry_mapping_uses_canonical_error_codes(
+        self,
+        adapter: ServingAdapterTestDouble,
+        test_context: RequestContext,
+        test_config: AdapterConfiguration,
+    ) -> None:
+        """Verify telemetry mapping uses only canonical error codes."""
+        await adapter.initialize(test_config, test_context)
+        mapping = await adapter.get_telemetry_mapping()
+
+        if mapping.error_code is not None:
+            allowed_codes = {
+                "model-not-ready",
+                "request-timeout",
+                "upstream-timeout",
+                "rate-limited",
+                "capability-unavailable",
+                "internal-error",
+            }
+            assert mapping.error_code in allowed_codes
+
+
+class TestAdapterKindValidation:
+    """Tests for adapter kind validation."""
+
+    def test_adapter_kind_must_be_lowercase_kebab_case(
+        self,
+        test_config: AdapterConfiguration,
+    ) -> None:
+        """Verify adapter_kind validation rejects invalid formats."""
+        from inferops.domain.serving import InvalidValueError
+
+        with pytest.raises(InvalidValueError):
+            InferenceResult(
+                content="test",
+                model="test-model",
+                adapter_kind="Mock",  # uppercase rejected
+            )
+
+    def test_adapter_kind_must_not_be_empty(self) -> None:
+        """Verify adapter_kind cannot be empty."""
+        from inferops.domain.serving import InvalidValueError
+
+        with pytest.raises(InvalidValueError):
+            InferenceResult(
+                content="test",
+                model="test-model",
+                adapter_kind="",  # empty rejected
+            )

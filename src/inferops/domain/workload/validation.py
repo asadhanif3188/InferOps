@@ -57,7 +57,11 @@ class CompatibilityMatrixLoader:
         or None if the extension is not recognized.
         """
         formats = self.matrix.get("artifactFormats", {})
+        if not isinstance(formats, dict):
+            return None
         for extension, format_name in formats.items():
+            if not isinstance(extension, str) or not isinstance(format_name, str):
+                continue
             if filename.endswith(extension):
                 return format_name
         return None
@@ -68,8 +72,15 @@ class CompatibilityMatrixLoader:
         Returns the runtime dict or None if not found.
         """
         runtimes = self.matrix.get("runtimes", [])
+        if not isinstance(runtimes, list):
+            return None
         for runtime in runtimes:
-            if repo in runtime.get("imageRepositories", []):
+            if not isinstance(runtime, dict):
+                continue
+            image_repos = runtime.get("imageRepositories", [])
+            if not isinstance(image_repos, list):
+                continue
+            if repo in image_repos:
                 return runtime
         return None
 
@@ -85,7 +96,12 @@ class CompatibilityMatrixLoader:
         runtime = self.get_runtime_by_repository(image_repo)
         if runtime is None:
             return None
-        return runtime.get("acceptedArtifactFormats", [])
+        formats = runtime.get("acceptedArtifactFormats", [])
+        if not isinstance(formats, list):
+            return None
+        if not all(isinstance(f, str) for f in formats):
+            return None
+        return formats
 
 
 # Global singleton instance (set by the caller, typically a test or tool)
@@ -203,7 +219,9 @@ def validate_workload_contract(
 
         # Rule 6: model-artifact-format-unknown
         artifact_file = str(contract.spec.synchronous_llm.model_artifact.file)
-        artifact_format = matrix_loader.get_artifact_format_from_extension(artifact_file)
+        artifact_format = matrix_loader.get_artifact_format_from_extension(
+            artifact_file
+        )
         if artifact_format is None:
             errors.append(
                 WorkloadValidationError(
@@ -216,8 +234,13 @@ def validate_workload_contract(
 
         # Rule 7: runtime-model-incompatible
         # Only check this if both the runtime and format are recognized
-        if matrix_loader.is_runtime_registered(runtime_repo) and artifact_format is not None:
-            accepted_formats = matrix_loader.get_runtime_accepted_formats(runtime_repo) or []
+        if (
+            matrix_loader.is_runtime_registered(runtime_repo)
+            and artifact_format is not None
+        ):
+            accepted_formats = (
+                matrix_loader.get_runtime_accepted_formats(runtime_repo) or []
+            )
             if artifact_format not in accepted_formats:
                 errors.append(
                     WorkloadValidationError(
@@ -227,7 +250,6 @@ def validate_workload_contract(
                         context=context,
                     )
                 )
-
 
     return errors
 
@@ -240,9 +262,10 @@ def _looks_like_secret_value(locator: str) -> bool:
     credentials.
 
     Patterns checked:
-    - "bearer " prefix (JWT or similar auth token)
-    - "basic " prefix (HTTP Basic auth)
+    - "bearer ", "basic " prefixes (auth schemes)
+    - "ghp_", "glpat-", "hf_", "xoxb-" prefixes (platform tokens)
     - AWS access key ID (starts with AKIA, followed by base32 characters)
+    - JWT/JWE tokens (starts with "eyJ")
     - All-hex strings of certain lengths (resembles digest or hash)
     - High-entropy segments with mixed case and digits (resembles opaque tokens)
     - "-----BEGIN" or "-----END" (PEM certificate or key)
@@ -255,6 +278,27 @@ def _looks_like_secret_value(locator: str) -> bool:
 
     # Check for PEM headers (certificates, keys)
     if "-----begin" in lower or "-----end" in lower:
+        return True
+
+    # Check for known token prefixes (case-sensitive or case-insensitive)
+    # GitHub personal tokens
+    if locator.startswith("ghp_"):
+        return True
+
+    # GitLab tokens
+    if locator.startswith("glpat-"):
+        return True
+
+    # Hugging Face tokens
+    if locator.startswith("hf_"):
+        return True
+
+    # Slack tokens
+    if locator.startswith("xoxb-"):
+        return True
+
+    # JWT/JWE tokens (base64url encoded, start with eyJ)
+    if locator.startswith("eyJ"):
         return True
 
     # Check for AWS access key ID pattern (AKIA... followed by base32-like characters)

@@ -43,6 +43,7 @@ from .values import (
     InferenceResult,
     ModelMetadata,
     RuntimeMetadata,
+    TelemetryMapping,
 )
 
 
@@ -52,15 +53,20 @@ class ServingAdapter(Protocol):
     An adapter is responsible for:
     - Validating configuration at initialization
     - Reporting capabilities and readiness
-    - Executing inference requests (synchronous and streaming)
+    - Executing synchronous inference requests (streaming is a capability, not a contract method)
     - Mapping runtime errors to canonical codes
     - Translating runtime metadata to platform types
+    - Providing telemetry mapping for metrics and errors
     - Graceful shutdown
 
-    **Context propagation:** Methods that execute work (initialize, infer, stream,
-    shutdown) accept RequestContext for correlation and observability. Query methods
-    (get_capabilities, get_model_metadata, get_runtime_metadata, map_error_to_canonical)
-    do not require context since they don't execute user requests.
+    **Synchronous only in V1:** Streaming is a declared capability, and this interface
+    contains no streaming method. Any call to a nonexistent streaming operation must
+    fail explicitly with CapabilityUnavailableError. See ADR-0010.
+
+    **Context propagation:** Methods that execute work (initialize, infer, shutdown)
+    accept RequestContext for correlation and observability. Query methods
+    (get_capabilities, get_model_metadata, get_runtime_metadata, map_error_to_canonical,
+    get_telemetry_mapping) do not require context since they don't execute user requests.
 
     Adapters MUST NOT leak runtime-specific types or configuration into this
     interface. All communication uses domain value objects.
@@ -147,28 +153,6 @@ class ServingAdapter(Protocol):
         """
         ...
 
-    async def stream(
-        self,
-        prompt: str,
-        context: RequestContext,
-    ) -> None:
-        """Stream inference results (future capability, deferred implementation).
-
-        This method is reserved for future streaming support. Adapters that do
-        not support streaming MUST raise `CapabilityUnavailableError`.
-
-        Args:
-            prompt: The input prompt as a string.
-            context: Request context with correlation IDs.
-
-        Raises:
-            CapabilityUnavailableError: If streaming is not supported.
-            ModelNotReadyError: If the model is not ready.
-            RequestTimeoutError: If the request exceeds the configured timeout.
-            InternalError: For unexpected errors in the adapter or runtime.
-        """
-        ...
-
     async def get_model_metadata(self) -> ModelMetadata:
         """Get metadata about the loaded model.
 
@@ -230,5 +214,20 @@ class ServingAdapter(Protocol):
 
         Raises:
             The error unchanged if it is already canonical.
+        """
+        ...
+
+    async def get_telemetry_mapping(self) -> TelemetryMapping:
+        """Get telemetry mapping for adapter metrics and errors.
+
+        Provides the canonical mapping between adapter state and platform telemetry.
+        Includes whether request counting is enabled and which error code applies
+        if the adapter is in an error state.
+
+        Returns:
+            TelemetryMapping describing which metrics are available and active.
+
+        Raises:
+            InternalError: If telemetry mapping cannot be determined.
         """
         ...

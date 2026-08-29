@@ -8,7 +8,8 @@ real) must implement the ServingAdapter protocol defined here.
 
 - :class:`ServingAdapter`: The protocol all adapters must implement
 - :class:`AdapterConfiguration`: Configuration for adapter initialization
-- :class:`InferenceResult`: Result of a successful inference
+- :class:`InferenceResult`: Result of a successful inference (includes adapter_kind)
+- :class:`TelemetryMapping`: Telemetry mapping for metrics and errors
 - :class:`ModelMetadata`, :class:`RuntimeMetadata`: Runtime state
 - Canonical error types: :class:`ModelNotReadyError`, :class:`RequestTimeoutError`, etc.
 
@@ -17,6 +18,7 @@ real) must implement the ServingAdapter protocol defined here.
 - :class:`ServingAdapterTestDouble`: A minimal in-memory implementation
 - Conformance tests in tests module
 """
+
 from .contract import ServingAdapter
 from .errors import (
     CanonicalError,
@@ -41,6 +43,7 @@ from .values import (
     InferenceResult,
     ModelMetadata,
     RuntimeMetadata,
+    TelemetryMapping,
     TokenUsage,
 )
 
@@ -63,6 +66,7 @@ __all__ = [
     "ServingAdapter",
     "ServingAdapterError",
     "ServingAdapterTestDouble",
+    "TelemetryMapping",
     "TokenUsage",
     "UpstreamTimeoutError",
 ]

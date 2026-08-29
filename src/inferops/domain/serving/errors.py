@@ -99,7 +99,10 @@ class ModelNotReadyError(CanonicalError):
     """The model is not yet ready to serve requests."""
 
     def __init__(
-        self, message: str = "model-not-ready", *, context: RequestContext = NO_REQUEST_CONTEXT
+        self,
+        message: str = "model-not-ready",
+        *,
+        context: RequestContext = NO_REQUEST_CONTEXT,
     ) -> None:
         super().__init__("model-not-ready", message, context=context)
 
@@ -108,7 +111,10 @@ class RequestTimeoutError(CanonicalError):
     """The request did not complete within the configured timeout."""
 
     def __init__(
-        self, message: str = "request-timeout", *, context: RequestContext = NO_REQUEST_CONTEXT
+        self,
+        message: str = "request-timeout",
+        *,
+        context: RequestContext = NO_REQUEST_CONTEXT,
     ) -> None:
         super().__init__("request-timeout", message, context=context)
 
@@ -117,7 +123,10 @@ class UpstreamTimeoutError(CanonicalError):
     """A timeout occurred in an upstream component."""
 
     def __init__(
-        self, message: str = "upstream-timeout", *, context: RequestContext = NO_REQUEST_CONTEXT
+        self,
+        message: str = "upstream-timeout",
+        *,
+        context: RequestContext = NO_REQUEST_CONTEXT,
     ) -> None:
         super().__init__("upstream-timeout", message, context=context)
 
@@ -126,7 +135,10 @@ class RateLimitedError(CanonicalError):
     """The adapter or runtime rate-limited this request."""
 
     def __init__(
-        self, message: str = "rate-limited", *, context: RequestContext = NO_REQUEST_CONTEXT
+        self,
+        message: str = "rate-limited",
+        *,
+        context: RequestContext = NO_REQUEST_CONTEXT,
     ) -> None:
         super().__init__("rate-limited", message, context=context)
 
@@ -147,6 +159,9 @@ class InternalError(CanonicalError):
     """An unexpected error occurred in the adapter or runtime."""
 
     def __init__(
-        self, message: str = "internal-error", *, context: RequestContext = NO_REQUEST_CONTEXT
+        self,
+        message: str = "internal-error",
+        *,
+        context: RequestContext = NO_REQUEST_CONTEXT,
     ) -> None:
         super().__init__("internal-error", message, context=context)
