@@ -92,7 +92,7 @@ class, the strongest thing its result may be used to say.
 | `architecture-inventory` | `default-checks` | `architecture` | local-static | C0 | implemented |
 | `documentation` | `default-checks` | `docs` | local-static | C0 | implemented |
 | `security-scan` | `default-checks` | none | local-static | C0 | planned |
-| `adapter` | `default-checks` | `adapter` | mock | C1 | planned |
+| `adapter` | `default-checks` | `adapter` | mock | C1 | implemented |
 | `mock-integration` | `default-checks` | `mockintegration` | mock | C1 | planned |
 | `kubernetes-smoke` | `cluster-smoke` | `cluster` | local-real-cpu | C2 | implemented |
 | `real-runtime-smoke` | `real-runtime` | `realruntime` | local-real-cpu | C2 | implemented |
@@ -104,15 +104,21 @@ support a C2 claim no matter how thorough it is, and
 [the certification document](certification.md) argues why that is a property of what
 the layer runs against rather than of how well it is written.
 
-Six of eleven layers exist. Registering the other five now is deliberate: a marker
+Seven of eleven layers exist. Registering the other four now is deliberate: a marker
 that exists is a marker the first test of that kind gets written under, and a marker
 that does not exist is a test that ends up in whichever suite was already open.
 
-`unit` is the one that has just changed. It was registered and empty from
-`V1-S0-006` until `V1-S1-001` wrote the first domain code for it to exercise, and
-the marker being there already is the reason those tests are in
-[`tests/domain/`](../../tests/domain/) under `unit` rather than appended to the
-contract suite.
+`adapter` is the one that has just changed. It was registered and empty from
+`V1-S0-006` until `V1-S1-003` wrote the deterministic mock adapter for it to
+exercise, and the marker being there already is the reason those tests are in
+[`tests/adapters/`](../../tests/adapters/) under `adapter` rather than appended to
+the domain suite — which matters more here than it did for `unit`, because the two
+layers carry different evidence classes and a mock result filed under a
+`local-static` layer is a misfiled result.
+
+`unit` made the same move one story earlier: registered and empty from `V1-S0-006`
+until `V1-S1-001` wrote the first domain code, and now selecting
+[`tests/domain/`](../../tests/domain/).
 
 ### What each layer is for
 
@@ -158,7 +164,11 @@ data is not permitted to say otherwise.
 `adapter` proves each adapter implements the interface the domain owns, including the
 mock adapter's obligation to identify itself as a mock. Its ceiling is C1 even for the
 real adapter, because what it exercises is the shape of the call rather than the thing
-on the other end of it.
+on the other end of it. It runs today, over
+[the deterministic mock adapter](../serving/mock-serving-adapter.md): the shared
+conformance suite, determinism, injected canonical failures, and the safeguards that
+stop a mock transcript naming a real model. The adapter for the selected runtime does
+not exist, so nothing here has yet been run against one.
 
 `mock-integration` runs the API end to end against the mock adapter: correlation
 propagation, canonical errors, redaction, the not-ready path. This is the layer most
@@ -254,7 +264,7 @@ certified on the strength of a layer nobody has written.
   and no automated lane. Every lane is run by hand today. The strategy is written so
   that adding CI is a matter of pointing a workflow at a marker expression that
   already exists.
-- **It does not certify anything by existing.** Five of eleven layers have no code.
+- **It does not certify anything by existing.** Four of eleven layers have no code.
   The suite that checks this document cannot tell an honestly planned layer from one
   that will never be written.
 - **It does not select a task runner, a packaging tool, or a linter.** Those remain

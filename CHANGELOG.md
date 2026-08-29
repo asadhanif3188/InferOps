@@ -10,6 +10,34 @@ once versioned releases begin.
 
 ### Added
 
+- **A deterministic mock serving adapter, and the safeguards that stop it being
+  read as a real one.** [`src/inferops/adapters/`](src/inferops/adapters/) holds the
+  first implementation of the serving interface the domain owns. It replays
+  [one committed response fixture](contracts/workload/fixtures/mock-llm-chat-completion.response.json),
+  requires no model file, credential, container engine, cluster, or network, and
+  produces the same answer every time. Each canonical failure a caller has to handle
+  — `model-not-ready`, `request-timeout`, `upstream-timeout`, `rate-limited`,
+  `internal-error` — is reachable by construction, and the scenario's name *is* the
+  code it produces, so the two cannot drift apart. What it refuses to do is the other
+  half: it declines a model identity that is not mock-labelled, declares real model
+  inference and token counting unsupported rather than inventing either, reports no
+  model revision, and carries its own `mock` label in every result, in its runtime
+  identity, in its telemetry attributes, and in a self-describing block that matches
+  the one the fixture already carries. Described in
+  [the mock serving adapter document](docs/serving/mock-serving-adapter.md).
+- **The `adapter` test layer, registered and empty since `V1-S0-006`, now runs.**
+  Seven of eleven layers exist. Its 76 checks live in
+  [`tests/adapters/`](tests/adapters/) under the `adapter` marker rather than beside
+  the domain suite, because the two layers carry different evidence classes and a
+  mock result filed under a `local-static` layer is a misfiled result. Its ceiling is
+  `C1` and the suite asserts that ceiling against the committed strategy data rather
+  than restating it, so making the mock more faithful still raises nothing.
+- **A conformance suite that is inherited rather than copied.** The obligations the
+  `ServingAdapter` protocol publishes are written once in
+  `tests/support/serving_conformance.py`; the in-memory double and the mock adapter
+  each subclass it and supply an adapter. A new obligation is added in one place and
+  every adapter is held to it in the same commit, which is what "reusable harness"
+  had to mean to be worth the name.
 - **The first InferOps-owned code that is part of the distribution**, in
   [`src/inferops/domain/workload/`](src/inferops/domain/workload/) and described in
   [the workload domain model](docs/domain/workload-domain-model.md). A

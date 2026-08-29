@@ -1,9 +1,15 @@
 """The InferOps distribution root.
 
-This package holds the platform domain and nothing else. The packaging layout it
-sits in — the src layout, the build backend, and the wheel this repository
-produces — was decided and executed in ADR 0009 while this directory was still
-empty; :mod:`inferops.domain` is what it was emptied for.
+This package holds the platform domain and the adapters that implement the
+interface it owns. The packaging layout it sits in — the src layout, the build
+backend, and the wheel this repository produces — was decided and executed in
+ADR 0009 while this directory was still empty; :mod:`inferops.domain` is what it
+was emptied for, and :mod:`inferops.adapters` arrived with the first
+implementation of the domain's serving interface.
+
+The direction of that dependency is the architecture's, not a convenience: the
+domain depends on no adapter, an adapter depends on the domain, and the
+composition point selects one at startup.
 
 The dependency rule from ADR 0004 applies to everything under here: no Kubernetes
 client, no Helm library, no serving-runtime SDK, no HTTP framework. The

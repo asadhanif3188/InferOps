@@ -334,6 +334,41 @@ the canonical error codes and rule identifiers a refusal carries. The domain rai
 typed exceptions with a field location and no canonical code, and
 [the domain document](docs/domain/workload-domain-model.md) says where the line is.
 
+### Serving adapters
+
+Changes under [`src/inferops/adapters/`](src/inferops/adapters/) or
+[`tests/adapters/`](tests/adapters/) must pass the adapter suite, the domain
+suite, and the architecture suite:
+
+```sh
+uv run --locked python -m pytest tests/adapters -q
+uv run --locked python -m pytest tests/domain -q
+uv run --locked python -m pytest tests/architecture -q
+uv run --locked python -m mypy
+```
+
+The adapter suite reads only files in this repository and needs `pytest` alone. The
+conformance half lives in `tests/support/serving_conformance.py` and is **inherited,
+not copied**: it asserts only what the `ServingAdapter` protocol publishes, so the
+same assertions run against the in-memory double under `unit` and against the
+deterministic mock under `adapter`. A new adapter subclasses it and supplies an
+adapter and a configuration; a new obligation is added there once, and every adapter
+is held to it immediately.
+
+The rest of the suite is what an adapter owes beyond the protocol, and for
+[the mock](docs/serving/mock-serving-adapter.md) that is mostly the mock and real
+boundary made mechanical: the response is the committed fixture, the runtime identity
+is the row the compatibility matrix publishes, the identity block carries the same
+notice the fixture carries, a non-mock model identity is refused at configuration
+time, token counting is declared unsupported rather than invented, and the declared
+evidence class is checked against the ceiling the committed strategy gives it.
+
+**An adapter suite proves the shape of the call, not the thing on the other end of
+it.** Its ceiling is `C1` for the real adapter too. A change that would let a mock
+result support a real-serving claim is a change to
+[the mock and real boundary](docs/serving/mock-and-real-boundary.md), which is an
+accepted rule, and not a change to a test.
+
 ### Test lanes and markers
 
 The pytest configuration lives in [`pytest.ini`](pytest.ini) and stays there.
@@ -359,12 +394,13 @@ python -m pytest -m contract -q
 python -m pytest -m realruntime -q
 ```
 
-`adapter`, `mockintegration`, `cluster`, `realruntime`, `failure`, and `load`
-currently select nothing, because the layers behind them have no code yet. That is
-the intended state: the marker exists so that the first test of its kind is written
-under it rather than into whichever suite was already open. `unit` was in that list
-until `V1-S1-001` wrote the first domain code, and it now selects
-[`tests/domain/`](tests/domain/).
+`mockintegration`, `cluster`, `realruntime`, `failure`, and `load` currently select
+nothing, because the layers behind them have no code yet. That is the intended
+state: the marker exists so that the first test of its kind is written under it
+rather than into whichever suite was already open. `unit` was in that list until
+`V1-S1-001` wrote the first domain code and now selects
+[`tests/domain/`](tests/domain/); `adapter` was in it until `V1-S1-003` wrote the
+deterministic mock adapter and now selects [`tests/adapters/`](tests/adapters/).
 
 A new test module belongs to exactly one layer and declares that layer's marker at
 module level:
