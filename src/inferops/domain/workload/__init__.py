@@ -45,8 +45,15 @@ from .errors import (
     MalformedWorkloadContractError,
     UnsupportedContractVersionError,
     WorkloadContractError,
+    WorkloadValidationError,
 )
 from .parsing import parse_workload_contract
+from .validation import (
+    CompatibilityMatrixLoader,
+    get_matrix_loader,
+    set_matrix_loader,
+    validate_workload_contract,
+)
 from .values import (
     AcceleratorType,
     AnnotationKey,
@@ -94,6 +101,7 @@ __all__ = [
     "ArtifactRepository",
     "Attribution",
     "CapabilityDependency",
+    "CompatibilityMatrixLoader",
     "ConstrainedString",
     "ContractVersion",
     "DataClassification",
@@ -134,7 +142,11 @@ __all__ = [
     "WorkloadContractError",
     "WorkloadMetadata",
     "WorkloadSpec",
+    "WorkloadValidationError",
     "WorkloadVersion",
+    "get_matrix_loader",
     "is_supported_contract_version",
     "parse_workload_contract",
+    "set_matrix_loader",
+    "validate_workload_contract",
 ]

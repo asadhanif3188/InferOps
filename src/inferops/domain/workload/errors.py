@@ -81,3 +81,34 @@ class UnsupportedContractVersionError(WorkloadContractError):
 
 class MalformedWorkloadContractError(WorkloadContractError):
     """The document declares a supported version and does not satisfy it."""
+
+
+class WorkloadValidationError(WorkloadContractError):
+    """A parsed workload contract fails a semantic validation rule.
+
+    Carries the field path, the rule identifier (not just a reason), and the
+    request-scoped identifiers from context. The reason describes the constraint
+    in the schema's own published vocabulary, never a value read from the document.
+
+    A semantic rule is one that compares two fields, consults a compatibility
+    matrix, or judges whether a value is plausible. The parsing layer enforces
+    single-field structural constraints; this one applies the cross-field and
+    matrix rules that the contract publishes under rule identifiers.
+    """
+
+    def __init__(
+        self,
+        field: str,
+        rule_id: str,
+        reason: str,
+        *,
+        context: RequestContext = NO_REQUEST_CONTEXT,
+    ) -> None:
+        super().__init__(field, reason, context=context)
+        self.rule_id = rule_id
+
+    def as_dict(self) -> dict[str, object]:
+        """A safe, structured form: field, rule_id, reason, and any identifiers."""
+        base = super().as_dict()
+        base["ruleId"] = self.rule_id
+        return base
