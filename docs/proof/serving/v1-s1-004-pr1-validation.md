@@ -48,7 +48,7 @@ capable host and a real model, and both stay `planned`.
 | Repository revision at branch point | `0dbfea3` |
 | Branch | `feat/v1-s1-004-real-runtime-configuration` |
 | Distribution code added | `src/inferops/adapters/llama_cpp/` |
-| Tests added | `tests/adapters/test_llama_server_*.py` |
+| Tests added | `tests/adapters/test_llama_server_*.py` (six modules) |
 | Records the pins were copied from | [ADR 0002](../../architecture/decisions/ADR-0002-model-and-serving-runtime.md), [the feasibility record](v1-s0-003-pr2-runtime-feasibility.md), [the compatibility matrix](../../../contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json) |
 | Workload fixture read | [`synchronous-llm-local.yaml`](../../../contracts/workload/examples/valid/synchronous-llm-local.yaml) |
 | Model artifact | none. No weight file was downloaded, mounted, hashed, or read |
@@ -97,16 +97,39 @@ read from a committed file — and `ruff format` reformatted four files. Both we
 corrected before the results below. The sequence is recorded because a record that
 lists only the passing run describes a result rather than a method.
 
+### What review changed
+
+The change was reviewed twice before merge, and the findings are recorded here
+rather than smoothed away, because a record that shows only the corrected state
+hides how much of it review produced.
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| Five `# type: ignore` comments were introduced, the only ones in the repository, breaching the rule stated in CONTRIBUTING that there are none | must fix | All five removed. Two immutability checks now use the `setattr`-with-a-bound-name idiom the domain suite already uses for exactly this reason; three came from a `**overrides` test-builder that is now explicit typed keyword parameters |
+| An empty query or fragment (`http://host?`) passed endpoint validation and then captured the appended runtime path, so a readiness probe would have asked for `/` | must fix | `?`, `#`, and `\` are refused anywhere in an endpoint, and the URL is rebuilt from the parsed scheme and authority rather than trimmed from the supplied string |
+| A backslash survived inside the authority, where `urlsplit` and an HTTP client disagree about its meaning | must fix | Refused with the above |
+| `verify_workload`'s serving-capability and missing-profile-block branches had no test, while the document claimed both were checked | should fix | Both branches now have a test. Neither is dead code: the domain parser deliberately leaves cross-field rules to the pipeline, so such documents do parse |
+| The mock prefix and the four capability names are duplicated across two adapter packages with nothing comparing the copies | should fix | `tests/adapters/test_llama_server_agreement.py` compares them. Promoting them into the domain was rejected as out of this PR's boundary and is recorded under deferred work |
+| `total_slots` accepted a JSON `true`, because `bool` is a subclass of `int` | nit | Refused, like every other type mismatch in that parser |
+| The mock-prefix guard was case-sensitive | nit | Made case-insensitive on this side only. The mock *requires* the prefix, so strict is safe there; this side *refuses* it, so permissive is safe here |
+| Two field-name spellings appear in the package's errors | nit | Left as they are and explained in the module docstring: a field name in an error is the name its owner publishes |
+| The package name matches the third-party `llama-cpp-python` import name | nit | Left as it is and noted in the package docstring |
+
+The two endpoint findings were confirmed by executing them rather than by reading
+the code: `http://host?` and `http://host\` were constructed, accepted, and shown
+to produce `http://host?/health` and `http://host\/health`. Each is now reproduced
+by a test that fails against the previous behaviour.
+
 ## Results
 
 | Check | Result |
 |---|---|
 | `ruff check .` | All checks passed |
-| `ruff format --check .` | 134 files already formatted |
-| `python -m mypy` | Success: no issues found in 55 source files |
-| `python -m pytest -q` | 3245 passed, 25 skipped |
-| `python -m pytest -m adapter -q` | 273 passed, 2997 deselected |
-| `python -m pytest tests/adapters -q` | 273 passed |
+| `ruff format --check .` | 135 files already formatted |
+| `python -m mypy` | Success: no issues found in 56 source files |
+| `python -m pytest -q` | 3275 passed, 25 skipped |
+| `python -m pytest -m adapter -q` | 303 passed, 2997 deselected |
+| `python -m pytest tests/adapters -q` | 303 passed |
 | `python -m pytest tests/domain -q` | 398 passed, 18 skipped |
 | `python -m pytest tests/architecture -q` | 408 passed |
 | `python -m pytest tests/testing -q` | 498 passed |
@@ -115,7 +138,7 @@ lists only the passing run describes a result rather than a method.
 | `python -m pytest tests/serving -q` | 184 passed |
 | `git diff --check` | no output |
 
-The adapter layer grew from 76 checks to 273. The architecture suite grew from 394
+The adapter layer grew from 76 checks to 303. The architecture suite grew from 394
 to 408 because it parametrises over every module under `src/inferops/`, and this
 change added seven.
 
@@ -158,6 +181,8 @@ runtime gets waited on forever.
 | Safeguard | How it is enforced |
 |---|---|
 | An endpoint cannot carry a credential | Userinfo in the URL is refused at construction, and the refusal repeats no part of the value |
+| An endpoint cannot capture the path appended to it | An empty query or fragment is refused, and the URL is rebuilt from the parsed scheme and authority rather than trimmed from the supplied string |
+| An endpoint cannot mean two things to two parsers | A backslash anywhere in it is refused |
 | A refusal cannot leak a document's contents | Asserted directly against a secret-shaped endpoint and against a workload document field |
 | A real path cannot serve a mock identity | Both the runtime alias and the platform model identity are refused when mock-labelled |
 | A number ADR 0002 left undecided cannot acquire a default | Omitting the context size, the thread count, or the startup budget is a refusal naming the variable |
@@ -167,6 +192,8 @@ runtime gets waited on forever.
 | A container path cannot reach a record | `/props` is reduced to the weight file's own name and the directory is discarded |
 | A supported capability cannot be declared without a record | Every supported entry cites a committed record and every unsupported one cites none |
 | A document naming different bytes cannot be served | Six fields of the committed example are mutated one at a time and each refusal names its own field path |
+| A document naming the mock capability or omitting its profile block cannot be served | Both branches are exercised; the domain parser accepts such documents, so the adapter is what refuses them |
+| The mock and real refusals cannot drift apart | The prefix and the four capability names are compared across both adapter packages |
 
 ### Isolation
 
@@ -225,6 +252,12 @@ parsers read are supplied by their caller.
 - Confirming the `/props` and `/v1/models` response shapes against a live runtime.
 - A serving deployment that sets these environment variables, and the manifest
   that carries the argument list this package generates.
+- Whether the mock prefix and the four capability names should be promoted into
+  the domain's published vocabulary beside `ACCEPTED_ADAPTER_KINDS`, instead of
+  being held twice and compared. Promoting them would change what the domain
+  publishes and would edit the mock adapter, both outside this PR's boundary, so
+  the copies are compared for now and the question is left to the change that
+  adds the real adapter.
 - Whether the `adapter` test layer should distinguish `local-static` checks from
   `mock` ones. It carries one evidence class today; this change added checks that
   are weaker than that class, and the question is worth answering when the real

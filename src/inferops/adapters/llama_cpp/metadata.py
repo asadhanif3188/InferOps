@@ -118,7 +118,12 @@ def parse_props_payload(payload: object) -> ObservedRuntimeIdentity:
     body = _as_mapping(payload, "properties")
     model_path = _optional_str(body, PROPS_MODEL_PATH_KEY, "properties")
     total_slots = body.get(PROPS_TOTAL_SLOTS_KEY)
-    if total_slots is not None and not isinstance(total_slots, int):
+    # `bool` is a subclass of `int`, so the second half of this test is what stops
+    # a JSON `true` being read as a slot count of one. Every other type mismatch
+    # in this parser is refused rather than coerced, and this one is no different.
+    if total_slots is not None and (
+        not isinstance(total_slots, int) or isinstance(total_slots, bool)
+    ):
         raise InternalError(
             "the runtime's properties response has a malformed slot count"
         )

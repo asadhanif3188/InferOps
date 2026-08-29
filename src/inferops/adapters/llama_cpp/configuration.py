@@ -26,6 +26,15 @@ the request identifiers the caller supplied. **No refusal repeats a value read
 from the document**, which is the same rule the workload validator holds itself
 to and the reason a digest mismatch names the field rather than printing both
 digests.
+
+Two spellings of a field name appear across this package, and the split is not an
+oversight. **A field name in an error is the name its owner publishes**, not the
+name this module would prefer: a workload document is named in the contract's
+camelCase (``spec.synchronousLlm.modelArtifact.file``), a platform configuration
+in the domain's own attribute names (``model_identifier``, ``max_tokens``), and a
+runtime setting in the camelCase
+:mod:`~inferops.adapters.llama_cpp.settings` publishes (``modelPath``). A reader
+given a field name can then look it up where it is defined.
 """
 
 from __future__ import annotations
@@ -115,7 +124,7 @@ def translate(
             the configured generation bound exceeds the context the runtime was
             given, or if the weight file the settings name is not the pinned one.
     """
-    if adapter_configuration.model_identifier.startswith(MOCK_IDENTITY_PREFIX):
+    if adapter_configuration.model_identifier.lower().startswith(MOCK_IDENTITY_PREFIX):
         raise InvalidAdapterConfigError(
             "model_identifier",
             "a real serving adapter refuses a mock-labelled model identity, "

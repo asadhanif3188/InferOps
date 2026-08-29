@@ -103,10 +103,28 @@ ACCEPTED_ENDPOINT_SCHEMES = frozenset({"http", "https"})
 
 #: The prefix that marks a mock identity. A real runtime's alias may not carry
 #: it, which is the mirror of the mock adapter refusing a real model identity.
+#: The two adapters hold this string separately because neither may import the
+#: other, and ``tests/adapters/test_llama_server_agreement.py`` compares the two
+#: copies so that renaming one and not the other is a failing assertion rather
+#: than a silently broken safeguard.
+#:
+#: The comparison here is case-insensitive while the mock's is not, and the
+#: asymmetry is deliberate: the mock *requires* the prefix, so a strict match is
+#: the safe direction there, and this one *refuses* it, so the permissive match
+#: is the safe direction here.
 MOCK_IDENTITY_PREFIX = "mock-"
 
 #: The suffix of the only artifact format this runtime loads.
 GGUF_SUFFIX = ".gguf"
+
+#: Characters an endpoint may not contain at all. ``?`` and ``#`` open a query
+#: and a fragment, and an *empty* one of either passes every structural check
+#: while still swallowing the path this adapter appends — ``http://host?`` plus
+#: ``/health`` is a request for ``/`` with ``/health`` as its query string. A
+#: backslash is refused because ``urlsplit`` leaves it inside the authority
+#: while some HTTP clients read it as a separator, and a value two parsers
+#: disagree about is a value neither should be trusted on.
+FORBIDDEN_ENDPOINT_CHARACTERS = ("?", "#", "\\")
 
 #: Values accepted for the optional boolean variable, lowercased.
 TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
@@ -167,8 +185,19 @@ class LlamaServerSettings:
                 "metricsEnabled",
                 "the runtime metrics path is unavailable when metrics are disabled",
             )
-        base = self.endpoint[:-1] if self.endpoint.endswith("/") else self.endpoint
-        return f"{base}{path}"
+        return f"{self.base_url}{path}"
+
+    @property
+    def base_url(self) -> str:
+        """The endpoint reduced to scheme and authority, and nothing else.
+
+        Rebuilt from the parsed parts rather than trimmed from the string the
+        caller supplied. Appending a path to a string that was merely *checked*
+        leaves whatever the check tolerated in front of the path; appending it to
+        one that was *reconstructed* cannot.
+        """
+        parts = urlsplit(self.endpoint)
+        return f"{parts.scheme}://{parts.netloc}"
 
     @property
     def model_file(self) -> str:
@@ -180,6 +209,14 @@ class LlamaServerSettings:
     def _validate_endpoint(self) -> None:
         if not self.endpoint:
             raise InvalidAdapterConfigError("endpoint", "must not be empty")
+        for character in FORBIDDEN_ENDPOINT_CHARACTERS:
+            if character in self.endpoint:
+                raise InvalidAdapterConfigError(
+                    "endpoint",
+                    "must contain no query, fragment, or backslash character, "
+                    "even an empty one: each would capture the runtime path this "
+                    "adapter appends",
+                )
         parts = urlsplit(self.endpoint)
         if parts.scheme not in ACCEPTED_ENDPOINT_SCHEMES:
             raise InvalidAdapterConfigError(
@@ -224,7 +261,7 @@ class LlamaServerSettings:
     def _validate_model_alias(self) -> None:
         if not self.model_alias:
             raise InvalidAdapterConfigError("modelAlias", "must not be empty")
-        if self.model_alias.startswith(MOCK_IDENTITY_PREFIX):
+        if self.model_alias.lower().startswith(MOCK_IDENTITY_PREFIX):
             raise InvalidAdapterConfigError(
                 "modelAlias",
                 "a real runtime may not serve a mock-labelled identity, which "

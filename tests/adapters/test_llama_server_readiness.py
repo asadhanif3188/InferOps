@@ -129,8 +129,14 @@ def test_reset_forgets_every_observation() -> None:
 def test_a_tracker_exposes_no_way_to_assert_a_state() -> None:
     """Every public entry point records an observation; none sets one."""
     tracker = ReadinessTracker()
+    # Through `setattr` rather than as an assignment, so the read-only property
+    # refuses it at run time rather than the type checker refusing it first and
+    # leaving the run-time guarantee unexercised. It is the idiom the domain
+    # suite already uses, and it is why this repository still has no
+    # `# type: ignore`.
+    attribute = "state"
     with pytest.raises(AttributeError):
-        tracker.state = ReadinessState.READY  # type: ignore[misc]
+        setattr(tracker, attribute, ReadinessState.READY)
     assert tracker.ready is False
 
 

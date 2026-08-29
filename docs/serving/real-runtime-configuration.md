@@ -82,7 +82,15 @@ not the pinned one.
 
 The mock-labelled refusal is the mirror of the mock adapter refusing a real model
 identity. Together they mean a transcript cannot name the wrong kind of provider
-in either direction.
+in either direction — and that mutual guarantee holds only while both adapters
+look for the same prefix, so `tests/adapters/test_llama_server_agreement.py`
+compares the two copies rather than trusting them. Neither adapter may import the
+other, so a compared copy is what a shared constant would otherwise be.
+
+This side matches the prefix case-insensitively while the mock matches it exactly.
+The asymmetry is deliberate: the mock *requires* the prefix, so a strict match is
+the safe direction there, and this one *refuses* it, so the permissive match is the
+safe direction here.
 
 **Upwards.** A `WorkloadContract` naming this runtime is checked against the pins
 before anything acts on it: the profile, the serving capability, the image
@@ -121,6 +129,17 @@ None of these carries a credential, and the endpoint is refused outright if it
 tries to: a credential in a URL is a credential in every line that logs the URL.
 The model path is a container path and never a contributor's own path, which is
 the difference between a value that can be committed and one that cannot.
+
+The endpoint must also contain no `?`, `#`, or backslash — **including an empty
+query or fragment**. An empty delimiter passes every structural check while still
+capturing the path this adapter appends: `http://host?` plus `/health` is a
+request for `/` carrying `/health` as its query string, which is a readiness probe
+aimed at the wrong resource and a silent one. A backslash is refused because
+`urlsplit` leaves it inside the authority while some HTTP clients read it as a
+separator, and a value two parsers disagree about is one neither should be trusted
+on. The URL a runtime path is appended to is rebuilt from the parsed scheme and
+authority rather than trimmed from the string supplied, so what survives a check
+cannot survive into a request.
 
 `metrics_enabled` is the one setting with a default, and the default is on
 because ADR 0002's `T7` exception is argued on the runtime exposing its own

@@ -23,6 +23,12 @@ not generate anything would be exactly the "silently fall back" failure the
 project's own boundary rule forbids. What exists here is composed by that adapter
 when it arrives.
 
+This package's name is also the import name of the third-party
+``llama-cpp-python`` distribution. Nothing collides today — every reference here
+is a relative import, and the dependency rule forbids acquiring that package at
+all — but an absolute ``import llama_cpp`` written inside this distribution would
+resolve here rather than there, which is worth knowing before writing one.
+
 **Nothing here has executed anything.** Every pin, capability, and status mapping
 is copied from an accepted decision or from the Sprint 0 feasibility record, and
 its evidence class is that of the record it came from — never this package's.

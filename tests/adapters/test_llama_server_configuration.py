@@ -62,26 +62,45 @@ CONTEXT = RequestContext(request_id="test-req-004", correlation_id="test-corr-00
 PLATFORM_IDENTIFIER = "qwen3-1-7b-q8-0"
 
 
-def settings(**overrides: object) -> LlamaServerSettings:
-    values: dict[str, object] = {
-        "endpoint": "http://llama-server.inferops-serving.svc.cluster.local:80",
-        "model_path": f"/models/{PINNED_MODEL_FILE}",
-        "model_alias": "qwen3-1.7b-q8_0",
-        "context_size": 4096,
-        "threads": 6,
-        "startup_budget_ms": 300000,
-    }
-    values.update(overrides)
-    return LlamaServerSettings(**values)  # type: ignore[arg-type]
+def settings(
+    *,
+    endpoint: str = "http://llama-server.inferops-serving.svc.cluster.local:80",
+    model_path: str = f"/models/{PINNED_MODEL_FILE}",
+    model_alias: str = "qwen3-1.7b-q8_0",
+    context_size: int = 4096,
+    threads: int = 6,
+    startup_budget_ms: int = 300000,
+    metrics_enabled: bool = True,
+) -> LlamaServerSettings:
+    """Valid runtime settings, with named fields replaced.
+
+    Named, typed parameters rather than a ``**overrides`` mapping: the mapping
+    form forces a ``# type: ignore`` at the constructor, and there is none of
+    those anywhere in this repository.
+    """
+    return LlamaServerSettings(
+        endpoint=endpoint,
+        model_path=model_path,
+        model_alias=model_alias,
+        context_size=context_size,
+        threads=threads,
+        startup_budget_ms=startup_budget_ms,
+        metrics_enabled=metrics_enabled,
+    )
 
 
-def adapter_configuration(**overrides: object) -> AdapterConfiguration:
-    values: dict[str, object] = {
-        "model_identifier": PLATFORM_IDENTIFIER,
-        "timeout_ms": 60000,
-    }
-    values.update(overrides)
-    return AdapterConfiguration(**values)  # type: ignore[arg-type]
+def adapter_configuration(
+    *,
+    model_identifier: str = PLATFORM_IDENTIFIER,
+    timeout_ms: int = 60000,
+    max_tokens: int | None = None,
+) -> AdapterConfiguration:
+    """Valid platform configuration, with named fields replaced."""
+    return AdapterConfiguration(
+        model_identifier=model_identifier,
+        timeout_ms=timeout_ms,
+        max_tokens=max_tokens,
+    )
 
 
 def document_with(path: tuple[str, ...], value: object) -> dict[str, Any]:
@@ -123,11 +142,20 @@ def test_the_platform_identity_and_the_runtime_alias_are_kept_apart() -> None:
     assert configuration.platform_model_identifier != configuration.runtime_model_alias
 
 
-def test_a_mock_labelled_platform_identity_is_refused() -> None:
-    """A real adapter serving a mock identity is a mislabelled transcript."""
+@pytest.mark.parametrize(
+    "identifier",
+    ["mock-fixed-fixture", "MOCK-fixed-fixture", "Mock-anything"],
+    ids=["lowercase", "uppercase", "mixed-case"],
+)
+def test_a_mock_labelled_platform_identity_is_refused(identifier: str) -> None:
+    """A real adapter serving a mock identity is a mislabelled transcript.
+
+    Matched case-insensitively: this side refuses the prefix, so a permissive
+    match is the safe direction.
+    """
     with pytest.raises(InvalidAdapterConfigError) as caught:
         translate(
-            adapter_configuration(model_identifier="mock-fixed-fixture"),
+            adapter_configuration(model_identifier=identifier),
             settings(),
             context=CONTEXT,
         )
@@ -219,6 +247,37 @@ def test_a_mock_workload_is_refused_by_profile() -> None:
     with pytest.raises(InvalidAdapterConfigError) as caught:
         verify_workload(parse_workload_contract(MOCK_DOCUMENT), context=CONTEXT)
     assert caught.value.field == "spec.profile"
+
+
+def test_a_workload_binding_the_mock_capability_is_refused() -> None:
+    """A real profile may still name the wrong serving capability.
+
+    The document below declares `synchronous-llm` and then binds
+    `inferops-mock-serving`, so the profile check passes and the capability check
+    is the one that has to refuse it. Nothing upstream catches this: the domain
+    parser deliberately leaves cross-field rules to the validation pipeline.
+    """
+    contract = parse_workload_contract(
+        document_with(("spec", "model", "servingCapability"), "inferops-mock-serving")
+    )
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        verify_workload(contract, context=CONTEXT)
+    assert caught.value.field == "spec.model.servingCapability"
+
+
+def test_a_workload_with_no_synchronous_profile_block_is_refused() -> None:
+    """A `synchronous-llm` document whose profile block is simply absent.
+
+    CONTRIBUTING records that the conditionally required profile block is a
+    cross-field rule the parser does not enforce, so such a document parses. The
+    adapter is therefore the component that has to refuse it, and it names the
+    block that is missing rather than failing on an attribute later.
+    """
+    document = copy.deepcopy(SYNCHRONOUS_DOCUMENT)
+    del document["spec"]["synchronousLlm"]
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        verify_workload(parse_workload_contract(document), context=CONTEXT)
+    assert caught.value.field == "spec.synchronousLlm"
 
 
 @pytest.mark.parametrize(

@@ -21,6 +21,8 @@ running process is read: the environment is passed in as a mapping.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
 from inferops.adapters.llama_cpp import (
@@ -45,10 +47,14 @@ from inferops.domain.serving import InvalidAdapterConfigError
 
 pytestmark = pytest.mark.adapter
 
+#: An in-cluster endpoint of the shape ADR 0008 expects: no Ingress, no
+#: NodePort, no LoadBalancer, and no credential.
+VALID_ENDPOINT = "http://llama-server.inferops-serving.svc.cluster.local:80"
+
 #: A complete, valid environment. Every test that needs an invalid one starts
 #: from this and breaks exactly one entry, so a failure names one cause.
 VALID_ENVIRONMENT = {
-    ENV_ENDPOINT: "http://llama-server.inferops-serving.svc.cluster.local:80",
+    ENV_ENDPOINT: VALID_ENDPOINT,
     ENV_MODEL_PATH: f"/models/{PINNED_MODEL_FILE}",
     ENV_MODEL_ALIAS: "qwen3-1.7b-q8_0",
     ENV_CONTEXT_SIZE: "4096",
@@ -57,18 +63,32 @@ VALID_ENVIRONMENT = {
 }
 
 
-def settings(**overrides: object) -> LlamaServerSettings:
-    """Valid settings, with named fields replaced."""
-    values: dict[str, object] = {
-        "endpoint": "http://llama-server.inferops-serving.svc.cluster.local:80",
-        "model_path": f"/models/{PINNED_MODEL_FILE}",
-        "model_alias": "qwen3-1.7b-q8_0",
-        "context_size": 4096,
-        "threads": 6,
-        "startup_budget_ms": 300000,
-    }
-    values.update(overrides)
-    return LlamaServerSettings(**values)  # type: ignore[arg-type]
+def settings(
+    *,
+    endpoint: str = VALID_ENDPOINT,
+    model_path: str = f"/models/{PINNED_MODEL_FILE}",
+    model_alias: str = "qwen3-1.7b-q8_0",
+    context_size: int = 4096,
+    threads: int = 6,
+    startup_budget_ms: int = 300000,
+    metrics_enabled: bool = True,
+) -> LlamaServerSettings:
+    """Valid settings, with named fields replaced.
+
+    Every parameter is named and typed rather than collected into a
+    ``**overrides`` mapping. The mapping form reads more briefly and forces a
+    ``# type: ignore`` at the constructor, and there is none of those anywhere in
+    this repository.
+    """
+    return LlamaServerSettings(
+        endpoint=endpoint,
+        model_path=model_path,
+        model_alias=model_alias,
+        context_size=context_size,
+        threads=threads,
+        startup_budget_ms=startup_budget_ms,
+        metrics_enabled=metrics_enabled,
+    )
 
 
 # --------------------------------------------------------------------------
@@ -147,6 +167,70 @@ def test_a_trailing_slash_on_the_endpoint_is_accepted_and_not_doubled() -> None:
     assert built == "http://llama-server:8080/health"
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://llama-server:8080?",
+        "http://llama-server:8080#",
+        "http://llama-server:8080/?",
+        "http://llama-server:8080/#",
+    ],
+    ids=["bare-query", "bare-fragment", "slash-query", "slash-fragment"],
+)
+def test_an_endpoint_with_an_empty_query_or_fragment_is_refused(
+    endpoint: str,
+) -> None:
+    """An empty delimiter is still a delimiter, and it swallows the path.
+
+    ``urlsplit`` reports an empty string for both, so a truthiness check passes
+    while the character survives in the endpoint. Appending ``/health`` to
+    ``http://host?`` asks for ``/`` with ``/health`` as the query string, which
+    is a readiness probe aimed at the wrong resource and a silent one.
+    """
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        settings(endpoint=endpoint)
+    assert caught.value.field == "endpoint"
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://llama-server:8080\\",
+        "http://llama-server\\@evil.invalid",
+        "http:\\\\llama-server:8080",
+    ],
+    ids=["trailing", "in-authority", "instead-of-slashes"],
+)
+def test_an_endpoint_containing_a_backslash_is_refused(endpoint: str) -> None:
+    """Two parsers disagree about a backslash, so neither is trusted with one.
+
+    ``urlsplit`` leaves it inside the authority; some HTTP clients read it as a
+    separator. A value whose meaning depends on which parser reads it is a value
+    this adapter refuses rather than resolves.
+    """
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        settings(endpoint=endpoint)
+    assert caught.value.field == "endpoint"
+
+
+@pytest.mark.parametrize("path", sorted(ACCEPTED_RUNTIME_PATHS))
+def test_a_built_url_ends_at_the_runtime_path_it_asked_for(path: str) -> None:
+    """The path is the path, not a query string that happens to look like one."""
+    built = settings().url_for(path)
+    assert built == f"{VALID_ENDPOINT}{path}"
+    assert built.endswith(path)
+    assert "?" not in built
+    assert "#" not in built
+
+
+def test_the_base_url_is_rebuilt_rather_than_trimmed() -> None:
+    """Reconstructing from the parsed parts is what makes the check binding."""
+    assert settings(endpoint="http://llama-server:8080/").base_url == (
+        "http://llama-server:8080"
+    )
+    assert settings().base_url == VALID_ENDPOINT
+
+
 # --------------------------------------------------------------------------
 # Runtime paths
 # --------------------------------------------------------------------------
@@ -211,14 +295,21 @@ def test_an_empty_alias_is_refused() -> None:
     assert caught.value.field == "modelAlias"
 
 
-def test_a_mock_labelled_alias_is_refused() -> None:
+@pytest.mark.parametrize(
+    "alias",
+    ["mock-fixed-fixture", "MOCK-fixed-fixture", "Mock-Anything"],
+    ids=["lowercase", "uppercase", "mixed-case"],
+)
+def test_a_mock_labelled_alias_is_refused(alias: str) -> None:
     """The mirror of the mock adapter refusing a real model identity.
 
     Without this, a transcript from the real runtime could name a mock identity
-    and be filed as mock evidence, or the reverse.
+    and be filed as mock evidence, or the reverse. The comparison is
+    case-insensitive because this side *refuses* the prefix, and the permissive
+    match is the safe direction for a refusal.
     """
     with pytest.raises(InvalidAdapterConfigError) as caught:
-        settings(model_alias="mock-fixed-fixture")
+        settings(model_alias=alias)
     assert caught.value.field == "modelAlias"
 
 
@@ -228,19 +319,29 @@ def test_a_mock_labelled_alias_is_refused() -> None:
 
 
 @pytest.mark.parametrize(
-    ("field", "value", "expected_field"),
+    ("build", "expected_field"),
     [
-        ("context_size", 0, "contextSize"),
-        ("context_size", -1, "contextSize"),
-        ("threads", 0, "threads"),
-        ("startup_budget_ms", 0, "startupBudgetMs"),
+        (lambda: settings(context_size=0), "contextSize"),
+        (lambda: settings(context_size=-1), "contextSize"),
+        (lambda: settings(threads=0), "threads"),
+        (lambda: settings(threads=-1), "threads"),
+        (lambda: settings(startup_budget_ms=0), "startupBudgetMs"),
+        (lambda: settings(startup_budget_ms=-1), "startupBudgetMs"),
+    ],
+    ids=[
+        "context-zero",
+        "context-negative",
+        "threads-zero",
+        "threads-negative",
+        "budget-zero",
+        "budget-negative",
     ],
 )
 def test_a_non_positive_number_is_refused(
-    field: str, value: int, expected_field: str
+    build: Callable[[], LlamaServerSettings], expected_field: str
 ) -> None:
     with pytest.raises(InvalidAdapterConfigError) as caught:
-        settings(**{field: value})
+        build()
     assert caught.value.field == expected_field
 
 
@@ -321,6 +422,14 @@ def test_an_unreadable_boolean_is_refused_rather_than_treated_as_false() -> None
 
 
 def test_settings_are_immutable() -> None:
+    """Through ``setattr`` rather than as an assignment.
+
+    The frozen dataclass must refuse this at run time; written as a plain
+    assignment the type checker refuses it first, and the run-time guarantee goes
+    unexercised. It is also the idiom the domain suite already uses, for the same
+    reason and to avoid the same ``# type: ignore``.
+    """
     built = settings()
+    attribute = "endpoint"
     with pytest.raises(AttributeError):
-        built.endpoint = "http://elsewhere:8080"  # type: ignore[misc]
+        setattr(built, attribute, "http://elsewhere:8080")
