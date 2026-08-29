@@ -90,11 +90,25 @@ MODELS_PATH = "/v1/models"
 #: The runtime's Prometheus endpoint, present only when metrics are enabled.
 METRICS_PATH = "/metrics"
 
-#: Every runtime path this adapter is permitted to build a URL for. Inference is
-#: absent on purpose: the call that generates a completion belongs to the
-#: inference client, and adding its path here before that client exists would put
-#: the door in the wall ahead of the room.
-ACCEPTED_RUNTIME_PATHS = frozenset({HEALTH_PATH, PROPS_PATH, MODELS_PATH, METRICS_PATH})
+#: The chat completion. It was deliberately absent while there was no inference
+#: client — a door in a wall ahead of the room — and it is here now because
+#: :mod:`~inferops.adapters.llama_cpp.adapter` issues the call. It is the path the
+#: Sprint 0 trial used, and the only one this adapter generates text through.
+CHAT_COMPLETIONS_PATH = "/v1/chat/completions"
+
+#: Every runtime path this adapter is permitted to build a URL for. The set is
+#: closed on purpose: :meth:`LlamaServerSettings.url_for` refuses anything outside
+#: it, so this is not a general-purpose URL builder aimed at a host read from the
+#: environment.
+ACCEPTED_RUNTIME_PATHS = frozenset(
+    {
+        HEALTH_PATH,
+        PROPS_PATH,
+        MODELS_PATH,
+        METRICS_PATH,
+        CHAT_COMPLETIONS_PATH,
+    }
+)
 
 #: The URL schemes an endpoint may use. ``https`` is admitted because refusing
 #: it would make the safer choice the impossible one; V1's own serving path is
@@ -124,7 +138,19 @@ GGUF_SUFFIX = ".gguf"
 #: backslash is refused because ``urlsplit`` leaves it inside the authority
 #: while some HTTP clients read it as a separator, and a value two parsers
 #: disagree about is a value neither should be trusted on.
+#:
+#: A C0 control character is refused for the same reason as the backslash and
+#: one more. An endpoint carrying a carriage return and a line feed before an
+#: at-sign parses with a host of whatever follows the at-sign and the rest read
+#: as userinfo, which moves where a request goes. The credential check below
+#: already refuses that particular string and the standard library refuses a
+#: control character in a request line besides, but a value that needs two
+#: later defences to be safe is a value this constructor should not accept.
 FORBIDDEN_ENDPOINT_CHARACTERS = ("?", "#", "\\")
+
+#: Every C0 control character, and the delete character. Refused anywhere in an
+#: endpoint.
+CONTROL_CHARACTERS = frozenset(chr(code) for code in (*range(0x20), 0x7F))
 
 #: Values accepted for the optional boolean variable, lowercased.
 TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
@@ -217,6 +243,10 @@ class LlamaServerSettings:
                     "even an empty one: each would capture the runtime path this "
                     "adapter appends",
                 )
+        if any(character in self.endpoint for character in CONTROL_CHARACTERS):
+            raise InvalidAdapterConfigError(
+                "endpoint", "must contain no control character"
+            )
         parts = urlsplit(self.endpoint)
         if parts.scheme not in ACCEPTED_ENDPOINT_SCHEMES:
             raise InvalidAdapterConfigError(
@@ -241,6 +271,17 @@ class LlamaServerSettings:
                 "must be a base URL with no path; the runtime paths are appended "
                 "to it by this adapter",
             )
+        # ``urlsplit`` parses a port lazily: an out-of-range one survives parsing
+        # and raises only when the member is read. Reading it here is what keeps
+        # this class's promise that a wrong setting is wrong at construction
+        # rather than inside a caller's first request, where it would arrive as a
+        # `ValueError` that no canonical mapping covers.
+        try:
+            _ = parts.port
+        except ValueError:
+            raise InvalidAdapterConfigError(
+                "endpoint", "must carry a port between 0 and 65535"
+            ) from None
 
     def _validate_model_path(self) -> None:
         if not self.model_path.startswith("/"):

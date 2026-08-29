@@ -10,6 +10,62 @@ once versioned releases begin.
 
 ### Added
 
+- **The serving adapter for the selected real runtime, which generates text or
+  fails.** The previous change deliberately shipped no `ServingAdapter` for
+  `llama-server`, on the ground that a class satisfying the protocol's shape while
+  its `infer` could not generate anything would be a mock wearing a real adapter's
+  name. `LlamaServerAdapter` is the other half: it composes the pins, settings,
+  configuration translation, readiness mapping, metadata parsers, and capability
+  declaration that package already held, and adds a transport seam, an inference
+  client, two bounded deadlines, and the mapping from a runtime failure to a
+  canonical error. It is held to the same conformance suite the mock adapter and
+  the in-memory double inherit. Described in
+  [executing real inference through the adapter](docs/serving/real-runtime-inference.md).
+- **A transport that is a parameter rather than a private method.** The adapter is
+  constructed with one, so composing an adapter is where the decision to open
+  sockets is made, a suite can exercise every branch against controlled responses
+  without intercepting the standard library, and the object that could manufacture
+  a `real`-labelled result without a runtime lives in the test file that uses it
+  rather than in the distribution. The concrete transport is built from
+  `http.client` — the standard library's own HTTP, not a client library — because
+  [the dependency rule](docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
+  forbids anything else, and that constraint produced three properties worth
+  having: no redirect is followed, so a request body cannot be moved to a host the
+  settings never validated; a response body is read under a 1 MiB bound, so a peer
+  cannot decide how much a 3 GiB pod allocates; and a connection is opened per
+  request and closed in a `finally`.
+- **An error mapping copied from the record that decided it, not invented.** Every
+  condition the adapter can reach carries the identifier
+  [the accepted API surface](docs/serving/inference-api-surface.v1alpha1.json)
+  publishes for it, and a test reads that file and fails when a copy drifts. One
+  of the six was ever observed happening — the `503` the runtime answers while it
+  loads — and the table says which, because five mappings and one observation are
+  not six equal facts. `rate-limited` is never produced: V1 has no rate limiter,
+  the accepted record lists the code among those this platform does not emit, and
+  a runtime answering `429` is an `internal-error` like any other unexpected
+  status rather than an observation of a limiter that does not exist.
+- **Two deadlines, and the outer one is deliberately the longer.** The transport is
+  handed the configured budget; the call is wrapped in a backstop of that budget
+  plus a grace. The inner produces `upstream-timeout` — the runtime ran out of
+  time — and the backstop produces `request-timeout`, and it exists because a
+  transport is a value a caller supplies and a protocol cannot enforce the promise
+  it asks for. The grace is what makes the pair work: both clocks would otherwise
+  be set to the same duration while the outer one starts first, so it would win by
+  the dispatch cost every time and `upstream-timeout` would be a code nothing
+  could produce. Every runtime call is under both, the readiness probe included,
+  because that probe is reached implicitly by the first inference call. A fired
+  deadline closes the socket, since a thread cannot be cancelled and the worker
+  would otherwise hold its socket until the far side chose to answer.
+- **A real-runtime smoke suite that has not been run.**
+  [`tests/realruntime/`](tests/realruntime/) drives the adapter against a live
+  `llama-server` holding the pinned model, under the `realruntime` marker the
+  default expression deselects. It reads its settings from the process environment
+  and **skips** when they are unset, because a missing endpoint means nobody asked
+  for a real run rather than that a real run failed. The lane is manual and
+  authorization-gated and was not entered, so the story's criterion requiring one
+  real generated response through the adapter is **still unmet** and
+  [the validation record](docs/proof/serving/v1-s1-004-pr2-validation.md) says so
+  rather than presenting the code as the proof.
 - **The configuration and inspection half of connecting InferOps to the selected
   runtime — and no adapter, deliberately.**
   [`src/inferops/adapters/llama_cpp/`](src/inferops/adapters/llama_cpp/) holds the

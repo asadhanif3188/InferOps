@@ -179,8 +179,15 @@ answering, torn down with residue verified absent. Real, and about the environme
 only. A cluster smoke result may never be cited in support of a serving claim.
 
 `real-runtime-smoke` is the only layer that may support a C2 serving claim. It has
-run once, on one host, on one day, and its record says which of its own thresholds it
-failed.
+run once, on one host, on one day, by the manual procedure in
+[the feasibility workflow](../serving/feasibility-workflow.md), and its record says
+which of its own thresholds it failed. `V1-S1-004-PR2` gave it an executable suite
+as well, in [`tests/realruntime/`](../../tests/realruntime/), which drives the same
+runtime through the serving adapter. **That suite has not been run against a
+runtime.** It is deselected by the default marker expression, reads its runtime
+settings from the process environment, and skips when they are unset — so a
+contributor who names the marker without a running runtime gets a skip rather than
+a failure, and the layer's cited evidence stays the manual trial.
 
 `failure-and-resilience` provokes the failures the architecture names as canonical
 errors — model not ready, runtime unreachable, timeout — against the real runtime

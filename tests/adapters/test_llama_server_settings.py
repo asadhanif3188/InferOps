@@ -27,6 +27,7 @@ import pytest
 
 from inferops.adapters.llama_cpp import (
     ACCEPTED_RUNTIME_PATHS,
+    CHAT_COMPLETIONS_PATH,
     ENV_CONTEXT_SIZE,
     ENV_ENDPOINT,
     ENV_METRICS_ENABLED,
@@ -223,6 +224,66 @@ def test_a_built_url_ends_at_the_runtime_path_it_asked_for(path: str) -> None:
     assert "#" not in built
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://llama-server:99999",
+        "http://llama-server:65536",
+        "http://llama-server:-1",
+        "http://llama-server:notaport",
+    ],
+)
+def test_a_port_outside_the_range_is_refused_at_construction(endpoint: str) -> None:
+    """``urlsplit`` parses a port lazily and raises only when it is read.
+
+    Left unchecked, an operator's typo survives construction and surfaces inside
+    a caller's first request as a ``ValueError`` no canonical mapping covers —
+    which would break this class's own promise that a wrong setting is wrong
+    before any request arrives.
+    """
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        settings(endpoint=endpoint)
+    assert caught.value.field == "endpoint"
+
+
+def test_a_port_inside_the_range_is_accepted() -> None:
+    assert settings(endpoint="http://llama-server:65535").base_url == (
+        "http://llama-server:65535"
+    )
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://llama-server\r\nX-Injected: 1@elsewhere",
+        "http://llama-server\n:8080",
+        "http://llama\tserver:8080",
+        "http://llama-server:8080\x00",
+        "http://llama-server:8080\x7f",
+    ],
+)
+def test_an_endpoint_carrying_a_control_character_is_refused(endpoint: str) -> None:
+    """A control character can move where a request goes.
+
+    A carriage return and a line feed before an at-sign parse with a host of
+    whatever follows the at-sign. Two later defences already refuse that
+    particular string — the credential check here, and the standard library's own
+    refusal of a control character in a request line — and a value needing two
+    later defences is a value this constructor should not accept.
+    """
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        settings(endpoint=endpoint)
+    assert caught.value.field == "endpoint"
+
+
+def test_a_control_character_refusal_repeats_no_part_of_the_endpoint() -> None:
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        settings(endpoint="http://llama-server\r\nX-Injected: 1@elsewhere")
+
+    assert "elsewhere" not in str(caught.value)
+    assert "X-Injected" not in str(caught.value)
+
+
 def test_the_base_url_is_rebuilt_rather_than_trimmed() -> None:
     """Reconstructing from the parsed parts is what makes the check binding."""
     assert settings(endpoint="http://llama-server:8080/").base_url == (
@@ -241,18 +302,47 @@ def test_every_published_runtime_path_builds_a_url(path: str) -> None:
     assert settings().url_for(path).endswith(path)
 
 
-def test_a_path_this_adapter_does_not_publish_is_refused() -> None:
-    """Otherwise this is a URL builder aimed at a host read from the environment."""
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/v1/completions",
+        "/v1/embeddings",
+        "/slots",
+        "/",
+        "/health/../v1/chat/completions",
+        "http://elsewhere.invalid/health",
+    ],
+)
+def test_a_path_this_adapter_does_not_publish_is_refused(path: str) -> None:
+    """Otherwise this is a URL builder aimed at a host read from the environment.
+
+    The runtime serves more paths than these settings will build a URL for, and
+    the set being closed rather than merely documented is what makes that true.
+    """
     with pytest.raises(InvalidAdapterConfigError) as caught:
-        settings().url_for("/v1/chat/completions")
+        settings().url_for(path)
     assert caught.value.field == "path"
 
 
-def test_the_inference_path_is_not_among_the_published_paths() -> None:
-    """The call that generates a completion belongs to the inference client."""
-    assert "/v1/chat/completions" not in ACCEPTED_RUNTIME_PATHS
-    published = {HEALTH_PATH, PROPS_PATH, MODELS_PATH, METRICS_PATH}
+def test_the_inference_path_is_published_now_that_a_client_issues_it() -> None:
+    """`V1-S1-004-PR1` asserted this path absent; the adapter now issues it.
+
+    The absence was never a permanent property — it was the refusal to put a door
+    in a wall before the room existed. What is still asserted is that the set is
+    exactly these five and grew by exactly one.
+    """
+    published = {
+        HEALTH_PATH,
+        PROPS_PATH,
+        MODELS_PATH,
+        METRICS_PATH,
+        CHAT_COMPLETIONS_PATH,
+    }
     assert published == ACCEPTED_RUNTIME_PATHS
+    assert CHAT_COMPLETIONS_PATH == "/v1/chat/completions"
+    assert settings().url_for(CHAT_COMPLETIONS_PATH) == (
+        f"{VALID_ENDPOINT}{CHAT_COMPLETIONS_PATH}"
+    )
 
 
 def test_the_metrics_path_is_refused_when_metrics_are_disabled() -> None:
