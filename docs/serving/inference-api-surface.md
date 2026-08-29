@@ -1,21 +1,30 @@
 # The V1 inference API surface
 
-Status: **decided, and served by nothing.** No component in this repository listens
-on a port, registers a route, or answers a request. Every endpoint and every shape
-below is a specification for a component that does not exist. `V1-S1-005` implements
-it.
+Status: **decided, and served in part.** Every endpoint below is registered and
+answered by [the InferOps API](inference-api.md), which `V1-S1-005-PR1` built.
+Three parts of the shape are deliberately unfinished, and each is named where it
+applies: the canonical error body is served in a subset, `/metrics` publishes no
+series, and two accepted request members are validated and not forwarded.
 
 The decision behind it is
-[ADR 0010](../architecture/decisions/ADR-0010-inference-api-compatibility-surface.md).
-Its checkable form is
-[`inference-api-surface.v1alpha1.json`](inference-api-surface.v1alpha1.json), and
-[`tests/serving/`](../../tests/serving/) compares the two in both directions.
+[ADR 0010](../architecture/decisions/ADR-0010-inference-api-compatibility-surface.md),
+written while nothing served any of it and left dated rather than rewritten. Its
+checkable form is
+[`inference-api-surface.v1alpha1.json`](inference-api-surface.v1alpha1.json);
+[`tests/serving/`](../../tests/serving/) compares the record with the documents
+around it and with the code that now implements it, and
+[`tests/api/`](../../tests/api/) exercises that code against the mock adapter.
 
 > [!IMPORTANT]
-> **This is not a published interface.** No OpenAPI document exists, nothing has been
-> added to [`contracts/`](../../contracts/), and no client may bind to anything here.
-> A shape stated in this document is a decision a reviewer can argue with. It becomes
-> an interface when something serves it, and not before.
+> **This is still not a published interface.** No OpenAPI document exists, nothing
+> has been added to [`contracts/`](../../contracts/), and whether this surface is
+> ever published as a contract artifact is `D9`, which stays undecided. Serving a
+> shape and publishing it as something a client may bind to are different acts, and
+> only the first has happened.
+>
+> **Nothing here has answered a network request.** The API implements the ASGI
+> calling convention and this repository ships no server, so every result behind
+> this document was produced by driving the application through its own interface.
 
 ## The compatibility target
 

@@ -93,7 +93,7 @@ class, the strongest thing its result may be used to say.
 | `documentation` | `default-checks` | `docs` | local-static | C0 | implemented |
 | `security-scan` | `default-checks` | none | local-static | C0 | planned |
 | `adapter` | `default-checks` | `adapter` | mock | C1 | implemented |
-| `mock-integration` | `default-checks` | `mockintegration` | mock | C1 | planned |
+| `mock-integration` | `default-checks` | `mockintegration` | mock | C1 | implemented |
 | `kubernetes-smoke` | `cluster-smoke` | `cluster` | local-real-cpu | C2 | implemented |
 | `real-runtime-smoke` | `real-runtime` | `realruntime` | local-real-cpu | C2 | implemented |
 | `failure-and-resilience` | `real-runtime` | `failure` | local-real-cpu | C2 | planned |
@@ -104,11 +104,16 @@ support a C2 claim no matter how thorough it is, and
 [the certification document](certification.md) argues why that is a property of what
 the layer runs against rather than of how well it is written.
 
-Seven of eleven layers exist. Registering the other four now is deliberate: a marker
-that exists is a marker the first test of that kind gets written under, and a marker
-that does not exist is a test that ends up in whichever suite was already open.
+Eight of eleven layers exist. Registering the other three now is deliberate: a
+marker that exists is a marker the first test of that kind gets written under, and a
+marker that does not exist is a test that ends up in whichever suite was already
+open.
 
-`adapter` is the one that has just changed. It was registered and empty from
+`mock-integration` is the one that has just changed. It was registered and empty
+from `V1-S0-006` until `V1-S1-005-PR1` built the API for it to run against, which is
+the same pattern `adapter` followed one story earlier.
+
+`adapter` is the one that changed before it. It was registered and empty from
 `V1-S0-006` until `V1-S1-003` wrote the deterministic mock adapter for it to
 exercise, and the marker being there already is the reason those tests are in
 [`tests/adapters/`](../../tests/adapters/) under `adapter` rather than appended to
@@ -172,7 +177,15 @@ not exist, so nothing here has yet been run against one.
 
 `mock-integration` runs the API end to end against the mock adapter: correlation
 propagation, canonical errors, redaction, the not-ready path. This is the layer most
-at risk of being read as more than it is.
+at risk of being read as more than it is. `V1-S1-005-PR1` made it real — the API
+exists, and [`tests/api/`](../../tests/api/) drives it against the labelled mock
+adapter and against controlled adapter doubles. Two limits travel with every result
+it produces. **Nothing here crosses a socket:** the API implements the ASGI calling
+convention, this repository ships no server, and the suites drive the application
+through its own interface, so a result establishes what the application decides and
+nothing about HTTP. And the canonical error body it asserts is the subset
+`V1-S1-005-PR2` standardises, so the layer's canonical-error obligation is partly
+met rather than met.
 
 `kubernetes-smoke` proves the cluster half of the environment — created, workload
 answering, torn down with residue verified absent. Real, and about the environment
@@ -271,7 +284,7 @@ certified on the strength of a layer nobody has written.
   and no automated lane. Every lane is run by hand today. The strategy is written so
   that adding CI is a matter of pointing a workflow at a marker expression that
   already exists.
-- **It does not certify anything by existing.** Four of eleven layers have no code.
+- **It does not certify anything by existing.** Three of eleven layers have no code.
   The suite that checks this document cannot tell an honestly planned layer from one
   that will never be written.
 - **It does not select a task runner, a packaging tool, or a linter.** Those remain

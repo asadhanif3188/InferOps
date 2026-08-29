@@ -10,6 +10,54 @@ once versioned releases begin.
 
 ### Added
 
+- **The user-facing InferOps API, which is the first component here that answers a
+  request.** [`src/inferops/api/`](src/inferops/api/) registers the five endpoints
+  [ADR 0010](docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md)
+  decided a story earlier and answers each of them through the serving adapter it
+  is composed with: a synchronous chat completion, the model list with the runtime
+  descriptor beside it, liveness, readiness, and metrics. The compatibility shape
+  is admitted at the edge and translated there, so nothing compatibility-shaped
+  crosses into the platform domain and nothing runtime-shaped crosses back out.
+  Described in [the InferOps inference API](docs/serving/inference-api.md).
+- **It imports no HTTP framework, because the dependency rule leaves no room for
+  one.** The application implements the ASGI calling convention directly — a
+  callable over a scope, a receive, and a send — which is a convention rather than
+  a package, so
+  [ADR 0004](docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
+  is obeyed without a framework-shaped hole in the design, and the distribution
+  still declares no runtime dependency at all. **This repository ships no ASGI
+  server**, so nothing here has bound a socket: the suites drive the application
+  through its own interface, which establishes what the application decides and
+  nothing about HTTP, and
+  [the validation record](docs/proof/serving/v1-s1-005-pr1-validation.md) says so
+  rather than presenting a green session as a served API.
+- **A composition point with no default adapter.** The adapter is handed to the
+  application in code. A mock that could become the live adapter by omission is
+  what [the boundary rule](docs/serving/mock-and-real-boundary.md) forbids, so
+  there is nothing to omit — and the kind the deployment was composed with is
+  checked against every result the adapter returns, so a `mock` deployment serving
+  a `real`-labelled result is refused rather than published with a label nobody
+  can rely on. Selecting an adapter from configuration is the next change.
+- **The strict unknown-member policy, enforced rather than described.** A member
+  outside the frozen subset is refused and the refusal names the member and never
+  its value — including the upstream defaults a client library sends by habit,
+  which is the cost the accepted record chose openly. Three refusal suites carry a
+  canary value in the position a naive implementation would echo, and assert it is
+  absent from the response.
+- **Graceful shutdown as the equivalent the record chose over an endpoint.**
+  Readiness goes false *before* anything drains, in-flight work finishes under a
+  bounded budget that reports whether it ran out, and the adapter is released last.
+  An HTTP route that stopped the process would be an unauthenticated remote-stop
+  control on a surface with no authentication in V1.
+- **The `mock-integration` test layer, which was registered and empty since
+  `V1-S0-006`.** [`tests/api/`](tests/api/) now runs the API end to end against the
+  labelled mock adapter and against controlled doubles, under the `mockintegration`
+  marker the default lane already selects. A request stays counted until its
+  response has been handed to the server rather than until the adapter answered,
+  because a drain that returned in the gap between those two would report a clean
+  shutdown over a response nobody received — and the suite reads the in-flight
+  count from inside the send, which is the only place that distinction is visible.
+
 - **The serving adapter for the selected real runtime, which generates text or
   fails.** The previous change deliberately shipped no `ServingAdapter` for
   `llama-server`, on the ground that a class satisfying the protocol's shape while
@@ -687,6 +735,15 @@ once versioned releases begin.
 
 ### Changed
 
+- **The accepted inference API surface no longer says nothing serves it**, because
+  something does. `implementationStatus` moves from `nothing-serves` to
+  `served-in-part`, each endpoint names what serves it and what about it is
+  unfinished, and the suite that checked "nothing serves this" now checks the
+  record against the code that implements it, in both directions. What has not
+  changed is the part that matters most: no OpenAPI document, no request or
+  response schema, and nothing added to [`contracts/`](contracts/). Serving a shape
+  and publishing it as something a client may bind to are different acts, and only
+  the first has happened.
 - **`DR-07` is narrowed rather than retired, and its control stays deferred.** The
   register entry used to say no dependency lockfile and no packaging manifest
   existed; both now exist, so that half is gone. The half that remains is stated

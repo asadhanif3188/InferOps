@@ -13,9 +13,9 @@
   "securityRef": "docs/security/security-baseline.v1alpha1.json",
 
   "implementationStatus": {
-    "state": "nothing-serves",
-    "meaning": "No component in this repository listens on a port, registers a route, or answers a request. Every endpoint and every shape below is a specification for a component that does not exist. V1-S1-005 implements it; this record decides it.",
-    "publishedArtifacts": "none. No OpenAPI document, no JSON Schema for a request or a response body, and no addition to contracts/ is made by this record. A shape stated here is a decision a reviewer can argue with, not an interface a client may bind to."
+    "state": "served-in-part",
+    "meaning": "The InferOps API in src/inferops/api/ registers every endpoint below and answers it, through the serving adapter it is composed with. Nothing in this repository binds a socket: the application implements the ASGI calling convention and no server ships here, so what has been exercised is the application through its own interface and not a network. Three parts of the decided shape are deliberately unfinished and each is named where it applies: the canonical error body is served in a subset, /metrics publishes no series, and two accepted request members are validated and not forwarded. V1-S1-005-PR2 standardises the first, the telemetry work owns the second, and the third needs a superseding decision on the adapter interface.",
+    "publishedArtifacts": "none. No OpenAPI document, no JSON Schema for a request or a response body, and no addition to contracts/ is made by this record or by the component that serves it. Serving a shape is not publishing it as a contract artifact a client may bind to, and D9 stays undecided."
   },
 
   "compatibilityTarget": {
@@ -46,7 +46,7 @@
       "purpose": "One synchronous, non-streaming chat completion.",
       "servingContractRole": "inference",
       "v1Status": "in-scope",
-      "servedBy": "none. V1-S1-005 owns the implementation.",
+      "servedBy": "inferops.api. Validation, translation, and the completion body are served; the canonical error body is served in the subset V1-S1-005-PR2 standardises, and max_tokens and temperature are validated and not forwarded because the frozen adapter interface carries neither.",
       "runtimeCounterpart": "POST /v1/chat/completions",
       "runtimeCounterpartObserved": true
     },
@@ -58,7 +58,7 @@
       "purpose": "The one model this deployment serves, plus the runtime descriptor in the extension namespace.",
       "servingContractRole": "model-and-runtime-metadata",
       "v1Status": "in-scope",
-      "servedBy": "none. V1-S1-005 owns the implementation.",
+      "servedBy": "inferops.api. The list envelope and the runtime descriptor are served; the capability set is published from what the selected adapter declares, and deterministicSampling is published as null because the frozen adapter interface declares nothing about it.",
       "runtimeCounterpart": "GET /v1/models",
       "runtimeCounterpartObserved": true,
       "responseShapeObserved": false,
@@ -72,7 +72,7 @@
       "purpose": "Whether the InferOps process is alive. It answers nothing about the model.",
       "servingContractRole": "liveness",
       "v1Status": "in-scope",
-      "servedBy": "none. V1-S1-005 owns the implementation.",
+      "servedBy": "inferops.api. It answers while the model is loading and while the API is draining, which is what makes it a liveness answer rather than a second readiness answer.",
       "runtimeCounterpart": null,
       "runtimeCounterpartObserved": false
     },
@@ -84,7 +84,7 @@
       "purpose": "Whether the selected adapter can accept an inference request now.",
       "servingContractRole": "readiness",
       "v1Status": "in-scope",
-      "servedBy": "none. V1-S1-005 owns the implementation.",
+      "servedBy": "inferops.api. It is the conjunction of the API accepting work and the selected adapter reporting itself able, and it is false when either half is.",
       "runtimeCounterpart": "GET /health",
       "runtimeCounterpartObserved": true
     },
@@ -96,7 +96,7 @@
       "purpose": "InferOps's own metrics in Prometheus text format, including the request counter the runtime does not have.",
       "servingContractRole": "metrics",
       "v1Status": "in-scope",
-      "servedBy": "none. V1-S1-005 and the telemetry work own the implementation.",
+      "servedBy": "inferops.api serves the route, and it publishes no metric. The accepted telemetry catalog records emissionStatus as nothing-emits and both metrics below as specified; instrumenting this API is the telemetry work, which depends on this API existing. The body names the two metrics and the story that owns them rather than publishing a partial counter that would read as instrumentation.",
       "runtimeCounterpart": "GET /metrics",
       "runtimeCounterpartObserved": true
     }
