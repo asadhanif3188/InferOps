@@ -43,10 +43,12 @@ once versioned releases begin.
   domain cannot import a JSON Schema validator, so the patterns, vocabularies, and
   bounds are written twice; `tests/domain/test_workload_schema_agreement.py` reads
   the schema and fails if a single one of them disagrees in either direction, and
-  additionally deletes each required field from a committed fixture in turn and
-  requires a refusal at that field's own address.
+  additionally deletes each *unconditionally* required field from a committed
+  fixture in turn and requires a refusal at that field's own address. The
+  conditionally required profile block is a cross-field rule and is deliberately
+  not enforced.
 - **The `unit` test layer, which was registered and empty since `V1-S0-006`, now
-  runs.** Six of eleven layers exist. Its 263 checks cover what parses, what is
+  runs.** Six of eleven layers exist. Its 271 checks cover what parses, what is
   refused, and what a refusal is allowed to say — including that no message repeats
   a value read out of the document, asserted over every string of eight characters
   or more in a refused document, and that a refusal carries the `requestId` and

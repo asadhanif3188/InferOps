@@ -14,9 +14,9 @@ the architecture forbids.
 Claim boundary: every committed valid fixture parses into typed domain objects; a
 parsed document rebuilds into exactly the document it came from; a contract version
 this package does not implement is refused before any field below it is read; every
-field the published schema declares required is required by the parser at that
-field's own address; the domain's copy of every published pattern, vocabulary, and
-bound agrees with the schema; no refusal repeats a value read out of the document;
+field the published schema declares *unconditionally* required is required by the
+parser at that field's own address; the domain's copy of every published pattern,
+vocabulary, and bound agrees with the schema; no refusal repeats a value read out of the document;
 and no module under `src/inferops/` imports anything outside the standard library
 and this distribution.
 
@@ -25,7 +25,9 @@ and this distribution.
 - **It does not establish that a contract is valid.** This change implements none of
   the published semantic rules. A document with an inverted replica range, a
   mismatched profile block, a duplicate secret name, or a pasted credential in a
-  locator parses into a domain object here, and two tests assert exactly that. The
+  locator parses into a domain object here. Two tests assert that for the first
+  two; the other two hold by construction — nothing compares two secret names and
+  nothing judges a locator — and are not separately asserted. The
   complete published check is still
   [`tools/contract_validation/`](../../../tools/contract_validation/), and the
   pipeline that brings those rules into the domain is `V1-S1-001-PR2`.
@@ -77,15 +79,16 @@ $ uv run --locked python -m mypy
 Success: no issues found in 27 source files
 ```
 
-`mypy` runs in strict mode over `src`, `tools`, `tests`, and `conftest.py`. The new
-package carries no `# type: ignore`; there is still not one anywhere in this
-repository.
+`mypy` runs over `src`, `tools`, `tests`, and `conftest.py` — in strict mode
+everywhere except `tests.*`, which [`pyproject.toml`](../../../pyproject.toml)
+relaxes on five settings and says why. The new package carries no
+`# type: ignore`; there is still not one anywhere in this repository.
 
 ### The default test lane
 
 ```text
 $ uv run --locked python -m pytest -q
-2799 passed, 7 skipped in 10.88s
+2807 passed, 7 skipped in 5.80s
 ```
 
 The default marker expression is unchanged, so this lane still deselects every
@@ -95,20 +98,20 @@ layer that needs a cluster or a model. The seven skips are the pre-existing ones
 
 ```text
 $ uv run --locked python -m pytest tests/domain -q
-263 passed in 0.91s
+271 passed in 1.00s
 
 $ uv run --locked python -m pytest tests/domain/test_workload_domain.py -q
-100 passed in 0.38s
+108 passed in 0.34s
 
 $ uv run --locked python -m pytest tests/domain/test_workload_schema_agreement.py -q
-163 passed in 0.63s
+163 passed in 0.39s
 
 $ uv run --locked python -m pytest -m unit -q
-263 passed, 2542 deselected in 1.35s
+271 passed, 2543 deselected in 1.36s
 ```
 
 The last command is the one worth reading twice. The `unit` marker was registered by
-`V1-S0-006` and selected nothing until this change; it now selects exactly the 263
+`V1-S0-006` and selected nothing until this change; it now selects exactly the 271
 checks in `tests/domain/`, which is why the `unit` layer moves from `planned` to
 `implemented` in
 [the test strategy](../../testing/test-strategy.v1alpha1.json) and cites this
@@ -118,10 +121,10 @@ record.
 
 ```text
 $ uv run --locked python -m pytest tests/architecture -q
-378 passed in 0.30s
+378 passed in 0.42s
 
 $ uv run --locked python -m pytest tests/architecture/test_domain_dependency_boundary.py -q
-21 passed in 0.45s
+21 passed in 0.12s
 ```
 
 ### The distribution
@@ -152,7 +155,7 @@ inferops/domain/workload/values.py
 inferops/domain/workload/versions.py
 ```
 
-Eight modules and the metadata; `tools/`, `tests/`, `contracts/`, and `docs/` stay
+Nine modules and the metadata; `tools/`, `tests/`, `contracts/`, and `docs/` stay
 outside it. The metadata carries **no `Requires-Dist` line at all**, which is the
 machine-readable form of the claim that installing `inferops` acquires nothing: the
 domain's only dependencies are the standard library's.
@@ -177,13 +180,13 @@ resolves. No external link was added.
 ## What the tests actually assert
 
 The counts above are not the evidence; what the checks look at is. The four groups
-below are what 284 of them cover.
+below are what all 292 of them cover.
 
 | Group | Checks | What a failure would mean |
 |---|---|---|
 | Fixtures parse, and rebuild | Every file under `contracts/workload/examples/valid/` parses, and `as_document()` reproduces it exactly | A field was dropped, defaulted, or invented |
-| The schema and the domain agree | Every pattern, enumerated value, numeric bound, field list, and required field, in both directions | The published contract and the domain's copy of it have drifted |
-| Refusals are located and safe | A field path on every refusal; no message repeats any string of eight characters or more from the document, excluding the schema's own vocabulary | A refusal disclosed a value, or could not say where the problem was |
+| The schema and the domain agree | Every pattern, enumerated value, numeric bound, and field list, in both directions, plus every unconditionally required field one-directionally: the sweep proves the parser requires what the schema requires, not that it requires nothing more | The published contract and the domain's copy of it have drifted |
+| Refusals are located and safe | A field path on every refusal this suite provokes; no message repeats any string of eight characters or more from the four documents it refuses for that check, excluding the schema's own vocabulary | A refusal disclosed a value, or could not say where the problem was |
 | The dependency rule holds | Every module under `src/inferops/` imports only the standard library and this distribution; none reads a file | The domain acquired an infrastructure dependency or a file system |
 
 The redaction check deserves one note, because it is the one whose strength is easy
@@ -210,18 +213,21 @@ The published diff was read in full for the categories
 | Private planning material | None. No planning document, backlog, prompt, or roadmap content is quoted or paraphrased. Story and PR identifiers (`V1-S1-001-PR1`) appear as identifiers only, which is the existing convention in this repository |
 | Unsupported capability claims | None found. Every document changed by this PR says what is not built in the same place it says what is |
 
-## Acceptance criteria
+## What this change was supposed to do, and what it did
 
-The parent story's criteria, and where this PR stands against each.
+Stated against what this repository publishes — the contract document, the
+architecture's dependency rule, and the test strategy — rather than against any
+other source.
 
-| Criterion | Status | Evidence |
+| What was expected of it | Outcome | Where to see it |
 |---|---|---|
-| Valid `synchronous-llm` and `mock-llm` fixtures parse | **Met** | `tests/domain/test_workload_domain.py`, over every file in `examples/valid/` |
-| Unsupported version fails canonically | **Met for the version half** | Refused as `UnsupportedContractVersionError` with the field `$.apiVersion`, before any field below it is read. The refusal carries a field, a reason, and request context; it does **not** carry the canonical code `version-unsupported`, which the validation pipeline assigns in PR2 |
-| Missing owner, invalid profile, invalid replicas fail canonically | **Partly met, by PR boundary** | Each is refused with a field location, because none can be represented. The canonical code and rule identifier are PR2's |
-| Plaintext secret fails canonically | **Deferred to PR2** | `secret-value-in-locator` is a semantic rule. This change does not implement it, and does not claim to |
-| Domain package imports no Kubernetes, Helm, Terraform, or runtime SDK | **Met** | `tests/architecture/test_domain_dependency_boundary.py`, from the source rather than by review |
-| Validation errors contain request/correlation context where available and no sensitive value | **Met** | `RequestContext` is carried through to every error and is empty when a caller supplied none; the redaction check above |
+| Both real and mock committed fixtures become domain objects | **Done** | `tests/domain/test_workload_domain.py`, over every file in `examples/valid/`, plus the round trip back to the document |
+| Contract-version handling is explicit rather than inferred | **Done** | A supported set with one entry; a document declaring anything else, or nothing, is refused at `$.apiVersion` before any field below it is read |
+| A document that cannot be represented is refused, and the refusal says where | **Done** | Every refusal carries a JSON-path field location and a reason. It does **not** carry a canonical error code or a rule identifier: that vocabulary is published in [the rejection matrix](../../contracts/workload-contract.md) and the pipeline that assigns it is `PR2` |
+| The published *semantic* rules are applied | **Not attempted, by PR boundary** | None of them is implemented, two tests assert the absence, and [`tools/contract_validation/`](../../../tools/contract_validation/) remains the complete published check |
+| The domain stays free of infrastructure | **Done** | `tests/architecture/test_domain_dependency_boundary.py` reads what every module imports; the built wheel declares no dependency at all |
+| A refusal carries request context where there is one, and no value from the document | **Done** | `RequestContext` reaches every error and is empty when a caller supplied none; the redaction check above |
 
-The parent story `V1-S1-001` is **not** complete. Its validation pipeline, its
-canonical error mapping, and its invalid-fixture matrix are `PR2`.
+The story this PR belongs to is **not** finished by it. The validation pipeline,
+the canonical error mapping, and the invalid-fixture matrix that exercises them are
+the next pull request's, and this record claims none of them.

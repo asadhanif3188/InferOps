@@ -21,9 +21,11 @@ reproducible evidence.
 
 ## Repository status
 
-The repository is establishing its public foundations before implementation. Any
-future capability claim must link to reproducible evidence and identify whether the
-result is documented, synthetic, mock, estimated, or produced by a real runtime.
+The repository has established its public foundations and has begun implementing
+against them: the platform domain is the first component built, and everything
+below it is still unbuilt. Any capability claim must link to reproducible evidence
+and identify whether the result is documented, synthetic, mock, estimated, or
+produced by a real runtime.
 
 ## Public entry points
 

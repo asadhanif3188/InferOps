@@ -12,7 +12,7 @@ domain cannot import a JSON Schema validator: ``jsonschema`` is a development
 dependency, the distribution declares no runtime dependency at all, and a domain
 that needed one to construct an object would have made validation a prerequisite
 for having a value. So the patterns, vocabularies, and bounds are written here in
-Python — and ``tests/domain/test_workload_values.py`` reads
+Python — and ``tests/domain/test_workload_schema_agreement.py`` reads
 ``contracts/workload/workload-contract.v1alpha1.schema.json`` and fails if a single
 one of them differs from what the schema publishes. Drift is a test failure rather
 than a discovery.

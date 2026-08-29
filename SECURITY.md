@@ -4,9 +4,10 @@ Status: reporting expectations documented; no private reporting channel publishe
 A threat model and control baseline now exist and are linked below; neither changes
 anything in this policy.
 
-This repository currently contains governance documentation only. It ships no
-service, container image, package, or released artifact, so there is no supported
-version to patch and no security fix to distribute.
+This repository contains governance documentation, local development apparatus,
+and one platform-domain package that is built locally and published to no index. It
+ships no service, container image, released package, or artifact, so there is no
+supported version to patch and no security fix to distribute.
 
 ## Supported versions
 

@@ -16,9 +16,12 @@ Everything here is offline and deterministic. It reads the document it was given
 the schema, and the compatibility matrix. No network, no cluster, no clock, no
 randomness. The same document produces the same findings in the same order.
 
-This is not a platform component. Nothing in this repository reads a
-WorkloadContract at runtime, and this module does not change that: it validates
-documents that live in this repository.
+This is not a platform component, and it validates documents that live in this
+repository rather than documents a running platform was handed. The platform domain
+in ``inferops.domain.workload`` reads a document into typed objects; the two do not
+call each other, and until the validation pipeline in ``V1-S1-001-PR2`` moves these
+rules across, this module is the only place the semantic half of the contract is
+applied.
 """
 
 from __future__ import annotations

@@ -3,9 +3,10 @@
 Status: accepted repository convention; effective for changes merged after this
 guide is merged.
 
-Thank you for helping build InferOps. The repository is currently in its governance
-and decision phase; a merged document is not evidence that a runtime capability
-exists.
+Thank you for helping build InferOps. The repository has moved from its governance
+and decision phase into implementing against those decisions, and the caution is
+unchanged in both: a merged document is not evidence that a runtime capability
+exists, and neither is a merged package.
 
 ## Before opening a change
 
@@ -313,8 +314,9 @@ every committed valid fixture parses; that a parsed document rebuilds into exact
 the document it came from, so that a dropped field or an invented default fails
 here rather than in whatever renders one later; that an unsupported contract version
 is refused before any field below it is read; that every field the schema declares
-required is required by the parser, at that field's own address; and that no refusal
-repeats a value read out of the document.
+*unconditionally* required is required by the parser, at that field's own address —
+the conditionally required profile block is a cross-field rule and is not enforced
+here; and that no refusal repeats a value read out of the document.
 
 It also compares the domain's copy of the contract against the published schema —
 every pattern, enumerated value, numeric bound, field list, and required field, in
@@ -322,8 +324,9 @@ both directions. That copy exists because the domain declares no runtime depende
 and so cannot import a JSON Schema validator; the comparison is what stops the two
 drifting. **A change to
 [the schema](contracts/workload/workload-contract.v1alpha1.schema.json) is therefore
-a change to `src/inferops/domain/workload/values.py` as well**, and the suite fails
-until both are made.
+a change to `src/inferops/domain/workload/values.py` as well** — and, when a field
+is added or removed, to `parsing.py` and `contract.py` with it. The suite fails
+until they are made.
 
 Two things belong to the validation pipeline rather than to the domain, and a change
 should not quietly move either: the semantic rules the schema cannot express, and

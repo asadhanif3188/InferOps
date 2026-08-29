@@ -88,9 +88,12 @@ def valid_document(request) -> dict[str, Any]:
     return load_document(request.param)
 
 
+SYNCHRONOUS_FIXTURE = VALID_EXAMPLES_DIR / "synchronous-llm-local.yaml"
+
+
 @pytest.fixture
 def synchronous_document() -> dict[str, Any]:
-    return load_document(VALID_EXAMPLES_DIR / "synchronous-llm-local.yaml")
+    return load_document(SYNCHRONOUS_FIXTURE)
 
 
 @pytest.fixture
@@ -249,6 +252,94 @@ def test_parsing_the_same_document_twice_produces_equal_objects(
     first = parse_workload_contract(copy.deepcopy(valid_document))
     second = parse_workload_contract(copy.deepcopy(valid_document))
     assert first == second
+
+
+def test_a_parsed_contract_is_hashable_whether_or_not_it_uses_annotations() -> None:
+    """A frozen dataclass is hashable, and a mapping is not.
+
+    Annotations are the contract's one open map, so a workload that uses the
+    extension point would otherwise be unhashable while one that does not stays
+    hashable - a difference nobody would find until something put a workload in a
+    set. The annotations are excluded from the hash and only from the hash, so two
+    metadata objects differing only in their annotations collide in a bucket and
+    are still told apart by `==`.
+    """
+    without = parse_workload_contract(load_document(SYNCHRONOUS_FIXTURE))
+    with_annotations = parse_workload_contract(
+        load_document(VALID_EXAMPLES_DIR / "synchronous-llm-secret-refs.yaml")
+    )
+
+    assert with_annotations.metadata.annotations is not None
+    assert len({hash(without), hash(with_annotations)}) == 2
+
+    same = parse_workload_contract(
+        load_document(VALID_EXAMPLES_DIR / "synchronous-llm-secret-refs.yaml")
+    )
+    assert hash(same) == hash(with_annotations)
+    assert same == with_annotations
+
+
+def test_two_metadata_objects_differing_only_in_annotations_are_not_equal() -> None:
+    """The hash may collide. Equality may not."""
+    document = load_document(VALID_EXAMPLES_DIR / "synchronous-llm-secret-refs.yaml")
+    other = copy.deepcopy(document)
+    other["metadata"]["annotations"] = {"inferops.io/example": "something-else"}
+
+    assert parse_workload_contract(document) != parse_workload_contract(other)
+
+
+def test_a_json_integer_written_with_a_fractional_zero_is_an_integer(
+    synchronous_document: dict[str, Any],
+) -> None:
+    """`5.0` is an integer in JSON Schema, which defines the type by the value.
+
+    The published schema is what a consumer validates against, so refusing this
+    would make the domain stricter than the contract it implements. It is read as
+    the integer it is, and rebuilt as one.
+    """
+    document = copy.deepcopy(synchronous_document)
+    document["spec"]["scaling"]["maximumReplicas"] = 2.0
+
+    contract = parse_workload_contract(document)
+
+    assert contract.spec.scaling.maximum_replicas == 2
+    assert contract.as_document()["spec"]["scaling"]["maximumReplicas"] == 2
+
+
+@pytest.mark.parametrize("value", [2.5, float("nan"), float("inf")])
+def test_a_json_number_that_is_not_an_integer_is_refused(
+    synchronous_document: dict[str, Any], value: float
+) -> None:
+    document = copy.deepcopy(synchronous_document)
+    document["spec"]["scaling"]["maximumReplicas"] = value
+
+    with pytest.raises(MalformedWorkloadContractError) as raised:
+        parse_workload_contract(document)
+
+    assert raised.value.field == "$.spec.scaling.maximumReplicas"
+
+
+def test_too_many_proof_references_are_refused(
+    synchronous_document: dict[str, Any],
+) -> None:
+    """The published cap is sixteen. `secretRefs` has the same kind of cap and its
+    own test; an array bound checked in one place and not the other is how the
+    unchecked one regresses."""
+    document = copy.deepcopy(synchronous_document)
+    document["spec"]["evidence"]["proofRefs"] = [
+        f"docs/proof/serving/record-{index}.md" for index in range(17)
+    ]
+
+    with pytest.raises(MalformedWorkloadContractError) as raised:
+        parse_workload_contract(document)
+
+    assert raised.value.field == "$.spec.evidence.proofRefs"
+
+
+def test_a_contract_version_cannot_be_constructed_as_an_unsupported_one() -> None:
+    """Every other value in this domain refuses itself at construction."""
+    with pytest.raises(UnsupportedContractVersionError):
+        ContractVersion(group="inferops.io", version="v1alpha2")
 
 
 def test_a_domain_object_is_frozen(synchronous_document: dict[str, Any]) -> None:

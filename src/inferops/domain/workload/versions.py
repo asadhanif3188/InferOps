@@ -43,6 +43,18 @@ class ContractVersion:
     group: str
     version: str
 
+    def __post_init__(self) -> None:
+        # Constructed directly rather than through `parse`, this would otherwise
+        # be an object asserting a version nothing implements. Every other value
+        # in this domain refuses itself at construction; this one does too.
+        if str(self) not in SUPPORTED_CONTRACT_VERSIONS:
+            supported = ", ".join(repr(entry) for entry in SUPPORTED_CONTRACT_VERSIONS)
+            raise UnsupportedContractVersionError(
+                "$.apiVersion",
+                "the contract version named here is not one this package "
+                f"implements; the supported versions are {supported}",
+            )
+
     def __str__(self) -> str:
         return f"{self.group}/{self.version}"
 

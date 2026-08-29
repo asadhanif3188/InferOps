@@ -31,7 +31,7 @@ it.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .values import (
@@ -84,7 +84,15 @@ class WorkloadMetadata:
     #: The contract's one extension point, and a non-normative one: the platform
     #: must not change behaviour because of an annotation. Keys and values were
     #: checked at parse time against the published key format and length bound.
-    annotations: Mapping[str, str] | None = None
+    #:
+    #: Excluded from the hash, and only from the hash. A frozen dataclass is
+    #: hashable, a mapping is not, and without this a contract that used the
+    #: extension point would be unhashable while one that did not would be
+    #: hashable - a difference nobody would find until something put a workload in
+    #: a set. Two metadata objects differing only in their annotations therefore
+    #: collide in a hash bucket and are still distinguished by ``==``, which is
+    #: what a hash is allowed to do.
+    annotations: Mapping[str, str] | None = field(default=None, hash=False)
 
     def as_document(self) -> Document:
         return _without_absent(

@@ -210,9 +210,26 @@ def _integer(
     floor: int,
     ceiling: int | None = None,
 ) -> int:
-    # `True` is an instance of `int` in Python and is not an integer in JSON.
-    # Without this the schema's numeric bounds would silently accept a boolean.
-    if isinstance(value, bool) or not isinstance(value, int):
+    """One JSON integer, read the way JSON Schema defines the type.
+
+    Two things about that definition are easy to get wrong in Python, and both
+    would make this parser disagree with the published schema:
+
+    - `True` is an instance of `int` here and is not an integer in JSON. Without
+      the first branch the schema's numeric bounds would silently accept a
+      boolean;
+    - `5.0` **is** an integer in JSON Schema 2020-12, which defines the type by
+      the value rather than by how it was written. The validator the contract
+      tooling uses accepts it, so refusing it here would make the domain stricter
+      than the contract it implements - a document the platform accepts that the
+      domain cannot hold. It is read, and it is held as the integer it is, which
+      means `as_document()` rebuilds it as `5` rather than as `5.0`.
+    """
+    if isinstance(value, bool):
+        raise _refuse(field, "value must be of JSON type integer", context)
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    if not isinstance(value, int):
         raise _refuse(field, "value must be of JSON type integer", context)
     if value < floor:
         raise _refuse(field, f"value must be at least {floor}", context)

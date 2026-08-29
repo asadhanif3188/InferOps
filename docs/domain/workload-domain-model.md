@@ -110,6 +110,14 @@ layers:
 | Every controlled vocabulary, format, length, and bound the schema publishes | A `mock-llm` workload declares no secret |
 | | The runtime and the artifact format are a registered, compatible pair |
 
+"The JSON type its field declares" means the type as JSON Schema defines it, not as
+Python spells it. `5.0` **is** an integer there — the type is decided by the value,
+not by how it was written — and the validator the contract tooling uses accepts it,
+so this parser accepts it too and holds it as the integer it is. Refusing it would
+make the domain stricter than the contract it implements, which is the one direction
+of divergence a domain object must not have. `true` is **not** an integer, even
+though Python says `isinstance(True, int)`.
+
 Everything in the right-hand column is a published **semantic** rule with a
 canonical error code and a rule identifier, in
 [the rejection matrix](../contracts/workload-contract.md#the-rule-matrix). None of
@@ -138,9 +146,13 @@ Two copies of one fact drift.
 is why these cannot: it reads
 [the schema](../../contracts/workload/workload-contract.v1alpha1.schema.json) and
 fails if a single pattern, enumerated value, numeric bound, field list, or required
-field disagrees with the domain, in either direction. It also generates a sweep:
-every field the schema declares required is deleted from a committed fixture in
-turn, and the parser has to refuse each one at that field's own address.
+field disagrees with the domain — in both directions for the patterns,
+vocabularies, bounds, and field lists. It also generates a sweep: every field the
+schema declares *unconditionally* required is deleted from a committed fixture in
+turn, and the parser has to refuse each one at that field's own address. That sweep
+runs one way only, and the profile block the schema requires through a conditional
+is deliberately outside it — that is a cross-field rule, and the table above says
+where it belongs.
 
 Three definitions carry a length bound in the domain that the schema does not
 publish — a semantic version, a `sha256:` digest, and an upstream revision are all
@@ -219,6 +231,9 @@ every committed valid fixture that it rebuilds the document it was given exactly
 That property is what makes "the domain loses nothing" checkable rather than
 claimed: a field the parser forgot to read is a field missing from the rebuilt
 document, and a field it defaulted is one that appears where the author wrote none.
+It is fidelity of *content*, not of spelling: a replica count written `2.0` is held
+as the integer it is and rebuilt as `2`, which is the same JSON value written the
+ordinary way.
 Absence is preserved for the same reason — an absent `proofRefs` and a declared
 empty one are different documents, both comply, and a component that rendered one
 as the other would be making a document say something its author did not write.
