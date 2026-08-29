@@ -36,7 +36,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from ..context import RequestContext
-from .errors import CanonicalError, CapabilityUnavailableError
+from .errors import CanonicalError
 from .values import (
     AdapterCapability,
     AdapterConfiguration,
@@ -52,10 +52,15 @@ class ServingAdapter(Protocol):
     An adapter is responsible for:
     - Validating configuration at initialization
     - Reporting capabilities and readiness
-    - Executing inference requests
+    - Executing inference requests (synchronous and streaming)
     - Mapping runtime errors to canonical codes
     - Translating runtime metadata to platform types
     - Graceful shutdown
+
+    **Context propagation:** Methods that execute work (initialize, infer, stream,
+    shutdown) accept RequestContext for correlation and observability. Query methods
+    (get_capabilities, get_model_metadata, get_runtime_metadata, map_error_to_canonical)
+    do not require context since they don't execute user requests.
 
     Adapters MUST NOT leak runtime-specific types or configuration into this
     interface. All communication uses domain value objects.
@@ -138,6 +143,28 @@ class ServingAdapter(Protocol):
             RequestTimeoutError: If the request exceeds the configured timeout.
             UpstreamTimeoutError: If the runtime's timeout is exceeded.
             RateLimitedError: If rate-limited by the runtime.
+            InternalError: For unexpected errors in the adapter or runtime.
+        """
+        ...
+
+    async def stream(
+        self,
+        prompt: str,
+        context: RequestContext,
+    ) -> None:
+        """Stream inference results (future capability, deferred implementation).
+
+        This method is reserved for future streaming support. Adapters that do
+        not support streaming MUST raise `CapabilityUnavailableError`.
+
+        Args:
+            prompt: The input prompt as a string.
+            context: Request context with correlation IDs.
+
+        Raises:
+            CapabilityUnavailableError: If streaming is not supported.
+            ModelNotReadyError: If the model is not ready.
+            RequestTimeoutError: If the request exceeds the configured timeout.
             InternalError: For unexpected errors in the adapter or runtime.
         """
         ...

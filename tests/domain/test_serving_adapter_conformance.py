@@ -6,7 +6,7 @@ This suite establishes that:
 - Capability declaration is explicit
 - No runtime-specific types leak into the interface
 - Error mapping produces canonical errors
-- Unsupported capabilities fail with CapabilityUnavailableError
+- Unsupported capabilities fail explicitly when not declared
 
 What it does not establish: that mock or real adapters work correctly. Those are
 scope for later PRs. This establishes only that the contract itself is coherent
@@ -16,9 +16,6 @@ and testable.
 from __future__ import annotations
 
 import pytest
-
-pytestmark = pytest.mark.unit
-pytestmark = [pytest.mark.unit, pytest.mark.asyncio]
 
 from inferops.domain import RequestContext
 from inferops.domain.serving import (
@@ -30,6 +27,8 @@ from inferops.domain.serving import (
     ServingAdapterTestDouble,
     TokenUsage,
 )
+
+pytestmark = pytest.mark.unit
 
 
 @pytest.fixture
@@ -171,14 +170,14 @@ class TestInference:
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify token usage is None when token-counting not supported."""
+        """Verify inference returns result even when token-counting not supported."""
         adapter.should_support_token_counting = False
         await adapter.initialize(test_config, test_context)
         result = await adapter.infer("test prompt", test_context)
 
-        # When not supported, usage should not be populated
-        # (implementation can choose to include it or not; absence is the point)
-        pass
+        assert isinstance(result, InferenceResult)
+        assert isinstance(result.content, str)
+        # When not supported, adapter may or may not include usage (both valid)
 
     async def test_infer_with_token_counting_includes_usage(
         self,
@@ -210,6 +209,23 @@ class TestInference:
 
         with pytest.raises(ModelNotReadyError):
             await adapter.infer("test prompt", test_context)
+
+
+class TestStreaming:
+    """Tests for streaming capability."""
+
+    async def test_streaming_fails_when_not_supported(
+        self,
+        adapter: ServingAdapterTestDouble,
+        test_context: RequestContext,
+        test_config: AdapterConfiguration,
+    ) -> None:
+        """Verify streaming raises CapabilityUnavailableError when not supported."""
+        adapter.should_support_streaming = False
+        await adapter.initialize(test_config, test_context)
+
+        with pytest.raises(CapabilityUnavailableError):
+            await adapter.stream("test prompt", test_context)
 
 
 class TestMetadata:

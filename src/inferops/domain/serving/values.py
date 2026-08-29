@@ -9,15 +9,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import NewType
 
 from .errors import InvalidValueError
-
-# Branded type for durations (milliseconds)
-DurationMs = NewType("DurationMs", int)
-
-# Branded type for token count
-TokenCount = NewType("TokenCount", int)
 
 
 @dataclass(frozen=True, slots=True)

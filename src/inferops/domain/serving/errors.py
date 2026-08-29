@@ -73,57 +73,80 @@ class InvalidValueError(DomainError):
 class CanonicalError(DomainError):
     """A request failed with a canonical error code.
 
-    Carries the error code and a message safe to return to a caller. The message
-    does not contain values read from the request.
+    Carries the error code, a message safe to return to a caller, and request
+    context for correlation. The message does not contain values read from the
+    request or runtime state.
     """
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        *,
+        context: RequestContext = NO_REQUEST_CONTEXT,
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+        self.context = context
 
     def as_dict(self) -> dict[str, object]:
-        """A structured form: error code and message."""
-        return {"code": self.code, "message": self.message}
+        """A structured form: error code, message, and request identifiers."""
+        return {"code": self.code, "message": self.message, **self.context.as_dict()}
 
 
 class ModelNotReadyError(CanonicalError):
     """The model is not yet ready to serve requests."""
 
-    def __init__(self, message: str = "model-not-ready") -> None:
-        super().__init__("model-not-ready", message)
+    def __init__(
+        self, message: str = "model-not-ready", *, context: RequestContext = NO_REQUEST_CONTEXT
+    ) -> None:
+        super().__init__("model-not-ready", message, context=context)
 
 
 class RequestTimeoutError(CanonicalError):
     """The request did not complete within the configured timeout."""
 
-    def __init__(self, message: str = "request-timeout") -> None:
-        super().__init__("request-timeout", message)
+    def __init__(
+        self, message: str = "request-timeout", *, context: RequestContext = NO_REQUEST_CONTEXT
+    ) -> None:
+        super().__init__("request-timeout", message, context=context)
 
 
 class UpstreamTimeoutError(CanonicalError):
     """A timeout occurred in an upstream component."""
 
-    def __init__(self, message: str = "upstream-timeout") -> None:
-        super().__init__("upstream-timeout", message)
+    def __init__(
+        self, message: str = "upstream-timeout", *, context: RequestContext = NO_REQUEST_CONTEXT
+    ) -> None:
+        super().__init__("upstream-timeout", message, context=context)
 
 
 class RateLimitedError(CanonicalError):
     """The adapter or runtime rate-limited this request."""
 
-    def __init__(self, message: str = "rate-limited") -> None:
-        super().__init__("rate-limited", message)
+    def __init__(
+        self, message: str = "rate-limited", *, context: RequestContext = NO_REQUEST_CONTEXT
+    ) -> None:
+        super().__init__("rate-limited", message, context=context)
 
 
 class CapabilityUnavailableError(CanonicalError):
     """A declared capability is not supported."""
 
-    def __init__(self, message: str = "capability-unavailable") -> None:
-        super().__init__("capability-unavailable", message)
+    def __init__(
+        self,
+        message: str = "capability-unavailable",
+        *,
+        context: RequestContext = NO_REQUEST_CONTEXT,
+    ) -> None:
+        super().__init__("capability-unavailable", message, context=context)
 
 
 class InternalError(CanonicalError):
     """An unexpected error occurred in the adapter or runtime."""
 
-    def __init__(self, message: str = "internal-error") -> None:
-        super().__init__("internal-error", message)
+    def __init__(
+        self, message: str = "internal-error", *, context: RequestContext = NO_REQUEST_CONTEXT
+    ) -> None:
+        super().__init__("internal-error", message, context=context)

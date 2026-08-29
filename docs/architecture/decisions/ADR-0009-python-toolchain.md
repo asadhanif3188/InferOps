@@ -147,7 +147,7 @@ rules travel with it:
    than for whichever platform happened to run the resolver, so the same file
    describes the Windows host this was executed on and the Linux and macOS hosts
    that have never run it.
-2. **Every distribution in it carries a hash.** 136 of them are committed.
+2. **Every distribution in it carries a hash.** 138 of them are committed.
 3. **The interpreter series is pinned and the patch release is not.**
    `requires-python = ">=3.12,<3.13"` in `pyproject.toml`, and `3.12` in
    [`.python-version`](../../../.python-version). `uv` provisions its own
@@ -299,6 +299,7 @@ compares this table against that file and fails if they disagree.
 | Linter and formatter | `ruff` | `ruff>=0.16.1,<0.17` |
 | Type checker | `mypy` | `mypy>=2.3,<3` |
 | Test framework | `pytest` | `pytest>=8.3.4,<9` |
+| Async test support | `pytest-asyncio` | `pytest-asyncio>=0.24,<0.25` |
 | Schema validator | `jsonschema` | `jsonschema>=4.23,<5` |
 | YAML reader | `PyYAML` | `PyYAML>=6.0.2,<7` |
 | YAML stubs | `types-PyYAML` | `types-PyYAML>=6.0.12,<7` |
@@ -316,6 +317,7 @@ updated with it.
 | `ruff` | `0.16.4` |
 | `mypy` | `2.3.1` |
 | `pytest` | `8.4.2` |
+| `pytest-asyncio` | `0.24.0` |
 | `jsonschema` | `4.26.0` |
 | `pyyaml` | `6.0.3` |
 | `types-jsonschema` | `4.26.0.20260518` |

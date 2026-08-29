@@ -14,7 +14,6 @@ concrete minimal implementation that satisfies the protocol.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from ..context import RequestContext
 from .contract import ServingAdapter
@@ -110,6 +109,15 @@ class MinimalTestDouble:
             finish_reason="stop",
         )
 
+    async def stream(
+        self,
+        prompt: str,
+        context: RequestContext,
+    ) -> None:
+        """Stream inference (raises if not supported)."""
+        if not self.should_support_streaming:
+            raise CapabilityUnavailableError("streaming not supported")
+
     async def get_model_metadata(self) -> ModelMetadata:
         """Report model metadata."""
         return ModelMetadata(
@@ -136,20 +144,11 @@ class MinimalTestDouble:
         if isinstance(error, CanonicalError):
             return error
 
-        if isinstance(error, ModelNotReadyError):
-            return error
-
-        if isinstance(error, CapabilityUnavailableError):
-            return error
-
         return InternalError(str(error))
 
 
-class ServingAdapterTestDouble(MinimalTestDouble):
-    """Concrete test double implementing the ServingAdapter protocol.
+# Static conformance check: MinimalTestDouble satisfies ServingAdapter protocol
+_protocol_check: ServingAdapter = MinimalTestDouble()
 
-    This is the class to use in conformance tests. It provides a complete
-    implementation with deterministic behavior.
-    """
-
-    pass
+# Alias for clarity in imports: the test double implements the protocol
+ServingAdapterTestDouble = MinimalTestDouble
