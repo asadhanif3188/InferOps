@@ -342,18 +342,21 @@
       "lane": "default-checks",
       "environment": "repository-only",
       "marker": "mockintegration",
-      "paths": [],
+      "paths": [
+        "tests/api"
+      ],
       "commands": [
-        "python -m pytest -m mockintegration -q"
+        "python -m pytest -m mockintegration -q",
+        "python -m pytest tests/api -q"
       ],
       "evidenceClass": "mock",
       "maxCertification": "C1",
       "requiresModel": false,
       "requiresCluster": false,
       "publishable": true,
-      "v1Status": "planned",
-      "evidenceRef": null,
-      "notes": "This is the layer most at risk of being read as more than it is. It proves the consumer and the contract; it proves nothing about a provider."
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/serving/v1-s1-005-pr1-validation.md",
+      "notes": "This is the layer most at risk of being read as more than it is. It proves the consumer and the contract; it proves nothing about a provider. V1-S1-005-PR1 is what made it real: the API exists, and this layer drives it end to end against the labelled mock adapter and against controlled adapter doubles. Two limits travel with every result it produces. Nothing here crosses a socket - the API implements the ASGI calling convention, this repository ships no server, and the suites drive the application through its own interface - so a result establishes what the application decides and nothing about HTTP. And the canonical error body it asserts is the subset V1-S1-005-PR2 standardises, so the layer's canonical-error obligation is partly met rather than met."
     },
     {
       "layerId": "kubernetes-smoke",

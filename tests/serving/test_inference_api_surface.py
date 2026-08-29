@@ -15,13 +15,15 @@ serving contract's required endpoint roles are each covered by an in-scope endpo
 by a stated equivalent; that a `retryable` value differing from the canonical default
 is marked as an override rather than left to look like a discrepancy; that the
 document and the data publish the same endpoints, codes, and capability values; and
-that nothing here claims to be served.
+that what the record says serves it is stated rather than assumed.
 
-What it does not establish is that any of this works. Nothing in this repository
-listens on a port, registers a route, or answers a request, and this suite cannot tell
-the difference between a surface that will be implemented faithfully and one that will
-be ignored. It stops the decision drifting from its own record; it does not observe a
-single response.
+What it does not establish is that any of this works. `V1-S1-005-PR1` built the
+component that answers these routes, and whether it answers them faithfully is
+checked from the code in
+[the implementation agreement suite](test_inference_api_implementation_agreement.py)
+and exercised against the mock adapter under ``tests/api``. This suite still reads
+files and nothing else: it stops the decision drifting from its own record, and it
+observes no response.
 """
 
 from __future__ import annotations
@@ -159,12 +161,30 @@ def test_every_reference_the_surface_names_exists() -> None:
         assert (REPO_ROOT / value).exists(), f"{key} -> {value}"
 
 
-def test_nothing_in_this_repository_serves_the_surface() -> None:
+#: The states this record may report about itself, in the order it passes through
+#: them. It began at `nothing-serves` and moved once, when `V1-S1-005-PR1` built
+#: the component that answers these routes. A state outside this set is a claim
+#: nobody defined.
+IMPLEMENTATION_STATES = ("nothing-serves", "served-in-part", "served")
+
+
+def test_the_record_states_what_serves_it_in_a_vocabulary_it_defines() -> None:
     """The one claim this record is most likely to drift into overstating."""
     status = SURFACE["implementationStatus"]
-    assert status["state"] == "nothing-serves"
-    assert "does not exist" in status["meaning"]
+    assert status["state"] in IMPLEMENTATION_STATES, status["state"]
+    assert status["meaning"].strip()
     assert status["publishedArtifacts"].startswith("none")
+
+
+def test_a_served_surface_is_still_not_a_published_contract_artifact() -> None:
+    """Serving a shape and publishing it are different, and D9 stays undecided.
+
+    This is the distinction the record was built around, and it is the one that
+    survives the surface being implemented: `contracts/` is where a client binds,
+    and nothing was added to it.
+    """
+    assert "D9" in DECISION
+    assert SURFACE["implementationStatus"]["publishedArtifacts"].startswith("none")
 
 
 def test_no_contract_artifact_for_this_surface_was_published() -> None:
@@ -239,8 +259,19 @@ def test_every_endpoint_declares_every_required_field(endpoint: dict) -> None:
 
 
 @pytest.mark.parametrize("endpoint", ENDPOINTS, ids=lambda row: row["endpointId"])
-def test_no_endpoint_claims_a_component_serves_it(endpoint: dict) -> None:
-    assert endpoint["servedBy"].startswith("none"), endpoint["endpointId"]
+def test_every_endpoint_says_what_serves_it_and_what_is_unfinished(
+    endpoint: dict,
+) -> None:
+    """An endpoint claiming a server names one, and one claiming none says so.
+
+    The check that matters is not which of the two it is — it is that the row is
+    a statement a reader can check rather than a blank. The suite that checks the
+    statement against the code is
+    ``tests/serving/test_inference_api_implementation_agreement.py``.
+    """
+    served_by = endpoint["servedBy"]
+    assert served_by.strip(), endpoint["endpointId"]
+    assert served_by.startswith(("none", "inferops.api")), endpoint["endpointId"]
 
 
 def test_endpoint_identifiers_and_paths_are_unique() -> None:
@@ -778,10 +809,19 @@ def test_every_capability_is_published_and_decided(row: dict) -> None:
     assert path in DECISION, f"{path} is published and never decided"
 
 
-def test_the_document_and_the_decision_both_refuse_to_claim_a_served_surface() -> None:
+def test_the_document_and_the_decision_both_refuse_to_claim_a_published_contract() -> (
+    None
+):
+    """Neither may claim an artifact a client can bind to, served or not.
+
+    The decision record is dated and is not rewritten when the thing it decided
+    gets built, so it still says the API did not exist when it was written. The
+    document beside it describes the surface as it stands. What both have to keep
+    saying is the part that has not changed: no OpenAPI document is published.
+    """
     for body, name in ((DOCUMENT, DOCUMENT_PATH.name), (DECISION, DECISION_PATH.name)):
-        assert "served by nothing" in body or "does not exist" in body, name
         assert "No OpenAPI document" in body or "no OpenAPI document" in body, name
+    assert "does not exist" in DECISION, DECISION_PATH.name
 
 
 def test_the_decision_carries_the_sections_a_record_here_is_required_to_carry() -> None:
