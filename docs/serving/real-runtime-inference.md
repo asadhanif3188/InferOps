@@ -60,7 +60,7 @@ needs. Three properties of that choice are decisions rather than details.
 | Property | What it does | Why |
 |---|---|---|
 | No redirect is followed | A `3xx` is a status like any other and maps to `internal-error` | Following one would send a request body to a host the settings never validated. `urllib.request` and its opener would have followed it |
-| The response body is read under a 1 MiB bound | A peer cannot decide how much this process allocates | The serving pod's memory limit is 3 GiB, and an unbounded read puts that limit at the mercy of the far side |
+| The response body is read under a 1 MiB bound | A peer cannot decide how much this process allocates | The serving pod's memory limit is 3 GiB, and an unbounded read puts that limit at the mercy of the far side. One byte past the bound is read, so a body that is merely too large is reported as such rather than truncated into an unreadable one |
 | A connection is opened per request and closed in a `finally` | No shared mutable state, no keep-alive | ADR 0002 records the trial as single and sequential and decides no concurrency limit, so there is no measurement to trade against |
 
 ## The request
@@ -155,12 +155,36 @@ is an answer to that question and not a fault in the platform.
 | Deadline | What elapsing means | Code |
 |---|---|---|
 | The budget handed to the transport | The runtime ran out of time | `upstream-timeout` |
-| The adapter's own outer wait, of the same length | The transport did not honour the budget it was given | `request-timeout` |
+| The adapter's own backstop — that budget **plus a grace** | The transport outlasted its own budget and the grace on top of it | `request-timeout` |
 
-The second exists because a transport is a value a caller supplies, and a protocol
-cannot enforce the promise it asks for. Without it, a transport that ignores its
-budget stalls the process rather than one request. Both are derived from the one
-`timeout_ms` a caller configured; neither is a number this adapter invented.
+The backstop exists because a transport is a value a caller supplies, and a
+protocol cannot enforce the promise it asks for.
+
+**The grace is what makes the pair work.** Both clocks would otherwise be set to
+the same duration while the outer one *starts first*: it begins when the call is
+made, and the inner cannot begin until the work has been handed to a worker and a
+socket opened. Set equal, the outer wins by the dispatch cost every time, every
+genuinely slow runtime is reported `request-timeout`, and `upstream-timeout`
+becomes a code nothing can produce. That was measured against the real transport
+over a real socket, and it is why the grace is there rather than a matter of
+taste.
+
+The grace never lengthens a budget a caller configured. It bounds only this
+adapter's own wait on a transport that has already broken its promise, and the
+transport is handed the configured budget unchanged.
+
+**Every runtime call is under both**, the readiness probe included. The probe is
+reached implicitly by the first inference call, so a probe outside the deadlines
+would be an unbounded stretch inside a call whose whole contract is that it is
+bounded.
+
+**A fired deadline closes the socket.** A thread cannot be cancelled, so when the
+backstop fires the worker is still parked inside a read. The connection is built
+on the event loop and closed there, which makes that read fail and lets the worker
+unwind — otherwise the socket and its pool slot would be held until the far side
+chose to answer. The socket's own timeout does not close that gap: it bounds each
+individual read rather than the request, so a peer trickling bytes just under the
+budget never trips it.
 
 ## Readiness gates inference
 

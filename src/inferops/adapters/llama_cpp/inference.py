@@ -383,6 +383,9 @@ UNREACHABLE_MESSAGE = "the runtime could not be reached"
 UPSTREAM_TIMEOUT_MESSAGE = "the runtime did not answer within the adapter's deadline"
 REQUEST_TIMEOUT_MESSAGE = "the adapter's own deadline for this request elapsed"
 TRANSPORT_FAILURE_MESSAGE = "the request to the runtime could not be completed"
+UNEXPECTED_TRANSPORT_MESSAGE = (
+    "the transport failed in a way this adapter does not recognise"
+)
 
 
 def error_for_transport_failure(
@@ -407,6 +410,18 @@ def error_for_transport_failure(
 def request_deadline_error(context: RequestContext) -> RequestTimeoutError:
     """The error the adapter's own outer deadline produces."""
     return RequestTimeoutError(REQUEST_TIMEOUT_MESSAGE, context=context)
+
+
+def unexpected_transport_error(context: RequestContext) -> InternalError:
+    """The canonical error for a transport failure outside the published kinds.
+
+    A transport is a value a caller supplies, so it may raise anything at all —
+    including an exception carrying text this adapter has never inspected. The
+    original is dropped rather than wrapped, for the reason every other refusal
+    here drops one: a message from outside is where a path, a host name, or a
+    credential arrives in a caller's error.
+    """
+    return InternalError(UNEXPECTED_TRANSPORT_MESSAGE, context=context)
 
 
 def unreachable_error(context: RequestContext) -> CapabilityUnavailableError:

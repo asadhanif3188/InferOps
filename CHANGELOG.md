@@ -44,12 +44,18 @@ once versioned releases begin.
   the accepted record lists the code among those this platform does not emit, and
   a runtime answering `429` is an `internal-error` like any other unexpected
   status rather than an observation of a limiter that does not exist.
-- **Two deadlines, because a protocol cannot enforce the promise it asks for.**
-  The transport is handed the configured budget and the call is wrapped in an outer
-  wait of the same length. The inner one produces `upstream-timeout` — the runtime
-  ran out of time — and the outer produces `request-timeout` and exists so that a
-  transport which ignores its budget stalls one request rather than the process.
-  Both derive from the one timeout a caller configured; neither is invented.
+- **Two deadlines, and the outer one is deliberately the longer.** The transport is
+  handed the configured budget; the call is wrapped in a backstop of that budget
+  plus a grace. The inner produces `upstream-timeout` — the runtime ran out of
+  time — and the backstop produces `request-timeout`, and it exists because a
+  transport is a value a caller supplies and a protocol cannot enforce the promise
+  it asks for. The grace is what makes the pair work: both clocks would otherwise
+  be set to the same duration while the outer one starts first, so it would win by
+  the dispatch cost every time and `upstream-timeout` would be a code nothing
+  could produce. Every runtime call is under both, the readiness probe included,
+  because that probe is reached implicitly by the first inference call. A fired
+  deadline closes the socket, since a thread cannot be cancelled and the worker
+  would otherwise hold its socket until the far side chose to answer.
 - **A real-runtime smoke suite that has not been run.**
   [`tests/realruntime/`](tests/realruntime/) drives the adapter against a live
   `llama-server` holding the pinned model, under the `realruntime` marker the

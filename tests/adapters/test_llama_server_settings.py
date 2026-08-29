@@ -224,6 +224,66 @@ def test_a_built_url_ends_at_the_runtime_path_it_asked_for(path: str) -> None:
     assert "#" not in built
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://llama-server:99999",
+        "http://llama-server:65536",
+        "http://llama-server:-1",
+        "http://llama-server:notaport",
+    ],
+)
+def test_a_port_outside_the_range_is_refused_at_construction(endpoint: str) -> None:
+    """``urlsplit`` parses a port lazily and raises only when it is read.
+
+    Left unchecked, an operator's typo survives construction and surfaces inside
+    a caller's first request as a ``ValueError`` no canonical mapping covers —
+    which would break this class's own promise that a wrong setting is wrong
+    before any request arrives.
+    """
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        settings(endpoint=endpoint)
+    assert caught.value.field == "endpoint"
+
+
+def test_a_port_inside_the_range_is_accepted() -> None:
+    assert settings(endpoint="http://llama-server:65535").base_url == (
+        "http://llama-server:65535"
+    )
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://llama-server\r\nX-Injected: 1@elsewhere",
+        "http://llama-server\n:8080",
+        "http://llama\tserver:8080",
+        "http://llama-server:8080\x00",
+        "http://llama-server:8080\x7f",
+    ],
+)
+def test_an_endpoint_carrying_a_control_character_is_refused(endpoint: str) -> None:
+    """A control character can move where a request goes.
+
+    A carriage return and a line feed before an at-sign parse with a host of
+    whatever follows the at-sign. Two later defences already refuse that
+    particular string — the credential check here, and the standard library's own
+    refusal of a control character in a request line — and a value needing two
+    later defences is a value this constructor should not accept.
+    """
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        settings(endpoint=endpoint)
+    assert caught.value.field == "endpoint"
+
+
+def test_a_control_character_refusal_repeats_no_part_of_the_endpoint() -> None:
+    with pytest.raises(InvalidAdapterConfigError) as caught:
+        settings(endpoint="http://llama-server\r\nX-Injected: 1@elsewhere")
+
+    assert "elsewhere" not in str(caught.value)
+    assert "X-Injected" not in str(caught.value)
+
+
 def test_the_base_url_is_rebuilt_rather_than_trimmed() -> None:
     """Reconstructing from the parsed parts is what makes the check binding."""
     assert settings(endpoint="http://llama-server:8080/").base_url == (

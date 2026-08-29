@@ -14,16 +14,24 @@ again less than a reader skimming a green test session would assume, because
 |---|---|
 | Evidence class | `local-static` for every check here |
 | Ceiling | `C0` |
-| What ran | The committed test suites, the linter, the formatter, and the type checker, from a checkout |
-| What did not run | Any real model, runtime image, container engine, cluster, network call, inference request, paid service, or scanner |
+| What ran | The committed test suites, the linter, the formatter, and the type checker, from a checkout — plus three reproductions listed under [method](#method), two of which opened a loopback socket |
+| What did not run | Any real model, runtime image, container engine, cluster, inference request, paid service, or scanner |
 | Claims certified by this record | none |
 
 `local-static` is the weakest label these checks support and it is the correct
-one. The adapter added here is real, and every executed check drove it against a
-**controlled transport** supplied by the test file — an object that answers what
-the test decided. That establishes the adapter's own logic and establishes
-**nothing** about `llama-server`, about the pinned model, about latency, about
-token accounting, or about any failure mode nobody anticipated.
+one. The adapter added here is real, and every check in the committed suites drove
+it against a **controlled transport** supplied by the test file — an object that
+answers what the test decided. That establishes the adapter's own logic and
+establishes **nothing** about `llama-server`, about the pinned model, about
+latency, about token accounting, or about any failure mode nobody anticipated.
+
+**Two of the reproductions below opened a socket**, to a listener written for the
+reproduction or to a closed local port. That is stated rather than folded into
+"no network", because the classification table above would otherwise be wrong —
+but it changes nothing about the class: a loopback socket answering a script is
+not a runtime, and neither reproduction loaded a model, pulled an image, or
+touched a cluster. They are not part of the committed suites and no lane runs
+them.
 
 **The same imprecision the previous record noted still applies.** The suites live
 under `tests/adapters/`, whose layer carries the evidence class `mock` and a `C1`
@@ -54,7 +62,7 @@ host and a real model, and all stay `planned`.
 | Model artifact | none. No weight file was downloaded, mounted, hashed, or read |
 | Container image | none. No image was pulled, inspected, or run |
 | Cluster | none |
-| Network | not used by any check recorded here |
+| Network | no remote host. Two reproductions under [method](#method) opened a loopback socket; the committed suites open none |
 
 ## Environment
 
@@ -102,29 +110,40 @@ exception type, and one narrowing that made an assertion unreachable. All were
 corrected before the results below. The sequence is recorded because a record that
 lists only the passing run describes a result rather than a method.
 
+Three checks were run **outside** the committed suites, because each answers a
+question no repository-only assertion can. Each is reproducible and none touches a
+model, an image, or a cluster.
+
+| Check | Why it was run | Result |
+|---|---|---|
+| The `realruntime` suite against a closed local port, with the six settings set | Its fixture had never executed — it always skips — so nothing established that the fixture, its teardown, or the settings-to-socket path work at all | The async fixture ran, `initialize` succeeded, the transport dialled and was refused, and each test failed with the canonical error its stage produces. One test, which needs no runtime, passed |
+| The deadline race, against the real transport over a real socket that answers readiness and then goes silent | To confirm the reported race and that the grace fixes it | With the two clocks equal: `request-timeout` after 1.016 s. With the grace: `upstream-timeout` after 1.032 s |
+| `asyncio.wait_for` over `asyncio.to_thread`, in isolation | To confirm that a fired deadline does not stop a worker thread | The deadline fired at 0.098 s; the worker ran to completion afterwards. This is what the cancellation close in the transport exists for |
+
 ## Results
 
 | Check | Result |
 |---|---|
 | `ruff check .` | All checks passed |
-| `ruff format --check .` | 144 files already formatted |
+| `ruff format --check .` | 145 files already formatted |
 | `python -m mypy` | Success: no issues found in 64 source files |
-| `python -m pytest -q` | 3518 passed, 25 skipped, 7 deselected |
-| `python -m pytest -m adapter -q` | 537 passed, 3013 deselected |
-| `python -m pytest tests/adapters -q` | 537 passed |
+| `python -m pytest -q` | 3547 passed, 25 skipped, 7 deselected |
+| `python -m pytest -m adapter -q` | 565 passed, 3014 deselected |
+| `python -m pytest tests/adapters -q` | 565 passed |
 | `python -m pytest tests/domain -q` | 398 passed, 18 skipped |
 | `python -m pytest tests/architecture -q` | 416 passed |
 | `python -m pytest tests/testing -q` | 498 passed |
 | `python -m pytest tests/contracts -q` | 191 passed, 7 skipped |
-| `python -m pytest tests/security -q` | 598 passed |
+| `python -m pytest tests/security -q` | 599 passed |
 | `python -m pytest tests/serving -q` | 184 passed |
 | `python -m pytest tests/realruntime -q` | 7 deselected |
 | `python -m pytest tests/realruntime -m realruntime -q` | **7 skipped** |
 | `git diff --check` | no output |
 
-The adapter layer grew from 303 checks to 537. The architecture suite grew from
+The adapter layer grew from 303 checks to 565. The architecture suite grew from
 408 to 416 because it parametrises over every module under `src/inferops/`, and
-this change added four.
+this change added four. The security suite grew from 598 to 599 because it
+parametrises over every committed Markdown file, and this change added one.
 
 **The two `tests/realruntime` rows are the important ones**, and they are recorded
 separately from everything else because they are the mock-versus-real split this
@@ -223,6 +242,28 @@ module reads a file or an environment variable of the running process: the
 environment is read only by `tests/realruntime/`, at the edge where ambient state
 legally enters.
 
+## What review changed
+
+The change was reviewed twice before the second commit — once for correctness and
+contract conformance, once for security — and the findings are recorded here
+rather than smoothed away, because a record that shows only the corrected state
+hides how much of it review produced. Two of the findings are defects the author
+did not find.
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| The readiness probe had no outer deadline, and `infer` reaches it implicitly on its first call. A stalled probe was therefore an unbounded stretch inside a call whose whole contract is that it is bounded | must fix | Every runtime call now goes through one bounded helper. Three checks assert **elapsed time** rather than only the error code, and each fails against the previous behaviour |
+| Both deadlines were set to the same duration while the outer one starts first, so the outer won by the dispatch cost every time. Every genuinely slow runtime would have been reported `request-timeout`, and `upstream-timeout` would have been a code nothing could produce | must fix | The backstop is now the budget plus a grace. Reproduced against the real transport over a real socket before and after: `request-timeout` at 1.016 s became `upstream-timeout` at 1.032 s |
+| A fired deadline cannot stop a worker thread, so the socket and the pool slot were held until the far side chose to answer. The socket timeout does not close the gap: it bounds each read rather than the request, so a peer trickling bytes never trips it | must fix | The connection is built on the event loop and closed there when the call is cancelled, which unparks the blocked worker. The check fails against the previous behaviour |
+| An out-of-range port survived construction, because `urlsplit` parses a port lazily, and surfaced inside a caller's first request as a `ValueError` no canonical mapping covers | should fix | Refused at construction, which is what this class already promised. The transport refuses one too, so a URL assembled another way cannot reach a caller uncanonicalised |
+| A `close` that raised inside the `finally` replaced the mapped transport failure with its own, so a refusal would have reached the caller as a raw `OSError` carrying the far side's text | should fix | Closed quietly. Both the failure and the success paths are asserted |
+| An oversized response body was truncated and then reported as unreadable, which is the wrong fact about a well-formed body that was merely too large | should fix | One byte past the bound is read, so oversized is distinguishable. A body exactly at the bound is still read whole |
+| A transport is a value a caller supplies and may raise anything, but `infer` publishes a closed list of canonical failures | should fix | Anything unexpected maps to `internal-error` with its message dropped. `CancelledError` is not an `Exception` and still propagates, which is correct |
+| `__all__` exported `annotations`, the `__future__` feature object, because it was generated from the module's import statements | should fix | Removed |
+| An endpoint carrying a control character was refused only by two later defences | nit | Refused at construction as well |
+| Three headline counts in this record were wrong, because the suites were run before the last document was added and the security suite parametrises over every Markdown file | must fix | Re-run and corrected. The counts above are from a full run of the final tree |
+| `get_model_metadata` before `initialize` raises here and returns a fallback in the mock adapter, and the protocol is silent about which is right | should fix | **Not fixed.** Settling it means either editing the mock adapter or adding an obligation to the shared conformance suite, and both belong to the protocol rather than to this adapter. Recorded under deferred work |
+
 ## Limitations
 
 - **No inference was executed against a real model, and none was attempted.** The
@@ -267,6 +308,22 @@ legally enters.
   request, the adapter is documented as unsafe to share across event loops, and
   ADR 0002 decides no concurrency limit. Nothing here measures behaviour under a
   second simultaneous request.
+- **The outer deadline's grace is a chosen number.** It is one second. It is not a
+  runtime setting and it never lengthens a budget a caller configured — it bounds
+  only this adapter's own wait on a transport that has already broken its promise
+  — but its size was chosen as a comfortable margin over the cost of handing work
+  to a worker and opening a socket, and that cost was measured once, on one
+  machine, in the reproduction recorded above.
+- **A blocked worker is unparked by closing its socket, not by cancelling it.**
+  Python cannot cancel a running thread. The transport closes the connection from
+  the event loop when a call is cancelled, which makes the blocked read fail and
+  lets the worker unwind — but the worker exits a moment after the caller does,
+  not with it.
+- **`get_model_metadata` before `initialize` diverges between the two adapters.**
+  This one raises; the mock returns a fallback identity. The protocol states no
+  precondition, and the shared conformance suite only ever calls it after
+  initialization, so nothing holds the two to the same answer. Recorded rather
+  than settled here, because settling it changes the protocol or the mock.
 - **No scanner ran.** No secret scanner, image scanner, or dependency auditor was
   executed for this change; the diff was inspected by eye and by
   `git diff --check`.
@@ -307,8 +364,18 @@ The parent story's criteria, and where each stands after this change.
   forward from the previous record; the real adapter now exists, and the question
   is still worth answering somewhere other than in passing.
 - Whether the `adapter` test layer should distinguish `local-static` checks from
-  `mock` ones. Carried forward, and this change added 234 more checks that sit
+  `mock` ones. Carried forward, and this change added 262 more checks that sit
   below the layer's declared class.
+- Whether `get_model_metadata` before `initialize` should raise or report a
+  fallback, and whether the protocol should say so. Both concrete adapters answer
+  it differently today and the shared conformance suite cannot see the difference,
+  because it only calls the method after initialization. Settling it means editing
+  the protocol and one of the two adapters, both outside this PR's boundary.
+- A total elapsed-time budget for a runtime call, rather than the per-read socket
+  timeout the standard library gives. A peer that trickles bytes just under the
+  budget never trips a per-read timeout; the adapter's backstop bounds the
+  *caller's* wait, and the worker is unparked by closing the socket rather than by
+  a deadline of its own.
 
 ## Authorisation
 

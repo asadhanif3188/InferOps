@@ -380,7 +380,7 @@ declaration; [the inference half](docs/serving/real-runtime-inference.md) holds 
 transport seam, the inference client, the deadlines, the error mapping, and
 `LlamaServerAdapter`.
 
-Four rules apply to a change here beyond the usual ones.
+Five rules apply to a change here beyond the usual ones.
 
 **A pin is compared to its source, never restated.** The runtime image digest and
 the model revision, file, size, and hash are copied from
@@ -413,6 +413,16 @@ message is dropped rather than wrapped, and no canonical error repeats a status
 code, a body, a host, a port, a path, or a prompt. That is
 [the redaction rule](docs/telemetry/redaction.md) at the one place in this
 distribution that receives a prompt.
+
+**Every runtime call goes through both deadlines, and a check on it asserts the
+elapsed time.** The transport is handed the configured budget; the adapter's
+backstop is that budget plus a grace, and the grace is load-bearing rather than
+cosmetic — set equal, the backstop starts first and wins by the dispatch cost, so
+every slow runtime is reported `request-timeout` and `upstream-timeout` becomes a
+code nothing can produce. A new call that skips the bounded helper is an unbounded
+stretch inside a bounded call, and a check that asserts only the error code would
+pass just as happily if the call had taken thirty seconds to produce it. Assert the
+clock.
 
 ### The real-runtime lane
 

@@ -72,6 +72,7 @@ from __future__ import annotations
 from .adapter import (
     COMPLETION_ALIAS_DISAGREEMENT,
     NOT_INITIALIZED_MESSAGE,
+    OUTER_DEADLINE_GRACE_SECONDS,
     SHUT_DOWN_MESSAGE,
     LlamaServerAdapter,
 )
@@ -112,6 +113,7 @@ from .inference import (
     is_success,
     normalize_response,
     request_deadline_error,
+    unexpected_transport_error,
     unreachable_error,
 )
 from .metadata import (
@@ -227,6 +229,7 @@ __all__ = [
     "NOT_READY_MESSAGES",
     "OBSERVED_BUILD_INFO",
     "OPTIONAL_ENVIRONMENT_VARIABLES",
+    "OUTER_DEADLINE_GRACE_SECONDS",
     "PINNED_ARTIFACT_FORMAT",
     "PINNED_IMAGE_DIGEST",
     "PINNED_IMAGE_REFERENCE",
@@ -265,7 +268,6 @@ __all__ = [
     "TransportProtocolError",
     "TransportTimeout",
     "TransportUnreachable",
-    "annotations",
     "build_request",
     "describe_model",
     "describe_runtime",
@@ -282,6 +284,7 @@ __all__ = [
     "readiness_error",
     "request_deadline_error",
     "translate",
+    "unexpected_transport_error",
     "unreachable_error",
     "verify_workload",
 ]

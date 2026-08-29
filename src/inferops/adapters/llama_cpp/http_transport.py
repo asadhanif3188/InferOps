@@ -76,11 +76,21 @@ class HttpRuntimeTransport:
     :meth:`close` has nothing to release — which is stated rather than left for a
     reader to discover, because a ``close`` that does nothing is otherwise
     indistinguishable from one that forgot to.
+
+    **A cancelled request closes its socket.** The blocking exchange runs in a
+    worker thread, and a thread cannot be cancelled: when the caller's deadline
+    fires, ``await`` raises :class:`asyncio.CancelledError` on the event loop
+    while the worker is still parked inside a read. Closing the connection from
+    the event loop is what unparks it — the blocked call fails, the worker
+    unwinds, and the socket and the pool slot come back. Without that, a cancelled
+    request would leave both behind until the far side chose to answer, and the
+    socket timeout is no help: it bounds each individual read rather than the
+    request, so a peer trickling bytes just under the budget never trips it.
     """
 
     async def get(self, url: str, *, timeout_s: float) -> RuntimeResponse:
         """Issue a GET and return the status and parsed body."""
-        return await asyncio.to_thread(_request, "GET", url, None, timeout_s=timeout_s)
+        return await self._exchange("GET", url, None, timeout_s=timeout_s)
 
     async def post_json(
         self,
@@ -91,11 +101,33 @@ class HttpRuntimeTransport:
     ) -> RuntimeResponse:
         """Issue a JSON POST and return the status and parsed body."""
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-        return await asyncio.to_thread(_request, "POST", url, body, timeout_s=timeout_s)
+        return await self._exchange("POST", url, body, timeout_s=timeout_s)
 
     async def close(self) -> None:
         """Nothing is held, so nothing is released. See the class docstring."""
         return None
+
+    async def _exchange(
+        self,
+        method: str,
+        url: str,
+        body: bytes | None,
+        *,
+        timeout_s: float,
+    ) -> RuntimeResponse:
+        """Run one blocking exchange in a worker, closing it if we are cancelled.
+
+        The connection is built here rather than inside the worker so that the
+        event loop holds a reference to it. Constructing one opens no socket — the
+        standard library connects lazily on the first request — so nothing is
+        dialled before the worker starts.
+        """
+        connection = _connection(url, timeout_s)
+        try:
+            return await asyncio.to_thread(_request, connection, method, url, body)
+        except asyncio.CancelledError:
+            _close_quietly(connection)
+            raise
 
 
 def _connection(url: str, timeout_s: float) -> http.client.HTTPConnection:
@@ -106,13 +138,21 @@ def _connection(url: str, timeout_s: float) -> http.client.HTTPConnection:
     is the literal truth: no connection was established.
     """
     parts = urlsplit(url)
-    host = parts.hostname
+    try:
+        host = parts.hostname
+        port = parts.port
+    except ValueError:
+        # An out-of-range port raises only when the member is read. The settings
+        # refuse one at construction; this is the second line, so that a URL
+        # assembled some other way cannot reach a caller as a `ValueError` no
+        # canonical mapping covers.
+        raise TransportUnreachable from None
     if host is None:
         raise TransportUnreachable
     if parts.scheme == "https":
-        return http.client.HTTPSConnection(host, parts.port, timeout=timeout_s)
+        return http.client.HTTPSConnection(host, port, timeout=timeout_s)
     if parts.scheme == "http":
-        return http.client.HTTPConnection(host, parts.port, timeout=timeout_s)
+        return http.client.HTTPConnection(host, port, timeout=timeout_s)
     raise TransportUnreachable
 
 
@@ -127,29 +167,45 @@ def _target(url: str) -> str:
     return urlsplit(url).path or "/"
 
 
+def _close_quietly(connection: http.client.HTTPConnection) -> None:
+    """Close a connection without letting the close itself become the failure.
+
+    A ``close`` that raises inside a ``finally`` replaces the exception being
+    propagated with its own, so a mapped :class:`TransportUnreachable` would reach
+    the caller as a raw ``OSError`` carrying the far side's text — both a leak and
+    an error kind no canonical mapping covers.
+    """
+    try:
+        connection.close()
+    except OSError:
+        return None
+
+
 def _request(
+    connection: http.client.HTTPConnection,
     method: str,
     url: str,
     body: bytes | None,
-    *,
-    timeout_s: float,
 ) -> RuntimeResponse:
-    """Issue one request on a fresh connection. Blocking; called in a thread.
+    """Issue one request on a connection. Blocking; called in a worker thread.
 
     Raises:
         TransportTimeout: If the budget elapsed.
         TransportUnreachable: If no connection was established or it failed.
         TransportProtocolError: If the response could not be read as HTTP or as
-            JSON.
+            JSON, or if it exceeded the size this transport will read.
     """
     headers = dict(BASE_HEADERS)
     if body is not None:
         headers["Content-Type"] = JSON_MEDIA_TYPE
-    connection = _connection(url, timeout_s)
     try:
         connection.request(method, _target(url), body=body, headers=headers)
         response = connection.getresponse()
-        raw = response.read(MAX_RESPONSE_BYTES)
+        # One byte past the bound, so that "too large" stays distinguishable from
+        # "exactly this large". Reading exactly the bound would truncate an
+        # oversized body into an unparseable one and report the wrong thing
+        # about it.
+        raw = response.read(MAX_RESPONSE_BYTES + 1)
         status = response.status
     except TimeoutError:
         # Subclass of OSError since 3.3, so it is caught first or never.
@@ -159,7 +215,9 @@ def _request(
     except OSError:
         raise TransportUnreachable from None
     finally:
-        connection.close()
+        _close_quietly(connection)
+    if len(raw) > MAX_RESPONSE_BYTES:
+        raise TransportProtocolError
     return RuntimeResponse(status_code=status, body=_parse(raw))
 
 

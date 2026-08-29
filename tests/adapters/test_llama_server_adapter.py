@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
@@ -46,6 +47,7 @@ from inferops.adapters.llama_cpp import (
     METRICS_PATH,
     MODELS_PATH,
     NOT_INITIALIZED_MESSAGE,
+    OUTER_DEADLINE_GRACE_SECONDS,
     PINNED_IMAGE_DIGEST,
     PINNED_MODEL_FILE,
     PINNED_MODEL_REVISION,
@@ -128,9 +130,11 @@ class ControlledTransport:
     calls: list[Call] = field(default_factory=list)
     closed: int = 0
     close_failure: BaseException | None = None
-    #: Seconds to sleep before answering, ignoring the budget it was given. The
-    #: adapter's outer deadline is what this exists to exercise.
-    stall_s: float = 0.0
+    #: Seconds to sleep before answering one path, ignoring the budget it was
+    #: given. Keyed by path so a readiness probe and a completion can stall
+    #: independently — the adapter bounds them separately, and a suite that could
+    #: only stall both at once could not tell the two deadlines apart.
+    stalls: dict[str, float] = field(default_factory=dict)
 
     def _answer(self, path: str) -> RuntimeResponse:
         failure = self.failures.get(path)
@@ -141,7 +145,7 @@ class ControlledTransport:
     async def get(self, url: str, *, timeout_s: float) -> RuntimeResponse:
         path = _path_of(url)
         self.calls.append(Call("GET", url, timeout_s))
-        await self._stall()
+        await self._stall(path)
         return self._answer(path)
 
     async def post_json(
@@ -153,7 +157,7 @@ class ControlledTransport:
     ) -> RuntimeResponse:
         path = _path_of(url)
         self.calls.append(Call("POST", url, timeout_s, payload))
-        await self._stall()
+        await self._stall(path)
         return self._answer(path)
 
     async def close(self) -> None:
@@ -161,9 +165,10 @@ class ControlledTransport:
         if self.close_failure is not None:
             raise self.close_failure
 
-    async def _stall(self) -> None:
-        if self.stall_s:
-            await asyncio.sleep(self.stall_s)
+    async def _stall(self, path: str) -> None:
+        seconds = self.stalls.get(path, 0.0)
+        if seconds:
+            await asyncio.sleep(seconds)
 
     # -- what a test asks it to do --------------------------------------
 
@@ -172,6 +177,10 @@ class ControlledTransport:
 
     def fail(self, path: str, failure: BaseException) -> None:
         self.failures[path] = failure
+
+    def stall(self, path: str, seconds: float) -> None:
+        """Answer this path only after sleeping, whatever budget it was given."""
+        self.stalls[path] = seconds
 
     def paths(self) -> list[str]:
         return [_path_of(call.url) for call in self.calls]
@@ -519,18 +528,124 @@ async def test_a_runtime_that_ran_out_of_time_is_an_upstream_timeout() -> None:
     assert caught.value.code == "upstream-timeout"
 
 
-async def test_a_transport_that_ignores_its_budget_hits_the_outer_deadline() -> None:
-    """The reason the outer deadline exists: a transport is a value a caller
-    supplies, and a protocol cannot enforce the promise it asks for."""
-    transport = ready_transport()
-    transport.stall_s = 0.5
-    adapter = LlamaServerAdapter(settings(), transport)
-    await adapter.initialize(configuration(timeout_ms=20), CONTEXT)
-    transport.answer(HEALTH_PATH, 200, {"status": "ok"})
+#: Far longer than any deadline these checks configure. A transport stalled for
+#: this long has effectively stopped answering, so a check that finishes before it
+#: elapses finished because a deadline fired and not because the stall ended.
+NEVER_ANSWERS_SECONDS = 30.0
 
+#: The budget a deadline check configures. The adapter's backstop is this plus
+#: its grace, so every such check completes in a little over the grace.
+TINY_BUDGET_MS = 20
+
+
+def _deadline_ceiling() -> float:
+    """The longest a bounded call may take, with room for a slow machine."""
+    return OUTER_DEADLINE_GRACE_SECONDS + (TINY_BUDGET_MS / 1000) + 2.0
+
+
+async def test_a_transport_that_ignores_its_budget_hits_the_outer_deadline() -> None:
+    """The reason the backstop exists: a transport is a value a caller supplies,
+    and a protocol cannot enforce the promise it asks for.
+
+    The elapsed time is asserted, not only the code. A check that asserted the
+    exception alone would pass just as happily if the call had taken thirty
+    seconds to produce it, which is the failure this pair of deadlines exists to
+    prevent.
+    """
+    transport = ready_transport()
+    transport.stall(CHAT_COMPLETIONS_PATH, NEVER_ANSWERS_SECONDS)
+    adapter, _ = await ready_adapter(transport, timeout_ms=TINY_BUDGET_MS)
+
+    started = time.monotonic()
     with pytest.raises(RequestTimeoutError) as caught:
         await adapter.infer("hello", CONTEXT)
+    elapsed = time.monotonic() - started
+
     assert caught.value.code == "request-timeout"
+    assert elapsed < _deadline_ceiling(), elapsed
+
+
+async def test_the_readiness_probe_inside_a_request_is_bounded_too() -> None:
+    """The probe is reached implicitly by the first inference call.
+
+    Left outside the deadlines it would be an unbounded stretch inside a call
+    whose whole contract is that it is bounded, and no assertion on the error
+    code alone would notice.
+    """
+    transport = ready_transport()
+    transport.stall(HEALTH_PATH, NEVER_ANSWERS_SECONDS)
+    adapter, _ = await ready_adapter(transport, timeout_ms=TINY_BUDGET_MS)
+
+    started = time.monotonic()
+    with pytest.raises(CapabilityUnavailableError):
+        await adapter.infer("hello", CONTEXT)
+    elapsed = time.monotonic() - started
+
+    assert elapsed < _deadline_ceiling(), elapsed
+
+
+async def test_a_readiness_probe_on_its_own_is_bounded() -> None:
+    """`is_ready` reports a runtime that never answered as not ready, in bounded
+    time rather than whenever the transport feels like returning."""
+    transport = ready_transport()
+    transport.stall(HEALTH_PATH, NEVER_ANSWERS_SECONDS)
+    adapter, _ = await ready_adapter(transport, timeout_ms=TINY_BUDGET_MS)
+
+    started = time.monotonic()
+    ready = await adapter.is_ready(CONTEXT)
+    elapsed = time.monotonic() - started
+
+    assert ready is False
+    assert adapter.readiness_state is ReadinessState.UNREACHABLE
+    assert elapsed < _deadline_ceiling(), elapsed
+
+
+async def test_an_identity_read_is_bounded_too() -> None:
+    transport = ready_transport()
+    transport.stall(PROPS_PATH, NEVER_ANSWERS_SECONDS)
+    transport.answer(MODELS_PATH, 200, {"data": [{"id": RUNTIME_ALIAS}]})
+    adapter, _ = await ready_adapter(transport, timeout_ms=TINY_BUDGET_MS)
+
+    started = time.monotonic()
+    with pytest.raises(RequestTimeoutError):
+        await adapter.observe_identity(CONTEXT)
+    elapsed = time.monotonic() - started
+
+    assert elapsed < _deadline_ceiling(), elapsed
+
+
+def test_the_backstop_is_longer_than_the_budget_it_backs() -> None:
+    """The two clocks are not set to the same duration, and that is the point.
+
+    The outer one starts first — it begins when the call is made, and the inner
+    cannot begin until the work has been handed to a worker and a socket opened.
+    Set equal, the outer wins by the dispatch cost every time, every genuinely
+    slow runtime is reported as `request-timeout`, and `upstream-timeout` becomes
+    a code nothing can produce.
+    """
+    assert OUTER_DEADLINE_GRACE_SECONDS > 0
+
+
+async def test_a_transport_that_honours_its_budget_yields_the_upstream_code() -> None:
+    """The inner deadline wins when the transport keeps its promise, so the
+    caller is told the runtime ran out of time rather than that this adapter
+    gave up on it."""
+    transport = ready_transport()
+    transport.fail(CHAT_COMPLETIONS_PATH, TransportTimeout())
+    adapter, _ = await ready_adapter(transport, timeout_ms=TINY_BUDGET_MS)
+
+    with pytest.raises(UpstreamTimeoutError) as caught:
+        await adapter.infer("hello", CONTEXT)
+    assert caught.value.code == "upstream-timeout"
+
+
+async def test_the_transport_is_given_the_budget_and_not_the_backstop() -> None:
+    """The grace bounds this adapter's own wait. It never extends the budget a
+    caller configured, and the transport is told the budget."""
+    adapter, transport = await ready_adapter(timeout_ms=12000)
+    await adapter.infer("hello", CONTEXT)
+
+    assert all(call.timeout_s == 12.0 for call in transport.calls)
 
 
 async def test_an_unreachable_runtime_is_capability_unavailable() -> None:
@@ -552,6 +667,60 @@ async def test_an_unreachable_completion_is_capability_unavailable() -> None:
 
     with pytest.raises(CapabilityUnavailableError):
         await adapter.infer("hello", CONTEXT)
+
+
+async def test_a_transport_failing_outside_the_published_kinds_is_canonical() -> None:
+    """A transport is a value a caller supplied, so it may raise anything.
+
+    ``infer`` publishes a closed list of canonical failures. An exception outside
+    that list reaching a caller would break the contract and carry a message this
+    adapter never inspected.
+    """
+    transport = ready_transport()
+    transport.fail(CHAT_COMPLETIONS_PATH, RuntimeError("/mnt/models/weights.gguf"))
+    adapter, _ = await ready_adapter(transport)
+
+    with pytest.raises(InternalError) as caught:
+        await adapter.infer("hello", CONTEXT)
+    assert caught.value.code == "internal-error"
+    assert "/mnt/models" not in caught.value.message
+
+
+async def test_an_identity_read_failing_outside_the_published_kinds_is_canonical() -> (
+    None
+):
+    transport = ready_transport()
+    transport.fail(PROPS_PATH, RuntimeError("/mnt/models/weights.gguf"))
+    adapter, _ = await ready_adapter(transport)
+
+    with pytest.raises(InternalError) as caught:
+        await adapter.observe_identity(CONTEXT)
+    assert "/mnt/models" not in caught.value.message
+
+
+async def test_a_probe_failing_outside_the_published_kinds_reports_not_ready() -> None:
+    """``is_ready`` returns a boolean, so nothing unexpected may escape it."""
+    transport = ready_transport()
+    transport.fail(HEALTH_PATH, RuntimeError("something nobody anticipated"))
+    adapter, _ = await ready_adapter(transport)
+
+    assert await adapter.is_ready(CONTEXT) is False
+    assert adapter.readiness_state is ReadinessState.UNREACHABLE
+
+
+async def test_a_cancelled_probe_is_not_reported_as_not_ready() -> None:
+    """Cancellation is not an answer to the readiness question.
+
+    ``CancelledError`` is not an ``Exception``, so the broad handler in
+    ``is_ready`` lets it through rather than converting a cancelled probe into a
+    false readiness observation.
+    """
+    transport = ready_transport()
+    transport.fail(HEALTH_PATH, asyncio.CancelledError())
+    adapter, _ = await ready_adapter(transport)
+
+    with pytest.raises(asyncio.CancelledError):
+        await adapter.is_ready(CONTEXT)
 
 
 async def test_a_body_the_adapter_cannot_read_is_an_internal_error() -> None:

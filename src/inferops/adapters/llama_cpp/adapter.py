@@ -24,12 +24,28 @@ sending one. `ADR 0002` records a load window of up to 14 s during which the
 process is up and answers 503, so "the socket is open" and "the model can answer"
 are different facts and the adapter is not permitted to conflate them.
 
-**Two deadlines, not one.** The transport is given the configured budget and the
-call is wrapped in an outer deadline of the same length. The inner one produces
-``upstream-timeout`` — the runtime ran out of time — and the outer produces
-``request-timeout``, and the outer exists because a transport is a value a caller
-supplies and a protocol cannot enforce the promise it asks for. A transport that
-ignores its budget stalls one request rather than the process.
+**Two deadlines, and the outer one is deliberately the longer.** The transport is
+given the configured budget; the call is wrapped in an outer deadline of that
+budget *plus a grace*. The inner one produces ``upstream-timeout`` — the runtime
+ran out of time — and the outer produces ``request-timeout``, and the outer
+exists because a transport is a value a caller supplies and a protocol cannot
+enforce the promise it asks for.
+
+The grace is what makes the pair work, and it is not decoration. Both clocks
+would otherwise be set to the same duration while the outer one *starts first* —
+it begins when the call is made, and the inner cannot begin until the work has
+been handed to a worker and a socket opened. Set equal, the outer always wins by
+the dispatch cost, every genuinely slow runtime is reported as ``request-timeout``,
+and ``upstream-timeout`` becomes a code nothing can produce. The grace is a
+margin over that dispatch cost and nothing else: it is not a runtime tuning value,
+it does not extend any budget a caller configured, and the only thing its size
+changes is how long a transport that ignores its budget is waited on before the
+backstop gives up on it.
+
+**Every runtime call is under both.** That includes the readiness probe, which is
+reached implicitly by the first inference call — a probe outside the deadlines
+would be an unbounded stretch inside a call whose whole contract is that it is
+bounded.
 
 **The prompt is never stored, logged, echoed, or attached to an error.** It is
 built into one request body, sent, and forgotten. That is the redaction rule from
@@ -65,6 +81,7 @@ from .inference import (
     error_for_transport_failure,
     normalize_response,
     request_deadline_error,
+    unexpected_transport_error,
     unreachable_error,
 )
 from .metadata import (
@@ -88,6 +105,19 @@ from .settings import (
     LlamaServerSettings,
 )
 from .transport import RuntimeResponse, RuntimeTransport, TransportError
+
+#: How much longer than the transport's own budget the adapter waits before its
+#: backstop gives up. It exists so that the inner deadline wins the race the two
+#: would otherwise be in — see the module docstring — and it is a margin over the
+#: cost of handing work to a worker thread and opening a socket, measured in the
+#: same units nothing else here is measured in: it is generous because being
+#: generous costs nothing when the transport behaves, and being too tight costs
+#: the ``upstream-timeout`` code its only way of being produced.
+#:
+#: It is not a value `ADR 0002` left undecided and it is not a runtime setting. It
+#: never shortens or lengthens a budget a caller configured; it bounds only the
+#: adapter's own wait on a transport that has already broken its promise.
+OUTER_DEADLINE_GRACE_SECONDS = 1.0
 
 #: The message an uninitialized adapter refuses a request with.
 NOT_INITIALIZED_MESSAGE = "the adapter has not been initialized"
@@ -199,13 +229,24 @@ class LlamaServerAdapter:
         Returns ``False`` rather than raising when the runtime cannot be reached:
         *unreachable* is an answer to the readiness question, and a probe that
         raised would make an ordinary not-ready state look like a fault in the
-        platform.
+        platform. A probe that ran out of time is the same answer — the runtime
+        did not say it was ready — and it is bounded by the same two deadlines
+        every other runtime call is, because this one is reached implicitly by
+        the first inference call and an unbounded stretch inside a bounded call
+        is not a bounded call.
         """
         if self._configuration is None or self._is_shut_down:
             return False
         try:
-            response = await self._get(HEALTH_PATH, self._timeout_seconds())
-        except (TransportError, TimeoutError):
+            response = await self._get(HEALTH_PATH)
+        except Exception:
+            # Deliberately every exception, not the two kinds a transport is
+            # supposed to raise. A transport is a value a caller supplied, and a
+            # readiness probe that propagated whatever it raised would turn "the
+            # runtime did not answer" into a fault escaping a method whose whole
+            # signature is a boolean. `CancelledError` is not an `Exception` and
+            # is therefore still allowed through, which is correct: a cancelled
+            # probe is not a not-ready answer.
             self._readiness.observe_unreachable()
             return False
         self._readiness.observe_health_status(response.status_code)
@@ -400,29 +441,36 @@ class LlamaServerAdapter:
         if COMPLETION_ALIAS_DISAGREEMENT not in self._disagreements:
             self._disagreements = (*self._disagreements, COMPLETION_ALIAS_DISAGREEMENT)
 
-    def _timeout_seconds(self) -> float:
-        """The configured request budget, in the unit a transport takes."""
+    def _transport_budget_seconds(self) -> float:
+        """The budget handed to the transport: the request timeout, as configured."""
         if self._configuration is None:
             raise InternalError(NOT_INITIALIZED_MESSAGE)
         return self._configuration.adapter.timeout_ms / 1000
 
-    async def _get(self, path: str, timeout_s: float) -> RuntimeResponse:
-        """One GET against a published runtime path."""
-        return await self._transport.get(
-            self._settings.url_for(path), timeout_s=timeout_s
+    def _outer_deadline_seconds(self) -> float:
+        """The adapter's own backstop, which is the longer of the two on purpose."""
+        return self._transport_budget_seconds() + OUTER_DEADLINE_GRACE_SECONDS
+
+    async def _get(self, path: str) -> RuntimeResponse:
+        """One GET against a published runtime path, under both deadlines."""
+        return await asyncio.wait_for(
+            self._transport.get(
+                self._settings.url_for(path),
+                timeout_s=self._transport_budget_seconds(),
+            ),
+            timeout=self._outer_deadline_seconds(),
         )
 
     async def _read_json(self, path: str, context: RequestContext) -> object:
         """One descriptive GET, with its status and transport failures mapped."""
         try:
-            response = await asyncio.wait_for(
-                self._get(path, self._timeout_seconds()),
-                timeout=self._timeout_seconds(),
-            )
+            response = await self._get(path)
         except TransportError as failure:
             raise error_for_transport_failure(failure, context) from None
         except TimeoutError:
             raise request_deadline_error(context) from None
+        except Exception:
+            raise unexpected_transport_error(context) from None
         status_failure = error_for_status(response.status_code, context)
         if status_failure is not None:
             raise status_failure
@@ -435,21 +483,31 @@ class LlamaServerAdapter:
         context: RequestContext,
     ) -> RuntimeResponse:
         """One completion POST, under both deadlines."""
-        timeout_s = self._timeout_seconds()
         try:
             return await asyncio.wait_for(
                 self._transport.post_json(
-                    self._settings.url_for(path), body, timeout_s=timeout_s
+                    self._settings.url_for(path),
+                    body,
+                    timeout_s=self._transport_budget_seconds(),
                 ),
-                timeout=timeout_s,
+                timeout=self._outer_deadline_seconds(),
             )
         except TransportError as failure:
             raise error_for_transport_failure(failure, context) from None
         except TimeoutError:
             # `asyncio.wait_for` raises `TimeoutError` on Python 3.11 and later.
-            # Reaching it means the transport did not honour the budget it was
-            # given, which is the case the outer deadline exists for.
+            # Reaching it means the transport outlasted its own budget *and* the
+            # grace on top of it, which is the case the backstop exists for. A
+            # transport that honours its budget raises `TransportTimeout` first
+            # and the caller is told the runtime ran out of time instead.
             raise request_deadline_error(context) from None
+        except Exception:
+            # A transport is a value a caller supplied, so it can raise anything.
+            # `infer` publishes a closed list of canonical failures, and an
+            # exception outside that list reaching a caller would both break the
+            # contract and carry a message this adapter never inspected.
+            # `CancelledError` is not an `Exception` and still propagates.
+            raise unexpected_transport_error(context) from None
 
 
 def _protocol_check(adapter: LlamaServerAdapter) -> ServingAdapter:

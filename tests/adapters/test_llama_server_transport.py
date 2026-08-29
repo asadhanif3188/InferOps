@@ -27,6 +27,7 @@ import asyncio
 import http.client
 import json
 import socket
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -76,6 +77,11 @@ class Recorded:
         self.raw = b"{}"
         self.fail_on_request: BaseException | None = None
         self.fail_on_response: BaseException | None = None
+        self.fail_on_close: BaseException | None = None
+        #: Park the worker inside ``getresponse`` until the connection is closed,
+        #: which is how a real blocked read behaves and the only way to exercise
+        #: the cancellation path without a socket.
+        self.block_until_closed = False
         self.host: str | None = None
         self.port: int | None = None
         self.timeout: float | None = None
@@ -128,12 +134,18 @@ def _connection_class(recorded: Recorded) -> type:
                 raise recorded.fail_on_request
 
         def getresponse(self) -> _Response:
+            if recorded.block_until_closed:
+                while not recorded.closed:
+                    time.sleep(0.005)
+                raise ConnectionResetError
             if recorded.fail_on_response is not None:
                 raise recorded.fail_on_response
             return _Response(recorded)
 
         def close(self) -> None:
             recorded.closed = True
+            if recorded.fail_on_close is not None:
+                raise recorded.fail_on_close
 
     return _Connection
 
@@ -389,12 +401,123 @@ async def test_a_body_that_is_present_and_unreadable_is_a_failure(
 
 
 async def test_the_body_is_read_under_a_bound(recorded: Recorded) -> None:
-    """A peer must not be able to decide how much this process allocates."""
+    """A peer must not be able to decide how much this process allocates.
+
+    One byte past the bound is asked for, so that a body *at* the bound is read
+    whole and a body past it is recognisable as oversized rather than arriving
+    truncated.
+    """
     recorded.raw = b'{"a":1}'
     await HttpRuntimeTransport().get(HEALTH_URL, timeout_s=2.0)
 
-    assert recorded.read_limit == MAX_RESPONSE_BYTES
+    assert recorded.read_limit == MAX_RESPONSE_BYTES + 1
     assert MAX_RESPONSE_BYTES == 1_048_576
+
+
+async def test_a_body_past_the_bound_is_refused_as_oversized(
+    recorded: Recorded,
+) -> None:
+    """Not silently truncated into an unparseable one.
+
+    Truncating would report "this body could not be read" about a body that was
+    perfectly well formed and merely too large, which is the wrong fact.
+    """
+    filler = "x" * (MAX_RESPONSE_BYTES + 64)
+    recorded.raw = json.dumps({"choices": [{"message": {"content": filler}}]}).encode()
+    assert len(recorded.raw) > MAX_RESPONSE_BYTES
+
+    with pytest.raises(TransportProtocolError):
+        await HttpRuntimeTransport().get(HEALTH_URL, timeout_s=2.0)
+
+    assert recorded.closed is True
+
+
+async def test_a_body_exactly_at_the_bound_is_read_whole(
+    recorded: Recorded,
+) -> None:
+    """The bound is inclusive, so a body at it is not a failure."""
+    padding = "y" * (MAX_RESPONSE_BYTES - len(json.dumps({"content": ""}).encode()))
+    recorded.raw = json.dumps({"content": padding}).encode()
+    assert len(recorded.raw) == MAX_RESPONSE_BYTES
+
+    response = await HttpRuntimeTransport().get(HEALTH_URL, timeout_s=2.0)
+
+    assert response.body == {"content": padding}
+
+
+async def test_a_close_that_fails_does_not_replace_the_mapped_failure(
+    recorded: Recorded,
+) -> None:
+    """A raising ``close`` inside a ``finally`` replaces the exception being
+    propagated with its own.
+
+    Without the quiet close, a mapped ``TransportUnreachable`` would reach the
+    adapter as a raw ``OSError`` carrying the far side's text — a leak, and an
+    error kind no canonical mapping covers.
+    """
+    recorded.fail_on_response = ConnectionRefusedError(SECRET_SHAPED_RUNTIME_TEXT)
+    recorded.fail_on_close = OSError(SECRET_SHAPED_RUNTIME_TEXT)
+
+    with pytest.raises(TransportUnreachable) as caught:
+        await HttpRuntimeTransport().get(HEALTH_URL, timeout_s=2.0)
+
+    assert str(caught.value) == ""
+    assert SECRET_SHAPED_RUNTIME_TEXT not in str(caught.value)
+
+
+async def test_a_close_that_fails_does_not_replace_a_success(
+    recorded: Recorded,
+) -> None:
+    """Nor turn a completed exchange into a failure."""
+    recorded.raw = b'{"status":"ok"}'
+    recorded.fail_on_close = OSError("close failed")
+
+    response = await HttpRuntimeTransport().get(HEALTH_URL, timeout_s=2.0)
+
+    assert response.body == {"status": "ok"}
+
+
+async def test_a_cancelled_request_closes_its_socket(recorded: Recorded) -> None:
+    """The reason the connection is built on the event loop rather than in the
+    worker.
+
+    A thread cannot be cancelled, so when the caller's deadline fires the worker
+    is still parked inside a read. Closing the connection from the event loop is
+    what unparks it; without this the socket and the pool slot would be held
+    until the far side chose to answer.
+    """
+    recorded.block_until_closed = True
+
+    request = asyncio.ensure_future(
+        HttpRuntimeTransport().get(HEALTH_URL, timeout_s=30.0)
+    )
+    with pytest.raises(TimeoutError):
+        await asyncio.wait_for(asyncio.shield(request), timeout=0.05)
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+
+    assert recorded.closed is True
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://host:99999/health",
+        "http://host:-1/health",
+    ],
+)
+async def test_a_port_outside_the_range_is_unreachable(
+    recorded: Recorded, url: str
+) -> None:
+    """``urlsplit`` raises only when the port member is read.
+
+    The settings refuse one at construction; this is the second line, so a URL
+    assembled some other way cannot reach a caller as a ``ValueError`` that no
+    canonical mapping covers.
+    """
+    with pytest.raises(TransportUnreachable):
+        await HttpRuntimeTransport().get(url, timeout_s=2.0)
 
 
 async def test_a_status_the_transport_does_not_interpret_is_passed_through(
