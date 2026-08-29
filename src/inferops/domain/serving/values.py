@@ -12,6 +12,13 @@ from dataclasses import dataclass
 
 from .errors import InvalidValueError
 
+# Platform metric identifiers adapters are permitted to report.
+# Per ADR-0006 and ADR-0002, InferOps owns platform metrics like
+# inferops_inference_requests_total. Adapters report only optional custom
+# metrics from the accepted catalog. V1 defers adapter-reportable metrics;
+# this set is empty, requiring adapters to report no custom metrics.
+ACCEPTED_ADAPTER_METRICS: frozenset[str] = frozenset()
+
 
 @dataclass(frozen=True, slots=True)
 class ModelMetadata:
@@ -179,19 +186,17 @@ class TelemetryMapping:
         if not all(isinstance(mid, str) for mid in self.platform_metric_ids):
             raise InvalidValueError("all platform_metric_ids must be strings")
 
-        # Canonical metric identifiers: lowercase, digits, underscores, no reserved prefixes
+        # Validate against accepted platform metric catalog.
+        # Per ADR-0002 and ADR-0006, adapters report only metrics from the
+        # accepted catalog. Arbitrary identifiers (even valid-format ones like
+        # "banana") are rejected. Reserved prefixes (inferops_, platform_) are
+        # platform-owned and not available for adapter reporting.
         for metric_id in self.platform_metric_ids:
             if not metric_id:
                 raise InvalidValueError("metric_id must not be empty string")
-            # Must match canonical identifier pattern (lowercase, digits, underscore)
-            if not re.match(r"^[a-z][a-z0-9_]*$", metric_id):
+            if metric_id not in ACCEPTED_ADAPTER_METRICS:
                 raise InvalidValueError(
-                    f"metric_id '{metric_id}' must be lowercase alphanumeric with underscores"
-                )
-            # Cannot use platform reserved prefixes
-            if metric_id.startswith("inferops_") or metric_id.startswith("platform_"):
-                raise InvalidValueError(
-                    f"metric_id '{metric_id}' uses reserved prefix (inferops_, platform_)"
+                    f"metric_id '{metric_id}' is not in accepted platform catalog"
                 )
 
         if self.error_code is not None and not self.error_code:

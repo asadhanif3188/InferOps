@@ -21,6 +21,11 @@ The entire conformance suite will then test your adapter without modification.
 No copy-adapt needed; the same tests validate any adapter that implements
 the ServingAdapter protocol.
 
+**Scope limitation:** Tests here validate only the contract interface, not
+implementation-specific capabilities. Tests requiring state mutation (e.g.,
+testing "not ready" scenarios) belong in adapter-specific suites, not here.
+This suite works with adapters as constructed without modification.
+
 What this does not establish: that mock or real adapters work correctly beyond
 protocol conformance. Those are scope for integration/e2e tests. This suite
 establishes only that the contract itself is coherent, testable, and that
@@ -39,7 +44,6 @@ from inferops.domain.serving import (
     RuntimeMetadata,
     ServingAdapter,
     TelemetryMapping,
-    TokenUsage,
 )
 
 pytestmark = pytest.mark.unit
@@ -139,21 +143,6 @@ class TestReadiness:
 
         assert isinstance(ready, bool)
 
-    async def test_is_ready_reflects_adapter_state(
-        self,
-        adapter: ServingAdapter,
-        test_context: RequestContext,
-        test_config: AdapterConfiguration,
-    ) -> None:
-        """Verify is_ready reflects the adapter's configured state."""
-        await adapter.initialize(test_config, test_context)
-
-        adapter.model_ready = True
-        assert await adapter.is_ready(test_context) is True
-
-        adapter.model_ready = False
-        assert await adapter.is_ready(test_context) is False
-
 
 class TestInference:
     """Tests for inference execution."""
@@ -185,55 +174,6 @@ class TestInference:
 
         assert result.adapter_kind is not None
         assert result.adapter_kind == "mock"
-
-    async def test_infer_result_respects_optional_capabilities(
-        self,
-        adapter: ServingAdapter,
-        test_context: RequestContext,
-        test_config: AdapterConfiguration,
-    ) -> None:
-        """Verify inference succeeds with optional capabilities disabled.
-
-        Token counting is optional; even when disabled, inference works.
-        """
-        adapter.should_support_token_counting = False
-        await adapter.initialize(test_config, test_context)
-        result = await adapter.infer("test prompt", test_context)
-
-        assert isinstance(result, InferenceResult)
-        assert isinstance(result.content, str)
-        # When not supported, adapter may or may not include usage (both valid)
-
-    async def test_infer_with_token_counting_includes_usage(
-        self,
-        adapter: ServingAdapter,
-        test_context: RequestContext,
-        test_config: AdapterConfiguration,
-    ) -> None:
-        """Verify token usage is included when capability is supported."""
-        adapter.should_support_token_counting = True
-        await adapter.initialize(test_config, test_context)
-        result = await adapter.infer("test prompt", test_context)
-
-        assert result.usage is not None
-        assert isinstance(result.usage, TokenUsage)
-        assert result.usage.input_tokens >= 0
-        assert result.usage.output_tokens >= 0
-
-    async def test_infer_fails_when_not_ready(
-        self,
-        adapter: ServingAdapter,
-        test_context: RequestContext,
-        test_config: AdapterConfiguration,
-    ) -> None:
-        """Verify inference fails with ModelNotReadyError when not ready."""
-        adapter.model_ready = False
-        await adapter.initialize(test_config, test_context)
-
-        from inferops.domain.serving import ModelNotReadyError
-
-        with pytest.raises(ModelNotReadyError):
-            await adapter.infer("test prompt", test_context)
 
 
 class TestStreamingCapability:
@@ -523,3 +463,36 @@ class TestAdapterKindValidation:
                 model="test-model",
                 adapter_kind="banana",  # valid format but not accepted
             )
+
+
+class TestTelemetryMetricValidation:
+    """Tests for telemetry metric catalog validation.
+
+    Adapters report only metrics from the accepted platform catalog,
+    per ADR-0006 and ADR-0002. Arbitrary identifiers are rejected.
+    """
+
+    def test_adapter_cannot_report_arbitrary_metric_names(self) -> None:
+        """Verify adapters cannot report arbitrary metric identifiers.
+
+        Even valid-format identifiers like 'banana' are rejected if not
+        in the accepted catalog.
+        """
+        from inferops.domain.serving import InvalidValueError
+
+        with pytest.raises(InvalidValueError, match="not in accepted platform catalog"):
+            TelemetryMapping(platform_metric_ids=("banana",))
+
+    def test_adapter_cannot_report_reserved_prefixes(self) -> None:
+        """Verify adapters cannot report metrics with reserved prefixes.
+
+        Platform-owned metrics (inferops_*, platform_*) are not available
+        for adapter reporting.
+        """
+        from inferops.domain.serving import InvalidValueError
+
+        with pytest.raises(InvalidValueError, match="not in accepted platform catalog"):
+            TelemetryMapping(platform_metric_ids=("inferops_inference_requests_total",))
+
+        with pytest.raises(InvalidValueError, match="not in accepted platform catalog"):
+            TelemetryMapping(platform_metric_ids=("platform_custom_metric",))
