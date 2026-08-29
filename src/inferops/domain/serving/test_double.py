@@ -19,7 +19,6 @@ from ..context import RequestContext
 from .contract import ServingAdapter
 from .errors import (
     CanonicalError,
-    CapabilityUnavailableError,
     InternalError,
     InvalidAdapterConfigError,
     ModelNotReadyError,
@@ -30,6 +29,7 @@ from .values import (
     InferenceResult,
     ModelMetadata,
     RuntimeMetadata,
+    TelemetryMapping,
     TokenUsage,
 )
 
@@ -93,7 +93,7 @@ class MinimalTestDouble:
     ) -> InferenceResult:
         """Generate a deterministic response."""
         if not self.model_ready:
-            raise ModelNotReadyError("model is loading")
+            raise ModelNotReadyError("model is loading", context=context)
 
         self._inference_count += 1
 
@@ -105,18 +105,10 @@ class MinimalTestDouble:
         return InferenceResult(
             content=f"Test response to: {prompt[:50]}",
             model=self._config.model_identifier if self._config else "test-model",
+            adapter_kind="mock",
             usage=usage,
             finish_reason="stop",
         )
-
-    async def stream(
-        self,
-        prompt: str,
-        context: RequestContext,
-    ) -> None:
-        """Stream inference (raises if not supported)."""
-        if not self.should_support_streaming:
-            raise CapabilityUnavailableError("streaming not supported")
 
     async def get_model_metadata(self) -> ModelMetadata:
         """Report model metadata."""
@@ -143,8 +135,11 @@ class MinimalTestDouble:
         """Map errors to canonical types."""
         if isinstance(error, CanonicalError):
             return error
+        return InternalError("internal-error")
 
-        return InternalError(str(error))
+    async def get_telemetry_mapping(self) -> TelemetryMapping:
+        """Get telemetry mapping (test double always owns request counting)."""
+        return TelemetryMapping(request_counter_enabled=True)
 
 
 # Static conformance check: MinimalTestDouble satisfies ServingAdapter protocol
