@@ -1,16 +1,30 @@
 """Conformance tests for the serving adapter contract.
 
 This suite establishes that:
-- A minimal test double satisfies the ServingAdapter protocol
+- An adapter satisfies the ServingAdapter protocol
 - All contract methods work as expected
 - Capability declaration is explicit
 - No runtime-specific types leak into the interface
 - Error mapping produces canonical errors
 - Unsupported capabilities fail explicitly when not declared
 
-What it does not establish: that mock or real adapters work correctly. Those are
-scope for later PRs. This establishes only that the contract itself is coherent
-and testable.
+**Reusable across adapter implementations:** To test a different adapter
+(mock, real llama.cpp, etc), override the adapter_factory fixture in your
+conftest.py:
+
+    @pytest.fixture
+    def adapter_factory():
+        from my_adapter import MyAdapter
+        return MyAdapter
+
+The entire conformance suite will then test your adapter without modification.
+No copy-adapt needed; the same tests validate any adapter that implements
+the ServingAdapter protocol.
+
+What this does not establish: that mock or real adapters work correctly beyond
+protocol conformance. Those are scope for integration/e2e tests. This suite
+establishes only that the contract itself is coherent, testable, and that
+an implementation actually satisfies it.
 """
 
 from __future__ import annotations
@@ -23,18 +37,12 @@ from inferops.domain.serving import (
     InferenceResult,
     ModelMetadata,
     RuntimeMetadata,
-    ServingAdapterTestDouble,
+    ServingAdapter,
     TelemetryMapping,
     TokenUsage,
 )
 
 pytestmark = pytest.mark.unit
-
-
-@pytest.fixture
-def adapter() -> ServingAdapterTestDouble:
-    """Provide a fresh test double for each test."""
-    return ServingAdapterTestDouble()
 
 
 @pytest.fixture
@@ -60,7 +68,7 @@ class TestAdapterInitialization:
 
     async def test_initialization_succeeds_with_valid_config(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -70,7 +78,7 @@ class TestAdapterInitialization:
 
     async def test_initialization_rejects_empty_model_id(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
     ) -> None:
         """Verify initialization rejects empty model identifier."""
@@ -88,7 +96,7 @@ class TestCapabilityDeclaration:
 
     async def test_get_capabilities_returns_list(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -103,7 +111,7 @@ class TestCapabilityDeclaration:
 
     async def test_capabilities_include_streaming_and_token_counting(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -121,7 +129,7 @@ class TestReadiness:
 
     async def test_is_ready_returns_boolean(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -133,7 +141,7 @@ class TestReadiness:
 
     async def test_is_ready_reflects_adapter_state(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -152,7 +160,7 @@ class TestInference:
 
     async def test_infer_returns_inference_result(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -167,7 +175,7 @@ class TestInference:
 
     async def test_infer_result_includes_adapter_kind(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -180,7 +188,7 @@ class TestInference:
 
     async def test_infer_result_respects_optional_capabilities(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -198,7 +206,7 @@ class TestInference:
 
     async def test_infer_with_token_counting_includes_usage(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -214,7 +222,7 @@ class TestInference:
 
     async def test_infer_fails_when_not_ready(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -237,7 +245,7 @@ class TestStreamingCapability:
 
     async def test_streaming_always_declared_unsupported(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -274,7 +282,7 @@ class TestMetadata:
 
     async def test_get_model_metadata_returns_model_metadata(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -288,7 +296,7 @@ class TestMetadata:
 
     async def test_get_runtime_metadata_returns_runtime_metadata(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -306,7 +314,7 @@ class TestShutdown:
 
     async def test_shutdown_completes(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -321,7 +329,7 @@ class TestErrorMapping:
 
     async def test_map_error_returns_canonical_error(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
     ) -> None:
         """Verify error mapping returns a CanonicalError."""
         from inferops.domain.serving import CanonicalError
@@ -335,7 +343,7 @@ class TestErrorMapping:
 
     async def test_map_error_passes_canonical_errors_through(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
     ) -> None:
         """Verify canonical errors are returned unchanged."""
         from inferops.domain.serving import ModelNotReadyError
@@ -347,7 +355,7 @@ class TestErrorMapping:
 
     async def test_map_error_sanitizes_sensitive_data(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
     ) -> None:
         """Verify error mapping does not leak sensitive data."""
         sensitive_msg = "ghp_1234567890abcdefghijklmnopqrst"
@@ -363,7 +371,7 @@ class TestContextPropagation:
 
     async def test_error_preserves_request_context_from_infer(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_config: AdapterConfiguration,
     ) -> None:
         """Verify errors from infer() preserve request and correlation IDs."""
@@ -385,7 +393,7 @@ class TestContextPropagation:
 
     async def test_error_mapping_preserves_context(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
     ) -> None:
         """Verify map_error_to_canonical preserves supplied context."""
         from inferops.domain.serving import InternalError
@@ -414,7 +422,7 @@ class TestTelemetryMapping:
 
     async def test_get_telemetry_mapping_returns_mapping(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -423,11 +431,11 @@ class TestTelemetryMapping:
         mapping = await adapter.get_telemetry_mapping()
 
         assert isinstance(mapping, TelemetryMapping)
-        assert isinstance(mapping.platform_metric_ids, list)
+        assert isinstance(mapping.platform_metric_ids, tuple)
 
     async def test_telemetry_mapping_uses_only_canonical_error_codes(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
@@ -450,20 +458,23 @@ class TestTelemetryMapping:
 
     async def test_telemetry_mapping_lists_only_platform_metrics(
         self,
-        adapter: ServingAdapterTestDouble,
+        adapter: ServingAdapter,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
         """Verify mapping lists only platform canonical metric identifiers.
 
         Per ADR-0002, InferOps owns request counter. Adapter reports only
-        optional metrics from platform telemetry catalog.
+        optional metrics from platform telemetry catalog. Metric identifiers
+        must match canonical pattern and not use reserved prefixes.
         """
         await adapter.initialize(test_config, test_context)
         mapping = await adapter.get_telemetry_mapping()
 
         # All identifiers must be strings
         assert all(isinstance(mid, str) for mid in mapping.platform_metric_ids)
+        # Metric IDs must be immutable (tuple, not list)
+        assert isinstance(mapping.platform_metric_ids, tuple)
         # Request counter is not in adapter's metric list (InferOps owns it)
         assert "inferops_inference_requests_total" not in mapping.platform_metric_ids
 

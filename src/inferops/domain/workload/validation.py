@@ -27,7 +27,9 @@ does not read files, which keeps it testable from a wheel with no repository.
 
 from __future__ import annotations
 
+import math
 import re
+from collections import Counter
 from typing import Any
 
 from ..context import NO_REQUEST_CONTEXT, RequestContext
@@ -254,14 +256,27 @@ def validate_workload_contract(
     return errors
 
 
+def _shannon_entropy(text: str) -> float:
+    """Calculate Shannon entropy of a string.
+
+    Entropy is log-based measure of character diversity. Repetitive or
+    patterned text has low entropy; random/uniform text has high entropy.
+    """
+    counts = Counter(text)
+    length = len(text)
+    return -sum(
+        (count / length) * math.log2(count / length) for count in counts.values()
+    )
+
+
 def _looks_like_secret_value(locator: str) -> bool:
     """Heuristic: does a locator look like a pasted credential?
 
-    Mirrors the published validator in tools/contract_validation/workload.py.
+    Mirrors the published validator in tools/contract_validation/workload.py exactly.
     Checks for published credential prefixes or opaque segments that look like
-    credentials. This must be aligned with the published validator.
+    credentials based on length, character diversity, and Shannon entropy.
     """
-    # Published credential prefixes (39 total) from tools/contract_validation/workload.py
+    # Published credential prefixes (40 total) from tools/contract_validation/workload.py
     credential_prefixes = (
         "-----BEGIN",
         "ABIA",
@@ -309,32 +324,21 @@ def _looks_like_secret_value(locator: str) -> bool:
         if locator.startswith(prefix):
             return True
 
-    return _looks_like_high_entropy_token(locator)
-
-
-def _looks_like_high_entropy_token(text: str) -> bool:
-    """Check if a string looks like a high-entropy token (mixed case and digits).
-
-    Tokens like API keys, session IDs, and access tokens typically have:
-    - Both uppercase and lowercase letters
-    - Digits
-    - A segment that is at least 20 characters of such mixed content
-
-    This catches patterns like "Zx4Kq9TbLm2Rd7Wf1Hs3Nv8Yc6Ej0Pa" from the fixture.
-    """
-    # Look for segments of at least 20 characters with mixed case and digits
-    # Split by common delimiters to isolate segments
-    segments = re.split(r"[/_:-]", text)
-
-    for segment in segments:
-        if len(segment) >= 20:
-            has_upper = any(c.isupper() for c in segment)
-            has_lower = any(c.islower() for c in segment)
-            has_digit = any(c.isdigit() for c in segment)
-
-            # If a segment has all three characteristics, it looks like a token
-            if has_upper and has_lower and has_digit:
-                return True
+    # Check for opaque high-entropy segments.
+    # Published delimiters: [/#:._\-]
+    # Thresholds: 20 chars minimum, 3.5 Shannon entropy minimum
+    for segment in re.split(r"[/#:._\-]", locator):
+        if len(segment) < 20:
+            continue
+        if not (
+            any(c.islower() for c in segment) and any(c.isupper() for c in segment)
+        ):
+            continue
+        if not any(c.isdigit() for c in segment):
+            continue
+        if _shannon_entropy(segment) < 3.5:
+            continue
+        return True
 
     return False
 

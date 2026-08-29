@@ -153,7 +153,7 @@ class MinimalTestDouble:
         Adapter maps only to accepted canonical metric identifiers.
         """
         return TelemetryMapping(
-            platform_metric_ids=[],  # Test double reports no custom metrics
+            platform_metric_ids=(),  # Test double reports no custom metrics
         )
 
 

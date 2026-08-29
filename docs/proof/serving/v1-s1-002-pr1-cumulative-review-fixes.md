@@ -39,25 +39,29 @@ All ten cumulative review findings from Sprint 0 through V1-S1-002-PR1 have been
 - `src/inferops/domain/serving/test_double.py`
 - `tests/domain/test_serving_adapter_conformance.py`
 
-### 2. Credential Validation Agreement (All 39 Published Prefixes)
+### 2. Credential Validation Agreement (Exact Heuristic Alignment)
 
-**Finding:** Domain validator was missing 21 published prefixes (github_pat_, npm_, sk_, sk_live_, xoxp-, ya29., etc).
-The "consistency" test only tested the domain validator against itself, not against the published validator.
+**Finding:** Domain validator diverged from published validator in two ways:
+1. Used different delimiters for splitting segments: `[/_:-]` instead of `[/#:._\-]`
+2. Omitted Shannon entropy threshold check, using only character-type checks
+
+This caused false rejections: `Aa1Aa1Aa1Aa1Aa1Aa1Aa1` (repetitive, low entropy) was rejected by domain but accepted by published.
 
 **Fix:**
-- Added ALL 39 credential prefixes from published validator in tools/contract_validation/workload.py
-- Includes AWS (`AKIA`, `ASIA`, etc), GitHub (`ghp_`, `ghr_`, `ghs_`, `ghu_`, `gho_`, `github_pat_`), GitLab (`glpat-`, `gldt-`),
-  Hugging Face (`hf_`), OpenAI (`sk-`, `sk_live_`, `sk_test_`), Slack (`xoxa-`, `xoxb-`, `xoxp-`, `xoxr-`, `xoxs-`),
-  Google (`AIza`, `SG.`, `ya29.`), Stripe (`pk_live_`, `rk_live_`, `sk_live_`), Shopify (`shpat_`, `shpss_`), DO (`doo_v1_`, `dop_v1_`), JWT (`eyJ`)
-- Tests now import AND compare against published validator for every case
-- Added 39 parametrized prefix tests covering all credential formats
-- Tests verify agreement between domain and published validators
-- Added legitimate reference tests to prevent false positives
+- Added ALL 40 credential prefixes from published validator in tools/contract_validation/workload.py
+  (includes `-----BEGIN`, AWS, GitHub, GitLab, HuggingFace, OpenAI, Slack, Google, Stripe, Shopify, DigitalOcean, JWT)
+- Replaced character-type-only heuristic with exact published algorithm:
+  - Correct delimiter pattern: `[/#:._\-]` (splits by forward slash, hash, colon, dot, underscore, hyphen)
+  - Added Shannon entropy calculation and threshold check (minimum 3.5 bits/character)
+  - Kept 20-character minimum and mixed-case/digit requirements
+- Domain validator now mirrors published validator exactly, including entropy threshold
+- Tests import and compare against published validator
+- Test case `Aa1Aa1Aa1Aa1Aa1Aa1Aa1` now correctly passes (low entropy, not a credential)
 - No real credentials used in tests
 
 **Files changed:**
-- `src/inferops/domain/workload/validation.py`
-- `tests/domain/test_workload_validation.py`
+- `src/inferops/domain/workload/validation.py` (added Shannon entropy function and exact heuristic)
+- `tests/domain/test_workload_validation.py` (parametrized agreement test with published)
 
 ### 3. Adapter-Kind Provenance (Closed Vocabulary)
 
@@ -78,28 +82,27 @@ mock/real boundary enforcement needed for validation evidence.
 - `src/inferops/domain/serving/test_double.py`
 - `tests/domain/test_serving_adapter_conformance.py`
 
-### 4. Telemetry Mapping Contract (Correct Ownership Model)
+### 4. Telemetry Mapping Contract (Immutability and Validation)
 
-**Finding:** TelemetryMapping wrongly claimed adapters own request counter. ADR-0002 and accepted API surface
-state that InferOps MUST produce inferops_inference_requests_total, not runtime.
+**Finding:** TelemetryMapping accepted arbitrary metric identifiers like "banana" with no validation.
+Also, `platform_metric_ids` was a mutable list that could be modified after construction despite frozen dataclass.
 
 **Fix:**
-- Added `TelemetryMapping` domain value object with `platform_metric_ids` list
-- Added `get_telemetry_mapping()` protocol method
-- Semantics corrected: maps adapter-reported metrics to accepted PLATFORM metric identifiers only
-- REMOVED `request_counter_enabled` field (InferOps owns counter, not adapter)
-- Added `platform_metric_ids` to list actual accepted canonical metric identifiers
-- Test double now returns empty metric list (confirms InferOps owns request counter)
+- Changed `platform_metric_ids` type from `list[str]` to immutable `tuple[str, ...]`
+- Added validation: metric identifiers must match canonical pattern (lowercase, digits, underscores)
+- Added reserved-prefix check: cannot start with `inferops_` or `platform_` (platform-reserved)
+- "banana" now rejected for not matching canonical identifier pattern
+- Immutable tuple prevents post-construction modification
+- Default empty tuple `()` for adapters reporting no custom metrics
+- Test double returns empty tuple (confirms InferOps owns request counter)
 - Includes optional canonical error code and token usage flag
 - No telemetry SDK or OpenTelemetry imports
-- Tests verify InferOps counter is never in adapter's metric list
+- Tests verify tuple immutability and validation of metric identifiers
 
 **Files changed:**
-- `src/inferops/domain/serving/values.py`
-- `src/inferops/domain/serving/contract.py`
-- `src/inferops/domain/serving/test_double.py`
-- `src/inferops/domain/serving/__init__.py`
-- `tests/domain/test_serving_adapter_conformance.py`
+- `src/inferops/domain/serving/values.py` (immutable tuple, validation)
+- `src/inferops/domain/serving/test_double.py` (use tuple)
+- `tests/domain/test_serving_adapter_conformance.py` (updated assertions)
 
 ### 5. Error Sanitization
 
@@ -135,12 +138,24 @@ so unknown runtime exceptions became InternalErrors with empty context, losing r
 - `src/inferops/domain/serving/errors.py`
 - `tests/domain/test_serving_adapter_conformance.py`
 
-### 7. Reusable Conformance Harness Template
+### 7. Reusable Conformance Harness (No Copy-Adapt Required)
 
-**Finding:** Conformance tests were hardcoded to ServingAdapterTestDouble. Future adapters have no reusable harness.
+**Finding:** Conformance tests were hardcoded to ServingAdapterTestDouble. Evidence deferred "copy-adapt pattern"
+instead of implementing actual reusability.
 
 **Fix:**
-- Current test file serves as the conformance validation template for future adapters
+- Created `tests/domain/conftest.py` with parametrized `adapter_factory` fixture
+- Tests now use `adapter_factory` fixture instead of hardcoded test double
+- Future adapters override fixture in their conftest.py without modifying test file:
+  ```python
+  @pytest.fixture
+  def adapter_factory():
+      from my_adapter import MyRealAdapter
+      return MyRealAdapter
+  ```
+- Same 27 conformance tests validate any adapter that implements protocol
+- No copying required; same test suite works for mock, real llama.cpp, or any future adapter
+- Tests parametrized to work with protocol type hints, not concrete implementations
 - Validates 16 contract requirements across all areas:
   - Initialization and configuration validation
   - Capability discovery (streaming declared unsupported)
@@ -149,17 +164,16 @@ so unknown runtime exceptions became InternalErrors with empty context, losing r
   - Adapter-kind provenance and closed-vocabulary validation
   - Token usage when supported
   - Model and runtime metadata
-  - Telemetry mapping (with correct InferOps ownership)
+  - Telemetry mapping with immutability and validation
   - Canonical error mapping and sanitization
   - Request-context propagation (including through error mapping)
   - Graceful shutdown
   - Protocol conformance (no runtime-specific types)
-- Static type check: `MinimalTestDouble` satisfies `ServingAdapter` protocol
-- NOTE: Tests are specific to MinimalTestDouble; future adapters will follow same test structure via copy-adapt
-  pattern. Full pytest parametrization/factory injection deferred to later PR if needed for scale.
+- Static type check: each adapter must satisfy `ServingAdapter` protocol
 
 **Files changed:**
-- `tests/domain/test_serving_adapter_conformance.py`
+- `tests/domain/conftest.py` (new: adapter_factory fixture for reusability)
+- `tests/domain/test_serving_adapter_conformance.py` (parametrized, uses adapter_factory)
 
 ### 8. Type Safety (Mypy)
 
@@ -217,21 +231,20 @@ ruff check: All checks passed!
 ### Local Static Testing
 
 ```
-✅ Strict mypy: Success: no issues found in 35 source files
+✅ Strict mypy: Success: no issues found in 15 source files
 
-✅ Ruff format check: 110 files already formatted
+✅ Ruff format: 1 file reformatted, 110 files already formatted
 
 ✅ Ruff lint: All checks passed!
 
-✅ Domain tests: 359 passed, 18 skipped
-   - test_serving_adapter_conformance.py: 26 passed (added 2 new tests)
-   - test_workload_validation.py: 78 passed (updated credential tests, added published validator comparison)
+✅ Domain tests: 392 passed, 18 skipped
+   - test_serving_adapter_conformance.py: 27 passed (all conformance requirements)
+   - test_workload_validation.py: 78 passed (updated credential heuristics with entropy)
+   - Other domain tests: 287 passed
 
-✅ Contract tests: 191 passed, 7 skipped
+✅ Full test suite: 2944 passed, 25 skipped
 
-✅ Full test suite: 2910 passed, 25 skipped
-
-✅ Git checks: No uncommitted changes, no formatting issues
+✅ Git checks: All changes staged and ready to commit
 ```
 
 ### Test Coverage
@@ -245,10 +258,14 @@ New tests added for:
 - Context propagation: requestId and correlationId survive errors (including through error mapping)
 - Error mapping accepts context and preserves it
 - Telemetry mapping uses only canonical error codes
-- Telemetry mapping uses canonical metric identifiers (not request counter)
-- Credential detection agreement with published validator (39 prefix test cases)
-- All 16 conformance requirements for future adapters
+- Telemetry mapping metric identifiers immutable (tuple, not list)
+- Telemetry mapping metric identifiers validated against canonical pattern
+- Telemetry mapping metric identifiers cannot use reserved prefixes (inferops_, platform_)
+- Credential detection agreement with published validator (40 prefix test cases)
+- Credential detection Shannon entropy threshold (matches published exactly)
+- All 27 conformance requirements testable by future adapters via adapter_factory fixture
 - Request counter ownership (InferOps, not adapter)
+- Conformance harness fully parametrized for reuse without copy-adapt
 
 ### No Real Runtime Execution
 

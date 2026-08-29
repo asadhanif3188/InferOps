@@ -162,21 +162,37 @@ class TelemetryMapping:
     metrics to platform canonical identifiers only.
 
     Attributes:
-        platform_metric_ids: List of accepted canonical metric identifiers the
-                            adapter may report (e.g., from platform telemetry catalog).
+        platform_metric_ids: Immutable tuple of accepted canonical metric identifiers
+                            the adapter may report (from platform telemetry catalog).
         error_code: Optional canonical error code when mapping runtime errors.
         token_usage: Whether adapter supports optional token usage reporting.
     """
 
-    platform_metric_ids: list[str]
+    platform_metric_ids: tuple[str, ...] = ()
     error_code: str | None = None
     token_usage: bool | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.platform_metric_ids, list):
-            raise InvalidValueError("platform_metric_ids must be a list")
+        # Ensure platform_metric_ids is a tuple (immutable)
+        if not isinstance(self.platform_metric_ids, tuple):
+            raise InvalidValueError("platform_metric_ids must be a tuple (immutable)")
         if not all(isinstance(mid, str) for mid in self.platform_metric_ids):
             raise InvalidValueError("all platform_metric_ids must be strings")
+
+        # Canonical metric identifiers: lowercase, digits, underscores, no reserved prefixes
+        for metric_id in self.platform_metric_ids:
+            if not metric_id:
+                raise InvalidValueError("metric_id must not be empty string")
+            # Must match canonical identifier pattern (lowercase, digits, underscore)
+            if not re.match(r"^[a-z][a-z0-9_]*$", metric_id):
+                raise InvalidValueError(
+                    f"metric_id '{metric_id}' must be lowercase alphanumeric with underscores"
+                )
+            # Cannot use platform reserved prefixes
+            if metric_id.startswith("inferops_") or metric_id.startswith("platform_"):
+                raise InvalidValueError(
+                    f"metric_id '{metric_id}' uses reserved prefix (inferops_, platform_)"
+                )
 
         if self.error_code is not None and not self.error_code:
             raise InvalidValueError("error_code must not be empty string")
