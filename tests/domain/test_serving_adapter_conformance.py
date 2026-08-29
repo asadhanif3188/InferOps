@@ -21,10 +21,13 @@ The entire conformance suite will then test your adapter without modification.
 No copy-adapt needed; the same tests validate any adapter that implements
 the ServingAdapter protocol.
 
-**Scope limitation:** Tests here validate only the contract interface, not
-implementation-specific capabilities. Tests requiring state mutation (e.g.,
-testing "not ready" scenarios) belong in adapter-specific suites, not here.
-This suite works with adapters as constructed without modification.
+**Scope limitation:** Every test here uses only members declared on the
+``ServingAdapter`` protocol. No test reads or writes an attribute the protocol
+does not publish (``initialized``, ``model_ready``, and the like), and no test
+assumes a particular adapter kind. Scenarios that need an adapter driven into a
+specific state (not-ready inference, token-counting on and off) cannot be
+expressed through the protocol and live in adapter-specific suites instead; for
+the in-memory double those are in ``test_serving_test_double.py``.
 
 What this does not establish: that mock or real adapters work correctly beyond
 protocol conformance. Those are scope for integration/e2e tests. This suite
@@ -38,6 +41,7 @@ import pytest
 
 from inferops.domain import RequestContext
 from inferops.domain.serving import (
+    ACCEPTED_ADAPTER_KINDS,
     AdapterConfiguration,
     InferenceResult,
     ModelMetadata,
@@ -76,9 +80,15 @@ class TestAdapterInitialization:
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify initialization completes with valid config."""
+        """Verify initialization completes and the config takes effect.
+
+        Initialization is observable only through the protocol: after it
+        returns, the adapter reports metadata for the configured model.
+        """
         await adapter.initialize(test_config, test_context)
-        assert adapter.initialized
+
+        metadata = await adapter.get_model_metadata()
+        assert metadata.identifier == test_config.model_identifier
 
     async def test_initialization_rejects_empty_model_id(
         self,
@@ -168,12 +178,16 @@ class TestInference:
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify inference result always includes adapter kind."""
+        """Verify inference result declares a kind from the closed vocabulary.
+
+        The suite does not assume which kind: a real adapter reports "real" and
+        must pass this test unchanged. What the contract requires is that the
+        provenance is present and drawn from the accepted vocabulary.
+        """
         await adapter.initialize(test_config, test_context)
         result = await adapter.infer("test prompt", test_context)
 
-        assert result.adapter_kind is not None
-        assert result.adapter_kind == "mock"
+        assert result.adapter_kind in ACCEPTED_ADAPTER_KINDS
 
 
 class TestStreamingCapability:
@@ -258,10 +272,14 @@ class TestShutdown:
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify shutdown completes without error."""
+        """Verify shutdown completes without error.
+
+        The protocol publishes no post-shutdown state to assert on: shutdown
+        returns None, and what an adapter releases is its own business. The
+        contract obligation is that it completes rather than raising.
+        """
         await adapter.initialize(test_config, test_context)
         await adapter.shutdown(test_context)
-        assert not adapter.initialized
 
 
 class TestErrorMapping:
@@ -307,29 +325,13 @@ class TestErrorMapping:
 
 
 class TestContextPropagation:
-    """Tests for request context propagation."""
+    """Tests for request context propagation.
 
-    async def test_error_preserves_request_context_from_infer(
-        self,
-        adapter: ServingAdapter,
-        test_config: AdapterConfiguration,
-    ) -> None:
-        """Verify errors from infer() preserve request and correlation IDs."""
-        from inferops.domain.serving import ModelNotReadyError
-
-        adapter.model_ready = False
-        await adapter.initialize(test_config, RequestContext())
-        context_with_ids = RequestContext(
-            request_id="test-req-123",
-            correlation_id="test-corr-456",
-        )
-
-        with pytest.raises(ModelNotReadyError) as exc_info:
-            await adapter.infer("test", context_with_ids)
-
-        error = exc_info.value
-        assert error.context.request_id == "test-req-123"
-        assert error.context.correlation_id == "test-corr-456"
+    Errors raised out of ``infer()`` must carry the supplied context too, but
+    forcing an adapter into a failing state is not something the protocol
+    offers. That case is covered per-adapter; see
+    ``test_serving_test_double.py`` for the in-memory double.
+    """
 
     async def test_error_mapping_preserves_context(
         self,
@@ -402,11 +404,11 @@ class TestTelemetryMapping:
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify mapping lists only platform canonical metric identifiers.
+        """Verify mapping lists only metrics from the accepted catalog.
 
-        Per ADR-0002, InferOps owns request counter. Adapter reports only
-        optional metrics from platform telemetry catalog. Metric identifiers
-        must match canonical pattern and not use reserved prefixes.
+        Per ADR-0002, InferOps owns the request counter. An adapter reports
+        only metrics the platform catalog admits; membership in that catalog,
+        not the shape of the name, is what the contract checks.
         """
         await adapter.initialize(test_config, test_context)
         mapping = await adapter.get_telemetry_mapping()

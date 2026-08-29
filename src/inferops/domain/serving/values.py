@@ -19,6 +19,11 @@ from .errors import InvalidValueError
 # this set is empty, requiring adapters to report no custom metrics.
 ACCEPTED_ADAPTER_METRICS: frozenset[str] = frozenset()
 
+# Adapter kinds an inference result may declare. A closed vocabulary, not a
+# format: "banana" is well-formed kebab-case and still rejected, because the
+# mock/real boundary is what makes validation evidence verifiable.
+ACCEPTED_ADAPTER_KINDS: frozenset[str] = frozenset({"mock", "real"})
+
 
 @dataclass(frozen=True, slots=True)
 class ModelMetadata:
@@ -106,11 +111,10 @@ class InferenceResult:
         if not self.adapter_kind:
             raise InvalidValueError("adapter_kind must not be empty")
 
-        # Adapter kind must be from closed vocabulary (mock, real, etc)
-        accepted_kinds = {"mock", "real"}
-        if self.adapter_kind not in accepted_kinds:
+        if self.adapter_kind not in ACCEPTED_ADAPTER_KINDS:
             raise InvalidValueError(
-                f"adapter_kind must be one of {accepted_kinds}, got {self.adapter_kind}"
+                f"adapter_kind must be one of {set(ACCEPTED_ADAPTER_KINDS)}, "
+                f"got {self.adapter_kind}"
             )
 
 

@@ -35,9 +35,6 @@ from .values import (
     TokenUsage,
 )
 
-# Accepted adapter kinds (closed vocabulary)
-ACCEPTED_ADAPTER_KINDS = {"mock", "real"}
-
 
 @dataclass
 class MinimalTestDouble:
@@ -157,8 +154,7 @@ class MinimalTestDouble:
         )
 
 
-# Accepted adapter kinds as a module constant
-__all__ = ["ACCEPTED_ADAPTER_KINDS", "MinimalTestDouble", "ServingAdapterTestDouble"]
+__all__ = ["MinimalTestDouble", "ServingAdapterTestDouble"]
 
 
 # Static conformance check: MinimalTestDouble satisfies ServingAdapter protocol

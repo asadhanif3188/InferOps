@@ -38,6 +38,8 @@ from .test_double import (
     ServingAdapterTestDouble,
 )
 from .values import (
+    ACCEPTED_ADAPTER_KINDS,
+    ACCEPTED_ADAPTER_METRICS,
     AdapterCapability,
     AdapterConfiguration,
     InferenceResult,
@@ -48,6 +50,8 @@ from .values import (
 )
 
 __all__ = [
+    "ACCEPTED_ADAPTER_KINDS",
+    "ACCEPTED_ADAPTER_METRICS",
     "AdapterCapability",
     "AdapterConfiguration",
     "CanonicalError",

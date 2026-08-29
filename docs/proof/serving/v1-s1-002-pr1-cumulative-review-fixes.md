@@ -15,10 +15,12 @@ All ten cumulative review findings from Sprint 0 through V1-S1-002-PR1 have been
 4. ✅ Implemented telemetry-mapping contract surface
 5. ✅ Sanitized canonical error mapping
 6. ✅ Preserved supplied request context on adapter errors
-7. ✅ Made adapter conformance tests reusable
+7. ✅ Made adapter conformance tests genuinely adapter-neutral
 8. ✅ Fixed strict mypy failures
 9. ✅ Fixed all formatting-gate failures
 10. ✅ Added public traceability and validation evidence
+
+**Revision note.** An earlier revision of this document reported finding 7 as fixed and mypy as passing when neither was true: the conformance suite still read `adapter.initialized`, wrote `adapter.model_ready`, and asserted `adapter_kind == "mock"`, and the gate counts quoted here did not match what the tools reported. Sections 7, 8, 9 and the validation results below have been rewritten against actual command output. The overclaim was a defect in the evidence, and it is recorded rather than quietly corrected.
 
 ## Key Changes
 
@@ -134,18 +136,21 @@ so unknown runtime exceptions became InternalErrors with empty context, losing r
 
 ### 7. Reusable Conformance Harness (Truly Adapter-Neutral)
 
-**Finding:** Conformance tests accessed test-double-specific attributes (initialized, model_ready, should_support_token_counting) that real adapters don't have, breaking mypy strict and preventing reuse.
+**Finding:** The conformance suite was described as adapter-neutral but was not. It read `adapter.initialized`, wrote `adapter.model_ready`, and asserted `result.adapter_kind == "mock"`. None of those members are declared on `ServingAdapter`, so strict mypy reported three errors, and a real adapter supplied through `adapter_factory` would have failed the suite despite conforming.
+
+An earlier revision of this document claimed these accesses had been removed. They had not been; the claim was wrong and is corrected here.
 
 **Fix:**
-- Removed tests that mutated adapter state via test-double-specific attributes
-- Removed `test_is_ready_reflects_adapter_state` (mutates model_ready)
-- Removed `test_infer_fails_when_not_ready` (mutates model_ready)  
-- Removed `test_infer_result_respects_optional_capabilities` (mutates should_support_token_counting)
-- Removed `test_infer_with_token_counting_includes_usage` (mutates should_support_token_counting)
-- Tests now validate only protocol interface, not implementation-specific behavior
-- Tests work with adapters as-constructed, without mutation
-- `tests/domain/conftest.py` provides `adapter_factory` fixture for adapter override
-- Future adapters override fixture in their conftest.py without modifying test file:
+- Every test in the suite now touches only members `ServingAdapter` declares. No test reads or writes `initialized`, `model_ready`, or `should_support_token_counting`.
+- `test_initialization_succeeds_with_valid_config` asserts through the protocol: after `initialize()`, `get_model_metadata()` reports the configured model.
+- `test_shutdown_completes` asserts that shutdown returns rather than raising. The protocol publishes no post-shutdown state to inspect.
+- `test_infer_result_includes_adapter_kind` asserts membership in `ACCEPTED_ADAPTER_KINDS` rather than equality with `"mock"`. A real adapter reporting `"real"` passes unchanged.
+- `test_error_preserves_request_context_from_infer` needed a not-ready adapter, which the protocol offers no way to produce. It moved to the adapter-specific suite rather than being dropped.
+- `ACCEPTED_ADAPTER_KINDS` moved from `test_double.py` to `values.py`, where `InferenceResult` validation already hardcoded the same set inline. One definition now, exported from `inferops.domain.serving`, so a conformance suite need not import from the test double.
+
+**State-driven coverage retained, not deleted:** the scenarios that cannot be expressed through the protocol are now in `tests/domain/test_serving_test_double.py` (9 tests), bound to `MinimalTestDouble` deliberately: initialization and shutdown bookkeeping, readiness reporting, inference against a loading model, context preservation on errors raised by `infer()`, token-counting declared and undeclared, and the double's `"mock"` provenance. A real adapter drives the same scenarios through its own means and carries its own file alongside the shared suite. This restores the four tests a previous revision removed outright.
+
+**Overriding the adapter under test:** `tests/domain/conftest.py` provides the `adapter_factory` fixture:
   ```python
   @pytest.fixture
   def adapter_factory():
@@ -153,49 +158,51 @@ so unknown runtime exceptions became InternalErrors with empty context, losing r
 
       return MyRealAdapter
   ```
-- Same conformance tests validate any adapter that implements protocol
-- No runtime-specific types leak into interface
-- Static type check: mypy strict passes (no references to test-double-specific attributes)
-- Added new tests for catalog validation (platform metric validation)
 
 **Files changed:**
+- `src/inferops/domain/serving/values.py` (`ACCEPTED_ADAPTER_KINDS` defined here)
+- `src/inferops/domain/serving/test_double.py` (constant removed, imported from values)
+- `src/inferops/domain/serving/__init__.py` (exports both catalog constants)
 - `tests/domain/conftest.py` (adapter_factory fixture)
-- `tests/domain/test_serving_adapter_conformance.py` (removed mutation tests, added catalog validation tests)
+- `tests/domain/test_serving_adapter_conformance.py` (protocol-only assertions)
+- `tests/domain/test_serving_test_double.py` (new; adapter-specific state tests)
 
 ### 8. Type Safety (Mypy)
 
-**Finding:** Eight `no-any-return` errors in workload validation (from previous session); adapter-specific attributes broke conformance tests with mypy strict.
+**Finding:** Eight `no-any-return` errors in workload validation (from an earlier session), then three `attr-defined` errors in the conformance suite from the three protocol violations described in section 7.
 
 **Fix:**
-- Added type guards in `CompatibilityMatrixLoader` (previous session)
-- Removed test-double-specific attribute accesses from conformance tests
-- Tests now use only protocol-defined methods and attributes
-- No runtime-specific types leak into interface
-- Deterministic behavior preserved
-- mypy strict now passes
+- Added type guards in `CompatibilityMatrixLoader` (earlier session)
+- Conformance tests now reference only protocol-declared members, which removes the `attr-defined` errors at their cause rather than silencing them
 
 **Files changed:**
-- `src/inferops/domain/workload/validation.py` (previous session)
-- `tests/domain/test_serving_adapter_conformance.py` (removed attribute mutation)
+- `src/inferops/domain/workload/validation.py` (earlier session)
+- `tests/domain/test_serving_adapter_conformance.py`
 
-**Validation:**
+**Validation** — the configured invocation (`[tool.mypy]` in `pyproject.toml`: `strict = true`, `warn_unreachable = true`, `ignore_missing_imports = false`, over `src`, `tools`, `tests`, `conftest.py`):
 ```
-mypy --strict: Success: no issues found in 15 source files
+$ uv run --frozen --group dev mypy
+Success: no issues found in 37 source files
 ```
+
+The file count is 37 rather than the 36 seen at review time because `tests/domain/test_serving_test_double.py` is new. Type stubs (`types-PyYAML`, `types-jsonschema`) come from the `checks` dependency group; running a bare `mypy` outside that environment reports missing-stub errors that are an artifact of the environment, not of the code.
 
 ### 9. Code Formatting
 
-**Finding:** Ruff formatting needed on code changes.
+**Finding:** Ruff formatting needed on code changes. A previous revision of this document reported a file count that did not match what ruff actually checks.
 
-**Fix:**
-- Applied ruff formatter to modified files
-- 2 files reformatted (conformance tests, values module)
+**Fix:** Applied the formatter to the modified files. The tree is now clean under `--check`, so the gate passes without the formatter having to write anything.
 
 **Validation:**
 ```
-ruff format: 2 files reformatted, 109 files already formatted
-ruff check: All checks passed!
+$ uv run --frozen --group dev ruff format --check .
+112 files already formatted
+
+$ uv run --frozen --group dev ruff check .
+All checks passed!
 ```
+
+112 rather than the 111 seen at review time: `tests/domain/test_serving_test_double.py` is new.
 
 ### 10. Public Traceability
 
@@ -212,56 +219,68 @@ ruff check: All checks passed!
 
 ### Local Static Testing
 
+Every command below was run in the repository's locked environment (`uv run --frozen --group dev`), and the output is quoted as it was returned.
+
 ```
-✅ Strict mypy: Success: no issues found in 15 source files
+$ mypy
+Success: no issues found in 37 source files
 
-✅ Ruff format: 1 file reformatted, 110 files already formatted
+$ ruff format --check .
+112 files already formatted
 
-✅ Ruff lint: All checks passed!
+$ ruff check .
+All checks passed!
 
-✅ Domain tests: 390 passed, 18 skipped
-   - test_serving_adapter_conformance.py: 25 passed (interface only, no mutation tests)
-   - test_serving_adapter_conformance.py: 2 passed (catalog validation tests)
-   - test_workload_validation.py: 78 passed (credential heuristics)
-   - Other domain tests: 285 passed
+$ python -m pytest tests/domain -q
+398 passed, 18 skipped in 6.34s
 
-✅ Full test suite: 2942 passed, 25 skipped
+$ python -m pytest tests/domain/test_serving_adapter_conformance.py -q
+24 passed in 0.17s
 
-✅ Git checks: All changes staged and ready to commit
+$ python -m pytest tests/domain/test_serving_test_double.py -q
+9 passed in 0.10s
+
+$ python -m pytest -q
+2950 passed, 25 skipped in 15.43s
 ```
+
+Domain tests rose from 390 to 398: the four state-driven tests a previous revision removed are restored in the adapter-specific suite, along with four more covering readiness, capability declaration, and provenance. The conformance suite is 24 tests rather than 25 because the infer-error context test moved to that suite rather than being counted twice.
 
 ### Test Coverage
 
-Tests in conformance harness (25 tests, protocol interface only):
-- Streaming capability ALWAYS unsupported (V1 constraint, no configuration)
-- No stream() method exists on protocol
-- Adapter kind must be closed vocabulary (mock, real only, not "banana")
-- Adapter kind validates both format AND whitelist
-- Error sanitization: sensitive text doesn't leak
-- Context propagation: requestId and correlationId survive errors
-- Error mapping accepts context and preserves it
+Conformance harness, `tests/domain/test_serving_adapter_conformance.py` (24 tests, protocol members only, valid for any adapter):
+- Initialization completes and the configured model is reported back through `get_model_metadata()`
+- Configuration validation rejects an empty model identifier
+- Capability discovery returns declared capabilities including streaming and token-counting
+- Streaming is ALWAYS declared unsupported (V1 constraint, not configurable)
+- No `stream()` method exists on the protocol
+- Readiness reporting returns a boolean
+- Inference returns an `InferenceResult` with content, model, and provenance
+- Adapter kind is drawn from `ACCEPTED_ADAPTER_KINDS`, not assumed to be `"mock"`
+- Adapter kind rejects wrong case, empty, and well-formed-but-unaccepted values like "banana"
+- Model and runtime metadata are returned as domain types
+- Shutdown completes without raising
+- Error mapping returns canonical errors and passes canonical errors through unchanged
+- Error mapping does not leak sensitive text
+- Error mapping preserves a supplied requestId and correlationId
 - Telemetry mapping uses only canonical error codes
-- Telemetry mapping metric identifiers immutable (tuple, not list)
-- Telemetry mapping metric identifiers validated against catalog membership
-- Request counter ownership (InferOps, not adapter)
-- Graceful shutdown
-- Model and runtime metadata
-- Initialization and configuration validation
-- Capability discovery (streaming, token-counting)
-- Readiness reporting (boolean return)
-- Inference execution (returns InferenceResult with adapter_kind)
-- Protocol conformance (all protocol methods work)
+- Telemetry metric identifiers are an immutable tuple
+- Telemetry metric identifiers are validated against catalog membership
+- Request counter is not in the adapter's metric list (InferOps owns it, per ADR-0002)
+- An adapter cannot report an arbitrary name like "banana" (not in the catalog)
+- An adapter cannot report a reserved platform metric (`inferops_*`, `platform_*`)
 
-New tests added (2):
-- Adapter cannot report arbitrary metric names like "banana" (not in catalog)
-- Adapter cannot report reserved platform metrics (inferops_*, platform_*)
+Adapter-specific suite, `tests/domain/test_serving_test_double.py` (9 tests, `MinimalTestDouble` only):
+- `initialize()` and `shutdown()` move the double's initialization state
+- `is_ready()` reports the state the double was constructed with
+- Inference against a loading model raises `ModelNotReadyError`
+- An error raised by `infer()` carries the supplied requestId and correlationId
+- Token-counting capability declaration follows construction
+- Token usage is present when the capability is declared
+- Token usage is None when it is not — absence preserved, not a missing field
+- The double reports `"mock"` provenance and never claims to be real
 
-Removed tests (2):
-- `test_infer_fails_when_not_ready` (required mutating model_ready attribute)
-- `test_infer_result_respects_optional_capabilities` (required mutating should_support_token_counting)
-
-Reason for removals: These tests accessed test-double-specific attributes, breaking mypy strict
-and adapter reusability. State-mutation scenarios belong in adapter-specific test suites, not conformance harness.
+These belong here and not in the conformance harness because the protocol offers no way to put an arbitrary adapter into a not-ready state or to switch an optional capability off. A real adapter reaches the same scenarios by other means and gets its own file.
 
 ### No Real Runtime Execution
 
@@ -282,8 +301,8 @@ No V1-S1-003, production mock adapter, real llama.cpp adapter, HTTP API, or Kube
 ✅ **Sprint 0 and Sprint 1 validation semantics aligned**  
 ✅ **Adapter protocol exposes honest provenance and telemetry**  
 ✅ **Error sanitization preserves context without leaking secrets**  
-✅ **Conformance tests reusable by future adapters**  
-✅ **All repository-approved validation gates pass**  
+✅ **Conformance suite references only protocol members, so a real adapter passes it unchanged**  
+✅ **All repository-approved validation gates pass, with output quoted above**  
 ✅ **Public diff contains no private material or sensitive data**
 
 Ready for code review and merge.
