@@ -283,9 +283,53 @@ between owners is an architecture change and needs
 [ADR 0004](docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 updated with it.
 
+The same suite holds the platform domain to the dependency rule. It parses every
+module under [`src/inferops/`](src/inferops/) and fails if one imports anything
+outside the standard library and this distribution — which is checklist question
+**B1**, answered from the source rather than at review time. Adding a runtime
+dependency to the domain is an amendment to
+[ADR 0004](docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
+with an argument attached, not a new import.
+
 A change touching components, ownership, deployment, telemetry, trust boundaries,
 or scope also works through
 [the boundary review checklist](docs/architecture/boundary-review-checklist.md).
+
+### The platform domain
+
+Changes under [`src/inferops/`](src/inferops/) or [`tests/domain/`](tests/domain/)
+must pass the domain suite and the architecture suite:
+
+```sh
+uv run --locked python -m pytest tests/domain -q
+uv run --locked python -m pytest tests/architecture -q
+uv run --locked python -m mypy
+```
+
+The domain suite reads only files in this repository and needs `pytest` and
+`PyYAML` — the latter to load the committed fixtures, which are authored in YAML.
+It checks [the workload domain model](docs/domain/workload-domain-model.md): that
+every committed valid fixture parses; that a parsed document rebuilds into exactly
+the document it came from, so that a dropped field or an invented default fails
+here rather than in whatever renders one later; that an unsupported contract version
+is refused before any field below it is read; that every field the schema declares
+required is required by the parser, at that field's own address; and that no refusal
+repeats a value read out of the document.
+
+It also compares the domain's copy of the contract against the published schema —
+every pattern, enumerated value, numeric bound, field list, and required field, in
+both directions. That copy exists because the domain declares no runtime dependency
+and so cannot import a JSON Schema validator; the comparison is what stops the two
+drifting. **A change to
+[the schema](contracts/workload/workload-contract.v1alpha1.schema.json) is therefore
+a change to `src/inferops/domain/workload/values.py` as well**, and the suite fails
+until both are made.
+
+Two things belong to the validation pipeline rather than to the domain, and a change
+should not quietly move either: the semantic rules the schema cannot express, and
+the canonical error codes and rule identifiers a refusal carries. The domain raises
+typed exceptions with a field location and no canonical code, and
+[the domain document](docs/domain/workload-domain-model.md) says where the line is.
 
 ### Test lanes and markers
 
@@ -312,10 +356,12 @@ python -m pytest -m contract -q
 python -m pytest -m realruntime -q
 ```
 
-`unit`, `adapter`, `mockintegration`, `cluster`, `realruntime`, `failure`, and `load`
+`adapter`, `mockintegration`, `cluster`, `realruntime`, `failure`, and `load`
 currently select nothing, because the layers behind them have no code yet. That is
 the intended state: the marker exists so that the first test of its kind is written
-under it rather than into whichever suite was already open.
+under it rather than into whichever suite was already open. `unit` was in that list
+until `V1-S1-001` wrote the first domain code, and it now selects
+[`tests/domain/`](tests/domain/).
 
 A new test module belongs to exactly one layer and declares that layer's marker at
 module level:
@@ -356,7 +402,7 @@ from layers that are implemented; that a lane claims automation only by naming a
 workflow file that exists; and that the three published documents and the data agree
 in both directions.
 
-It checks a strategy, not a test suite. Six of the eleven layers it describes have
+It checks a strategy, not a test suite. Five of the eleven layers it describes have
 no code, and nothing here can distinguish a layer that is honestly planned from one
 that will never be written.
 

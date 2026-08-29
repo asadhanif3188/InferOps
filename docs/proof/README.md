@@ -20,6 +20,7 @@ nominate its own strength.
 | Environment | [host inventory](environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke](environment/v1-s0-002-pr2-cluster-smoke.md), and the two change-validation records beside them |
 | Serving | [runtime feasibility](serving/v1-s0-003-pr2-runtime-feasibility.md), [`v1-s0-012-pr1-validation.md`](serving/v1-s0-012-pr1-validation.md), and the change-validation records beside them |
 | Contracts | [`v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) |
+| Domain | [`v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md) |
 | Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md) |
 | Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md) |
 | Telemetry | [`v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md) |

@@ -10,6 +10,57 @@ once versioned releases begin.
 
 ### Added
 
+- **The first InferOps-owned code that is part of the distribution**, in
+  [`src/inferops/domain/workload/`](src/inferops/domain/workload/) and described in
+  [the workload domain model](docs/domain/workload-domain-model.md). A
+  `WorkloadContract v1alpha1` document becomes a tree of frozen, typed platform
+  objects — workload identity, owner, profile, model and runtime reference,
+  resources, scaling, integrations, security classification, attribution, and
+  evidence references — with every identifier and formatted value carrying its own
+  type rather than being a string that looked right when it was read.
+- **The architecture's dependency rule, checked from the source instead of at review
+  time.** `tests/architecture/test_domain_dependency_boundary.py` parses every
+  module under `src/inferops/` and fails if one imports anything outside the
+  standard library and this distribution. It is an allowlist rather than a list of
+  forbidden packages, because the rule is about everything the domain is not,
+  including whatever ships next year; a second check names the Kubernetes, Helm,
+  Terraform, runtime-SDK, and HTTP-framework families in ADR 0004's own words. The
+  domain declares no runtime dependency and reads no file, so a domain object is
+  constructible from a wheel with no repository around it.
+- **A round-trip property that makes "the domain loses nothing" checkable.**
+  `WorkloadContract.as_document()` rebuilds the wire form, and a test asserts over
+  every committed valid fixture that it rebuilds the document it was given exactly.
+  A field the parser forgot to read is a field missing from the result; a field it
+  defaulted is one that appears where the author wrote none. Absence is preserved
+  for the same reason: an absent `proofRefs` and a declared empty one are different
+  documents, both comply, and rendering one as the other would make a document say
+  something its author did not write.
+- **Contract-version handling that is explicit and first.** The supported
+  `apiVersion` set is a constant with one entry, and a document declaring another
+  version — or none — is refused before any field below it is read, because every
+  field path this package knows is a path in `v1alpha1`.
+- **A drift test between the published schema and the domain's copy of it.** The
+  domain cannot import a JSON Schema validator, so the patterns, vocabularies, and
+  bounds are written twice; `tests/domain/test_workload_schema_agreement.py` reads
+  the schema and fails if a single one of them disagrees in either direction, and
+  additionally deletes each required field from a committed fixture in turn and
+  requires a refusal at that field's own address.
+- **The `unit` test layer, which was registered and empty since `V1-S0-006`, now
+  runs.** Six of eleven layers exist. Its 263 checks cover what parses, what is
+  refused, and what a refusal is allowed to say — including that no message repeats
+  a value read out of the document, asserted over every string of eight characters
+  or more in a refused document, and that a refusal carries the `requestId` and
+  `correlationId` a caller supplied and invents neither.
+- **A stated boundary, with tests that assert the absence rather than leaving it to
+  be discovered.** This change implements **no** semantic validation rule: the
+  profile and its block are not paired, an inverted replica range is not refused, a
+  duplicate secret name is not detected, and no canonical error code or rule
+  identifier is assigned. Those are the published semantic layer and they remain the
+  complete property of
+  [`tools/contract_validation/`](tools/contract_validation/) until `V1-S1-001-PR2`
+  brings them into the domain. Two tests parse documents that the published rules
+  refuse, so that the line cannot move quietly in either direction.
+
 - **A decided inference API surface, one story before anything freezes against it**,
   in [ADR 0010](docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md)
   and [the surface document](docs/serving/inference-api-surface.md). The user-facing

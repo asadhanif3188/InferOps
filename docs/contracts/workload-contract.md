@@ -2,9 +2,10 @@
 
 Status: **accepted contract**, at `v1alpha1` maturity. The schema, its identifier,
 its compatibility rules, and its valid and invalid fixtures are published here and
-validated on every change. It describes a workload; it does not deploy one. Nothing
-in this repository reads a WorkloadContract yet, and this document does not claim
-otherwise.
+validated on every change. It describes a workload; it does not deploy one.
+[The platform domain](../domain/workload-domain-model.md) now reads a document into
+typed objects, and that is the whole of what reads one: nothing in this repository
+deploys, serves, or admits a workload, and this document does not claim otherwise.
 
 | Property | Value |
 |---|---|
@@ -566,12 +567,15 @@ made here.
 ## What this contract does not do
 
 - **It deploys nothing.** No controller, adapter, or serving path in this
-  repository reads a WorkloadContract.
+  repository reads a WorkloadContract. The platform domain parses one into typed
+  objects and stops there; a parsed document is not an accepted one, and the
+  semantic rules below are not implemented in that package.
 - **It certifies nothing.** A valid contract is a well-formed declaration, not
   evidence that the workload it describes runs. A pair that the compatibility
   matrix accepts is a pair whose formats match, not a pair anybody has served.
-- **It has no consumers.** No capability descriptor, registry, or admission path
-  exists to validate a `capabilityRef` against.
+- **It has no runtime consumer.** No capability descriptor, registry, or admission
+  path exists to validate a `capabilityRef` against, and no component acts on a
+  parsed document.
 - **Its rules are not all enforced.** Three remain blocked on capabilities that do
   not exist, and the table above says which.
 - **Its two layers are not equally portable.** A consumer validating against the
