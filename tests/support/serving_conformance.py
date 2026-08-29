@@ -188,6 +188,7 @@ class ServingAdapterConformance:
         assert isinstance(result, InferenceResult)
         assert isinstance(result.content, str)
         assert isinstance(result.model, str)
+        assert isinstance(result.adapter_kind, str)
 
     async def test_infer_result_declares_an_accepted_adapter_kind(
         self,
@@ -219,6 +220,7 @@ class ServingAdapterConformance:
         metadata = await adapter.get_model_metadata()
 
         assert isinstance(metadata, ModelMetadata)
+        assert isinstance(metadata.identifier, str)
         assert metadata.identifier == test_config.model_identifier
 
     async def test_get_runtime_metadata_returns_runtime_metadata(
@@ -232,6 +234,8 @@ class ServingAdapterConformance:
         metadata = await adapter.get_runtime_metadata()
 
         assert isinstance(metadata, RuntimeMetadata)
+        assert isinstance(metadata.name, str)
+        assert isinstance(metadata.version, str)
         assert metadata.name
         assert metadata.version
 
@@ -261,6 +265,7 @@ class ServingAdapterConformance:
         mapped = await adapter.map_error_to_canonical(ValueError("test error"))
 
         assert isinstance(mapped, CanonicalError)
+        assert isinstance(mapped.message, str)
         assert mapped.code in CANONICAL_ERROR_CODES
 
     async def test_map_error_passes_canonical_errors_through(

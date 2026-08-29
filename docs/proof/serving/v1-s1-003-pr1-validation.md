@@ -88,10 +88,10 @@ than a method.
 | Check | Result |
 |---|---|
 | `ruff check .` | All checks passed |
-| `ruff format --check .` | 118 files already formatted |
+| `ruff format --check .` | 119 files already formatted |
 | `python -m mypy` | Success: no issues found in 42 source files |
 | `python -m pytest -q` | 3032 passed, 25 skipped |
-| `python -m pytest -m adapter -q` | 76 passed, 2980 deselected |
+| `python -m pytest -m adapter -q` | 76 passed, 2981 deselected |
 | `python -m pytest tests/adapters -q` | 76 passed |
 | `python -m pytest tests/domain -q` | 398 passed, 18 skipped |
 | `python -m pytest tests/architecture -q` | 394 passed |
