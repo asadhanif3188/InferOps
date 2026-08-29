@@ -115,6 +115,7 @@ def test_the_record_publishes_a_constraint_for_every_tool_it_names() -> None:
         "ruff",
         "mypy",
         "pytest",
+        "pytest-asyncio",
         "jsonschema",
         "PyYAML",
         "types-PyYAML",

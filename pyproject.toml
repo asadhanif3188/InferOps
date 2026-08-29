@@ -48,6 +48,7 @@ Changelog = "https://github.com/asadhanif3188/InferOps/blob/main/CHANGELOG.md"
 [dependency-groups]
 test = [
     "pytest>=8.3.4,<9",
+    "pytest-asyncio>=0.24,<0.25",
     "jsonschema>=4.23,<5",
     "PyYAML>=6.0.2,<7",
 ]

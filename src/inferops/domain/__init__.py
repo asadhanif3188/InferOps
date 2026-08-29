@@ -16,9 +16,9 @@ profile, model and runtime reference, resources, scaling, security
 classification, attribution, and evidence references — expressed as typed objects
 that know nothing about how a workload is deployed or served.
 
-Today that is the workload contract domain model and nothing else. The
-serving-adapter interface the domain will own is `V1-S1-002`, and no part of it
-is anticipated here.
+This includes:
+- Workload contract domain model (V1-S1-001)
+- Serving adapter interface (V1-S1-002)
 """
 
 from __future__ import annotations
