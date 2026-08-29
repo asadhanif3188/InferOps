@@ -27,6 +27,7 @@ import pytest
 
 from inferops.adapters.llama_cpp import (
     ACCEPTED_RUNTIME_PATHS,
+    CHAT_COMPLETIONS_PATH,
     ENV_CONTEXT_SIZE,
     ENV_ENDPOINT,
     ENV_METRICS_ENABLED,
@@ -241,18 +242,47 @@ def test_every_published_runtime_path_builds_a_url(path: str) -> None:
     assert settings().url_for(path).endswith(path)
 
 
-def test_a_path_this_adapter_does_not_publish_is_refused() -> None:
-    """Otherwise this is a URL builder aimed at a host read from the environment."""
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/v1/completions",
+        "/v1/embeddings",
+        "/slots",
+        "/",
+        "/health/../v1/chat/completions",
+        "http://elsewhere.invalid/health",
+    ],
+)
+def test_a_path_this_adapter_does_not_publish_is_refused(path: str) -> None:
+    """Otherwise this is a URL builder aimed at a host read from the environment.
+
+    The runtime serves more paths than these settings will build a URL for, and
+    the set being closed rather than merely documented is what makes that true.
+    """
     with pytest.raises(InvalidAdapterConfigError) as caught:
-        settings().url_for("/v1/chat/completions")
+        settings().url_for(path)
     assert caught.value.field == "path"
 
 
-def test_the_inference_path_is_not_among_the_published_paths() -> None:
-    """The call that generates a completion belongs to the inference client."""
-    assert "/v1/chat/completions" not in ACCEPTED_RUNTIME_PATHS
-    published = {HEALTH_PATH, PROPS_PATH, MODELS_PATH, METRICS_PATH}
+def test_the_inference_path_is_published_now_that_a_client_issues_it() -> None:
+    """`V1-S1-004-PR1` asserted this path absent; the adapter now issues it.
+
+    The absence was never a permanent property — it was the refusal to put a door
+    in a wall before the room existed. What is still asserted is that the set is
+    exactly these five and grew by exactly one.
+    """
+    published = {
+        HEALTH_PATH,
+        PROPS_PATH,
+        MODELS_PATH,
+        METRICS_PATH,
+        CHAT_COMPLETIONS_PATH,
+    }
     assert published == ACCEPTED_RUNTIME_PATHS
+    assert CHAT_COMPLETIONS_PATH == "/v1/chat/completions"
+    assert settings().url_for(CHAT_COMPLETIONS_PATH) == (
+        f"{VALID_ENDPOINT}{CHAT_COMPLETIONS_PATH}"
+    )
 
 
 def test_the_metrics_path_is_refused_when_metrics_are_disabled() -> None:

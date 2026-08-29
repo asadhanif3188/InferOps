@@ -384,9 +384,12 @@
       "lane": "real-runtime",
       "environment": "capable-host",
       "marker": "realruntime",
-      "paths": [],
+      "paths": [
+        "tests/realruntime"
+      ],
       "commands": [
-        "the procedure in docs/serving/feasibility-workflow.md"
+        "the procedure in docs/serving/feasibility-workflow.md",
+        "python -m pytest tests/realruntime -m realruntime -q"
       ],
       "evidenceClass": "local-real-cpu",
       "maxCertification": "C2",
@@ -395,7 +398,7 @@
       "publishable": true,
       "v1Status": "implemented",
       "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
-      "notes": "Executed once, on one host, on one day. One pre-registered threshold was not met and the record says so."
+      "notes": "Executed once, on one host, on one day, by the manual procedure; one pre-registered threshold was not met and the record says so. V1-S1-004-PR2 added an executable suite under tests/realruntime that drives the same runtime through the serving adapter. That suite has not been run against a runtime: the lane is authorization-gated and was not entered, so the layer's cited evidence remains the manual trial."
     },
     {
       "layerId": "failure-and-resilience",

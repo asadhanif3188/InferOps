@@ -369,17 +369,18 @@ result support a real-serving claim is a change to
 [the mock and real boundary](docs/serving/mock-and-real-boundary.md), which is an
 accepted rule, and not a change to a test.
 
-### The selected runtime's configuration
+### The selected runtime's adapter
 
 [`src/inferops/adapters/llama_cpp/`](src/inferops/adapters/llama_cpp/) is where the
-runtime ADR 0002 selected is configured and inspected, and it runs under the same
-commands as the rest of the adapter layer. It contains **no adapter and no
-inference call**, and [its document](docs/serving/real-runtime-configuration.md)
-says why: publishing a class that satisfies the protocol's shape while it cannot
-generate anything is the mock-for-a-missing-real substitution the boundary rule
-calls a defect.
+runtime ADR 0002 selected is configured, inspected, and called, and it runs under
+the same commands as the rest of the adapter layer.
+[The configuration half](docs/serving/real-runtime-configuration.md) holds the
+pins, settings, translation, readiness mapping, metadata parsers, and capability
+declaration; [the inference half](docs/serving/real-runtime-inference.md) holds the
+transport seam, the inference client, the deadlines, the error mapping, and
+`LlamaServerAdapter`.
 
-Two rules apply to a change here beyond the usual ones.
+Four rules apply to a change here beyond the usual ones.
 
 **A pin is compared to its source, never restated.** The runtime image digest and
 the model revision, file, size, and hash are copied from
@@ -393,7 +394,45 @@ that appears only in code is a pin nothing checks.
 length, the KV budget, the concurrency limit, and the sampling defaults are
 recorded there as undecided. A default added in this package would be read back
 later as a project recommendation nobody made, so the required inputs stay
-required and a test enforces it.
+required and a test enforces it. The request the adapter sends therefore carries no
+sampling parameter at all, and a test names seven of them and asserts each absent.
+
+**A canonical error code is mapped where it was decided, not where it is raised.**
+The condition-to-code mapping is copied from
+[the accepted API surface data](docs/serving/inference-api-surface.v1alpha1.json),
+carries that record's own condition identifiers, and is compared to it by
+`tests/adapters/test_llama_server_inference.py`. A change that maps a new condition
+changes that record first. A code the record lists as never emitted — `rate-limited`
+among them — may not be produced here, because emitting one would claim a mechanism
+V1 does not have.
+
+**A runtime's own words stop at the transport.** The three transport failures take
+no argument and carry no message, and a source sweep over `src/` fails if any
+construction site passes one. Downstream of that seam an unrecognised error's
+message is dropped rather than wrapped, and no canonical error repeats a status
+code, a body, a host, a port, a path, or a prompt. That is
+[the redaction rule](docs/telemetry/redaction.md) at the one place in this
+distribution that receives a prompt.
+
+### The real-runtime lane
+
+[`tests/realruntime/`](tests/realruntime/) is the only executable suite here that
+talks to a running runtime holding the pinned model. It carries the `realruntime`
+marker, which the default marker expression deselects, and it reads the six runtime
+settings from the process environment — the only place in this repository that
+does. It **skips** when they are unset:
+
+```sh
+uv run --locked python -m pytest tests/realruntime -m realruntime -q
+```
+
+Running it needs a capable host, the pinned image, the hash-verified model
+artifact, and explicit authorization, and the procedure is
+[the feasibility workflow](docs/serving/feasibility-workflow.md). A passing run is
+one input to an evidence record that also names the digest, the revision and
+per-file hash, the environment, the commands, and the results — never the record
+itself. A change that adds an assertion here states which stage a failure names, in
+the vocabulary the lane's `failureDiagnostics` already publishes.
 
 ### Test lanes and markers
 

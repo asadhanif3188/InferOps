@@ -3,13 +3,16 @@
 Status: **implemented**, in [`src/inferops/adapters/llama_cpp/`](../../src/inferops/adapters/llama_cpp/).
 It is the configuration and inspection half of connecting InferOps to the runtime
 [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md)
-selected. **It contains no serving adapter and executes no inference**, and the
-second half of that sentence is as load-bearing as the first.
+selected. The other half — the transport seam, the inference client, the bounded
+deadlines, the canonical error mapping, and the `ServingAdapter` implementation —
+arrived with `V1-S1-004-PR2` and is described in
+[executing real inference through the adapter](real-runtime-inference.md). This
+document covers the six modules that adapter composes.
 
 Everything here is derived from two accepted records — the runtime decision and
 [the feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md)
-that executed it. Nothing in this package has run a model, opened a socket, or
-read a file, and its own evidence class is `local-static`.
+that executed it. Nothing in *these six modules* has run a model, opened a socket,
+or read a file, and their own evidence class is `local-static`.
 
 ## What it is
 
@@ -25,20 +28,25 @@ inside a package that the platform domain does not import.
 | `metadata.py` | What the runtime says about itself, read narrowly |
 | `capabilities.py` | What the runtime supports, declared with the basis for each entry |
 
-## What is deliberately absent
+## What was deliberately absent, and what has since arrived
 
-**There is no `ServingAdapter` implementation.** A class satisfying the
-protocol's shape while its `infer` could not generate anything would be a mock
-wearing a real adapter's name, and boundary rule 4 in
-[the mock and real boundary](mock-and-real-boundary.md) is explicit that
+**The `ServingAdapter` implementation was withheld from the first half**, on the
+ground that a class satisfying the protocol's shape while its `infer` could not
+generate anything would be a mock wearing a real adapter's name — and boundary
+rule 4 in [the mock and real boundary](mock-and-real-boundary.md) is explicit that
 substituting a mock result for a missing real one is a defect and not a fallback.
-The adapter arrives with the inference client, the timeout, the runtime-error
-mapping, and the executed record of one real generated response — and that
-record, not this document, is what will support the story's remaining criteria.
+It arrived with `V1-S1-004-PR2`, together with the inference client, the timeouts,
+and the runtime-error mapping. What has still **not** arrived is the executed
+record of one real generated response: the `real-runtime` lane is manual and
+authorization-gated and has not been entered for this adapter, and that record —
+not this document and not that code — is what supports the story's remaining
+criterion.
 
-**There is no inference path.** `/v1/chat/completions` is not among the runtime
-paths `settings.py` will build a URL for, and a test asserts its absence. The
-door is not put in the wall before the room exists.
+**The inference path was absent for the same reason and is published now.**
+`/v1/chat/completions` was not among the runtime paths `settings.py` would build a
+URL for while nothing issued the call; the door was not put in the wall before the
+room existed. The room exists, so the set of published paths grew from four to
+five and a test asserts it is exactly those five.
 
 **There is no default for anything ADR 0002 left undecided.** The context length,
 the KV budget, the concurrency limit, and the sampling defaults are recorded there
@@ -205,7 +213,9 @@ trial** — what the record preserves is the field names and their values. The
 parsers therefore read a small number of members, treat an absent one as absence,
 and refuse a payload whose shape they cannot read rather than guessing at it.
 Confirming the shape against a live runtime belongs to the change that first
-issues these calls.
+issues these calls. `V1-S1-004-PR2` added the code that issues them; the
+`real-runtime` lane it would be confirmed in has not been entered, so the shape
+is still inferred rather than observed.
 
 ## Capabilities
 
@@ -248,8 +258,10 @@ covers the domain.
 ## What this document does not do
 
 It does not claim that InferOps serves anything. Nothing in this repository
-listens on a port, calls the runtime, or generates a token, and this package is
-configuration and inspection with no caller. It does not amend
+listens on a port, and nothing here has generated a token: the adapter that can
+issue the call is described in
+[executing real inference through the adapter](real-runtime-inference.md), and it
+has not been run against a runtime. It does not amend
 [the mock and real boundary](mock-and-real-boundary.md), which is an accepted
 rule and older than this package. It does not certify the runtime: the executed
 record that does is the Sprint 0 feasibility trial, and its scope is one Windows
@@ -263,3 +275,4 @@ host on one day.
 - [The deterministic mock serving adapter](mock-serving-adapter.md) — the other side of the same pairing.
 - [ADR 0004, component and ownership boundaries](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md) — the dependency rule this package's isolation obeys.
 - [The V1-S1-004-PR1 validation record](../proof/serving/v1-s1-004-pr1-validation.md) — what was run, and what it did not establish.
+- [Executing real inference through the adapter](real-runtime-inference.md) — the second half, which composes these six modules.
