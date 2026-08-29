@@ -7,7 +7,13 @@ and the composition point picks one at startup.
 
 Two adapters are foreseen and exactly one exists. :class:`MockServingAdapter`
 replays a committed fixture, loads no model, and is CI only. The adapter for the
-runtime selected in ADR 0002 is not written.
+runtime selected in ADR 0002 is not written; what exists for it is
+:mod:`inferops.adapters.llama_cpp`, which holds that runtime's pins, settings,
+configuration translation, capability declaration, metadata parsing, and
+readiness mapping, and which the adapter will compose when it is written. That
+package is imported by name rather than re-exported here, because a runtime's
+vocabulary staying inside its own package is the isolation this layout exists
+for.
 
 Everything under this package inherits the dependency rule that applies to the
 rest of the distribution — no Kubernetes client, no Helm library, no

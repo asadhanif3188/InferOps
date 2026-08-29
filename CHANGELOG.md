@@ -10,6 +10,44 @@ once versioned releases begin.
 
 ### Added
 
+- **The configuration and inspection half of connecting InferOps to the selected
+  runtime — and no adapter, deliberately.**
+  [`src/inferops/adapters/llama_cpp/`](src/inferops/adapters/llama_cpp/) holds the
+  runtime image digest and the model revision, file, size, and published hash from
+  ADR 0002; the operator settings and environment variables that configure a
+  `llama-server` deployment; the translation from platform configuration into
+  runtime configuration and back; the health-status mapping; the metadata parsers;
+  and the capability declaration. There is no `ServingAdapter` implementation in
+  it, because a class satisfying the protocol's shape while its `infer` could not
+  generate anything would be a mock wearing a real adapter's name — and
+  substituting a mock for a missing real result is a defect under
+  [the boundary rule](docs/serving/mock-and-real-boundary.md) rather than a
+  fallback. Described in
+  [the runtime configuration document](docs/serving/real-runtime-configuration.md).
+- **Readiness that is false until the runtime says otherwise.** The selected
+  runtime answers `503` while it loads its weights and `200` once it can serve, and
+  that is the behaviour the Sprint 0 trial found which no mock could have
+  surfaced. A readiness tracker starts in `not-probed`, exposes no setter, and
+  reaches `ready` only through an observed `200`; a later `503` takes readiness
+  away again, because a replaced pod is a fresh process with a fresh load. Any
+  other status is `unexpected-status` rather than `loading`, since treating an
+  unknown answer as temporary is how a permanently broken runtime gets waited on
+  forever.
+- **Pins that are compared to their sources instead of trusted.** Every constant
+  copied out of ADR 0002, the feasibility record, and the compatibility matrix is
+  asserted against the file it came from, including field by field against the
+  committed `synchronous-llm` example, so a drift between the accepted decision and
+  the code is a failing assertion rather than something a reader has to notice. A
+  workload document naming a different image digest, model revision, weight file,
+  size, or hash is refused with the field path the contract publishes and without
+  the value it refused.
+- **Nothing ADR 0002 left undecided acquired a default.** The context length and
+  the thread count are required inputs with no default, because that record states
+  they remain undecided and that the values the trial ran were stated inputs rather
+  than recommendations. Omitting one is a refusal naming the variable. The single
+  setting that does default is the runtime's own metrics endpoint, which defaults
+  to on because ADR 0002's `T7` exception is argued on its existence — so turning
+  it off is the deviation, and the deviation is what gets written down.
 - **A deterministic mock serving adapter, and the safeguards that stop it being
   read as a real one.** [`src/inferops/adapters/`](src/inferops/adapters/) holds the
   first implementation of the serving interface the domain owns. It replays
