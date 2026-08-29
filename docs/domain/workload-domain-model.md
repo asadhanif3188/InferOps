@@ -3,9 +3,9 @@
 Status: **implemented**, for `WorkloadContract v1alpha1`. This is the first
 InferOps-owned code that is part of the distribution rather than repository
 tooling. It turns a contract document into typed platform objects. It deploys
-nothing, serves nothing, and validates nothing beyond what having a typed object
-requires — the rules a document is *accepted* by are the second half of this
-story and are not implemented yet.
+nothing and serves nothing. The parsing layer enforces single-field structural
+constraints; the semantic validation layer (implemented in `V1-S1-001-PR2`)
+enforces cross-field and matrix rules that the schema cannot express.
 
 | Property | Value |
 |---|---|
@@ -255,7 +255,31 @@ development dependencies (`jsonschema`, `PyYAML`), and no module under the
 distribution reads a file — a domain object must be constructible from a wheel with
 no repository around it.
 
-## Validation
+## Semantic validation
+
+The parsing layer enforces single-field structural constraints. The semantic
+validation layer, implemented in `validate_workload_contract()`, enforces
+cross-field and compatibility matrix rules that the schema cannot express:
+
+| Rule | Constraint |
+|------|-----------|
+| `replica-range-inverted` | `minimumReplicas` does not exceed `maximumReplicas` |
+| `secret-ref-name-duplicated` | Two secret entries do not share a logical name |
+| `secret-value-in-locator` | A locator is not a pasted credential |
+| `mock-secret-ref-declared` | A `mock-llm` workload declares no secret |
+| `runtime-unregistered` | Runtime image repository is registered in the compatibility matrix |
+| `model-artifact-format-unknown` | Artifact filename has a recognized format extension |
+| `runtime-model-incompatible` | Runtime and artifact format are a compatible pair |
+
+The validation function returns all errors at once, so a developer learns what is
+wrong all at once rather than in installments. Like the parsing layer, validation
+errors never repeat values read from the document — they name the field and
+describe the constraint in the schema's own published vocabulary.
+
+See [`V1-S1-001-PR2: Semantic Validation`](../proof/domain/v1-s1-001-pr2-validation.md)
+for implementation and test evidence.
+
+## Testing
 
 ```sh
 uv run --locked python -m pytest tests/domain -q
@@ -268,14 +292,12 @@ The domain suite reads only files in this repository: no network, no cluster, no
 model, no clock, no randomness. Its evidence class is `local-static` and its
 certification ceiling is `C0`, which is
 [the `unit` layer](../testing/test-strategy.md) of the test strategy — registered
-since `V1-S0-006` and, until this change, empty.
+since `V1-S0-006`.
 
 ## What this does not do
 
 - **It deploys nothing and serves nothing.** No controller, adapter, API, or chart
   reads a `WorkloadContract` object, because none exists.
-- **It does not validate a contract.** The published rules that decide acceptance
-  are the semantic layer, and this change implements none of them.
 - **It is not a second validator.** Where it overlaps the schema — required fields,
   formats, closed objects — it does so because a typed object cannot be built
   without those, and the overlap is held to the schema by a test rather than
