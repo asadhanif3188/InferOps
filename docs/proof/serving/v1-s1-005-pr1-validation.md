@@ -100,11 +100,11 @@ over the changed Markdown as well.
 | Command | Result |
 |---|---|
 | `ruff check .` | `All checks passed!` |
-| `ruff format --check .` | `163 files already formatted` |
+| `ruff format --check .` | `164 files already formatted` |
 | `python -m mypy` | `Success: no issues found in 81 source files` |
-| `python -m pytest -q` | `3693 passed, 25 skipped, 7 deselected` |
-| `python -m pytest tests/api -q` | `101 passed` |
-| `python -m pytest -m mockintegration -q` | `101 passed, 3623 deselected` |
+| `python -m pytest -q` | `3695 passed, 25 skipped, 7 deselected` |
+| `python -m pytest tests/api -q` | `103 passed` |
+| `python -m pytest -m mockintegration -q` | `103 passed, 3624 deselected` |
 | `python -m pytest tests/serving -q` | `209 passed` |
 | `git diff --check main...HEAD` | no output |
 | Markdown trailing whitespace and hard tabs | no matches |
@@ -267,6 +267,7 @@ exists, and `D9` — whether this surface is published as a contract artifact at
 | Configuration-driven mock/real adapter selection | `V1-S1-005-PR2` | Named in the PR boundary |
 | End-to-end tests over the real adapter | `V1-S1-005-PR2` | Named in the PR boundary |
 | A status for a route outside the surface and for a method mismatch | `V1-S1-005-PR2` | The accepted record maps request conditions and does not cover routing; this change answers `404` and `405` with `contract-invalid` and records that as provisional |
+| A status for `version-unsupported`, and for `contract-invalid` raised from below the edge | `V1-S1-005-PR2` | `STATUS_FOR_CANONICAL_CODE` maps the six codes an adapter can raise today. Neither of these is reachable through any path this change adds — nothing here raises them from below the edge — and an unmapped code falls back to `500`, which is the answer that invents no meaning for it |
 | Emitting `inferops_inference_requests_total` and `inferops_inference_errors_total`, and moving the catalog off `nothing-emits` | the telemetry work | Instrumenting this API is that work, and it depends on this API existing |
 | A per-request bound and a sampling parameter on the serving adapter interface | needs a superseding decision on `V1-S1-002`'s frozen interface | `max_tokens` and `temperature` are accepted by the surface and cannot be forwarded |
 | A conversation-carrying parameter on the same interface | as above | A multi-message request is refused rather than flattened |

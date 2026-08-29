@@ -52,7 +52,11 @@ once versioned releases begin.
 - **The `mock-integration` test layer, which was registered and empty since
   `V1-S0-006`.** [`tests/api/`](tests/api/) now runs the API end to end against the
   labelled mock adapter and against controlled doubles, under the `mockintegration`
-  marker the default lane already selects.
+  marker the default lane already selects. A request stays counted until its
+  response has been handed to the server rather than until the adapter answered,
+  because a drain that returned in the gap between those two would report a clean
+  shutdown over a response nobody received — and the suite reads the in-flight
+  count from inside the send, which is the only place that distinction is visible.
 
 - **The serving adapter for the selected real runtime, which generates text or
   fails.** The previous change deliberately shipped no `ServingAdapter` for

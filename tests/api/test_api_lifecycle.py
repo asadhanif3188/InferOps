@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import MutableMapping
+from typing import Any
 
 import pytest
 
@@ -240,3 +242,64 @@ async def test_an_api_refuses_a_configuration_naming_an_unknown_adapter_kind() -
     """The closed vocabulary is what stops a deployment labelling itself anything."""
     with pytest.raises(InvalidValueError):
         ApiConfiguration(adapter_kind="banana")
+
+
+async def test_a_request_stays_counted_until_its_response_has_been_sent() -> None:
+    """The slot is released after the send, not after the adapter answers.
+
+    A drain that returned in the gap between those two would report a clean
+    shutdown over a response nobody received, which is the one outcome the drain
+    exists to prevent. The check reads the in-flight count from inside the send
+    itself, which is the only place the distinction is visible.
+    """
+    adapter = RecordingAdapter()
+    api = build(adapter)
+    await api.startup()
+    counted: list[int] = []
+
+    async def receive() -> MutableMapping[str, Any]:
+        return {
+            "type": "http.request",
+            "body": completion_request(),
+            "more_body": False,
+        }
+
+    async def send(message: MutableMapping[str, Any]) -> None:
+        counted.append(api.lifecycle.in_flight)
+
+    scope: MutableMapping[str, Any] = {
+        "type": "http",
+        "method": "POST",
+        "path": CHAT_COMPLETIONS_PATH,
+        "headers": [],
+    }
+    await api(scope, receive, send)
+
+    assert counted == [1, 1], counted
+    assert api.lifecycle.in_flight == 0
+
+
+async def test_a_caller_that_disconnects_before_sending_a_body_is_refused() -> None:
+    """A server reports a disconnect as a message, and it is not an empty body."""
+    adapter = RecordingAdapter()
+    api = build(adapter)
+    await api.startup()
+    sent: list[MutableMapping[str, Any]] = []
+
+    async def receive() -> MutableMapping[str, Any]:
+        return {"type": "http.disconnect"}
+
+    async def send(message: MutableMapping[str, Any]) -> None:
+        sent.append(message)
+
+    scope: MutableMapping[str, Any] = {
+        "type": "http",
+        "method": "POST",
+        "path": CHAT_COMPLETIONS_PATH,
+        "headers": [],
+    }
+    await api(scope, receive, send)
+
+    start = next(m for m in sent if m["type"] == "http.response.start")
+    assert start["status"] == 400
+    assert adapter.prompts == [], "the adapter was called for a request nobody sent"

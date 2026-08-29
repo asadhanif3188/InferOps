@@ -351,9 +351,7 @@ class InferOpsApi:
     ) -> None:
         try:
             with self._lifecycle.accept():
-                model = await self._adapter.get_model_metadata()
-                runtime = await self._adapter.get_runtime_metadata()
-                capabilities = await self._adapter.get_capabilities()
+                await self._answer_models(send, answer)
         except ShuttingDown:
             await answer.refuse(
                 send,
@@ -361,7 +359,19 @@ class InferOpsApi:
                 CAPABILITY_UNAVAILABLE,
                 DRAINING_MESSAGE,
             )
-            return
+
+    async def _answer_models(self, send: Send, answer: _Answer) -> None:
+        """Answer inside the accepted slot, so the drain waits for the response.
+
+        The send is inside :meth:`ApplicationLifecycle.accept` rather than after
+        it. Releasing the slot first would let a drain report itself finished
+        while a response it is responsible for had not been handed to the server,
+        which is the one thing the drain exists to prevent.
+        """
+        try:
+            model = await self._adapter.get_model_metadata()
+            runtime = await self._adapter.get_runtime_metadata()
+            capabilities = await self._adapter.get_capabilities()
         except CanonicalError as error:
             await answer.refuse(send, status_for(error), error.code, error.message)
             return
@@ -395,7 +405,7 @@ class InferOpsApi:
     ) -> None:
         try:
             with self._lifecycle.accept():
-                body = await self._serve_completion(scope, receive, answer, context)
+                await self._answer_completion(scope, receive, send, answer, context)
         except ShuttingDown:
             await answer.refuse(
                 send,
@@ -403,7 +413,24 @@ class InferOpsApi:
                 CAPABILITY_UNAVAILABLE,
                 DRAINING_MESSAGE,
             )
-            return
+
+    async def _answer_completion(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        answer: _Answer,
+        context: RequestContext,
+    ) -> None:
+        """Answer inside the accepted slot, so the drain waits for the response.
+
+        As in :meth:`_answer_models`, the send happens while the request is still
+        counted. A drain that returned between the adapter answering and the
+        response being handed to the server would report a clean shutdown over a
+        request nobody received.
+        """
+        try:
+            body = await self._serve_completion(scope, receive, answer, context)
         except RequestRefused as refusal:
             await answer.refuse(send, refusal.status, refusal.code, refusal.message)
             return
