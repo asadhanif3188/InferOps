@@ -98,9 +98,12 @@ class InferenceResult:
             raise InvalidValueError("model must not be empty")
         if not self.adapter_kind:
             raise InvalidValueError("adapter_kind must not be empty")
-        if not re.match(r"^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$", self.adapter_kind):
+
+        # Adapter kind must be from closed vocabulary (mock, real, etc)
+        accepted_kinds = {"mock", "real"}
+        if self.adapter_kind not in accepted_kinds:
             raise InvalidValueError(
-                f"adapter_kind must be lowercase kebab-case: {self.adapter_kind}"
+                f"adapter_kind must be one of {accepted_kinds}, got {self.adapter_kind}"
             )
 
 
@@ -152,23 +155,32 @@ class AdapterConfiguration:
 
 @dataclass(frozen=True, slots=True)
 class TelemetryMapping:
-    """Mapping of adapter telemetry to platform metrics.
+    """Platform telemetry responsibilities and adapter capabilities.
 
-    Maps adapter-reported metrics and errors to canonical telemetry identifiers.
+    Per ADR-0002: InferOps (not the adapter/runtime) owns production of
+    inferops_inference_requests_total. This object maps adapter-reported
+    metrics to platform canonical identifiers only.
 
     Attributes:
-        request_counter_enabled: Whether the adapter tracks cumulative requests.
-        error_code: The canonical error code for error classification (if an error occurred).
-        token_usage: Optional token usage if the adapter reported it.
+        platform_metric_ids: List of accepted canonical metric identifiers the
+                            adapter may report (e.g., from platform telemetry catalog).
+        error_code: Optional canonical error code when mapping runtime errors.
+        token_usage: Whether adapter supports optional token usage reporting.
     """
 
-    request_counter_enabled: bool = False
+    platform_metric_ids: list[str]
     error_code: str | None = None
-    token_usage: TokenUsage | None = None
+    token_usage: bool | None = None
 
     def __post_init__(self) -> None:
+        if not isinstance(self.platform_metric_ids, list):
+            raise InvalidValueError("platform_metric_ids must be a list")
+        if not all(isinstance(mid, str) for mid in self.platform_metric_ids):
+            raise InvalidValueError("all platform_metric_ids must be strings")
+
         if self.error_code is not None and not self.error_code:
             raise InvalidValueError("error_code must not be empty string")
+
         allowed_error_codes = {
             "model-not-ready",
             "request-timeout",

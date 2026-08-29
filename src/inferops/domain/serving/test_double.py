@@ -8,6 +8,8 @@ concrete minimal implementation that satisfies the protocol.
 - No external dependencies or network access
 - Deterministic responses based on input
 - Can be configured to simulate various states (ready, not ready, errors)
+- V1 protocol: synchronous only (streaming always unsupported)
+- Adapter kind: always "mock"
 - Tracks initialization and calls for test verification
 """
 
@@ -15,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..context import RequestContext
+from ..context import NO_REQUEST_CONTEXT, RequestContext
 from .contract import ServingAdapter
 from .errors import (
     CanonicalError,
@@ -33,6 +35,9 @@ from .values import (
     TokenUsage,
 )
 
+# Accepted adapter kinds (closed vocabulary)
+ACCEPTED_ADAPTER_KINDS = {"mock", "real"}
+
 
 @dataclass
 class MinimalTestDouble:
@@ -43,13 +48,11 @@ class MinimalTestDouble:
 
     Attributes:
         model_ready: Whether the model is ready (can be controlled for testing).
-        should_support_streaming: Whether streaming capability is supported.
         should_support_token_counting: Whether token counting is supported.
         initialized: Whether initialize() was called.
     """
 
     model_ready: bool = True
-    should_support_streaming: bool = False
     should_support_token_counting: bool = True
     initialized: bool = False
 
@@ -70,11 +73,15 @@ class MinimalTestDouble:
         self.initialized = True
 
     async def get_capabilities(self) -> list[AdapterCapability]:
-        """Report supported capabilities."""
+        """Report supported capabilities.
+
+        V1 is synchronous-only: streaming is declared as unsupported capability,
+        never as a protocol method.
+        """
         return [
             AdapterCapability(
                 name="streaming",
-                supported=self.should_support_streaming,
+                supported=False,  # V1 constraint: streaming always unsupported
             ),
             AdapterCapability(
                 name="token-counting",
@@ -105,7 +112,7 @@ class MinimalTestDouble:
         return InferenceResult(
             content=f"Test response to: {prompt[:50]}",
             model=self._config.model_identifier if self._config else "test-model",
-            adapter_kind="mock",
+            adapter_kind="mock",  # Test double is always mock adapter
             usage=usage,
             finish_reason="stop",
         )
@@ -131,15 +138,27 @@ class MinimalTestDouble:
     async def map_error_to_canonical(
         self,
         error: Exception,
+        context: RequestContext | None = None,
     ) -> CanonicalError:
-        """Map errors to canonical types."""
+        """Map errors to canonical types, preserving request context."""
         if isinstance(error, CanonicalError):
             return error
-        return InternalError("internal-error")
+        error_context = context if context is not None else NO_REQUEST_CONTEXT
+        return InternalError("internal-error", context=error_context)
 
     async def get_telemetry_mapping(self) -> TelemetryMapping:
-        """Get telemetry mapping (test double always owns request counting)."""
-        return TelemetryMapping(request_counter_enabled=True)
+        """Get telemetry mapping.
+
+        Per ADR-0002: InferOps owns request counter production.
+        Adapter maps only to accepted canonical metric identifiers.
+        """
+        return TelemetryMapping(
+            platform_metric_ids=[],  # Test double reports no custom metrics
+        )
+
+
+# Accepted adapter kinds as a module constant
+__all__ = ["ACCEPTED_ADAPTER_KINDS", "MinimalTestDouble", "ServingAdapterTestDouble"]
 
 
 # Static conformance check: MinimalTestDouble satisfies ServingAdapter protocol

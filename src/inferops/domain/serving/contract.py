@@ -199,6 +199,7 @@ class ServingAdapter(Protocol):
     async def map_error_to_canonical(
         self,
         error: Exception,
+        context: RequestContext | None = None,
     ) -> CanonicalError:
         """Map a runtime error to a canonical error code.
 
@@ -208,9 +209,11 @@ class ServingAdapter(Protocol):
 
         Args:
             error: The runtime error to translate.
+            context: Optional request context to preserve correlation IDs.
 
         Returns:
-            A canonical error with a standard error code and safe message.
+            A canonical error with a standard error code, safe message, and
+            optional request context for correlation.
 
         Raises:
             The error unchanged if it is already canonical.

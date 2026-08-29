@@ -257,69 +257,59 @@ def validate_workload_contract(
 def _looks_like_secret_value(locator: str) -> bool:
     """Heuristic: does a locator look like a pasted credential?
 
-    This checks for common patterns that suggest a secret value rather than a
-    reference: published secret prefixes or opaque segments that look like
-    credentials.
-
-    Patterns checked:
-    - "bearer ", "basic " prefixes (auth schemes)
-    - "ghp_", "glpat-", "hf_", "xoxb-" prefixes (platform tokens)
-    - AWS access key ID (starts with AKIA, followed by base32 characters)
-    - JWT/JWE tokens (starts with "eyJ")
-    - All-hex strings of certain lengths (resembles digest or hash)
-    - High-entropy segments with mixed case and digits (resembles opaque tokens)
-    - "-----BEGIN" or "-----END" (PEM certificate or key)
+    Mirrors the published validator in tools/contract_validation/workload.py.
+    Checks for published credential prefixes or opaque segments that look like
+    credentials. This must be aligned with the published validator.
     """
-    lower = locator.lower()
+    # Published credential prefixes (39 total) from tools/contract_validation/workload.py
+    credential_prefixes = (
+        "-----BEGIN",
+        "ABIA",
+        "ACCA",
+        "AGPA",
+        "AIDA",
+        "AIPA",
+        "AIza",
+        "AKIA",
+        "ANPA",
+        "ANVA",
+        "AROA",
+        "ASCA",
+        "ASIA",
+        "SG.",
+        "doo_v1_",
+        "dop_v1_",
+        "eyJ",
+        "ghp_",
+        "ghr_",
+        "ghs_",
+        "ghu_",
+        "gho_",
+        "github_pat_",
+        "gldt-",
+        "glpat-",
+        "hf_",
+        "npm_",
+        "pk_live_",
+        "rk_live_",
+        "shpat_",
+        "shpss_",
+        "sk-",
+        "sk_live_",
+        "sk_test_",
+        "xoxa-",
+        "xoxb-",
+        "xoxp-",
+        "xoxr-",
+        "xoxs-",
+        "ya29.",
+    )
 
-    # Check for auth scheme prefixes
-    if lower.startswith("bearer ") or lower.startswith("basic "):
-        return True
+    for prefix in credential_prefixes:
+        if locator.startswith(prefix):
+            return True
 
-    # Check for PEM headers (certificates, keys)
-    if "-----begin" in lower or "-----end" in lower:
-        return True
-
-    # Check for known token prefixes (case-sensitive or case-insensitive)
-    # GitHub personal tokens
-    if locator.startswith("ghp_"):
-        return True
-
-    # GitLab tokens
-    if locator.startswith("glpat-"):
-        return True
-
-    # Hugging Face tokens
-    if locator.startswith("hf_"):
-        return True
-
-    # Slack tokens
-    if locator.startswith("xoxb-"):
-        return True
-
-    # JWT/JWE tokens (base64url encoded, start with eyJ)
-    if locator.startswith("eyJ"):
-        return True
-
-    # Check for AWS access key ID pattern (AKIA... followed by base32-like characters)
-    if locator.startswith("AKIA") and len(locator) >= 20:
-        return True
-
-    # Check for long hex strings that look like hashes or digests
-    # At least 40 characters of hex (SHA1+) is suspicious
-    hex_pattern = re.compile(r"^[0-9a-f]{40,}$")
-    if hex_pattern.match(locator):
-        return True
-
-    # Check for high-entropy segments with mixed case and digits
-    # These often look like base62-encoded tokens or API keys
-    # Look for segments that have both uppercase, lowercase, and digits
-    if _looks_like_high_entropy_token(locator):
-        return True
-
-    # Check for very long strings that look like encoded credentials (base64)
-    # A base64 string of 100+ characters is suspicious
-    return len(locator) > 100 and re.match(r"^[A-Za-z0-9+/=]+$", locator) is not None
+    return _looks_like_high_entropy_token(locator)
 
 
 def _looks_like_high_entropy_token(text: str) -> bool:

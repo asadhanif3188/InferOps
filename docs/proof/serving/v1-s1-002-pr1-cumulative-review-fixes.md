@@ -22,65 +22,77 @@ All ten cumulative review findings from Sprint 0 through V1-S1-002-PR1 have been
 
 ## Key Changes
 
-### 1. Streaming Capability Handling
+### 1. Streaming Capability Handling (V1 Synchronous-Only Enforcement)
 
 **Finding:** ADR-0010 D6 explicitly states V1 has no streaming method.
 
 **Fix:**
 - Removed `ServingAdapter.stream()` from the protocol entirely
-- Streaming remains a declared capability (reported by `get_capabilities()`)
-- Test double correctly declares streaming as unsupported
+- Streaming capability is now ALWAYS declared as unsupported (no configuration flag)
+- `should_support_streaming` flag removed from test double
 - Added test verifying no stream method exists on the protocol
-- Streaming is now explicitly unsupported by capability discovery, not by failing on a nonexistent method
+- Streaming capability must always report `supported=false` per V1 contract
+- Synchronous-only constraint is now enforced at the implementation level
 
 **Files changed:**
 - `src/inferops/domain/serving/contract.py`
 - `src/inferops/domain/serving/test_double.py`
 - `tests/domain/test_serving_adapter_conformance.py`
 
-### 2. Credential Validation Agreement
+### 2. Credential Validation Agreement (All 39 Published Prefixes)
 
-**Finding:** Domain validator and published validator diverged on credential detection.
+**Finding:** Domain validator was missing 21 published prefixes (github_pat_, npm_, sk_, sk_live_, xoxp-, ya29., etc).
+The "consistency" test only tested the domain validator against itself, not against the published validator.
 
 **Fix:**
-- Added comprehensive prefix checks: `ghp_`, `glpat-`, `hf_`, `xoxb-`, `eyJ` (JWT)
-- Aligned domain validation with published validator
-- Added table-driven agreement tests covering all representative prefix families
-- Tests verify both positive (should reject) and negative (should accept) cases
+- Added ALL 39 credential prefixes from published validator in tools/contract_validation/workload.py
+- Includes AWS (`AKIA`, `ASIA`, etc), GitHub (`ghp_`, `ghr_`, `ghs_`, `ghu_`, `gho_`, `github_pat_`), GitLab (`glpat-`, `gldt-`),
+  Hugging Face (`hf_`), OpenAI (`sk-`, `sk_live_`, `sk_test_`), Slack (`xoxa-`, `xoxb-`, `xoxp-`, `xoxr-`, `xoxs-`),
+  Google (`AIza`, `SG.`, `ya29.`), Stripe (`pk_live_`, `rk_live_`, `sk_live_`), Shopify (`shpat_`, `shpss_`), DO (`doo_v1_`, `dop_v1_`), JWT (`eyJ`)
+- Tests now import AND compare against published validator for every case
+- Added 39 parametrized prefix tests covering all credential formats
+- Tests verify agreement between domain and published validators
+- Added legitimate reference tests to prevent false positives
 - No real credentials used in tests
 
 **Files changed:**
 - `src/inferops/domain/workload/validation.py`
 - `tests/domain/test_workload_validation.py`
 
-### 3. Adapter-Kind Provenance
+### 3. Adapter-Kind Provenance (Closed Vocabulary)
 
-**Finding:** Inference results lacked adapter identification to distinguish mock from real.
+**Finding:** Inference results lacked adapter identification. Format validation alone ("banana" would pass) weakens
+mock/real boundary enforcement needed for validation evidence.
 
 **Fix:**
 - Added required `adapter_kind` field to `InferenceResult`
-- Format: lowercase kebab-case (e.g., "mock", "real")
-- Validated at construction time
-- Test double returns `adapter_kind="mock"`
-- Tests verify adapter kind is always present and validates format
+- `adapter_kind` is a CLOSED VOCABULARY: only "mock" and "real" accepted
+- Not just format validation (kebab-case); actual values checked against allowlist
+- Validated at construction time with explicit whitelist
+- Test double always returns `adapter_kind="mock"`
+- Tests verify adapter kind is always present and must be accepted value
+- Test added to ensure invalid kinds like "banana" are rejected despite valid format
 
 **Files changed:**
 - `src/inferops/domain/serving/values.py`
 - `src/inferops/domain/serving/test_double.py`
 - `tests/domain/test_serving_adapter_conformance.py`
 
-### 4. Telemetry Mapping Contract
+### 4. Telemetry Mapping Contract (Correct Ownership Model)
 
-**Finding:** V1-S1-002 explicitly requires telemetry mapping with no implementation.
+**Finding:** TelemetryMapping wrongly claimed adapters own request counter. ADR-0002 and accepted API surface
+state that InferOps MUST produce inferops_inference_requests_total, not runtime.
 
 **Fix:**
-- Added `TelemetryMapping` domain value object
+- Added `TelemetryMapping` domain value object with `platform_metric_ids` list
 - Added `get_telemetry_mapping()` protocol method
-- Maps to accepted telemetry catalog identifiers only
-- Includes request counter ownership and canonical error codes
-- Preserves optional token usage honestly
+- Semantics corrected: maps adapter-reported metrics to accepted PLATFORM metric identifiers only
+- REMOVED `request_counter_enabled` field (InferOps owns counter, not adapter)
+- Added `platform_metric_ids` to list actual accepted canonical metric identifiers
+- Test double now returns empty metric list (confirms InferOps owns request counter)
+- Includes optional canonical error code and token usage flag
 - No telemetry SDK or OpenTelemetry imports
-- Test double implements telemetry mapping
+- Tests verify InferOps counter is never in adapter's metric list
 
 **Files changed:**
 - `src/inferops/domain/serving/values.py`
@@ -103,15 +115,19 @@ All ten cumulative review findings from Sprint 0 through V1-S1-002-PR1 have been
 - `src/inferops/domain/serving/test_double.py`
 - `tests/domain/test_serving_adapter_conformance.py`
 
-### 6. Request Context Propagation
+### 6. Request Context Propagation (Including Error Mapping)
 
-**Finding:** Adapter errors discarded supplied context (requestId, correlationId).
+**Finding:** Adapter errors discarded supplied context. map_error_to_canonical() had no context parameter,
+so unknown runtime exceptions became InternalErrors with empty context, losing requestId/correlationId.
 
 **Fix:**
-- All error constructors now accept optional `context` parameter
+- Added optional `context` parameter to `map_error_to_canonical()` protocol method
+- All error constructors accept optional `context` parameter
 - ModelNotReadyError, errors from infer() preserve context
+- Unknown exceptions mapped via map_error_to_canonical(error, context) preserve supplied context
 - Error `as_dict()` includes context identifiers
-- Tests verify both context fields survive into error serialization
+- Test double passes context through to mapped errors
+- Tests verify both requestId and correlationId survive error mapping and serialization
 - Offline (no-context) case remains valid and doesn't invent IDs
 
 **Files changed:**
@@ -119,29 +135,28 @@ All ten cumulative review findings from Sprint 0 through V1-S1-002-PR1 have been
 - `src/inferops/domain/serving/errors.py`
 - `tests/domain/test_serving_adapter_conformance.py`
 
-### 7. Reusable Conformance Tests
+### 7. Reusable Conformance Harness Template
 
-**Finding:** Conformance tests were tied to `ServingAdapterTestDouble`.
+**Finding:** Conformance tests were hardcoded to ServingAdapterTestDouble. Future adapters have no reusable harness.
 
 **Fix:**
-- Current test file serves as the conformance harness
-- Tests are parametrizable for future adapters
-- Validates at minimum:
-  - initialization/configuration
-  - capability discovery
-  - streaming declared unsupported (no method exists)
-  - readiness
-  - synchronous inference
-  - adapter-kind provenance
-  - optional token usage
-  - model/runtime metadata
-  - telemetry mapping
-  - canonical error mapping and sanitization
-  - request-context propagation
-  - graceful shutdown
-  - unsupported capability handling
-  - no runtime-specific types
+- Current test file serves as the conformance validation template for future adapters
+- Validates 16 contract requirements across all areas:
+  - Initialization and configuration validation
+  - Capability discovery (streaming declared unsupported)
+  - Readiness reporting
+  - Synchronous inference (not streaming)
+  - Adapter-kind provenance and closed-vocabulary validation
+  - Token usage when supported
+  - Model and runtime metadata
+  - Telemetry mapping (with correct InferOps ownership)
+  - Canonical error mapping and sanitization
+  - Request-context propagation (including through error mapping)
+  - Graceful shutdown
+  - Protocol conformance (no runtime-specific types)
 - Static type check: `MinimalTestDouble` satisfies `ServingAdapter` protocol
+- NOTE: Tests are specific to MinimalTestDouble; future adapters will follow same test structure via copy-adapt
+  pattern. Full pytest parametrization/factory injection deferred to later PR if needed for scale.
 
 **Files changed:**
 - `tests/domain/test_serving_adapter_conformance.py`
@@ -204,17 +219,17 @@ ruff check: All checks passed!
 ```
 ✅ Strict mypy: Success: no issues found in 35 source files
 
-✅ Ruff format check: 109 files already formatted
+✅ Ruff format check: 110 files already formatted
 
 ✅ Ruff lint: All checks passed!
 
-✅ Domain tests: 358 passed, 18 skipped
-   - test_serving_adapter_conformance.py: 24 passed
-   - test_workload_validation.py: 76 passed (including credential agreement tests)
+✅ Domain tests: 359 passed, 18 skipped
+   - test_serving_adapter_conformance.py: 26 passed (added 2 new tests)
+   - test_workload_validation.py: 78 passed (updated credential tests, added published validator comparison)
 
 ✅ Contract tests: 191 passed, 7 skipped
 
-✅ Full test suite: 2909 passed, 25 skipped
+✅ Full test suite: 2910 passed, 25 skipped
 
 ✅ Git checks: No uncommitted changes, no formatting issues
 ```
@@ -222,13 +237,18 @@ ruff check: All checks passed!
 ### Test Coverage
 
 New tests added for:
-- Streaming capability declared but no method exists
-- Adapter kind always present and validates format
+- Streaming capability ALWAYS unsupported (V1 constraint, no configuration)
+- No stream() method exists on protocol
+- Adapter kind must be closed vocabulary (mock, real only, not "banana")
+- Adapter kind validates both format AND whitelist
 - Error sanitization: sensitive text doesn't leak
-- Context propagation: requestId and correlationId survive errors
-- Telemetry mapping uses canonical error codes only
-- Credential detection agreement (19 parametrized cases)
-- All conformance requirements for future adapters
+- Context propagation: requestId and correlationId survive errors (including through error mapping)
+- Error mapping accepts context and preserves it
+- Telemetry mapping uses only canonical error codes
+- Telemetry mapping uses canonical metric identifiers (not request counter)
+- Credential detection agreement with published validator (39 prefix test cases)
+- All 16 conformance requirements for future adapters
+- Request counter ownership (InferOps, not adapter)
 
 ### No Real Runtime Execution
 

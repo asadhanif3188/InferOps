@@ -363,28 +363,48 @@ def _extract_all_string_values(obj: Any, values: set[str] | None = None) -> set[
 @pytest.mark.parametrize(
     "credential_value,should_be_rejected",
     [
-        # AWS access keys (AKIA prefix) - synthetic, not real
-        ("AKIA2EWNZL4O7UPQWFVK_test", True),
-        ("AKIA_synthetic_key_pattern", True),
-        # GitHub personal tokens (ghp_ prefix) - synthetic
-        ("ghp_test1234567890abcdefghijklmnopqr", True),
-        ("ghp_synthetic_pattern", True),
-        # GitLab tokens (glpat- prefix) - synthetic
-        ("glpat-synthetic-pattern-1234567890", True),
-        # Hugging Face tokens (hf_ prefix) - synthetic
-        ("hf_synthetic_token_pattern_0987654321", True),
-        # Slack tokens (xoxb- prefix) - synthetic pattern only
-        ("xoxb-synthetic-test-pattern", True),
-        # JWT/JWE tokens (eyJ prefix) - synthetic
-        ("eyJhbGciOiJ_synthetic_jwt_token", True),
-        # Bearer tokens - synthetic
-        ("bearer synthetic_abc123def456ghi789", True),
-        # Basic auth - synthetic
-        ("basic synthetic_user:password", True),
-        # PEM certificates/keys - structure only
+        # All 39 published credential prefixes, each asserted by test
         ("-----BEGIN CERTIFICATE-----", True),
-        ("-----END RSA PRIVATE KEY-----", True),
-        # High-entropy tokens (mixed case + digits, 20+ chars) - synthetic
+        ("ABIA0000000000000000", True),
+        ("ACCA0000000000000000", True),
+        ("AGPA0000000000000000", True),
+        ("AIDA0000000000000000", True),
+        ("AIPA0000000000000000", True),
+        ("AIza0000000000000000", True),
+        ("AKIA0000000000000000", True),
+        ("ANPA0000000000000000", True),
+        ("ANVA0000000000000000", True),
+        ("AROA0000000000000000", True),
+        ("ASCA0000000000000000", True),
+        ("ASIA0000000000000000", True),
+        ("SG.0000000000000000000", True),
+        ("doo_v1_0000000000000000", True),
+        ("dop_v1_0000000000000000", True),
+        ("eyJ0000000000000000000", True),
+        ("ghp_0000000000000000000", True),
+        ("ghr_0000000000000000000", True),
+        ("ghs_0000000000000000000", True),
+        ("ghu_0000000000000000000", True),
+        ("gho_0000000000000000000", True),
+        ("github_pat_0000000000000", True),
+        ("gldt-0000000000000000000", True),
+        ("glpat-00000000000000000", True),
+        ("hf_00000000000000000000", True),
+        ("npm_0000000000000000000", True),
+        ("pk_live_000000000000000000", True),
+        ("rk_live_000000000000000000", True),
+        ("shpat_00000000000000000000", True),
+        ("shpss_00000000000000000000", True),
+        ("sk-00000000000000000000", True),
+        ("sk_live_000000000000000000", True),
+        ("sk_test_000000000000000000", True),
+        ("xoxa-000000000000000000", True),
+        ("xoxb-000000000000000000", True),
+        ("xoxp-000000000000000000", True),
+        ("xoxr-000000000000000000", True),
+        ("xoxs-000000000000000000", True),
+        ("ya29.0000000000000000000", True),
+        # High-entropy tokens (mixed case + digits, 20+ chars)
         ("Zx4Kq9TbLm2Rd7Wf1Hs3Nv8Yc6Ej0Pa", True),
         ("aB3cD4eF5gH6iJ7kL8mN9oP0qR1sT2uV", True),
         # Legitimate references (should not be rejected)
@@ -393,17 +413,31 @@ def _extract_all_string_values(obj: Any, values: set[str] | None = None) -> set[
         ("my_secret_name", False),
         ("secret123", False),
         ("vault:kv/data/my-secret", False),
+        ("inferops-serving/model-registry#token", False),
+        ("inferops/telemetry/ingest#key", False),
+        ("aws-secretsmanager:prod/api-key", False),
     ],
 )
-def test_credential_detection_consistency(
+def test_credential_detection_agreement_with_published(
     credential_value: str, should_be_rejected: bool
 ) -> None:
-    """Verify credential detection is consistent for representative patterns."""
+    """Verify domain validator matches published validator for all prefixes."""
     from inferops.domain.workload.validation import _looks_like_secret_value
 
-    result = _looks_like_secret_value(credential_value)
-    assert result == should_be_rejected, (
-        f"Credential detection inconsistent for {credential_value}: got {result}, expected {should_be_rejected}"
+    # Domain validator result
+    domain_result = _looks_like_secret_value(credential_value)
+
+    # Published validator result
+    from tools.contract_validation.workload import looks_like_a_pasted_credential
+
+    published_result = looks_like_a_pasted_credential(credential_value) is not None
+
+    assert domain_result == published_result, (
+        f"Validators diverge for {credential_value}: "
+        f"domain={domain_result}, published={published_result}"
+    )
+    assert domain_result == should_be_rejected, (
+        f"Expected rejection={should_be_rejected} for {credential_value}, got {domain_result}"
     )
 
 

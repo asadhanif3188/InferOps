@@ -178,13 +178,16 @@ class TestInference:
         assert result.adapter_kind is not None
         assert result.adapter_kind == "mock"
 
-    async def test_infer_result_respects_capability_declaration(
+    async def test_infer_result_respects_optional_capabilities(
         self,
         adapter: ServingAdapterTestDouble,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify inference returns result even when token-counting not supported."""
+        """Verify inference succeeds with optional capabilities disabled.
+
+        Token counting is optional; even when disabled, inference works.
+        """
         adapter.should_support_token_counting = False
         await adapter.initialize(test_config, test_context)
         result = await adapter.infer("test prompt", test_context)
@@ -226,28 +229,44 @@ class TestInference:
 
 
 class TestStreamingCapability:
-    """Tests for streaming as a declared capability (not a contract method)."""
+    """Tests for streaming as a declared capability (not a contract method).
 
-    async def test_streaming_declared_as_unsupported_capability(
+    V1 protocol is synchronous-only: streaming is declared via capability
+    discovery as unsupported, never as a protocol method.
+    """
+
+    async def test_streaming_always_declared_unsupported(
         self,
         adapter: ServingAdapterTestDouble,
         test_context: RequestContext,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify streaming is declared as a capability in V1."""
+        """Verify streaming is always declared as unsupported capability.
+
+        Even if an adapter had a flag to configure it, V1 contract enforces
+        streaming is always declared unsupported in capabilities.
+        """
         await adapter.initialize(test_config, test_context)
         caps = await adapter.get_capabilities()
         cap_names = {c.name for c in caps}
 
         assert "streaming" in cap_names
         streaming_cap = next(c for c in caps if c.name == "streaming")
-        assert streaming_cap.supported is False
+        assert streaming_cap.supported is False, (
+            "V1 is synchronous-only; streaming must always be unsupported"
+        )
 
-    async def test_no_stream_method_on_protocol(self) -> None:
-        """Verify no stream method exists on the adapter protocol."""
+    async def test_no_stream_method_exists_on_protocol(self) -> None:
+        """Verify the protocol has no stream method.
+
+        If streaming is needed, it is declared as unsupported capability
+        and the protocol only exposes synchronous infer().
+        """
         from inferops.domain.serving import ServingAdapter
 
-        assert not hasattr(ServingAdapter, "stream")
+        assert not hasattr(ServingAdapter, "stream"), (
+            "V1 protocol must have no stream() method; streaming is a capability only"
+        )
 
 
 class TestMetadata:
@@ -342,12 +361,12 @@ class TestErrorMapping:
 class TestContextPropagation:
     """Tests for request context propagation."""
 
-    async def test_error_preserves_request_context(
+    async def test_error_preserves_request_context_from_infer(
         self,
         adapter: ServingAdapterTestDouble,
         test_config: AdapterConfiguration,
     ) -> None:
-        """Verify errors preserve request and correlation IDs."""
+        """Verify errors from infer() preserve request and correlation IDs."""
         from inferops.domain.serving import ModelNotReadyError
 
         adapter.model_ready = False
@@ -364,9 +383,34 @@ class TestContextPropagation:
         assert error.context.request_id == "test-req-123"
         assert error.context.correlation_id == "test-corr-456"
 
+    async def test_error_mapping_preserves_context(
+        self,
+        adapter: ServingAdapterTestDouble,
+    ) -> None:
+        """Verify map_error_to_canonical preserves supplied context."""
+        from inferops.domain.serving import InternalError
+
+        context = RequestContext(
+            request_id="test-req-789",
+            correlation_id="test-corr-012",
+        )
+
+        # Map an unknown error with context
+        unknown_error = ValueError("unknown runtime error")
+        mapped = await adapter.map_error_to_canonical(unknown_error, context)
+
+        # Mapped error must be canonical and preserve context
+        assert isinstance(mapped, InternalError)
+        assert mapped.context.request_id == "test-req-789"
+        assert mapped.context.correlation_id == "test-corr-012"
+
 
 class TestTelemetryMapping:
-    """Tests for telemetry mapping."""
+    """Tests for telemetry mapping.
+
+    Per ADR-0002: InferOps (not adapter/runtime) owns inferops_inference_requests_total.
+    TelemetryMapping maps adapter metrics to platform canonical identifiers only.
+    """
 
     async def test_get_telemetry_mapping_returns_mapping(
         self,
@@ -379,9 +423,9 @@ class TestTelemetryMapping:
         mapping = await adapter.get_telemetry_mapping()
 
         assert isinstance(mapping, TelemetryMapping)
-        assert isinstance(mapping.request_counter_enabled, bool)
+        assert isinstance(mapping.platform_metric_ids, list)
 
-    async def test_telemetry_mapping_uses_canonical_error_codes(
+    async def test_telemetry_mapping_uses_only_canonical_error_codes(
         self,
         adapter: ServingAdapterTestDouble,
         test_context: RequestContext,
@@ -391,26 +435,48 @@ class TestTelemetryMapping:
         await adapter.initialize(test_config, test_context)
         mapping = await adapter.get_telemetry_mapping()
 
+        allowed_codes = {
+            "model-not-ready",
+            "request-timeout",
+            "upstream-timeout",
+            "rate-limited",
+            "capability-unavailable",
+            "internal-error",
+        }
         if mapping.error_code is not None:
-            allowed_codes = {
-                "model-not-ready",
-                "request-timeout",
-                "upstream-timeout",
-                "rate-limited",
-                "capability-unavailable",
-                "internal-error",
-            }
-            assert mapping.error_code in allowed_codes
+            assert mapping.error_code in allowed_codes, (
+                f"error_code must be one of {allowed_codes}, got {mapping.error_code}"
+            )
+
+    async def test_telemetry_mapping_lists_only_platform_metrics(
+        self,
+        adapter: ServingAdapterTestDouble,
+        test_context: RequestContext,
+        test_config: AdapterConfiguration,
+    ) -> None:
+        """Verify mapping lists only platform canonical metric identifiers.
+
+        Per ADR-0002, InferOps owns request counter. Adapter reports only
+        optional metrics from platform telemetry catalog.
+        """
+        await adapter.initialize(test_config, test_context)
+        mapping = await adapter.get_telemetry_mapping()
+
+        # All identifiers must be strings
+        assert all(isinstance(mid, str) for mid in mapping.platform_metric_ids)
+        # Request counter is not in adapter's metric list (InferOps owns it)
+        assert "inferops_inference_requests_total" not in mapping.platform_metric_ids
 
 
 class TestAdapterKindValidation:
-    """Tests for adapter kind validation."""
+    """Tests for adapter kind validation.
 
-    def test_adapter_kind_must_be_lowercase_kebab_case(
-        self,
-        test_config: AdapterConfiguration,
-    ) -> None:
-        """Verify adapter_kind validation rejects invalid formats."""
+    Adapter kind is a closed vocabulary (mock, real, etc), not just a format.
+    The mock/real boundary requires provenance to be verifiable.
+    """
+
+    def test_adapter_kind_must_be_lowercase_kebab_case(self) -> None:
+        """Verify adapter_kind must be lowercase kebab-case format."""
         from inferops.domain.serving import InvalidValueError
 
         with pytest.raises(InvalidValueError):
@@ -429,4 +495,20 @@ class TestAdapterKindValidation:
                 content="test",
                 model="test-model",
                 adapter_kind="",  # empty rejected
+            )
+
+    def test_adapter_kind_must_be_accepted_value(self) -> None:
+        """Verify adapter_kind is from closed vocabulary.
+
+        Only 'mock' and 'real' are accepted, not arbitrary kebab-case strings.
+        This enforces the mock/real boundary for validation evidence.
+        """
+        from inferops.domain.serving import InvalidValueError
+
+        # 'banana' is kebab-case-compliant but not accepted
+        with pytest.raises(InvalidValueError):
+            InferenceResult(
+                content="test",
+                model="test-model",
+                adapter_kind="banana",  # valid format but not accepted
             )
