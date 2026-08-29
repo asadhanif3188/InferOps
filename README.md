@@ -6,9 +6,11 @@ reproducible evidence.
 
 > [!IMPORTANT]
 > This repository provides governance documentation, a local development
-> environment, and one published workload contract schema. It does not provide a
-> deployable platform, a serving runtime, or a released V1 capability. The contract
-> describes a workload; nothing here reads one.
+> environment, one published workload contract schema, and the platform domain
+> objects that schema parses into. It does not provide a deployable platform, a
+> serving runtime, or a released V1 capability. The contract describes a workload;
+> the domain reads one into typed objects and stops there — nothing here deploys,
+> serves, or admits a workload.
 >
 > A serving runtime and model **have** now been selected and proven once, on one
 > host, under
@@ -19,9 +21,11 @@ reproducible evidence.
 
 ## Repository status
 
-The repository is establishing its public foundations before implementation. Any
-future capability claim must link to reproducible evidence and identify whether the
-result is documented, synthetic, mock, estimated, or produced by a real runtime.
+The repository has established its public foundations and has begun implementing
+against them: the platform domain is the first component built, and everything
+below it is still unbuilt. Any capability claim must link to reproducible evidence
+and identify whether the result is documented, synthetic, mock, estimated, or
+produced by a real runtime.
 
 ## Public entry points
 
@@ -34,13 +38,14 @@ result is documented, synthetic, mock, estimated, or produced by a real runtime.
 | Serving runtime and model feasibility | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Procedure executed once; one runtime and model revision selected |
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Inference API surface | [docs/serving/inference-api-surface.md](docs/serving/inference-api-surface.md) | Decided shape; five endpoints, and nothing in this repository serves one |
-| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; no component consumes it |
+| Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; parsed by the platform domain, and no runtime component consumes it |
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
+| Workload domain model | [docs/domain/workload-domain-model.md](docs/domain/workload-domain-model.md) | Typed domain objects, parsing, and contract-version handling implemented; the validation rule pipeline is not |
 | Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Seven decisions accepted in part, one accepted with a recorded exception, two accepted |
-| V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; every component below the contract layer is unbuilt |
+| V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; the platform domain is partly built and everything below it is unbuilt |
 | Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked; no Terraform or Helm exists |
 | Project boundaries | [docs/architecture/project-boundaries.md](docs/architecture/project-boundaries.md) | Accepted scope rule; two serving capabilities and no gateway or deep-serving work |
-| Test and CI strategy | [docs/testing/test-strategy.md](docs/testing/test-strategy.md) | Strategy accepted and machine-checked; five of eleven test layers exist and no CI lane is configured |
+| Test and CI strategy | [docs/testing/test-strategy.md](docs/testing/test-strategy.md) | Strategy accepted and machine-checked; six of eleven test layers exist and no CI lane is configured |
 | Python toolchain | [docs/architecture/decisions/ADR-0009-python-toolchain.md](docs/architecture/decisions/ADR-0009-python-toolchain.md) | Packaging, dependency manager, lockfile, linter, formatter, and type checker accepted and executed; no task runner and no CI service selected |
 | Certification levels | [docs/testing/certification.md](docs/testing/certification.md) | Accepted definition; V1 certifies at C0 to C2 and a mock stops at C1 |
 | Claim and test matrix | [docs/testing/claim-test-matrix.md](docs/testing/claim-test-matrix.md) | Twelve of twenty-one public claims certified; the rest are commitments |

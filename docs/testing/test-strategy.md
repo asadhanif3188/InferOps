@@ -87,7 +87,7 @@ class, the strongest thing its result may be used to say.
 
 | Layer | Lane | Marker | Evidence class | Ceiling | Status |
 |---|---|---|---|---|---|
-| `unit` | `default-checks` | `unit` | local-static | C0 | planned |
+| `unit` | `default-checks` | `unit` | local-static | C0 | implemented |
 | `contract-and-schema` | `default-checks` | `contract` | local-static | C0 | implemented |
 | `architecture-inventory` | `default-checks` | `architecture` | local-static | C0 | implemented |
 | `documentation` | `default-checks` | `docs` | local-static | C0 | implemented |
@@ -104,9 +104,15 @@ support a C2 claim no matter how thorough it is, and
 [the certification document](certification.md) argues why that is a property of what
 the layer runs against rather than of how well it is written.
 
-Five of eleven layers exist. Registering the other six now is deliberate: a marker
+Six of eleven layers exist. Registering the other five now is deliberate: a marker
 that exists is a marker the first test of that kind gets written under, and a marker
 that does not exist is a test that ends up in whichever suite was already open.
+
+`unit` is the one that has just changed. It was registered and empty from
+`V1-S0-006` until `V1-S1-001` wrote the first domain code for it to exercise, and
+the marker being there already is the reason those tests are in
+[`tests/domain/`](../../tests/domain/) under `unit` rather than appended to the
+contract suite.
 
 ### What each layer is for
 
@@ -114,13 +120,18 @@ that does not exist is a test that ends up in whichever suite was already open.
 architecture's dependency rule — nothing in the platform domain imports a Kubernetes
 client, a Helm library, a runtime SDK, or an HTTP framework — exists so that this
 layer is possible. A domain that cannot be tested without a runtime will be tested
-with a mock, and then somebody will call that certification.
+with a mock, and then somebody will call that certification. It runs today, over
+[the workload domain model](../domain/workload-domain-model.md): what parses, what
+is refused, and what a refusal is allowed to say. The rules that decide whether a
+contract is *accepted* are not implemented yet, so this layer does not cover them
+and the suite says which ones it is leaving alone.
 
 `contract-and-schema` validates the published schema, every valid and invalid
 fixture, and the exact refusal each rule produces. It runs today.
 
-`architecture-inventory` holds the committed ownership boundary to its own rules. It
-runs today.
+`architecture-inventory` holds the committed ownership boundary to its own rules,
+and holds the platform domain to the dependency rule by reading what every module
+under `src/inferops/` imports. It runs today.
 
 `documentation` checks that every relative link resolves, that no published file
 carries trailing whitespace or a hard tab, and that the machine-readable strategy and
@@ -243,7 +254,7 @@ certified on the strength of a layer nobody has written.
   and no automated lane. Every lane is run by hand today. The strategy is written so
   that adding CI is a matter of pointing a workflow at a marker expression that
   already exists.
-- **It does not certify anything by existing.** Six of eleven layers have no code.
+- **It does not certify anything by existing.** Five of eleven layers have no code.
   The suite that checks this document cannot tell an honestly planned layer from one
   that will never be written.
 - **It does not select a task runner, a packaging tool, or a linter.** Those remain

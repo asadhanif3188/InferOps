@@ -252,18 +252,21 @@
       "lane": "default-checks",
       "environment": "repository-only",
       "marker": "unit",
-      "paths": [],
+      "paths": [
+        "tests/domain"
+      ],
       "commands": [
-        "python -m pytest -m unit -q"
+        "python -m pytest -m unit -q",
+        "python -m pytest tests/domain -q"
       ],
       "evidenceClass": "local-static",
       "maxCertification": "C0",
       "requiresModel": false,
       "requiresCluster": false,
       "publishable": true,
-      "v1Status": "planned",
-      "evidenceRef": null,
-      "notes": "No domain code exists yet, so the marker is registered and unused. That is the honest state: registering it now is what stops the first domain test being written into whichever suite happens to be open."
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/domain/v1-s1-001-pr1-validation.md",
+      "notes": "The workload domain model is the first code this layer covers. It exercises domain objects with no adapter, no cluster, and no runtime, which is what the dependency rule exists to make possible. The rules that decide whether a contract is accepted are not implemented yet; the layer covers what parses, not what is valid."
     },
     {
       "layerId": "contract-and-schema",
@@ -290,7 +293,7 @@
     {
       "layerId": "architecture-inventory",
       "name": "Architecture inventory",
-      "purpose": "Hold the committed ownership boundary to its own rules, and keep the inventory and the documents describing it from drifting apart.",
+      "purpose": "Hold the committed ownership and component boundaries to their own rules: the inventory against the documents describing it, and the platform domain against the dependency rule that says what it may import.",
       "lane": "default-checks",
       "environment": "repository-only",
       "marker": "architecture",

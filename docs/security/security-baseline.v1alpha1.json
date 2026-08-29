@@ -354,7 +354,7 @@
         "a-tenant-is-a-request-not-an-assertion",
         "no-tenant-identifier-in-a-committed-record"
       ],
-      "residualRisk": "Nothing validates a tenant, because there is no entitlement source and no component that would consult one. The rule is specified for a component that does not exist.",
+      "residualRisk": "Nothing validates a tenant, because there is no entitlement source and no component that would consult one. The domain reads the declared tenant and deliberately checks nothing; the component that would consult an entitlement source does not exist.",
       "deferredRiskRef": "DR-03"
     },
     {
@@ -1071,7 +1071,7 @@
         "symbol": null
       },
       "runtimeScope": "repository-only",
-      "specifiedFor": "the platform API and domain, neither of which exists",
+      "specifiedFor": "the platform API, which does not exist; the domain carries a declared tenant and checks no entitlement",
       "restsOnAConfiguration": false,
       "v1Status": "specified-only",
       "owner": "platform",

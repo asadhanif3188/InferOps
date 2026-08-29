@@ -120,10 +120,11 @@ drawing:
    +--------------------------------+--------------------------------+
                                     v
    +-----------------------------------------------------------------+
-   |  Platform domain                                        UNBUILT |
+   |  Platform domain                                        PARTIAL |
    |  workload identity, model and runtime selection, resource and   |
    |  scaling policy, environment and ownership metadata, security   |
-   |  classification, attribution, canonical errors                  |
+   |  classification, attribution           <- typed objects EXIST   |
+   |  canonical errors, validation rules, policy    <- UNBUILT       |
    |                                                                 |
    |  owns the serving-adapter interface; depends on no adapter,     |
    |  no Kubernetes client, no Helm, and no runtime SDK              |
@@ -173,6 +174,15 @@ interface; adapters implement it; the API selects one at composition time. A dom
 that knows about the runtime cannot be tested without one, and a project whose
 domain cannot be tested without a runtime will test it with a mock and then be
 tempted to call that certification.
+
+There is now a domain for the rule to apply to.
+[The workload domain model](../domain/workload-domain-model.md) turns a contract
+document into typed platform objects, it declares no runtime dependency at all, and
+`tests/architecture/test_domain_dependency_boundary.py` reads every module under
+`src/inferops/` and fails if one imports anything outside the standard library and
+this distribution. What is still unbuilt is the rest of the box: the validation
+rules that decide whether a contract is accepted, the canonical error surface, and
+the adapter interface itself.
 
 The rule has a visible consequence and it is worth stating rather than discovering:
 the composition point — the place that decides which adapter is live — is the one

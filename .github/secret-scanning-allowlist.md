@@ -2,9 +2,12 @@
 
 This document explains which credential patterns are intentionally used as test fixtures in this repository and why they do not pose a security risk.
 
-## Test Fixtures in `tests/contracts/test_workload_contract_validation.py`
+## Test Fixtures
 
-The following credentials are **synthetic test data** used to validate that the workload contract validation logic correctly rejects credential-like patterns. They authenticate against nothing and exist only to test the shape-detection heuristics.
+The following credentials are **synthetic test data**. They authenticate against nothing and exist only to test shape detection and redaction. Two test suites use them:
+
+- `tests/contracts/test_workload_contract_validation.py` — validates that the workload contract validation logic correctly rejects credential-like locators;
+- `tests/domain/test_workload_domain.py` — uses `AKIAIOSFODNN7EXAMPLE` and the zero-padded `ghp_` value to assert that a domain refusal does **not** repeat a value read out of the document.
 
 ### AWS Keys
 - `AKIAIOSFODNN7EXAMPLE` — Official example key published in [AWS documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html)
@@ -29,8 +32,10 @@ These follow valid credential format prefixes but use trailing zeros to ensure t
 
 Secret scanning is configured in `.gitleaks.toml` with explicit allowlist rules for these patterns and paths.
 
+`.gitleaks.toml` allowlists two **paths** (`tests/contracts/`, `docs/proof/`) and, separately, the **patterns** above. The pattern rules are path-independent, which is why `tests/domain/` is covered without being added to the path list — and it is deliberately not added, because a path allowlist would exempt a future secret in that directory rather than the two published placeholders.
+
 ## References
 
 - **AWS Example Keys**: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html
-- **Test File**: `tests/contracts/test_workload_contract_validation.py` (see test `test_a_credential_shaped_locator_is_caught`)
+- **Test Files**: `tests/contracts/test_workload_contract_validation.py` (see test `test_a_credential_shaped_locator_is_caught`) and `tests/domain/test_workload_domain.py` (see `test_a_refusal_repeats_nothing_from_the_document`)
 - **Gitleaks Config**: `.gitleaks.toml`

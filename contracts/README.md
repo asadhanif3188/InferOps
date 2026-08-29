@@ -13,8 +13,9 @@ which of its rules are not yet enforced lives under
 |---|---|---|
 | Runtime and model compatibility matrix | `v1alpha1` | [`workload/compatibility/runtime-model-compatibility.v1alpha1.json`](workload/compatibility/runtime-model-compatibility.v1alpha1.json) |
 
-Nothing in this repository reads a contract yet. A published schema is a commitment
-about what will be accepted, not evidence that anything accepts it.
+The platform domain reads a contract into typed objects; nothing in this
+repository deploys, serves, or admits a workload from one. A published schema is a
+commitment about what will be accepted, not evidence that anything accepts it.
 
 ## Layout
 

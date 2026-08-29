@@ -7,7 +7,10 @@ fixture, or the change that broke one of them.
 
 These are **contract examples, not deployable workloads.** No controller, adapter,
 or serving path in this repository reads a WorkloadContract, so nothing here has
-been deployed and none of it is evidence that the workload it describes runs.
+been deployed and none of it is evidence that the workload it describes runs. Every
+file under `valid/` is additionally parsed into a domain object by
+[`tests/domain/`](../../../tests/domain/), which is what keeps the platform's typed
+objects and these fixtures from drifting apart; parsing one deploys nothing.
 
 | Fixture | Profile | What it demonstrates |
 |---|---|---|

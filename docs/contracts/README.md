@@ -1,7 +1,7 @@
 # Contracts
 
-Status: one contract accepted at alpha maturity. No component in this repository
-consumes it.
+Status: one contract accepted at alpha maturity. The platform domain reads it into
+typed objects; nothing deploys, serves, or admits a workload from one.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under
@@ -10,7 +10,7 @@ means, how it is versioned, which rules are enforced, and which are not.
 
 | Contract | Version | Status | Document |
 |---|---|---|---|
-| WorkloadContract | `v1alpha1` | Accepted; no consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
+| WorkloadContract | `v1alpha1` | Accepted; parsed by [the workload domain model](../domain/workload-domain-model.md), and no runtime consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
 
 A published schema is a commitment about what will be accepted. It is not evidence
 that anything accepts it, and it certifies no runtime behaviour.

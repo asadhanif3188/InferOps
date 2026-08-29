@@ -144,7 +144,7 @@ inherits it, and nothing enforces it because there is nothing to enforce it on.
 
 | Control | Boundary | Specified for | Owner |
 |---|---|---|---|
-| `a-tenant-is-a-request-not-an-assertion` | B5 | The platform API and domain, neither of which exists | platform |
+| `a-tenant-is-a-request-not-an-assertion` | B5 | The platform API, which does not exist; the domain carries a declared tenant and checks no entitlement | platform |
 | `network-policy-in-the-release-namespace` | B3 | The Helm chart, which has not been written | platform |
 | `record-what-the-platform-did` | B5 | The platform API, which does not exist | security |
 

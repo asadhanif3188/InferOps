@@ -16,7 +16,10 @@ and must not be implemented against as though it were settled.
 
 ## Architecture documents
 
-These describe the V1 design. Every component below the contract layer is unbuilt.
+These describe the V1 design. Every component below the contract layer is unbuilt,
+with one exception: the platform domain now has typed workload objects in
+[the workload domain model](../domain/workload-domain-model.md). Nothing below
+*that* is built — no adapter, no API, no chart, no Terraform.
 
 | Document | What it covers |
 |---|---|
@@ -25,6 +28,7 @@ These describe the V1 design. Every component below the contract layer is unbuil
 | [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json) | The authoritative form of that inventory, validated by `tests/architecture/` |
 | [Project boundaries](project-boundaries.md) | Where this project stops, and what belongs to gateway or deeper serving work instead |
 | [Boundary review checklist](boundary-review-checklist.md) | The questions a reviewer applies to all of the above |
+| [Workload domain model](../domain/workload-domain-model.md) | The first component built under these boundaries, and the dependency rule it is held to |
 | [Security baseline](../security/README.md) | The threats these boundaries face, the controls that exist, and the risks V1 carries |
 
 ## Decision records
@@ -35,7 +39,7 @@ These describe the V1 design. Every component below the contract layer is unbuil
 | [0002](decisions/ADR-0002-model-and-serving-runtime.md) | Model and serving runtime | Accepted, with one recorded exception | 2026-08-24 | [Runtime feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
 | [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
 | [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
-| [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, and six of its eleven test layers have no code |
+| [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, and five of its eleven test layers have no code |
 | [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Change validation](../proof/telemetry/v1-s0-007-pr1-validation.md); the catalog is machine-checked, and nothing in this repository emits a single signal |
 | [0007](decisions/ADR-0007-inference-cost-method.md) | Inference cost-calculation method | Accepted in part | 2026-08-26 | [Change validation](../proof/cost/v1-s0-008-pr1-validation.md); the method and its worked example are machine-checked, and nothing in this repository computes a cost record |
 | [0008](decisions/ADR-0008-v1-security-baseline.md) | V1 threat model and security baseline | Accepted in part | 2026-08-26 | [Change validation](../proof/security/v1-s0-009-pr1-validation.md); the baseline is machine-checked, and nothing in this repository defends a running system |
