@@ -369,6 +369,32 @@ result support a real-serving claim is a change to
 [the mock and real boundary](docs/serving/mock-and-real-boundary.md), which is an
 accepted rule, and not a change to a test.
 
+### The selected runtime's configuration
+
+[`src/inferops/adapters/llama_cpp/`](src/inferops/adapters/llama_cpp/) is where the
+runtime ADR 0002 selected is configured and inspected, and it runs under the same
+commands as the rest of the adapter layer. It contains **no adapter and no
+inference call**, and [its document](docs/serving/real-runtime-configuration.md)
+says why: publishing a class that satisfies the protocol's shape while it cannot
+generate anything is the mock-for-a-missing-real substitution the boundary rule
+calls a defect.
+
+Two rules apply to a change here beyond the usual ones.
+
+**A pin is compared to its source, never restated.** The runtime image digest and
+the model revision, file, size, and hash are copied from
+[ADR 0002](docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md), and
+`tests/adapters/test_llama_server_pins.py` reads that record, the compatibility
+matrix, and the committed `synchronous-llm` example and fails when a copy drifts.
+Changing a pin therefore means changing the accepted decision first, and a pin
+that appears only in code is a pin nothing checks.
+
+**A value ADR 0002 left undecided may not acquire a default here.** The context
+length, the KV budget, the concurrency limit, and the sampling defaults are
+recorded there as undecided. A default added in this package would be read back
+later as a project recommendation nobody made, so the required inputs stay
+required and a test enforces it.
+
 ### Test lanes and markers
 
 The pytest configuration lives in [`pytest.ini`](pytest.ini) and stays there.
