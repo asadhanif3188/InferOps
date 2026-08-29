@@ -319,18 +319,21 @@
       "lane": "default-checks",
       "environment": "repository-only",
       "marker": "adapter",
-      "paths": [],
+      "paths": [
+        "tests/adapters"
+      ],
       "commands": [
-        "python -m pytest -m adapter -q"
+        "python -m pytest -m adapter -q",
+        "python -m pytest tests/adapters -q"
       ],
       "evidenceClass": "mock",
       "maxCertification": "C1",
       "requiresModel": false,
       "requiresCluster": false,
       "publishable": true,
-      "v1Status": "planned",
-      "evidenceRef": null,
-      "notes": "An adapter suite runs against the interface, not against a runtime. Its ceiling is C1 even for the real adapter, because what it exercises is the shape of the call rather than the thing on the other end of it."
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/serving/v1-s1-003-pr1-validation.md",
+      "notes": "An adapter suite runs against the interface, not against a runtime. Its ceiling is C1 even for the real adapter, because what it exercises is the shape of the call rather than the thing on the other end of it. The deterministic mock adapter is the first implementation it covers; the conformance suite it runs is inherited from tests/support/serving_conformance.py, which the in-memory double under the unit layer inherits as well."
     },
     {
       "layerId": "mock-integration",

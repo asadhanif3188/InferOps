@@ -133,11 +133,12 @@ drawing:
          | implements the interface                            | renders
          | the domain owns                                     v
    +-----+------------------------+   +----------------------------------+
-   |  Serving adapters   UNBUILT  |   |  Deployment rendering    UNBUILT |
+   |  Serving adapters   PARTIAL  |   |  Deployment rendering    UNBUILT |
    |                              |   |  a validated domain object       |
    |  +------------+ +---------+  |   |  becomes chart values, and       |
    |  | mock       | | real    |  |   |  nothing else writes them        |
    |  | CI only    | | runtime |  |   +----------------+-----------------+
+   |  | EXISTS     | | UNBUILT |  |                    |
    |  +------------+ +----+----+  |                    |
    +---------------------|--------+                    v
                          |                +--------------------------+
@@ -180,9 +181,13 @@ There is now a domain for the rule to apply to.
 document into typed platform objects, it declares no runtime dependency at all, and
 `tests/architecture/test_domain_dependency_boundary.py` reads every module under
 `src/inferops/` and fails if one imports anything outside the standard library and
-this distribution. What is still unbuilt is the rest of the box: the validation
-rules that decide whether a contract is accepted, the canonical error surface, and
-the adapter interface itself.
+this distribution. The validation rules, the canonical error surface, and the
+serving-adapter interface now sit beside it, and the first implementation of that
+interface — [the deterministic mock adapter](../serving/mock-serving-adapter.md) —
+lives outside the domain in `src/inferops/adapters/`, which is the dependency
+direction this rule exists to fix. What is still unbuilt is the adapter for the
+selected runtime, the API that would compose one, and everything downstream of
+both.
 
 The rule has a visible consequence and it is worth stating rather than discovering:
 the composition point — the place that decides which adapter is live — is the one
