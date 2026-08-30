@@ -183,9 +183,12 @@ adapter and against controlled adapter doubles. Two limits travel with every res
 it produces. **Nothing here crosses a socket:** the API implements the ASGI calling
 convention, this repository ships no server, and the suites drive the application
 through its own interface, so a result establishes what the application decides and
-nothing about HTTP. And the canonical error body it asserts is the subset
-`V1-S1-005-PR2` standardises, so the layer's canonical-error obligation is partly
-met rather than met.
+nothing about HTTP. And what it certifies is the consumer and the contract: every
+adapter behind it is the labelled mock or a controlled double, including the rows
+that compose the real adapter over a transport that refuses to be called.
+`V1-S1-005-PR2` closed the layer's canonical-error obligation — the whole error
+body, every condition, and the configuration-driven adapter selection are
+exercised here — and closed none of the two limits above.
 
 `kubernetes-smoke` proves the cluster half of the environment — created, workload
 answering, torn down with residue verified absent. Real, and about the environment

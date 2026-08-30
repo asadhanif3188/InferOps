@@ -46,6 +46,7 @@ ordering is in :mod:`inferops.api.lifecycle` rather than here.
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections.abc import Awaitable, Callable, MutableMapping
 from dataclasses import dataclass
@@ -57,18 +58,23 @@ from ..domain.serving import (
     ACCEPTED_ADAPTER_KINDS,
     AdapterConfiguration,
     CanonicalError,
-    InternalError,
     InvalidValueError,
     ServingAdapter,
 )
 from . import identifiers, metrics
 from .errors import (
-    CAPABILITY_UNAVAILABLE,
-    CONTRACT_INVALID,
-    METHOD_NOT_ALLOWED_STATUS,
-    NOT_FOUND_STATUS,
+    ADAPTER_KIND_DISAGREEMENT,
+    ADAPTER_KIND_DISAGREES,
+    DEPLOYMENT_DRAINING,
+    METHOD_NOT_SERVED,
+    PATH_NOT_SERVED,
+    REQUEST_OUTSIDE_SUBSET,
+    REQUEST_TOO_LARGE,
+    UNEXPECTED_FAILURE,
+    UNSUPPORTED_CONTRACT_VERSION,
+    Condition,
     RequestRefused,
-    status_for,
+    condition_for,
 )
 from .lifecycle import (
     DEFAULT_DRAIN_TIMEOUT_MS,
@@ -84,6 +90,7 @@ from .responses import (
 )
 from .surface import (
     CORRELATION_ID_HEADER,
+    PATH_PREFIX,
     REQUEST_ID_HEADER,
     ROUTES,
 )
@@ -103,24 +110,13 @@ MAX_REQUEST_BYTES = 1_048_576
 
 JSON_CONTENT_TYPE = "application/json; charset=utf-8"
 
-#: The message a caller is given when this API is no longer accepting work. It
-#: names the state and nothing about the process, the host, or the deployment.
-DRAINING_MESSAGE = "this deployment has stopped accepting new work"
-
-#: The message a caller is given when a failure has no canonical mapping. It is a
-#: constant rather than a formatted exception, because an exception's own text is
-#: where a path, a host name, or a prompt fragment reaches a caller.
-UNEXPECTED_FAILURE_MESSAGE = "the request could not be completed"
-
-#: What a completion is refused with when the adapter's own result declares a
-#: different adapter kind from the one this API was composed with. It is an
-#: internal error rather than a warning: a response whose ``adapterKind`` cannot
-#: be trusted is a response that cannot be used to claim anything, and the mock
-#: and real boundary is the rule it would break.
-ADAPTER_KIND_DISAGREEMENT = (
-    "the serving adapter returned a result declaring a different adapter kind "
-    "than this deployment was composed with"
-)
+#: The path segment that names a version in the compatibility target's shape.
+#: A first segment matching this pattern and naming a version other than the one
+#: :data:`~inferops.api.surface.PATH_PREFIX` publishes is what makes
+#: ``version-unsupported`` reachable: it is the one place a caller can name an
+#: API version, because this surface reads no version header and defines no
+#: request-body extension member a caller could put one in.
+VERSION_SEGMENT = re.compile(r"^v[0-9]+$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,28 +277,32 @@ class InferOpsApi:
             headers.get(CORRELATION_ID_HEADER)
         )
         context = RequestContext(request_id=request_id, correlation_id=correlation_id)
-        answer = _Answer(request_id=request_id, correlation_id=correlation_id)
+        answer = _Answer(
+            request_id=request_id,
+            correlation_id=correlation_id,
+            adapter_kind=self._configuration.adapter_kind,
+        )
 
         method = str(scope.get("method", ""))
         path = str(scope.get("path", ""))
 
         matched = [route for route in ROUTES if route.path == path]
         if not matched:
-            await answer.refuse(
-                send,
-                NOT_FOUND_STATUS,
-                CONTRACT_INVALID,
-                "path: this path is not part of the API surface this deployment serves",
-            )
+            if _names_another_version(path):
+                # The caller named an API version this deployment does not serve.
+                # It is a different refusal from a path nobody publishes, and it
+                # is the one the accepted record has a code for.
+                await answer.refuse(send, UNSUPPORTED_CONTRACT_VERSION, member="path")
+                return
+            await answer.refuse(send, PATH_NOT_SERVED, member="path")
             return
         allowed = sorted({route.method for route in matched})
         route = next((row for row in matched if row.method == method), None)
         if route is None:
             await answer.refuse(
                 send,
-                METHOD_NOT_ALLOWED_STATUS,
-                CONTRACT_INVALID,
-                "method: this method is not served on this path",
+                METHOD_NOT_SERVED,
+                member="method",
                 headers=[(b"allow", ", ".join(allowed).encode("ascii"))],
             )
             return
@@ -353,12 +353,7 @@ class InferOpsApi:
             with self._lifecycle.accept():
                 await self._answer_models(send, answer)
         except ShuttingDown:
-            await answer.refuse(
-                send,
-                HTTPStatus.SERVICE_UNAVAILABLE,
-                CAPABILITY_UNAVAILABLE,
-                DRAINING_MESSAGE,
-            )
+            await self._refuse_draining(send, answer)
 
     async def _answer_models(self, send: Send, answer: _Answer) -> None:
         """Answer inside the accepted slot, so the drain waits for the response.
@@ -373,15 +368,10 @@ class InferOpsApi:
             runtime = await self._adapter.get_runtime_metadata()
             capabilities = await self._adapter.get_capabilities()
         except CanonicalError as error:
-            await answer.refuse(send, status_for(error), error.code, error.message)
+            await answer.refuse(send, condition_for(error))
             return
         except Exception:
-            await answer.refuse(
-                send,
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-                InternalError().code,
-                UNEXPECTED_FAILURE_MESSAGE,
-            )
+            await answer.refuse(send, UNEXPECTED_FAILURE)
             return
         await answer.send_json(
             send,
@@ -407,12 +397,21 @@ class InferOpsApi:
             with self._lifecycle.accept():
                 await self._answer_completion(scope, receive, send, answer, context)
         except ShuttingDown:
-            await answer.refuse(
-                send,
-                HTTPStatus.SERVICE_UNAVAILABLE,
-                CAPABILITY_UNAVAILABLE,
-                DRAINING_MESSAGE,
-            )
+            await self._refuse_draining(send, answer)
+
+    async def _refuse_draining(self, send: Send, answer: _Answer) -> None:
+        """The one refusal that knows its own retry delay.
+
+        A deployment that has begun draining will be gone when its drain budget
+        runs out, and that budget is configured rather than guessed — so it is
+        the one condition where ``retryAfterMs`` is a decided number instead of
+        an invented one.
+        """
+        await answer.refuse(
+            send,
+            DEPLOYMENT_DRAINING,
+            retry_after_ms=self._configuration.drain_timeout_ms,
+        )
 
     async def _answer_completion(
         self,
@@ -432,18 +431,22 @@ class InferOpsApi:
         try:
             body = await self._serve_completion(scope, receive, answer, context)
         except RequestRefused as refusal:
-            await answer.refuse(send, refusal.status, refusal.code, refusal.message)
-            return
-        except CanonicalError as error:
-            await answer.refuse(send, status_for(error), error.code, error.message)
-            return
-        except Exception:
             await answer.refuse(
                 send,
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-                InternalError().code,
-                UNEXPECTED_FAILURE_MESSAGE,
+                refusal.condition,
+                message=refusal.message,
+                member=refusal.member,
             )
+            return
+        except CanonicalError as error:
+            # The adapter's own message stops here. What a caller is told is this
+            # API's message for the condition, so a runtime's words, a path, or a
+            # prompt fragment inside an adapter's message cannot reach a response
+            # by being forwarded.
+            await answer.refuse(send, condition_for(error))
+            return
+        except Exception:
+            await answer.refuse(send, UNEXPECTED_FAILURE)
             return
         await answer.send_json(send, HTTPStatus.OK, body)
 
@@ -463,7 +466,9 @@ class InferOpsApi:
         )
         result = await self._adapter.infer(request.prompt, context)
         if result.adapter_kind != self._configuration.adapter_kind:
-            raise InternalError(ADAPTER_KIND_DISAGREEMENT, context=context)
+            raise RequestRefused(
+                ADAPTER_KIND_DISAGREES, None, ADAPTER_KIND_DISAGREEMENT
+            )
         return completion_body(
             result,
             completion_id=identifiers.completion_id(),
@@ -479,11 +484,14 @@ class _Answer:
 
     It exists so that no response path can forget the two headers: an error sent
     without them is a refusal a caller cannot correlate, which is the failure
-    that makes a canonical error worth less than the log line it replaced.
+    that makes a canonical error worth less than the log line it replaced. It
+    carries the adapter kind for the same reason — every response names the kind
+    behind it, and a refusal is a response.
     """
 
     request_id: str
     correlation_id: str
+    adapter_kind: str
 
     def _headers(self, content_type: str) -> list[tuple[bytes, bytes]]:
         return [
@@ -514,21 +522,33 @@ class _Answer:
     async def refuse(
         self,
         send: Send,
-        status: HTTPStatus,
-        code: str,
-        message: str,
+        condition: Condition,
         *,
+        message: str | None = None,
+        member: str | None = None,
+        retry_after_ms: int | None = None,
         headers: list[tuple[bytes, bytes]] | None = None,
     ) -> None:
+        """One refusal, in the canonical error body.
+
+        The condition decides the code, the ``retryable`` flag, and the status
+        together, so no refusal site can combine three values nobody decided.
+        ``message`` is supplied only where this API has something more specific
+        to say than the condition's own text — which is the validation refusals,
+        and nothing that came from below this edge.
+        """
         body = error_body(
-            code,
-            message,
+            condition,
+            condition.message if message is None else message,
             request_id=self.request_id,
             correlation_id=self.correlation_id,
+            adapter_kind=self.adapter_kind,
+            member=member,
+            retry_after_ms=retry_after_ms,
         )
         await self._send(
             send,
-            status,
+            condition.status,
             json.dumps(body, separators=(",", ":")).encode("utf-8"),
             JSON_CONTENT_TYPE,
             extra=headers,
@@ -583,18 +603,33 @@ async def _read_body(receive: Receive) -> bytes:
         message = await receive()
         if message.get("type") == "http.disconnect":
             raise RequestRefused(
-                CONTRACT_INVALID, "body", "the caller disconnected before sending one"
+                REQUEST_OUTSIDE_SUBSET,
+                "body",
+                "the caller disconnected before sending one",
             )
         chunk = bytes(message.get("body") or b"")
         total += len(chunk)
         if total > MAX_REQUEST_BYTES:
             raise RequestRefused(
-                CONTRACT_INVALID,
+                REQUEST_TOO_LARGE,
                 "body",
                 f"the request body exceeds this deployment's bound of "
                 f"{MAX_REQUEST_BYTES} bytes",
-                status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
             )
         chunks.append(chunk)
         if not message.get("more_body"):
             return b"".join(chunks)
+
+
+def _names_another_version(path: str) -> bool:
+    """Whether a path's first segment names an API version this API does not serve.
+
+    ``/v2/chat/completions`` is a caller asking for a version of the borrowed
+    shape this deployment does not serve, which the accepted record has a code
+    for. ``/healthz`` is a path nobody publishes, which it does not. Telling the
+    two apart is the whole reason this function exists, and it is the only place
+    a caller can name a version: this surface reads no version header and the
+    accepted record defines no request-body extension member.
+    """
+    first = path.lstrip("/").split("/", 1)[0]
+    return VERSION_SEGMENT.match(first) is not None and f"/{first}" != PATH_PREFIX

@@ -44,7 +44,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from .errors import CAPABILITY_UNAVAILABLE, CONTRACT_INVALID, RequestRefused
+from .errors import REQUEST_OUTSIDE_SUBSET, STREAMING_REQUESTED, RequestRefused
 from .surface import (
     ACCEPTED_MESSAGE_ROLES,
     ACCEPTED_REQUEST_FIELDS,
@@ -136,11 +136,11 @@ def _object_body(raw: bytes) -> dict[str, object]:
         decoded = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise RequestRefused(
-            CONTRACT_INVALID, BODY, "the request body is not valid UTF-8 JSON"
+            REQUEST_OUTSIDE_SUBSET, BODY, "the request body is not valid UTF-8 JSON"
         ) from error
     if not isinstance(decoded, dict):
         raise RequestRefused(
-            CONTRACT_INVALID, BODY, "the request body must be a JSON object"
+            REQUEST_OUTSIDE_SUBSET, BODY, "the request body must be a JSON object"
         )
     return decoded
 
@@ -157,7 +157,7 @@ def _refuse_unknown_members(body: dict[str, object]) -> None:
     if not unknown:
         return
     raise RequestRefused(
-        CONTRACT_INVALID,
+        REQUEST_OUTSIDE_SUBSET,
         unknown[0],
         "this member is outside the frozen request subset this API accepts",
     )
@@ -167,7 +167,7 @@ def _require_present(body: dict[str, object]) -> None:
     for member in sorted(REQUIRED_REQUEST_FIELDS):
         if member not in body:
             raise RequestRefused(
-                CONTRACT_INVALID, member, "this member is required and was absent"
+                REQUEST_OUTSIDE_SUBSET, member, "this member is required and was absent"
             )
 
 
@@ -178,7 +178,9 @@ def _model(body: dict[str, object], served_model: str) -> str:
     model = body[REQUEST_MODEL]
     if not isinstance(model, str) or not model:
         raise RequestRefused(
-            CONTRACT_INVALID, REQUEST_MODEL, "this member must be a non-empty string"
+            REQUEST_OUTSIDE_SUBSET,
+            REQUEST_MODEL,
+            "this member must be a non-empty string",
         )
     if model != served_model:
         # Multi-model is declared false: the member is checked against the served
@@ -186,7 +188,7 @@ def _model(body: dict[str, object], served_model: str) -> str:
         # it is this deployment's own published identity, and not a value read
         # out of the request.
         raise RequestRefused(
-            CONTRACT_INVALID,
+            REQUEST_OUTSIDE_SUBSET,
             REQUEST_MODEL,
             "this deployment serves exactly one model and this member must name "
             f"it: {served_model}",
@@ -198,13 +200,15 @@ def _prompt(body: dict[str, object]) -> str:
     messages = body[REQUEST_MESSAGES]
     if not isinstance(messages, list) or not messages:
         raise RequestRefused(
-            CONTRACT_INVALID,
+            REQUEST_OUTSIDE_SUBSET,
             REQUEST_MESSAGES,
             "this member must be a non-empty array of objects",
         )
     checked = [_checked_message(message) for message in messages]
     if len(checked) != 1 or checked[0][0] != ROLE_USER:
-        raise RequestRefused(CONTRACT_INVALID, REQUEST_MESSAGES, SINGLE_MESSAGE_REASON)
+        raise RequestRefused(
+            REQUEST_OUTSIDE_SUBSET, REQUEST_MESSAGES, SINGLE_MESSAGE_REASON
+        )
     return checked[0][1]
 
 
@@ -212,35 +216,35 @@ def _checked_message(message: object) -> tuple[str, str]:
     """One message, checked against the subset and returned as role and content."""
     if not isinstance(message, dict):
         raise RequestRefused(
-            CONTRACT_INVALID,
+            REQUEST_OUTSIDE_SUBSET,
             REQUEST_MESSAGES,
             "every element of this member must be an object",
         )
     unknown = sorted(set(message) - MESSAGE_FIELDS)
     if unknown:
         raise RequestRefused(
-            CONTRACT_INVALID,
+            REQUEST_OUTSIDE_SUBSET,
             f"{REQUEST_MESSAGES}.{unknown[0]}",
             "this member is outside the frozen request subset this API accepts",
         )
     for member in sorted(MESSAGE_FIELDS):
         if member not in message:
             raise RequestRefused(
-                CONTRACT_INVALID,
+                REQUEST_OUTSIDE_SUBSET,
                 f"{REQUEST_MESSAGES}.{member}",
                 "this member is required and was absent",
             )
     role = message[MESSAGE_ROLE]
     if not isinstance(role, str) or role not in ACCEPTED_MESSAGE_ROLES:
         raise RequestRefused(
-            CONTRACT_INVALID,
+            REQUEST_OUTSIDE_SUBSET,
             f"{REQUEST_MESSAGES}.{MESSAGE_ROLE}",
             "this member must be one of: " + ", ".join(ACCEPTED_MESSAGE_ROLES),
         )
     content = message[MESSAGE_CONTENT]
     if not isinstance(content, str):
         raise RequestRefused(
-            CONTRACT_INVALID,
+            REQUEST_OUTSIDE_SUBSET,
             f"{REQUEST_MESSAGES}.{MESSAGE_CONTENT}",
             "this member must be a string; the array-of-parts form is outside "
             "the frozen request subset this API accepts",
@@ -256,7 +260,7 @@ def _max_tokens(body: dict[str, object], ceiling: int | None) -> int | None:
     # the boolean check is what stops `"max_tokens": true` being read as 1.
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise RequestRefused(
-            CONTRACT_INVALID,
+            REQUEST_OUTSIDE_SUBSET,
             REQUEST_MAX_TOKENS,
             "this member must be a positive integer",
         )
@@ -264,7 +268,7 @@ def _max_tokens(body: dict[str, object], ceiling: int | None) -> int | None:
         # Refused rather than silently clamped, which is what the accepted record
         # requires. The ceiling is this deployment's own configuration.
         raise RequestRefused(
-            CONTRACT_INVALID,
+            REQUEST_OUTSIDE_SUBSET,
             REQUEST_MAX_TOKENS,
             f"this member must not exceed this deployment's ceiling of {ceiling}",
         )
@@ -277,7 +281,7 @@ def _temperature(body: dict[str, object]) -> float | None:
     value = body[REQUEST_TEMPERATURE]
     if isinstance(value, bool) or not isinstance(value, int | float):
         raise RequestRefused(
-            CONTRACT_INVALID, REQUEST_TEMPERATURE, "this member must be a number"
+            REQUEST_OUTSIDE_SUBSET, REQUEST_TEMPERATURE, "this member must be a number"
         )
     return float(value)
 
@@ -288,14 +292,14 @@ def _refuse_streaming(body: dict[str, object]) -> None:
     value = body[REQUEST_STREAM]
     if not isinstance(value, bool):
         raise RequestRefused(
-            CONTRACT_INVALID, REQUEST_STREAM, "this member must be a boolean"
+            REQUEST_OUTSIDE_SUBSET, REQUEST_STREAM, "this member must be a boolean"
         )
     if value:
         # Declared `false` as a capability, and refused with the code the
         # accepted record names for it. The retryable override that travels with
         # this refusal belongs to the error contract V1-S1-005-PR2 standardises.
         raise RequestRefused(
-            CAPABILITY_UNAVAILABLE,
+            STREAMING_REQUESTED,
             REQUEST_STREAM,
             "streaming is declared unsupported by this deployment and retrying "
             "does not make a capability appear",

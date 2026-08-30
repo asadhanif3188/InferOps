@@ -1,10 +1,11 @@
 # The V1 inference API surface
 
 Status: **decided, and served in part.** Every endpoint below is registered and
-answered by [the InferOps API](inference-api.md), which `V1-S1-005-PR1` built.
-Three parts of the shape are deliberately unfinished, and each is named where it
-applies: the canonical error body is served in a subset, `/metrics` publishes no
-series, and two accepted request members are validated and not forwarded.
+answered by [the InferOps API](inference-api.md), which `V1-S1-005-PR1` built and
+`V1-S1-005-PR2` finished the error contract and the adapter selection of. Two
+parts of the shape are deliberately unfinished, and each is named where it
+applies: `/metrics` publishes no series, and two accepted request members are
+validated and not forwarded.
 
 The decision behind it is
 [ADR 0010](../architecture/decisions/ADR-0010-inference-api-compatibility-surface.md),
@@ -204,7 +205,7 @@ for it.
 | `authentication-required` | There is no authentication in V1 |
 | `authorization-denied` | There is no identity to authorize |
 | `policy-denied` | No policy engine is selected |
-| `rate-limited` | V1 has no rate limiter |
+| `rate-limited` | V1 has no rate limiter, and **InferOps originates no refusal on this code**. The API maps it so that an adapter reporting a backend's own limit is answered as what it is rather than as an internal error; the selected real adapter raises it nowhere |
 | `budget-exceeded` | No budget is enforced anywhere, and every cost figure this project can produce has confidence `none` |
 | `evaluation-failed` | A release-gate outcome, not an inference-time condition |
 

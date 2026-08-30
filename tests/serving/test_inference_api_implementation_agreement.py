@@ -26,7 +26,8 @@ from pathlib import Path
 
 import pytest
 
-from inferops.api import surface
+from inferops.api import errors, selection, surface
+from inferops.domain.serving import ACCEPTED_ADAPTER_KINDS
 
 pytestmark = pytest.mark.docs
 
@@ -190,3 +191,141 @@ def test_the_references_the_module_names_exist() -> None:
         surface.SURFACE_DOCUMENT_REF,
     ):
         assert (REPO_ROOT / ref).is_file(), ref
+
+
+# --------------------------------------------------------------------------
+# The error contract
+# --------------------------------------------------------------------------
+
+ERROR_MAPPING = SURFACE["errorMapping"]
+CONDITION_BY_ID = {row.condition_id: row for row in errors.CONDITIONS}
+
+
+@pytest.mark.parametrize(
+    "row", ERROR_MAPPING, ids=[row["conditionId"] for row in ERROR_MAPPING]
+)
+def test_every_condition_the_record_maps_is_a_condition_this_api_refuses_on(
+    row: dict[str, object],
+) -> None:
+    """Nine rows, each one this API can produce or answer.
+
+    Before this change the API could reach six of them; the three the record
+    reserved for an API layer — a request outside the subset, a streaming
+    request, and an unsupported version — are reachable now.
+    """
+    assert row["conditionId"] in CONDITION_BY_ID
+
+
+@pytest.mark.parametrize(
+    "row", ERROR_MAPPING, ids=[row["conditionId"] for row in ERROR_MAPPING]
+)
+def test_every_copied_condition_carries_the_code_the_record_publishes(
+    row: dict[str, object],
+) -> None:
+    condition = CONDITION_BY_ID[str(row["conditionId"])]
+    assert condition.code == row["code"]
+    assert condition.in_accepted_record is True
+
+
+@pytest.mark.parametrize(
+    "row", ERROR_MAPPING, ids=[row["conditionId"] for row in ERROR_MAPPING]
+)
+def test_every_copied_condition_carries_the_retryable_the_record_publishes(
+    row: dict[str, object],
+) -> None:
+    """Including the one override, which the record marks as an override."""
+    condition = CONDITION_BY_ID[str(row["conditionId"])]
+    assert condition.retryable is row["retryable"]
+    assert condition.retryable_override is row["retryableOverride"]
+
+
+def test_a_condition_this_api_added_says_so() -> None:
+    """A row the record does not publish is marked as added rather than copied.
+
+    The record maps request and runtime conditions and covers neither routing,
+    nor a body above this deployment's bound, nor a deployment that has stopped
+    accepting work. Those are this API's, and telling a copied row from an added
+    one is what stops the second being read as a decision somebody accepted.
+    """
+    added = {
+        row.condition_id for row in errors.CONDITIONS if not row.in_accepted_record
+    }
+    published = {str(row["conditionId"]) for row in ERROR_MAPPING}
+
+    assert added
+    assert added & published == set()
+
+
+def test_every_code_this_api_can_answer_with_is_a_canonical_one() -> None:
+    """Including the codes the record lists as not emitted, which are mapped
+    rather than originated: a backend reporting its own limit is answered as what
+    it is, and InferOps enforces none."""
+    emitted = {row["code"] for row in ERROR_MAPPING}
+    not_emitted = {row["code"] for row in SURFACE["codesNotEmitted"]}
+    canonical = emitted | not_emitted
+
+    assert {row.code for row in errors.CONDITIONS} <= canonical
+
+
+def test_inferops_originates_no_rate_limit_refusal() -> None:
+    """`rate-limited` is reachable only by an adapter raising it.
+
+    The accepted record lists the code among those V1 does not emit, and its
+    reason — V1 has no rate limiter — stays true: no refusal site in this API
+    names this condition, and the only path to it is the adapter-code mapping.
+    """
+    originated = [
+        row.condition_id
+        for row in errors.CONDITIONS
+        if row.code == "rate-limited" and row.in_accepted_record
+    ]
+    assert originated == []
+    assert (
+        errors.CONDITION_FOR_ADAPTER_CODE["rate-limited"] is errors.ADAPTER_RATE_LIMITED
+    )
+
+
+def test_the_error_body_carries_the_members_the_record_describes() -> None:
+    described = next(
+        row["v1Behaviour"]
+        for row in SURFACE["responseFields"]
+        if row["endpointId"] == "chat-completions" and row["field"] == "x_inferops"
+    )
+    # The two identifiers are the same two the extension member carries, which is
+    # why the error body reuses their names rather than inventing a second pair.
+    assert surface.EXTENSION_REQUEST_ID in described
+    assert surface.EXTENSION_CORRELATION_ID in described
+    assert set(surface.ERROR_BODY_FIELDS) == {
+        surface.ERROR_CODE,
+        surface.ERROR_MESSAGE,
+        surface.EXTENSION_REQUEST_ID,
+        surface.EXTENSION_CORRELATION_ID,
+        surface.ERROR_RETRYABLE,
+        surface.ERROR_RETRY_AFTER_MS,
+        surface.ERROR_DETAILS,
+    }
+
+
+# --------------------------------------------------------------------------
+# Adapter selection
+# --------------------------------------------------------------------------
+
+
+def test_the_selectable_adapters_are_the_domains_closed_vocabulary() -> None:
+    """A third selection cannot be introduced without the domain admitting a
+    third adapter kind, which is what makes `adapterKind` on a response mean
+    something."""
+    assert set(selection.ACCEPTED_ADAPTERS) == ACCEPTED_ADAPTER_KINDS
+    assert set(selection.ADAPTER_KIND_FOR.values()) == ACCEPTED_ADAPTER_KINDS
+
+
+def test_no_selection_value_is_a_default() -> None:
+    """The variable is in the required list and in no optional one."""
+    assert selection.ENV_ADAPTER in selection.REQUIRED_ENVIRONMENT_VARIABLES
+    assert selection.ENV_ADAPTER not in selection.OPTIONAL_ENVIRONMENT_VARIABLES
+
+
+def test_the_record_no_longer_says_the_error_body_is_a_subset() -> None:
+    """The one sentence in the accepted record this change is allowed to move."""
+    meaning = SURFACE["implementationStatus"]["meaning"]
+    assert "canonical error body is served in a subset" not in meaning

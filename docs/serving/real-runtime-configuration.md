@@ -154,6 +154,14 @@ because ADR 0002's `T7` exception is argued on the runtime exposing its own
 metrics with no exporter and no sidecar. Turning it off is the deviation, so
 turning it off is what has to be written down.
 
+**These six are read only when a deployment selects this adapter.**
+`INFEROPS_SERVING_ADAPTER=real` is what makes the InferOps API compose it, and
+[the API document](inference-api.md#the-variables) publishes that variable and the
+three beside it. Two properties of that selection matter here: the selection is
+required and has no default, and a `real` selection whose settings above are
+missing or malformed is **refused rather than answered with a mock** — which is
+boundary rule 4 held at the one place a deployment is assembled.
+
 ## Readiness
 
 The runtime's health endpoint returns **503 while the model loads** and **200

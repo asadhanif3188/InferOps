@@ -176,6 +176,37 @@ COMPLETION_EXTENSION_FIELDS: tuple[str, ...] = (
     EXTENSION_MODEL_REF,
 )
 
+# -- the canonical error body -----------------------------------------------
+
+#: The members of the canonical error body, as the accepted surface enumerates
+#: them: a code, a safe message, the two identifiers, a ``retryable`` flag, and
+#: optional ``retryAfterMs`` and ``details``. The two identifiers reuse the
+#: extension member names above, because they are the same two identifiers.
+ERROR_CODE = "code"
+ERROR_MESSAGE = "message"
+ERROR_RETRYABLE = "retryable"
+ERROR_RETRY_AFTER_MS = "retryAfterMs"
+ERROR_DETAILS = "details"
+
+#: The members ``details`` carries. Each is a value this API produced — the
+#: decided condition identifier, the kind of adapter behind this deployment, and
+#: the name of the member a refusal is about. **None of them is a value read out
+#: of a request.**
+ERROR_CONDITION_ID = "conditionId"
+ERROR_MEMBER = "member"
+
+#: Every member the canonical error body may carry. ``retryAfterMs`` is optional
+#: and is present only where a delay was decided; ``details`` is always present.
+ERROR_BODY_FIELDS: tuple[str, ...] = (
+    ERROR_CODE,
+    ERROR_MESSAGE,
+    EXTENSION_REQUEST_ID,
+    EXTENSION_CORRELATION_ID,
+    ERROR_RETRYABLE,
+    ERROR_RETRY_AFTER_MS,
+    ERROR_DETAILS,
+)
+
 # -- what this API does not publish -----------------------------------------
 
 #: The three members the runtime returns that this platform does not forward. The
