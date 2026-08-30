@@ -683,6 +683,52 @@ that removes one records it as out of scope with a reason rather than deleting t
 row. The decision behind all of it is
 [ADR 0010](docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md).
 
+### The workload template
+
+Changes under `src/inferops/scaffolding/`, `tests/scaffolding/`, or
+[`docs/scaffolding/`](docs/scaffolding/) must pass the template suite, which runs
+in the default lane under the `contract` marker:
+
+```sh
+uv run --locked python -m pytest tests/scaffolding -q
+uv run --locked python -m pytest tests/contracts -q
+uv run --locked python -m mypy
+```
+
+It reads only files in this repository. It renders the template from representative
+parameter sets and puts what came out through the *same* validator every committed
+fixture goes through, and then through the contract package's own validation
+pipeline, so a generated workload is held to the published contract rather than to
+a copy of it. It also imports the generated test skeleton and runs it against the
+workload rendered beside it: a skeleton that does not run is a file that looks like
+coverage.
+
+Four rules travel with a change here, and each has a check behind it.
+
+**A template may not offer a place to paste a secret.** The check is applied to the
+template, not only to the output, because a field introduced in a template is
+inherited by every workload generated afterwards.
+
+**A mock must declare itself a mock in its own contents.** Rule 1 of
+[the mock and real boundary](docs/serving/mock-and-real-boundary.md) is checked in
+the rendered document, in the workload's own name, and in the prose a reader meets
+first. The mock and the real quick starts must also stay distinct in both
+directions: the mock must not offer the real-runtime lane, and the real one must.
+
+**A generated workload cites only evidence it has produced**, which today is none.
+Pre-filling `evidence.proofRefs` with an existing record would hand every generated
+workload a result produced by a different one.
+
+**A generated workload carries no platform implementation code.** It declares; the
+platform serves. The generated test reads the contract through
+`inferops.domain.workload` and imports nothing from the API, the adapters, or the
+scaffolder.
+
+Adding a template parameter means adding it to the dataclass, to its published
+constraint, to the template that reads it, and to the parameter table in
+[the template document](docs/scaffolding/workload-template.md). A parameter no
+template reads and a placeholder no parameter supplies both fail the suite.
+
 ### The toolchain itself
 
 Changes to [`pyproject.toml`](pyproject.toml), [`uv.lock`](uv.lock),
