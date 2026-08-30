@@ -43,6 +43,19 @@ once versioned releases begin.
   itself, and a required `description`. Each is documented as a tightening, because
   a tightening nobody wrote down is a tightening nobody can argue with. No refusal
   repeats the value it refused, for the reason the domain's errors give.
+- **The one free-text parameter is escaped for each format it lands in, and
+  gated in front of that.** `description` is prose, and prose substituted raw
+  into YAML is YAML: a colon makes the document unparseable, a `#` truncates it
+  silently, and a newline followed by an indented key adds a `metadata.annotations`
+  entry nobody declared to a document that then **validates with zero findings**.
+  All three were reachable and are now not. `substitutions()` publishes
+  `description_yaml`, `description_markdown`, and `description_python` and never
+  the raw string, so there is no key that would render prose unescaped; and the
+  parameter gate refuses a description that is not a single line of printable
+  text, so an author is told rather than handed a document with a `\n` in the
+  middle of a sentence. A suite asserts the round trip character for character,
+  over both profiles, for eleven descriptions a person would plausibly type — six
+  of which fail without the emitters.
 - **The runtime image digest and the model bytes are template-owned, not typed by
   an author.** A digest an author pastes is a digest nobody checked, so a generated
   `synchronous-llm` workload carries the pair ADR 0002 selected, and a test

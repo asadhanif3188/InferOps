@@ -13,6 +13,8 @@ renders to is asserted by the suite, never stored beside it.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from inferops.scaffolding import WorkloadTemplateParameters
 
 #: A minimal real workload: every required parameter supplied, every optional one
@@ -111,3 +113,54 @@ MOCK_CASES: tuple[WorkloadTemplateParameters, ...] = (
 def case_id(parameters: WorkloadTemplateParameters) -> str:
     """A readable test identifier for one case."""
     return parameters.name
+
+
+# --------------------------------------------------------------------------
+# Descriptions that are ordinary prose and hostile YAML
+# --------------------------------------------------------------------------
+#
+# `description` is the only free-text parameter: the schema constrains it to a
+# length and nothing else, because a description is prose. Prose substituted raw
+# into a YAML document is not prose, it is YAML, and the three failure modes
+# below are what that costs — an unparseable document, a silently truncated one,
+# and one that validates while carrying a field nobody declared.
+#
+# Every string here is something a person would plausibly type. None of it is an
+# attack; the first entry is a sentence with a colon in it.
+
+ACCEPTED_DESCRIPTIONS: tuple[str, ...] = (
+    "chat: escalates below confidence 0.5",
+    "summarises a claim narrative # for a human reviewer",
+    "- a leading dash, which YAML reads as a sequence entry",
+    "quotes \"like these\" and 'these' and a backslash \\ too",
+    "braces {like these} and a dollar $sign and a percent 100%",
+    "pipes | and backticks `code` and a table |---|---| in prose",
+    "markdown *emphasis*, _underscores_, [a link](x), and <html>",
+    "an ampersand & an asterisk * an at-sign @ and a tab-free colon:",
+    "  leading and trailing spaces  ",
+    "annotations: inferops.io/not-a-real-key: not-a-real-value",
+    "a" * 500,
+)
+
+#: Descriptions the parameter gate refuses outright. Each carries a character
+#: that is a *structural* change in at least one of the three output formats
+#: rather than a character in a sentence.
+REFUSED_DESCRIPTIONS: tuple[str, ...] = (
+    "a newline\nand a second line",
+    "a carriage return\rand more",
+    "a tab\tbetween words",
+    "a null\x00byte",
+    "an escape\x1b[31m sequence",
+    "a next-line\u0085control",
+    "a line separator\u2028here",
+    "a paragraph separator\u2029here",
+    "a byte order mark\ufeffhere",
+    "a smuggled key:\n  annotations:\n    inferops.io/x: y",
+)
+
+
+def with_description(
+    base: WorkloadTemplateParameters, description: str
+) -> WorkloadTemplateParameters:
+    """One case with its description replaced, and nothing else changed."""
+    return replace(base, description=description)

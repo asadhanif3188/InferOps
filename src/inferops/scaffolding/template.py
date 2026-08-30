@@ -139,6 +139,90 @@ class RenderedWorkload:
         return tuple(sorted(self.files))
 
 
+# --------------------------------------------------------------------------
+# Escaping: one emitter per output format
+# --------------------------------------------------------------------------
+#
+# Every parameter but one is constrained to a character set that is inert in
+# every format a template renders into: DNS labels, kebab-case names, semantic
+# versions, Kubernetes quantities, and closed vocabularies. `description` is the
+# exception. The schema puts no character constraint on it and neither does this
+# template, because a description is prose and prose contains colons.
+#
+# Prose substituted raw into a YAML document is not prose, it is YAML. A colon
+# makes the document unparseable; a `#` truncates it silently; a newline followed
+# by two spaces and a key adds a field nobody declared, and the result validates,
+# because an injected `metadata.annotations` entry is indistinguishable from a
+# real one. So the value is emitted through the escaper for the format it lands
+# in, and the parameter gate refuses the control characters that would be a
+# structural change in any of the three.
+#
+# Two defences, deliberately. The gate is the one that gives an author a reason;
+# the escaper is the one that survives somebody loosening the gate.
+
+#: Characters that are a line or paragraph break somewhere in the YAML, Markdown,
+#: or Python this template renders. Escaped rather than passed through.
+_YAML_FORCE_ESCAPE: Final = frozenset(
+    {
+        "\u0085",  # NEL, a line break in YAML 1.1
+        "\u2028",  # LINE SEPARATOR
+        "\u2029",  # PARAGRAPH SEPARATOR
+        "\ufeff",  # BOM, which a reader would take as a document marker
+    }
+)
+
+#: Markdown's inline-active characters. Escaped in a description so that a
+#: workload named after a `*` or carrying a `|` cannot restructure the quick
+#: start's table or open an emphasis run that swallows the rest of a paragraph.
+_MARKDOWN_ACTIVE: Final = frozenset("\\`*_[]<>#|")
+
+
+def yaml_double_quoted(value: str) -> str:
+    """One string as a YAML double-quoted scalar, escapes and quotes included.
+
+    The double-quoted style is the only YAML scalar style that can carry every
+    character, so it is the one used rather than the one chosen per value: a
+    quoting rule with a condition in it is a quoting rule with a case nobody
+    tested.
+    """
+    out = ['"']
+    for character in value:
+        code = ord(character)
+        if character in {"\\", '"'}:
+            out.append("\\" + character)
+        elif character == "\n":
+            out.append("\\n")
+        elif character == "\t":
+            out.append("\\t")
+        elif character == "\r":
+            out.append("\\r")
+        elif code < 0x20 or code == 0x7F or 0x80 <= code <= 0x9F:
+            out.append(f"\\x{code:02x}")
+        elif character in _YAML_FORCE_ESCAPE:
+            out.append(f"\\u{code:04x}")
+        else:
+            out.append(character)
+    out.append('"')
+    return "".join(out)
+
+
+def markdown_inline(value: str) -> str:
+    """One string as inline Markdown text, active characters escaped."""
+    return "".join(
+        "\\" + character if character in _MARKDOWN_ACTIVE else character
+        for character in value
+    )
+
+
+def python_literal(value: str) -> str:
+    """One string as a Python source literal, quotes included.
+
+    ``repr`` is the escaper here because it is the one the interpreter itself
+    round-trips: whatever it produces, ``eval`` reads back as the same string.
+    """
+    return repr(value)
+
+
 def substitutions(parameters: WorkloadTemplateParameters) -> dict[str, str]:
     """Every value a template may name, for a parameter set already validated.
 
@@ -149,13 +233,22 @@ def substitutions(parameters: WorkloadTemplateParameters) -> dict[str, str]:
     The profile itself is **not** among them. Each template is written for one
     profile and states it as a literal, so a template that had to be handed its
     own profile would be a template that could render the wrong one.
+
+    **The description arrives three times, once per output format**, and the raw
+    string is not among them. A template names ``description_yaml``,
+    ``description_markdown``, or ``description_python`` and gets a value already
+    escaped for where it is going; there is no key that would render prose into a
+    document unescaped, which is what makes the escaping impossible to forget
+    rather than merely documented.
     """
     profile = Profile(parameters.profile)
     values: dict[str, str] = {
         "name": parameters.name,
         "owner": parameters.owner,
         "version": parameters.version,
-        "description": parameters.description,
+        "description_yaml": yaml_double_quoted(parameters.description),
+        "description_markdown": markdown_inline(parameters.description),
+        "description_python": python_literal(parameters.description),
         "environment": parameters.environment,
         "serving_capability": SERVING_CAPABILITY_FOR[profile].value,
         "model_ref": parameters.resolved_model_ref(),

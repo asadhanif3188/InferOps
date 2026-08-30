@@ -53,10 +53,14 @@ from inferops.scaffolding import (
     surviving_placeholders,
 )
 from tests.support.workload_template_cases import (
+    ACCEPTED_DESCRIPTIONS,
+    MINIMAL_MOCK,
+    MINIMAL_REAL,
     MOCK_CASES,
     REAL_CASES,
     REPRESENTATIVE_CASES,
     case_id,
+    with_description,
 )
 from tools.contract_validation.workload import validate
 
@@ -114,6 +118,11 @@ PLATFORM_IMPLEMENTATION_MODULES = (
     "inferops.scaffolding",
     "tools.contract_validation",
 )
+
+
+def describe(description: str) -> str:
+    """A readable, stable identifier for one description case."""
+    return description[:32].strip() or "empty"
 
 
 def render(parameters: WorkloadTemplateParameters) -> RenderedWorkload:
@@ -666,3 +675,87 @@ def test_a_generated_workload_writes_only_the_three_files_it_declares(
         if path.is_file()
     )
     assert tuple(written) == EXPECTED_OUTPUT_PATHS
+
+
+# --------------------------------------------------------------------------
+# The one free-text parameter, and the three formats it is rendered into
+# --------------------------------------------------------------------------
+#
+# `description` is prose, and prose contains colons. Substituted raw into YAML it
+# stops being prose: `a: b` makes the document unparseable, `#` truncates it in
+# silence, and a newline followed by an indented key adds a field nobody declared
+# to a document that then validates. All three were reachable before the emitter
+# existed, so all three are asserted here rather than trusted to a code review.
+
+
+@pytest.mark.parametrize("description", ACCEPTED_DESCRIPTIONS, ids=describe)
+@pytest.mark.parametrize("case", (MINIMAL_MOCK, MINIMAL_REAL), ids=case_id)
+def test_a_description_that_is_prose_survives_as_prose(
+    case: WorkloadTemplateParameters, description: str
+) -> None:
+    """The round trip, character for character, for both profiles.
+
+    Not "it renders" and not "it validates" — those were both true of the
+    document that silently dropped everything after a `#`. The assertion is that
+    what comes back out of the YAML is exactly what went in.
+    """
+    parameters = with_description(case, description)
+    document = rendered_contract(parameters)
+    assert document["metadata"]["description"] == description
+
+
+@pytest.mark.parametrize("description", ACCEPTED_DESCRIPTIONS, ids=describe)
+@pytest.mark.parametrize("case", (MINIMAL_MOCK, MINIMAL_REAL), ids=case_id)
+def test_a_description_cannot_add_a_field_nobody_declared(
+    case: WorkloadTemplateParameters, description: str
+) -> None:
+    """The injection this template's own emitter exists to make unreachable.
+
+    `annotations` is a legitimate extension point, so an injected one is
+    indistinguishable from a real one to every validator in the pipeline. The
+    only place it can be caught is here, by asserting the shape of what was
+    generated rather than its validity.
+    """
+    document = rendered_contract(with_description(case, description))
+    assert set(document["metadata"]) == {"name", "version", "owner", "description"}
+    assert set(document) == {"apiVersion", "kind", "metadata", "spec"}
+
+
+@pytest.mark.parametrize("description", ACCEPTED_DESCRIPTIONS, ids=describe)
+@pytest.mark.parametrize("case", (MINIMAL_MOCK, MINIMAL_REAL), ids=case_id)
+def test_a_document_carrying_any_accepted_description_still_validates(
+    case: WorkloadTemplateParameters, description: str
+) -> None:
+    findings = validate(rendered_contract(with_description(case, description)))
+    assert findings == [], [found.as_dict() for found in findings]
+
+
+@pytest.mark.parametrize("description", ACCEPTED_DESCRIPTIONS, ids=describe)
+@pytest.mark.parametrize("case", (MINIMAL_MOCK, MINIMAL_REAL), ids=case_id)
+def test_the_generated_test_skeleton_is_valid_python_for_any_description(
+    case: WorkloadTemplateParameters, description: str
+) -> None:
+    """A quote in a description used to land inside a Python string literal."""
+    generated = render(with_description(case, description)).files[
+        "tests/test_workload_contract.py"
+    ]
+    compile(generated, "test_workload_contract.py", "exec")
+
+
+@pytest.mark.parametrize("description", ACCEPTED_DESCRIPTIONS, ids=describe)
+@pytest.mark.parametrize("case", (MINIMAL_MOCK, MINIMAL_REAL), ids=case_id)
+def test_a_description_stays_one_paragraph_in_the_quick_start(
+    case: WorkloadTemplateParameters, description: str
+) -> None:
+    """A pipe or a fence in prose must not restructure the README around it."""
+    readme = render(with_description(case, description)).files["README.md"]
+    assert readme.count("```") % 2 == 0, "an unbalanced code fence was rendered"
+    body_pipes = [
+        line
+        for line in readme.splitlines()
+        if "|" in line and not line.lstrip().startswith("|")
+    ]
+    for line in body_pipes:
+        for index, character in enumerate(line):
+            if character == "|":
+                assert index and line[index - 1] == "\\", line

@@ -26,7 +26,7 @@ TEMPLATE: Final = """
 > be used as evidence of real serving behaviour — not a weaker claim, no claim.
 > The rule is `docs/serving/mock-and-real-boundary.md` in the InferOps repository.
 
-${description}
+${description_markdown}
 
 | | |
 |---|---|

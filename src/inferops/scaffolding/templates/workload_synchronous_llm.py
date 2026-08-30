@@ -37,7 +37,7 @@ metadata:
   name: ${name}
   version: ${version}
   owner: ${owner}
-  description: ${description}
+  description: ${description_yaml}
 
 spec:
   profile: synchronous-llm

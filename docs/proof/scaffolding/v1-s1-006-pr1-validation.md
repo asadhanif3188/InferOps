@@ -38,7 +38,9 @@ path rather than a new layer being invented for it.
 | Distribution code added | `src/inferops/scaffolding/{__init__,parameters,template}.py`, `src/inferops/scaffolding/templates/` (seven modules) |
 | Distribution code changed | none |
 | Tests added | `tests/scaffolding/{test_workload_template_rendering,test_workload_template_parameters}.py`, `tests/support/workload_template_cases.py` |
+| Files changed in response to review | `src/inferops/scaffolding/{parameters,template}.py`, all six template modules, both suites, `tests/support/workload_template_cases.py`, and the prose in [the template document](../../scaffolding/workload-template.md) and [the changelog](../../../CHANGELOG.md) |
 | Documents added | [`docs/scaffolding/workload-template.md`](../../scaffolding/workload-template.md), this record |
+| Records amended for accuracy | [`.github/secret-scanning-allowlist.md`](../../../.github/secret-scanning-allowlist.md) — the fourth suite using the published AWS placeholder key is named |
 | Accepted records updated to stay true | `docs/testing/test-strategy.{md,v1alpha1.json}` — the `contract-and-schema` layer gained a second path and a second command |
 | Accepted records **not** changed | Every ADR, the workload contract schema, the compatibility matrix, every committed fixture, the telemetry catalog, the security baseline, the cost method, the inference API surface, and `pyproject.toml`. **No row of the contract, and no fixture, was edited** |
 | Records the pinned values were copied from | [the compatibility matrix](../../../contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json) and [the committed valid fixture](../../../contracts/workload/examples/valid/synchronous-llm-local.yaml), and a test compares both directions |
@@ -61,20 +63,25 @@ whatever the host had.
 
 The template was exercised from four representative parameter sets — a minimal
 real workload, a minimal mock, and one of each with every optional parameter
-supplied — held in `tests/support/workload_template_cases.py` and shared by both
-suites so the two argue about the same inputs.
+supplied — and from twenty-one descriptions: eleven that are ordinary prose and
+must round-trip, and ten that carry a line break or a control character and must
+be refused. All of it is held in `tests/support/workload_template_cases.py` and
+shared by both suites, so the two argue about the same inputs.
+
+The description cases were added after independent review; what they are for, and
+what they caught, is in [Independent review](#independent-review).
 
 ## Results
 
 | Command | Result |
 |---|---|
 | `uv run --locked ruff check .` | `All checks passed!` |
-| `uv run --locked ruff format --check .` | `184 files already formatted` |
+| `uv run --locked ruff format --check .` | `185 files already formatted` |
 | `uv run --locked python -m mypy` | `Success: no issues found in 99 source files` |
-| `uv run --locked python -m pytest -q` | `4023 passed, 25 skipped, 14 deselected` |
-| `uv run --locked python -m pytest tests/scaffolding -q` | `146 passed` |
+| `uv run --locked python -m pytest -q` | `4165 passed, 25 skipped, 14 deselected` |
+| `uv run --locked python -m pytest tests/scaffolding -q` | `287 passed` |
 | `uv run --locked python -m pytest tests/contracts -q` | `191 passed, 7 skipped` |
-| `uv run --locked python -m pytest -m contract -q` | `337 passed, 7 skipped, 3718 deselected` |
+| `uv run --locked python -m pytest -m contract -q` | `478 passed, 7 skipped, 3719 deselected` |
 | `uv run --locked python -m pytest tests/testing tests/architecture tests/domain -q` | `1352 passed, 18 skipped` |
 | `uv build` | Wheel and source distribution built; the wheel carries the `inferops` package and its metadata and nothing else, including the seven new template modules |
 | `git diff --check` | No output |
@@ -88,7 +95,8 @@ default expression, which is what the default lane is for. None was invoked.
 
 ### A generated workload validates without a source edit
 
-Each of the four cases is rendered and the resulting document is put through
+Each of the four cases, and each of the eleven accepted descriptions on both
+profiles, is rendered and the resulting document is put through
 `tools.contract_validation.validate` — the same function
 `python -m tools.contract_validation` runs and the same one every committed
 fixture passes through — and then through `inferops.domain.workload`'s own
@@ -138,6 +146,21 @@ committed valid fixture. The serving capability the template derives per profile
 is compared against the schema's own conditional branches, and the two registered
 model identities are compared against the two committed valid fixtures.
 
+### Free text is escaped for the format it lands in, and gated in front of that
+
+`description` is the only parameter the schema leaves unconstrained beyond a
+length, because it is prose. Eleven descriptions a person would plausibly type —
+carrying a colon, a `#`, quotes, a backslash, braces, a pipe, Markdown syntax, and
+one five hundred characters long — are rendered on both profiles, and each is
+asserted to come back out of the YAML exactly as it went in, to add no key to
+`metadata` that nobody declared, to leave the document validating, to leave the
+generated skeleton compiling, and to leave the quick start's structure intact.
+Ten more are asserted to be **refused** at the gate rather than escaped into
+silence.
+
+Six of the eleven fail if the emitter is removed, which is what makes this a
+regression test rather than a restatement.
+
 ### The generated test skeleton is a test, not a paragraph shaped like one
 
 Each case is written into pytest's temporary directory, the generated module is
@@ -168,11 +191,14 @@ executed either.
 ceiling. That agrees; there is no gap to report here, unlike the `mock`/`local-static`
 imprecision earlier records carry.
 
-**"Validates without a source edit" is proved for four parameter sets, not for
-every one.** The sets were chosen to span both profiles, both ends of the replica
-range, an accelerator and no accelerator, and every optional parameter supplied or
-defaulted. That is coverage by construction of the parameter space's edges, not
-exhaustive enumeration of it.
+**"Validates without a source edit" is proved for four parameter sets and
+twenty-one descriptions, not for every possible input.** The parameter sets span
+both profiles, both ends of the replica range, an accelerator and no accelerator,
+and every optional parameter supplied or defaulted. The descriptions were added
+after review found that the original four avoided every YAML-significant
+character; they now cover the ones that broke the renderer and the ones the gate
+refuses. That is coverage of the edges the failure modes actually live on, not
+exhaustive enumeration.
 
 **The second-engineer walkthrough the parent story asks for has not happened.** No
 person who is not the author has generated a workload from this template. The
@@ -234,8 +260,24 @@ The change was reviewed by a second reader before it was finalised, against
 `CONTRIBUTING.md`, [the mock and real boundary](../../serving/mock-and-real-boundary.md),
 [the workload contract](../../contracts/workload-contract.md), and
 [the test strategy](../../testing/test-strategy.md), with every command in
-[Results](#results) re-run independently. The review disposition is recorded in
-the pull request that carries this change.
+[Results](#results) re-run independently. The reviewer reported no finding in the
+mock-and-real boundary, in scope, in the accepted-record edits, in leakage paths,
+or in the architecture-boundary compliance, and **two findings in the one
+free-text parameter**, both of which were reproduced against the running code
+before they were accepted:
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| `description` was substituted **unquoted** into the generated YAML. A colon made the document unparseable; a `#` truncated it silently and the truncated document still validated; a newline followed by an indented key added a `metadata.annotations` entry nobody declared, and that document validated with **zero findings** from both the repository validator and the contract package | critical | **Fixed.** `substitutions()` no longer publishes the raw string at all. It publishes `description_yaml`, `description_markdown`, and `description_python`, each escaped for its format, and the parameter gate refuses a description that is not a single line of printable text. Twenty-one description cases were added; six of them fail if the emitter is removed |
+| The same raw value flowed into the two quick starts, where a pipe, a fence, or Markdown syntax could restructure the page around it | high | **Fixed** by the same change. The Markdown emitter escapes the inline-active characters, the gate refuses the line breaks a block-level injection would need, and a check asserts the rendered README keeps balanced fences and no unescaped pipe outside its tables |
+
+Both fixes and the checks covering them are in this change, and every result above
+was re-run after them. The reviewer's third observation — that the prose claimed
+this property as *checked* on the strength of four descriptions that happened to
+avoid every YAML-significant character — was correct, and
+[the template document](../../scaffolding/workload-template.md),
+[the changelog](../../../CHANGELOG.md), and the
+[limitations](#limitations) section above were rewritten rather than left standing.
 
 ## Authorisation
 

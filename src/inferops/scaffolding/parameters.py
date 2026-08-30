@@ -82,6 +82,18 @@ SERVING_CAPABILITY_FOR: Final[dict[Profile, ServingCapability]] = {
 #: scaffolder that quietly renames what it was asked for teaches nobody the rule.
 MOCK_NAME_SUFFIX: Final = "-mock"
 
+#: Characters that are not printable text even though they are not C0 controls:
+#: two Unicode line separators, the next-line control, and a byte-order mark. A
+#: description carrying one of these is refused for the same reason a newline is.
+_NON_PRINTING: Final = frozenset(
+    {
+        "\u0085",  # NEL
+        "\u2028",  # LINE SEPARATOR
+        "\u2029",  # PARAGRAPH SEPARATOR
+        "\ufeff",  # BOM
+    }
+)
+
 #: The environment a mock workload is pinned to. The schema fixes it; the check
 #: exists here so the refusal names the parameter the author typed.
 MOCK_ENVIRONMENT: Final = Environment.CI
@@ -294,6 +306,42 @@ def _check_vocabulary(
     return True
 
 
+def _check_single_line(
+    errors: list[TemplateParameterError],
+    parameter: str,
+    value: str,
+) -> bool:
+    """Free text that is one line of printable characters, and nothing else.
+
+    Stricter than the schema, which puts no character constraint on a
+    description at all. The reason is where the value goes: a description is
+    rendered into a YAML scalar, into a Markdown paragraph, and into a Python
+    source literal, and a line break or a control character is a *structural*
+    change in all three rather than a character in a sentence. It is refused
+    here so an author is told, and it is escaped at the emitter as well, because
+    a gate and an escaper protect against different mistakes.
+    """
+    printable = all(
+        ord(character) >= 0x20
+        and ord(character) != 0x7F
+        and not 0x80 <= ord(character) <= 0x9F
+        and character not in _NON_PRINTING
+        for character in value
+    )
+    if printable:
+        return True
+    errors.append(
+        TemplateParameterError(
+            parameter,
+            "must be a single line of printable text; a line break, a tab, or a "
+            "control character is a structural change in the YAML, the Markdown, "
+            "and the Python this value is rendered into, not a character in a "
+            "sentence",
+        )
+    )
+    return False
+
+
 def _check_integer(
     errors: list[TemplateParameterError],
     parameter: str,
@@ -357,7 +405,8 @@ def validate_parameters(
         DataClassification,
         "data classifications",
     )
-    _check_constrained(errors, "description", parameters.description, Description)
+    if _check_constrained(errors, "description", parameters.description, Description):
+        _check_single_line(errors, "description", parameters.description)
     _check_constrained(errors, "version", parameters.version, SemanticVersion)
     accelerator_ok = _check_vocabulary(
         errors,

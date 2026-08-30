@@ -65,6 +65,7 @@ def test_the_workload_still_declares_the_identity_it_was_generated_with() -> Non
     assert str(contract.metadata.name) == "${name}"
     assert str(contract.metadata.owner) == "${owner}"
     assert str(contract.metadata.version) == "${version}"
+    assert str(contract.metadata.description) == ${description_python}
 
 
 def test_the_workload_still_declares_the_serving_shape_it_was_generated_with() -> None:

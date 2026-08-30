@@ -42,8 +42,10 @@ from inferops.scaffolding import (
     validate_parameters,
 )
 from tests.support.workload_template_cases import (
+    ACCEPTED_DESCRIPTIONS,
     MINIMAL_MOCK,
     MINIMAL_REAL,
+    REFUSED_DESCRIPTIONS,
     REPRESENTATIVE_CASES,
     case_id,
 )
@@ -90,6 +92,11 @@ def altered(
     what keeps a ``# type: ignore`` out of every one of those lines.
     """
     return replace(base, **overrides)
+
+
+def describe(description: str) -> str:
+    """A readable, stable identifier for one description case."""
+    return repr(description[:32])
 
 
 def reasons_for(parameters: WorkloadTemplateParameters, parameter: str) -> list[str]:
@@ -433,3 +440,36 @@ def test_the_refusal_summary_names_the_parameters_and_no_values() -> None:
     assert "name" in summary
     assert "cpu" in summary
     assert "Bad Name" not in summary
+
+
+@pytest.mark.parametrize("description", REFUSED_DESCRIPTIONS, ids=describe)
+def test_a_description_that_is_not_one_line_of_printable_text_is_refused(
+    description: str,
+) -> None:
+    """The gate in front of the emitter, and the fourth tightening on the schema.
+
+    A line break, a tab, or a control character is a structural change in the
+    YAML, the Markdown, and the Python a description is rendered into. The
+    emitter escapes them anyway; the gate exists so an author is told rather than
+    handed a document with `\\n` in the middle of a sentence.
+    """
+    reasons = reasons_for(altered(MINIMAL_REAL, description=description), "description")
+    assert reasons
+    assert "printable" in reasons[0]
+
+
+@pytest.mark.parametrize("description", REFUSED_DESCRIPTIONS, ids=describe)
+def test_a_refused_description_is_never_repeated_back(description: str) -> None:
+    errors = validate_parameters(altered(MINIMAL_REAL, description=description))
+    assert errors
+    for error in errors:
+        assert description not in error.reason
+        assert description not in str(error)
+
+
+@pytest.mark.parametrize("description", ACCEPTED_DESCRIPTIONS, ids=describe)
+def test_a_description_that_is_ordinary_prose_is_accepted(description: str) -> None:
+    """A colon in a sentence is a sentence, and must not be refused for it."""
+    assert (
+        reasons_for(altered(MINIMAL_REAL, description=description), "description") == []
+    )

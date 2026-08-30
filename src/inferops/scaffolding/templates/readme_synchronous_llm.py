@@ -21,7 +21,7 @@ OUTPUT_PATH: Final = "README.md"
 TEMPLATE: Final = """
 # ${name}
 
-${description}
+${description_markdown}
 
 | | |
 |---|---|

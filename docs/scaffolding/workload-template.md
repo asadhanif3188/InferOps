@@ -87,8 +87,10 @@ repository has already published the decision behind it.
 
 Every format, vocabulary, and bound above is imported from
 `inferops.domain.workload.values`, which is itself compared against the published
-schema by a test. The template cannot accept a value the contract would refuse,
-and cannot refuse one the contract would accept.
+schema by a test. The template cannot accept a value the contract would refuse.
+It refuses one thing the contract would accept — a `description` that is not a
+single line of printable text — and that, with the three other tightenings, is
+listed below rather than left for a reader to discover.
 
 ### The model identity is a closed set
 
@@ -121,7 +123,7 @@ compatibility matrix with evidence behind it first.
 
 ## Rules stricter than the schema
 
-Three, and each is a refusal rather than a silent correction.
+Four, and each is a refusal rather than a silent correction.
 
 1. **A `mock-llm` workload's name must end in `-mock`.** Rule 1 of
    [the mock and real serving boundary](../serving/mock-and-real-boundary.md) is
@@ -138,7 +140,54 @@ Three, and each is a refusal rather than a silent correction.
    workload with no description gives a reviewer nothing to check the rest of the
    document against.
 
+4. **`description` must be a single line of printable text.** The schema puts
+   no character constraint on it. A line break, a tab, or a control character is
+   a structural change in the YAML, the Markdown, and the Python a description is
+   rendered into rather than a character in a sentence, and the section on free
+   text below is what that costs when it is not refused.
+
 Everything else the template refuses, the contract refuses too.
+
+## Free text, and the three formats it lands in
+
+`description` is the only parameter that is prose. Every other one is constrained
+to a character set that is inert wherever it is rendered: DNS labels, kebab-case
+names, semantic versions, Kubernetes quantities, and closed vocabularies. A
+description is not, because a description is a sentence and sentences contain
+colons.
+
+**Prose substituted raw into a YAML document is not prose, it is YAML.** Three
+things go wrong, and all three were reachable before the emitters below existed:
+
+| Description | What the generated document did |
+|---|---|
+| `chat: escalates below confidence 0.5` | Failed to parse at all. `yaml.safe_load` raises `mapping values are not allowed here` |
+| `summarises a claim narrative # for a human reviewer` | Parsed, validated, and **silently** carried `description: summarises a claim narrative` — everything after the `#` read as a YAML comment |
+| A description with a newline, two spaces, and `annotations:` | Parsed, **validated with zero findings**, and carried a `metadata.annotations` entry nobody declared. `annotations` is a legitimate extension point, so an injected one is indistinguishable from a real one to every validator in the pipeline |
+
+Two defences now stand in front of that, and they protect against different
+mistakes.
+
+**The gate.** `description` must be a single line of printable text. A line
+break, a tab, or a control character is a *structural* change in the YAML, in the
+Markdown, and in the Python this value is rendered into, rather than a character
+in a sentence, so the parameter set is refused and the author is told. This is the
+fourth rule stricter than the schema.
+
+**The emitters.** `substitutions()` never hands a template the raw string. It
+publishes `description_yaml`, `description_markdown`, and `description_python`,
+each already escaped for where it is going — a YAML double-quoted scalar,
+Markdown with its inline-active characters escaped, and a Python source literal
+from `repr`. There is no key that would render prose into a document unescaped,
+which is what makes the escaping impossible to forget rather than merely
+documented.
+
+A colon, a `#`, a quote, a backslash, a pipe, a brace, and a 500-character
+description are all ordinary input and all round-trip character for character. A
+suite asserts that over both profiles: that the value comes back out of the YAML
+exactly as it went in, that the generated document's `metadata` gains no key
+nobody declared, that the document still validates, that the generated test
+skeleton still compiles, and that the quick start keeps its structure.
 
 ## Refusals
 
@@ -211,7 +260,11 @@ the `contract` marker. It establishes that:
 - a generated mock declares itself a mock in its document, its name, and its prose,
   and cites no runtime proof;
 - the generated test skeleton **imports and passes** against the workload rendered
-  beside it — a skeleton that does not run is a file that looks like coverage.
+  beside it — a skeleton that does not run is a file that looks like coverage;
+- a description that is ordinary prose — a colon, a `#`, a quote, a backslash, a
+  pipe, a brace, five hundred characters — round-trips out of the generated YAML
+  character for character, adds no field nobody declared, still validates, and
+  still compiles inside the generated test skeleton.
 
 It establishes nothing about serving. Nothing here starts a runtime, loads a
 model, binds a socket, or reaches a cluster.
