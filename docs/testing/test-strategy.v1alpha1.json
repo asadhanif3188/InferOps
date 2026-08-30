@@ -355,8 +355,8 @@
       "requiresCluster": false,
       "publishable": true,
       "v1Status": "implemented",
-      "evidenceRef": "docs/proof/serving/v1-s1-005-pr1-validation.md",
-      "notes": "This is the layer most at risk of being read as more than it is. It proves the consumer and the contract; it proves nothing about a provider. V1-S1-005-PR1 is what made it real: the API exists, and this layer drives it end to end against the labelled mock adapter and against controlled adapter doubles. Two limits travel with every result it produces. Nothing here crosses a socket - the API implements the ASGI calling convention, this repository ships no server, and the suites drive the application through its own interface - so a result establishes what the application decides and nothing about HTTP. And the canonical error body it asserts is the subset V1-S1-005-PR2 standardises, so the layer's canonical-error obligation is partly met rather than met."
+      "evidenceRef": "docs/proof/serving/v1-s1-005-pr2-validation.md",
+      "notes": "This is the layer most at risk of being read as more than it is. It proves the consumer and the contract; it proves nothing about a provider. V1-S1-005-PR1 is what made it real: the API exists, and this layer drives it end to end against the labelled mock adapter and against controlled adapter doubles. V1-S1-005-PR2 closed its canonical-error obligation - the whole error body, every condition the accepted surface maps, and the configuration-driven adapter selection are exercised here. Two limits still travel with every result it produces. Nothing here crosses a socket - the API implements the ASGI calling convention, this repository ships no server, and the suites drive the application through its own interface - so a result establishes what the application decides and nothing about HTTP. And a row that composes the real adapter does so over a transport that refuses to be called, which establishes the shape of the composition and nothing about a runtime."
     },
     {
       "layerId": "kubernetes-smoke",
@@ -401,7 +401,7 @@
       "publishable": true,
       "v1Status": "implemented",
       "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
-      "notes": "Executed once, on one host, on one day, by the manual procedure; one pre-registered threshold was not met and the record says so. V1-S1-004-PR2 added an executable suite under tests/realruntime that drives the same runtime through the serving adapter. That suite has not been run against a runtime: the lane is authorization-gated and was not entered, so the layer's cited evidence remains the manual trial."
+      "notes": "Executed once, on one host, on one day, by the manual procedure; one pre-registered threshold was not met and the record says so. V1-S1-004-PR2 added an executable suite under tests/realruntime that drives the same runtime through the serving adapter, and V1-S1-005-PR2 added a second that drives it through the InferOps API composed from configuration. Neither has been run against a runtime: the lane is authorization-gated and was not entered, so the layer's cited evidence remains the manual trial."
     },
     {
       "layerId": "failure-and-resilience",

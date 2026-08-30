@@ -14,7 +14,7 @@
 
   "implementationStatus": {
     "state": "served-in-part",
-    "meaning": "The InferOps API in src/inferops/api/ registers every endpoint below and answers it, through the serving adapter it is composed with. Nothing in this repository binds a socket: the application implements the ASGI calling convention and no server ships here, so what has been exercised is the application through its own interface and not a network. Three parts of the decided shape are deliberately unfinished and each is named where it applies: the canonical error body is served in a subset, /metrics publishes no series, and two accepted request members are validated and not forwarded. V1-S1-005-PR2 standardises the first, the telemetry work owns the second, and the third needs a superseding decision on the adapter interface.",
+    "meaning": "The InferOps API in src/inferops/api/ registers every endpoint below and answers it, through the serving adapter it is composed with, and which adapter that is comes from configuration: INFEROPS_SERVING_ADAPTER is required, it selects nothing when unstated, and a real selection whose runtime settings are absent is refused rather than answered with a mock. Nothing in this repository binds a socket: the application implements the ASGI calling convention and no server ships here, so what has been exercised is the application through its own interface and not a network. The canonical error body below is served in full, and every condition this record maps is reachable. Two parts of the decided shape remain deliberately unfinished and each is named where it applies: /metrics publishes no series, and two accepted request members are validated and not forwarded. The telemetry work owns the first, and the second needs a superseding decision on the adapter interface.",
     "publishedArtifacts": "none. No OpenAPI document, no JSON Schema for a request or a response body, and no addition to contracts/ is made by this record or by the component that serves it. Serving a shape is not publishing it as a contract artifact a client may bind to, and D9 stays undecided."
   },
 
@@ -46,7 +46,7 @@
       "purpose": "One synchronous, non-streaming chat completion.",
       "servingContractRole": "inference",
       "v1Status": "in-scope",
-      "servedBy": "inferops.api. Validation, translation, and the completion body are served; the canonical error body is served in the subset V1-S1-005-PR2 standardises, and max_tokens and temperature are validated and not forwarded because the frozen adapter interface carries neither.",
+      "servedBy": "inferops.api. Validation, translation, the completion body, and the canonical error body in full are served; max_tokens and temperature are validated and not forwarded because the frozen adapter interface carries neither.",
       "runtimeCounterpart": "POST /v1/chat/completions",
       "runtimeCounterpartObserved": true
     },

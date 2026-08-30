@@ -25,20 +25,21 @@ nothing about a network.
 handed to the application at construction. A mock that could become the live
 adapter by omission is what
 [the mock and real boundary](../../../docs/serving/mock-and-real-boundary.md)
-rule 5 forbids, so there is nothing to omit. Selecting an adapter from
-configuration is `V1-S1-005-PR2`'s.
+rule 5 forbids, so there is nothing to omit. :mod:`~inferops.api.selection` reads
+which adapter a deployment serves out of configuration, and it holds the same
+rule: the variable is required, an unstated or unrecognised value selects
+nothing, and a `real` selection whose settings are missing is refused rather than
+answered with a mock.
 
-*What it does not finish is named rather than left to be found.* The canonical
-error body is served in a deliberate subset — a code, a message, and the two
-identifiers — because `V1-S1-005-PR2` standardises the rest of it; `/metrics`
+*What it does not finish is named rather than left to be found.* `/metrics`
 serves an exposition with no series because the accepted telemetry catalog
 records that nothing in this repository emits a metric and the telemetry work
 owns instrumenting this API; and two accepted request members, ``max_tokens`` and
 ``temperature``, are validated and not forwarded because the serving adapter
-interface `V1-S1-002` froze has no parameter for either. All three are recorded
-in [the API document](../../../docs/serving/inference-api.md).
+interface `V1-S1-002` froze has no parameter for either. Both are recorded in
+[the API document](../../../docs/serving/inference-api.md).
 
-Eight modules, one job each:
+Nine modules, one job each:
 
 - :mod:`~inferops.api.application` — the ASGI application itself: the routes, the
   composition point, and the translation between the borrowed shape and the
@@ -51,8 +52,11 @@ Eight modules, one job each:
   every refusal it produces.
 - :mod:`~inferops.api.responses` — the bodies this API returns, and the rules the
   shapes do not state on their own.
-- :mod:`~inferops.api.errors` — the codes an edge refusal produces and the status
-  each failure carries, provisional until `V1-S1-005-PR2`.
+- :mod:`~inferops.api.errors` — the canonical error contract as a table of
+  conditions: the code, the ``retryable`` flag, and the status each refusal
+  carries, together.
+- :mod:`~inferops.api.selection` — which adapter is live, read from configuration
+  and refused when it is not stated.
 - :mod:`~inferops.api.metrics` — the metrics endpoint, and why it publishes no
   series.
 - :mod:`~inferops.api.lifecycle` — starting, serving, draining, and stopping, in
@@ -63,21 +67,28 @@ Eight modules, one job each:
 from __future__ import annotations
 
 from .application import (
-    ADAPTER_KIND_DISAGREEMENT,
-    DRAINING_MESSAGE,
     JSON_CONTENT_TYPE,
     MAX_REQUEST_BYTES,
-    UNEXPECTED_FAILURE_MESSAGE,
     ApiConfiguration,
     InferOpsApi,
 )
 from .errors import (
+    ADAPTER_KIND_DISAGREEMENT,
     CAPABILITY_UNAVAILABLE,
+    CONDITION_FOR_ADAPTER_CODE,
+    CONDITIONS,
     CONTRACT_INVALID,
-    EDGE_REFUSAL_STATUS,
-    STATUS_FOR_CANONICAL_CODE,
+    DRAINING_MESSAGE,
+    INTERNAL_ERROR,
+    MODEL_NOT_READY,
+    RATE_LIMITED,
+    REQUEST_TIMEOUT,
+    UNEXPECTED_FAILURE_MESSAGE,
+    UPSTREAM_TIMEOUT,
+    VERSION_UNSUPPORTED,
+    Condition,
     RequestRefused,
-    status_for,
+    condition_for,
 )
 from .lifecycle import (
     DEFAULT_DRAIN_TIMEOUT_MS,
@@ -102,11 +113,28 @@ from .responses import (
     models_body,
     ready_body,
 )
+from .selection import (
+    ACCEPTED_ADAPTERS,
+    ADAPTER_KIND_FOR,
+    ADAPTER_MOCK,
+    ADAPTER_REAL,
+    ENV_ADAPTER,
+    ENV_DRAIN_TIMEOUT_MS,
+    ENV_MAX_OUTPUT_TOKENS,
+    ENV_MODEL_IDENTIFIER,
+    ENV_REQUEST_TIMEOUT_MS,
+    OPTIONAL_ENVIRONMENT_VARIABLES,
+    REQUIRED_ENVIRONMENT_VARIABLES,
+    Selection,
+    build,
+    select,
+)
 from .surface import (
     ACCEPTED_MESSAGE_ROLES,
     ACCEPTED_REQUEST_FIELDS,
     CONTRACT_VERSION,
     CORRELATION_ID_HEADER,
+    ERROR_BODY_FIELDS,
     EXTENSION_MEMBER,
     HEADER_PREFIX,
     NOT_PASSED_THROUGH,
@@ -126,45 +154,67 @@ from .validation import (
 )
 
 __all__ = [
+    "ACCEPTED_ADAPTERS",
     "ACCEPTED_MESSAGE_ROLES",
     "ACCEPTED_REQUEST_FIELDS",
     "ADAPTER_KIND_DISAGREEMENT",
+    "ADAPTER_KIND_FOR",
+    "ADAPTER_MOCK",
+    "ADAPTER_REAL",
     "BOUND_METRIC_NAMES",
     "CAPABILITY_UNAVAILABLE",
+    "CONDITIONS",
+    "CONDITION_FOR_ADAPTER_CODE",
     "CONTRACT_INVALID",
     "CONTRACT_VERSION",
     "CORRELATION_ID_HEADER",
     "DEFAULT_DRAIN_TIMEOUT_MS",
     "DRAINING_MESSAGE",
-    "EDGE_REFUSAL_STATUS",
+    "ENV_ADAPTER",
+    "ENV_DRAIN_TIMEOUT_MS",
+    "ENV_MAX_OUTPUT_TOKENS",
+    "ENV_MODEL_IDENTIFIER",
+    "ENV_REQUEST_TIMEOUT_MS",
+    "ERROR_BODY_FIELDS",
     "EXPOSITION_CONTENT_TYPE",
     "EXTENSION_MEMBER",
     "HEADER_PREFIX",
+    "INTERNAL_ERROR",
     "JSON_CONTENT_TYPE",
     "MAX_REQUEST_BYTES",
+    "MODEL_NOT_READY",
     "NOT_PASSED_THROUGH",
+    "OPTIONAL_ENVIRONMENT_VARIABLES",
     "PATH_PREFIX",
+    "RATE_LIMITED",
     "REQUEST_ID_HEADER",
+    "REQUEST_TIMEOUT",
+    "REQUIRED_ENVIRONMENT_VARIABLES",
     "REQUIRED_REQUEST_FIELDS",
     "ROUTES",
     "SINGLE_MESSAGE_REASON",
     "STATUS_ALIVE",
-    "STATUS_FOR_CANONICAL_CODE",
     "STATUS_NOT_READY",
     "STATUS_READY",
     "SURFACE_DATA_REF",
     "SURFACE_DECISION_REF",
     "SURFACE_DOCUMENT_REF",
     "UNEXPECTED_FAILURE_MESSAGE",
+    "UPSTREAM_TIMEOUT",
+    "VERSION_UNSUPPORTED",
     "ApiConfiguration",
     "ApplicationLifecycle",
     "ChatCompletionRequest",
+    "Condition",
     "InferOpsApi",
     "LifecycleState",
     "RequestRefused",
     "Route",
+    "Selection",
     "ShuttingDown",
+    "build",
     "completion_body",
+    "condition_for",
     "declared_capabilities",
     "error_body",
     "exposition",
@@ -173,5 +223,5 @@ __all__ = [
     "models_body",
     "parse_chat_completion",
     "ready_body",
-    "status_for",
+    "select",
 ]

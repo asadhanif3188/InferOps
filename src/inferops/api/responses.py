@@ -35,7 +35,10 @@ The three members the runtime returns and this platform does not forward —
 ``system_fingerprint``, ``timings``, and ``prompt_tokens_details`` — never reach
 this module: the adapter drops them, and
 :data:`~inferops.api.surface.NOT_PASSED_THROUGH` is what a test checks a built
-body against.
+body against. A refusal is held to the same rule from the other direction: the
+message and the ``details`` of an error body are values this API produced, and
+:func:`error_body` has no parameter a caller-supplied value could arrive through
+except the member *name* the accepted refusal policy requires it to publish.
 """
 
 from __future__ import annotations
@@ -46,12 +49,20 @@ from ..domain.serving import (
     ModelMetadata,
     RuntimeMetadata,
 )
+from .errors import Condition
 from .surface import (
     ADAPTER_CAPABILITY_FOR,
     CAPABILITY_DETERMINISTIC_SAMPLING,
     CAPABILITY_MULTI_MODEL,
     COMPLETION_OBJECT,
     CONTRACT_VERSION,
+    ERROR_CODE,
+    ERROR_CONDITION_ID,
+    ERROR_DETAILS,
+    ERROR_MEMBER,
+    ERROR_MESSAGE,
+    ERROR_RETRY_AFTER_MS,
+    ERROR_RETRYABLE,
     EXTENSION_ADAPTER_KIND,
     EXTENSION_CONTRACT_VERSION,
     EXTENSION_CORRELATION_ID,
@@ -226,26 +237,50 @@ def ready_body(
 
 
 def error_body(
-    code: str,
+    condition: Condition,
     message: str,
     *,
     request_id: str,
     correlation_id: str,
+    adapter_kind: str,
+    member: str | None = None,
+    retry_after_ms: int | None = None,
 ) -> dict[str, object]:
-    """A refusal, in the provisional shape this change carries.
+    """A refusal, in the canonical error body the accepted record decided.
 
-    `ADR 0010` decided a canonical error body with a ``retryable`` flag and
-    optional ``retryAfterMs`` and ``details`` beside the four members below.
-    `V1-S1-005-PR2` is the change that standardises it; this is deliberately the
-    subset those endpoints cannot answer without, and it is a subset rather than
-    a variant so that PR2 adds members instead of renaming them.
+    `V1-S1-005-PR1` served ``code``, ``message``, ``requestId``, and
+    ``correlationId`` and recorded the rest as this change's. All seven members
+    are here now, and the subset PR1 chose was a subset rather than a variant so
+    that this change adds members instead of renaming them.
 
-    The message names a member and a constraint. It never carries a value read
-    out of the request, a runtime's own words, a stack trace, or a path.
+    ``retryable`` comes from the condition rather than from the code, because the
+    accepted record maps one code to both answers. ``retryAfterMs`` is present
+    only where a delay was decided rather than invented, which today is the drain
+    budget of a deployment that has begun draining. ``details`` carries the
+    condition identifier, the adapter kind that would have served the request,
+    and the member a refusal is about — three values this API produced. **It
+    never carries a value read out of the request**, a runtime's own words, a
+    stack trace, or a path, and neither does the message.
+
+    ``adapterKind`` travels in ``details`` because a refusal is a response, and
+    the accepted record's rule is that every response names the kind that served
+    it. A refusal that did not would be the one response where the mock and real
+    boundary is invisible.
     """
-    return {
-        "code": code,
-        "message": message,
+    details: dict[str, object] = {
+        ERROR_CONDITION_ID: condition.condition_id,
+        EXTENSION_ADAPTER_KIND: adapter_kind,
+    }
+    if member is not None:
+        details[ERROR_MEMBER] = member
+    body: dict[str, object] = {
+        ERROR_CODE: condition.code,
+        ERROR_MESSAGE: message,
         EXTENSION_REQUEST_ID: request_id,
         EXTENSION_CORRELATION_ID: correlation_id,
+        ERROR_RETRYABLE: condition.retryable,
+        ERROR_DETAILS: details,
     }
+    if retry_after_ms is not None:
+        body[ERROR_RETRY_AFTER_MS] = retry_after_ms
+    return body

@@ -10,6 +10,59 @@ once versioned releases begin.
 
 ### Added
 
+- **The canonical error contract, served in full and keyed on a condition rather
+  than a code.** Every refusal now carries `code`, `message`, `requestId`,
+  `correlationId`, `retryable`, and `details`, and `retryAfterMs` where a delay was
+  decided. The unit is a **condition** because the accepted record maps
+  `capability-unavailable` twice — to a runtime that cannot be reached, which is
+  retryable and a `503`, and to a caller asking for streaming, which is not and is
+  a `400` — so a code-keyed table would have to answer one of them wrongly. Nine
+  conditions are copied from
+  [the accepted record](docs/serving/inference-api-surface.v1alpha1.json) and
+  compared against it by a test; seven are this API's own, for routing, an
+  oversized body, a draining deployment, and an adapter contradicting its own
+  deployment, and each is marked as added rather than presented as accepted.
+  Described in [the API document](docs/serving/inference-api.md#errors).
+- **An adapter's own message no longer reaches a caller.** The previous change
+  forwarded it, which was safe because every canonical message in this repository
+  happens to be a constant — safe by review rather than by construction. An adapter
+  is the component closest to a runtime's error text, a mounted weight-file path,
+  an endpoint, and a prompt, and
+  [the redaction rules](docs/telemetry/redaction.md) name a provider error body as
+  the surface most likely to be logged, pasted into a ticket, and kept. A canonical
+  error raised below the edge is now answered with this API's own message for its
+  condition, and a suite raises messages carrying a path, a host, and a prompt
+  fragment to assert none of it comes back.
+- **Configuration-driven adapter selection, with no default and no fallback.**
+  `INFEROPS_SERVING_ADAPTER` is required and takes `mock` or `real`; unset, empty,
+  and unrecognised all select **nothing**, and a `real` selection whose runtime
+  settings are missing or malformed is **refused rather than answered with a
+  mock**. That is boundary rules 5 and 4 held at the one place a deployment is
+  assembled, and the suite for it is mostly refusals for that reason. The adapter
+  kind is **derived** from the selection rather than configured beside it, so no
+  configuration can compose a real adapter and label it `mock`; the existing check
+  that every adapter result declares the deployment's own kind catches the rest.
+  The mock's failure injection and latency get no variable at all — those are test
+  inputs, and a variable that made a deployment produce a canonical error on demand
+  would be reachable wherever the deployment ran.
+- **`version-unsupported` is reachable, from the only place a caller can name a
+  version.** A request to `/v2/chat/completions` names an API version this
+  deployment does not serve, which is a different refusal from `/healthz` — a path
+  nobody publishes. This surface reads no version header and the accepted record
+  defines no request-body extension member, so the path is where it is decided.
+- **End-to-end suites for both halves of the boundary.**
+  [`tests/api/test_api_end_to_end_mock.py`](tests/api/test_api_end_to_end_mock.py)
+  drives configuration to response for a success and for every failure the mock
+  can produce — reading the scenarios from the mock's own enumeration, whose
+  failing members *are* the canonical codes, so a code the domain gains will fail
+  the suite until this API maps it. Its real counterpart,
+  [`tests/realruntime/test_api_real_adapter_smoke.py`](tests/realruntime/test_api_real_adapter_smoke.py),
+  puts the API in front of the real adapter composed from configuration and is
+  **deselected by default**. **It has not been run against a runtime**: the lane is
+  authorization-gated and was not entered, and
+  [the validation record](docs/proof/serving/v1-s1-005-pr2-validation.md) says so
+  rather than presenting a skipped session as a green one.
+
 - **The user-facing InferOps API, which is the first component here that answers a
   request.** [`src/inferops/api/`](src/inferops/api/) registers the five endpoints
   [ADR 0010](docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md)
@@ -37,7 +90,7 @@ once versioned releases begin.
   there is nothing to omit — and the kind the deployment was composed with is
   checked against every result the adapter returns, so a `mock` deployment serving
   a `real`-labelled result is refused rather than published with a label nobody
-  can rely on. Selecting an adapter from configuration is the next change.
+  can rely on. Selecting that adapter from configuration is the entry above.
 - **The strict unknown-member policy, enforced rather than described.** A member
   outside the frozen subset is refused and the refusal names the member and never
   its value — including the upstream defaults a client library sends by habit,

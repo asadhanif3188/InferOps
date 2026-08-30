@@ -269,4 +269,13 @@ async def test_every_refusal_carries_the_identifiers_it_can_be_correlated_by(
     body = response.json()
     assert body["requestId"]
     assert body["correlationId"]
-    assert set(body) == {"code", "message", "requestId", "correlationId"}
+    # `retryAfterMs` is absent because this condition has no decided delay; the
+    # whole error contract is exercised in `test_api_error_contract.py`.
+    assert set(body) == {
+        "code",
+        "message",
+        "requestId",
+        "correlationId",
+        "retryable",
+        "details",
+    }
