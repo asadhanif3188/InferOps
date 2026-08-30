@@ -276,10 +276,12 @@
       "environment": "repository-only",
       "marker": "contract",
       "paths": [
-        "tests/contracts"
+        "tests/contracts",
+        "tests/scaffolding"
       ],
       "commands": [
-        "python -m pytest tests/contracts -q"
+        "python -m pytest tests/contracts -q",
+        "python -m pytest tests/scaffolding -q"
       ],
       "evidenceClass": "local-static",
       "maxCertification": "C0",
@@ -288,7 +290,7 @@
       "publishable": true,
       "v1Status": "implemented",
       "evidenceRef": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
-      "notes": null
+      "notes": "V1-S1-006-PR1 added the second path. The workload template renders a contract, and what it renders is held to the same schema and the same semantic rules as a committed fixture - by the same validator, not by a copy of it - so the checks belong to this layer rather than to a layer of their own."
     },
     {
       "layerId": "architecture-inventory",

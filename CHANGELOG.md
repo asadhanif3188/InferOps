@@ -10,6 +10,47 @@ once versioned releases begin.
 
 ### Added
 
+- **A reusable LLM workload template, in two profiles, with a declared parameter
+  set in front of it.** A generated workload is three files — the contract it
+  declares, the quick start a second engineer reads, and a test skeleton that
+  reads the contract back — and the same three whatever profile it is on, because
+  a profile-shaped filename becomes a profile-shaped build step downstream.
+  Rendering returns text: `render_workload` validates the whole parameter set,
+  refuses it with **every** reason at once, and then produces a mapping of path to
+  content. There is no partial result to clean up because this half has no file to
+  write; the command that writes one is `V1-S1-006-PR2`. Described in
+  [the template document](docs/scaffolding/workload-template.md).
+- **What the template renders is held to the published contract, not to a copy of
+  it.** The suite puts every rendered document through
+  `tools.contract_validation` — the same function every committed fixture goes
+  through — and then through `inferops.domain.workload`'s own validation pipeline,
+  so "generated output validates without a source edit" is a checked property
+  rather than a claim. Every format, vocabulary, and bound the parameter set
+  applies is imported from the domain's value objects, which are themselves
+  compared against the schema, so the template cannot accept a value the contract
+  would refuse.
+- **A generated mock says it is a mock in three places, and a generated workload
+  cites no evidence it has not produced.** The profile block, the workload's own
+  name — a `mock-llm` name must end in `-mock`, refused rather than silently
+  appended — and the prose a reader meets first. `evidence.proofRefs` is absent
+  from **both** profiles: a generated workload has executed nothing, and
+  pre-filling it with the feasibility record would hand every generated workload a
+  result produced by a different one. The mock and real quick starts stay distinct
+  in both directions, and a check asserts the mock does not offer the
+  real-runtime lane.
+- **Three rules stricter than the schema, each a refusal rather than a silent
+  correction**: the mock name suffix, an accelerator declaration that contradicts
+  itself, and a required `description`. Each is documented as a tightening, because
+  a tightening nobody wrote down is a tightening nobody can argue with. No refusal
+  repeats the value it refused, for the reason the domain's errors give.
+- **The runtime image digest and the model bytes are template-owned, not typed by
+  an author.** A digest an author pastes is a digest nobody checked, so a generated
+  `synchronous-llm` workload carries the pair ADR 0002 selected, and a test
+  compares every pinned value against the committed compatibility matrix and the
+  committed valid fixture. `modelRef` is a closed set for the same reason: the
+  catalogue holds one entry per serving capability, and naming the other profile's
+  identity is a single-word edit away from a document that would put a mock label
+  on a real serving path.
 - **The canonical error contract, served in full and keyed on a condition rather
   than a code.** Every refusal now carries `code`, `message`, `requestId`,
   `correlationId`, `retryable`, and `details`, and `retryAfterMs` where a delay was

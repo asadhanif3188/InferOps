@@ -138,7 +138,13 @@ contract is *accepted* are not implemented yet, so this layer does not cover the
 and the suite says which ones it is leaving alone.
 
 `contract-and-schema` validates the published schema, every valid and invalid
-fixture, and the exact refusal each rule produces. It runs today.
+fixture, and the exact refusal each rule produces. It runs today, over
+[`tests/contracts/`](../../tests/contracts/) and, since `V1-S1-006-PR1`, over
+[`tests/scaffolding/`](../../tests/scaffolding/) as well. The second path is here
+rather than in a layer of its own because what
+[the workload template](../scaffolding/workload-template.md) renders is a contract
+document, and it is held to the same schema and the same semantic rules as a
+committed fixture, by the same validator rather than by a copy of it.
 
 `architecture-inventory` holds the committed ownership boundary to its own rules,
 and holds the platform domain to the dependency rule by reading what every module
