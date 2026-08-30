@@ -55,6 +55,13 @@ shutdown.
 | `INFEROPS_MAX_OUTPUT_TOKENS` | no | The ceiling a request's `max_tokens` may not exceed. Absent means this deployment configures none, which is accurate: the ceiling depends on a context length ADR 0002 left undecided |
 | `INFEROPS_DRAIN_TIMEOUT_MS` | no | The budget a graceful shutdown gives in-flight work. Defaults to 15000, which is itself a default rather than a decision |
 
+Every number above is a duration or a token count, so **zero and below are
+refused** rather than accepted — and the two optional variables take their default
+only when they are *absent*. A supplied value is never quietly replaced by a
+different one, which is the failure an `or` between a parsed number and a default
+produces: a supplied `0` reads as an unset variable, and an operator who typed a
+number gets one they did not.
+
 A `real` selection reads the six `INFEROPS_LLAMA_SERVER_*` variables
 [the runtime configuration document](real-runtime-configuration.md) publishes as
 well. A `mock` selection reads none of them, and there is **no variable for the
@@ -71,6 +78,7 @@ whatever environment the deployment ran in.
 | `real`, with a runtime variable missing or malformed | Refused. **Never answered with a mock** |
 | `real`, with a mock-labelled model alias | Refused by the runtime settings, which is the mirror of the mock adapter refusing a real identity |
 | A second variable naming the adapter kind | Ignored. The kind is derived from the selection, so a real adapter cannot be labelled `mock` |
+| A number that is not one, or is zero or below | Refused, **naming the variable an operator set** rather than a constructor parameter nobody typed |
 
 A refusal names the variable and states the constraint. **It never repeats the
 value it refused** — an endpoint is exactly where a credential arrives, and an

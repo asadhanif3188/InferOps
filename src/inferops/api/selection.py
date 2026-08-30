@@ -198,11 +198,18 @@ def select(
         timeout_ms=_required_int(environment, ENV_REQUEST_TIMEOUT_MS),
         max_tokens=_optional_int(environment, ENV_MAX_OUTPUT_TOKENS),
     )
+    # The drain budget is the one value with a default, and "absent" is the only
+    # thing that takes it. A supplied value is used whatever it is, so that an
+    # operator who typed one is never quietly given a different one — which is
+    # why this is an explicit `None` check rather than an `or`, where a supplied
+    # `0` would be indistinguishable from an unset variable.
+    supplied_drain = _optional_int(environment, ENV_DRAIN_TIMEOUT_MS)
     configuration = ApiConfiguration(
         adapter_kind=ADAPTER_KIND_FOR[selected],
         max_output_tokens=adapter_configuration.max_tokens,
-        drain_timeout_ms=_optional_int(environment, ENV_DRAIN_TIMEOUT_MS)
-        or DEFAULT_DRAIN_TIMEOUT_MS,
+        drain_timeout_ms=(
+            DEFAULT_DRAIN_TIMEOUT_MS if supplied_drain is None else supplied_drain
+        ),
     )
 
     adapter: ServingAdapter
@@ -268,9 +275,22 @@ def _optional_int(environment: Mapping[str, str], name: str) -> int | None:
 
 
 def _whole_number(value: str, name: str) -> int:
+    """One positive whole number, or a refusal naming the variable.
+
+    Every number this module reads is a duration or a token count, and none of
+    them has a meaning at zero or below. They are refused **here**, naming the
+    environment variable, rather than left to the value objects downstream: those
+    know the constraint and not where the value came from, so the refusal they
+    raise names a constructor parameter an operator never typed and carries a
+    different exception type from the one this module's callers are told to
+    catch.
+    """
     try:
-        return int(value)
+        number = int(value)
     except ValueError:
         raise InvalidAdapterConfigError(
             name, "must be a whole number written in decimal"
         ) from None
+    if number <= 0:
+        raise InvalidAdapterConfigError(name, "must be a positive whole number")
+    return number

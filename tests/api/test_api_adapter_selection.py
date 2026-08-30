@@ -310,14 +310,49 @@ def test_a_configured_drain_budget_is_used() -> None:
     assert selection.configuration.drain_timeout_ms == 2500
 
 
-@pytest.mark.parametrize(
-    "variable", [ENV_REQUEST_TIMEOUT_MS, ENV_MAX_OUTPUT_TOKENS, ENV_DRAIN_TIMEOUT_MS]
-)
+#: Every numeric variable this module reads. Each is a duration or a token count,
+#: so none of them has a meaning at zero or below.
+NUMERIC_VARIABLES = [
+    ENV_REQUEST_TIMEOUT_MS,
+    ENV_MAX_OUTPUT_TOKENS,
+    ENV_DRAIN_TIMEOUT_MS,
+]
+
+
+@pytest.mark.parametrize("variable", NUMERIC_VARIABLES)
 def test_a_number_that_is_not_one_is_refused(variable: str) -> None:
     with pytest.raises(InvalidAdapterConfigError) as raised:
         select(mock_environment(**{variable: "12ms"}))
 
     assert raised.value.field == variable
+
+
+@pytest.mark.parametrize("variable", NUMERIC_VARIABLES)
+@pytest.mark.parametrize("value", ["0", "-1", "-9000"])
+def test_a_number_at_or_below_zero_is_refused_and_names_the_variable(
+    variable: str, value: str
+) -> None:
+    """A supplied value is never quietly replaced by a different one.
+
+    ``0`` is the case worth writing down: an optional variable read with an
+    ``or`` would treat a supplied zero as an unset variable and hand back the
+    default, so an operator who typed a number would get one they did not. And
+    the refusal has to come from **this** module, naming the environment variable
+    an operator actually set — a value object downstream knows the constraint and
+    not where the value came from, so its refusal names a constructor parameter
+    nobody typed.
+    """
+    with pytest.raises(InvalidAdapterConfigError) as raised:
+        select(mock_environment(**{variable: value}))
+
+    assert raised.value.field == variable
+    assert value not in str(raised.value)
+
+
+def test_a_supplied_drain_budget_is_never_replaced_by_the_default() -> None:
+    """The specific coercion the test above exists to prevent, stated directly."""
+    with pytest.raises(InvalidAdapterConfigError):
+        select(mock_environment(**{ENV_DRAIN_TIMEOUT_MS: "0"}))
 
 
 def test_the_optional_runtime_metrics_flag_is_still_optional() -> None:

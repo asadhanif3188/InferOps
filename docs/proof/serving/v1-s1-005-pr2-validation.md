@@ -107,9 +107,9 @@ over the changed Markdown as well.
 | `ruff check .` | `All checks passed!` |
 | `ruff format --check .` | `170 files already formatted` |
 | `python -m mypy` | `Success: no issues found in 86 source files` |
-| `python -m pytest -q` | `3846 passed, 25 skipped, 14 deselected` |
-| `python -m pytest tests/api -q` | `217 passed` |
-| `python -m pytest -m mockintegration -q` | `217 passed, 3668 deselected` |
+| `python -m pytest -q` | `3856 passed, 25 skipped, 14 deselected` |
+| `python -m pytest tests/api -q` | `227 passed` |
+| `python -m pytest -m mockintegration -q` | `227 passed, 3668 deselected` |
 | `python -m pytest tests/adapters -q` | `565 passed` |
 | `python -m pytest tests/serving -q` | `243 passed` |
 | `python -m pytest tests/contracts -q` | `191 passed, 7 skipped` |
@@ -188,6 +188,17 @@ vocabulary, so a third selection cannot be introduced without the domain admitti
 a third kind first. A second variable naming the adapter kind is asserted to be
 ignored: the kind is derived from the selection, so a real adapter cannot be
 labelled `mock` by configuration.
+
+### A supplied configuration value is never quietly replaced by a different one
+
+Every numeric variable is refused at zero and below, **naming the variable an
+operator actually set** rather than a constructor parameter nobody typed, and the
+two optional ones take their default only when absent. Both properties came out of
+[the independent review](#independent-review) below: a supplied `INFEROPS_DRAIN_TIMEOUT_MS=0`
+was silently replaced by the default, and a negative value was refused by a value
+object downstream with a different exception type from the one this module's
+callers are told to catch. Both are now refused here, and the suite covers `0`,
+`-1`, and `-9000` for all three numeric variables.
 
 ### The mock's failure injection is not deployment configuration
 
@@ -341,6 +352,26 @@ completed story.
 | An ASGI server, a container image, and a manifest for this API | not yet scheduled | Nothing here can be started, and no lane exists that would run it |
 | A `failure` lane exercising the specified error conditions against a real runtime | `failure-and-resilience` layer, still `planned` | Needs a real runtime |
 | Whether the `adapter` and `mock-integration` layers should distinguish `local-static` from `mock` evidence | open | Carried forward from `V1-S1-004-PR2` and `V1-S1-005-PR1` |
+
+## Independent review
+
+The change was reviewed by a second reader before it was finalised, against
+`CONTRIBUTING.md`, [the mock and real boundary](../../serving/mock-and-real-boundary.md),
+[the redaction rules](../../telemetry/redaction.md), and
+[the test strategy](../../testing/test-strategy.md), with every command in
+[Results](#results) re-run independently. The reviewer reported no critical and no
+high finding — specifically none in the mock-and-real boundary, in leakage paths,
+in the version-detection boundaries, in the condition table's agreement with the
+accepted record, in test quality, in scope, or in what the documents claim — and
+two findings in the new configuration reader:
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| `INFEROPS_DRAIN_TIMEOUT_MS=0` was silently replaced by the default, because `_optional_int(...) or DEFAULT` cannot tell a supplied zero from an unset variable | medium | **Fixed.** Absence is now an explicit `None` check, and zero is refused |
+| A negative but parseable number was refused by a value object downstream, raising `InvalidValueError` rather than the `InvalidAdapterConfigError` `select`'s own contract documents | low | **Fixed.** Every number is checked in the selection module, naming the environment variable |
+
+Both fixes and the tests covering them are in this change, and the results above
+were re-run after them.
 
 ## Authorisation
 
