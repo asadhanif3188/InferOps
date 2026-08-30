@@ -11,12 +11,15 @@ and which are refused rather than guessed at, are in :mod:`.parameters`; the
 files a render produces, and what each profile pins, are in :mod:`.template`.
 
 **What this package is not.** It is not a command, it does not write files, and
-it does not deploy anything. `V1-S1-006-PR2` adds the scaffolding command that
-takes a rendered workload and puts it on disk; until then the rendering is
-exercised by ``tests/scaffolding/`` and by nothing else. It is also not a second
-copy of the contract's rules: every format, vocabulary, and bound it applies is
-imported from :mod:`inferops.domain.workload.values`, which is itself compared
-against the published schema by a test.
+it does not deploy anything. The command that takes a rendered workload and puts
+it on a disk is ``tools.workload_scaffold``, deliberately outside the
+distribution: writing the files is one thing, and validating them afterwards
+needs the published JSON Schema and a YAML loader, which are a file and a
+development dependency nothing that installs ``inferops`` should inherit. This
+package renders text and stops. It is also not a second copy of the contract's
+rules: every format, vocabulary, and bound it applies is imported from
+:mod:`inferops.domain.workload.values`, which is itself compared against the
+published schema by a test.
 
 **A generated workload contains no platform code.** It declares what it wants and
 cites where the procedure for it lives. That is the boundary the whole platform

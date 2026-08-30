@@ -685,9 +685,9 @@ row. The decision behind all of it is
 
 ### The workload template
 
-Changes under `src/inferops/scaffolding/`, `tests/scaffolding/`, or
-[`docs/scaffolding/`](docs/scaffolding/) must pass the template suite, which runs
-in the default lane under the `contract` marker:
+Changes under `src/inferops/scaffolding/`, `tools/workload_scaffold/`,
+`tests/scaffolding/`, or [`docs/scaffolding/`](docs/scaffolding/) must pass the
+template suite, which runs in the default lane under the `contract` marker:
 
 ```sh
 uv run --locked python -m pytest tests/scaffolding -q
@@ -725,9 +725,41 @@ platform serves. The generated test reads the contract through
 scaffolder.
 
 Adding a template parameter means adding it to the dataclass, to its published
-constraint, to the template that reads it, and to the parameter table in
+constraint, to the template that reads it, to `PARAMETER_OPTIONS` in
+[`tools/workload_scaffold/arguments.py`](tools/workload_scaffold/arguments.py),
+and to the parameter table in
 [the template document](docs/scaffolding/workload-template.md). A parameter no
-template reads and a placeholder no parameter supplies both fail the suite.
+template reads, a placeholder no parameter supplies, and a parameter the command
+line cannot gather all fail the suite.
+
+Three more rules travel with the command that writes a workload.
+
+**Nothing is written before a refusal.** The order is refuse, render, validate,
+plan, write, read back — and it is checked against a file system rather than
+described: an invalid parameter set must leave the destination directory
+uncreated, not merely empty.
+
+**Nothing is overwritten.** A generated workload is an ordinary committed
+directory the moment it exists. There is no `--force`, adding one is a change to
+[the template document](docs/scaffolding/workload-template.md) with an argument
+attached, and an occupied destination must be refused with its contents
+byte-identical afterwards.
+
+**A failed write leaves what it found.** Every directory and file the command
+creates is recorded as it is created and removed in reverse order on any failure,
+including a failure of the read-back. A rollback that cannot remove something
+reports it rather than claiming a clean undo.
+
+The generated project is proven by running it, not by importing it:
+
+```sh
+uv run --locked python -m tools.workload_scaffold --help
+```
+
+generates into a directory of your choosing, and the suite runs the generated
+skeleton under a real `python -m pytest` subprocess from outside this repository.
+An import proves a module is importable; only a subprocess proves the command a
+generated quick start prints.
 
 ### The toolchain itself
 

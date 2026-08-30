@@ -16,8 +16,9 @@ reader does not look for it.
 
 **Rendering produces text, not files.** :func:`render_workload` returns a mapping
 of repository-relative path to content. Deciding where that lands, creating
-directories, and refusing to overwrite are the scaffolding command's job in
-``V1-S1-006-PR2``; this module has nothing to write and so cannot half-write it.
+directories, refusing to overwrite, and undoing a write that failed partway are
+``tools.workload_scaffold``'s job; this module has nothing to write and so cannot
+half-write it.
 
 **Substitution is total.** Every placeholder is filled from the validated
 parameter set or from a value this module pins, and :class:`string.Template`

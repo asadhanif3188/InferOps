@@ -1,15 +1,155 @@
 # The LLM workload template
 
-Status: **implemented**, as a template and a rendering library. The scaffolding
-command that writes a rendered workload to disk does not exist yet; `V1-S1-006-PR2`
-adds it. Until then the template is exercised by
-[`tests/scaffolding/`](../../tests/scaffolding/) and by nothing else, and **no
-generated workload is committed anywhere in this repository**.
+Status: **implemented**, as a template, a rendering library, and the command that
+writes a workload from it. Both halves are exercised by
+[`tests/scaffolding/`](../../tests/scaffolding/), and **no generated workload is
+committed anywhere in this repository** — the suite generates into a temporary
+directory and nothing survives the run.
 
 The outcome behind it is that a second engineer can produce a valid, owned,
 attributed, correctly labelled LLM workload **without editing platform
 implementation code**. This document is what that template contains, what it asks
-for, what it refuses, and what a generated workload is and is not.
+for, what it refuses, what the command does with it, and what a generated
+workload is and is not.
+
+Generating one is [one command](#generating-a-workload). It writes three files,
+validates the contract it wrote, and refuses rather than overwriting anything.
+
+## Generating a workload
+
+One command, from a checkout, through `uv` so the versions are the committed ones:
+
+```sh
+uv run --locked python -m tools.workload_scaffold --help
+```
+
+It lives in [`tools/workload_scaffold/`](../../tools/workload_scaffold/) rather
+than in the distribution, for the reason the template modules live where they do:
+**nothing under `src/inferops` reads a path**, and validating a generated project
+needs the published JSON Schema and a YAML loader — a file and a development
+dependency nothing that installs `inferops` should inherit. So the writer sits
+beside [`tools/contract_validation/`](../../tools/contract_validation/), whose
+validator it uses and whose command a generated quick start already tells its
+author to run.
+
+### A real workload
+
+```sh
+uv run --locked python -m tools.workload_scaffold \
+  --name support-assistant \
+  --owner team-platform \
+  --environment local \
+  --profile synchronous-llm \
+  --runtime-profile resource-conscious \
+  --cpu 6 \
+  --memory 3Gi \
+  --tenant demo \
+  --cost-center demo-cost-center \
+  --data-classification internal \
+  --description "Answers support questions from the product knowledge base." \
+  --into workloads
+```
+
+```text
+ok      generated workloads/support-assistant
+        workloads/support-assistant/README.md
+        workloads/support-assistant/tests/test_workload_contract.py
+        workloads/support-assistant/workload.yaml
+        the contract was validated from disk against the published schema and every semantic rule
+```
+
+### A mock workload
+
+Three parameters are not free under `mock-llm`, and each is a refusal rather than
+a silent correction: the name must end in `-mock`, the environment is `ci`, and
+the accelerator is `none`.
+
+```sh
+uv run --locked python -m tools.workload_scaffold \
+  --name support-assistant-mock \
+  --owner team-platform \
+  --environment ci \
+  --profile mock-llm \
+  --runtime-profile resource-conscious \
+  --cpu 250m \
+  --memory 128Mi \
+  --tenant demo \
+  --cost-center demo-cost-center \
+  --data-classification public \
+  --description "Deterministic contract-test double. Never evidence of real serving." \
+  --into workloads
+```
+
+Then, from the directory holding it, the two commands the generated quick start
+prints:
+
+```sh
+python -m tools.contract_validation workloads/support-assistant-mock/workload.yaml
+python -m pytest workloads/support-assistant-mock/tests -q
+```
+
+`--dry-run` validates and prints the paths it would write without creating any of
+them. `--json` emits the result, or the refusal, as a stable document.
+
+### What the command does, in order
+
+1. **Refuses the parameter set**, with every reason at once and none of them
+   repeating a value. Nothing has been rendered.
+2. **Renders into memory.** Still nothing on a disk.
+3. **Validates the rendered contract** through `tools.contract_validation` — the
+   same function every committed fixture goes through.
+4. **Plans the write**, and refuses if the workload's directory already exists.
+5. **Writes**, recording every directory and file it creates as it creates them.
+6. **Reads it all back**, comparing each file to what was rendered, checking that
+   no placeholder survived, and validating the contract again *from disk*.
+
+Steps 1 to 4 are why an invalid name, profile, or resource declaration fails
+before a file exists. Step 6 is why "the generated workload validates" is a
+statement about the files rather than about the strings that produced them.
+
+### Exit status
+
+| | |
+|---|---|
+| `0` | generated, and the contract validated on disk |
+| `1` | the parameter set was refused. Nothing written |
+| `2` | a usage error, from `argparse` |
+| `3` | the destination was refused. Nothing written |
+| `4` | the generated contract did not validate. Nothing written |
+| `5` | a write failed partway and was rolled back |
+
+A closed vocabulary is deliberately **not** enforced by `argparse`. A `choices=`
+would turn a mistyped environment into a usage error that exits before the other
+ten parameters are looked at, and the whole point of the validator is that an
+author learns every reason in one pass. The four counts are the exception: they
+are integers, because "not a number at all" is a usage error rather than a
+statement about a workload, and their bounds are still applied with everything
+else.
+
+### Nothing is overwritten
+
+A generated workload is an ordinary committed directory the moment it exists.
+Re-running the command over one is refused — there is no flag that would make it
+overwrite, and its contents are not read, moved, or touched. If a workload should
+change, edit it and re-run the two commands its quick start prints.
+
+### What a failure leaves behind
+
+Nothing. Every directory and file the command creates is recorded as it is
+created, and a failure anywhere in the sequence removes them in reverse order,
+taking back only what the command itself made — a directory that was already
+there was never its to remove. If a rollback cannot remove something it says so
+rather than reporting a clean undo it did not achieve.
+
+The same rollback covers the read-back: output that does not verify after it was
+written is removed rather than left behind for somebody to find later and trust.
+
+One asymmetry is worth stating, because the destination refusal reads as though
+there is none. **Only the destination directory itself is type-checked while
+planning.** An *ancestor* of it that is a regular file is not, and surfaces as a
+write failure rather than as a planning refusal. The guarantee still holds — the
+rollback runs and the destination is left as it was found, and a check asserts
+that — but the refusal arrives from the writer rather than from the planner.
 
 ## What a generated workload is
 
@@ -203,9 +343,10 @@ likely to be logged, pasted into a ticket, and kept.
 
 **Nothing is written before the refusal.** Rendering returns text in memory:
 `render_workload` validates the whole parameter set and then produces a mapping of
-path to content. There is no partial result to clean up because this layer has no
-file to write. Where a rendered workload lands, and what happens if something is
-already there, are `V1-S1-006-PR2`'s decisions.
+path to content. There is no partial result to clean up because that layer has no
+file to write, and the command that does write keeps the order — refuse, render,
+validate, *then* plan a write. What happens when a write fails halfway is
+[below](#what-a-failure-leaves-behind).
 
 ## Secrets
 
@@ -266,15 +407,44 @@ the `contract` marker. It establishes that:
   character for character, adds no field nobody declared, still validates, and
   still compiles inside the generated test skeleton.
 
+And, for the command that writes one:
+
+- four workloads generated into **one** destination stay apart: each validates,
+  and none of them names another's workload, owner, or tenant;
+- what is written is byte for byte what was rendered, line endings included, and
+  the contract validates when it is read back **off the disk**;
+- the generated test skeleton passes under a real `python -m pytest` subprocess,
+  run against the directory the command created, from a working directory outside
+  this repository, with no file edited in between — an import proves a module is
+  importable, and only a subprocess proves the command a quick start prints;
+- an invalid parameter set creates nothing at all, not even the destination
+  directory, and reports every reason;
+- an occupied destination is refused and the file already there is byte-identical
+  afterwards, including when the directory is empty;
+- a write that fails partway removes what it created and leaves what was already
+  there, and so does output that fails its read-back, and so does a destination
+  whose parent turns out to be a file;
+- a contract that does not validate is refused before the write, and one that
+  stops validating between the write and the read-back is rolled back — both by
+  injection, because an unexercised guard is a comment;
+- `--dry-run` plans exactly what a real run writes, and writes nothing;
+- the command's option table and the template's parameter set agree in both
+  directions, including which parameters are required and what each default is.
+
 It establishes nothing about serving. Nothing here starts a runtime, loads a
 model, binds a socket, or reaches a cluster.
 
-## Deferred to `V1-S1-006-PR2`
+## Deferred
 
-The scaffolding command itself: reading parameters from an author, choosing a
-destination, creating directories, refusing to overwrite, leaving recoverable
-output when a write fails partway, and the generated-project test report the story
-asks for as evidence. The acceptance criterion that invalid input must fail
-*before files are written* is satisfied in this half by construction — validation
-completes before rendering begins and rendering writes nothing — and its second
-clause, *or leave recoverable output*, belongs to the half that writes.
+Nothing in this story's scope remains. What is *out* of it, and stays out:
+
+- **Kubernetes generation.** A generated workload is three files. No chart, no
+  manifest, no `templates/` directory — nothing in this repository acts on a
+  WorkloadContract, so a generated manifest would be a deployment artifact
+  nothing deploys. A check asserts the absence.
+- **Serving anything.** Generating a workload starts no runtime, loads no model,
+  binds no socket, and reaches no cluster. That is the API's and the adapters'
+  half of the platform, and none of it is invoked here.
+- **A second engineer walking through it.** The story asks for that as evidence,
+  and it is a person doing something rather than a check passing. Its absence is
+  recorded in [the change-validation record](../proof/scaffolding/v1-s1-006-pr2-validation.md).

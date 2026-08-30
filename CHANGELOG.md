@@ -10,6 +10,42 @@ once versioned releases begin.
 
 ### Added
 
+- **The command that generates a workload, and validates the one it wrote.**
+  `python -m tools.workload_scaffold` gathers the parameter set, renders the
+  template, and writes three files — then reads all three back, compares them to
+  what was rendered, and validates the written contract *from disk* through the
+  same function every committed fixture goes through. "A generated workload
+  validates without a source edit" is now a statement about files rather than
+  about the strings that produced them. Documented in
+  [the template document](docs/scaffolding/workload-template.md), with a mock and
+  a real example.
+- **Nothing is written before a refusal, and nothing is overwritten.** The order
+  is refuse, render, validate, plan, write, read back, so an invalid name,
+  profile, or resource declaration fails while there is nothing to clean up — and
+  the check for it asserts that the destination directory was never *created*,
+  not merely that it is empty. An occupied destination is refused with its
+  contents untouched: a generated workload is an ordinary committed directory the
+  moment it exists, and there is no flag that would overwrite one.
+- **A write that fails partway leaves what it found.** Every directory and file
+  the command creates is recorded as it is created and removed in reverse order
+  on any failure, including a failure of the read-back, taking back only what the
+  command itself made. A rollback that cannot remove something says so rather
+  than reporting a clean undo it did not achieve.
+- **The generated project is proven by running it.** The suite executes the
+  generated test skeleton under a real `python -m pytest` subprocess, against the
+  directory the command created, from a working directory outside this
+  repository, with no file edited in between. An import proves a module is
+  importable; only a subprocess proves the command a generated quick start
+  prints.
+- **The command line is generated from a published option table**, so the flags
+  and the template's parameter set cannot disagree — in either direction,
+  including which parameters are required and what each default is. A closed
+  vocabulary is deliberately not enforced by `argparse`: a `choices=` would turn
+  a mistyped environment into a usage error that exits before the other ten
+  parameters are read, and the whole point of the validator is that an author
+  learns every reason in one pass. Exit status says which stage refused, so the
+  command is usable as a gate.
+
 - **A reusable LLM workload template, in two profiles, with a declared parameter
   set in front of it.** A generated workload is three files — the contract it
   declares, the quick start a second engineer reads, and a test skeleton that
