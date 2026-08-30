@@ -89,23 +89,33 @@ they argue about the same inputs.
 
 Each case was generated into a temporary directory, read back off that directory,
 validated, and executed. Failures were injected rather than waited for: a write
-was made to fail at its second file, and a read-back was made to disagree, so
-that the rollback path is exercised by a check rather than described by a
-comment.
+was made to fail at its second file, a read-back was made to disagree, and the
+contract validator was made to refuse — before the write and again from disk — so
+that every guard is exercised by a check rather than described by a comment.
+
+Three of those guards were then **mutation-tested by hand**: each was disabled in
+turn and the suite re-run, to establish that the check fails when the guard is
+gone. Disabling the pre-write contract gate failed
+`test_a_contract_that_does_not_validate_is_refused_before_the_write` and
+`test_the_command_exits_four_when_the_generated_contract_is_refused`; disabling
+the read-back gate failed
+`test_a_contract_that_does_not_validate_on_disk_is_rolled_back`. The source was
+restored and the suite re-run green before the numbers above were taken. A check
+that cannot fail is a check that proves nothing, and that is worth ten minutes.
 
 ## Results
 
 | Command | Result |
 |---|---|
 | `uv run --locked ruff check .` | `All checks passed!` |
-| `uv run --locked ruff format --check .` | `190 files already formatted` |
+| `uv run --locked ruff format --check .` | `191 files already formatted` |
 | `uv run --locked python -m mypy` | `Success: no issues found in 104 source files` |
-| `uv run --locked python -m pytest -q` | `4243 passed, 25 skipped, 14 deselected` |
-| `uv run --locked python -m pytest tests/scaffolding -q` | `365 passed` |
+| `uv run --locked python -m pytest -q` | `4248 passed, 25 skipped, 14 deselected` |
+| `uv run --locked python -m pytest tests/scaffolding -q` | `369 passed` |
 | `uv run --locked python -m pytest tests/contracts -q` | `191 passed, 7 skipped` |
-| `uv run --locked python -m pytest -m contract -q` | `556 passed, 7 skipped, 3719 deselected` |
+| `uv run --locked python -m pytest -m contract -q` | `560 passed, 7 skipped, 3720 deselected` |
 | `uv run --locked python -m pytest tests/testing tests/architecture tests/domain -q` | `1352 passed, 18 skipped` |
-| `uv run --locked python -m pytest tests/security -q` | `604 passed` |
+| `uv run --locked python -m pytest tests/security -q` | `605 passed` |
 | `uv build` | Wheel and source distribution built. The wheel carries the `inferops` package and its metadata and nothing else — **`tools/` and `tests/` are absent**, which is the point of putting the command there |
 | `git diff --check` | No output |
 | Markdown trailing-whitespace and hard-tab checks | No match in any file this change touches |
@@ -114,8 +124,15 @@ comment.
 The `realruntime`, `cluster`, `failure`, and `load` markers were deselected by
 the default expression, which is what the default lane is for. None was invoked.
 
-The scaffolding suite added 78 checks to `tests/scaffolding/`, taking it from 287
-to 365.
+The scaffolding suite added 82 checks to `tests/scaffolding/`, taking it from 287
+to 369.
+
+**Every count above was taken at the branch head, with this record already
+committed to the tree.** An earlier draft of this table was written before that,
+and five of its nine rows were one short as a result — this file is itself a
+formatted file, a collected security check, and a deselected contract check. A
+result table that does not reproduce from the revision it names is not a result
+table, so the numbers here were re-taken rather than adjusted.
 
 ## What the added checks establish
 
@@ -230,9 +247,39 @@ What this record does **not** establish:
 - **That a rollback survives a hostile file system.** The injected failures are
   `OSError`s raised at a known point. A permission change made by another process
   mid-write, a full disk, and a network file system are untested.
+- **That every destination problem is caught while planning.** Only the
+  destination directory itself is type-checked before a write. An *ancestor* of
+  it that is a regular file is not, and surfaces as an `OSError` during the write
+  instead. The guarantee still holds — the rollback runs and the destination is
+  left as it was found, which a check asserts — but the refusal arrives from the
+  writer rather than from the planner, and the planning-stage refusal message
+  reads as though it caught everything.
+- **That `# type: ignore` is absent from this repository**, which
+  [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) claims. Independent review found
+  six live directives under `tests/api/` and `tests/support/`. None is in this
+  change, none of this change's files carries one, and correcting the claim is
+  outside this pull request's boundary — it is recorded here so the discrepancy
+  is not lost.
 - **Anything about the mock's fidelity.** A generated mock replays a committed
   fixture. Nothing it produces may be cited as evidence of real serving
   behaviour.
+
+## Independent review
+
+The change was reviewed independently before it was pushed, against the diff and
+by re-executing every command in the results table. It raised one issue of
+substance and three notes.
+
+| Finding | Response |
+|---|---|
+| **High** — `GeneratedContractRefusedError` and exit status 4 were unreachable from any check, and they back the module's central claim that nothing invalid reaches a disk | Four checks added: the pre-write refusal, the read-back refusal and its rollback, exit status 4 through the command, and the non-directory-ancestor case below. All three guards were then mutation-tested |
+| **Medium** — five rows of the results table did not reproduce from the revision they named | Correct, and the cause was this record itself: the numbers were taken before it was written, and it is a formatted file, a collected security check, and a deselected contract check. Re-taken at the branch head, with the note above |
+| **Low** — only the destination directory is type-checked while planning, not its ancestors | Confirmed, checked, and recorded as a limitation rather than changed. The guarantee holds through the rollback; tightening the planner is a behaviour change this pull request has no reason to make |
+| **Low** — `CONTRIBUTING.md`'s repository-wide "no `# type: ignore`" claim is false | Confirmed, six pre-existing directives, none in this change. Out of this boundary; recorded as a limitation so it is not lost |
+
+The review found no critical issue, and confirmed the domain boundary, the
+zero-runtime-dependency rule, the wheel contents, the refusal-message rule, the
+mock and real distinctness, and the absence of scope creep and of path leakage.
 
 ## Authorisation
 

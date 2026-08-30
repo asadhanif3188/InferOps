@@ -63,9 +63,11 @@ from tests.support.workload_template_cases import (
     REPRESENTATIVE_CASES,
     case_id,
 )
+from tools.contract_validation.errors import Finding, finding
 from tools.contract_validation.workload import validate
 from tools.workload_scaffold import (
     DestinationRefusedError,
+    GeneratedContractRefusedError,
     GenerationResult,
     PartialWriteError,
     build_parser,
@@ -74,6 +76,7 @@ from tools.workload_scaffold import (
     plan_write,
 )
 from tools.workload_scaffold.__main__ import (
+    EXIT_CONTRACT_REFUSED,
     EXIT_DESTINATION_REFUSED,
     EXIT_OK,
     EXIT_PARAMETERS_REFUSED,
@@ -575,6 +578,109 @@ def test_output_that_does_not_verify_after_the_write_is_rolled_back(
     assert "did not verify" in failure.value.reason
     assert failure.value.unremoved == ()
     assert list(tmp_path.iterdir()) == []
+
+
+# --------------------------------------------------------------------------
+# The generated contract is validated, and a refusal is not written past
+# --------------------------------------------------------------------------
+#
+# Reaching either of these is a defect in the template rather than in what an
+# author typed — the parameter set was already accepted, and every constraint it
+# applies is imported from the value objects the contract is built from. They are
+# exercised anyway, by injection, because "nothing invalid reaches a disk" is the
+# module's central claim and an unexercised guard is a comment.
+
+
+def a_synthetic_finding() -> Finding:
+    """One registered finding, standing in for a template defect."""
+    return finding(
+        "field-required", "$.metadata.name", "a required field was not supplied"
+    )
+
+
+def test_a_contract_that_does_not_validate_is_refused_before_the_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The pre-write gate: nothing is created, not even the destination."""
+    import tools.workload_scaffold.generation as generate_module
+
+    monkeypatch.setattr(
+        generate_module, "validate", lambda document: [a_synthetic_finding()]
+    )
+    destination = tmp_path / "workloads"
+
+    with pytest.raises(GeneratedContractRefusedError) as refusal:
+        scaffold(MINIMAL_REAL, destination)
+
+    assert refusal.value.on_disk is False
+    assert [entry["rule"] for entry in refusal.value.as_dicts()] == ["field-required"]
+    assert not destination.exists()
+
+
+def test_a_contract_that_does_not_validate_on_disk_is_rolled_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The post-write gate, which is the one that makes the claim about files.
+
+    The pre-write check is left passing and only the read-back is made to
+    disagree, so what is exercised is the validation of the written document
+    rather than the one that never reached a disk. Something *was* written here,
+    so the refusal that escapes is the rollback's, not the contract's.
+    """
+    import tools.workload_scaffold.generation as generate_module
+
+    monkeypatch.setattr(
+        generate_module, "validate_rendered_contract", lambda rendered: ()
+    )
+    monkeypatch.setattr(
+        generate_module, "validate", lambda document: [a_synthetic_finding()]
+    )
+
+    with pytest.raises(PartialWriteError) as failure:
+        scaffold(MINIMAL_REAL, tmp_path)
+
+    assert "read back from disk" in failure.value.reason
+    assert failure.value.unremoved == ()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_the_command_exits_four_when_the_generated_contract_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import tools.workload_scaffold.generation as generate_module
+
+    monkeypatch.setattr(
+        generate_module, "validate", lambda document: [a_synthetic_finding()]
+    )
+
+    status = main([*cli_arguments(MINIMAL_REAL, tmp_path), "--json"])
+    assert status == EXIT_CONTRACT_REFUSED
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["refused"] == "generated-contract"
+    assert payload["findings"][0]["rule"] == "field-required"
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_destination_whose_parent_is_a_file_leaves_nothing_behind(
+    tmp_path: Path,
+) -> None:
+    """The asymmetry that is worth stating: only `into` itself is type-checked.
+
+    An *ancestor* of the destination that is a regular file is not caught while
+    planning; it surfaces as an `OSError` during the write. That is still inside
+    the guarantee — the rollback runs and the destination is left as it was found
+    — and it is checked here rather than reasoned about, because the refusal
+    message for an occupied destination implies planning catches every
+    destination problem, and it does not.
+    """
+    occupied = tmp_path / "not-a-directory"
+    occupied.write_text("occupied\n", encoding="utf-8")
+
+    with pytest.raises((PartialWriteError, DestinationRefusedError)):
+        scaffold(MINIMAL_REAL, occupied / "workloads")
+
+    assert occupied.read_text(encoding="utf-8") == "occupied\n"
+    assert sorted(entry.name for entry in tmp_path.iterdir()) == ["not-a-directory"]
 
 
 # --------------------------------------------------------------------------

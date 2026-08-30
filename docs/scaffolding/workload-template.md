@@ -144,6 +144,13 @@ rather than reporting a clean undo it did not achieve.
 The same rollback covers the read-back: output that does not verify after it was
 written is removed rather than left behind for somebody to find later and trust.
 
+One asymmetry is worth stating, because the destination refusal reads as though
+there is none. **Only the destination directory itself is type-checked while
+planning.** An *ancestor* of it that is a regular file is not, and surfaces as a
+write failure rather than as a planning refusal. The guarantee still holds — the
+rollback runs and the destination is left as it was found, and a check asserts
+that — but the refusal arrives from the writer rather than from the planner.
+
 ## What a generated workload is
 
 Three files, and the same three whatever profile it is on:
@@ -415,7 +422,11 @@ And, for the command that writes one:
 - an occupied destination is refused and the file already there is byte-identical
   afterwards, including when the directory is empty;
 - a write that fails partway removes what it created and leaves what was already
-  there, and so does output that fails its read-back;
+  there, and so does output that fails its read-back, and so does a destination
+  whose parent turns out to be a file;
+- a contract that does not validate is refused before the write, and one that
+  stops validating between the write and the read-back is rolled back — both by
+  injection, because an unexercised guard is a comment;
 - `--dry-run` plans exactly what a real run writes, and writes nothing;
 - the command's option table and the template's parameter set agree in both
   directions, including which parameters are required and what each default is.
