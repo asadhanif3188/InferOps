@@ -166,6 +166,15 @@ committed data checked against the documents that describe it. Its pytest half r
 today; its link and whitespace half is the shell check in
 [CONTRIBUTING](../../CONTRIBUTING.md).
 
+`V1-S1-007-PR1` gave it one more piece of committed data, and it is the one that
+describes the rest: [the test inventory](test-inventory.md) lists every pytest
+module in the repository, the layer it belongs to, and the claim it protects, and
+[`tests/testing/test_test_inventory.py`](../../tests/testing/test_test_inventory.py)
+compares it with the test tree and with this strategy in both directions. A module
+absent from it fails, and so does a claim that no module names and no recorded gap
+explains — which is how "which suite would fail if this claim stopped being true"
+became a question with an answer rather than an exercise in reading.
+
 `security-scan` refuses a change carrying a credential, a model artifact, generated
 host state, or a personal path into public history. A scan configuration and an
 allowlist are committed. **No recorded run of the scanner exists**, so the layer is

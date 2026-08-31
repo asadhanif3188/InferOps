@@ -1,0 +1,494 @@
+{
+  "$id": "https://inferops.io/testing/test-inventory.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "InferOps V1 test inventory",
+  "description": "Every pytest module in this repository, the test layer it belongs to, the lane that layer runs in, and the published claim each one protects. It is the answer to 'which claim does this suite defend', asked of every suite rather than of the ones somebody remembered. A module absent from this file, a module whose layer disagrees with the strategy, a module naming a claim its layer does not support, and a claim no module names are each a failure in tests/testing/test_test_inventory.py. It records coverage, not certification: what a passing result may be used to claim is decided by the layer's evidence class in test-strategy.v1alpha1.json and by nothing here.",
+  "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
+  "documentRef": "docs/testing/test-inventory.md",
+  "matrixRef": "docs/testing/claim-test-matrix.md",
+  "pytestConfigRef": "pytest.ini",
+  "modules": [
+    {
+      "module": "tests/adapters/test_adapter_contract_regression.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "Every serving-adapter implementation this repository ships is discovered rather than listed, and each one is held to the shared conformance suite; the adapter kinds the domain accepts, the kinds the adapters declare, and the kinds the API can compose are one vocabulary.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "the-mock-serving-path-identifies-itself-as-a-mock"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_adapter.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "The adapter for the selected runtime against the shared conformance suite and its own obligations, over a transport the suite controls.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "a-model-that-is-not-ready-is-a-canonical-error",
+        "an-unreachable-runtime-is-a-canonical-error"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_agreement.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "The strings the mock and the real adapter must agree on, compared rather than trusted, so that the two cannot describe the same concept differently.",
+      "claims": [
+        "the-mock-serving-path-identifies-itself-as-a-mock"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_capabilities.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "The capability declaration, and the rule that a declared presence needs a record behind it rather than an assumption.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_configuration.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "Configuration translation in both directions between platform values and runtime arguments, and what it refuses to translate.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_inference.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "The request the adapter sends, the response it reads, and the mapping from a runtime condition to a canonical error.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "an-unreachable-runtime-is-a-canonical-error"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_metadata.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "What the adapter reports about the runtime and the model, and which parts of that are configured rather than observed.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_pins.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "Every pinned image digest, model revision, and artifact hash in the adapter, compared against the committed record that decided it.",
+      "claims": [],
+      "note": "No published claim covers this. It checks that a constant copied out of an accepted decision still matches its source; the claim that the artifact matches its published hash is certified by the real-runtime layer, which this module cannot reach and does not attempt to."
+    },
+    {
+      "module": "tests/adapters/test_llama_server_readiness.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "Readiness is false until the runtime says otherwise and false again if it stops saying so, which is what separates a loading runtime from a broken one.",
+      "claims": [
+        "a-model-that-is-not-ready-is-a-canonical-error"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_settings.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "The runtime settings the operator supplies: what they refuse, and the values they refuse to invent a default for.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_llama_server_transport.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "The transport seam the adapter is handed: what it publishes, what it refuses to carry, and how an unreachable runtime arrives at the adapter.",
+      "claims": [
+        "an-unreachable-runtime-is-a-canonical-error"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_mock_serving_adapter.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "What the mock owes beyond protocol conformance: determinism, injected canonical failures, and the safeguards that stop a mock transcript naming a real model.",
+      "claims": [
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "a-model-that-is-not-ready-is-a-canonical-error"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/adapters/test_mock_serving_conformance.py",
+      "layer": "adapter",
+      "marker": "adapter",
+      "protects": "The committed mock adapter against every obligation the serving protocol publishes, inherited rather than copied.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/api/test_api_adapter_selection.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "Which adapter a deployment serves is read from configuration and never defaulted, and a real selection with missing settings is refused rather than answered with a mock.",
+      "claims": [
+        "deployment-values-derive-only-from-a-validated-document",
+        "the-mock-serving-path-identifies-itself-as-a-mock"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/api/test_api_contract_regression.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "Every condition the API can refuse on is provoked or recorded unreachable, and each refusal is held to the code, flag, status, and identifier the published table declares; every published route is served, echoes the caller's correlation identifier, and names the adapter kind behind the deployment.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "a-model-that-is-not-ready-is-a-canonical-error",
+        "an-unreachable-runtime-is-a-canonical-error",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/api/test_api_end_to_end_mock.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "The API end to end against the committed mock adapter: the success path and each failure the mock can be driven into.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "a-model-that-is-not-ready-is-a-canonical-error",
+        "an-unreachable-runtime-is-a-canonical-error"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/api/test_api_error_contract.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "The canonical error body at every refusal site, why retryability follows the condition rather than the code, and the rule that an adapter's own words stop at this edge.",
+      "claims": [
+        "a-model-that-is-not-ready-is-a-canonical-error",
+        "an-unreachable-runtime-is-a-canonical-error",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/api/test_api_health_models_and_metrics.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "Liveness, readiness, the model list, and the metrics endpoint that publishes no series, each carrying the adapter kind and no runtime detail.",
+      "claims": [
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/api/test_api_inference.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "The inference endpoint end to end against the mock adapter: the borrowed response shape, the extension member, and the identifiers on both.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/api/test_api_lifecycle.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "Starting, serving, draining, and stopping in that order: readiness goes false while work is still in flight, and the adapter is released only after the drain.",
+      "claims": [],
+      "note": "No published claim covers the lifecycle. ADR 0010 chose graceful drain over a remote-stop endpoint and the claim matrix names no claim about it; the suite exists because the order is the property and an out-of-order drain is invisible in every other suite."
+    },
+    {
+      "module": "tests/api/test_api_request_validation.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "What the API refuses about a request body, and the rule that a refusal names the member and never the value beside it.",
+      "claims": [
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/architecture/test_domain_dependency_boundary.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "Every module under src/inferops/ is read for its imports, and the platform domain acquiring a Kubernetes client, a Helm library, a runtime SDK, or an HTTP framework is a failure.",
+      "claims": [],
+      "note": "No published claim covers the dependency rule. It is an architecture decision rather than a claim about the product, and the claim matrix names none — but the rule is what makes the unit layer possible at all, so the check is here rather than deferred until a claim needs it."
+    },
+    {
+      "module": "tests/architecture/test_resource_ownership.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The committed ownership inventory against the documents describing it: one owner per resource, and the Terraform and Helm sets disjoint.",
+      "claims": [
+        "no-resource-in-the-architecture-has-two-owners"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/contracts/test_platform_contract_regression.py",
+      "layer": "contract-and-schema",
+      "marker": "contract",
+      "protects": "The published schema, the offline validator, and the platform domain reach the same verdict about every committed fixture and every generated workload; the rule vocabulary and the supported contract version are the same on all three; and a generated mock workload cannot be edited into something that reads as real serving.",
+      "claims": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason",
+        "the-rejection-interface-cannot-change-without-a-failing-build"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/contracts/test_workload_contract_v1alpha1.py",
+      "layer": "contract-and-schema",
+      "marker": "contract",
+      "protects": "The published JSON Schema and every committed valid fixture, including the four constraints that stop a mock document being edited into real serving.",
+      "claims": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/contracts/test_workload_contract_validation.py",
+      "layer": "contract-and-schema",
+      "marker": "contract",
+      "protects": "Every invalid fixture against the published refusal recorded for it: the canonical code, the rule identifier, and the field location a consumer is given.",
+      "claims": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason",
+        "the-rejection-interface-cannot-change-without-a-failing-build"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/cost/test_cost_method.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The committed cost method: every amount declares a basis, every unit cost carries its denominator, confidence is recomputed from inputs, and the worked example's arithmetic closes.",
+      "claims": [
+        "a-cost-figure-cannot-be-presented-as-a-bill"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/domain/test_serving_adapter_conformance.py",
+      "layer": "unit",
+      "marker": "unit",
+      "protects": "The domain's own in-memory double against the shared conformance suite, which is what keeps the suite a statement about the protocol rather than about one adapter.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/domain/test_serving_test_double.py",
+      "layer": "unit",
+      "marker": "unit",
+      "protects": "What the in-memory double owes beyond conformance, so that a suite building on it is building on something with declared behaviour.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/domain/test_workload_domain.py",
+      "layer": "unit",
+      "marker": "unit",
+      "protects": "The workload domain model: what parses into a typed object, what is refused, and the rule that a refusal never repeats a value read out of the document.",
+      "claims": [
+        "deployment-values-derive-only-from-a-validated-document",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/domain/test_workload_schema_agreement.py",
+      "layer": "unit",
+      "marker": "unit",
+      "protects": "The domain's copy of every contract pattern, vocabulary, and bound, compared against the published schema so the two cannot drift apart.",
+      "claims": [
+        "deployment-values-derive-only-from-a-validated-document"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/domain/test_workload_validation.py",
+      "layer": "unit",
+      "marker": "unit",
+      "protects": "The semantic rules applied to a parsed contract: every valid fixture passes, every semantic fixture fails with the published rule and field, and no reason carries a document value.",
+      "claims": [
+        "deployment-values-derive-only-from-a-validated-document",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/realruntime/test_api_real_adapter_smoke.py",
+      "layer": "real-runtime-smoke",
+      "marker": "realruntime",
+      "protects": "The API in front of the real adapter, one completion through the whole stack, on a capable host and by explicit opt-in.",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "the-selected-runtime-serves-a-real-completion-in-a-cluster"
+      ],
+      "note": "Deselected by the default marker expression, and it has never been run against a runtime. It skips rather than fails when its runtime settings are unset, so naming its marker without a runtime produces a skip. The cited evidence for both claims remains the manual trial recorded under docs/proof/serving/."
+    },
+    {
+      "module": "tests/realruntime/test_llama_server_real_smoke.py",
+      "layer": "real-runtime-smoke",
+      "marker": "realruntime",
+      "protects": "The selected runtime driven through the serving adapter: one real completion, from the real model, on a capable host and by explicit opt-in.",
+      "claims": [
+        "the-selected-runtime-serves-a-real-completion-in-a-cluster"
+      ],
+      "note": "Deselected by the default marker expression, and it has never been run against a runtime. The cited evidence for the claim remains the manual trial recorded under docs/proof/serving/."
+    },
+    {
+      "module": "tests/scaffolding/test_workload_scaffolder.py",
+      "layer": "contract-and-schema",
+      "marker": "contract",
+      "protects": "What the scaffolding command puts on a disk and what it refuses to: nothing invalid reaches a disk, nothing is overwritten, and a write that fails partway is undone.",
+      "claims": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/scaffolding/test_workload_template_parameters.py",
+      "layer": "contract-and-schema",
+      "marker": "contract",
+      "protects": "What the template parameter set refuses before anything is rendered, and what a refusal is allowed to say about the value that caused it.",
+      "claims": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/scaffolding/test_workload_template_rendering.py",
+      "layer": "contract-and-schema",
+      "marker": "contract",
+      "protects": "What the template renders, held to the published contract by the same validator every committed fixture goes through, and to the rule that a generated workload carries no platform implementation code.",
+      "claims": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/security/test_security_baseline.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The committed security baseline: every control derives its status from the verification it names, every threat names a control or a carried risk, and every published manifest is digest-pinned.",
+      "claims": [
+        "a-security-control-cannot-claim-enforcement-it-does-not-have"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/serving/test_inference_api_implementation_agreement.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "Every constant in the API package that repeats a row of the accepted compatibility record, compared against that record in both directions.",
+      "claims": [],
+      "note": "No published claim covers it. The claim that a published document and its data cannot drift apart is written about the test strategy's own identifiers; this suite protects the same kind of property for the inference API surface, and the matrix has no row for it."
+    },
+    {
+      "module": "tests/serving/test_inference_api_surface.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The committed inference API compatibility surface: the endpoint subset, the frozen request and response members, the extension namespace, and the error mapping.",
+      "claims": [],
+      "note": "No published claim covers it, for the same reason as the agreement suite beside it. Both are committed data checked against the documents describing them, and the matrix's drift claim names the test strategy's identifiers rather than every published record."
+    },
+    {
+      "module": "tests/telemetry/test_telemetry_catalog.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The committed telemetry catalog: no prompt, response, provider error body, or secret has a permitted placement, and every metric stays inside its declared series budget.",
+      "claims": [
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/testing/test_test_inventory.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "This inventory against the test tree and the committed strategy in both directions: every module is listed, every listed module exists and carries its layer's marker, every claim a module names is one its layer supports, and every claim is either covered by a module or recorded as a gap.",
+      "claims": [
+        "the-published-strategy-and-its-data-cannot-drift-apart"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/testing/test_test_strategy.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The committed test strategy against the pytest configuration and the three documents describing it: markers, lanes, ceilings, evidence citation, and the default marker expression.",
+      "claims": [
+        "the-published-strategy-and-its-data-cannot-drift-apart",
+        "the-default-lane-cannot-execute-a-real-model"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/testing/test_toolchain.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The accepted toolchain decision against the configuration that implements it, including the rule that the pytest configuration stays out of pyproject.toml.",
+      "claims": [],
+      "note": "No published claim covers the toolchain. ADR 0009 is a repository decision rather than a product claim, and the matrix has no row for it; the suite exists because the marker expression's location is load-bearing for the claim that the default lane cannot execute a real model, and moving it would otherwise be a silent refactor."
+    }
+  ],
+  "coverageGaps": [
+    {
+      "claimId": "published-documents-link-only-to-things-that-exist",
+      "reason": "No pytest module walks every relative link in every published document. The suites that check committed data each assert that the references their own record cites resolve, which is a subset of the claim rather than the claim.",
+      "coveredBy": "the link and whitespace check published in CONTRIBUTING.md, which is a shell command run by hand"
+    },
+    {
+      "claimId": "the-model-artifact-matches-its-published-hash",
+      "reason": "No pytest module computes or compares the artifact hash. The real-runtime suite drives a running runtime, and the runtime exposes no hash of the file it loaded; the comparison happens in the download procedure rather than in a test.",
+      "coveredBy": "the manual procedure in docs/serving/feasibility-workflow.md, with the computed and published hashes recorded in docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md"
+    },
+    {
+      "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+      "reason": "The kubernetes-smoke layer declares no test paths. What proves this claim is a sequence of shell scripts under scripts/environment/, and there is no pytest module to inventory.",
+      "coveredBy": "scripts/environment/, run by hand on a capable host, with the record committed under docs/proof/environment/"
+    },
+    {
+      "claimId": "no-credential-or-model-artifact-enters-public-history",
+      "reason": "The security-scan layer is planned. A scan configuration and an allowlist are committed and no recorded run of a scanner exists, so there is nothing to inventory.",
+      "coveredBy": null
+    },
+    {
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "reason": "No chart exists. The claim names the kubernetes-smoke layer, which declares no test paths.",
+      "coveredBy": null
+    },
+    {
+      "claimId": "sustained-throughput-and-capacity-under-load",
+      "reason": "Deferred out of V1. The capacity-and-load layer is deferred and its marker is deselected by default, so a module here would be a module nothing may publish the output of.",
+      "coveredBy": null
+    }
+  ]
+}

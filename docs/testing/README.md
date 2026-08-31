@@ -3,14 +3,16 @@
 Status: entry point established; the strategy is accepted in part — five of the six
 decisions in [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md),
 with the choice of continuous-integration service and capable runner explicitly not
-made. Seven of eleven test layers exist, and no continuous-integration lane is
+made. Eight of eleven test layers exist, and no continuous-integration lane is
 configured.
 
-This directory answers three questions that are easy to answer badly: what kinds of
-test this project runs, where each one runs, and what a passing result is allowed to
-be used to claim. The third is the one that matters, because a suite acquires its
-meaning from what it may certify — and if that is left undecided, the cheapest suite
-decides it.
+This directory answers four questions that are easy to answer badly: what kinds of
+test this project runs, where each one runs, what a passing result is allowed to be
+used to claim, and which suite would fail if a published claim stopped being true.
+The third is the one that matters most, because a suite acquires its meaning from
+what it may certify — and if that is left undecided, the cheapest suite decides it.
+The fourth is the one nobody could answer before `V1-S1-007`, and
+[the inventory](test-inventory.md) is that answer.
 
 ## Documents
 
@@ -19,7 +21,9 @@ decides it.
 | [Test and CI strategy](test-strategy.md) | Eleven test layers, four lanes, markers, prerequisites, timeouts, artifacts, failure diagnostics, and evidence retention |
 | [Certification levels](certification.md) | What C0 to C2 mean, what each evidence class may support, why a mock stops at C1, and what a real record must contain |
 | [Claim and test matrix](claim-test-matrix.md) | Every public claim, with its layers, environment, required level, and evidence owner |
-| [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json) | The authoritative form of all three, validated by [`tests/testing/`](../../tests/testing/) |
+| [Test inventory](test-inventory.md) | Every pytest module, its layer and lane, the claim it protects, and the claims no module protects |
+| [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json) | The authoritative form of the first three, validated by [`tests/testing/`](../../tests/testing/) |
+| [`test-inventory.v1alpha1.json`](test-inventory.v1alpha1.json) | The authoritative form of the inventory, compared with the test tree and the strategy in both directions |
 
 The same `docs` marker also collects [`tests/telemetry/`](../../tests/telemetry/),
 which holds [the telemetry catalog](../telemetry/telemetry-catalog.md) to its own
