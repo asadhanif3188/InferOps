@@ -46,6 +46,7 @@ succeeding is **not** evidence that a runtime exists, which is why the
 
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -62,8 +63,12 @@ from ..domain.serving import (
     InvalidAdapterConfigError,
     ServingAdapter,
 )
+from ..telemetry import resource as telemetry_resource
+from ..telemetry.records import Sink, stderr_sink
+from ..telemetry.resource import ResourceAttributes, WorkloadIdentity
 from .application import ApiConfiguration, InferOpsApi
 from .lifecycle import DEFAULT_DRAIN_TIMEOUT_MS
+from .observability import ApiTelemetry
 
 # -- the variables ----------------------------------------------------------
 
@@ -113,10 +118,14 @@ REQUIRED_ENVIRONMENT_VARIABLES: tuple[str, ...] = (
     ENV_REQUEST_TIMEOUT_MS,
 )
 
-#: Every variable this module reads that may be absent.
+#: Every variable this module reads that may be absent. The telemetry identity
+#: variables are all optional and are listed here with the rest: a deployment
+#: that states none of them still starts, still serves, and still emits, with its
+#: identity labels visibly empty rather than invented.
 OPTIONAL_ENVIRONMENT_VARIABLES: tuple[str, ...] = (
     ENV_MAX_OUTPUT_TOKENS,
     ENV_DRAIN_TIMEOUT_MS,
+    *telemetry_resource.TELEMETRY_ENVIRONMENT_VARIABLES,
 )
 
 #: What the adapter kind is for each selection. It is derived rather than
@@ -141,12 +150,18 @@ class Selection:
             derived from the selection.
         selected: The value :data:`ENV_ADAPTER` carried, for a caller that wants
             to record which selection a deployment made.
+        resource: What this process is, for everything it emits.
+        workload: The workload this deployment serves. It is configuration and
+            not a caller's header, because a workload identifier read off a
+            request would be an unbounded metric label.
     """
 
     adapter: ServingAdapter
     adapter_configuration: AdapterConfiguration
     configuration: ApiConfiguration
     selected: str
+    resource: ResourceAttributes
+    workload: WorkloadIdentity
 
     @property
     def adapter_kind(self) -> str:
@@ -225,11 +240,22 @@ def select(
             transport if transport is not None else HttpRuntimeTransport(),
         )
 
+    # The telemetry identity is read after the adapter kind is derived, and the
+    # kind is passed in rather than read from a variable of its own. A second
+    # variable carrying that label would be a way to compose a real adapter and
+    # publish `mock` on its identity metric, which is the one thing every rule in
+    # the mock and real boundary exists to stop.
+    resource, workload = telemetry_resource.from_environment(
+        environment, adapter_kind=ADAPTER_KIND_FOR[selected]
+    )
+
     return Selection(
         adapter=adapter,
         adapter_configuration=adapter_configuration,
         configuration=configuration,
         selected=selected,
+        resource=resource,
+        workload=workload,
     )
 
 
@@ -237,6 +263,7 @@ def build(
     environment: Mapping[str, str],
     *,
     transport: RuntimeTransport | None = None,
+    sink: Sink | None = None,
 ) -> InferOpsApi:
     """The application one environment describes, composed and not started.
 
@@ -244,12 +271,28 @@ def build(
     anything. A caller that wants the selection itself — to record which adapter a
     deployment composed — calls :func:`select` and constructs the application from
     what it returns.
+
+    Args:
+        environment: The variables to read.
+        transport: The transport a real adapter issues its requests over.
+        sink: Where this deployment's structured log records go. ``None`` takes
+            the standard error stream, which is where a container's logs are read
+            from and the only destination this repository can choose without
+            selecting the log store, shipper, retention window, and access rule
+            that `ADR 0006` `D8` deliberately left open. Records are written; no
+            record is shipped anywhere.
     """
     selection = select(environment, transport=transport)
     return InferOpsApi(
         adapter=selection.adapter,
         adapter_configuration=selection.adapter_configuration,
         configuration=selection.configuration,
+        telemetry=ApiTelemetry(
+            resource=selection.resource,
+            workload=selection.workload,
+            sink=stderr_sink() if sink is None else sink,
+            clock=time.time,
+        ),
     )
 
 

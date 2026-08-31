@@ -14,7 +14,7 @@
 
   "implementationStatus": {
     "state": "served-in-part",
-    "meaning": "The InferOps API in src/inferops/api/ registers every endpoint below and answers it, through the serving adapter it is composed with, and which adapter that is comes from configuration: INFEROPS_SERVING_ADAPTER is required, it selects nothing when unstated, and a real selection whose runtime settings are absent is refused rather than answered with a mock. Nothing in this repository binds a socket: the application implements the ASGI calling convention and no server ships here, so what has been exercised is the application through its own interface and not a network. The canonical error body below is served in full, and every condition this record maps is reachable. Two parts of the decided shape remain deliberately unfinished and each is named where it applies: /metrics publishes no series, and two accepted request members are validated and not forwarded. The telemetry work owns the first, and the second needs a superseding decision on the adapter interface.",
+    "meaning": "The InferOps API in src/inferops/api/ registers every endpoint below and answers it, through the serving adapter it is composed with, and which adapter that is comes from configuration: INFEROPS_SERVING_ADAPTER is required, it selects nothing when unstated, and a real selection whose runtime settings are absent is refused rather than answered with a mock. Nothing in this repository binds a socket: the application implements the ASGI calling convention and no server ships here, so what has been exercised is the application through its own interface and not a network. The canonical error body below is served in full, and every condition this record maps is reachable. One part of the decided shape remains deliberately unfinished and is named where it applies: two accepted request members are validated and not forwarded, which needs a superseding decision on the adapter interface. /metrics now publishes the metrics the accepted telemetry catalog assigns to this API, and the metrics it does not publish are recorded per metric in that catalog.",
     "publishedArtifacts": "none. No OpenAPI document, no JSON Schema for a request or a response body, and no addition to contracts/ is made by this record or by the component that serves it. Serving a shape is not publishing it as a contract artifact a client may bind to, and D9 stays undecided."
   },
 
@@ -96,7 +96,7 @@
       "purpose": "InferOps's own metrics in Prometheus text format, including the request counter the runtime does not have.",
       "servingContractRole": "metrics",
       "v1Status": "in-scope",
-      "servedBy": "inferops.api serves the route, and it publishes no metric. The accepted telemetry catalog records emissionStatus as nothing-emits and both metrics below as specified; instrumenting this API is the telemetry work, which depends on this API existing. The body names the two metrics and the story that owns them rather than publishing a partial counter that would read as instrumentation.",
+      "servedBy": "inferops.api serves the route and publishes the eight metrics the accepted telemetry catalog assigns to the inferops-api emitter, in the Prometheus text exposition format, including the two this record binds to this endpoint. The catalog's emissionStatus records partially-emits and every metric carries an emission field: the four assigned to the serving-runtime adapter, the one assigned to the contract validator, and one assigned to this API with no source it may read are not emitted, and the exposition names the last of those in a comment rather than publishing a zero. No exporter, collector, or store is selected, so the endpoint answers when something scrapes it and nothing scrapes it.",
       "runtimeCounterpart": "GET /metrics",
       "runtimeCounterpartObserved": true
     }
@@ -442,10 +442,10 @@
       "llamacpp:requests_deferred"
     ],
     "whyThoseDoNotClose": "Both are gauges of instantaneous state. A gauge reading zero between requests cannot be summed, rated, or alerted on the way a counter can.",
-    "platformObligation": "InferOps receives the requests, so InferOps counts them.",
+    "platformObligation": "InferOps receives the requests, so InferOps counts them - and now does. V1-S1-008-PR1 emits inferops_inference_requests_total and inferops_inference_errors_total from the API on GET /metrics, which discharges ADR 0002 T7's compensating obligation and changes nothing about the runtime, which still exposes no counter.",
     "metric": "inferops_inference_requests_total",
     "errorMetric": "inferops_inference_errors_total",
-    "decidedElsewhere": "Both metrics already exist in the telemetry catalog with this reason recorded against them. This record adds no metric; it binds the existing entries to this surface and to the error codes above."
+    "decidedElsewhere": "Both metrics already existed in the telemetry catalog with this reason recorded against them, and both are now marked emitted there. This record adds no metric; it binds the existing entries to this surface and to the error codes above."
   },
 
   "adapterConsequences": [

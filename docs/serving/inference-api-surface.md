@@ -1,11 +1,13 @@
 # The V1 inference API surface
 
 Status: **decided, and served in part.** Every endpoint below is registered and
-answered by [the InferOps API](inference-api.md), which `V1-S1-005-PR1` built and
-`V1-S1-005-PR2` finished the error contract and the adapter selection of. Two
-parts of the shape are deliberately unfinished, and each is named where it
-applies: `/metrics` publishes no series, and two accepted request members are
-validated and not forwarded.
+answered by [the InferOps API](inference-api.md), which `V1-S1-005-PR1` built,
+`V1-S1-005-PR2` finished the error contract and the adapter selection of, and
+`V1-S1-008-PR1` instrumented. One part of the shape is deliberately unfinished and
+is named where it applies: two accepted request members are validated and not
+forwarded. `/metrics` now publishes the API's own series; what it does not publish
+is recorded per metric in
+[the telemetry catalog](../telemetry/telemetry-catalog.md).
 
 The decision behind it is
 [ADR 0010](../architecture/decisions/ADR-0010-inference-api-compatibility-surface.md),

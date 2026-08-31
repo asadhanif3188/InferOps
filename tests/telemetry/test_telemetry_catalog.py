@@ -16,10 +16,14 @@ one that is missing is recorded as missing; that content capture is disabled and
 has no policy that could enable it; and that the four evidence templates carry
 every section a record needs to be reproducible.
 
-What it does not establish is that any of this is emitted. Nothing in this
-repository writes a metric, a log record, or a span, and this suite cannot tell the
-difference between a catalog that will be implemented faithfully and one that will
-be ignored. It stops the catalog drifting; it does not observe a single signal.
+What it does not establish is that any of this is emitted. This suite reads
+committed files and never runs an emitter, so it cannot tell the difference between
+a catalog that is implemented faithfully and one that is ignored. That comparison is
+``tests/telemetry/test_api_telemetry_agreement.py``, which reads this catalog and the
+declarations in the distribution and fails when the two disagree, and
+``tests/api/test_api_observability.py``, which drives the API and reads what it
+emitted. What this suite establishes is that the catalog does not drift; it observes
+no signal.
 """
 
 from __future__ import annotations
@@ -108,6 +112,8 @@ REQUIRED_METRIC_FIELDS = (
     "maxSeries",
     "v1Status",
     "deferralReason",
+    "emission",
+    "emissionReason",
     "runtimeSeries",
     "notes",
 )
@@ -141,6 +147,12 @@ REQUIRED_SECTION_FIELDS = ("sectionId", "heading", "why")
 ATTRIBUTE_LAYERS = frozenset({"resource", "request", "record"})
 
 SIGNAL_STATUSES = frozenset({"specified", "deferred"})
+
+# Whether a component in this repository actually produces the signal, which is a
+# different question from whether V1 specifies it. A metric can be specified and
+# not emitted -- because its emitter is not instrumented, or because it has no
+# source it is permitted to read -- and the two words are kept apart on purpose.
+EMISSION_STATES = frozenset({"emitted", "not-emitted"})
 
 METRIC_KINDS = frozenset({"operational", "info"})
 
@@ -217,6 +229,7 @@ ALL_IDENTIFIERS = (
     | {row["limitationId"] for row in LIMITATIONS}
     | {row["seriesName"] for row in RUNTIME_SERIES["series"]}
     | {header["name"] for header in CORRELATION["headers"]}
+    | {row["eventId"] for row in LOG_RECORD["events"]}
 )
 
 
@@ -237,7 +250,17 @@ def proof_readme() -> str:
 
 @pytest.fixture(scope="module")
 def module_source() -> str:
-    return THIS_MODULE.read_text(encoding="utf-8")
+    """Every suite in this directory, joined.
+
+    A rule may name a test in any module here. The catalog checks and the checks
+    that compare the catalog against what the distribution declares are different
+    suites for a good reason -- one reads a file and the other imports the
+    distribution -- and a rule should not have to know which of them holds it.
+    """
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(THIS_MODULE.parent.glob("test_*.py"))
+    )
 
 
 def effective_placements(attribute: dict) -> set[str]:
@@ -708,21 +731,61 @@ def test_a_label_free_metric_is_one_series_per_process(row: dict) -> None:
 # --------------------------------------------------------------------------
 
 
-def test_the_catalog_states_that_nothing_emits_it() -> None:
-    assert CATALOG["emissionStatus"]["state"] == "nothing-emits"
-    assert CATALOG["emissionStatus"]["meaning"].strip()
-    assert CATALOG["emissionStatus"]["collector"].strip()
+def test_the_catalog_says_exactly_what_emits_and_what_does_not() -> None:
+    """Emission is a claim, so it is stated once and reconciled with every row."""
+    status = CATALOG["emissionStatus"]
+    assert status["state"] == "partially-emits"
+    for field in ("meaning", "transport", "collector"):
+        assert status[field].strip(), field
+    declared = set(status["emitters"])
+    assert declared, "a catalog that emits names the components that do"
+    for emitter_id in declared:
+        assert emitter_id in EMITTER_BY_ID, emitter_id
+        assert EMITTER_BY_ID[emitter_id]["exists"] is True, emitter_id
+
+    emitting = {row["emitter"] for row in METRICS if row["emission"] == "emitted"}
+    assert emitting == declared, {
+        "named at the top of the catalog": sorted(declared),
+        "emitting a metric further down": sorted(emitting),
+    }
 
 
-def test_no_metric_borrows_the_credibility_of_a_component_that_exists() -> None:
-    """The runtime is the only emitter here that emits anything at all.
+@pytest.mark.parametrize("row", METRICS, ids=lambda row: row["metricId"])
+def test_a_metric_that_is_not_emitted_says_why(row: dict) -> None:
+    """An unemitted metric is indistinguishable from an oversight without a reason.
 
-    What it emits is recorded separately, under an evidence reference, because it
-    was measured. A metric assigned to it would be a native series wearing an
-    InferOps name — a specification for an unbuilt component made to look like a
-    scrape that already happened.
+    A deferred metric is the one exception, and only because its ``deferralReason``
+    already answers the question: a metric V1 does not have cannot be emitted by
+    anything, and repeating that as a second sentence is how two reasons drift.
     """
-    assert CATALOG["emissionStatus"]["state"] == "nothing-emits"
+    assert row["emission"] in EMISSION_STATES, row["metricId"]
+    if row["v1Status"] == "deferred":
+        assert row["emission"] == "not-emitted", row["metricId"]
+        assert row["emissionReason"] is None, row["metricId"]
+        return
+    if row["emission"] == "emitted":
+        assert row["emissionReason"] is None, row["metricId"]
+        return
+    assert row["emissionReason"], row["metricId"]
+
+
+@pytest.mark.parametrize("row", METRICS, ids=lambda row: row["metricId"])
+def test_an_emitting_metric_names_an_emitter_that_exists(row: dict) -> None:
+    """A component that does not exist cannot have produced a series."""
+    if row["emission"] != "emitted":
+        return
+    assert EMITTER_BY_ID[row["emitter"]]["exists"] is True, row["metricId"]
+
+
+def test_no_metric_borrows_the_credibility_of_the_runtime() -> None:
+    """The runtime's own series are recorded separately, because they were measured.
+
+    A metric assigned to it would be a native series wearing an InferOps name — a
+    specification made to look like a scrape that already happened. The runtime is
+    also the one emitter here this project does not build, so nothing this project
+    emits may be attributed to it.
+    """
+    assert RUNTIME_SERIES["emitter"] not in CATALOG["emissionStatus"]["emitters"]
     for metric in METRICS:
         assert metric["emitter"] != RUNTIME_SERIES["emitter"], {
             "metric": metric["metricId"],
@@ -997,11 +1060,14 @@ def test_the_catalog_declares_a_limitation_for_every_gap_it_has() -> None:
     """The gaps this catalog knows about are named, not left to be inferred."""
     declared = {row["limitationId"] for row in LIMITATIONS}
     for gap in (
-        "nothing-emits",
+        "partial-emission",
         "no-collector",
         "no-tracer",
-        "no-redacting-sink",
+        "no-log-store",
+        "no-adapter-emission",
+        "no-process-memory-source",
         "no-container-resource-source",
+        "no-workload-identity-from-a-document",
         "no-runtime-request-counter",
         "no-inference-error-vocabulary",
         "budget-is-not-measured",

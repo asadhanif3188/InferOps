@@ -2,9 +2,12 @@
 
 Status: **accepted in part**, in
 [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md).
-The catalog is committed as data and machine-checked. Nothing emits it: no
-component in this repository writes a metric, a log record, or a span, and no
-collector, store, or dashboard is selected.
+The catalog is committed as data and machine-checked, and part of it is now
+emitted. The InferOps API emits the eight metrics marked emitted in section 7 and
+writes the records in section 10; the serving-runtime adapter's four metrics, the
+contract validator's one, and one metric assigned to the API itself are not
+emitted, and no component produces a span. No collector, store, dashboard, or
+alert path is selected, and nothing scrapes the endpoint.
 
 The authoritative form is
 [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json). This document
@@ -31,6 +34,14 @@ and the question is what makes a signal removable later.
 recomputes from its labels and bucket count. Adding a label is then a visible number
 rather than a line of code.
 
+**And, since something emits, which rows are claims about a running process.** Every
+metric carries an `emission` field, and an unemitted one that is not deferred states
+why. A catalog whose reader has to scrape the endpoint to find out what is really
+there has stopped being the record.
+[The API instrumentation document](api-instrumentation.md) is where the emitted half
+is described in the shape an operator reads it in: the exposition, a redacted record,
+and the configuration a deployment states its identity in.
+
 ## 1. Correlation
 
 | Rule | Decision |
@@ -47,14 +58,20 @@ Three headers carry it, and none of them is required of a caller:
 |---|---|---|
 | `traceparent` | inbound and outbound | The W3C trace context, when the caller already has one. Absent, the edge starts a new trace rather than refusing the request |
 | `tracestate` | inbound and outbound | Vendor trace state, carried through unchanged. This project neither reads nor writes entries in it |
-| `X-InferOps-Correlation-ID` | inbound and outbound | A business correlation identifier that survives retries and asynchronous transitions, which a span identifier deliberately does not. Echoed on every response, including a refusal |
+| `X-InferOps-Correlation-ID` | inbound and outbound | A business correlation identifier that survives retries and asynchronous transitions, which a span identifier deliberately does not. Read and echoed on every response, including a refusal, and validated rather than trusted |
 
 Assignment at the edge is the part that earns its place. A request that is refused
 before it reaches a handler is precisely the one nobody can find afterwards, and an
-identifier minted inside the handler is an identifier the refusal never had.
+identifier minted inside the handler is an identifier the refusal never had. The API
+does this: a well-formed `X-InferOps-Correlation-ID` is accepted, anything else is
+replaced by a generated one rather than refusing the request, and the identifier the
+API used is the one it echoes and the one every record it writes carries.
 
-**What is not decided:** no tracer, propagator, exporter, or SDK. Nothing reads or
-writes any of these headers today.
+**Half of this propagates and half does not.** The correlation identifier and the
+request identifier are assigned at the edge and written to every record. No tracer,
+propagator, exporter, or SDK is selected and no span exists, so `traceparent` and
+`tracestate` are neither read nor written, and `trace.id` and `span.id` are
+specified fields nothing populates.
 
 ## 2. Placement is derived, not chosen
 
@@ -118,13 +135,23 @@ Attached once per emitting process, and never varied per request.
 | `k8s.pod.name` | Which replica produced this record, when one replica behaves differently? | `operational` | `unbounded` | no |
 | `inferops.model.revision` | Which immutable model revision produced this? | `operational` | `bounded-small` | yes |
 | `inferops.runtime.image.digest` | Which runtime image, by digest rather than by a movable tag? | `operational` | `bounded-small` | yes |
+| `inferops.adapter.kind` | Which kind of serving adapter was this deployment composed with? | `operational` | `bounded-small` | yes |
 
-Five of these are identity-only: the service version, the capability, the release,
-the model revision, and the runtime image digest. They reach metrics through the
+Six of these are identity-only: the service version, the capability, the release,
+the model revision, the runtime image digest, and the adapter kind. They reach metrics through the
 identity metric and never as an operational label, which is what lets a record pin
 immutable versions without multiplying every series by the release history. That is a
 property of the data rather than a description — an identity-only attribute may not
 declare `metric-label` at all, and a test refuses one that does.
+
+`inferops.adapter.kind` is identity for the same reason and earns one more sentence,
+because it is the field that keeps a mock scrape visibly a mock scrape. It takes two
+values, `mock` and `real`, it does not vary within a process, and it is **derived
+from the adapter selection rather than configured beside it** — a second variable
+carrying this label would be a way to compose a real adapter and publish `mock`, or
+the reverse. It reaches operational series indirectly, through
+`inferops.runtime.id`, which already carries the mock runtime's registered
+identifier.
 
 `k8s.pod.name` is **not** among them, and the difference is worth being exact about.
 It is unbounded for the same reason the release identifier is — a restarted pod is a
@@ -154,11 +181,12 @@ them still are not.
 | `inferops.component` | Which internal component failed a readiness check? | `operational` | `bounded-small` | yes |
 | `inferops.token.direction` | Were these tokens read or written? | `operational` | `bounded-small` | yes |
 | `inferops.finish.reason` | Did the caller get a whole answer or a truncated one? | `operational` | `bounded-small` | no |
+| `inferops.request.id` | Which single synchronous request was this, as the caller was told? | `request-scoped-identifier` | `unbounded` | no |
 | `inferops.correlation.id` | Which pieces of work belong to the same request? | `request-scoped-identifier` | `unbounded` | no |
 | `trace.id` | Which trace was this span part of? | `request-scoped-identifier` | `unbounded` | no |
 | `span.id` | Which attempt or operation was this? | `request-scoped-identifier` | `unbounded` | no |
 
-Four of these are worth a sentence, because each is a label somebody will
+Five of these are worth a sentence, because each is a label somebody will
 reasonably propose:
 
 - `inferops.owner.id` is bounded and safe and still not a label. Ownership is a
@@ -173,6 +201,11 @@ reasonably propose:
 - `inferops.error.code` carries a canonical code and never a message. The inference
   error vocabulary is not published yet, so this field declares a budget rather than
   a value list — recorded below as a limitation rather than filled in with guesses.
+- `inferops.workload.id` is the one caller-shaped label there is, and it is **not**
+  read off a request. It is deployment configuration, because one V1 deployment
+  serves one workload and a value that is constant per process is bounded by
+  construction. A workload identifier taken from a caller's header would be an
+  unbounded label wearing a bounded one's name, and it is not read.
 
 ## 5. Record fields
 
@@ -209,25 +242,44 @@ adopts the agreed name instead of coining a second:
 ## 7. Metrics
 
 Thirteen active metrics, covering eight signal families. Every one names the
-question it answers and the maximum number of series it can produce.
+question it answers, the maximum number of series it can produce, and whether
+anything in this repository actually emits it.
 
-| Metric | Instrument | Labels | Max series | Answers |
-|---|---|---|---|---|
-| `inferops_build_info` | gauge | identity only | 25 | Which build, model revision, and runtime image produced everything else here? |
-| `inferops_inference_requests_total` | counter | workload, model, outcome | 500 | Is the platform serving, and what fraction succeeds? |
-| `inferops_inference_errors_total` | counter | workload, error code | 300 | Which named failure is responsible? |
-| `inferops_inference_request_duration_seconds` | histogram | workload, model | 1750 | How long does a request take, at the tail? |
-| `inferops_inference_queue_duration_seconds` | histogram | workload, model | 1500 | How much of that was waiting rather than working? |
-| `inferops_inference_requests_in_flight` | gauge | workload, model | 125 | How much work is in progress right now? |
-| `inferops_inference_tokens_total` | counter | workload, model, direction | 250 | How many tokens in and out, where reported? |
-| `inferops_model_load_duration_seconds` | histogram | model, runtime, outcome | 720 | How long until a model is servable, and how often does that fail? |
-| `inferops_model_ready` | gauge | workload, model | 125 | Is the model servable right now? |
-| `inferops_readiness_check_failures_total` | counter | workload, component | 150 | Which component is refusing traffic? |
-| `inferops_workload_document_rejections_total` | counter | rule | 24 | Which validation rule rejects real documents? |
-| `inferops_process_resident_memory_bytes` | gauge | none | 25 | How much memory is this process holding? |
-| `inferops_process_cpu_seconds_total` | counter | none | 25 | How much processor time is it consuming? |
+| Metric | Instrument | Labels | Max series | Emitted? | Answers |
+|---|---|---|---|---|---|
+| `inferops_build_info` | gauge | identity only | 25 | yes | Which build, model revision, and runtime image produced everything else here? |
+| `inferops_inference_requests_total` | counter | workload, model, outcome | 500 | yes | Is the platform serving, and what fraction succeeds? |
+| `inferops_inference_errors_total` | counter | workload, error code | 300 | yes | Which named failure is responsible? |
+| `inferops_inference_request_duration_seconds` | histogram | workload, model | 1750 | yes | How long does a request take, at the tail? |
+| `inferops_inference_queue_duration_seconds` | histogram | workload, model | 1500 | no | How much of that was waiting rather than working? |
+| `inferops_inference_requests_in_flight` | gauge | workload, model | 125 | yes | How much work is in progress right now? |
+| `inferops_inference_tokens_total` | counter | workload, model, direction | 250 | yes | How many tokens in and out, where reported? |
+| `inferops_model_load_duration_seconds` | histogram | model, runtime, outcome | 720 | no | How long until a model is servable, and how often does that fail? |
+| `inferops_model_ready` | gauge | workload, model | 125 | no | Is the model servable right now? |
+| `inferops_readiness_check_failures_total` | counter | workload, component | 150 | yes | Which component is refusing traffic? |
+| `inferops_workload_document_rejections_total` | counter | rule | 24 | no | Which validation rule rejects real documents? |
+| `inferops_process_resident_memory_bytes` | gauge | none | 25 | no | How much memory is this process holding? |
+| `inferops_process_cpu_seconds_total` | counter | none | 25 | yes | How much processor time is it consuming? |
 
-Three of these carry a decision that is not obvious:
+**Five active metrics are not emitted, and each says why in the data.** Four of them
+belong to an emitter that is not instrumented: the queue histogram, the model-load
+histogram, and the readiness gauge are the serving-runtime adapter's, because the
+adapter is the only component that sees the boundary those three describe; the
+document-rejection counter is the contract validator's, and the validator is a
+library and a command invoked by a person or a test rather than a running service,
+so it has no process to hold a counter for the life of.
+
+The fifth is assigned to the API and still absent, which is the one worth reading
+twice. `inferops_process_resident_memory_bytes` has no source this distribution may
+use: the only per-process memory figure the standard library exposes is
+`/proc/self/statm`, a module under `src/inferops` may not read a path — the property
+`tests/architecture/test_domain_dependency_boundary.py` enforces so that the
+distribution stays usable from a wheel — and every other source is a runtime
+dependency this project does not declare. The endpoint names the absence in a
+comment rather than publishing a zero, because a zero would be a measurement
+claiming this process holds no memory.
+
+Three of the emitted ones carry a decision that is not obvious:
 
 **Two counters rather than one.** `inferops_inference_requests_total` carries the
 outcome and `inferops_inference_errors_total` carries the canonical error code.
@@ -243,8 +295,12 @@ most expensive thing on the endpoint.
 
 **One identity metric instead of identity on everything.** `inferops_build_info` is
 always 1 and exists only to carry its labels. Putting the version, model revision,
-and image digest here rather than on every operational metric is the difference
-between recording immutable versions and multiplying every series by them.
+image digest, and adapter kind here rather than on every operational metric is the
+difference between recording immutable versions and multiplying every series by
+them. It is one series per process however its labels are resolved: identity arrives
+in two steps — what configuration stated, then what the adapter reported at startup
+— and the second replaces the first rather than sitting beside it, because two
+identity series for one process is worse than none.
 
 Three metrics are defined and deferred:
 
@@ -271,7 +327,14 @@ Three metrics are defined and deferred:
 The budget is arithmetic over the declared bounds, recomputed by the suite from each
 metric's labels and buckets. It establishes that the catalog is internally
 affordable on the single-node environment this project targets. It is not a
-measurement, and no store has been tested with it.
+measurement, and no store has been tested with it — nothing scrapes the endpoint,
+so no store has held a single one of these series.
+
+What a running process actually holds is far below the declared bound and for an
+uninteresting reason: one deployment serves one workload and one model, so the
+label products that the budget bounds at twenty-five workloads and five models
+resolve to one of each. The budget is a ceiling for a deployment this project does
+not yet run, and the ceiling is what the suite checks.
 
 ## 9. What the selected runtime already emits
 
@@ -304,8 +367,10 @@ exist.
 two gauges with `requests` in the name and no counter, and a gauge reading zero
 between requests cannot be summed, rated, or alerted on. This is the threshold
 [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md) records
-as failed. The platform counts the requests it receives itself, which needs no
-exporter, no sidecar, and no change to the runtime — and that is a plan, not a fix.
+as failed. The platform now counts the requests it receives itself, in
+`inferops_inference_requests_total`, which needed no exporter, no sidecar, and no
+change to the runtime. That closes the compensating obligation and fixes nothing
+about the runtime, which still exposes no counter.
 
 `llamacpp:requests_deferred` maps only partially, and the gap matters: it shows that
 queueing happened and never how long any request waited. The queue histogram is the
@@ -319,35 +384,65 @@ adapter's measurement, not the runtime's.
 | Levels | debug, info, warn, error, fatal |
 | Always present | `timestamp`, `level`, `inferops.event`, `service.name`, `inferops.correlation.id` |
 | Free-form message | None |
+| Field rule | An allowlist of the attribute names this catalog publishes. A field outside it is refused rather than written |
+| Destination | The stream the composition point supplies. No log store, shipper, retention window, or access rule is selected |
+
+Seven events are written, and they are the whole value set of `inferops.event`:
+
+| Event | Level | When |
+|---|---|---|
+| `deployment.started` | info | The adapter has been initialized and the deployment has begun accepting work |
+| `deployment.draining` | info | The deployment has stopped accepting work and has begun its drain |
+| `deployment.stopped` | info | The drain has finished and the adapter has been released |
+| `request.received` | info | An inference request has been routed, written before anything can fail |
+| `request.completed` | info | An inference request closed with a success |
+| `request.refused` | warn | An inference request closed with a canonical refusal |
+| `readiness.failed` | warn | A readiness check answered no, naming the component that answered it |
 
 There is no message field, and its absence is the point. A record is identified by
 its event value and carries named fields. Prose that varies per request is the field
 into which a caller's data eventually arrives, and it is also the field no query can
 match on reliably.
 
-The conditional fields — workload, owner, tenant, model, runtime, outcome, error
-code, rule, field location, status, duration, trace, span, finish reason, and pod —
-are listed with the condition each one applies under in the catalog data.
+The conditional fields — workload, workload version, owner, tenant, model, runtime,
+outcome, error code, rule, field location, status, duration, request, trace, span,
+finish reason, and pod — are listed with the condition each one applies under in the
+catalog data. Not all of them are ever written: `inferops.tenant.id` has no producer,
+`inferops.rule.id` and `inferops.field.path` belong to the validator, and `trace.id`
+and `span.id` need a tracer that does not exist.
+
+The allowlist is what makes the exclusions structural rather than remembered. There
+is no name in it for a prompt, a completion, a provider error body, a secret, an
+authorization header, or a value read out of a submitted document, and there is no
+message field, no `extra` mapping, and no pass-through to the encoder — so a
+forbidden field is not something a reviewer has to catch, it is a key that does not
+exist. A rejected field name is reported and its value never is.
 
 What is excluded, and the reasoning behind each exclusion, is in
 [the redaction rules](redaction.md).
 
 ## 11. Limitations
 
-Ten of them are recorded in the data. These are the ones that change how this
+Thirteen of them are recorded in the data. These are the ones that change how this
 document should be read:
 
-- **Nothing emits any of this.** Every metric, attribute, and log rule specifies
-  behaviour for components that do not exist.
+- **Only part of this emits.** The API emits eight metrics and writes seven kinds of
+  record. The adapter's four metrics, the validator's one, and one of the API's own
+  are specifications for behaviour that does not exist, and nothing produces a span.
 - **No collector, store, dashboard, or alert path is selected.** Who would own one is
   an open question in
   [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
-  that this record deliberately does not answer.
-- **Redaction is a rule, not a mechanism.** There is no redacting logger, no field
-  allowlist in code, and no test that inspects a real log line, because there are no
-  log lines.
-- **Container and node resource use has no source.** The local cluster runs no
-  metrics server; the one recorded measurement of a pod's memory was read from its
-  cgroup by hand.
+  that this record deliberately does not answer. The endpoint answers when something
+  scrapes it, and nothing scrapes it.
+- **Records go to a stream and no further.** No log store, shipper, retention window,
+  or access rule is selected, so the retention this catalog requires to be stated
+  before content of any kind is written is still unstated.
+- **The workload identity is configuration, not a document.** Nothing here deploys a
+  workload, so the workload, version, and owner on every series and record are what a
+  deployment was told to say, not values read out of a validated WorkloadContract.
+- **Container and node resource use has no source, and neither does process memory.**
+  The local cluster runs no metrics server; the one recorded measurement of a pod's
+  memory was read from its cgroup by hand; and the process's own memory has no source
+  this distribution is permitted to read.
 - **The error-code budget is an estimate.** The canonical error vocabulary for
   inference is not published; only the contract validator's is.

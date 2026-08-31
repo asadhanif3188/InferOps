@@ -20,7 +20,7 @@ is why its shape is what it is, and this document does not restate the argument.
 | `GET /v1/models` | The list envelope, the runtime descriptor, and the declared capability set | `deterministicSampling` is published as `null` — see [declared capabilities](#declared-capabilities) |
 | `GET /health/live` | Whether this process is alive | — |
 | `GET /health/ready` | This API accepting work **and** the selected adapter reporting itself able | — |
-| `GET /metrics` | The route, in the Prometheus exposition content type | It publishes **no series**. Instrumenting this API is the telemetry work |
+| `GET /metrics` | The route, in the Prometheus exposition content type, and the eight metrics the telemetry catalog assigns to this API | Five active metrics are not emitted — four belong to the adapter or the validator, and one has no source this distribution may read. See [what the API emits](../telemetry/api-instrumentation.md) |
 
 ## How it is composed
 

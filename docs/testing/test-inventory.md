@@ -22,7 +22,7 @@ in, and what a result from each is allowed to certify.
 [The claim and test matrix](claim-test-matrix.md) says which layers each public
 claim rests on. Between them there was no way to ask the question a reviewer
 actually asks: **if this claim stopped being true, which suite would fail?**
-Answering it meant reading forty modules and inferring.
+Answering it meant reading forty-odd modules and inferring.
 
 This inventory answers it for every module and every claim, and the checks behind
 it are the reason the answer stays true. It is a coverage record, **not a
@@ -116,16 +116,18 @@ check that the set of adapters covered is the set of adapters shipped.
 
 ### `mock-integration` — [`tests/api/`](../../tests/api/)
 
-Eight modules. The API driven through the ASGI interface it implements, against
+Nine modules. The API driven through the ASGI interface it implements, against
 the committed mock and controlled doubles: the success shape, the canonical error
 contract at every refusal site, configuration-driven adapter selection, and the
 drain order. **Nothing here crosses a socket** — this repository ships no server.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Eight modules. Committed machine-readable data checked against the documents
+Nine modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
-method, the security baseline, and the inference API surface.
+method, the security baseline, and the inference API surface — and, since the API
+began emitting, the catalog checked against what the distribution declares rather
+than only against its own prose.
 
 ### `real-runtime-smoke` — [`tests/realruntime/`](../../tests/realruntime/)
 
