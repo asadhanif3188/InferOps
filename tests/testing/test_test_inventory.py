@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -337,6 +338,114 @@ def test_the_document_names_every_module_that_defends_no_claim(
         if entry["claims"]:
             continue
         assert entry["module"] in inventory_document, entry["module"]
+
+
+def test_the_document_counts_the_modules_that_defend_no_claim_correctly(
+    inventory_document: str,
+) -> None:
+    """A published count is a claim, and this one drifted before it was checked.
+
+    Independent review of this change found the document saying "five" while the
+    data held six and the section below it said six. Naming every module is not
+    the same as counting them, and a reader who trusts the count reads a
+    different document from the one the data describes.
+    """
+    without_claims = [entry for entry in MODULES if not entry["claims"]]
+    written = NUMBER_WORDS[len(without_claims)]
+    assert re.search(rf"\bThere are {written}\b", inventory_document), {
+        "modules defending no claim": len(without_claims),
+        "the document should say": written,
+    }
+
+
+def test_the_document_counts_the_coverage_gaps_correctly(
+    inventory_document: str,
+) -> None:
+    written = NUMBER_WORDS[len(GAPS)]
+    assert re.search(
+        rf"\b{written.capitalize()} claims are not defended\b", inventory_document
+    ), {"gaps": len(GAPS), "the document should say": written}
+
+
+# --------------------------------------------------------------------------
+# How many layers exist, in every living document that says
+# --------------------------------------------------------------------------
+
+#: The documents that describe the current state of the test layers. A record
+#: under ``docs/proof/`` and an entry in the changelog are deliberately excluded:
+#: both are statements about a moment that has passed, and rewriting one to match
+#: today would be falsifying a record rather than fixing a document.
+LIVING_DOCUMENTS = (
+    "README.md",
+    "CONTRIBUTING.md",
+    "docs/testing/README.md",
+    "docs/testing/test-strategy.md",
+    "docs/testing/test-inventory.md",
+)
+
+#: Written-out numbers, because these documents write them out. Only as far as
+#: the layer count can reach.
+NUMBER_WORDS: dict[int, str] = {
+    0: "zero",
+    1: "one",
+    2: "two",
+    3: "three",
+    4: "four",
+    5: "five",
+    6: "six",
+    7: "seven",
+    8: "eight",
+    9: "nine",
+    10: "ten",
+    11: "eleven",
+    12: "twelve",
+}
+
+WORD_NUMBERS: dict[str, int] = {word: value for value, word in NUMBER_WORDS.items()}
+
+#: "Eight of eleven test layers exist", "Three of the eleven layers ... have no
+#: code" — the two forms these documents use, with the clause that decides which
+#: number is being claimed captured alongside.
+LAYER_COUNT = re.compile(
+    r"\b(?P<count>[A-Za-z]+) of (?:the )?(?P<total>[a-z]+) (?:test )?layers\b"
+    r"(?P<tail>[^.]*)",
+)
+
+
+@pytest.mark.parametrize("document", LIVING_DOCUMENTS, ids=LIVING_DOCUMENTS)
+def test_a_document_counting_the_layers_counts_them_correctly(document: str) -> None:
+    """Four documents state how many test layers exist, and nothing compared them.
+
+    They drifted: one said seven while two said eight and the data said eight.
+    The sentence is a claim about the strategy data, so it is checked against the
+    strategy data — in both forms these documents use, "N of eleven exist" and
+    "N of the eleven have no code".
+    """
+    text = (REPO_ROOT / document).read_text(encoding="utf-8")
+    implemented = sum(1 for layer in LAYERS if layer["v1Status"] == "implemented")
+
+    for match in LAYER_COUNT.finditer(text):
+        count_word = match.group("count").lower()
+        total_word = match.group("total").lower()
+        if count_word not in WORD_NUMBERS or total_word not in WORD_NUMBERS:
+            continue
+        assert WORD_NUMBERS[total_word] == len(LAYERS), {
+            "document": document,
+            "sentence": match.group(0),
+            "layers in the data": len(LAYERS),
+        }
+        tail = match.group("tail").lower()
+        if "no code" in tail:
+            expected = len(LAYERS) - implemented
+        elif "exist" in tail:
+            expected = implemented
+        else:
+            continue
+        assert WORD_NUMBERS[count_word] == expected, {
+            "document": document,
+            "sentence": match.group(0),
+            "the data says": expected,
+        }
 
 
 # --------------------------------------------------------------------------

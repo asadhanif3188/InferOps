@@ -155,6 +155,17 @@ def test_a_conformance_suite_was_discovered() -> None:
     )
 
 
+def test_the_accepted_adapter_kinds_are_not_empty() -> None:
+    """A check parametrised over an empty set collects nothing and reports green.
+
+    Every kind check below is parametrised over the domain's own accepted set. It
+    is a frozenset in the distribution rather than repository data, so it will not
+    empty itself by accident — and an emptied one would silently retire three
+    checks rather than fail one, which is the difference worth one assertion.
+    """
+    assert ACCEPTED_ADAPTER_KINDS, "the domain accepts no adapter kind"
+
+
 @pytest.mark.parametrize("adapter", sorted(SHIPPED), ids=sorted(SHIPPED))
 def test_every_shipped_adapter_is_held_to_the_shared_conformance_suite(
     adapter: str,

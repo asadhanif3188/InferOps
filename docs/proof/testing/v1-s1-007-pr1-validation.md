@@ -16,7 +16,7 @@ suite; every condition the API can refuse on is provoked or recorded unreachable
 and each provoked one matches the row that declares it; every pytest module in the
 repository is inventoried with the claim it protects or a written reason for
 protecting none; every published claim is covered by a module or recorded as a gap;
-and eight deliberate corruptions of those properties are each refused.
+and ten deliberate corruptions of those properties are each refused.
 
 **What this record does not establish.**
 
@@ -70,20 +70,20 @@ Base revision: `be0acda5ecc2333ed9b8fedaf524ccff1150554c`.
 
 ```text
 python -m pytest tests/contracts/test_platform_contract_regression.py -q    68 passed
-python -m pytest tests/adapters/test_adapter_contract_regression.py -q      12 passed
+python -m pytest tests/adapters/test_adapter_contract_regression.py -q      13 passed
 python -m pytest tests/api/test_api_contract_regression.py -q               97 passed
-python -m pytest tests/testing/test_test_inventory.py -q                   439 passed
+python -m pytest tests/testing/test_test_inventory.py -q                   446 passed
 ```
 
 ### The full default lane, before and after
 
 ```text
 python -m pytest -q
-4866 passed, 25 skipped, 14 deselected
+4874 passed, 25 skipped, 14 deselected
 ```
 
 Before this change the same command reported `4248 passed, 25 skipped, 14
-deselected`. The change adds 618 tests, adds no skip, removes no skip, and removes
+deselected`. The change adds 626 tests, adds no skip, removes no skip, and removes
 no test. The 25 skips and 14 deselections are pre-existing.
 
 ### The lane and marker grouping
@@ -91,20 +91,20 @@ no test. The 25 skips and 14 deselections are pre-existing.
 Every layer selected by name, on the same tree:
 
 ```text
-python -m pytest -q -m unit             398 passed,  18 skipped, 4489 deselected
-python -m pytest -q -m contract         628 passed,   7 skipped, 4270 deselected
-python -m pytest -q -m architecture     456 passed,             4449 deselected
-python -m pytest -q -m adapter          577 passed,             4328 deselected
-python -m pytest -q -m mockintegration  324 passed,             4581 deselected
-python -m pytest -q -m docs            2483 passed,             2422 deselected
-python -m pytest -q -m cluster                                  4905 deselected
-python -m pytest -q -m realruntime                  14 skipped, 4891 deselected
-python -m pytest -q -m failure                                  4905 deselected
-python -m pytest -q -m load                                     4905 deselected
+python -m pytest -q -m unit             398 passed,  18 skipped, 4497 deselected
+python -m pytest -q -m contract         628 passed,   7 skipped, 4278 deselected
+python -m pytest -q -m architecture     456 passed,             4457 deselected
+python -m pytest -q -m adapter          578 passed,             4335 deselected
+python -m pytest -q -m mockintegration  324 passed,             4589 deselected
+python -m pytest -q -m docs            2490 passed,             2423 deselected
+python -m pytest -q -m cluster                                  4913 deselected
+python -m pytest -q -m realruntime                  14 skipped, 4899 deselected
+python -m pytest -q -m failure                                  4913 deselected
+python -m pytest -q -m load                                     4913 deselected
 ```
 
 This is the separation the story's last acceptance criterion asks for, measured
-rather than asserted. The default lane selects 4 866 tests and none of them is a
+rather than asserted. The default lane selects 4 874 tests and none of them is a
 `cluster`, `realruntime`, `failure`, or `load` test; `realruntime` selects 14 and
 every one of them skips, because no runtime settings are set on this host and the
 suite skips rather than fails when they are absent.
@@ -149,28 +149,62 @@ resolves.
 
 ## Negative validation
 
-A suite that cannot fail proves nothing. Eight properties were each broken on
-purpose, the affected module was run, and the source was restored. Every corruption
-was refused.
+A suite that cannot fail proves nothing. Ten properties were each broken on
+purpose, the affected module was run, and the source was restored. Every number
+below is re-taken at the branch head, after the second-review fixes, so a reader
+reproducing one gets the count printed here.
 
 | # | Corruption | Result |
 |---|---|---|
 | 1 | The domain stops applying `mock-secret-ref-declared` | `4 failed, 64 passed` in the contract regression module |
 | 2 | The domain declares a second supported `apiVersion` the schema does not | `5 failed, 63 passed` |
 | 3 | The published schema renames one serving-capability token | `11 failed, 57 passed` |
-| 4 | One module is removed from the inventory | `1 failed, 429 passed` in the inventory module |
-| 5 | One module is filed under a layer whose paths do not contain it | `2 failed, 437 passed` |
-| 6 | A `mock`-layer module is credited with a claim only the real-runtime layer supports | `2 failed, 437 passed` |
-| 7 | The mock adapter's conformance subclass stops inheriting the shared suite | `2 failed, 10 passed` in the adapter regression module |
-| 8 | A condition is added to the API's table and never provoked | `1 failed, 96 passed` in the API regression module |
+| 4 | One module is removed from the inventory | `1 failed, 436 passed` in the inventory module |
+| 5 | One module is filed under a layer whose paths do not contain it | `2 failed, 444 passed` |
+| 6 | A `mock`-layer module is credited with a claim only the real-runtime layer supports | `2 failed, 444 passed` |
+| 7 | The inventory document’s count of modules defending no claim goes stale | `1 failed, 445 passed` |
+| 8 | A living document’s count of how many test layers exist goes stale | `1 failed, 445 passed` |
+| 9 | The mock adapter’s conformance subclass stops inheriting the shared suite | `2 failed, 11 passed` in the adapter regression module |
+| 10 | A condition is added to the API’s table and never provoked | `1 failed, 96 passed` in the API regression module |
 
 One further corruption is recorded because it **did not** fail, and the reason is a
-limitation rather than a defect: editing a condition's declared HTTP status in
+limitation rather than a defect: editing a condition’s declared HTTP status in
 `inferops.api.errors` changes the expectation along with the behaviour, so the
-table-driven checks still pass. Corrupting the *refusal site* instead — making an
-oversized body refuse on `request-outside-subset` rather than `request-too-large` —
-produces `1 failed, 96 passed`. The checks hold the API to its published table;
-they do not decide what the table should say.
+table-driven checks still pass — `97 passed`. Corrupting the *refusal site* instead
+— making an oversized body refuse on `request-outside-subset` rather than
+`request-too-large` — produces `1 failed, 96 passed`. The checks hold the API to its
+published table; they do not decide what the table should say.
+
+## Independent review
+
+A second engineer reviewed the first commit against the diff and re-ran every
+command that commit's version of this record cited, reproducing each count
+exactly. Three findings, all addressed in the second commit; every count in this
+record has since been re-taken at the branch head, because the fixes added eight
+tests:
+
+- **One factual error.** `docs/testing/test-inventory.md` said "There are five"
+  modules defending no published claim while its own section below listed six and
+  the data held six. Corrected, and **now checked**: the count is compared with the
+  data, and so is the coverage-gap count, because naming every module is not the
+  same as counting them. Corruption 7 above is the demonstration.
+- **One stale count in an edited file.** `docs/testing/README.md` said seven of
+  eleven test layers exist; the strategy document and its data both say eight, and
+  CONTRIBUTING says three have no code. It predates this change. Corrected, and
+  **now checked** across all five living documents that state the figure — in both
+  forms they use, "N of eleven exist" and "N of the eleven have no code".
+  Corruption 8 is the demonstration. Records under `docs/proof/` and entries in the
+  changelog are deliberately excluded from that check: both are statements about a
+  moment that has passed, and rewriting one to match today would falsify a record.
+- **One latent vacuity.** Three kind checks in the adapter module are parametrised
+  over the domain’s accepted adapter kinds with no assertion that the set is
+  non-empty. An emptied set would retire three checks silently rather than fail
+  one. A guard was added.
+
+Beyond those three, the review found no critical or high-severity issue, no
+vacuous assertion, no duplicated test, and no scope violation. It could not re-run
+the corruptions above in its own sandbox and said so rather than implying it had;
+the counts in that table are this author's, re-taken at the branch head.
 
 ## Findings
 

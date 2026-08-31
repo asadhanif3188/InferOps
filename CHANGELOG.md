@@ -59,6 +59,16 @@ once versioned releases begin.
   module absent from it fails, a module filed under a layer whose paths do not
   contain it fails, a module credited with a claim its layer cannot support fails,
   and a claim that no module names and no recorded gap explains fails.
+- **Two published counts are now compared with the data that decides them.**
+  Independent review of this change found the new inventory document saying "five"
+  modules defend no published claim while its own section listed six, and found
+  `docs/testing/README.md` saying seven of eleven test layers exist while the
+  strategy document and its data said eight. Both are corrected and both are now
+  checked: the inventory's two counts against the inventory data, and the layer
+  count across the five living documents that state it, in both forms they use.
+  Records under `docs/proof/` and changelog entries are deliberately excluded —
+  both are statements about a moment that has passed, and rewriting one to match
+  today would falsify a record rather than fix a document.
 - **What the inventory found is published rather than quietly fixed.** Six claims
   have no pytest module behind them — two of them certified, defended by a shell
   check and by a manual download step — and six suites defend no published claim at
