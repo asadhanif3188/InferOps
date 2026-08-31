@@ -10,6 +10,60 @@ once versioned releases begin.
 
 ### Added
 
+- **The three surfaces that read a WorkloadContract are compared, not just each
+  checked.** The published JSON Schema, the offline validator, and the platform
+  domain each had a correct suite of its own and nothing compared two of them,
+  which is where drift actually appears: a rule tightened on one side, an
+  identifier renamed on another, a supported version added to one constant.
+  [`tests/contracts/test_platform_contract_regression.py`](tests/contracts/test_platform_contract_regression.py)
+  asserts that all three accept every valid fixture and every generated workload,
+  that the platform refuses every invalid one, that the layer recorded for each
+  refusal is the layer that actually produces it, that every rule identifier the
+  domain cites is a published semantic rule and every published semantic rule is
+  one it implements, and that the three constants naming the supported contract
+  version agree. One divergence is recorded rather than hidden: the domain does
+  not refuse the mock-dressed-as-real fixture, the schema does, and a two-way set
+  assertion means that fact cannot change silently in either direction.
+- **A generated mock workload cannot be edited into real serving.** The four
+  edits the contract document names — the environment, the serving capability, the
+  accelerator, and a cited real-runtime proof — were already refused on the
+  *committed* mock fixture. They are now refused on the scaffolder's own output,
+  which is the document most likely to be edited after generation and the one
+  nobody reviewed.
+- **Every serving adapter this repository ships is discovered and held to the
+  shared conformance suite.** The two subclasses existed; nothing asserted that
+  the set of adapters covered was the set of adapters shipped, so an adapter added
+  without a suite would have passed every check here.
+  [`tests/adapters/test_adapter_contract_regression.py`](tests/adapters/test_adapter_contract_regression.py)
+  walks the adapters package for classes that structurally implement the protocol,
+  fails when one has no conformance suite, and compares the adapter-kind
+  vocabulary across the three places it is written down — the kinds the domain
+  accepts, the kinds the adapters declare, and the kinds the API can compose.
+- **Every condition the API can refuse on is provoked, or recorded as unreachable
+  with a reason.** The refusal sites were each exercised by hand, which left a
+  condition added and never provoked passing every check in the repository.
+  [`tests/api/test_api_contract_regression.py`](tests/api/test_api_contract_regression.py)
+  drives the published table instead: fifteen of sixteen conditions are provoked
+  and held to the code, flag, status, and identifier their own row declares, the
+  sixteenth carries the reason no request can reach it, and the mapping is
+  asserted exhaustive in both directions before any of it runs. Every published
+  route is driven for the success shape, the correlation identifier, and the
+  adapter kind.
+- **A test inventory, and the checks that stop it going stale.**
+  [The inventory](docs/testing/test-inventory.md) lists every pytest module in the
+  repository, the layer and lane it belongs to, and the claim it protects — the
+  answer to "if this claim stopped being true, which suite would fail", which
+  previously meant reading forty modules and guessing.
+  [`tests/testing/test_test_inventory.py`](tests/testing/test_test_inventory.py)
+  compares it with the test tree and the committed strategy in both directions: a
+  module absent from it fails, a module filed under a layer whose paths do not
+  contain it fails, a module credited with a claim its layer cannot support fails,
+  and a claim that no module names and no recorded gap explains fails.
+- **What the inventory found is published rather than quietly fixed.** Six claims
+  have no pytest module behind them — two of them certified, defended by a shell
+  check and by a manual download step — and six suites defend no published claim at
+  all. Both lists are in the document with a reason each.
+
 - **The command that generates a workload, and validates the one it wrote.**
   `python -m tools.workload_scaffold` gathers the parameter set, renders the
   template, and writes three files — then reads all three back, compares them to
@@ -877,6 +931,15 @@ once versioned releases begin.
   legitimately for, and five boundary rules that make the distinction operational.
 
 ### Changed
+
+- **The contributor guide no longer says two markers select nothing.**
+  `mockintegration` acquired code in `V1-S1-005-PR1` and `realruntime` in
+  `V1-S1-004-PR2`, and the test-lane section still listed both as empty. The
+  correction says which story gave each one code, and it says of `realruntime`
+  what the strategy already says: the suite is written and has never been run
+  against a runtime. The same section now records that a new test module must be
+  inventoried, and that a change adding, renaming, moving, or removing any test
+  module anywhere in the tree has to pass `tests/testing`.
 
 - **The accepted inference API surface no longer says nothing serves it**, because
   something does. `implementationStatus` moves from `nothing-serves` to

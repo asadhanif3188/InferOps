@@ -469,13 +469,16 @@ python -m pytest -m contract -q
 python -m pytest -m realruntime -q
 ```
 
-`mockintegration`, `cluster`, `realruntime`, `failure`, and `load` currently select
-nothing, because the layers behind them have no code yet. That is the intended
-state: the marker exists so that the first test of its kind is written under it
-rather than into whichever suite was already open. `unit` was in that list until
-`V1-S1-001` wrote the first domain code and now selects
-[`tests/domain/`](tests/domain/); `adapter` was in it until `V1-S1-003` wrote the
-deterministic mock adapter and now selects [`tests/adapters/`](tests/adapters/).
+`cluster`, `failure`, and `load` currently select nothing, because the layers
+behind them have no code yet. That is the intended state: the marker exists so
+that the first test of its kind is written under it rather than into whichever
+suite was already open. `unit` was in that list until `V1-S1-001` wrote the first
+domain code and now selects [`tests/domain/`](tests/domain/); `adapter` was in it
+until `V1-S1-003` wrote the deterministic mock adapter and now selects
+[`tests/adapters/`](tests/adapters/); `realruntime` was in it until `V1-S1-004-PR2`
+wrote [`tests/realruntime/`](tests/realruntime/), which is written and has never
+been run against a runtime; and `mockintegration` was in it until `V1-S1-005-PR1`
+built the API for [`tests/api/`](tests/api/) to drive.
 
 A new test module belongs to exactly one layer and declares that layer's marker at
 module level:
@@ -485,18 +488,25 @@ pytestmark = pytest.mark.contract
 ```
 
 A module under a layer's declared paths that omits its marker fails the strategy
-suite, because a marker nothing is marked with selects nothing, silently.
+suite, because a marker nothing is marked with selects nothing, silently. It must
+also be added to
+[the test inventory](docs/testing/test-inventory.v1alpha1.json) with the claim it
+protects, or with a written reason for protecting none; a module absent from the
+inventory fails the inventory suite.
 
 Adding a test that needs a cluster or a model means adding it to a layer outside the
 default lane. Adding a public claim means adding a row to
 [the claim and test matrix](docs/testing/claim-test-matrix.md) with a test layer, an
 environment, a required certification level, and an evidence owner; a claim with none
-of those fails the build.
+of those fails the build — and it must then be named by an inventory entry or
+recorded there as a coverage gap.
 
-### Test strategy and certification
+### Test strategy, inventory, and certification
 
 Changes under `docs/testing/`, `tests/testing/`, or `pytest.ini` must pass the
-strategy suite:
+strategy suite — and so must **any change that adds, renames, moves, or removes a
+test module anywhere in the tree**, because the inventory beside the strategy
+lists every one of them:
 
 ```sh
 python -m pytest tests/testing -q
@@ -516,9 +526,21 @@ from layers that are implemented; that a lane claims automation only by naming a
 workflow file that exists; and that the three published documents and the data agree
 in both directions.
 
-It checks a strategy, not a test suite. Five of the eleven layers it describes have
-no code, and nothing here can distinguish a layer that is honestly planned from one
-that will never be written.
+It also checks
+[the test inventory](docs/testing/test-inventory.v1alpha1.json) against the test
+tree and the strategy in both directions: that every `test_*.py` under `tests/` is
+listed exactly once and every listed module exists; that the layer and marker
+recorded for a module are the ones the strategy's own declared paths give it, and
+that the module declares that marker; that a module names only claims whose layers
+include its own, so a `mock` suite cannot be recorded as defending a claim needing
+a real runtime; that a module naming no claim says why; and that every claim is
+either named by a module or recorded as a coverage gap with a reason, and never
+both.
+
+It checks a strategy, not a test suite. Three of the eleven layers it describes have
+no code, nothing here can distinguish a layer that is honestly planned from one that
+will never be written, and the inventory records which suite defends which claim
+without reading a single assertion inside one.
 
 ### Telemetry catalog and evidence templates
 
