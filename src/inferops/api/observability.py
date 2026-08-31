@@ -164,6 +164,21 @@ EXPOSITION_CATALOG_NOTE = (
 )
 
 
+def dropped_records_note(count: int) -> str:
+    """What the exposition says when the log sink has refused records.
+
+    A comment rather than a metric, for the same reason the absent memory metric
+    is a comment: the catalog publishes no signal for this and inventing one here
+    would be a metric nobody decided. It is on the scrape because that is the
+    surface still working when the log destination is not, and a reader of the
+    remaining records has no other way to learn that some are missing.
+    """
+    return (
+        f"{count} log record(s) were produced and not written: the configured sink "
+        "refused them. Records are incomplete for this process."
+    )
+
+
 #: The two conditions whose outcome is a timeout rather than an error. The
 #: catalog separates a timeout from a server error because the two are operated
 #: differently -- one means add capacity or raise a deadline, the other means
@@ -452,4 +467,7 @@ class ApiTelemetry:
         preamble = [EXPOSITION_CATALOG_NOTE, NO_MEMORY_SOURCE_NOTE]
         if self._resource.adapter_kind == MOCK_ADAPTER_KIND:
             preamble.insert(0, MOCK_EXPOSITION_NOTE)
+        dropped = self._logs.dropped
+        if dropped:
+            preamble.append(dropped_records_note(dropped))
         return self._registry.exposition(preamble=preamble)

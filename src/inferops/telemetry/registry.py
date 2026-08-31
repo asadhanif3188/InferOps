@@ -7,14 +7,20 @@ the Prometheus text exposition format when ``/metrics`` is scraped. What is stil
 unselected stays unselected -- nothing here ships a sample anywhere, and no
 collector, store, dashboard, or alert exists.
 
-**The registry enforces the placement rule rather than trusting it.**
-:meth:`MetricRegistry.declare` refuses a label name that is not in
-:data:`~inferops.telemetry.names.LABEL_SAFE_ATTRIBUTES`, so a correlation
-identifier, a request identifier, a workload version, a tenant identifier, or a
-measured duration cannot become a label by being passed to a constructor. That is
-the catalog's ``no-request-identifier-is-a-metric-label`` and
-``no-unbounded-value-is-a-metric-label`` moved from a document into the one place
-a series is created. It also refuses a label **value** outside
+**The registry enforces the placement rule rather than trusting it.** A
+:class:`MetricSpec` refuses a label name the catalog does not permit on a metric
+of its kind, at construction, before any series exists: an operational metric may
+label only by :data:`~inferops.telemetry.names.LABEL_SAFE_ATTRIBUTES`, and an
+identity metric by those plus
+:data:`~inferops.telemetry.names.IDENTITY_ATTRIBUTES`. **Both kinds are checked**,
+which is worth saying because the alternative is easy to write and hard to see: a
+correlation identifier, a request identifier, a workload version, a tenant
+identifier, a pod name, or a measured duration cannot become a label by being
+passed to a constructor, and that is true of the identity metric as well. It is
+the catalog's ``no-request-identifier-is-a-metric-label``,
+``no-unbounded-value-is-a-metric-label``, and
+``identity-belongs-on-an-identity-metric`` moved from a document into the one
+place a series is created. It also refuses a label **value** outside
 :data:`LABEL_VALUE`, because a label value carrying a newline or a quote is an
 exposition-format injection rather than a label.
 
@@ -23,6 +29,15 @@ declares its label names once; recording against a different set of names is a
 :class:`~inferops.domain.serving.errors.InvalidValueError` rather than a new
 series. There is no dynamic label discovery here, on purpose: dynamic labels are
 how a cardinality budget is spent without anyone deciding to.
+
+**A scrape reads a snapshot, not the live series.** Every mutation happens under
+one lock, and :meth:`Metric.samples` takes an immutable :class:`Sample` of each
+series inside that lock. A renderer handed the live object would read a
+histogram's ``count`` after another thread had advanced it past the ``sum`` and
+the buckets already read, and publish a family whose parts disagree. One lock is
+shared by every metric in a registry, which is coarse and deliberate: contention
+across a handful of instruments costs less than a lock per metric costs in ways
+to get the ordering wrong.
 
 **Nothing here is a benchmark.** The catalog's ``no-figure-here-is-a-published-benchmark``
 still holds: these series exist to operate the platform, and V1 publishes no
@@ -51,7 +66,16 @@ EXPOSITION_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"
 #: newline, a quote, or a backslash there is an injected series rather than a
 #: label. Values are validated rather than escaped, because a value that needed
 #: escaping is a value that came from somewhere it should not have.
-LABEL_VALUE = _compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,127}$")
+#:
+#: **It carries no anchors, and it is matched with** :meth:`re.Pattern.fullmatch`.
+#: Python's ``$`` matches at the end of a string *or immediately before a single
+#: trailing newline*, so the obvious ``^...$`` with :meth:`re.Pattern.match`
+#: accepts a value ending in one newline — the single character this pattern most
+#: needs to refuse, because a newline inside a quoted label value splits one
+#: sample line into two and a scraper rejects the whole target rather than the one
+#: series. An unanchored pattern matched in full has no such edge, and
+#: ``test_a_label_value_ending_in_a_newline_is_refused`` holds it there.
+LABEL_VALUE = _compile(r"[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,127}")
 
 #: What an unknown identity is published as. Prometheus has no absent label, so
 #: an identity a deployment did not state is the empty string, which every store
@@ -91,22 +115,33 @@ HISTOGRAM = "histogram"
 INSTRUMENTS: tuple[str, ...] = (COUNTER, GAUGE, HISTOGRAM)
 
 
-def _check_label_names(metric: str, labels: Sequence[str]) -> tuple[str, ...]:
-    """Refuse a label the catalog does not permit on an operational metric."""
+def _check_label_names(
+    metric: str, labels: Sequence[str], *, identity: bool
+) -> tuple[str, ...]:
+    """Refuse a label the catalog does not permit on a metric of this kind.
+
+    The permitted set differs between the two kinds and both are checked, which
+    is the part worth stating. An identity metric may carry the attributes marked
+    identity-only *and* the operational ones -- that is what an info metric is
+    for -- but it may not carry a correlation identifier, a request identifier, a
+    pod name, or a measured duration, because those are unbounded or measured and
+    an identity metric is still a series in a store. Leaving identity metrics
+    unchecked would have made the module's claim that a request identifier
+    "cannot become a label by being passed to a constructor" true of one metric
+    shape and false of the other.
+    """
+    permitted = names.LABEL_SAFE_ATTRIBUTES | (
+        names.IDENTITY_ATTRIBUTES if identity else frozenset()
+    )
     seen: set[str] = set()
     for label in labels:
         if label in seen:
             raise InvalidValueError(f"{metric}: label {label!r} is declared twice")
         seen.add(label)
-        if label in names.NEVER_A_LABEL:
-            raise InvalidValueError(
-                f"{metric}: {label!r} may not be a metric label; the telemetry "
-                f"catalog places it in logs, traces, or an identity metric only"
-            )
-        if label not in names.LABEL_SAFE_ATTRIBUTES:
+        if label not in permitted:
             raise InvalidValueError(
                 f"{metric}: {label!r} is not an attribute the telemetry catalog "
-                f"permits as an operational metric label"
+                f"permits as a label on this kind of metric"
             )
     return tuple(labels)
 
@@ -114,7 +149,7 @@ def _check_label_names(metric: str, labels: Sequence[str]) -> tuple[str, ...]:
 def _check_label_value(metric: str, label: str, value: str) -> str:
     if value == UNKNOWN:
         return value
-    if LABEL_VALUE.match(value) is None:
+    if LABEL_VALUE.fullmatch(value) is None:
         raise InvalidValueError(
             f"{metric}: the value of {label!r} is not a well-formed label value"
         )
@@ -176,18 +211,43 @@ class MetricSpec:
             )
         if self.buckets is not None and list(self.buckets) != sorted(self.buckets):
             raise InvalidValueError(f"{self.name}: bucket boundaries must ascend")
-        if not self.identity:
-            _check_label_names(self.name, self.labels)
+        _check_label_names(self.name, self.labels, identity=self.identity)
 
 
 @dataclass
 class _Series:
-    """The samples one label combination holds."""
+    """The samples one label combination holds. Mutable, and only under the lock."""
 
     value: float = 0.0
     count: int = 0
     total: float = 0.0
     buckets: list[int] = field(default_factory=list)
+
+    def snapshot(self) -> Sample:
+        """One immutable reading of this series, taken under the lock."""
+        return Sample(
+            value=self.value,
+            count=self.count,
+            total=self.total,
+            buckets=tuple(self.buckets),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Sample:
+    """What a scrape reads: one series, frozen at one instant.
+
+    A renderer handed the live :class:`_Series` would read ``count`` after
+    another thread had advanced it past the ``sum`` and the buckets it had
+    already read, and publish a histogram whose parts disagree. Rendering from a
+    snapshot taken under the lock is what makes one scrape one consistent
+    reading, rather than several readings of the same series interleaved.
+    """
+
+    value: float
+    count: int
+    total: float
+    buckets: tuple[int, ...]
 
 
 class Metric:
@@ -205,7 +265,8 @@ class Metric:
     @property
     def series_count(self) -> int:
         """How many label combinations this metric currently holds."""
-        return len(self._series)
+        with self._lock:
+            return len(self._series)
 
     def _key(self, labels: Mapping[str, str]) -> tuple[str, ...]:
         declared = self._spec.labels
@@ -306,10 +367,15 @@ class Metric:
                     slot.buckets[index] += 1
             slot.buckets[len(boundaries)] += 1
 
-    def samples(self) -> list[tuple[dict[str, str], _Series]]:
-        """Every series, with its labels, in a stable order."""
+    def samples(self) -> list[tuple[dict[str, str], Sample]]:
+        """Every series, with its labels, in a stable order.
+
+        The snapshots are taken **inside** the lock, not after it. Copying the
+        dictionary and then reading the series it points at would hold the lock
+        for the part that does not need it and drop it for the part that does.
+        """
         with self._lock:
-            rows = sorted(self._series.items())
+            rows = [(key, row.snapshot()) for key, row in sorted(self._series.items())]
         return [
             (dict(zip(self._spec.labels, key, strict=True)), row) for key, row in rows
         ]
@@ -380,7 +446,7 @@ def _render(metric: Metric) -> list[str]:
 
 
 def _render_histogram(
-    spec: MetricSpec, labels: dict[str, str], series: _Series
+    spec: MetricSpec, labels: dict[str, str], series: Sample
 ) -> list[str]:
     boundaries = list(spec.buckets or ())
     lines: list[str] = []

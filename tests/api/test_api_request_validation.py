@@ -19,12 +19,37 @@ import json
 
 import pytest
 
-from inferops.api import CONTRACT_INVALID, InferOpsApi
+from inferops.api import CONTRACT_INVALID, InferOpsApi, identifiers
 from inferops.api.surface import CHAT_COMPLETIONS_PATH
 from tests.support import asgi_client
 from tests.support.api_composition import MOCK_MODEL, RecordingAdapter, build
 
 pytestmark = pytest.mark.mockintegration
+
+
+@pytest.mark.parametrize("supplied", ["req-abc123\n", "req-abc123\r", "req\nabc"])
+def test_an_identifier_ending_in_a_newline_is_replaced(supplied: str) -> None:
+    """A supplied identifier is echoed in a response header, so a newline in one
+    is a header injection rather than an identifier.
+
+    Python's ``$`` matches at the end of a string *or* immediately before a single
+    trailing newline, so the obvious ``^...$`` with :meth:`re.Pattern.match`
+    accepts ``"abc\\n"`` and returns it unchanged. The pattern therefore carries no
+    anchors and is matched in full. A malformed identifier is replaced rather than
+    refused, because failing an inference request over its observability metadata
+    would make a header nobody has to send into a way to fail.
+    """
+    accepted = identifiers.accept_or_generate(supplied)
+
+    assert accepted != supplied
+    assert "\n" not in accepted and "\r" not in accepted
+    assert identifiers.IDENTIFIER.fullmatch(accepted)
+
+
+def test_a_well_formed_identifier_is_still_accepted_unchanged() -> None:
+    """The fix must not have turned validation into replacement for everyone."""
+    assert identifiers.accept_or_generate("req-abc123") == "req-abc123"
+    assert identifiers.accept_or_generate("a.b:c-d_1") == "a.b:c-d_1"
 
 
 async def refuse(api: InferOpsApi, body: object) -> asgi_client.Response:

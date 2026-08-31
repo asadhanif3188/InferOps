@@ -225,7 +225,7 @@ def _read(environment: Mapping[str, str], name: str) -> str:
     value = environment.get(name, "").strip()
     if not value:
         return UNKNOWN
-    if LABEL_VALUE.match(value) is None:
+    if LABEL_VALUE.fullmatch(value) is None:
         raise InvalidAdapterConfigError(
             name,
             "must be at most 128 characters of letters, digits, and "

@@ -236,7 +236,7 @@
       "module": "tests/api/test_api_request_validation.py",
       "layer": "mock-integration",
       "marker": "mockintegration",
-      "protects": "What the API refuses about a request body, and the rule that a refusal names the member and never the value beside it.",
+      "protects": "What the API refuses about a request body, the rule that a refusal names the member and never the value beside it, and the validation of a caller-supplied request or correlation identifier - which is echoed in a response header, so a newline in one is a header injection rather than an identifier.",
       "claims": [
         "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
       ],

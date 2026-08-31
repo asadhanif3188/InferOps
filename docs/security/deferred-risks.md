@@ -65,6 +65,19 @@ than a port-forward.
 protected, or restricted at the caller boundary. Least exposure is what exists there,
 and it identifies nobody.
 
+**What this now costs, restated because the cost changed.** `V1-S1-008-PR1`
+instrumented the API, and `/metrics` sits behind the same absent boundary as every
+other route. Before that change the endpoint published no series at all, so an
+unauthenticated caller reaching the boundary learned nothing from it; it now
+publishes the build, capability, release, environment, adapter kind, model
+identifier, model revision, runtime identifier, and runtime image digest of the
+deployment, plus live request, error, latency, saturation, and readiness counters.
+None of that is a prompt, a response, a tenant, or a credential — those have no
+placement anywhere — and all of it is a deployment fingerprint an image digest
+makes precise. This entry is not reopened and no control is added; the exposure is
+recorded because a register that describes what an absent control costs has to be
+updated when the cost grows, not only when it is paid.
+
 ### DR-02 — There is no rate limit, quota, or concurrency limit
 
 **Why deferred.** The one executed trial was single and sequential; the runtime

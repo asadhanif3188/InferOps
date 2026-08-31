@@ -30,10 +30,19 @@ import uuid
 from .surface import COMPLETION_ID_PREFIX
 
 #: What an accepted identifier looks like. Bounded in length because it becomes a
-#: metric label and a log field, and restricted in alphabet because it is echoed
-#: in a response header, where a control character or a newline is a header
-#: injection rather than an identifier.
-IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
+#: log field, and restricted in alphabet because it is echoed in a response
+#: header, where a control character or a newline is a header injection rather
+#: than an identifier.
+#:
+#: **It carries no anchors, and it is matched with** :meth:`re.Pattern.fullmatch`.
+#: That is not a style choice. Python's ``$`` matches at the end of a string *or
+#: immediately before a single trailing newline*, so ``^...$`` with
+#: :meth:`re.Pattern.match` accepts a value ending in one newline — which is
+#: exactly the value this pattern exists to refuse, and precisely the one that
+#: turns an echoed header into a header injection. An unanchored pattern matched
+#: in full has no such edge, and
+#: ``test_an_identifier_ending_in_a_newline_is_replaced`` holds it there.
+IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,63}")
 
 
 def generate() -> str:
@@ -47,7 +56,7 @@ def accept_or_generate(supplied: str | None) -> str:
     Returns the supplied one when it is well-formed, and a generated one
     otherwise — including when nothing was supplied at all.
     """
-    if supplied is not None and IDENTIFIER.match(supplied) is not None:
+    if supplied is not None and IDENTIFIER.fullmatch(supplied) is not None:
         return supplied
     return generate()
 

@@ -1036,6 +1036,13 @@ once versioned releases begin.
   logger, a formatter, and a redacting sink now exist and real records are
   inspected. No log store, shipper, retention window, or access rule does, so
   nothing is reconstructible and no auditability property is claimed.
+- **`DR-01` in the deferred-risk register records what the absent authentication
+  boundary now costs.** `/metrics` sits behind it and published nothing at all
+  before this change; it now publishes the build, capability, release, environment,
+  adapter kind, model identity, runtime identity, and image digest of the
+  deployment, plus live operational counters. No control is added and the entry is
+  not reopened — a register that describes what a missing control costs has to be
+  updated when the cost grows, not only when it is paid.
 - Three living documents that said this repository emits nothing —
   `CONTRIBUTING.md`, the inference API document, and the API surface document — are
   corrected. `ADR 0006` is deliberately **not** edited: an ADR is a decision at a
@@ -1194,6 +1201,48 @@ once versioned releases begin.
   nothing. Serving remains unsupported, and the prerequisites gain no new tool.
 
 ### Fixed
+
+- **A caller-supplied identifier ending in a newline was accepted and echoed into
+  a response header.** Python's `$` matches at the end of a string *or immediately
+  before a single trailing newline*, so `IDENTIFIER.match()` against a `^...$`
+  pattern accepted `"req-abc123\n"` and returned it unchanged — into
+  `X-InferOps-Request-ID`, which is a header injection rather than an identifier,
+  and which that module's own docstring said the pattern existed to prevent. The
+  defect predates this change; it is fixed here because this change is what began
+  writing those identifiers into every log record. The pattern lost its anchors and
+  is matched with `fullmatch`.
+- **The same defect in the metric-label validator**, which every telemetry
+  environment variable and every label value passes through. A value ending in one
+  newline was written raw between quotes into the exposition, splitting a sample
+  line in two — and a scraper rejects the whole target rather than the one series,
+  so a trailing newline in `INFEROPS_RELEASE_ID` would have blacked out a
+  deployment's metrics for the life of the process. Same fix, and both patterns are
+  now anchorless and matched in full so the two cannot drift apart.
+- **A failing log sink stranded the in-flight gauge and failed the request.** The
+  gauge was raised outside the `try` whose `finally` lowers it, so a sink raising
+  between the two left it raised forever and took the request with it. The
+  increment moved inside the guarded region, and — the load-bearing half — a sink
+  failure is now caught, counted, and not raised: a deployment that refused every
+  caller because its log destination went away would be telemetry deciding
+  availability. A record that fails to *build* still raises, because the allowlist
+  refusing a forbidden field is the error that may never be swallowed. The scrape
+  names a non-zero drop count.
+- **A scrape read the live series rather than a snapshot**, so a scrape concurrent
+  with an observation could publish a histogram whose `count` had advanced past the
+  `sum` beside it. `Metric.samples()` now takes an immutable reading inside the
+  lock, and `series_count` no longer reads outside it.
+- **The registry enforced the placement rule on operational metrics and claimed
+  both kinds.** An identity metric skipped the label check entirely, so
+  `MetricSpec(identity=True, labels=(CORRELATION_ID,))` would have constructed —
+  while the module said a correlation identifier "cannot become a label by being
+  passed to a constructor". It was an overclaim before it was a bug: nothing
+  emitted such a label. The permitted set is now derived per metric kind and both
+  are checked.
+- **A test that could not fail.** The latency check advanced its clock by zero and
+  asserted a duration was non-negative, which the production code guarantees by
+  clamping. It now drives an adapter that advances the monotonic clock while
+  serving and asserts the histogram sum, the record's duration, and the buckets the
+  observation lands in.
 
 - Threshold `T7` was too broad as written. It bundled "the runtime exposes native
   metrics", which is the runtime's job, with "the runtime counts requests", which is
