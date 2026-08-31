@@ -32,6 +32,12 @@ operational series carries the mock runtime's registered identifier.
 response header echoes is the one every record for that request carries, which is
 what makes a refusal as findable as a success.
 
+**A broken log destination breaks neither the request nor a counter.** The sink is
+the only I/O in this path and it is the one thing here that fails for reasons the
+process did not cause, so a sink that raises is driven directly: the request still
+answers, the in-flight gauge still returns to zero, and the scrape says how many
+records were lost.
+
 Nothing here binds a socket, contacts a runtime, or writes to a real destination: the
 log sink is a list, and the clocks are fixed.
 """
@@ -71,6 +77,7 @@ from inferops.domain.context import RequestContext
 from inferops.domain.serving import (
     AdapterConfiguration,
     InferenceResult,
+    InvalidValueError,
     ModelNotReadyError,
     TokenUsage,
 )
@@ -131,6 +138,32 @@ class ReportingAdapter(RecordingAdapter):
             usage=TokenUsage(input_tokens=11, output_tokens=7),
             finish_reason=result.finish_reason,
         )
+
+
+@dataclass
+class Refusing:
+    """A sink that refuses every record, standing in for a broken destination."""
+
+    def __call__(self, line: str) -> None:
+        raise OSError("the log destination went away")
+
+
+@dataclass
+class TickingAdapter(RecordingAdapter):
+    """An adapter that advances the monotonic clock while it is serving.
+
+    A duration is only a measurement if something took time. The committed mock
+    returns instantly, so a suite asserting on latency has to make the clock move
+    where a real runtime would — inside the call the duration is measuring.
+    """
+
+    clock: Clock | None = None
+    seconds: float = 0.0
+
+    async def infer(self, prompt: str, context: RequestContext) -> InferenceResult:
+        if self.clock is not None:
+            self.clock.advance(self.seconds)
+        return await super().infer(prompt, context)
 
 
 @dataclass
@@ -364,27 +397,102 @@ def test_a_timeout_is_separated_from_an_error(condition, expected) -> None:
 # --------------------------------------------------------------------------
 
 
-async def test_a_request_is_timed_into_the_histogram() -> None:
+async def test_a_request_is_timed_with_the_clock_the_application_was_given() -> None:
+    """The duration is the elapsed reading, not a number the code can produce anyway.
+
+    The adapter advances the monotonic clock by a known amount while it is
+    serving, so the histogram sum, the record's duration, and the bucket the
+    observation lands in are all consequences of that number. Asserting merely
+    that a duration is non-negative would pass against a hard-coded zero, because
+    the production code clamps at zero.
+    """
     clock = Clock()
-    api, sink = await started(monotonic=clock)
+    api, sink = await started(
+        TickingAdapter(clock=clock, seconds=12.5), monotonic=clock
+    )
 
-    class Ticking(MockServingAdapter):
-        pass
-
-    clock.advance(0.0)
     await complete(api)
+
+    text = await scrape(api)
+    labels = (
+        f'{{inferops_workload_id="support-assistant",inferops_model_id="{MOCK_MODEL}"}}'
+    )
+    assert sample_value(text, f"{names.INFERENCE_REQUEST_DURATION}_count{labels}") == 1
+    assert sample_value(text, f"{names.INFERENCE_REQUEST_DURATION}_sum{labels}") == 12.5
+    assert sink.of(names.EVENT_REQUEST_COMPLETED)[0][names.DURATION_MS] == 12500.0
+
+
+async def test_an_observation_lands_in_the_buckets_at_or_above_it() -> None:
+    """A histogram is cumulative: 12.5s counts in 20, 30, 45, 60, 120, 300, +Inf."""
+    clock = Clock()
+    api, _ = await started(TickingAdapter(clock=clock, seconds=12.5), monotonic=clock)
+
+    await complete(api)
+
+    text = await scrape(api)
+    for boundary, expected in (("10", 0), ("20", 1), ("300", 1), ("+Inf", 1)):
+        assert (
+            sample_value(
+                text,
+                f"{names.INFERENCE_REQUEST_DURATION}_bucket{{inferops_workload_id="
+                f'"support-assistant",inferops_model_id="{MOCK_MODEL}",le="{boundary}"}}',
+            )
+            == expected
+        ), boundary
+
+
+async def test_a_broken_log_sink_neither_fails_a_request_nor_strands_the_gauge() -> (
+    None
+):
+    """Telemetry may not decide availability, and a pair may not be half-applied.
+
+    A sink that raises is a realistic production condition — a closed pipe, a full
+    disk, a collector that stopped reading — and the composed default writes to a
+    stream on every record. If that failure escaped, it would take the request
+    with it *and* leave the in-flight gauge raised forever, because nothing else
+    lowers that series again.
+    """
+
+    api, _ = await started(sink=Refusing())
+
+    assert (await complete(api)).status == 200
 
     text = await scrape(api)
     assert (
         sample_value(
             text,
-            f'{names.INFERENCE_REQUEST_DURATION}_count{{inferops_workload_id="support-assistant",'
+            f'{names.INFERENCE_REQUESTS_IN_FLIGHT}{{inferops_workload_id="support-assistant",'
             f'inferops_model_id="{MOCK_MODEL}"}}',
         )
-        == 1
+        == 0
     )
-    closed = sink.of(names.EVENT_REQUEST_COMPLETED)[0]
-    assert closed[names.DURATION_MS] >= 0
+    assert api.telemetry.logs.dropped >= 2
+
+
+async def test_a_dropped_record_is_named_on_the_surface_that_still_works() -> None:
+    """A reader of the remaining records cannot otherwise tell that some are gone."""
+    api, _ = await started(sink=Refusing())
+    await complete(api)
+
+    text = await scrape(api)
+
+    assert any(
+        line.startswith("# ") and "not written" in line for line in text.splitlines()
+    )
+
+
+async def test_a_record_the_catalog_forbids_still_raises_when_the_sink_is_fine() -> (
+    None
+):
+    """A failing sink is soft; a malformed record is not. The two must not merge."""
+    api, _ = await started()
+
+    with pytest.raises(InvalidValueError):
+        api.telemetry.logs.emit(
+            names.EVENT_REQUEST_COMPLETED,
+            correlation_id="c-1",
+            fields={"prompt": "must never be writable"},
+        )
 
 
 async def test_the_histogram_declares_the_buckets_the_budget_was_computed_from() -> (

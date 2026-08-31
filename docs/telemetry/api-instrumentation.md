@@ -191,6 +191,35 @@ for.
 **An unstated field is omitted, not written empty.** Where a metric label has to be
 the empty string, a record simply has no key.
 
+### When the destination is broken
+
+The sink is the only I/O on this path, and it is the one thing here that fails for
+reasons the process did not cause: a closed pipe, a full disk, a collector that
+stopped reading. A deployment that returned an internal error to every caller
+because its log destination went away would be telemetry deciding availability,
+which is the one thing telemetry may not do.
+
+So a sink that raises drops the record and is counted, the request answers
+normally, and the paired instruments stay paired — the in-flight gauge is raised
+and lowered inside the same guarded region, so it cannot be left half-applied.
+The scrape then carries one more comment line:
+
+```text
+# 3 log record(s) were produced and not written: the configured sink refused them. Records are incomplete for this process.
+```
+
+A comment rather than a metric, for the same reason the absent memory metric is a
+comment: the catalog publishes no signal for this and inventing one here would be
+a metric nobody decided. It is on the scrape because that is the surface still
+working when the log destination is not, and a reader of the surviving records has
+no other way to learn that some are missing.
+
+**A record that fails to build still raises.** The two failures are separated
+deliberately: a sink is I/O and its failure is soft, but an undeclared event, a
+missing required field, or a field name the catalog does not publish is a defect in
+the caller — and the allowlist refusing a forbidden field is precisely the error
+that may never be swallowed.
+
 ### The seven events
 
 | Event | Level | When |

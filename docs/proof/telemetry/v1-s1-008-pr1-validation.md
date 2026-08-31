@@ -16,8 +16,10 @@ that catalog specifies; every request to the inference endpoint is counted wheth
 it succeeded or failed; no request identifier, correlation identifier, workload
 version, owner, or measured duration is a metric label; no prompt, completion, or
 adapter message reaches a record or a series; a record carries the correlation
-identifier the caller was given; and a mock deployment says so in three places in
-its own telemetry.
+identifier the caller was given; a caller-supplied identifier ending in a newline
+is replaced rather than echoed; a broken log destination neither fails a request
+nor strands a counter; and a mock deployment says so in three places in its own
+telemetry.
 
 **What this record does not establish.**
 
@@ -45,6 +47,15 @@ its own telemetry.
   this emitter and it has no source this distribution may read; the exposition
   names the absence rather than publishing a zero. This is recorded in the catalog
   and repeated here so a reader of the exposition is not left to notice it.
+- **One file outside this story's scope is changed, deliberately.**
+  `src/inferops/api/identifiers.py` predates this change and carried a validation
+  defect that this change is what made consequential. It is fixed here, and the
+  reasoning is in "Independent review" below rather than left for a reader to
+  reconstruct from a diff.
+- **The concurrency fix is not demonstrated under concurrency.** A scrape now
+  reads an immutable snapshot taken under the lock. No load test was run and none
+  is claimed; what is established is that the renderer cannot observe a series
+  mid-mutation, by construction rather than by measurement.
 
 ## Environment
 
@@ -68,24 +79,25 @@ No cluster, no runtime container, and no model artifact were involved.
 ```text
 python -m pytest tests/api/test_api_observability.py \
                  tests/telemetry/test_api_telemetry_agreement.py -q
-155 passed
+170 passed
 ```
 
 ### The full default lane
 
 ```text
 python -m pytest -q
-5113 passed, 25 skipped, 14 deselected
+5132 passed, 25 skipped, 14 deselected
 ```
 
 On `main` at the base revision `aadf4c5` the same command reports `4875 passed, 25
-skipped, 14 deselected`. Every one of the 238 added is accounted for, and only two
-of the seven modules involved gained a check somebody wrote:
+skipped, 14 deselected`. Every one of the 257 added is accounted for, and only
+three of the eight modules involved gained a check somebody wrote:
 
 | Module | Before | After | Why |
 |---|---|---|---|
-| `tests/api/test_api_observability.py` | — | 36 | new |
-| `tests/telemetry/test_api_telemetry_agreement.py` | — | 119 | new |
+| `tests/api/test_api_observability.py` | — | 40 | new |
+| `tests/telemetry/test_api_telemetry_agreement.py` | — | 130 | new |
+| `tests/api/test_api_request_validation.py` | 39 | 43 | four checks added for the identifier defect the review found |
 | `tests/telemetry/test_telemetry_catalog.py` | 408 | 457 | checks parametrised over every metric, and two metric fields added |
 | `tests/testing/test_test_inventory.py` | 446 | 464 | checks parametrised over every inventoried module, and two modules added |
 | `tests/architecture/test_domain_dependency_boundary.py` | 99 | 113 | checks parametrised over every module under `src/inferops`, and seven were added |
@@ -99,13 +111,13 @@ let it escape the checks that already apply to its kind.
 ### The lane and marker grouping
 
 ```text
-python -m pytest -m unit -q             398 passed, 18 skipped, 4736 deselected
-python -m pytest -m contract -q         628 passed,  7 skipped, 4517 deselected
-python -m pytest -m architecture -q     470 passed,             4682 deselected
-python -m pytest -m adapter -q          578 passed,             4574 deselected
-python -m pytest -m mockintegration -q  361 passed,             4791 deselected
-python -m pytest -m docs -q            2678 passed,             2474 deselected
-python -m pytest -m realruntime -q       14 skipped,            5138 deselected
+python -m pytest -m unit -q             398 passed, 18 skipped, 4755 deselected
+python -m pytest -m contract -q         628 passed,  7 skipped, 4536 deselected
+python -m pytest -m architecture -q     470 passed,             4701 deselected
+python -m pytest -m adapter -q          578 passed,             4593 deselected
+python -m pytest -m mockintegration -q  369 passed,             4802 deselected
+python -m pytest -m docs -q            2689 passed,             2482 deselected
+python -m pytest -m realruntime -q       14 skipped,            5157 deselected
 ```
 
 The `realruntime` lane was **not** executed against a runtime. Its modules skip
@@ -131,8 +143,15 @@ The two accepted machine-readable records this change edits —
 re-serializing them with a JSON library would have produced a 747-line and a
 19-line diff of pure reformatting. Both were rewritten through a serializer that
 reproduces the committed style exactly, verified by round-tripping each file
-unchanged before any value was edited. The catalog diff is 142 insertions and 33
-deletions; the surface diff is 4 and 4.
+unchanged before any value was edited, so what appears in the diff is the values
+that changed and nothing else.
+
+The repository-wide relative-link check published in `CONTRIBUTING.md` reports
+only the four pre-existing failures in
+`docs/proof/domain/v1-s1-001-pr2-validation.md`, which is a file this change does
+not touch and which was already failing on `main` at the base revision. Every
+relative link in the two documents this change adds and the eleven it edits
+resolves. No changed file carries a tab or trailing whitespace.
 
 ## The evidence this change produced
 
@@ -227,39 +246,199 @@ because the monotonic clock the suite supplies does not advance.
 
 ## Negative validation
 
-A suite that cannot fail proves nothing. Eleven properties were each broken on
-purpose, the suite that should catch it was run, and the source was restored. The
-counts are the ones a reader reproducing the corruption gets.
+A suite that cannot fail proves nothing. Seventeen properties were each broken on
+purpose, the suite that should catch it was run, and the source was restored.
+Every count is re-taken at the branch head, after the second-review fixes, so a
+reader reproducing one gets the number printed here.
 
 | # | Corruption | Result |
 |---|---|---|
 | 1 | A metric declaration names the correlation identifier as a label | `1 error` — the module fails to import, because the declaration is refused at construction |
-| 2 | The record allowlist gains a field the catalog does not publish | `2 failed, 118 passed` in the agreement module |
-| 3 | The latency histogram declares one more finite bucket than its budget allows | `1 failed, 118 passed` |
-| 4 | A metric the catalog marks emitted is dropped from the declarations | `4 failed, 115 passed` |
-| 5 | A catalog row claims a metric is emitted and nothing emits it | `3 failed, 118 passed` |
-| 6 | The completed-request record carries the prompt | `24 failed, 12 passed` in the observability module |
-| 7 | A refused request is not closed, so it is never counted | `5 failed, 31 passed` |
-| 8 | The in-flight gauge is not decremented when a request closes | `1 failed, 35 passed` |
-| 9 | The identity metric adds a series instead of replacing one | `1 failed, 35 passed` |
-| 10 | The exposition stops naming the mock behind the deployment | `1 failed, 32 passed` in the endpoint module |
-| 11 | The catalog says nothing emits while its own rows say otherwise | `1 failed, 456 passed` in the catalog module |
+| 2 | The record allowlist gains a field the catalog does not publish | `2 failed, 129 passed` in the agreement module |
+| 3 | The latency histogram declares one more finite bucket than its budget allows | `1 failed, 129 passed` |
+| 4 | A metric the catalog marks emitted is dropped from the declarations | `4 failed, 126 passed` |
+| 5 | A catalog row claims a metric is emitted and nothing emits it | `3 failed, 129 passed` |
+| 6 | The label-value pattern goes back to a trailing-newline-tolerant anchor | `4 failed, 126 passed` |
+| 7 | An identity metric stops having its labels checked | `4 failed, 126 passed` |
+| 8 | A scrape reads the live series instead of a snapshot | `1 failed, 129 passed` |
+| 9 | The completed-request record carries the prompt | `27 failed, 13 passed` in the observability module |
+| 10 | A refused request is not closed, so it is never counted | `5 failed, 35 passed` |
+| 11 | The in-flight gauge is not decremented when a request closes | `2 failed, 38 passed` |
+| 12 | The identity metric adds a series instead of replacing one | `1 failed, 39 passed` |
+| 13 | A failing sink is allowed to escape and fail the request | `2 failed, 38 passed` |
+| 14 | The exposition stops naming the mock behind the deployment | `1 failed, 32 passed` in the endpoint module |
+| 15 | The identifier validator goes back to a trailing-newline-tolerant anchor | `3 failed, 40 passed` in the request-validation module |
+| 16 | The catalog says nothing emits while its own rows say otherwise | `1 failed, 456 passed` in the catalog module |
 
-Two corruptions were attempted first in a form that **did not** fail, and both are
-recorded because the reason is instructive rather than reassuring:
+### One corruption that does not fail, and why it is recorded rather than fixed
+
+Moving the in-flight increment back outside its `try`/`finally` — undoing half of
+the fix for the stranded-gauge defect below — produces `40 passed`. That is
+accurate and it is not a gap in the suite. The defect had **two** fixes, and
+either one alone prevents it: the increment now sits inside the guarded region,
+*and* a failing sink no longer raises at all. With the second fix in place there
+is nothing left to throw between the raise and the lower, so undoing the first
+cannot be provoked.
+
+Corrupting **both** does fail — `2 failed, 38 passed` — which is the honest
+statement of what the suite establishes: it holds the property, not each of the
+two mechanisms that deliver it. The ordering fix is defence in depth against a
+future call site that raises for a reason the sink guard does not cover, and the
+suite cannot demonstrate that today.
+
+### Two corruptions that were wrong rather than weak
+
+Recorded because a corruption that does not fail is not evidence of a gap until it
+is understood, and because both were written by the author of the suite:
 
 - returning early from inside the `try` of the instrumented request path does not
   skip the close, because a `finally` runs on the way out of a `return`. The
-  corruption that does skip it is a guard inside the `finally` itself, which is
-  number 7 above;
+  corruption that does skip it is a guard inside the `finally` itself;
 - inserting a second `"emission": "emitted"` earlier in a catalog metric object
-  changes nothing, because a JSON parser takes the last of two duplicate keys. The
-  corruption that works replaces the value in place, which is number 5.
+  changes nothing, because a JSON parser takes the last of two duplicate keys;
+- a third, on the label-value pattern, wrote `if A or B is None:` and produced the
+  *opposite* defect — `or` binds looser than `is None`, so the corrupted check
+  refused everything and the test expecting a refusal passed. Replacing
+  `fullmatch` with `match`, which is the mistake a real editor would make, fails
+  four checks. It is number 6 above.
 
-A corruption that does not fail is not evidence of a gap until it is understood.
-Both of these were the corruption being wrong rather than the suite being weak,
-and both are stated so that a reader repeating this exercise does not conclude
-otherwise.
+## Independent review
+
+Two reviewers read the first commit against the diff, independently and without
+sight of each other's findings: one on correctness, test quality, and whether the
+documents overclaim, and one on telemetry as a security surface. Both re-ran the
+suites and reproduced the scrape and the records from live code; both confirmed
+the exposition and log samples committed here are genuine output rather than
+written by hand. Neither found a path by which a prompt, a completion, a secret,
+or a per-request identifier reaches a metric label, a log field, or the `/metrics`
+body — each tried to construct one and reported failing to.
+
+**Seven findings, all addressed in the second commit.** Three were defects the
+author reproduced before changing anything.
+
+### One security defect, pre-existing, that this change made matter more
+
+`inferops.api.identifiers` validated a caller-supplied `X-InferOps-Request-ID` or
+`X-InferOps-Correlation-ID` with `IDENTIFIER.match(...)` against a `^...$` pattern.
+Python's `$` matches at the end of a string **or immediately before a single
+trailing newline**, so `"req-abc123\n"` passed validation and was returned
+unmodified — into a response header, which is a header injection rather than an
+identifier, and which the module's own docstring said this pattern existed to
+prevent. Reproduced:
+
+```text
+identifiers.accept_or_generate("req-abc123\n") -> 'req-abc123\n'
+```
+
+The file is not otherwise touched by this change, so the defect predates it. It is
+fixed here rather than left, for two reasons: this change is what began writing
+those identifiers into every log record, and a validator this change now depends on
+being sound is not an unrelated file. The pattern lost its anchors and is matched
+with `fullmatch`, which has no such edge, and four checks hold it.
+
+### The same defect, newly written, in the metric-label validator
+
+`LABEL_VALUE` in `inferops.telemetry.registry` had the identical `^...$` with
+`.match(...)`, and is the validator every telemetry environment variable and every
+metric label value passes through. A value ending in one newline was accepted and
+written raw between quotes into the exposition, splitting one sample line into two
+— and a scraper rejects the whole target rather than the one series, so a trailing
+newline in `INFEROPS_RELEASE_ID` (a `cat` of a file, a heredoc, a Kubernetes value
+sourced from a file) would have blacked out this deployment's metrics for the life
+of the process. The character class excludes `"`, `\`, and `}`, so the reachable
+payload was corruption rather than series forgery. Same fix, and the reviewer's
+observation that one pattern serving two files should not be able to drift apart in
+this way is why both now use `fullmatch` and neither carries anchors.
+
+### A failing log sink stranded the in-flight gauge and failed the request
+
+`ApiTelemetry.request_started` raised the gauge and then wrote a record. It was
+called **before** the `try` whose `finally` lowers the gauge, so a sink that raised
+between the two left the gauge raised — permanently, because nothing else lowers
+that series again — and the exception escaped into the ASGI call, failing a request
+that had otherwise succeeded. Reproduced with a sink raising `OSError`, which is
+what a closed pipe or a full disk looks like, and which the composed default writes
+through on every record:
+
+```text
+request raised OSError broken pipe: simulated stderr failure
+inferops_inference_requests_in_flight{...} 1
+```
+
+Two fixes, because the defect had two halves. The increment moved inside the
+guarded region. And, more importantly, a sink failure is now caught, counted, and
+not raised: a deployment that refused every caller because its log destination went
+away would be telemetry deciding availability, which is the one thing telemetry may
+not do. A record that fails to *build* — an undeclared event, a missing required
+field, a forbidden field name — still raises, because that is a defect in the
+caller and the allowlist refusing a prompt is the error that may never be
+swallowed. The scrape names a non-zero drop count, so a reader of the surviving
+records learns that some are missing. After the fix the same reproduction answers
+`200`, leaves the gauge at `0`, and publishes the drop count.
+
+### A scrape read the live series rather than a snapshot
+
+`Metric.samples()` took the lock only to copy the dictionary and then returned the
+**live** mutable series objects, which the renderer read outside the lock. A scrape
+concurrent with an observation could publish a histogram whose `count` had advanced
+past the `sum` and buckets rendered beside it. Fixed by taking an immutable
+`Sample` inside the lock. `series_count` also read without the lock, and now does
+not. This is only reachable under a threaded server, and this repository ships no
+server — but the lock exists precisely to make that a non-question.
+
+### The registry enforced the placement rule on one metric shape and claimed both
+
+`MetricSpec.__post_init__` skipped `_check_label_names` entirely when
+`identity=True`, so `MetricSpec(identity=True, labels=(CORRELATION_ID,))`
+constructed successfully — while the module docstring said a correlation identifier
+"cannot become a label by being passed to a constructor". An identity metric emits
+one series per process whatever its labels say, which makes it feel exempt; it is
+not, because it is still a series in a store. The permitted set is now derived per
+kind — operational attributes for both, plus the identity-only attributes for an
+identity metric — and both shapes are checked. This was an **overclaim before it
+was a bug**: no metric in this change declares such a label, so nothing was wrong
+with what is emitted; what was wrong was the sentence describing the guard.
+
+### A test that could not fail
+
+`test_a_request_is_timed_into_the_histogram` defined an adapter class it never
+used, advanced its clock by `0.0`, and asserted `duration >= 0` — which the
+production code guarantees by clamping at zero, so the check passed against any
+implementation including one returning a constant. It is replaced by an adapter
+that advances the monotonic clock by 12.5 seconds while serving, and by assertions
+on the histogram's sum, the record's duration in milliseconds, and which buckets
+the observation lands in.
+
+### One typo, in the accepted record
+
+The `traceparent` and `tracestate` rows of the catalog acquired a doubled period
+and a run-on clause when this change appended to them. Corrected. Nothing tests
+free text in that file, and this is recorded rather than quietly fixed because it
+is the class of defect that file's checks do not cover.
+
+### One finding that changed a document rather than the code
+
+`/metrics` sits behind the same absent authentication boundary as every other
+route, and before this change it published nothing at all. It now publishes the
+build, capability, release, environment, adapter kind, model identifier, model
+revision, runtime identifier, and runtime image digest of the deployment, plus live
+request, error, latency, saturation, and readiness counters. No control is added
+here and `DR-01` is not reopened; what changed is that the register describing what
+the absent control costs now says what it costs, because the cost grew.
+
+### What both reviewers checked and found clean
+
+Counter monotonicity and instrument semantics; the exposition's well-formedness
+against a live scrape; the outcome mapping and readiness attribution; token
+counting; that no adapter or runtime message reaches a response, a record, or a
+label; that the mock is labelled in all three places claimed; that every number,
+count, and sample in the changed documents matches reality; and that the PR
+boundary held — no ADR, no file under `src/inferops/adapters/`, no span, exporter,
+collector, or quick-start work.
+
+Neither reviewer could re-run the corruption table in its own sandbox, and both
+said so rather than implying otherwise; those counts are the author's, re-taken at
+the branch head.
 
 ## Findings
 
@@ -367,7 +546,7 @@ selected.
 |---|---|---|
 | Request, success/error, latency, active request, and readiness metrics exist | met | `inferops_inference_requests_total`, `inferops_inference_errors_total`, `inferops_inference_request_duration_seconds`, `inferops_inference_requests_in_flight`, `inferops_readiness_check_failures_total`, all in the scrape above |
 | Workload, version, environment, adapter type, and model/runtime identity are available safely | met | Workload and version on every record, workload as a label; environment, adapter kind, model, model revision, runtime, and image digest on `inferops_build_info`; version and owner are log fields and deliberately not labels |
-| Request/trace IDs are not metric labels | met | Refused at declaration by the registry, and asserted against a real scrape: the identifiers the response carried appear nowhere in the exposition |
+| Request/trace IDs are not metric labels | met | Refused at declaration by the registry for **both** metric kinds, and asserted against a real scrape: the identifiers the response carried appear nowhere in the exposition |
 | Prompt/response content is not logged by default | met | The record allowlist has no name for either, there is no message field and no pass-through, and a real prompt and a real adapter message were checked against every record written |
 | Mock telemetry is labelled as mock | met | A comment in the exposition, `inferops_adapter_kind="mock"` on the identity metric, and `inferops-mock-serving` on every operational series and record |
 

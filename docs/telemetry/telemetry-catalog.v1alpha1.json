@@ -223,13 +223,13 @@
         "name": "traceparent",
         "direction": "inbound and outbound",
         "required": false,
-        "purpose": "Carries the W3C trace context when a caller already has one. Absent, the edge starts a new trace rather than refusing the request.. Not read and not written by anything in this repository"
+        "purpose": "Carries the W3C trace context when a caller already has one. Absent, the edge starts a new trace rather than refusing the request. Neither this header nor tracestate is read or written by anything in this repository"
       },
       {
         "name": "tracestate",
         "direction": "inbound and outbound",
         "required": false,
-        "purpose": "Carries vendor-specific trace state through unchanged. This project neither reads nor writes entries in it.. Not read and not written by anything in this repository"
+        "purpose": "Carries vendor-specific trace state through unchanged. This project neither reads nor writes entries in it, and nothing here reads or writes the header at all"
       },
       {
         "name": "X-InferOps-Correlation-ID",

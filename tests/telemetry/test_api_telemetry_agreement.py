@@ -252,6 +252,99 @@ def test_a_metric_cannot_declare_a_label_this_catalog_forbids(label: str) -> Non
         )
 
 
+@pytest.mark.parametrize(
+    "label",
+    [names.CORRELATION_ID, names.REQUEST_ID, names.POD_NAME, names.DURATION_MS],
+)
+def test_an_identity_metric_cannot_declare_a_forbidden_label_either(
+    label: str,
+) -> None:
+    """The check applies to both metric shapes, not only the operational one.
+
+    An identity metric emits one series per process whatever its labels say, which
+    makes it tempting to treat as exempt. It is not: it is still a series in a
+    store, and an unbounded or measured value on it is unbounded and measured
+    there too. Skipping the check for identity metrics would have made the
+    registry's own claim -- that a request identifier cannot become a label by
+    being passed to a constructor -- true of one shape and false of the other.
+    """
+    with pytest.raises(InvalidValueError):
+        MetricSpec(
+            name="inferops_probe_info",
+            instrument="gauge",
+            unit="1",
+            help_text="An identity metric that should never be constructible.",
+            labels=(label,),
+            identity=True,
+        )
+
+
+def test_an_identity_metric_may_declare_the_identity_attributes() -> None:
+    """The permitted set is wider for an identity metric, which is what it is for."""
+    spec = MetricSpec(
+        name="inferops_probe_info",
+        instrument="gauge",
+        unit="1",
+        help_text="An identity metric carrying identity attributes.",
+        labels=(names.SERVICE_VERSION, names.RELEASE_ID, names.ADAPTER_KIND),
+        identity=True,
+    )
+    assert spec.labels == (names.SERVICE_VERSION, names.RELEASE_ID, names.ADAPTER_KIND)
+
+
+def test_the_identity_attribute_set_is_what_the_catalog_marks_identity_only() -> None:
+    expected = {
+        row["name"]
+        for row in ATTRIBUTES
+        if row["identityOnly"] and row["v1Status"] != "deferred"
+    }
+    assert expected == names.IDENTITY_ATTRIBUTES
+
+
+@pytest.mark.parametrize("value", ["abc\n", "abc\r", "abc\n\n", "\nabc"])
+def test_a_label_value_ending_in_a_newline_is_refused(value: str) -> None:
+    """Python's ``$`` matches before a trailing newline; this pattern must not.
+
+    A newline inside a quoted label value splits one sample line into two, and a
+    scraper rejects the whole target rather than the one series. The obvious
+    ``^...$`` with :meth:`re.Pattern.match` accepts exactly this, which is why the
+    pattern carries no anchors and is matched in full.
+    """
+    registry = MetricRegistry()
+    metric = registry.declare(
+        MetricSpec(
+            name="inferops_probe_total",
+            instrument="counter",
+            unit="1",
+            help_text="A metric used to exercise label-value validation.",
+            labels=(names.OUTCOME,),
+        )
+    )
+    with pytest.raises(InvalidValueError):
+        metric.add(1.0, {names.OUTCOME: value})
+
+
+def test_a_scrape_reads_a_snapshot_rather_than_the_live_series() -> None:
+    """A renderer holding the live object reads a histogram whose parts disagree."""
+    registry = MetricRegistry()
+    metric = registry.declare(
+        MetricSpec(
+            name="inferops_probe_seconds",
+            instrument="histogram",
+            unit="s",
+            help_text="A histogram used to exercise snapshot isolation.",
+            labels=(),
+            buckets=(1.0,),
+        )
+    )
+    metric.observe(0.5)
+    taken = metric.samples()
+    metric.observe(0.5)
+
+    assert taken[0][1].count == 1, "the snapshot moved after it was taken"
+    assert metric.samples()[0][1].count == 2
+
+
 def test_a_tenant_identifier_is_not_even_a_name_this_distribution_has() -> None:
     """The one attribute excluded by sensitivity rather than by cardinality.
 

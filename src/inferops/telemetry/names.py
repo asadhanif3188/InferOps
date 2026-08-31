@@ -144,10 +144,26 @@ LABEL_SAFE_ATTRIBUTES: frozenset[str] = frozenset(
     }
 )
 
+#: Every attribute the catalog marks identity-only: it may label the identity
+#: metric and no operational one. Splitting this out of :data:`NEVER_A_LABEL`
+#: is what lets the registry check an identity metric's labels rather than skip
+#: them -- an identity metric may carry these, and it still may not carry a
+#: correlation identifier or a measured duration.
+IDENTITY_ATTRIBUTES: frozenset[str] = frozenset(
+    {
+        SERVICE_VERSION,
+        CAPABILITY_ID,
+        RELEASE_ID,
+        MODEL_REVISION,
+        RUNTIME_IMAGE_DIGEST,
+        ADAPTER_KIND,
+    }
+)
+
 #: Every attribute this distribution can produce that may **not** key an
-#: operational series. Identity attributes are here too: they belong on the
-#: identity metric and nowhere else, which is the catalog's
-#: ``identity-belongs-on-an-identity-metric``.
+#: operational series. The identity attributes are here too, because that is what
+#: the catalog's ``identity-belongs-on-an-identity-metric`` says: they belong on
+#: the identity metric and nowhere else.
 NEVER_A_LABEL: frozenset[str] = frozenset(
     {
         CORRELATION_ID,

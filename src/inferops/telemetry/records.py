@@ -30,6 +30,21 @@ default that quietly writes to a stream nobody picked;
 :func:`stream_sink` is what :mod:`inferops.api.selection` composes a deployment
 with. No log store, shipper, retention window, or access rule is selected, and
 none is selected here.
+
+**A failing sink drops a record; a malformed record is still a defect.** The two
+are separated on purpose, and the line between them is the line between I/O and a
+call site. Writing to a stream can fail for reasons this process did not cause --
+a closed pipe, a full disk, a log collector that stopped reading -- and a
+deployment that returned an internal error to every caller because its log
+destination went away would be telemetry deciding availability, which is the one
+thing telemetry may not do. So :meth:`StructuredLogEmitter.emit` catches what the
+sink raises, counts it in :attr:`StructuredLogEmitter.dropped`, and carries on;
+the exposition names a non-zero count, so a dropped record is visible on the
+surface that still works rather than silent. A record that fails to *build* --
+an undeclared event, a missing required field, a field name the catalog does not
+publish -- raises as it always did. That is a defect in the caller, and the
+allowlist refusing a forbidden field is exactly the error that may never be
+swallowed.
 """
 
 from __future__ import annotations
@@ -241,6 +256,7 @@ class StructuredLogEmitter:
         self._sink = sink
         self._clock = clock
         self._lock = threading.Lock()
+        self._dropped = 0
 
     @property
     def resource(self) -> ResourceAttributes:
@@ -249,6 +265,16 @@ class StructuredLogEmitter:
     @property
     def workload(self) -> WorkloadIdentity:
         return self._workload
+
+    @property
+    def dropped(self) -> int:
+        """How many records the sink refused to take.
+
+        Non-zero means this process wrote fewer records than it produced, which a
+        reader of the remaining records cannot otherwise tell.
+        """
+        with self._lock:
+            return self._dropped
 
     def emit(
         self,
@@ -270,5 +296,12 @@ class StructuredLogEmitter:
         )
         line = encode(built)
         with self._lock:
-            self._sink(line)
+            try:
+                self._sink(line)
+            except Exception:
+                # The sink is the only I/O here, and it is the composition
+                # point's choice rather than this module's. Its failure is
+                # counted and not raised: see the module docstring for why a
+                # broken log destination may not refuse a caller's request.
+                self._dropped += 1
         return built

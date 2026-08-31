@@ -468,12 +468,19 @@ class InferOpsApi:
         The close is in a ``finally`` on purpose. Every refusal this endpoint can
         produce is a request that arrived, and a counter that only counts the
         paths somebody remembered is a success rate that flatters the platform.
+
+        The **open** is inside that same ``try``, which is the less obvious half.
+        The in-flight gauge is a pair of a raise and a lower, and a raise that can
+        throw before the ``try`` begins is a pair that can be left half-applied --
+        permanently, because nothing else ever lowers that series again. A gauge
+        that only climbs is a saturation signal that reads as saturation forever,
+        which is worse than no gauge in exactly the incident it exists for.
         """
         started = self._monotonic()
-        self._telemetry.request_started(
-            correlation_id=answer.correlation_id, request_id=answer.request_id
-        )
         try:
+            self._telemetry.request_started(
+                correlation_id=answer.correlation_id, request_id=answer.request_id
+            )
             try:
                 with self._lifecycle.accept():
                     await self._answer_completion(scope, receive, send, answer, context)
