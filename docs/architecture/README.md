@@ -40,7 +40,7 @@ with one exception: the platform domain now has typed workload objects in
 | [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
 | [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
 | [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, and five of its eleven test layers have no code |
-| [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Change validation](../proof/telemetry/v1-s0-007-pr1-validation.md); the catalog is machine-checked, and nothing in this repository emits a single signal |
+| [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Original change validation](../proof/telemetry/v1-s0-007-pr1-validation.md) plus [API instrumentation validation](../proof/telemetry/v1-s1-008-pr1-validation.md); the catalog and API emission declarations are machine-checked, while spans, a collector, and a store remain absent |
 | [0007](decisions/ADR-0007-inference-cost-method.md) | Inference cost-calculation method | Accepted in part | 2026-08-26 | [Change validation](../proof/cost/v1-s0-008-pr1-validation.md); the method and its worked example are machine-checked, and nothing in this repository computes a cost record |
 | [0008](decisions/ADR-0008-v1-security-baseline.md) | V1 threat model and security baseline | Accepted in part | 2026-08-26 | [Change validation](../proof/security/v1-s0-009-pr1-validation.md); the baseline is machine-checked, and nothing in this repository defends a running system |
 | [0009](decisions/ADR-0009-python-toolchain.md) | InferOps Python toolchain | Accepted | 2026-08-27 | [Change validation](../proof/toolchain/v1-s0-011-pr1-validation.md); every tool named was run on this repository, and it supersedes ADR 0001 D3 and D4 |
@@ -103,10 +103,12 @@ placements are the intersection of what its two classes allow, and the two conte
 classes have an empty list — which is what makes "no prompt in telemetry" arithmetic
 instead of a convention somebody has to remember.
 
-It emits **nothing**. No component here writes a metric, a log record, or a span, no
-collector or store is selected, and the only signals ever observed are the serving
-runtime's own, in one trial, on one host. Two of its fifteen rules are marked
-enforced by review alone rather than promoted to tested.
+The InferOps API now emits eight catalog metrics and structured request records when
+the ASGI application is exercised. No component emits a span, and no collector or
+store is selected. The selected serving runtime's own signals were observed in one
+trial, on one host; the API's committed evidence is local and mock-backed rather
+than evidence of a deployed network service. Two of ADR 0006's fifteen rules remain
+marked as enforced by review alone rather than promoted to tested.
 
 0005 decides how V1 is tested and what a passing result may be used to claim: eleven
 test layers, four lanes, a ceiling on each layer's evidence class, certification at

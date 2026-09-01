@@ -1014,6 +1014,9 @@ once versioned releases begin.
 
 ### Changed
 
+- The architecture summary, claim/test matrix, and root status table now describe
+  the API's emitted metrics, structured records, and enforced redaction boundary
+  without overstating them as deployed or real-runtime evidence.
 - **Unsupported caller generation controls are now refused rather than silently
   ignored.** ADR 0010 narrows the V1 chat request subset to `model`, `messages`,
   and optional `stream`; `max_tokens` and `temperature` now follow the strict

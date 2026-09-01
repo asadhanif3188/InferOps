@@ -90,8 +90,11 @@ correlation or trace identifier, and any unbounded or measured value are a narro
 case: they are permitted in logs and traces and excluded from metric labels, with a
 tenant identifier excluded from committed evidence records as well. Collapsing the
 two into "cannot admit" would overclaim the second half. The row also certifies that
-every metric stays inside a declared series budget — and it establishes nothing about
-a running system, because nothing in this repository emits a single signal.
+every metric stays inside a declared series budget. The API now emits eight catalog
+metrics and structured request records when its ASGI interface is exercised, and the
+mock-integration suite checks that forbidden content reaches neither. That is
+repository-local, mock-backed evidence: it establishes nothing about a deployed
+network service, a real selected-model response, a collector or store, or a span.
 
 Three of the others are worth reading with their limitations attached. The cluster claim
 was executed on **one** Windows host and covers no other operating system. The two
