@@ -13,7 +13,7 @@ and the real-runtime work that was deliberately not performed.
 |---|---|---|
 | Workload scaffolding, validation, and generated tests | `local-static` | `C0` |
 | API end-to-end suite against the committed mock adapter | `mock` | `C1` |
-| Real-adapter smoke invoked with no runtime configuration | `documented/unexecuted`; all tests skipped | none |
+| Real-adapter smoke invoked with no runtime configuration | `documented-unexecuted`; all tests skipped | none |
 
 No result in this record is local-real, cloud-real, estimated, synthetic, or
 production experience. No model was downloaded, no runtime or cluster was started,
@@ -31,11 +31,12 @@ no socket was opened, and no paid service was used.
 
 ## Environment
 
-The safe commands ran on one Windows development host with `uv 0.9.16`, CPython
-`3.12.12`, and Git `2.45.1.windows.1`. The results are statements about this
-checkout and this dependency lock, not cross-platform certification. The
-model/runtime hardware requirements remain the one-host measurements linked from
-the quick start.
+The safe commands ran from Windows PowerShell on one Windows development host with
+`uv 0.9.16`, CPython `3.12.12`, and Git `2.45.1.windows.1`. Multiline POSIX examples
+were entered as equivalent single-line PowerShell commands. The results are
+statements about this checkout and this dependency lock, not cross-platform
+certification. The model/runtime hardware requirements remain the one-host
+measurements linked from the quick start.
 
 ## Method and results
 
@@ -44,7 +45,7 @@ tested without edits, and removed after the run.
 
 | Command | Result | Classification |
 |---|---|---|
-| `uv sync --locked` | resolved and audited 23 packages; lock unchanged | `local-static` |
+| `uv sync --locked` | resolved and checked 23 packages; lock unchanged | `local-static` |
 | `uv run --locked python -m tools.workload_scaffold ... --profile mock-llm ... --into .quickstart` | generated three files and validated the contract from disk | `local-static` |
 | `uv run --locked python -m tools.contract_validation .quickstart/quickstart-mock/workload.yaml` | `ok` | `local-static` |
 | `uv run --locked python -m pytest .quickstart/quickstart-mock/tests -q` | `7 passed` | `local-static` |
@@ -52,7 +53,7 @@ tested without edits, and removed after the run.
 | `uv run --locked python -m tools.workload_scaffold ... --profile synchronous-llm ... --into .quickstart` | generated three files and validated the contract from disk | `local-static` |
 | `uv run --locked python -m tools.contract_validation .quickstart/quickstart-real/workload.yaml` | `ok` | `local-static` |
 | `uv run --locked python -m pytest .quickstart/quickstart-real/tests -q` | `8 passed` | `local-static` |
-| `uv run --locked python -m pytest tests/realruntime/test_api_real_adapter_smoke.py -m realruntime -q` | `7 skipped`; required runtime settings were absent | `documented/unexecuted` |
+| `uv run --locked python -m pytest tests/realruntime/test_api_real_adapter_smoke.py -m realruntime -q` | `7 skipped`; required runtime settings were absent | `documented-unexecuted` |
 | Scoped removal of `.quickstart` followed by an existence check | removed; no generated workload remains | `local-static` |
 | `uv run --locked ruff check .` | `All checks passed!` | `local-static` |
 | `uv run --locked ruff format --check .` | `199 files already formatted` | `local-static` |
@@ -75,6 +76,8 @@ widen a documentation-only quick-start PR into unrelated historical-record edits
   driven in-process; no network request was made.
 - The generated synchronous workload was validated, not deployed.
 - The real adapter, pinned runtime, and pinned model were not executed.
+- The documented port-forward was not started. A future host-side real smoke using
+  it proves the adapter path through a tunnel, not the in-cluster Service path.
 - No latency, throughput, concurrency, quality, capacity, or cost was measured.
 - The page documents both POSIX shell and Windows PowerShell cleanup, but only the
   Windows workflow was executed for this record.
@@ -99,3 +102,20 @@ cluster was created.
 The developer quick-start documentation criterion is met by this change. Parent
 Sprint acceptance that requires a local real-runtime run or later packaging remains
 unchanged; this documentation record cannot satisfy it.
+
+## Independent review
+
+An independent post-commit review found five documentation defects and no private
+information leakage or product-scope change. The follow-up corrected cleanup to
+remove only the two generated workloads, added the missing host-to-ClusterIP tunnel
+and its limitation, made the Windows/POSIX shell distinction explicit, adopted the
+canonical `documented-unexecuted` evidence label, and corrected the real suite from
+one to three completion requests. The review also questioned the recorded package
+count; the console output was rechecked and confirms both operations covered 23
+packages, so that result remains unchanged.
+
+The first full-suite rerun after those edits reported `1 failed, 4875 passed, 25
+skipped, 14 deselected`: the security documentation guard rejected a reserved term
+in the package-check result. After the wording was corrected, the targeted guard
+reported `91 passed` and the final full default lane again reported `4876 passed,
+25 skipped, 14 deselected`.

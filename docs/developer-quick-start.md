@@ -17,7 +17,7 @@ the application in-process and no `curl` command can reach it over a socket.
 | Contract generation and validation | `local-static` | Deployment or serving |
 | Mock API execution | `mock` | Runtime behavior, model quality, latency, throughput, or token accounting |
 | Optional real API smoke | `local real runtime` only after a completed, recorded run | Production experience or support on another host |
-| A skipped real-runtime test | `documented/unexecuted` | Any real-runtime claim |
+| A skipped real-runtime test | `documented-unexecuted` | Any real-runtime claim |
 
 [The mock and real serving boundary](serving/mock-and-real-boundary.md) is the
 governing rule: mock evidence proves the consumer and contract, never the real
@@ -50,6 +50,10 @@ download or run them without the host owner's explicit authorization.
 ## Set up the checkout
 
 Run every command on this page from the repository root:
+
+The `sh` blocks use POSIX line continuation. On Windows, run them in Git Bash, or
+remove the trailing backslashes and enter each command on one PowerShell line. The
+validation record used those PowerShell one-line equivalents.
 
 ```sh
 uv sync --locked
@@ -166,6 +170,23 @@ and the three required API variables:
 | `INFEROPS_MODEL_IDENTIFIER` | a non-mock platform identifier, such as `qwen3-1-7b-instruct` |
 | `INFEROPS_REQUEST_TIMEOUT_MS` | a positive, explicitly chosen request deadline |
 
+The committed feasibility Service is reachable only inside its cluster. For a
+host-side pytest run against the project's `inferops-dev` cluster, start this
+authorized, scoped tunnel in a second POSIX shell:
+
+```sh
+kubectl --kubeconfig .kube/inferops-dev.config \
+  --context kind-inferops-dev \
+  --namespace inferops-serving-feasibility \
+  port-forward service/llama-server 8080:80
+```
+
+Set `INFEROPS_LLAMA_SERVER_ENDPOINT=http://127.0.0.1:8080`, keep the tunnel open
+for the smoke run, and stop it with Ctrl-C afterwards. If the authorized workflow
+used another cluster, name that cluster's explicit kubeconfig and context instead.
+A port-forward proves the host-side adapter path through a tunnel; it does not
+replace or certify the in-cluster Service path established by the feasibility run.
+
 Then enter the real lane deliberately:
 
 ```sh
@@ -174,12 +195,12 @@ uv run --locked python -m pytest \
 ```
 
 A genuine pass runs seven checks covering explicit real-adapter selection,
-readiness, runtime/model metadata, one completion, runtime-derived token counts,
-identifier propagation, and the API's refusal boundary. If required variables are
-unset, the result is `7 skipped`; that means **the real workflow did not run**. A
-passing console session is only an input to an evidence record that also names the
-runtime digest, model revision and hash, environment, authorization, exact command,
-result, and limitations.
+readiness, runtime/model metadata, three completion requests that separately check
+content, token counts, and identifier propagation, and the API's refusal boundary.
+If required variables are unset, the result is `7 skipped`; that means **the real
+workflow did not run**. A passing console session is only an input to an evidence
+record that also names the runtime digest, model revision and hash, environment,
+authorization, exact command, result, and limitations.
 
 ## Troubleshooting
 
@@ -190,27 +211,42 @@ result, and limitations.
 | Contract validation reports findings | Read the field and canonical rule. Do not edit generated platform code; correct the workload declaration |
 | Generated tests cannot import `inferops` or `tools` | Run them from the repository root through `uv run --locked` |
 | Real smoke reports `7 skipped` | Required runtime/API variables are absent. This is an unexecuted lane, not a pass |
+| Real smoke cannot reach the ClusterIP Service | Use the scoped port-forward above and the loopback endpoint; stop the tunnel after the run |
 | Real smoke says the backend is loading or unreachable | Check the runtime endpoint and wait within the authorized startup budget; readiness remains false until the model can answer |
 | A real selection fails configuration | Check all variables in the linked runtime configuration. InferOps refuses incomplete real configuration and never falls back to mock |
 
 ## Cleanup
 
-Remove only the generated quick-start directory:
+Remove only the two workload directories this page generated, then remove their
+parent only if it is empty:
 
 ```sh
-rm -rf -- .quickstart
+rm -rf -- .quickstart/quickstart-mock .quickstart/quickstart-real
+rmdir -- .quickstart 2>/dev/null || true
 ```
 
 On Windows PowerShell:
 
 ```powershell
-Remove-Item -LiteralPath .quickstart -Recurse -Force
+foreach ($path in @('.quickstart/quickstart-mock', '.quickstart/quickstart-real')) {
+  if (Test-Path -LiteralPath $path) {
+    Remove-Item -LiteralPath $path -Recurse -Force
+  }
+}
+if ((Test-Path -LiteralPath .quickstart) -and
+    -not (Get-ChildItem -LiteralPath .quickstart -Force)) {
+  Remove-Item -LiteralPath .quickstart
+}
 ```
+
+If `.quickstart` contains anything else, leave it in place. Do not recursively
+delete the parent directory.
 
 If the authorized feasibility workflow created a runtime namespace or cluster,
 complete its [Stage 8 teardown](serving/feasibility-workflow.md#stage-8--teardown-and-residue)
-and verify residue. A host-side model cache survives unless the host owner removes
-it deliberately; never delete an unspecified cache or prune the container engine.
+and verify residue. Stop any port-forward with Ctrl-C. A host-side model cache
+survives unless the host owner removes it deliberately; never delete an unspecified
+cache or prune the container engine.
 
 ## Verified scope and limitations
 
