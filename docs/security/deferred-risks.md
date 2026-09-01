@@ -213,19 +213,26 @@ its output, which would move the security-scan layer of
 stays `planned` and may not be cited. See `EX-03` for what the committed allowlist
 would not have caught even if a run existed.
 
-### DR-12 — Nothing is logged, so nothing can be reconstructed
+### DR-12 — Records are written and nothing keeps them, so nothing can be reconstructed
 
-**Why deferred.** No logger, formatter, or sink exists.
-[The telemetry catalog](../telemetry/telemetry-catalog.md) specifies a log record for
-a component that has not been written, and no log line has ever been inspected
-because none has been written.
+**Why deferred.** Narrowed by `V1-S1-008-PR1` rather than closed. A logger, a
+formatter, and a redacting sink now exist: the InferOps API writes the record
+[the telemetry catalog](../telemetry/telemetry-catalog.md) specifies, a suite
+inspects real records and asserts that no prompt, completion, or adapter message
+appears in one, and a field the catalog does not publish is refused rather than
+written. What is still missing is everything after the process: no log store,
+shipper, retention window, or access rule is selected, so a record survives only as
+long as whatever is reading the stream, and no record has ever been produced against
+a real runtime.
 
-**What would have to be true.** A logger that emits the specified record, a store
-with a stated retention window, and a test that a real record carries only permitted
-fields.
+**What would have to be true.** A store with a stated retention window and an access
+rule naming who may read it, records produced by the serving-runtime adapter as well
+as the API, and at least one record produced against a real runtime rather than the
+committed mock.
 
 **Not claimed.** No auditability, traceability, or incident-reconstruction property
-is claimed, and no control in this baseline may be described as observed.
+is claimed. A record that is written and not kept reconstructs nothing, and no
+control in this baseline may be described as observed on the strength of it.
 
 This entry is written last and is arguably first in importance. **A control whose
 failure leaves no trace cannot be shown to have held.** Every other entry here

@@ -221,6 +221,18 @@
       "note": "No published claim covers the lifecycle. ADR 0010 chose graceful drain over a remote-stop endpoint and the claim matrix names no claim about it; the suite exists because the order is the property and an out-of-order drain is invisible in every other suite."
     },
     {
+      "module": "tests/api/test_api_observability.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "What the API actually emits, read off a running application rather than off a document: every request counted including the ones that failed, the in-flight gauge returning to zero on a refusal, a timeout separated from an error, tokens counted only where the adapter reported them, and no prompt, completion, or adapter message in any record or series.",
+      "claims": [
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric",
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "note": null
+    },
+    {
       "module": "tests/api/test_api_request_validation.py",
       "layer": "mock-integration",
       "marker": "mockintegration",
@@ -418,6 +430,16 @@
       "protects": "The committed inference API compatibility surface: the endpoint subset, the frozen request and response members, the extension namespace, and the error mapping.",
       "claims": [],
       "note": "No published claim covers it, for the same reason as the agreement suite beside it. Both are committed data checked against the documents describing them, and the matrix's drift claim names the test strategy's identifiers rather than every published record."
+    },
+    {
+      "module": "tests/telemetry/test_api_telemetry_agreement.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The accepted telemetry catalog and what the distribution declares, compared in both directions: every emitted metric carries the name, instrument, label set, and bucket count its row declares; a label the catalog forbids is refused when a metric is declared; and a field the catalog does not publish is refused when a record is built.",
+      "claims": [
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+      ],
+      "note": null
     },
     {
       "module": "tests/telemetry/test_telemetry_catalog.py",

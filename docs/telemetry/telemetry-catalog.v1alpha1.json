@@ -2,18 +2,21 @@
   "$id": "https://inferops.io/telemetry/telemetry-catalog.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "V1 telemetry and evidence catalog, v1alpha1",
-  "description": "Every signal V1 is allowed to emit, the operational or proof question each one answers, and the sensitivity and cardinality that decide where it may be placed. A field's placement is not a preference: it is derived from its sensitivity class and its cardinality class, and a placement neither class permits is a defect the suite refuses. Nothing in this repository emits any of it; emissionStatus says so, and no row may claim otherwise.",
+  "description": "Every signal V1 is allowed to emit, the operational or proof question each one answers, and the sensitivity and cardinality that decide where it may be placed. A field's placement is not a preference: it is derived from its sensitivity class and its cardinality class, and a placement neither class permits is a defect the suite refuses. The InferOps API emits the metrics assigned to it and writes the records specified here; every other metric is a specification for a component that is not instrumented, and each row says which it is in its emission field rather than leaving a reader to find out by scraping.",
   "decisionRef": "docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md",
   "documentRef": "docs/telemetry/telemetry-catalog.md",
   "redactionRef": "docs/telemetry/redaction.md",
+  "instrumentationRef": "docs/telemetry/api-instrumentation.md",
   "evidenceTemplatesRef": "docs/proof/README.md",
   "architectureRef": "docs/architecture/system-architecture.md",
   "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
 
   "emissionStatus": {
-    "state": "nothing-emits",
-    "meaning": "No component in this repository emits a metric, a log record, or a span. Every metric and attribute below is a specification for a component that does not exist. The only signals ever observed are the serving runtime's own, in one recorded trial, and they are listed separately under runtimeNativeSeries.",
-    "collector": "not selected; who owns a collector and store is an open question in ADR 0004 and is deliberately not answered here"
+    "state": "partially-emits",
+    "meaning": "The InferOps API emits the eight metrics marked emitted below and writes the structured log records this catalog specifies. Nothing else emits: the serving-runtime adapter's four metrics and the contract validator's one are specifications for components that are not instrumented, no span is produced by anything, and one metric assigned to the API has no source it is permitted to read. Every metric carries an emission field, so which is which is read from this record rather than inferred from a scrape. The only signals ever observed from another component are the serving runtime's own, in one recorded trial, listed under runtimeNativeSeries.",
+    "emitters": ["inferops-api"],
+    "transport": "A pull endpoint and a process stream. Metrics are rendered on GET /metrics in the Prometheus text exposition format when something scrapes it, and log records are written one JSON object per line to the stream the composition point supplies. Nothing is pushed anywhere.",
+    "collector": "not selected; who owns a collector, store, dashboard, or alerting path is an open question in ADR 0004 and is deliberately not answered here. Nothing scrapes the endpoint and nothing collects the stream."
   },
 
   "cardinalityBudget": {
@@ -138,20 +141,20 @@
     {
       "emitterId": "inferops-api",
       "name": "The InferOps API",
-      "exists": false,
-      "notes": "Unbuilt. It is the component that receives an inference request, so it is the only component positioned to count one."
+      "exists": true,
+      "notes": "Exists, in src/inferops/api/, and emits. It is the component that receives an inference request, so it is the only component positioned to count one, which is how ADR 0002's T7 gap is closed. Its instruments are declared in src/inferops/api/observability.py."
     },
     {
       "emitterId": "inferops-adapter",
       "name": "The serving-runtime adapter",
-      "exists": false,
-      "notes": "Unbuilt. It is the only component that sees the boundary between the platform and the runtime, so upstream failure and model readiness are its to report."
+      "exists": true,
+      "notes": "Exists, in src/inferops/adapters/, and emits nothing. It is the only component that sees the boundary between the platform and the runtime, so upstream failure, queue wait, and model readiness are its to report; instrumenting it is separate work and the four metrics assigned to it are marked not emitted."
     },
     {
       "emitterId": "inferops-validator",
       "name": "The workload contract validator",
       "exists": true,
-      "notes": "Exists as a library and a command, and emits nothing: it is invoked by a person or a test, not by a running service."
+      "notes": "Exists as a library and a command, and emits nothing: it is invoked by a person or a test, not by a running service, so it has no process to hold a counter and no endpoint to publish one."
     },
     {
       "emitterId": "serving-runtime",
@@ -211,7 +214,7 @@
 
   "correlation": {
     "standard": "W3C Trace Context",
-    "assignment": "The correlation identifier is assigned at the edge, by the first InferOps component to see the request, before anything downstream can fail. A refusal is then as traceable as a success, which is the case that matters: an unhandled request that never reached a handler is exactly the one nobody can find afterwards.",
+    "assignment": "The correlation identifier is assigned at the edge, by the first InferOps component to see the request, before anything downstream can fail. A refusal is then as traceable as a success, which is the case that matters: an unhandled request that never reached a handler is exactly the one nobody can find afterwards. The API does this: a well-formed X-InferOps-Correlation-ID is accepted, anything else is replaced by a generated one, and the identifier the API used is what it echoes and what every record it writes carries.",
     "reuseAcrossRetries": "A retry reuses the correlation identifier and takes a new span. The two questions are different — 'what happened to this piece of work' and 'what happened on this attempt' — and one identifier cannot answer both.",
     "asyncRule": "Across an asynchronous boundary the producer and consumer spans are linked rather than nested, and the correlation identifier is carried in the message envelope. V1 has no asynchronous boundary; the rule is stated so that the first one added does not invent its own.",
     "placementRule": "The correlation identifier, the trace identifier, and the span identifier are log fields and span attributes. None of them is ever a metric label.",
@@ -220,23 +223,23 @@
         "name": "traceparent",
         "direction": "inbound and outbound",
         "required": false,
-        "purpose": "Carries the W3C trace context when a caller already has one. Absent, the edge starts a new trace rather than refusing the request."
+        "purpose": "Carries the W3C trace context when a caller already has one. Absent, the edge starts a new trace rather than refusing the request.. Not read and not written by anything in this repository"
       },
       {
         "name": "tracestate",
         "direction": "inbound and outbound",
         "required": false,
-        "purpose": "Carries vendor-specific trace state through unchanged. This project neither reads nor writes entries in it."
+        "purpose": "Carries vendor-specific trace state through unchanged. This project neither reads nor writes entries in it.. Not read and not written by anything in this repository"
       },
       {
         "name": "X-InferOps-Correlation-ID",
         "direction": "inbound and outbound",
         "required": false,
-        "purpose": "Carries a business correlation identifier that survives retries and asynchronous transitions, which a span identifier deliberately does not. Echoed on every response, including a refusal."
+        "purpose": "Carries a business correlation identifier that survives retries and asynchronous transitions, which a span identifier deliberately does not. Read and echoed on every response, including a refusal, and validated rather than trusted: a malformed value is replaced by a generated one rather than refusing the request."
       }
     ],
     "v1Status": "specified",
-    "limitation": "No tracer, exporter, propagator, or SDK is selected, and no component reads or writes any of these headers. This is a propagation rule with nothing propagating."
+    "limitation": "Half of this propagates and half does not, and the halves are worth telling apart. The correlation identifier and the request identifier are assigned at the edge, echoed on every response including a refusal, and written to every log record. No tracer, exporter, propagator, or SDK is selected, so no span exists: traceparent and tracestate are neither read nor written, and trace.id and span.id are specified fields that nothing populates."
   },
 
   "attributes": [
@@ -351,6 +354,20 @@
       "v1Status": "specified",
       "deferralReason": null,
       "notes": null
+    },
+    {
+      "attributeId": "adapter-kind",
+      "name": "inferops.adapter.kind",
+      "layer": "resource",
+      "question": "Which kind of serving adapter was this deployment composed with, so that a mock result stays visibly a mock result?",
+      "sensitivity": "operational",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 2,
+      "identityOnly": true,
+      "placements": ["resource-attribute", "info-label", "log-field", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "Two values, mock and real, which is the domain's closed adapter vocabulary. It is identity rather than an operational dimension because it does not vary within a process, and because inferops.runtime.id already carries the mock runtime's registered identifier onto every operational series. It is derived from the adapter selection and never configured beside it: a second variable carrying this label would be a way to compose a real adapter and publish mock."
     },
     {
       "attributeId": "workload-id",
@@ -534,6 +551,20 @@
       "v1Status": "specified",
       "deferralReason": null,
       "notes": "Deliberately carried by no metric. A rate of finish reasons answers no operational question anyone has asked yet, and a label that exists because it could exist is the way a cardinality budget is spent without a decision."
+    },
+    {
+      "attributeId": "request-id",
+      "name": "inferops.request.id",
+      "layer": "request",
+      "question": "Which single synchronous request was this, as the caller was told in the response header?",
+      "sensitivity": "request-scoped-identifier",
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "identityOnly": false,
+      "placements": ["log-field", "trace-attribute", "evidence-field"],
+      "v1Status": "specified",
+      "deferralReason": null,
+      "notes": "The identifier the API validates or mints at the edge and echoes in X-InferOps-Request-ID and in the extension member of every body. It was missing from this catalog because the catalog predates the API; a record that cannot be joined to the response a caller holds is the gap it closes. Unbounded by construction, so it is a log field and never a label - the same rule that keeps inferops.correlation.id out of metrics, for the same arithmetic."
     },
     {
       "attributeId": "correlation-id",
@@ -746,14 +777,16 @@
       "question": "Exactly which build, model revision, and runtime image produced every other series on this endpoint?",
       "families": ["identity"],
       "emitter": "inferops-api",
-      "labels": ["service-version", "capability-id", "release-id", "deployment-environment", "model-id", "model-revision", "runtime-id", "runtime-image-digest"],
+      "labels": ["service-version", "capability-id", "release-id", "deployment-environment", "adapter-kind", "model-id", "model-revision", "runtime-id", "runtime-image-digest"],
       "seriesModel": "one-per-process",
       "buckets": null,
       "maxSeries": 25,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
-      "notes": "Always 1. Its labels are identity, and putting them here rather than on every operational metric is the difference between recording immutable versions and multiplying every series by them."
+      "notes": "Always 1, and exactly one series per process however its labels are resolved. Its labels are identity, and putting them here rather than on every operational metric is the difference between recording immutable versions and multiplying every series by them. inferops.adapter.kind is one of them: it is how a scrape of a mock deployment is a scrape that says so."
     },
     {
       "metricId": "inference-requests",
@@ -770,8 +803,10 @@
       "maxSeries": 500,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
-      "notes": "The series the selected runtime does not have. Its T7 gap is a missing cumulative request counter, and the component that receives the requests is the correct place to count them."
+      "notes": "The series the selected runtime does not have. Its T7 gap is a missing cumulative request counter, and the component that receives the requests is the correct place to count them, which is what this now does. It counts requests to the inference endpoint only: a readiness probe in the same counter would make the success rate a figure about a probe loop."
     },
     {
       "metricId": "inference-errors",
@@ -788,6 +823,8 @@
       "maxSeries": 300,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
       "notes": "Deliberately a second counter rather than an error-code label on the first. Carrying both on one counter multiplies to tens of thousands of series to answer two questions that are never asked at the same time."
     },
@@ -806,8 +843,10 @@
       "maxSeries": 1750,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
-      "notes": "Bucket boundaries are chosen for a CPU-only local runtime whose measured floor is tens of seconds, not for a hosted accelerator. Outcome is not a label here: the budget is better spent on buckets than on separating the latency of failures, which the error counter already counts."
+      "notes": "Bucket boundaries are chosen for a CPU-only local runtime whose measured floor is tens of seconds, not for a hosted accelerator: eleven finite boundaries from 0.5s to 300s, and the +Inf bucket makes the twelve this row counts against. Outcome is not a label here: the budget is better spent on buckets than on separating the latency of failures, which the error counter already counts. The duration is measured on a monotonic clock, so a wall clock stepping backwards cannot produce a negative observation."
     },
     {
       "metricId": "inference-queue-duration",
@@ -824,6 +863,8 @@
       "maxSeries": 1500,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "not-emitted",
+      "emissionReason": "Its emitter is the serving-runtime adapter, which is not instrumented. The API measures a request end to end and cannot decompose it: the wait for a slot happens inside the runtime, and the selected runtime reports that queueing happened rather than how long any request waited for.",
       "runtimeSeries": ["llamacpp:requests_deferred"],
       "notes": "The one decomposition of latency that changes what an operator does: waiting means add capacity, generating means the model is the cost. The runtime's deferred-request gauge shows that queueing happens and not how long any request waited."
     },
@@ -842,6 +883,8 @@
       "maxSeries": 125,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "emitted",
+      "emissionReason": null,
       "runtimeSeries": ["llamacpp:requests_processing"],
       "notes": null
     },
@@ -860,8 +903,10 @@
       "maxSeries": 250,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "emitted",
+      "emissionReason": null,
       "runtimeSeries": ["llamacpp:prompt_tokens_total", "llamacpp:tokens_predicted_total"],
-      "notes": "Counted from the usage fields of the response where the runtime supplies them, and absent rather than estimated where it does not. A token count derived by tokenising a prompt locally is an estimate, and an estimate certifies nothing."
+      "notes": "Counted from the usage fields the adapter reported, and absent rather than estimated where it reported none - which is every request the committed mock serves, because the mock reports no usage. A token count derived by tokenising a prompt locally is an estimate, and an estimate certifies nothing."
     },
     {
       "metricId": "model-load-duration",
@@ -878,6 +923,8 @@
       "maxSeries": 720,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "not-emitted",
+      "emissionReason": "Its emitter is the serving-runtime adapter, which is not instrumented. A model load is an event only the adapter sees, and the API never observes one.",
       "runtimeSeries": [],
       "notes": "The measured difference between a cold and a warm start on the trial host was large enough that a single figure would have been misleading, which is why this is a histogram rather than a gauge of the last load."
     },
@@ -896,6 +943,8 @@
       "maxSeries": 125,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "not-emitted",
+      "emissionReason": "Its emitter is the serving-runtime adapter, which is not instrumented. The API asks the adapter whether it is ready and counts the refusals in inferops_readiness_check_failures_total; the gauge that says how long a model stayed not-ready is the adapter's to hold.",
       "runtimeSeries": [],
       "notes": "1 or 0. The architecture already treats a not-ready model as a canonical refusal rather than a hang, and this is the series that says how long it was in that state."
     },
@@ -914,6 +963,8 @@
       "maxSeries": 150,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
       "notes": null
     },
@@ -932,6 +983,8 @@
       "maxSeries": 24,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "not-emitted",
+      "emissionReason": "Its emitter is the contract validator, which is a library and a command invoked by a person or a test rather than a running service. It has no process to hold a counter for the life of and no endpoint to publish one from.",
       "runtimeSeries": [],
       "notes": "A rule that rejects everybody is a contract defect, and it is invisible without this. The workload is not a label: attribution belongs in the log record, and a rejection is by definition a document that may not have a usable workload name in it."
     },
@@ -950,6 +1003,8 @@
       "maxSeries": 25,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "not-emitted",
+      "emissionReason": "Assigned to the API and not emitted by it. The only per-process memory figure the standard library exposes is /proc/self/statm, and a module under src/inferops may not read a path - the property tests/architecture/test_domain_dependency_boundary.py enforces so that the distribution stays usable from a wheel. Every other source is a runtime dependency the distribution does not declare. The exposition names this absence in a comment rather than publishing a zero, because a zero would be a measurement claiming this process holds no memory.",
       "runtimeSeries": [],
       "notes": "The process's own view. Container and node resource use is a different measurement from a different source, and no such source exists here: the local cluster runs no metrics server, and the feasibility trial had to read a pod's memory from its cgroup by hand."
     },
@@ -968,8 +1023,10 @@
       "maxSeries": 25,
       "v1Status": "specified",
       "deferralReason": null,
+      "emission": "emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
-      "notes": null
+      "notes": "Read from the process's own processor clock at scrape time, and set rather than incremented because that clock is already cumulative."
     },
     {
       "metricId": "time-to-first-token",
@@ -986,6 +1043,8 @@
       "maxSeries": 1500,
       "v1Status": "deferred",
       "deferralReason": "V1 has no streaming path. Without one, time to first token is the same measurement as request duration, and publishing it as though it were a second signal would be a fabrication rather than a metric.",
+      "emission": "not-emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
       "notes": null
     },
@@ -1004,6 +1063,8 @@
       "maxSeries": 100,
       "v1Status": "deferred",
       "deferralReason": "There is no retry and no fallback path in V1. A counter that can only ever read zero is worse than no counter, because a flat line reads as a healthy system rather than an absent feature.",
+      "emission": "not-emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
       "notes": null
     },
@@ -1022,6 +1083,8 @@
       "maxSeries": 25,
       "v1Status": "deferred",
       "deferralReason": "The cost method is now defined, in ADR 0007, and no component computes or emits a cost record. A counter that can only ever read zero would describe an absent capability as a quiet one.",
+      "emission": "not-emitted",
+      "emissionReason": null,
       "runtimeSeries": [],
       "notes": null
     }
@@ -1077,13 +1140,26 @@
       {"fieldId": "field-path", "condition": "when the record reports a contract validation refusal"},
       {"fieldId": "http-status", "condition": "when a response was sent"},
       {"fieldId": "duration-ms", "condition": "when the record closes a timed operation"},
+      {"fieldId": "request-id", "condition": "when the record concerns one synchronous request the API answered"},
       {"fieldId": "trace-id", "condition": "when a trace context is in scope"},
       {"fieldId": "span-id", "condition": "when a trace context is in scope"},
       {"fieldId": "finish-reason", "condition": "when generation completed"},
       {"fieldId": "pod-name", "condition": "when running under Kubernetes"}
     ],
+    "emitter": "inferops-api",
+    "emission": "emitted",
+    "events": [
+      {"eventId": "deployment.started", "level": "info", "when": "the adapter has been initialized and the deployment has begun accepting work"},
+      {"eventId": "deployment.draining", "level": "info", "when": "the deployment has stopped accepting work and has begun its drain"},
+      {"eventId": "deployment.stopped", "level": "info", "when": "the drain has finished and the adapter has been released"},
+      {"eventId": "request.received", "level": "info", "when": "an inference request has been routed, written before anything can fail"},
+      {"eventId": "request.completed", "level": "info", "when": "an inference request closed with a success"},
+      {"eventId": "request.refused", "level": "warn", "when": "an inference request closed with a canonical refusal"},
+      {"eventId": "readiness.failed", "level": "warn", "when": "a readiness check answered no, naming the component that answered it"}
+    ],
+    "fieldRule": "A record is built through an allowlist of the attribute names published here and nothing else. There is no free-form message field, no extra mapping, and no pass-through to the encoder, so a prompt, a completion, a provider error body, a secret, an authorization header, and a value read out of a submitted document each have no name a record could carry them under. A field name outside the allowlist is refused, and the refusal names the field and never the value - the rejected field is exactly the one most likely to be carrying something that may not be repeated.",
     "v1Status": "specified",
-    "limitation": "No logger, no formatter, and no redacting sink exists. This is the shape a record must have when something writes one, and nothing writes one."
+    "limitation": "Records are written to the stream the composition point supplies and to nowhere else. No log store, shipper, retention window, or access rule is selected, so the retention this catalog requires to be stated before content of any kind is written is still unstated. The redaction rule is now enforced by the sink rather than only by a document; what is not established is that any store keeps these records safely, because there is no store."
   },
 
   "contentCapture": {
@@ -1098,7 +1174,7 @@
     ],
     "policyStatus": "not defined",
     "policyRef": "docs/telemetry/redaction.md",
-    "note": "None of the five exists. Until all five do, there is no configuration flag to turn this on, because a flag would be the whole decision."
+    "note": "None of the five exists. Until all five do, there is no configuration flag to turn this on, because a flag would be the whole decision. The record builder has no parameter a prompt or a response could be passed in, which is the same rule holding one layer lower down."
   },
 
   "prohibitions": [
@@ -1194,6 +1270,27 @@
       "enforcedBy": "test_content_capture_is_disabled_and_has_no_policy_to_enable_it"
     },
     {
+      "ruleId": "an-emitted-signal-agrees-with-this-catalog",
+      "statement": "Every metric the API emits carries the name, instrument, label set, and bucket count this catalog declares for it, and every metric this catalog marks emitted is one the API declares.",
+      "rationale": "A catalog that specifies one metric and a process that emits another is two records, and the one a reader trusts is the one that is wrong. Comparing them in both directions is what makes this file the source rather than a description of what somebody remembered building.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_emitted_metric_agrees_with_its_catalog_row"
+    },
+    {
+      "ruleId": "an-emitted-label-is-one-this-catalog-permits",
+      "statement": "A metric declaration whose label is not an attribute this catalog permits as a metric label is refused when the metric is declared, before any series exists.",
+      "rationale": "The placement rules were a property of this document checked against this document. Moving the check into the registry is what turns 'a correlation identifier is never a label' from a rule a reviewer applies into an error a call site cannot get past.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_metric_cannot_declare_a_label_this_catalog_forbids"
+    },
+    {
+      "ruleId": "an-emitted-record-carries-only-published-fields",
+      "statement": "A log record is built through an allowlist of the attribute names this catalog publishes, and a field outside it is refused rather than written.",
+      "rationale": "An exclusion list works until somebody adds the seventh field. An allowlist has no name for a prompt, a completion, a provider error body, a secret, or a value read out of a document, so there is nothing to remember at the moment it matters.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_record_refuses_a_field_this_catalog_does_not_publish"
+    },
+    {
       "ruleId": "no-provider-error-body-is-passed-through",
       "statement": "An upstream error body is not logged verbatim and not returned to the caller. A canonical error code and the platform's own message are.",
       "rationale": "A runtime that quotes the offending input in its error text turns a pass-through into a content capture nobody decided on.",
@@ -1280,36 +1377,48 @@
 
   "limitations": [
     {
-      "limitationId": "nothing-emits",
-      "statement": "No component in this repository emits a metric, a log record, or a span. Every metric, attribute, and log rule here specifies behaviour for components that do not exist."
+      "limitationId": "partial-emission",
+      "statement": "The InferOps API emits eight metrics and writes seven kinds of log record. The serving-runtime adapter's four metrics, the contract validator's one, and one metric assigned to the API itself are specifications for behaviour that does not exist, and no component produces a span. Each metric's emission field says which it is."
     },
     {
       "limitationId": "no-collector",
-      "statement": "No collector, store, dashboard, or alerting path is selected, and who would own one is an open question in ADR 0004 that this record deliberately does not answer."
+      "statement": "No collector, store, dashboard, or alerting path is selected. The metrics endpoint answers when something scrapes it and nothing scrapes it; who would own a collector is an open question in ADR 0004 that this record deliberately does not answer."
     },
     {
       "limitationId": "no-tracer",
-      "statement": "The correlation rules are specified against W3C Trace Context, and no tracer, propagator, exporter, or SDK is chosen. Nothing propagates anything."
+      "statement": "No tracer, propagator, exporter, or SDK is chosen and no span exists. The correlation and request identifiers are assigned at the edge and written to every record; traceparent and tracestate are neither read nor written, and trace.id and span.id are specified fields that nothing populates."
     },
     {
-      "limitationId": "no-redacting-sink",
-      "statement": "Redaction is a rule and not a mechanism. There is no redacting logger, no field allowlist in code, and no test that inspects a real log line, because there are no log lines."
+      "limitationId": "no-log-store",
+      "statement": "Log records are written to the stream the composition point supplies and to nowhere else. No log store, shipper, retention window, or access rule is selected, so the retention this catalog requires to be stated before content of any kind is written is still unstated."
+    },
+    {
+      "limitationId": "no-adapter-emission",
+      "statement": "The serving-runtime adapter emits nothing. Queue duration, model-load duration, and model readiness are the three questions only it can answer, and instrumenting it is separate work with a separate boundary to respect."
+    },
+    {
+      "limitationId": "no-process-memory-source",
+      "statement": "The emitting process publishes no memory figure. The only per-process source the standard library exposes is a file, a module under src/inferops may not read one, and the distribution declares no runtime dependency that could supply another. The metric stays specified and the exposition names its absence rather than publishing a zero."
     },
     {
       "limitationId": "no-container-resource-source",
-      "statement": "Container and node resource use has no source. The local cluster runs no metrics server, and the one recorded measurement of a pod's memory was read from its cgroup by hand."
+      "statement": "Container and node resource use has no source. The local cluster runs no metrics server, and the one recorded measurement of a pod's memory was read from its cgroup by hand. What a process sees of itself is a different measurement from what a container is charged."
+    },
+    {
+      "limitationId": "no-workload-identity-from-a-document",
+      "statement": "The workload identity on every series and every record is deployment configuration, not a value read out of a validated WorkloadContract document. Nothing in this repository deploys a workload, so there is no document for it to come from. A workload identifier read off a caller's header would be an unbounded metric label wearing a bounded one's name, and is deliberately not read."
     },
     {
       "limitationId": "no-runtime-request-counter",
-      "statement": "The selected serving runtime exposes no cumulative request counter. This was measured, it is the threshold ADR 0002 records as failed, and the platform's own counter is the plan rather than a fix to the runtime."
+      "statement": "The selected serving runtime exposes no cumulative request counter. This was measured, it is the threshold ADR 0002 records as failed, and the platform's own counter is now emitted by the API rather than being a plan. Nothing here fixes the runtime."
     },
     {
       "limitationId": "no-inference-error-vocabulary",
-      "statement": "The canonical error codes for inference are not published yet; only the contract validator's are. The error-code label therefore carries a cardinality budget rather than a value list, and the budget is an estimate."
+      "statement": "The canonical error codes for inference are not published as a versioned vocabulary; the API has a closed set of eight and the contract validator has its own. The error-code label therefore carries a cardinality budget rather than a published value list, and the budget is an estimate."
     },
     {
       "limitationId": "budget-is-not-measured",
-      "statement": "The cardinality budget is arithmetic over declared bounds, not a measurement of a running system. It establishes that the catalogue is internally affordable, not that any store was tested with it."
+      "statement": "The cardinality budget is arithmetic over declared bounds, not a measurement of a running system. It establishes that the catalogue is internally affordable, not that any store was tested with it - and no store has scraped this endpoint."
     },
     {
       "limitationId": "templates-have-produced-nothing",
@@ -1317,7 +1426,7 @@
     },
     {
       "limitationId": "no-published-figures",
-      "statement": "The latency, throughput, and capacity signals exist to operate the platform. V1 publishes no figure derived from any of them, and this catalogue does not lift that restriction."
+      "statement": "The latency, throughput, and capacity signals exist to operate the platform. V1 publishes no figure derived from any of them, and emitting them does not lift that restriction: a series that exists is not a figure that may be quoted."
     }
   ]
 }

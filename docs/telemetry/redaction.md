@@ -1,11 +1,12 @@
 # Redaction rules and the content-capture boundary
 
-Status: **accepted rule, unenforced in code**, in
+Status: **accepted rule, and now enforced in code as well as in the catalog**, in
 [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md).
 The exclusions below are checked against the committed catalog by
-[`tests/telemetry/`](../../tests/telemetry/). They are not checked against a running
-system, because there is no running system: no logger, no formatter, and no
-redacting sink exists in this repository.
+[`tests/telemetry/`](../../tests/telemetry/), and — since the InferOps API began
+emitting — against the two places a signal is actually created: a metric is refused
+at declaration if it names a label the catalog forbids, and a log record is built
+through an allowlist that has no name for anything on the list below.
 
 That distinction is the whole reason this document exists separately from
 [the catalog](telemetry-catalog.md). A catalog says what is emitted. This says what
@@ -49,13 +50,29 @@ one. Because a field's placement is the intersection of what its sensitivity cla
 and its cardinality class permit, a field in either class has nowhere it may be
 written, and adding one to the catalog with any placement at all fails the suite.
 
-That is the mechanism. It replaces the thing that does not work, which is a list of
-forbidden fields that a reviewer has to remember at the moment somebody adds a
-seventh.
+That is the mechanism in the catalog. It replaces the thing that does not work,
+which is a list of forbidden fields that a reviewer has to remember at the moment
+somebody adds a seventh.
+
+**The same mechanism now holds one layer lower down.** A log record is built through
+an allowlist of the attribute names the catalog publishes, and none of the six above
+is one of them — so there is no key a prompt could be written under, no free-form
+message field to hide one in, no `extra` mapping, and no pass-through to the
+encoder. A field name outside the allowlist is refused, and the refusal names the
+field and never the value beside it: the rejected field is by definition the one most
+likely to be carrying something that may not be repeated. A metric is the same story
+in the other direction — a label name outside the set the catalog permits is refused
+when the metric is declared, before a single series exists.
+
+Neither of those is a filter over a value. A filter is a list of patterns, a list of
+patterns is the forbidden-field list again, and this time it runs at the moment of
+writing rather than at review. What is here instead is an absence: the field has no
+name, so there is nothing to filter.
 
 ## Every rule, and whether it is really enforced
 
-Thirteen rules are enforced by a test over the committed catalog. Two are enforced by
+Sixteen rules are enforced by a test. Thirteen of them read the committed catalog;
+three read what the distribution declares and what it refuses. Two are enforced by
 review alone, and are marked as such rather than quietly promoted.
 
 | Rule | Enforced by |
@@ -73,13 +90,20 @@ review alone, and are marked as such rather than quietly promoted.
 | `a-deferred-signal-says-why` | a test |
 | `no-runtime-series-is-claimed-that-was-not-measured` | a test |
 | `content-capture-requires-a-policy-that-does-not-exist` | a test |
+| `an-emitted-signal-agrees-with-this-catalog` | a test |
+| `an-emitted-label-is-one-this-catalog-permits` | a test |
+| `an-emitted-record-carries-only-published-fields` | a test |
 | `no-provider-error-body-is-passed-through` | **review only** |
 | `no-figure-here-is-a-published-benchmark` | **review only** |
 
-The two review-only rules are the two that need code to check, and there is no code:
-one is about what an unwritten adapter does with an upstream error body, and the
-other is about what a person puts in a document or a slide. Marking them as tested
-would be the more comfortable and less true option.
+The two review-only rules stay review-only. One is about what a person puts in a
+document or a slide, which no test can reach. The other is about an upstream error
+body, and it is worth being exact about why the API being instrumented does not
+promote it: the API already refuses to forward an adapter's own message to a caller,
+and a test holds that. What is not tested is the whole rule — that no upstream body
+is logged verbatim anywhere, including by an adapter that is not instrumented yet.
+Marking it as tested on the strength of the half that is would be the more
+comfortable and less true option.
 
 Each rule's test is named in the catalog data, and the suite fails if a rule names a
 test that does not exist. A rule cannot claim enforcement it does not have.
@@ -118,7 +142,24 @@ follow:
 
 ## What this does not establish
 
-No log line has ever been inspected, because none has been written. Every rule here
-is a property of a committed document checked against another committed document.
-When a logger exists, the check that matters — that a real record carries only
-permitted fields — is a test that does not exist yet and is not claimed here.
+A record written by the API is now inspected: the suites drive the application, read
+the records it wrote, and assert that a prompt, a completion, and a response body
+appear in none of them. That is a real check against a real record, and it is the
+check this document previously recorded as absent.
+
+Three things it still does not establish, in the order they matter.
+
+**Nothing has been checked against a store.** Records go to a stream and metrics wait
+on an endpoint nobody scrapes. No log store, shipper, retention window, or access
+rule is selected, so the retention the catalog requires to be stated before content
+of any kind is written is still unstated.
+
+**Only one emitter has been checked this way.** The serving-runtime adapter emits
+nothing, so the rule about an upstream error body is a rule about code that has not
+been written. The adapter is the component closest to a runtime's own words, which
+makes it the one where that rule will matter most.
+
+**No record has been produced against a real runtime.** Every record inspected so far
+came from a deployment serving the committed mock, whose responses are a fixture. A
+real runtime's error text is the input the pass-through rule exists for, and it has
+not been through this code.

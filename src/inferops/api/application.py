@@ -41,6 +41,17 @@ traceable as a success.
 **Liveness and metrics answer while the API is draining; readiness does not.**
 That is the graceful-shutdown equivalent the accepted record chose, and the
 ordering is in :mod:`inferops.api.lifecycle` rather than here.
+
+**The inference endpoint is instrumented; the other four are not.** A request to
+``/v1/chat/completions`` that reached a matched route is counted in flight,
+timed, and closed with an outcome, and one structured record is written when it
+arrives and one when it closes. Liveness, readiness, the model list, and the
+metrics scrape are deliberately outside that: they are not inference requests,
+and counting a readiness probe in the same counter would make the success rate a
+figure about a probe loop. What readiness contributes instead is
+``inferops_readiness_check_failures_total``, which names the half that said no.
+The instruments themselves are in :mod:`inferops.api.observability`, and the
+names they use are the accepted catalog's.
 """
 
 from __future__ import annotations
@@ -61,7 +72,10 @@ from ..domain.serving import (
     InvalidValueError,
     ServingAdapter,
 )
-from . import identifiers, metrics
+from ..telemetry import names as telemetry_names
+from ..telemetry.registry import EXPOSITION_CONTENT_TYPE
+from ..telemetry.resource import ResourceAttributes
+from . import identifiers
 from .errors import (
     ADAPTER_KIND_DISAGREEMENT,
     ADAPTER_KIND_DISAGREES,
@@ -81,6 +95,7 @@ from .lifecycle import (
     ApplicationLifecycle,
     ShuttingDown,
 )
+from .observability import ApiTelemetry, outcome_for
 from .responses import (
     completion_body,
     error_body,
@@ -170,6 +185,8 @@ class InferOpsApi:
         configuration: ApiConfiguration,
         lifecycle: ApplicationLifecycle | None = None,
         clock: Callable[[], float] = time.time,
+        monotonic: Callable[[], float] = time.monotonic,
+        telemetry: ApiTelemetry | None = None,
     ) -> None:
         self._adapter = adapter
         self._adapter_configuration = adapter_configuration
@@ -178,6 +195,15 @@ class InferOpsApi:
             drain_timeout_ms=configuration.drain_timeout_ms
         )
         self._clock = clock
+        # Durations are measured on a monotonic clock and timestamps are written
+        # from a wall clock, because they answer different questions and one
+        # clock cannot answer both: a wall clock that steps backwards turns a
+        # latency observation into a negative number.
+        self._monotonic = monotonic
+        self._telemetry = telemetry or ApiTelemetry(
+            resource=ResourceAttributes(adapter_kind=configuration.adapter_kind),
+            clock=clock,
+        )
         self._started_at = 0
         self._drained: bool | None = None
 
@@ -185,6 +211,11 @@ class InferOpsApi:
     def lifecycle(self) -> ApplicationLifecycle:
         """The lifecycle this API answers readiness from."""
         return self._lifecycle
+
+    @property
+    def telemetry(self) -> ApiTelemetry:
+        """The instruments and records this deployment emits."""
+        return self._telemetry
 
     @property
     def drained_cleanly(self) -> bool | None:
@@ -249,7 +280,32 @@ class InferOpsApi:
         context = self._new_context()
         await self._adapter.initialize(self._adapter_configuration, context)
         self._started_at = int(self._clock())
+        await self._bind_telemetry_identity()
         self._lifecycle.begin_serving()
+        self._telemetry.deployment_event(
+            telemetry_names.EVENT_DEPLOYMENT_STARTED,
+            correlation_id=context.correlation_id or identifiers.generate(),
+        )
+
+    async def _bind_telemetry_identity(self) -> None:
+        """Record the model and runtime the adapter reported, for the identity metric.
+
+        It is asked of the adapter rather than configured, because the adapter is
+        looking at the artifact and a variable beside it is only describing one.
+        A failure here leaves the identity labels empty and does **not** fail
+        startup: telemetry that could refuse to serve would be telemetry that
+        decides availability, and an empty identity label is visibly empty.
+        """
+        try:
+            model = await self._adapter.get_model_metadata()
+            runtime = await self._adapter.get_runtime_metadata()
+        except Exception:
+            return
+        self._telemetry.bind_identity(
+            model_id=model.identifier,
+            model_revision=model.revision,
+            runtime_id=runtime.name,
+        )
 
     async def shutdown(self) -> None:
         """Stop accepting work, drain what is in flight, then shut the adapter down.
@@ -258,8 +314,15 @@ class InferOpsApi:
         still being answered through it would turn a graceful shutdown into a
         batch of internal errors.
         """
+        correlation_id = identifiers.generate()
+        self._telemetry.deployment_event(
+            telemetry_names.EVENT_DEPLOYMENT_DRAINING, correlation_id=correlation_id
+        )
         self._drained = await self._lifecycle.drain()
         await self._adapter.shutdown(self._new_context())
+        self._telemetry.deployment_event(
+            telemetry_names.EVENT_DEPLOYMENT_STOPPED, correlation_id=correlation_id
+        )
 
     def _new_context(self) -> RequestContext:
         """A context for work this API initiates rather than receives."""
@@ -313,8 +376,8 @@ class InferOpsApi:
             await answer.send_text(
                 send,
                 HTTPStatus.OK,
-                metrics.exposition(),
-                metrics.EXPOSITION_CONTENT_TYPE,
+                self._telemetry.exposition(),
+                EXPOSITION_CONTENT_TYPE,
             )
         elif route.endpoint_id == "health-ready":
             await self._ready(send, answer, context)
@@ -333,11 +396,18 @@ class InferOpsApi:
         cannot answer it has answered it.
         """
         ready = self._lifecycle.is_accepting_work
+        failed_component = telemetry_names.COMPONENT_API if not ready else None
         if ready:
             try:
                 ready = await self._adapter.is_ready(context)
             except Exception:
                 ready = False
+            if not ready:
+                failed_component = telemetry_names.COMPONENT_ADAPTER
+        if failed_component is not None:
+            self._telemetry.readiness_failed(
+                correlation_id=answer.correlation_id, component=failed_component
+            )
         body = ready_body(
             ready=ready,
             adapter_kind=self._configuration.adapter_kind,
@@ -393,11 +463,34 @@ class InferOpsApi:
         answer: _Answer,
         context: RequestContext,
     ) -> None:
+        """Serve one inference request, counted in flight and closed with an outcome.
+
+        The close is in a ``finally`` on purpose. Every refusal this endpoint can
+        produce is a request that arrived, and a counter that only counts the
+        paths somebody remembered is a success rate that flatters the platform.
+        """
+        started = self._monotonic()
+        self._telemetry.request_started(
+            correlation_id=answer.correlation_id, request_id=answer.request_id
+        )
         try:
-            with self._lifecycle.accept():
-                await self._answer_completion(scope, receive, send, answer, context)
-        except ShuttingDown:
-            await self._refuse_draining(send, answer)
+            try:
+                with self._lifecycle.accept():
+                    await self._answer_completion(scope, receive, send, answer, context)
+            except ShuttingDown:
+                await self._refuse_draining(send, answer)
+        finally:
+            self._telemetry.request_closed(
+                correlation_id=answer.correlation_id,
+                request_id=answer.request_id,
+                outcome=outcome_for(answer.condition, answer.status),
+                duration_seconds=max(self._monotonic() - started, 0.0),
+                http_status=answer.status,
+                error_code=None if answer.condition is None else answer.condition.code,
+                finish_reason=answer.finish_reason,
+                input_tokens=answer.input_tokens,
+                output_tokens=answer.output_tokens,
+            )
 
     async def _refuse_draining(self, send: Send, answer: _Answer) -> None:
         """The one refusal that knows its own retry delay.
@@ -469,6 +562,15 @@ class InferOpsApi:
             raise RequestRefused(
                 ADAPTER_KIND_DISAGREES, None, ADAPTER_KIND_DISAGREEMENT
             )
+        # What the adapter reported about the work, for the token counter and the
+        # closing record. Both are absent rather than estimated when the adapter
+        # reported none, and neither is content: a finish reason is why generation
+        # stopped and a token count is how many there were.
+        answer.observe_result(
+            finish_reason=result.finish_reason,
+            input_tokens=None if result.usage is None else result.usage.input_tokens,
+            output_tokens=None if result.usage is None else result.usage.output_tokens,
+        )
         return completion_body(
             result,
             completion_id=identifiers.completion_id(),
@@ -478,7 +580,7 @@ class InferOpsApi:
         )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class _Answer:
     """The identifiers every response to one request carries, and how it is sent.
 
@@ -487,11 +589,41 @@ class _Answer:
     that makes a canonical error worth less than the log line it replaced. It
     carries the adapter kind for the same reason — every response names the kind
     behind it, and a refusal is a response.
+
+    It also **records what it sent**, which is why it is not frozen. The
+    instrumented request path needs the status, the condition, and what the
+    adapter reported about the work, and reading them off the object that sent
+    the response is the only way that cannot disagree with the response — a
+    second place to decide the outcome is a second place to get it wrong.
+
+    Attributes:
+        status: The HTTP status that was sent, or ``None`` if nothing was.
+        condition: The condition a refusal named, or ``None`` on a success.
+        finish_reason: Why generation stopped, when the adapter reported one.
+        input_tokens: Tokens read, when the adapter reported a count.
+        output_tokens: Tokens written, when the adapter reported a count.
     """
 
     request_id: str
     correlation_id: str
     adapter_kind: str
+    status: int | None = None
+    condition: Condition | None = None
+    finish_reason: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+    def observe_result(
+        self,
+        *,
+        finish_reason: str | None,
+        input_tokens: int | None,
+        output_tokens: int | None,
+    ) -> None:
+        """Record what the adapter reported about the work it did."""
+        self.finish_reason = finish_reason
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
 
     def _headers(self, content_type: str) -> list[tuple[bytes, bytes]]:
         return [
@@ -546,6 +678,7 @@ class _Answer:
             member=member,
             retry_after_ms=retry_after_ms,
         )
+        self.condition = condition
         await self._send(
             send,
             condition.status,
@@ -563,6 +696,7 @@ class _Answer:
         *,
         extra: list[tuple[bytes, bytes]] | None = None,
     ) -> None:
+        self.status = int(status)
         await send(
             {
                 "type": "http.response.start",

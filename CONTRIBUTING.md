@@ -570,9 +570,15 @@ disabled and has no policy that could enable it; that each evidence template car
 every required section exactly once; and that the two published documents and the
 data agree in both directions.
 
-It checks a catalog, not a running system. Nothing in this repository emits a metric,
-a log record, or a span, and no log line has ever been inspected because none has
-been written.
+That suite checks a catalog and not a running system. A second one,
+[`tests/telemetry/test_api_telemetry_agreement.py`](tests/telemetry/test_api_telemetry_agreement.py),
+compares the catalog against what the distribution declares and refuses — that every
+emitted metric carries the name, instrument, labels, and bucket count its row
+declares, that a label the catalog forbids cannot be declared, and that a field it
+does not publish cannot be written — and
+[`tests/api/test_api_observability.py`](tests/api/test_api_observability.py) drives
+the API and reads what it actually emitted. No span is produced by anything, and no
+store has held a single series or record.
 
 A change that adds a signal adds a row with a stated question, a sensitivity class,
 and a cardinality class; a change that adds a metric label adds series to a budget

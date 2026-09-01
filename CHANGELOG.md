@@ -17,6 +17,71 @@ once versioned releases begin.
   the run is manual and authorization-gated, a skip is not a pass, and this change
   did not download a model, start a runtime, or produce real-runtime evidence.
   Cleanup and platform-specific shell forms are included.
+- **The InferOps API emits telemetry. It is the first component here that emits
+  anything at all.** The accepted catalog assigns nine metrics to the
+  `inferops-api` emitter and, until now, every one of them was a specification for
+  a component that did not instrument itself: `emissionStatus` read `nothing-emits`
+  and the `/metrics` endpoint served a body of comments explaining why. Eight of
+  those metrics are now produced — the request counter, the error counter, the
+  latency histogram, the in-flight gauge, the readiness-failure counter, the token
+  counter, the process CPU counter, and the identity metric — rendered on
+  `GET /metrics` in the Prometheus text exposition format, and the API writes the
+  structured log record the catalog specifies for every request it receives and
+  every request it closes. [What it emits](docs/telemetry/api-instrumentation.md)
+  is published with a real scrape, real records, and the variables a deployment
+  states its identity in.
+- **`ADR 0002`'s `T7` obligation is discharged.** The selected runtime exposes no
+  cumulative request counter; that was measured, it is the threshold the record
+  documents as failed, and the compensating plan was that the component receiving
+  the requests would count them. `inferops_inference_requests_total` now does.
+  Nothing about the runtime is fixed, and the limitation saying so stays.
+- **A refused request is counted like any other.** The close is in a `finally`, so
+  a body outside the frozen subset, a refusal from the adapter, a drain, and an
+  unexpected failure each increment the counter, decrement the in-flight gauge, and
+  produce a latency observation. A counter that only counts the paths somebody
+  remembered is a success rate that flatters the platform. A timeout is a separate
+  outcome from a server error, decided by the condition rather than the status,
+  because a caller's deadline and a runtime's deadline carry different statuses and
+  are the same operational event.
+- **The placement rules stopped being a property of a document.** A metric
+  declaration naming a label the catalog does not permit — a correlation
+  identifier, a request identifier, a workload version, an owner, a pod, a measured
+  duration, or any identity attribute — is refused when the metric is declared,
+  before a series can exist. A label value that could inject a series into the
+  exposition is refused too.
+- **Redaction stopped being a rule and became a sink.** A log record is built
+  through an allowlist of the attribute names the catalog publishes, and there is
+  no name in it for a prompt, a completion, a provider error body, a secret, an
+  authorization header, or a value read out of a submitted document — no message
+  field, no `extra` mapping, no pass-through to the encoder. A rejected field is
+  named in the refusal and its value never is. The suites now drive the application
+  with a real prompt and a real adapter message and assert that neither reaches any
+  record or any series, which is the check
+  [the redaction rules](docs/telemetry/redaction.md) previously recorded as absent.
+- **Mock telemetry says it is mock, in three places.** The exposition opens with a
+  comment naming the mock adapter and stating that it certifies no serving runtime,
+  the identity metric carries `inferops.adapter.kind="mock"`, and every operational
+  series and every record carries the mock runtime's registered identifier. The
+  adapter kind is derived from the adapter selection and never configured beside
+  it: a second variable carrying that label would be a way to compose a real
+  adapter and publish `mock`.
+- **A deployment states its own identity, and an unstated one stays empty.** Ten
+  optional variables carry the service version, environment, capability, release,
+  pod, model revision, runtime image digest, workload, workload version, and owner.
+  A deployment that states none of them still starts, still serves, and still
+  emits, with its identity labels visibly empty — because a `service.version` of
+  `unknown` sorts, groups, and reads like a release somebody shipped. The workload
+  identity is configuration and **not** a caller's header: a workload identifier
+  read off a request would be an unbounded metric label wearing a bounded one's
+  name.
+- **The catalog and the code are compared in both directions.**
+  [`tests/telemetry/test_api_telemetry_agreement.py`](tests/telemetry/test_api_telemetry_agreement.py)
+  reads the accepted record and the distribution's declarations and fails when they
+  disagree on a name, an instrument, a label set, a bucket count, or which metrics
+  are emitted at all.
+  [`tests/api/test_api_observability.py`](tests/api/test_api_observability.py)
+  drives the application and asserts on what it actually emitted.
+
 - **The three surfaces that read a WorkloadContract are compared, not just each
   checked.** The published JSON Schema, the offline validator, and the platform
   domain each had a correct suite of its own and nothing compared two of them,
@@ -948,6 +1013,41 @@ once versioned releases begin.
   legitimately for, and five boundary rules that make the distinction operational.
 
 ### Changed
+
+- **The telemetry catalog moved off `nothing-emits`.** `emissionStatus` now reads
+  `partially-emits`, names the emitter and the transport, and every metric carries
+  an `emission` field so that a reader learns what is really there from the record
+  rather than by scraping and comparing. Five active metrics are marked
+  `not-emitted` with a reason each: four belong to the serving-runtime adapter or
+  the contract validator, neither of which is instrumented, and
+  `inferops_process_resident_memory_bytes` is the API's own and has no source this
+  distribution may read — the only per-process memory figure the standard library
+  exposes is a file, and no module under `src/inferops` may read one. The endpoint
+  names that absence in a comment rather than publishing a zero, because a zero
+  would be a measurement claiming the process holds no memory.
+- **The catalog gained two attributes it did not have, because it predates the
+  API.** `inferops.request.id` — the identifier the API mints at the edge and
+  echoes in a header and in every response body — was unpublished, so a record
+  could not be joined to the response a caller holds; it is classified like the
+  correlation identifier, so it is a log field and never a label.
+  `inferops.adapter.kind` is a two-valued identity attribute, so it reaches metrics
+  only through the identity metric. Neither changes the cardinality budget.
+- **Three rules the catalog previously stated are now enforced by a test**, and are
+  recorded that way rather than left claiming less than they do: an emitted signal
+  agrees with the catalog, an emitted label is one the catalog permits, and an
+  emitted record carries only published fields. The two rules enforced by review
+  alone stay review-only, including the one about upstream error bodies — the API
+  already refuses to forward an adapter's words, and the rule is about an adapter
+  that is not instrumented yet.
+- **`DR-12` in the deferred-risk register is narrowed rather than closed.** A
+  logger, a formatter, and a redacting sink now exist and real records are
+  inspected. No log store, shipper, retention window, or access rule does, so
+  nothing is reconstructible and no auditability property is claimed.
+- Three living documents that said this repository emits nothing —
+  `CONTRIBUTING.md`, the inference API document, and the API surface document — are
+  corrected. `ADR 0006` is deliberately **not** edited: an ADR is a decision at a
+  date, and the catalog's `emissionStatus` is where that record itself said the
+  question would be settled.
 
 - **The contributor guide no longer says two markers select nothing.**
   `mockintegration` acquired code in `V1-S1-005-PR1` and `realruntime` in

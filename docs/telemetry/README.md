@@ -3,7 +3,9 @@
 Status: entry point established; the catalog is accepted in part — six of the eight
 decisions in [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md),
 with the content-capture policy and the telemetry toolchain explicitly not chosen.
-Nothing in this repository emits a metric, a log record, or a span.
+The InferOps API emits eight of the thirteen active metrics and writes the specified
+log records; the serving-runtime adapter, the contract validator, and every span do
+not.
 
 This directory answers a question that is easy to answer by accumulation: which
 signals a system should emit. The failure mode is not emitting too few — it is
@@ -21,6 +23,7 @@ and never a key. None of those is a convention anybody has to remember.
 |---|---|
 | [Telemetry catalog](telemetry-catalog.md) | Correlation, resource and request attributes, thirteen active metrics, the cardinality budget, what the selected runtime already emits, and the log record |
 | [Redaction rules](redaction.md) | What is excluded, why each exclusion is tempting, which rules are really enforced, and what would have to exist before content capture could be enabled |
+| [API instrumentation](api-instrumentation.md) | What the API actually emits: the eight metrics, a scrape, a record, the variables a deployment states its identity in, and what is still absent |
 | [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json) | The authoritative form of both, validated by [`tests/telemetry/`](../../tests/telemetry/) |
 | [Evidence records and templates](../proof/README.md) | The four templates a record is written from, and the sections every record carries |
 
@@ -36,7 +39,14 @@ reason, and the whole catalog costs at most 5,519 series against a ceiling of
 Six fields are excluded outright and can be placed nowhere: a prompt, a completion,
 a provider error body, a secret value, an authorization header, and any value read
 out of a submitted document. Their sensitivity classes have empty placement lists,
-so the exclusion is arithmetic rather than a rule somebody applies.
+so the exclusion is arithmetic rather than a rule somebody applies — and, since the
+API began emitting, a log record is built through an allowlist that has no name for
+any of them, so the exclusion is also the absence of a key.
+
+Eight metrics are emitted, by the API and by nothing else. The four assigned to the
+serving-runtime adapter, the one assigned to the contract validator, and one
+assigned to the API with no source it may read are not, and each says why in the
+data.
 
 ## Running the checks
 
@@ -49,8 +59,9 @@ It reads only files in this repository and needs `pytest` alone.
 ## What is not here
 
 No exporter, no collector, no store, no dashboard, and no alert. No tracer and no
-propagator. No logger and no redacting sink. Nothing scrapes anything, and the
-ownership inventory
+propagator. A logger and a redacting sink now exist, and they write to a stream:
+nothing scrapes the endpoint, nothing collects the stream, and no retention window,
+shipper, or access rule is selected. The ownership inventory
 [records that gap](../architecture/resource-ownership.md) rather than assigning it to
 a tool by accident.
 

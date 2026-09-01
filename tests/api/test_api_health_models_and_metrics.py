@@ -19,10 +19,14 @@ can ask declares it. Publishing `ADR 0010`'s observed value as this deployment's
 own declaration is the assumption the rule exists to prevent, and the suite holds
 the line.
 
-**The metrics endpoint emits nothing, on purpose.** The accepted telemetry
-catalog records that nothing in this repository emits a metric, and instrumenting
-this API is a later story. The endpoint exists and says so rather than publishing
-a partial counter that would read as instrumentation.
+**The metrics endpoint publishes the API's own series.** It renders every metric
+the accepted telemetry catalog assigns to the ``inferops-api`` emitter and no
+other, in the Prometheus text exposition format, and it answers before the
+adapter has started -- a process that cannot serve is exactly the one whose
+metrics are wanted. What it does **not** publish is on the record too: the one
+metric assigned to this emitter with no source it may read is named in a comment
+rather than published as a zero. The instrumentation itself is exercised in
+``tests/api/test_api_observability.py``; what this suite holds is the endpoint.
 """
 
 from __future__ import annotations
@@ -38,6 +42,8 @@ from inferops.api import (
     BOUND_METRIC_NAMES,
     EXPOSITION_CONTENT_TYPE,
     EXTENSION_MEMBER,
+    MOCK_EXPOSITION_NOTE,
+    NO_MEMORY_SOURCE_NOTE,
     REQUEST_ID_HEADER,
     InferOpsApi,
 )
@@ -48,6 +54,7 @@ from inferops.api.surface import (
     MODELS_PATH,
     READY_PATH,
 )
+from inferops.telemetry import names
 from tests.support import asgi_client
 from tests.support.api_composition import (
     FIXED_NOW,
@@ -238,23 +245,48 @@ async def test_the_metrics_endpoint_answers_in_the_exposition_content_type(
     assert response.header("content-type") == EXPOSITION_CONTENT_TYPE
 
 
-async def test_the_metrics_endpoint_publishes_no_series(
+async def test_the_metrics_endpoint_publishes_every_metric_it_declares(
     mock_api: InferOpsApi,
 ) -> None:
-    """Every line is a comment, so a scraper records nothing from this target."""
+    """Each declared metric arrives with a HELP line, a TYPE line, and a sample."""
     lines = (await get(mock_api, METRICS_PATH)).text().splitlines()
     assert lines
-    assert all(line.startswith("#") for line in lines), lines
-    assert not any(line.startswith(("# HELP", "# TYPE")) for line in lines), lines
+    for name in BOUND_METRIC_NAMES:
+        assert any(line.startswith(f"# HELP {name} ") for line in lines), name
+        assert any(line.startswith(f"# TYPE {name} ") for line in lines), name
 
 
-async def test_the_metrics_body_names_what_is_missing_and_who_owns_it(
+async def test_the_metrics_body_names_the_one_metric_it_does_not_publish(
     mock_api: InferOpsApi,
 ) -> None:
+    """A metric assigned to this emitter and absent says so, in a comment.
+
+    A comment is not a metric: no ``HELP`` line, no ``TYPE`` line, and no sample,
+    so a scraper records nothing for it and a person reading the scrape finds out
+    why without going to the catalog.
+    """
+    lines = (await get(mock_api, METRICS_PATH)).text().splitlines()
+    assert any(line == f"# {NO_MEMORY_SOURCE_NOTE}" for line in lines)
+    published = [line for line in lines if not line.startswith("#")]
+    assert not any(names.PROCESS_RESIDENT_MEMORY in line for line in published)
+    assert not any(
+        line.startswith(
+            (
+                "# HELP " + names.PROCESS_RESIDENT_MEMORY,
+                "# TYPE " + names.PROCESS_RESIDENT_MEMORY,
+            )
+        )
+        for line in lines
+    )
+
+
+async def test_the_metrics_body_says_the_deployment_behind_it_is_a_mock(
+    mock_api: InferOpsApi,
+) -> None:
+    """A scrape is the surface most likely to be copied without its context."""
     text = (await get(mock_api, METRICS_PATH)).text()
-    for name in BOUND_METRIC_NAMES:
-        assert name in text, name
-    assert "telemetry work" in text
+    assert MOCK_EXPOSITION_NOTE in text
+    assert f'{names.ADAPTER_KIND.replace(".", "_")}="{MOCK_ADAPTER_KIND}"' in text
 
 
 async def test_metrics_answer_before_the_adapter_has_started() -> None:

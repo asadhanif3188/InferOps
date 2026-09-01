@@ -31,15 +31,21 @@ rule: the variable is required, an unstated or unrecognised value selects
 nothing, and a `real` selection whose settings are missing is refused rather than
 answered with a mock.
 
-*What it does not finish is named rather than left to be found.* `/metrics`
-serves an exposition with no series because the accepted telemetry catalog
-records that nothing in this repository emits a metric and the telemetry work
-owns instrumenting this API; and two accepted request members, ``max_tokens`` and
+*It is instrumented, and what it does not emit is named rather than left to be
+found.* `/metrics` publishes the metrics the accepted telemetry catalog assigns to
+the ``inferops-api`` emitter -- the request counter that closes `ADR 0002` `T7`,
+the error counter, the latency histogram, the in-flight gauge, the readiness
+counter, the token counter, the two process gauges, and the identity metric --
+and every request to the inference endpoint writes one structured record when it
+arrives and one when it closes. The metrics the catalog assigns to the serving
+adapter and to the contract validator are **not** emitted, no span is produced,
+and no exporter, collector, or store is selected; the catalog records which per
+metric. Separately, two accepted request members, ``max_tokens`` and
 ``temperature``, are validated and not forwarded because the serving adapter
 interface `V1-S1-002` froze has no parameter for either. Both are recorded in
 [the API document](../../../docs/serving/inference-api.md).
 
-Nine modules, one job each:
+Ten modules, one job each:
 
 - :mod:`~inferops.api.application` — the ASGI application itself: the routes, the
   composition point, and the translation between the borrowed shape and the
@@ -57,8 +63,9 @@ Nine modules, one job each:
   carries, together.
 - :mod:`~inferops.api.selection` — which adapter is live, read from configuration
   and refused when it is not stated.
-- :mod:`~inferops.api.metrics` — the metrics endpoint, and why it publishes no
-  series.
+- :mod:`~inferops.api.metrics` — the metrics endpoint, and what it publishes.
+- :mod:`~inferops.api.observability` — the instruments this API emits and the
+  events it writes, bound to the moments in a request it already had.
 - :mod:`~inferops.api.lifecycle` — starting, serving, draining, and stopping, in
   that order, which is the graceful-shutdown equivalent the accepted record chose
   over a remote-stop endpoint.
@@ -100,7 +107,14 @@ from .lifecycle import (
 from .metrics import (
     BOUND_METRIC_NAMES,
     EXPOSITION_CONTENT_TYPE,
-    exposition,
+)
+from .observability import (
+    API_METRICS,
+    MOCK_EXPOSITION_NOTE,
+    NO_MEMORY_SOURCE_NOTE,
+    ApiTelemetry,
+    ModelRuntimeIdentity,
+    outcome_for,
 )
 from .responses import (
     STATUS_ALIVE,
@@ -161,6 +175,7 @@ __all__ = [
     "ADAPTER_KIND_FOR",
     "ADAPTER_MOCK",
     "ADAPTER_REAL",
+    "API_METRICS",
     "BOUND_METRIC_NAMES",
     "CAPABILITY_UNAVAILABLE",
     "CONDITIONS",
@@ -182,8 +197,10 @@ __all__ = [
     "INTERNAL_ERROR",
     "JSON_CONTENT_TYPE",
     "MAX_REQUEST_BYTES",
+    "MOCK_EXPOSITION_NOTE",
     "MODEL_NOT_READY",
     "NOT_PASSED_THROUGH",
+    "NO_MEMORY_SOURCE_NOTE",
     "OPTIONAL_ENVIRONMENT_VARIABLES",
     "PATH_PREFIX",
     "RATE_LIMITED",
@@ -203,11 +220,13 @@ __all__ = [
     "UPSTREAM_TIMEOUT",
     "VERSION_UNSUPPORTED",
     "ApiConfiguration",
+    "ApiTelemetry",
     "ApplicationLifecycle",
     "ChatCompletionRequest",
     "Condition",
     "InferOpsApi",
     "LifecycleState",
+    "ModelRuntimeIdentity",
     "RequestRefused",
     "Route",
     "Selection",
@@ -217,10 +236,10 @@ __all__ = [
     "condition_for",
     "declared_capabilities",
     "error_body",
-    "exposition",
     "install_termination_handlers",
     "live_body",
     "models_body",
+    "outcome_for",
     "parse_chat_completion",
     "ready_body",
     "select",
