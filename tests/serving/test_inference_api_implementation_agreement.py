@@ -164,7 +164,7 @@ def test_only_capabilities_an_adapter_declares_are_read_from_an_adapter() -> Non
 
 def test_the_record_no_longer_claims_that_nothing_serves_it() -> None:
     status = SURFACE["implementationStatus"]
-    assert status["state"] == "served-in-part"
+    assert status["state"] == "served"
     assert status["meaning"].strip()
 
 
@@ -173,15 +173,16 @@ def test_every_in_scope_endpoint_names_what_serves_it() -> None:
         assert row["servedBy"].startswith("inferops.api"), row["endpointId"]
 
 
-def test_no_contract_artifact_for_this_surface_was_published() -> None:
-    """Serving a shape is not publishing it. `contracts/` is still untouched."""
+def test_the_snapshot_is_designated_without_adding_a_contracts_artifact() -> None:
+    """The tested JSON snapshot is canonical; `contracts/` stays untouched."""
     published = [
         path.relative_to(REPO_ROOT).as_posix()
         for path in sorted((REPO_ROOT / "contracts").rglob("*"))
         if path.is_file() and "inference-api" in path.name
     ]
     assert published == []
-    assert SURFACE["implementationStatus"]["publishedArtifacts"].startswith("none")
+    publication = SURFACE["implementationStatus"]["publishedArtifacts"]
+    assert "canonical, versioned, tested API snapshot" in publication
 
 
 def test_the_references_the_module_names_exist() -> None:

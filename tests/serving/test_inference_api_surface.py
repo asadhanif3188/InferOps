@@ -173,18 +173,15 @@ def test_the_record_states_what_serves_it_in_a_vocabulary_it_defines() -> None:
     status = SURFACE["implementationStatus"]
     assert status["state"] in IMPLEMENTATION_STATES, status["state"]
     assert status["meaning"].strip()
-    assert status["publishedArtifacts"].startswith("none")
+    assert "canonical, versioned, tested API snapshot" in status["publishedArtifacts"]
 
 
-def test_a_served_surface_is_still_not_a_published_contract_artifact() -> None:
-    """Serving a shape and publishing it are different, and D9 stays undecided.
-
-    This is the distinction the record was built around, and it is the one that
-    survives the surface being implemented: `contracts/` is where a client binds,
-    and nothing was added to it.
-    """
+def test_the_versioned_json_is_the_designated_tested_snapshot() -> None:
+    """D9 designates this record without claiming OpenAPI or JSON Schema."""
     assert "D9" in DECISION
-    assert SURFACE["implementationStatus"]["publishedArtifacts"].startswith("none")
+    publication = SURFACE["implementationStatus"]["publishedArtifacts"]
+    assert "canonical, versioned, tested API snapshot" in publication
+    assert "not an OpenAPI document or JSON Schema" in publication
 
 
 def test_no_contract_artifact_for_this_surface_was_published() -> None:
@@ -222,7 +219,7 @@ def test_the_compatibility_target_states_what_bounds_it_and_what_permits_it() ->
 
 def test_the_surface_says_what_it_is_and_what_it_is_for() -> None:
     assert len(SURFACE["title"]) > 20
-    assert "Nothing in this repository serves any of it" in SURFACE["description"]
+    assert "canonical, versioned, tested snapshot" in SURFACE["description"]
 
 
 def test_the_telemetry_pointer_in_the_data_is_the_file_the_suite_reads() -> None:
@@ -809,19 +806,11 @@ def test_every_capability_is_published_and_decided(row: dict) -> None:
     assert path in DECISION, f"{path} is published and never decided"
 
 
-def test_the_document_and_the_decision_both_refuse_to_claim_a_published_contract() -> (
-    None
-):
-    """Neither may claim an artifact a client can bind to, served or not.
-
-    The decision record is dated and is not rewritten when the thing it decided
-    gets built, so it still says the API did not exist when it was written. The
-    document beside it describes the surface as it stands. What both have to keep
-    saying is the part that has not changed: no OpenAPI document is published.
-    """
+def test_the_document_and_the_decision_bound_the_snapshot_claim() -> None:
+    """Both designate the snapshot without claiming an OpenAPI document."""
     for body, name in ((DOCUMENT, DOCUMENT_PATH.name), (DECISION, DECISION_PATH.name)):
-        assert "No OpenAPI document" in body or "no OpenAPI document" in body, name
-    assert "does not exist" in DECISION, DECISION_PATH.name
+        assert "not an OpenAPI document" in body or "No OpenAPI document" in body, name
+    assert "canonical" in DECISION and "tested API snapshot" in DECISION
 
 
 def test_the_decision_carries_the_sections_a_record_here_is_required_to_carry() -> None:

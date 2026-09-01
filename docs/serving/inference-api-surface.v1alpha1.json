@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/serving/inference-api-surface.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "V1 inference API compatibility surface, v1alpha1",
-  "description": "The compatibility target of the user-facing InferOps inference API, the exact endpoint subset V1 serves, the request and response shapes of each one, the capabilities the surface declares rather than assumes, the extension namespace for what the compatibility target does not define, and the mapping from observable runtime behaviour to canonical error codes. This is a decision about shape. Nothing in this repository serves any of it; implementationStatus says so and no row may claim otherwise.",
+  "description": "The canonical, versioned, tested snapshot of the user-facing InferOps inference API: the exact endpoint subset V1 serves, the request and response shapes of each one, the capabilities the surface declares rather than assumes, the extension namespace for what the compatibility target does not define, and the mapping from observable runtime behaviour to canonical error codes.",
   "decisionRef": "docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md",
   "documentRef": "docs/serving/inference-api-surface.md",
   "runtimeDecisionRef": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
@@ -13,9 +13,9 @@
   "securityRef": "docs/security/security-baseline.v1alpha1.json",
 
   "implementationStatus": {
-    "state": "served-in-part",
-    "meaning": "The InferOps API in src/inferops/api/ registers every endpoint below and answers it, through the serving adapter it is composed with, and which adapter that is comes from configuration: INFEROPS_SERVING_ADAPTER is required, it selects nothing when unstated, and a real selection whose runtime settings are absent is refused rather than answered with a mock. Nothing in this repository binds a socket: the application implements the ASGI calling convention and no server ships here, so what has been exercised is the application through its own interface and not a network. The canonical error body below is served in full, and every condition this record maps is reachable. One part of the decided shape remains deliberately unfinished and is named where it applies: two accepted request members are validated and not forwarded, which needs a superseding decision on the adapter interface. /metrics now publishes the metrics the accepted telemetry catalog assigns to this API, and the metrics it does not publish are recorded per metric in that catalog.",
-    "publishedArtifacts": "none. No OpenAPI document, no JSON Schema for a request or a response body, and no addition to contracts/ is made by this record or by the component that serves it. Serving a shape is not publishing it as a contract artifact a client may bind to, and D9 stays undecided."
+    "state": "served",
+    "meaning": "The InferOps API in src/inferops/api/ registers and answers every endpoint below through the explicitly selected serving adapter. Nothing in this repository binds a socket: the application implements ASGI and no server ships here, so the application has been exercised through its own interface rather than over a network. The canonical error body is served in full, every mapped condition is reachable, unsupported caller generation controls are refused rather than ignored, and /metrics publishes the metrics assigned to this API.",
+    "publishedArtifacts": "This file is the canonical, versioned, tested API snapshot designated by ADR 0010 D9. It is not an OpenAPI document or JSON Schema, creates no generated-client promise, and adds nothing to contracts/."
   },
 
   "compatibilityTarget": {
@@ -46,7 +46,7 @@
       "purpose": "One synchronous, non-streaming chat completion.",
       "servingContractRole": "inference",
       "v1Status": "in-scope",
-      "servedBy": "inferops.api. Validation, translation, the completion body, and the canonical error body in full are served; max_tokens and temperature are validated and not forwarded because the frozen adapter interface carries neither.",
+      "servedBy": "inferops.api. Validation, translation, the completion body, and the canonical error body in full are served; generation controls the frozen adapter interface cannot carry are outside the accepted request subset and are refused rather than ignored.",
       "runtimeCounterpart": "POST /v1/chat/completions",
       "runtimeCounterpartObserved": true
     },
@@ -170,10 +170,10 @@
       "question": "Does temperature 0 return the same content for the same request?",
       "v1Value": true,
       "declaredAt": "GET /v1/models, x_inferops.capabilities.deterministicSampling",
-      "requestField": "temperature",
+      "requestField": null,
       "onUnsupportedRequest": null,
       "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
-      "basis": "Three runs at temperature 0 returned byte-identical content in the trial. That is one model on one host on one day, and it is the only support this flag has.",
+      "basis": "Three runtime-feasibility runs at temperature 0 returned byte-identical content. That historical observation is not a per-request API control: temperature is outside this surface's accepted request subset.",
       "runtimeObserved": true,
       "runtimeNote": "Observed, not guaranteed. A caller may not read this as a promise across model, quantisation, thread count, or runtime build."
     },
@@ -210,22 +210,6 @@
     },
     {
       "endpointId": "chat-completions",
-      "field": "max_tokens",
-      "type": "integer",
-      "required": false,
-      "v1Behaviour": "Upper bound on generated tokens. A value above the deployment's configured ceiling is refused with contract-invalid rather than silently clamped.",
-      "observedInTrial": true
-    },
-    {
-      "endpointId": "chat-completions",
-      "field": "temperature",
-      "type": "number",
-      "required": false,
-      "v1Behaviour": "Passed to the adapter. 0 is the value the determinism observation was made at.",
-      "observedInTrial": true
-    },
-    {
-      "endpointId": "chat-completions",
       "field": "stream",
       "type": "boolean",
       "required": false,
@@ -239,7 +223,7 @@
     "code": "contract-invalid",
     "meaning": "A member of a request body that is not in requestFields is refused, and the refusal names the member. The integration specification requires unknown fields to be handled according to a declared policy; this is the declaration.",
     "rationale": "Silently ignoring a parameter that changes the result is worse than refusing it. A caller who sends n and receives one choice, or sends stop and receives text past the stop sequence, has been given a wrong answer rather than an error.",
-    "cost": "Clients that send upstream defaults such as top_p, n, presence_penalty, or stop are refused until they stop sending them. That is a real reduction in the reach the compatibility target was chosen for, and it is accepted rather than hidden.",
+    "cost": "Clients that send generation controls such as max_tokens, temperature, top_p, n, presence_penalty, or stop are refused until they stop sending them. That is a real reduction in the reach the compatibility target was chosen for, and it is accepted rather than hidden.",
     "rejectedAlternative": "Accept unknown members and echo the ignored ones back in the extension namespace. Rejected because it makes the wrong answer the default outcome for a caller who does not read the echo."
   },
 
@@ -363,7 +347,7 @@
     },
     {
       "conditionId": "request-outside-subset",
-      "condition": "The request body carries a member outside the frozen subset, a role outside the accepted set, a non-string content, a model that is not the served model, or a max_tokens above the configured ceiling.",
+      "condition": "The request body carries a member outside the frozen subset, a role outside the accepted set, non-string content, or a model that is not the served model.",
       "observedInTrial": false,
       "observation": null,
       "code": "contract-invalid",
@@ -478,10 +462,10 @@
 
   "notDecidedHere": [
     "The context length, KV budget, concurrency limit, and sampling defaults. ADR 0002 left all four undecided and this record does not fill them in.",
-    "The max_tokens ceiling a deployment configures, which depends on the context length above.",
+    "The deployment-wide maximum output-token value an operator configures for the adapter. This surface exposes no per-request override.",
     "Authentication, authorization, rate limiting, and quota at the caller boundary.",
     "Any asynchronous or event-carried inference shape. V1 serves one synchronous request at a time and decides nothing about any other form.",
     "The transport a caller reaches the API over from outside the cluster. The accepted local cluster ships no ingress controller and no load-balancer implementation.",
-    "Whether a published contract artifact for this surface is ever added to contracts/, and by what mechanism. The integration specification leaves the publication mechanism open."
+    "Whether an OpenAPI document, JSON Schema, generated client artifact, or entry in contracts/ is added. This versioned JSON snapshot is designated and tested, but makes none of those additional claims."
   ]
 }

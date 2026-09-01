@@ -281,21 +281,17 @@ def test_a_missing_request_timeout_is_refused_rather_than_defaulted() -> None:
 
 
 def test_an_absent_generation_ceiling_is_none_rather_than_a_number() -> None:
-    """The accurate default: the accepted record records the ceiling as depending
-    on a context length `ADR 0002` left undecided."""
+    """No operator limit means the adapter uses the runtime's configured default."""
     selection = select(mock_environment())
 
     assert selection.adapter_configuration.max_tokens is None
-    assert selection.configuration.max_output_tokens is None
 
 
-def test_the_generation_ceiling_is_one_knob_reaching_both_places() -> None:
-    """The bound a caller may ask for and the bound the adapter is given are the
-    same number, so a deployment cannot accept a request it cannot honour."""
+def test_the_generation_ceiling_is_passed_to_the_adapter() -> None:
+    """The operator setting is deployment-wide, not a caller request control."""
     selection = select(mock_environment(**{ENV_MAX_OUTPUT_TOKENS: "512"}))
 
     assert selection.adapter_configuration.max_tokens == 512
-    assert selection.configuration.max_output_tokens == 512
 
 
 def test_an_absent_drain_budget_takes_the_published_default() -> None:

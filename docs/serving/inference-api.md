@@ -12,11 +12,11 @@ bound and no byte has crossed a network.
 This document is what the API does. [ADR 0010](../architecture/decisions/ADR-0010-inference-api-compatibility-surface.md)
 is why its shape is what it is, and this document does not restate the argument.
 
-## What is served, and what is deliberately unfinished
+## What is served
 
-| Route | Served | Unfinished, and who owns it |
+| Route | Served | Deliberate limit |
 |---|---|---|
-| `POST /v1/chat/completions` | Validation, translation to the adapter, the completion body, and the canonical error body in full | `max_tokens` and `temperature` are validated and not forwarded — see [the gap below](#the-two-members-that-are-validated-and-not-forwarded) |
+| `POST /v1/chat/completions` | Validation, translation to the adapter, the completion body, and the canonical error body in full | Caller generation controls the adapter cannot carry are refused, not ignored |
 | `GET /v1/models` | The list envelope, the runtime descriptor, and the declared capability set | `deterministicSampling` is published as `null` — see [declared capabilities](#declared-capabilities) |
 | `GET /health/live` | Whether this process is alive | — |
 | `GET /health/ready` | This API accepting work **and** the selected adapter reporting itself able | — |
@@ -52,7 +52,7 @@ shutdown.
 | `INFEROPS_SERVING_ADAPTER` | yes | `mock` or `real`. **There is no default.** Unset, empty, or anything else selects nothing |
 | `INFEROPS_MODEL_IDENTIFIER` | yes | The one model this deployment serves. A `mock` deployment's must be mock-labelled and a `real` deployment's must not be |
 | `INFEROPS_REQUEST_TIMEOUT_MS` | yes | How long one inference request may take. Required because ADR 0002 decides no deadline, and a number invented here would be read back as a recommendation nobody made |
-| `INFEROPS_MAX_OUTPUT_TOKENS` | no | The ceiling a request's `max_tokens` may not exceed. Absent means this deployment configures none, which is accurate: the ceiling depends on a context length ADR 0002 left undecided |
+| `INFEROPS_MAX_OUTPUT_TOKENS` | no | Deployment-wide maximum output tokens passed to the adapter. It is an operator setting, not a caller request field; absent leaves the adapter without an InferOps-configured limit |
 | `INFEROPS_DRAIN_TIMEOUT_MS` | no | The budget a graceful shutdown gives in-flight work. Defaults to 15000, which is itself a default rather than a decision |
 
 Every number above is a duration or a token count, so **zero and below are
@@ -122,14 +122,12 @@ sending them; that cost is real and is the one the decision accepted openly.
 
 | Condition | Code | Status |
 |---|---|---|
-| A member outside `model`, `messages`, `max_tokens`, `temperature`, `stream` | `contract-invalid` | 400 |
+| A member outside `model`, `messages`, `stream` | `contract-invalid` | 400 |
 | A member outside `role`, `content` inside a message | `contract-invalid` | 400 |
 | `model` that is not the served model | `contract-invalid` | 400 |
 | `role` outside `system`, `user`, `assistant` | `contract-invalid` | 400 |
 | `content` that is not a string | `contract-invalid` | 400 |
 | More than one message, or one whose role is not `user` | `contract-invalid` | 400 |
-| `max_tokens` that is not a positive integer, or above the configured ceiling | `contract-invalid` | 400 |
-| `temperature` that is not a number | `contract-invalid` | 400 |
 | `stream: true` | `capability-unavailable` | 400 |
 | A body that is not a JSON object | `contract-invalid` | 400 |
 | A body above 1 MiB | `contract-invalid` | 413 |
@@ -147,21 +145,15 @@ from a prompt nobody designed.
 needs a conversation-carrying parameter on the adapter interface, which is a
 superseding decision rather than a patch.
 
-### The two members that are validated and not forwarded
+### Generation controls are refused rather than ignored
 
-`max_tokens` and `temperature` are in the frozen subset, they are checked here,
-and **the frozen adapter interface has no parameter for either**. What actually
-bounds generation is the `max_tokens` on the adapter's own configuration, set at
-composition time; the runtime's own sampling defaults apply to temperature.
-
-That is a conflict between two accepted records rather than a choice made in the
-code. The surface says both members are passed to the adapter; the adapter
-interface has nowhere to pass them. Neither record was edited: the members are
-accepted because the published subset accepts them, they are validated because a
-member outside its stated type is still a refusal, and the gap is recorded here
-and in the change's validation record. **It needs a superseding decision on the
-adapter interface**, and until there is one, a caller setting `temperature: 0.9`
-gets the runtime's default and no indication that they did.
+`max_tokens` and `temperature` are outside the accepted request subset. The
+frozen adapter interface has no per-request parameter for either, so accepting
+them would advertise controls the implementation cannot honour. ADR 0010's
+2026-09-01 amendment formally narrows the subset: callers receive
+`contract-invalid`, naming the unsupported member, under the same strict policy
+as `top_p` or `stop`. The deployment-wide `INFEROPS_MAX_OUTPUT_TOKENS` operator
+setting remains available and is passed to the adapter.
 
 ## Errors
 
@@ -170,7 +162,7 @@ Every refusal carries the canonical error body the accepted record decided:
 ```json
 {
   "code": "contract-invalid",
-  "message": "temperature: this member must be a number",
+  "message": "temperature: this member is outside the frozen request subset this API accepts",
   "requestId": "…",
   "correlationId": "…",
   "retryable": false,

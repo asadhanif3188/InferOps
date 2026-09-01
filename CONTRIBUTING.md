@@ -119,9 +119,10 @@ which is why a recorded result always names the command that produced it.
 
 Two conventions the linter and the type checker carry, stated because they are
 easier to keep than to restore. `E501` is switched off and the formatter owns line
-length, so run `ruff format` rather than rewrapping by hand. And there is no
-`# type: ignore` anywhere in this repository; when the first one is needed it should
-carry the reason beside it.
+length, so run `ruff format` rather than rewrapping by hand. The test composition
+helpers contain narrowly coded `# type: ignore[...]` directives where tests
+deliberately inject protocol-invalid doubles. Keep every directive scoped to an
+error code and make the reason evident from the surrounding test or helper.
 
 Which check proves which public claim, where each one is allowed to run, and what a
 passing result may be used to certify are settled in

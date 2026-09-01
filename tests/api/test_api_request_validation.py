@@ -22,7 +22,7 @@ import pytest
 from inferops.api import CONTRACT_INVALID, InferOpsApi, identifiers
 from inferops.api.surface import CHAT_COMPLETIONS_PATH
 from tests.support import asgi_client
-from tests.support.api_composition import MOCK_MODEL, RecordingAdapter, build
+from tests.support.api_composition import MOCK_MODEL
 
 pytestmark = pytest.mark.mockintegration
 
@@ -73,7 +73,17 @@ def valid(**overrides: object) -> dict[str, object]:
 
 @pytest.mark.parametrize(
     "member",
-    ["top_p", "n", "presence_penalty", "stop", "frequency_penalty", "tools", "x_other"],
+    [
+        "max_tokens",
+        "temperature",
+        "top_p",
+        "n",
+        "presence_penalty",
+        "stop",
+        "frequency_penalty",
+        "tools",
+        "x_other",
+    ],
 )
 async def test_a_member_outside_the_frozen_subset_is_refused(
     mock_api: InferOpsApi, member: str
@@ -174,46 +184,6 @@ async def test_a_conversation_is_refused_rather_than_flattened(
     assert body["code"] == CONTRACT_INVALID
     assert body["message"].startswith("messages:")
     assert "single prompt" in body["message"]
-
-
-@pytest.mark.parametrize("value", [0, -1, "12", True, 1.5])
-async def test_a_max_tokens_that_is_not_a_positive_integer_is_refused(
-    mock_api: InferOpsApi, value: object
-) -> None:
-    response = await refuse(mock_api, valid(max_tokens=value))
-    assert response.status == 400
-    assert response.json()["message"].startswith("max_tokens:")
-
-
-async def test_a_max_tokens_above_the_configured_ceiling_is_refused() -> None:
-    """Refused, not silently clamped. The accepted record is explicit about it."""
-    api = build(RecordingAdapter(), max_output_tokens=32)
-    await api.startup()
-    response = await refuse(api, valid(max_tokens=64))
-    assert response.status == 400
-    assert response.json()["message"].startswith("max_tokens:")
-
-
-async def test_a_max_tokens_at_the_ceiling_is_accepted() -> None:
-    api = build(RecordingAdapter(), max_output_tokens=32)
-    await api.startup()
-    response = await refuse(api, valid(max_tokens=32))
-    assert response.status == 200, response.text()
-
-
-async def test_no_ceiling_is_configured_by_default(mock_api: InferOpsApi) -> None:
-    """`None` is the accurate default: no context length is decided anywhere."""
-    response = await refuse(mock_api, valid(max_tokens=1_000_000))
-    assert response.status == 200, response.text()
-
-
-@pytest.mark.parametrize("value", ["hot", True, None, []])
-async def test_a_temperature_that_is_not_a_number_is_refused(
-    mock_api: InferOpsApi, value: object
-) -> None:
-    response = await refuse(mock_api, valid(temperature=value))
-    assert response.status == 400
-    assert response.json()["message"].startswith("temperature:")
 
 
 async def test_streaming_is_refused_with_the_code_the_record_names(

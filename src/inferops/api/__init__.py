@@ -40,10 +40,9 @@ and every request to the inference endpoint writes one structured record when it
 arrives and one when it closes. The metrics the catalog assigns to the serving
 adapter and to the contract validator are **not** emitted, no span is produced,
 and no exporter, collector, or store is selected; the catalog records which per
-metric. Separately, two accepted request members, ``max_tokens`` and
-``temperature``, are validated and not forwarded because the serving adapter
-interface `V1-S1-002` froze has no parameter for either. Both are recorded in
-[the API document](../../../docs/serving/inference-api.md).
+metric. Generation controls the serving adapter cannot carry, including
+``max_tokens`` and ``temperature``, are explicitly outside the accepted request
+subset and are refused rather than silently ignored.
 
 Ten modules, one job each:
 

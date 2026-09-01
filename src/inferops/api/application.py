@@ -145,16 +145,10 @@ class ApiConfiguration:
             method for it — and it is checked against every result the adapter
             produces, so a deployment that labelled itself wrongly fails loudly
             instead of serving mislabelled responses.
-        max_output_tokens: The ceiling a request's ``max_tokens`` may not exceed,
-            or ``None`` when this deployment configures none. ``None`` is the
-            accurate default: `ADR 0002` left the context length undecided and
-            `ADR 0010` records the ceiling as depending on it, so there is no
-            decided number to put here.
         drain_timeout_ms: The budget a graceful shutdown gives in-flight work.
     """
 
     adapter_kind: str
-    max_output_tokens: int | None = None
     drain_timeout_ms: int = DEFAULT_DRAIN_TIMEOUT_MS
 
     def __post_init__(self) -> None:
@@ -162,8 +156,6 @@ class ApiConfiguration:
             raise InvalidValueError(
                 f"adapter_kind must be one of {sorted(ACCEPTED_ADAPTER_KINDS)}"
             )
-        if self.max_output_tokens is not None and self.max_output_tokens <= 0:
-            raise InvalidValueError("max_output_tokens must be positive")
         if self.drain_timeout_ms <= 0:
             raise InvalidValueError("drain_timeout_ms must be positive")
 
@@ -562,7 +554,6 @@ class InferOpsApi:
         request = parse_chat_completion(
             raw,
             served_model=model.identifier,
-            max_tokens_ceiling=self._configuration.max_output_tokens,
         )
         result = await self._adapter.infer(request.prompt, context)
         if result.adapter_kind != self._configuration.adapter_kind:

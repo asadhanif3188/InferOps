@@ -2,20 +2,20 @@
 
 | Field | Value |
 |---|---|
-| Status | **Accepted in part** |
+| Status | **Accepted; amended 2026-09-01** |
 | Date proposed | 2026-08-27 |
-| Date accepted | 2026-08-27, for D1 through D8 only |
+| Date accepted | 2026-08-27; D3 narrowed and D9 accepted 2026-09-01 |
 | Decision owner | Unassigned; no public maintainer roster exists yet |
 | Supersedes | None |
 | Superseded by | None |
 
 > [!IMPORTANT]
-> This record decides the **shape** of an API that does not exist. Nothing in this
-> repository listens on a port, registers a route, or answers a request, and this
-> change adds nothing that does. No OpenAPI document is published, no request or
-> response schema is added to [`contracts/`](../../../contracts/), and no client may
-> bind to anything here. `V1-S1-005` implements this surface; this record decides it,
-> and the gap between those two sentences is the whole of what is being claimed.
+> This record originally decided the **shape** before the API existed. The API is
+> now implemented as an ASGI application, though this repository still ships no
+> server and has produced no network-runtime evidence. No OpenAPI document or JSON
+> Schema is published and nothing is added to [`contracts/`](../../../contracts/).
+> D9 designates the existing versioned JSON record as the canonical tested API
+> snapshot, with exactly those narrower claims.
 >
 > Every shape below was read from **the response bodies the runtime actually
 > returned** in
@@ -25,8 +25,10 @@
 > reference. That applies to streaming, to every error condition but one, and to
 > most of the runtime's own endpoint surface.
 >
-> **D9 is not decided.** Whether this surface is ever published as a contract
-> artifact, and by what mechanism, is left open rather than answered in passing.
+> The 2026-09-01 amendment also removes `max_tokens` and `temperature` from the
+> accepted caller subset. The frozen adapter contract cannot carry per-request
+> values for either; refusing them is the only behaviour that does not silently
+> advertise controls the implementation ignores.
 
 ## Decision status
 
@@ -34,13 +36,13 @@
 |---|---|---|---|
 | D1 | Compatibility target: the OpenAI HTTP API shape, restricted to a frozen subset, at the `/v1` prefix | **Accepted** | The runtime already returns this shape, recorded verbatim in the feasibility record; the specification's own preference for it; and the bounded-subset construction below, which answers the objection that compatibility is a promise to track someone else's surface |
 | D2 | Five endpoints in V1 scope; everything else recorded out of scope with a reason | **Accepted** as a scope rule | Review, plus a test that the endpoint set and the serving contract's required roles agree |
-| D3 | The request and response shapes of each in-scope endpoint | **Accepted** as a specification for unwritten code | The observed response bodies for every field marked observed; nothing serves any of it |
+| D3 | The request and response shapes of each in-scope endpoint | **Accepted; narrowed 2026-09-01** | The implementation-agreement tests enforce the versioned snapshot. `max_tokens` and `temperature` are explicitly outside the request subset because the adapter contract cannot carry them |
 | D4 | Unknown request members are refused, not ignored | **Accepted** | Argument, and the specification's requirement that a policy be declared. The cost is stated rather than hidden |
 | D5 | Extension namespace: the `x_inferops` body member, and the `X-InferOps-` header prefix beside it | **Accepted** | Review. The two namespaces are named separately because they carry different things |
 | D6 | Streaming is a declared capability and its V1 value is `false` | **Accepted** | The telemetry catalog already defers time-to-first-token because V1 has no streaming path. **No runtime evidence either way**, and the record says so |
 | D7 | The declared capability set: token usage `true` and never estimated, deterministic sampling `true` as an observation rather than a promise, multi-model `false` | **Accepted** | The trial's recorded `usage` object and ADR 0002 `T5` for the first; three byte-identical runs for the second; ADR 0002's single-model single-process finding for the third |
 | D8 | The runtime-to-canonical-error mapping, and the request counter InferOps owns because the runtime has none | **Accepted in the one row the trial observed; specified in the other eight** | One 503 recorded verbatim from the control plane. Every other row is a specification, marked as such, and the failure lane that would test them does not exist |
-| D9 | Whether this surface is published as a contract artifact, and by what mechanism | **Not decided** | Nothing. The integration specification leaves the publication mechanism open, and this record does not close it |
+| D9 | Publication mechanism for a tested API snapshot | **Accepted 2026-09-01** | `inference-api-surface.v1alpha1.json` is canonical, versioned, and checked against the implementation. It is explicitly not OpenAPI, JSON Schema, a generated-client promise, or an artifact in `contracts/` |
 
 The machine-readable form of all of it is
 [`inference-api-surface.v1alpha1.json`](../../serving/inference-api-surface.v1alpha1.json),
@@ -220,6 +222,13 @@ to the runtime and accepted, and `id`, `object`, `created`, `model`, `choices`, 
 `usage` came back — each of them inside a response body the record quotes verbatim.
 `stream` and the extension member were never exercised and are marked unobserved.
 
+That observation describes the runtime feasibility request, not the platform API's
+accepted request subset. As amended on 2026-09-01, the platform subset contains
+`model`, `messages`, and optional `stream` only. `max_tokens` and `temperature` are
+refused under D4 because the frozen adapter interface cannot carry either value.
+The deployment-wide adapter token limit remains an operator setting, not a caller
+field.
+
 **No field of `/v1/models` is marked observed, and that is not an oversight.** The
 trial did call the endpoint, and the record shows what came back — but what it shows
 is the runtime's own model metadata printed as text, not a list envelope. The
@@ -381,7 +390,7 @@ lane that would exercise the other eight is deselected by default and has no cod
 | The runtime's Service or pod does not accept a connection | No | `capability-unavailable` | yes |
 | The runtime does not answer within the adapter's deadline | No | `upstream-timeout` | yes |
 | The caller's own deadline expires first | No | `request-timeout` | yes |
-| A request member outside the subset, a bad role, a non-string content, a model that is not the served model, or `max_tokens` above the ceiling | No | `contract-invalid` | no |
+| A request member outside the subset, a bad role, non-string content, or a model that is not the served model | No | `contract-invalid` | no |
 | `stream: true` | No | `capability-unavailable` | **no** — overridden, see D6 |
 | A contract or API version this deployment does not support | No | `version-unsupported` | no |
 | The runtime answers non-2xx, and not the 503 that means loading | No | `internal-error` | yes |
@@ -433,17 +442,19 @@ inferred.
 | The adapter **declares** its capability set; the API publishes what the selected adapter declared, not a constant | A capability that is a constant in the API is an assumption. One the adapter declares is a fact about the thing that will serve the request |
 | Every response names the adapter kind that served it | See D5. It is the mock and real boundary made visible where a reader looks |
 
-### D9 — Publication as a contract artifact is not decided
+### D9 — The versioned JSON record is the tested API snapshot
 
-Whether this surface is ever published as a contract artifact — an OpenAPI document, a
-JSON Schema, an entry in [`contracts/`](../../../contracts/) — and by what mechanism, is
-**not decided here**. The specification's open decision on a contract artifact
-publication mechanism stays open, and this record does not narrow it.
+[`inference-api-surface.v1alpha1.json`](../../serving/inference-api-surface.v1alpha1.json)
+is the canonical, versioned API snapshot. The documentation suite validates its
+structure and the implementation-agreement suite compares its endpoints, request
+members, response literals, capabilities, extension members, and error mappings
+against the code in both directions.
 
-The reason is the rule this whole record is built around: nothing is published until
-something serves it. A schema in `contracts/` is a thing clients bind to. A decision
-record is a thing reviewers argue with. Until `V1-S1-005` serves a request, only the
-second is honest.
+This is a deliberately bounded publication decision. The snapshot is **not** an
+OpenAPI document or JSON Schema, does not promise generated-client compatibility,
+and is not added to [`contracts/`](../../../contracts/). Whether any of those richer
+artifacts should exist remains open; the absence of one no longer means the tested
+surface itself lacks a formally designated snapshot.
 
 ## Consequences
 
@@ -474,9 +485,9 @@ second is honest.
 
 ## Compatibility impact
 
-- **No published contract changes.** `contracts/` is untouched, the workload contract
-  schema is untouched, and no existing fixture, identifier, or error code is
-  redefined.
+- **The tested API snapshot is formally designated.** `contracts/` and the workload
+  contract schema remain untouched; no OpenAPI or JSON Schema is claimed and no
+  existing fixture, identifier, or error code is redefined.
 - **ADR 0002 is not weakened.** `T5` and `T7` are read as they stand, including the
   failure, and the `T7` exception is carried forward as an obligation rather than
   quietly discharged.
@@ -527,14 +538,15 @@ second is honest.
 ## What this record does not decide
 
 - **The context length, KV budget, concurrency limit, and sampling defaults.**
-  ADR 0002 left all four undecided; this record does not fill them in, and the
-  `max_tokens` ceiling D4 refuses above depends on the first of them.
+  ADR 0002 left all four undecided. A deployment may configure an adapter-wide
+  output-token maximum, but this API exposes no per-request override.
 - **Authentication, authorization, rate limiting, and quota** at the caller boundary.
 - **Any asynchronous or event-carried inference shape.** V1 serves one synchronous
   request at a time and decides nothing about any other form.
 - **How a caller outside the cluster reaches the API.** The accepted local cluster
   ships no ingress controller and no load-balancer implementation, and ADR 0004 D7
   leaves both unowned.
-- **Whether this surface is ever published as a contract artifact.** D9, above.
+- **Whether OpenAPI, JSON Schema, generated-client, or `contracts/` artifacts are
+  added.** D9 designates only the versioned tested snapshot described above.
 - **Anything about how any of it behaves.** No component serves a request, so this
   record has produced no measurement of its own and cites none.
