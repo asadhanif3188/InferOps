@@ -1014,6 +1014,16 @@ once versioned releases begin.
 
 ### Changed
 
+- **Unsupported caller generation controls are now refused rather than silently
+  ignored.** ADR 0010 narrows the V1 chat request subset to `model`, `messages`,
+  and optional `stream`; `max_tokens` and `temperature` now follow the strict
+  unknown-member policy. The deployment-wide `INFEROPS_MAX_OUTPUT_TOKENS` setting
+  remains an adapter configuration. The versioned surface JSON is formally
+  designated and tested as the canonical API snapshot without claiming OpenAPI,
+  JSON Schema, generated-client compatibility, or an artifact under `contracts/`.
+- The four broken relative links in the V1-S1-001 PR2 validation record now resolve,
+  and the contributor guide accurately describes the repository's narrowly coded
+  test-only `# type: ignore[...]` directives.
 - **The telemetry catalog moved off `nothing-emits`.** `emissionStatus` now reads
   `partially-emits`, names the emitter and the transport, and every metric carries
   an `emission` field so that a reader learns what is really there from the record

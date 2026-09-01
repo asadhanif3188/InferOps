@@ -157,7 +157,7 @@ The `secret-value-in-locator` rule implements a heuristic over three patterns:
 
 ## References
 
-- [WorkloadContract v1alpha1 Schema](../../contracts/workload/workload-contract.v1alpha1.schema.json)
-- [Domain Architecture](../domain/workload-domain-model.md)
-- [ADR 0003: Validation Layer Split](../architecture/decisions/ADR-0003-workload-contract-validation.md)
-- [Runtime-Model Compatibility Matrix](../../contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json)
+- [WorkloadContract v1alpha1 Schema](../../../contracts/workload/workload-contract.v1alpha1.schema.json)
+- [Domain Architecture](../../domain/workload-domain-model.md)
+- [ADR 0003: Validation Layer Split](../../architecture/decisions/ADR-0003-workload-contract-schema-tooling.md)
+- [Runtime-Model Compatibility Matrix](../../../contracts/workload/compatibility/runtime-model-compatibility.v1alpha1.json)

@@ -86,10 +86,9 @@ ENV_MODEL_IDENTIFIER = "INFEROPS_MODEL_IDENTIFIER"
 #: back later as a recommendation nobody made.
 ENV_REQUEST_TIMEOUT_MS = "INFEROPS_REQUEST_TIMEOUT_MS"
 
-#: The ceiling a request's ``max_tokens`` may not exceed. Optional, and absent
-#: means this deployment configures none — which is the accurate default, because
-#: the accepted surface records the ceiling as depending on a context length
-#: `ADR 0002` left undecided.
+#: The deployment-wide maximum output tokens passed to the selected adapter.
+#: Optional, and absent means the runtime's configured default applies. This is
+#: an operator setting, not a per-request field on the user-facing API.
 ENV_MAX_OUTPUT_TOKENS = "INFEROPS_MAX_OUTPUT_TOKENS"
 
 #: The budget a graceful shutdown gives in-flight work. Optional, defaulting to
@@ -221,7 +220,6 @@ def select(
     supplied_drain = _optional_int(environment, ENV_DRAIN_TIMEOUT_MS)
     configuration = ApiConfiguration(
         adapter_kind=ADAPTER_KIND_FOR[selected],
-        max_output_tokens=adapter_configuration.max_tokens,
         drain_timeout_ms=(
             DEFAULT_DRAIN_TIMEOUT_MS if supplied_drain is None else supplied_drain
         ),

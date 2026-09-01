@@ -114,7 +114,6 @@ def build(
     *,
     model_identifier: str = MOCK_MODEL,
     adapter_kind: str = "mock",
-    max_output_tokens: int | None = None,
     drain_timeout_ms: int = 1_000,
 ) -> InferOpsApi:
     """Compose one application around one adapter. No I/O happens here."""
@@ -126,7 +125,6 @@ def build(
         ),
         configuration=ApiConfiguration(
             adapter_kind=adapter_kind,
-            max_output_tokens=max_output_tokens,
             drain_timeout_ms=drain_timeout_ms,
         ),
         clock=fixed_clock,

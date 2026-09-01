@@ -1,12 +1,10 @@
 # The V1 inference API surface
 
-Status: **decided, and served in part.** Every endpoint below is registered and
+Status: **decided and served.** Every endpoint below is registered and
 answered by [the InferOps API](inference-api.md), which `V1-S1-005-PR1` built,
 `V1-S1-005-PR2` finished the error contract and the adapter selection of, and
-`V1-S1-008-PR1` instrumented. One part of the shape is deliberately unfinished and
-is named where it applies: two accepted request members are validated and not
-forwarded. `/metrics` now publishes the API's own series; what it does not publish
-is recorded per metric in
+`V1-S1-008-PR1` instrumented. `/metrics` publishes the API's own series; what it
+does not publish is recorded per metric in
 [the telemetry catalog](../telemetry/telemetry-catalog.md).
 
 The decision behind it is
@@ -19,11 +17,11 @@ around it and with the code that now implements it, and
 [`tests/api/`](../../tests/api/) exercises that code against the mock adapter.
 
 > [!IMPORTANT]
-> **This is still not a published interface.** No OpenAPI document exists, nothing
-> has been added to [`contracts/`](../../contracts/), and whether this surface is
-> ever published as a contract artifact is `D9`, which stays undecided. Serving a
-> shape and publishing it as something a client may bind to are different acts, and
-> only the first has happened.
+> **The machine-readable JSON file is the canonical, versioned, tested API
+> snapshot.** It is deliberately not an OpenAPI document or JSON Schema, and
+> nothing has been added to [`contracts/`](../../contracts/). It designates the
+> exact V1 surface the implementation-agreement suite enforces; it does not claim
+> conformance to an external schema or create a generated client artifact.
 >
 > **Nothing here has answered a network request.** The API implements the ASGI
 > calling convention and this repository ships no server, so every result behind
@@ -91,8 +89,6 @@ authentication in V1.
 |---|---|---|---|---|
 | `model` | string | yes | Compared against the served model identifier. A mismatch is refused with `contract-invalid`; it does not select a model | yes |
 | `messages` | array of `{role, content}` | yes | `role` is one of `system`, `user`, `assistant`. `content` is a string; the array-of-parts form is outside the subset | yes |
-| `max_tokens` | integer | no | Upper bound on generated tokens. Above the deployment's ceiling it is refused, not silently clamped | yes |
-| `temperature` | number | no | Passed to the adapter. `0` is the value the determinism observation was made at | yes |
 | `stream` | boolean | no | Accepted only as `false`. `true` is refused with `capability-unavailable` | no |
 
 **Anything else is refused** with `contract-invalid`, and the refusal names the
@@ -104,6 +100,12 @@ or sends `stop` and receives text past the stop sequence, has been handed a wron
 answer rather than an error. The cost is real and is not hidden — clients sending
 upstream defaults such as `top_p`, `n`, `presence_penalty`, or `stop` are refused
 until they stop sending them.
+
+That refusal includes `max_tokens` and `temperature`. The adapter contract has no
+per-request parameter for either, so the 2026-09-01 amendment to ADR 0010 removed
+them from the accepted subset instead of allowing values that would be ignored.
+`INFEROPS_MAX_OUTPUT_TOKENS` remains a deployment-wide adapter setting; it is not a
+caller field.
 
 ### Response
 
@@ -187,7 +189,7 @@ that would exercise them is deselected by default and has no code.
 | The runtime's Service or pod refuses a connection | no | `capability-unavailable` | yes |
 | The runtime does not answer within the adapter's deadline | no | `upstream-timeout` | yes |
 | The caller's own deadline expires first | no | `request-timeout` | yes |
-| A member outside the subset, a bad role, non-string content, a model that is not the served model, or `max_tokens` above the ceiling | no | `contract-invalid` | no |
+| A member outside the subset, a bad role, non-string content, or a model that is not the served model | no | `contract-invalid` | no |
 | `stream: true` | no | `capability-unavailable` | **no** — overridden |
 | A contract or API version this deployment does not support | no | `version-unsupported` | no |
 | The runtime answers non-2xx, and not the 503 that means loading | no | `internal-error` | yes |
@@ -228,8 +230,8 @@ InferOps receives the requests, so InferOps counts them:
 | `inferops_inference_errors_total` | Labelled by `error-code`, which is what makes the mapping above observable rather than merely written down |
 
 Both already exist in [the telemetry catalog](../telemetry/telemetry-catalog.md). This
-surface adds no metric; it binds those two to these endpoints and these codes. Neither
-is emitted by anything today.
+surface adds no metric; it binds those two to these endpoints and these codes. The API
+emits both on `/metrics`.
 
 ## What this decides about the adapter interface
 
@@ -247,12 +249,13 @@ written, so the consequences are stated rather than left to be inferred.
 ## What is not decided here
 
 - The context length, KV budget, concurrency limit, and sampling defaults, all four of
-  which ADR 0002 left open — and therefore the `max_tokens` ceiling that depends on
-  the first.
+  which ADR 0002 left open. A deployment may set a maximum output-token value for
+  its adapter, but this surface exposes no per-request override.
 - Authentication, authorization, rate limiting, and quota.
 - Any asynchronous or event-carried inference shape. V1 serves one synchronous
   request at a time and decides nothing about any other form.
 - How a caller outside the cluster reaches the API. The accepted local cluster ships
   no ingress controller and no load-balancer implementation.
-- Whether this surface is ever published as a contract artifact, and by what
-  mechanism.
+- Whether an OpenAPI document, JSON Schema, generated client artifact, or entry in
+  `contracts/` is added. The versioned JSON snapshot itself is designated and
+  tested here.

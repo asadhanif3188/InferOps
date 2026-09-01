@@ -18,22 +18,13 @@ recorded rather than hidden, and the thing that would remove it is a
 conversation-carrying parameter on the adapter interface, which is not this
 change's to add.
 
-**Two accepted members are validated and not forwarded, for the same reason.**
-``max_tokens`` and ``temperature`` are in the frozen subset and are checked here,
-and the frozen adapter interface has no parameter for either. What actually
-bounds generation is the ``max_tokens`` on the adapter's own configuration, set
-at composition time.
-
-That is a conflict between two accepted records rather than a choice made here:
-the accepted surface says both members are passed to the adapter, and the frozen
-adapter interface has nowhere to pass them. Neither record is edited by this
-change. The two members are accepted because the published subset accepts them,
-they are validated because a member outside its stated type is still a refusal,
-and the gap is recorded — in
-[the API document](../../../docs/serving/inference-api.md), in the change's
-validation record, and as follow-up work that needs a superseding decision on the
-adapter interface. Refusing them instead would narrow a published subset without
-a record deciding to.
+``max_tokens`` and ``temperature`` are deliberately outside the accepted subset.
+The frozen adapter interface has nowhere to carry either value, so accepting them
+would promise caller controls the implementation cannot honour. The amendment to
+`ADR 0010` narrows the surface instead: both are refused by the same strict
+unknown-member policy as every other unsupported generation control. The
+deployment-wide adapter configuration may still bound output tokens; that is an
+operator setting, not a caller field.
 
 Nothing in this module reads a clock, a file, or an environment variable, and no
 message it produces repeats a value read out of the request.
@@ -51,11 +42,9 @@ from .surface import (
     MESSAGE_CONTENT,
     MESSAGE_FIELDS,
     MESSAGE_ROLE,
-    REQUEST_MAX_TOKENS,
     REQUEST_MESSAGES,
     REQUEST_MODEL,
     REQUEST_STREAM,
-    REQUEST_TEMPERATURE,
     REQUIRED_REQUEST_FIELDS,
     ROLE_USER,
 )
@@ -82,32 +71,22 @@ class ChatCompletionRequest:
         model: The model identifier the caller named. Already checked against the
             served model, so it is the served model by construction.
         prompt: The content of the single user message.
-        max_tokens: The bound the caller asked for, or ``None``. Validated here
-            and not forwarded; see the module docstring.
-        temperature: The sampling temperature the caller asked for, or ``None``.
-            Validated here and not forwarded, for the same reason.
     """
 
     model: str
     prompt: str
-    max_tokens: int | None = None
-    temperature: float | None = None
 
 
 def parse_chat_completion(
     raw: bytes,
     *,
     served_model: str,
-    max_tokens_ceiling: int | None,
 ) -> ChatCompletionRequest:
     """Read one request body against the frozen subset, or refuse it.
 
     Args:
         raw: The request body as received.
         served_model: The identifier of the one model this deployment serves.
-        max_tokens_ceiling: The configured ceiling, or ``None`` when this
-            deployment configures none. A ceiling is a deployment setting the
-            accepted record deliberately left undecided.
 
     Raises:
         RequestRefused: For any body the frozen subset does not accept.
@@ -120,12 +99,7 @@ def parse_chat_completion(
     prompt = _prompt(body)
     _refuse_streaming(body)
 
-    return ChatCompletionRequest(
-        model=model,
-        prompt=prompt,
-        max_tokens=_max_tokens(body, max_tokens_ceiling),
-        temperature=_temperature(body),
-    )
+    return ChatCompletionRequest(model=model, prompt=prompt)
 
 
 # -- the body ---------------------------------------------------------------
@@ -250,40 +224,6 @@ def _checked_message(message: object) -> tuple[str, str]:
             "the frozen request subset this API accepts",
         )
     return role, content
-
-
-def _max_tokens(body: dict[str, object], ceiling: int | None) -> int | None:
-    if REQUEST_MAX_TOKENS not in body:
-        return None
-    value = body[REQUEST_MAX_TOKENS]
-    # `bool` is a subclass of `int` in Python and `true` is a JSON boolean, so
-    # the boolean check is what stops `"max_tokens": true` being read as 1.
-    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        raise RequestRefused(
-            REQUEST_OUTSIDE_SUBSET,
-            REQUEST_MAX_TOKENS,
-            "this member must be a positive integer",
-        )
-    if ceiling is not None and value > ceiling:
-        # Refused rather than silently clamped, which is what the accepted record
-        # requires. The ceiling is this deployment's own configuration.
-        raise RequestRefused(
-            REQUEST_OUTSIDE_SUBSET,
-            REQUEST_MAX_TOKENS,
-            f"this member must not exceed this deployment's ceiling of {ceiling}",
-        )
-    return value
-
-
-def _temperature(body: dict[str, object]) -> float | None:
-    if REQUEST_TEMPERATURE not in body:
-        return None
-    value = body[REQUEST_TEMPERATURE]
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        raise RequestRefused(
-            REQUEST_OUTSIDE_SUBSET, REQUEST_TEMPERATURE, "this member must be a number"
-        )
-    return float(value)
 
 
 def _refuse_streaming(body: dict[str, object]) -> None:

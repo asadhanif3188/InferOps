@@ -86,8 +86,6 @@ ROUTES: tuple[Route, ...] = (
 
 REQUEST_MODEL = "model"
 REQUEST_MESSAGES = "messages"
-REQUEST_MAX_TOKENS = "max_tokens"
-REQUEST_TEMPERATURE = "temperature"
 REQUEST_STREAM = "stream"
 
 #: The whole request subset. A member outside it is refused, and the refusal
@@ -96,8 +94,6 @@ ACCEPTED_REQUEST_FIELDS: frozenset[str] = frozenset(
     {
         REQUEST_MODEL,
         REQUEST_MESSAGES,
-        REQUEST_MAX_TOKENS,
-        REQUEST_TEMPERATURE,
         REQUEST_STREAM,
     }
 )

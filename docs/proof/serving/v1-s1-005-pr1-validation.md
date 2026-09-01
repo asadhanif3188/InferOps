@@ -9,6 +9,13 @@ by driving the application through its own interface. The
 [limitations](#limitations) and [acceptance criteria](#acceptance-criteria)
 sections are the parts that say so.
 
+> [!NOTE]
+> **Post-record resolution (2026-09-01):** the gap this historical validation
+> record reports for `max_tokens` and `temperature` is closed by ADR 0010's
+> amendment. Both fields are now outside the accepted request subset and are
+> refused rather than silently ignored. The original run and its claims below are
+> preserved as they were recorded.
+
 ## Classification
 
 | | |

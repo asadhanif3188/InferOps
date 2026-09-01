@@ -10,6 +10,14 @@ from configuration and told to serve the real adapter, and a configuration that
 composes is not a runtime that answered. The [limitations](#limitations) and
 [acceptance criteria](#acceptance-criteria) sections are the parts that say so.
 
+> [!NOTE]
+> **Post-record resolution (2026-09-01):** ADR 0010 now designates
+> `docs/serving/inference-api-surface.v1alpha1.json` as the canonical, versioned,
+> tested API snapshot. It also narrows the request subset so `max_tokens` and
+> `temperature` are refused rather than accepted and ignored. This closes those
+> two recorded gaps; the authorized real-runtime output remains outstanding. The
+> original run and its claims below are preserved as historical evidence.
+
 ## Classification
 
 | | |
