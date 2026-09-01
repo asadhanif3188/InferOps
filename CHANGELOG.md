@@ -10,6 +10,13 @@ once versioned releases begin.
 
 ### Added
 
+- **A verified Sprint 1 developer quick start.**
+  [`docs/developer-quick-start.md`](docs/developer-quick-start.md) gives the shortest
+  repository setup, workload scaffolding, validation, generated-contract test, and
+  mock API workflow. It also publishes the optional real-adapter smoke boundary:
+  the run is manual and authorization-gated, a skip is not a pass, and this change
+  did not download a model, start a runtime, or produce real-runtime evidence.
+  Cleanup and platform-specific shell forms are included.
 - **The three surfaces that read a WorkloadContract are compared, not just each
   checked.** The published JSON Schema, the offline validator, and the platform
   domain each had a correct suite of its own and nothing compared two of them,

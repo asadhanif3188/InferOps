@@ -6,11 +6,10 @@ reproducible evidence.
 
 > [!IMPORTANT]
 > This repository provides governance documentation, a local development
-> environment, one published workload contract schema, and the platform domain
-> objects that schema parses into. It does not provide a deployable platform, a
-> serving runtime, or a released V1 capability. The contract describes a workload;
-> the domain reads one into typed objects and stops there — nothing here deploys,
-> serves, or admits a workload.
+> environment, a published workload contract and domain, mock and real serving
+> adapters, an ASGI inference API, and workload scaffolding. It does not provide a
+> deployable platform, a network server, automated model acquisition, or a released
+> V1 capability. Nothing here deploys or admits a workload.
 >
 > A serving runtime and model **have** now been selected and proven once, on one
 > host, under
@@ -21,16 +20,18 @@ reproducible evidence.
 
 ## Repository status
 
-The repository has established its public foundations and has begun implementing
-against them: the platform domain is the first component built, and everything
-below it is still unbuilt. Any capability claim must link to reproducible evidence
-and identify whether the result is documented, synthetic, mock, estimated, or
-produced by a real runtime.
+The repository has established its public foundations and implemented the first
+local developer paths through the contract, adapters, ASGI API, and scaffolder.
+The [Sprint 1 developer quick start](docs/developer-quick-start.md) is the shortest
+verified entry point. Any capability claim must link to reproducible evidence and
+identify whether the result is documented, synthetic, mock, estimated, or produced
+by a real runtime.
 
 ## Public entry points
 
 | Topic | Entry point | Current status |
 |---|---|---|
+| Developer quick start | [docs/developer-quick-start.md](docs/developer-quick-start.md) | Mock workflow executed locally; real-runtime API smoke documented as authorization-gated and not executed by this change |
 | Contribution and review | [CONTRIBUTING.md](CONTRIBUTING.md) | Accepted repository convention |
 | Repository governance | [docs/governance/repository.md](docs/governance/repository.md) | Accepted for this repository skeleton |
 | Supported-host prerequisites | [docs/prerequisites.md](docs/prerequisites.md) | Documentation and local development supported; serving requirements measured on one host |
@@ -38,11 +39,11 @@ produced by a real runtime.
 | Serving runtime and model feasibility | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Procedure executed once; one runtime and model revision selected |
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Inference API surface | [docs/serving/inference-api-surface.md](docs/serving/inference-api-surface.md) | Decided shape; five endpoints, served in part |
-| InferOps inference API | [docs/serving/inference-api.md](docs/serving/inference-api.md) | Five routes served against a composed adapter; no server ships here, so nothing has answered a network request |
+| InferOps inference API | [docs/serving/inference-api.md](docs/serving/inference-api.md) | Five routes served through the ASGI interface against explicit mock or real adapter selection; no server ships here, so nothing has answered a network request |
 | Contracts | [docs/contracts/README.md](docs/contracts/README.md) | WorkloadContract `v1alpha1` accepted; parsed by the platform domain, and no runtime component consumes it |
 | Workload contract | [docs/contracts/workload-contract.md](docs/contracts/workload-contract.md) | Schema, valid and invalid fixtures, versioning and compatibility rules, and the canonical rejection matrix published |
 | Workload domain model | [docs/domain/workload-domain-model.md](docs/domain/workload-domain-model.md) | Typed domain objects, parsing, and contract-version handling implemented; the validation rule pipeline is not |
-| Workload template | [docs/scaffolding/workload-template.md](docs/scaffolding/workload-template.md) | Template and rendering library implemented for both profiles; the scaffolding command does not exist and no generated workload is committed |
+| Workload template | [docs/scaffolding/workload-template.md](docs/scaffolding/workload-template.md) | Template, rendering library, and non-overwriting scaffolding command implemented and verified for mock and synchronous profiles; no generated workload is committed |
 | Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Seven decisions accepted in part, one accepted with a recorded exception, two accepted |
 | V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; the platform domain is partly built and everything below it is unbuilt |
 | Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked; no Terraform or Helm exists |
