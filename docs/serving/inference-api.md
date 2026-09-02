@@ -346,13 +346,13 @@ from the program that imported it.
 | The shutdown order holds | The same | mock |
 | A `mock` selection composes the mock and a `real` selection composes the real adapter | Composing from configuration mappings, under `tests/api/test_api_adapter_selection.py` | mock |
 | An unstated selection, and a `real` selection with missing settings, refuse rather than fall back | The same | mock |
-| A real selection reaches a runtime | Established by the opt-in real-runtime API suite against the pinned local Kubernetes runtime | local-real |
+| A real selection reaches a runtime | Established by the opt-in real-runtime API suite against the pinned local Kubernetes runtime | local-real-cpu |
 | This API answers an HTTP request over a socket | **Not established.** No server ships here and none was run | — |
-| This API serves a real model | Established through the in-process ASGI application, real adapter, loopback Kubernetes tunnel, pinned runtime, and hash-verified model in the [Sprint 1 closure run](../proof/serving/v1-s1-real-runtime-closure.md) | local-real |
+| This API serves a real model | Established through the in-process ASGI application, real adapter, loopback Kubernetes tunnel, pinned runtime, and hash-verified model in the [Sprint 1 closure run](../proof/serving/v1-s1-real-runtime-closure.md) | local-real-cpu |
 
 The evidence class of the repository-only group is `mock`, which ceilings at
 `C1` in [the certification levels](../testing/certification.md). The two
-real-runtime rows are `local-real`, ceiling `C2`, and retain the closure record's
+real-runtime rows are `local-real-cpu`, ceiling `C2`, and retain the closure record's
 one-host and no-network-served-API limitations.
 
 ## Related
