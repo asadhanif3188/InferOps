@@ -402,8 +402,8 @@
       "requiresCluster": true,
       "publishable": true,
       "v1Status": "implemented",
-      "evidenceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
-      "notes": "Executed once, on one host, on one day, by the manual procedure; one pre-registered threshold was not met and the record says so. V1-S1-004-PR2 added an executable suite under tests/realruntime that drives the same runtime through the serving adapter, and V1-S1-005-PR2 added a second that drives it through the InferOps API composed from configuration. Neither has been run against a runtime: the lane is authorization-gated and was not entered, so the layer's cited evidence remains the manual trial."
+      "evidenceRef": "docs/proof/serving/v1-s1-real-runtime-closure.md",
+      "notes": "The manual feasibility procedure ran first and remains recorded separately. On 2026-09-02 the executable suites under tests/realruntime drove the pinned, hash-verified model through both the serving adapter and the InferOps API composed from configuration. The first combined run exposed a runtime-identity telemetry defect; after correction, all 14 checks passed twice. The lane remains manually authorized, capable-host-only, and deselected by default."
     },
     {
       "layerId": "failure-and-resilience",

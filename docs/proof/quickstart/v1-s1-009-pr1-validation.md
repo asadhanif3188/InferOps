@@ -7,6 +7,15 @@ This record supports the
 commands executed while writing the page, the evidence class each result can carry,
 and the real-runtime work that was deliberately not performed.
 
+> [!NOTE]
+> **Post-record resolution (2026-09-02):** the authorization-gated real command
+> was executed during Sprint 1 completion remediation, after this documentation
+> PR merged and before the Sprint 1 review gate. The final combined adapter/API
+> lane passed all 14 checks twice; see the
+> [Sprint 1 real-runtime closure record](../serving/v1-s1-real-runtime-closure.md).
+> The original pre-merge command record below remains unchanged historical
+> evidence, and the timing difference is disclosed rather than rewritten.
+
 ## Classification
 
 | Result | Evidence class | Ceiling |

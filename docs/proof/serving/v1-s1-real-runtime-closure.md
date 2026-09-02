@@ -12,7 +12,7 @@ defect was corrected.
 
 | Field | Value |
 |---|---|
-| Evidence class | `local-real` |
+| Evidence class | `local-real-cpu` |
 | Ceiling | `C2` |
 | What ran | The seven adapter real-runtime checks and seven API real-runtime checks against a model-serving process in local Kubernetes |
 | Claims supported | The pinned runtime and verified model answer through the real adapter; the InferOps API composition selects that adapter, reports readiness and model metadata, returns a non-empty real completion with runtime-derived usage, preserves identifiers, and retains its refusal boundary |
@@ -22,8 +22,9 @@ defect was corrected.
 
 | Input | Value |
 |---|---|
-| Repository base revision | `96503868fcbcbf3e473f136989708ebc94892504` |
-| Branch | `fix/sprint-1-evidence-closure` |
+| Executed source/evidence revision | `b6e4b85c84fc0ee09d0eefccdc71c33851b87056` |
+| Reviewed merge revision | `ca4dde60486b7fc3ae5f162851ef61a3e40ae73f` |
+| Execution branch | `fix/sprint-1-evidence-closure` |
 | Runtime image | `ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384` |
 | Resolved pod image ID | The same repository and digest requested by the manifest |
 | Runtime build reported by `/props` | `b10588-70adb1b4c` |
@@ -33,10 +34,9 @@ defect was corrected.
 | Expected and observed SHA-256 | `061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a` |
 | Runtime settings | model path `/models/Qwen3-1.7B-Q8_0.gguf`; alias `qwen3-1.7b-q8_0`; context `4096`; threads `6`; startup budget `300000` ms |
 
-The run used the working-tree correction described under [Results](#results).
-The eventual reviewed commit containing this record and that correction is the
-immutable source revision for the run; the base revision is retained here so the
-change boundary is reproducible before that commit exists.
+The executed revision contains both the runtime-identity correction described
+under [Results](#results) and this evidence record. The merge revision establishes
+the exact `main` state reviewed at the Sprint 1 gate.
 
 ## Environment
 
@@ -111,6 +111,30 @@ The 14 final passes include a non-empty response from the real model through the
 adapter and through the InferOps API, runtime-derived token counts, model and
 runtime metadata, readiness, identifier propagation, and the API's unsupported
 member refusal. Generated content was neither asserted verbatim nor retained.
+
+### Redacted real-response record
+
+This is the response-shaped record required by `V1-S1-004`. It retains only
+facts the final real-runtime suite asserted. Content and exact token values were
+discarded at execution time, so neither can be reconstructed or leaked from this
+record.
+
+| Response field or property | Observed result retained |
+|---|---|
+| API response status | `200` |
+| `model` | `qwen3-1-7b-instruct` |
+| `choices[0].message.content` | `[REDACTED: asserted present, string, and non-empty]` |
+| `usage.prompt_tokens` | `[REDACTED VALUE: asserted positive integer]` |
+| `usage.completion_tokens` | `[REDACTED VALUE: asserted positive integer and no greater than the configured generation bound]` |
+| `usage.total_tokens` | `[REDACTED VALUE: asserted equal to prompt plus completion tokens]` |
+| InferOps adapter kind | `real` |
+| Runtime readiness | ready before inference |
+| Runtime/model identity | observed metadata agreed with the configured alias, model file, and pinned revision |
+| Request and correlation identifiers | fixed non-sensitive smoke identifiers were asserted unchanged across API, adapter, and response; values not retained here |
+
+This table is redacted evidence, not a model-quality sample. It demonstrates the
+response contract and real execution while preserving the repository rule that
+generated content has no committed placement.
 
 ## Limitations
 
