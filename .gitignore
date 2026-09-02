@@ -223,3 +223,9 @@ __marimo__/
 .kube/
 #   Diagnostics collected by scripts/environment/smoke.sh on failure. Local host state.
 .artifacts/
+
+# InferOps selected-model cache
+#   The acquisition workflow owns only this workspace-scoped path. Model weights
+#   stay outside Git even if copied elsewhere in the checkout by mistake.
+/.cache/inferops/models/
+*.gguf
