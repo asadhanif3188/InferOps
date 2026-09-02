@@ -214,11 +214,13 @@ run once, on one host, on one day, by the manual procedure in
 [the feasibility workflow](../serving/feasibility-workflow.md), and its record says
 which of its own thresholds it failed. `V1-S1-004-PR2` gave it an executable suite
 as well, in [`tests/realruntime/`](../../tests/realruntime/), which drives the same
-runtime through the serving adapter. **That suite has not been run against a
-runtime.** It is deselected by the default marker expression, reads its runtime
-settings from the process environment, and skips when they are unset — so a
-contributor who names the marker without a running runtime gets a skip rather than
-a failure, and the layer's cited evidence stays the manual trial.
+runtime through the serving adapter and through the InferOps API. The suite was
+executed against the pinned runtime and hash-verified model on 2026-09-02; all 14
+checks passed after its first run exposed a runtime-identity telemetry defect that
+was corrected. The [closure record](../proof/serving/v1-s1-real-runtime-closure.md)
+holds the provenance and limitations. The suite remains deselected by the default
+marker expression, reads its runtime settings from the process environment, and
+skips when they are unset.
 
 `failure-and-resilience` provokes the failures the architecture names as canonical
 errors — model not ready, runtime unreachable, timeout — against the real runtime

@@ -76,6 +76,7 @@ class RecordingAdapter(MinimalTestDouble):
     shutdown_calls: int = 0
     ready_calls: list[RequestContext] = field(default_factory=list)
     runtime_name: str = "test-double"
+    runtime_identifier: str | None = None
 
     async def infer(self, prompt: str, context: RequestContext) -> InferenceResult:
         self.contexts.append(context)
@@ -96,7 +97,11 @@ class RecordingAdapter(MinimalTestDouble):
         return await super().is_ready(context)
 
     async def get_runtime_metadata(self) -> RuntimeMetadata:
-        return RuntimeMetadata(name=self.runtime_name, version="0.0.1")
+        return RuntimeMetadata(
+            name=self.runtime_name,
+            version="0.0.1",
+            identifier=self.runtime_identifier,
+        )
 
     async def get_model_metadata(self) -> ModelMetadata:
         return await super().get_model_metadata()

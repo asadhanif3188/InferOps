@@ -343,7 +343,11 @@ class MockServingAdapter:
 
     async def get_runtime_metadata(self) -> RuntimeMetadata:
         """Report the registered mock runtime identity from the matrix."""
-        return RuntimeMetadata(name=MOCK_RUNTIME_ID, version=MOCK_RUNTIME_VERSION)
+        return RuntimeMetadata(
+            name=MOCK_RUNTIME_ID,
+            version=MOCK_RUNTIME_VERSION,
+            identifier=MOCK_RUNTIME_ID,
+        )
 
     async def shutdown(self, context: RequestContext) -> None:
         """Stop answering. There is nothing to release, and that is the point."""

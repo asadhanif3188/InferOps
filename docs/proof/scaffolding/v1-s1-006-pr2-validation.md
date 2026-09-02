@@ -9,6 +9,13 @@ generated into pytest's own temporary directories, validated, run, and discarded
 with the run. The [limitations](#limitations) and
 [acceptance criteria](#acceptance-criteria) sections are the parts that say so.
 
+> [!NOTE]
+> **Post-record resolution (2026-09-02):** an independent Codex reviewer later
+> executed the published mock and synchronous workflows from a clean detached
+> worktree without editing generated output. The commands and results are in the
+> [independent walkthrough](v1-s1-006-independent-walkthrough.md). The original
+> run and its evidence status below are retained as historical evidence.
+
 ## Classification
 
 | | |

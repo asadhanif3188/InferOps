@@ -1,5 +1,14 @@
 # Sprint 1 completion remediation — change validation
 
+> [!NOTE]
+> **Post-record resolution (2026-09-02):** the two limitations that blocked the
+> Sprint review were addressed later. The real adapter/API lane and its discovered
+> correction are recorded in the
+> [real-runtime closure](v1-s1-real-runtime-closure.md); the independent scaffolding
+> run is recorded in the
+> [clean-checkout walkthrough](../scaffolding/v1-s1-006-independent-walkthrough.md).
+> The original remediation run below remains historical evidence.
+
 This record covers the API-surface correction and documentation repairs made after
 the Sprint 1 completion review. It is separate from real-runtime evidence: every
 result here is static or mock-backed, and none may be cited as a selected-model

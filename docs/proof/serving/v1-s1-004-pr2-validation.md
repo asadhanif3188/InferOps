@@ -8,6 +8,12 @@ again less than a reader skimming a green test session would assume, because
 [limitations](#limitations) section and the
 [acceptance criteria](#acceptance-criteria) section are the parts that say so.
 
+> [!NOTE]
+> **Post-record resolution (2026-09-02):** the adapter suite was later executed
+> against the pinned runtime and hash-verified model. Its seven checks passed as
+> part of the 14-pass [Sprint 1 real-runtime closure run](v1-s1-real-runtime-closure.md).
+> The original run and its evidence status below remain historical evidence.
+
 ## Classification
 
 | | |

@@ -601,6 +601,21 @@ async def test_the_identity_metric_is_one_series_carrying_what_the_adapter_repor
     assert lines[0].endswith(" 1")
 
 
+async def test_runtime_identity_uses_the_registered_id_not_the_display_name() -> None:
+    """Real runtimes may report a human-readable name that is not label-safe."""
+    api, _ = await started(
+        RecordingAdapter(
+            runtime_name="llama.cpp llama-server",
+            runtime_identifier="llama-cpp-server",
+        )
+    )
+
+    line = series(await scrape(api), names.BUILD_INFO)[0]
+
+    assert 'inferops_runtime_id="llama-cpp-server"' in line
+    assert "llama.cpp llama-server" not in line
+
+
 async def test_an_unstated_identity_is_empty_and_not_invented() -> None:
     """A version of `unknown` sorts, groups, and reads like a release somebody shipped."""
     api, _ = await started(resource=ResourceAttributes(adapter_kind=MOCK_ADAPTER_KIND))

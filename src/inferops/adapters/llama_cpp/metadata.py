@@ -33,6 +33,7 @@ from dataclasses import dataclass
 
 from ...domain.serving import InternalError, ModelMetadata, RuntimeMetadata
 from .pins import (
+    LLAMA_SERVER_RUNTIME_ID,
     LLAMA_SERVER_RUNTIME_NAME,
     PINNED_IMAGE_DIGEST,
     PINNED_MODEL_REVISION,
@@ -171,6 +172,7 @@ def describe_runtime(observed: ObservedRuntimeIdentity) -> RuntimeMetadata:
     return RuntimeMetadata(
         name=LLAMA_SERVER_RUNTIME_NAME,
         version=observed.build_info or PINNED_IMAGE_DIGEST,
+        identifier=LLAMA_SERVER_RUNTIME_ID,
     )
 
 

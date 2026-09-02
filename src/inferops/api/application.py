@@ -296,7 +296,7 @@ class InferOpsApi:
         self._telemetry.bind_identity(
             model_id=model.identifier,
             model_revision=model.revision,
-            runtime_id=runtime.name,
+            runtime_id=runtime.identifier or runtime.name,
         )
 
     async def shutdown(self) -> None:

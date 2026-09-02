@@ -1,5 +1,13 @@
 # V1-S1-005-PR2 — API errors and adapter selection, change validation
 
+> [!NOTE]
+> **Post-record resolution (2026-09-02):** the API real-runtime suite was later
+> executed against the pinned runtime and hash-verified model. Its first run
+> exposed and led to correction of a runtime-identity telemetry defect; the
+> final combined lane passed all 14 checks. See the
+> [Sprint 1 real-runtime closure record](v1-s1-real-runtime-closure.md). The
+> original run and its evidence status below remain historical evidence.
+
 The record behind the second half of
 [the InferOps inference API](../../serving/inference-api.md). It records what was
 run, on what, and what it may be used to claim — which is less than a reader

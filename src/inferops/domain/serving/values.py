@@ -49,16 +49,27 @@ class RuntimeMetadata:
     Attributes:
         name: Name of the serving runtime (e.g., "llama.cpp").
         version: Version of the serving runtime.
+        identifier: Optional registered, label-safe runtime identifier. A display
+            name is not an identifier and may contain characters telemetry does
+            not permit in its bounded label vocabulary.
     """
 
     name: str
     version: str
+    identifier: str | None = None
 
     def __post_init__(self) -> None:
         if not self.name:
             raise InvalidValueError("runtime name must not be empty")
         if not self.version:
             raise InvalidValueError("runtime version must not be empty")
+        if self.identifier is not None and (
+            not self.identifier
+            or re.fullmatch(r"[a-z0-9](?:[-a-z0-9]*[a-z0-9])?", self.identifier) is None
+        ):
+            raise InvalidValueError(
+                "runtime identifier must be lowercase kebab-case when supplied"
+            )
 
 
 @dataclass(frozen=True, slots=True)

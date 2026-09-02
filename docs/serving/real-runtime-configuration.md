@@ -265,11 +265,13 @@ covers the domain.
 
 ## What this document does not do
 
-It does not claim that InferOps serves anything. Nothing in this repository
-listens on a port, and nothing here has generated a token: the adapter that can
-issue the call is described in
-[executing real inference through the adapter](real-runtime-inference.md), and it
-has not been run against a runtime. It does not amend
+It does not claim that InferOps ships a network service. Nothing in this
+repository listens on a port as a shipped API service. The adapter that can issue
+the call is described in
+[executing real inference through the adapter](real-runtime-inference.md). The
+original change did not run it; the later
+[Sprint 1 closure run](../proof/serving/v1-s1-real-runtime-closure.md) did, through
+the adapter and in-process API against the local Kubernetes runtime. It does not amend
 [the mock and real boundary](mock-and-real-boundary.md), which is an accepted
 rule and older than this package. It does not certify the runtime: the executed
 record that does is the Sprint 0 feasibility trial, and its scope is one Windows

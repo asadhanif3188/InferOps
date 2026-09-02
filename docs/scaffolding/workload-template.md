@@ -445,6 +445,9 @@ Nothing in this story's scope remains. What is *out* of it, and stays out:
 - **Serving anything.** Generating a workload starts no runtime, loads no model,
   binds no socket, and reaches no cluster. That is the API's and the adapters'
   half of the platform, and none of it is invoked here.
-- **A second engineer walking through it.** The story asks for that as evidence,
-  and it is a person doing something rather than a check passing. Its absence is
-  recorded in [the change-validation record](../proof/scaffolding/v1-s1-006-pr2-validation.md).
+- **Human acceptance of the independent walkthrough.** An independent Codex
+  reviewer completed both published profiles from a clean detached worktree; the
+  [walkthrough record](../proof/scaffolding/v1-s1-006-independent-walkthrough.md)
+  preserves the commands, results, and the explicit limitation that the executor
+  was not a human second engineer. Whether that distinction satisfies the review
+  gate remains a human decision rather than a check this repository can pass.
