@@ -363,7 +363,7 @@
         "the-platform-serves-a-workload-the-contract-describes",
         "the-selected-runtime-serves-a-real-completion-in-a-cluster"
       ],
-      "note": "Deselected by the default marker expression, and it has never been run against a runtime. It skips rather than fails when its runtime settings are unset, so naming its marker without a runtime produces a skip. The cited evidence for both claims remains the manual trial recorded under docs/proof/serving/."
+      "note": "Deselected by the default marker expression. It ran against the pinned runtime and hash-verified model on 2026-09-02; the final combined lane passed all 14 checks and is recorded in docs/proof/serving/v1-s1-real-runtime-closure.md. It still skips rather than fails when runtime settings are unset. The broader platform claim remains planned because no WorkloadContract-derived API deployment exists."
     },
     {
       "module": "tests/realruntime/test_llama_server_real_smoke.py",
@@ -373,7 +373,7 @@
       "claims": [
         "the-selected-runtime-serves-a-real-completion-in-a-cluster"
       ],
-      "note": "Deselected by the default marker expression, and it has never been run against a runtime. The cited evidence for the claim remains the manual trial recorded under docs/proof/serving/."
+      "note": "Deselected by the default marker expression. Its seven checks passed against the pinned runtime and hash-verified model on 2026-09-02 as part of docs/proof/serving/v1-s1-real-runtime-closure.md."
     },
     {
       "module": "tests/scaffolding/test_workload_scaffolder.py",

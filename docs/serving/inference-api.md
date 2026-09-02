@@ -346,13 +346,14 @@ from the program that imported it.
 | The shutdown order holds | The same | mock |
 | A `mock` selection composes the mock and a `real` selection composes the real adapter | Composing from configuration mappings, under `tests/api/test_api_adapter_selection.py` | mock |
 | An unstated selection, and a `real` selection with missing settings, refuse rather than fall back | The same | mock |
-| A real selection reaches a runtime | **Not established.** The real adapter was composed over a transport that refuses to be called, which establishes the shape of the composition and nothing about a runtime | — |
+| A real selection reaches a runtime | Established by the opt-in real-runtime API suite against the pinned local Kubernetes runtime | local-real |
 | This API answers an HTTP request over a socket | **Not established.** No server ships here and none was run | — |
-| This API serves a real model | **Not established.** [The real-adapter smoke suite](../../tests/realruntime/test_api_real_adapter_smoke.py) exists and has not been run against a runtime; the lane is authorization-gated and was not entered | — |
+| This API serves a real model | Established through the in-process ASGI application, real adapter, loopback Kubernetes tunnel, pinned runtime, and hash-verified model in the [Sprint 1 closure run](../proof/serving/v1-s1-real-runtime-closure.md) | local-real |
 
-The evidence class of everything in the first group is `mock`, which ceilings at
-`C1` in [the certification levels](../testing/certification.md). It proves the
-consumer and the contract, and it proves nothing about a provider.
+The evidence class of the repository-only group is `mock`, which ceilings at
+`C1` in [the certification levels](../testing/certification.md). The two
+real-runtime rows are `local-real`, ceiling `C2`, and retain the closure record's
+one-host and no-network-served-API limitations.
 
 ## Related
 

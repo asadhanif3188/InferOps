@@ -18,7 +18,7 @@ nominate its own strength.
 |---|---|
 | Governance | [`v1-s0-001-pr1.md`](governance/v1-s0-001-pr1.md) |
 | Environment | [host inventory](environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke](environment/v1-s0-002-pr2-cluster-smoke.md), and the two change-validation records beside them |
-| Serving | [runtime feasibility](serving/v1-s0-003-pr2-runtime-feasibility.md), [`v1-s0-012-pr1-validation.md`](serving/v1-s0-012-pr1-validation.md), [Sprint 1 completion remediation](serving/sprint-1-completion-remediation-validation.md), and the change-validation records beside them |
+| Serving | [runtime feasibility](serving/v1-s0-003-pr2-runtime-feasibility.md), [Sprint 1 real-runtime closure](serving/v1-s1-real-runtime-closure.md), [`v1-s0-012-pr1-validation.md`](serving/v1-s0-012-pr1-validation.md), [Sprint 1 completion remediation](serving/sprint-1-completion-remediation-validation.md), and the change-validation records beside them |
 | Contracts | [`v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) |
 | Domain | [`v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md) |
 | Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md) |
@@ -27,7 +27,7 @@ nominate its own strength.
 | Cost | [`v1-s0-008-pr1-validation.md`](cost/v1-s0-008-pr1-validation.md) |
 | Security | [`v1-s0-009-pr1-validation.md`](security/v1-s0-009-pr1-validation.md) |
 | Toolchain | [`v1-s0-011-pr1-validation.md`](toolchain/v1-s0-011-pr1-validation.md) |
-| Scaffolding | [`v1-s1-006-pr1-validation.md`](scaffolding/v1-s1-006-pr1-validation.md), [`v1-s1-006-pr2-validation.md`](scaffolding/v1-s1-006-pr2-validation.md) |
+| Scaffolding | [`v1-s1-006-pr1-validation.md`](scaffolding/v1-s1-006-pr1-validation.md), [`v1-s1-006-pr2-validation.md`](scaffolding/v1-s1-006-pr2-validation.md), and the [independent clean-checkout walkthrough](scaffolding/v1-s1-006-independent-walkthrough.md) |
 | Developer quick start | [`v1-s1-009-pr1-validation.md`](quickstart/v1-s1-009-pr1-validation.md) |
 
 ## Templates

@@ -28,6 +28,7 @@ import pytest
 
 from inferops.adapters.llama_cpp import (
     ALIAS_DISAGREEMENT,
+    LLAMA_SERVER_RUNTIME_ID,
     LLAMA_SERVER_RUNTIME_NAME,
     MODEL_FILE_DISAGREEMENT,
     OBSERVED_BUILD_INFO,
@@ -170,6 +171,7 @@ def test_runtime_metadata_names_the_selected_runtime() -> None:
     assert isinstance(metadata, RuntimeMetadata)
     assert metadata.name == LLAMA_SERVER_RUNTIME_NAME
     assert metadata.version == OBSERVED_BUILD_INFO
+    assert metadata.identifier == LLAMA_SERVER_RUNTIME_ID
 
 
 def test_an_unreported_build_falls_back_to_the_pinned_digest() -> None:

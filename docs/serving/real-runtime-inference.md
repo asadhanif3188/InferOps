@@ -17,6 +17,11 @@ the other end of it. What that means for the story's acceptance criteria is in
 [the validation record](../proof/serving/v1-s1-004-pr2-validation.md), which says
 plainly which criterion is still unmet.
 
+The later [Sprint 1 real-runtime closure run](../proof/serving/v1-s1-real-runtime-closure.md)
+entered the authorization-gated lane against the pinned runtime and verified
+model. All seven adapter checks passed; the combined adapter and API lane passed
+all 14 checks after correcting the runtime-identity telemetry boundary it exposed.
+
 ## What it is
 
 Four modules were added beside the six the configuration half already held.
