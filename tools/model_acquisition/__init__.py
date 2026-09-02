@@ -1,0 +1,39 @@
+"""Repository tooling for the selected model's workspace-scoped cache."""
+
+from .core import (
+    CACHE_HEADROOM_BYTES,
+    MODEL_SOURCE_PATH,
+    AcquisitionError,
+    CacheSafetyError,
+    CleanupResult,
+    DownloadResult,
+    ModelManifest,
+    PreflightError,
+    PreflightReport,
+    VerificationError,
+    acquire,
+    check_prerequisites,
+    clean_cache,
+    default_cache_root,
+    load_manifest,
+    verify_artifact,
+)
+
+__all__ = [
+    "CACHE_HEADROOM_BYTES",
+    "MODEL_SOURCE_PATH",
+    "AcquisitionError",
+    "CacheSafetyError",
+    "CleanupResult",
+    "DownloadResult",
+    "ModelManifest",
+    "PreflightError",
+    "PreflightReport",
+    "VerificationError",
+    "acquire",
+    "check_prerequisites",
+    "clean_cache",
+    "default_cache_root",
+    "load_manifest",
+    "verify_artifact",
+]

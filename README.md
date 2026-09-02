@@ -7,8 +7,8 @@ reproducible evidence.
 > [!IMPORTANT]
 > This repository provides governance documentation, a local development
 > environment, a published workload contract and domain, mock and real serving
-> adapters, an ASGI inference API, and workload scaffolding. It does not provide a
-> deployable platform, a network server, automated model acquisition, or a released
+> adapters, an ASGI inference API, workload scaffolding, and verified model-cache
+> tooling. It does not provide a deployable platform, a network server, or a released
 > V1 capability. Nothing here deploys or admits a workload.
 >
 > A serving runtime and model **have** now been selected and proven once, on one
@@ -37,6 +37,7 @@ by a real runtime.
 | Supported-host prerequisites | [docs/prerequisites.md](docs/prerequisites.md) | Documentation and local development supported; serving requirements measured on one host |
 | Local development cluster | [docs/environment/local-cluster.md](docs/environment/local-cluster.md) | Executed and evidenced on one Windows host |
 | Serving runtime and model feasibility | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Procedure executed once; one runtime and model revision selected |
+| Model acquisition | [docs/serving/model-acquisition.md](docs/serving/model-acquisition.md) | Revision-pinned, resumable, hash-verifying workspace cache workflow; no model download executed by this change |
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
 | Inference API surface | [docs/serving/inference-api-surface.md](docs/serving/inference-api-surface.md) | Decided shape; five endpoints, served in part |
 | InferOps inference API | [docs/serving/inference-api.md](docs/serving/inference-api.md) | Five routes served through the ASGI interface against explicit mock or real adapter selection; no server ships here, so nothing has answered a network request |

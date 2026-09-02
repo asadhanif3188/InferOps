@@ -10,6 +10,16 @@ once versioned releases begin.
 
 ### Added
 
+- **Revision-pinned, resumable acquisition for the selected open model.** The new
+  [model source record](docs/serving/model-source.v1.json) makes the upstream
+  repository, immutable revision, Apache-2.0 licence reference, expected byte
+  count, SHA-256, and workspace cache layout explicit. The
+  [`tools.model_acquisition`](tools/model_acquisition/) command checks prerequisites
+  without network access, safely resumes a `.part` transfer, verifies size and hash
+  before atomic promotion, reports verified cache hits, and removes only the
+  documented cache after explicit confirmation. Model artifacts are ignored by
+  Git, and repository tests exercise the workflow with tiny synthetic bytes; this
+  change does not download the selected model or package its serving runtime.
 - **A verified Sprint 1 developer quick start.**
   [`docs/developer-quick-start.md`](docs/developer-quick-start.md) gives the shortest
   repository setup, workload scaffolding, validation, generated-contract test, and
