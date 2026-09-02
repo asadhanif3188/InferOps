@@ -214,6 +214,28 @@ def test_an_interrupted_download_is_retained_and_resumed_by_range(
     assert not partial.exists()
 
 
+def test_a_complete_partial_is_verified_and_promoted_without_network(
+    tmp_path: Path, synthetic_manifest: ModelManifest
+) -> None:
+    partial = synthetic_manifest.partial_path(tmp_path)
+    partial.parent.mkdir(parents=True)
+    partial.write_bytes(b"model-bytes")
+
+    def refuse_network(request: Request) -> FakeResponse:
+        raise AssertionError(request.full_url)
+
+    result = acquire(
+        synthetic_manifest,
+        repo_root=tmp_path,
+        opener=refuse_network,
+    )
+
+    assert result.cache_hit is False
+    assert result.resumed_from_bytes == len(b"model-bytes")
+    assert synthetic_manifest.artifact_path(tmp_path).read_bytes() == b"model-bytes"
+    assert not partial.exists()
+
+
 def test_a_source_ignoring_range_restarts_the_partial_safely(
     tmp_path: Path, synthetic_manifest: ModelManifest
 ) -> None:

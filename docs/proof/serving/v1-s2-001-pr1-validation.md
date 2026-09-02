@@ -36,11 +36,11 @@ All commands ran from the repository root.
 | Command | Result | Classification |
 |---|---|---|
 | `uv run --locked python -m tools.model_acquisition check` | Passed. Printed the selected source/revision/licence/size/hash, reported cache state `absent`, and required 1.77 GiB including headroom. No network access | `local-static` |
-| `uv run --locked python -m pytest tests/serving/test_model_acquisition.py tests/testing -q` | 985 passed | `local-static`; model workflow cases use tiny synthetic bytes |
+| `uv run --locked python -m pytest tests/serving/test_model_acquisition.py tests/testing -q` | 986 passed | `local-static`; model workflow cases use tiny synthetic bytes |
 | `uv run --locked ruff check .` | Passed | `local-static` |
-| `uv run --locked ruff format --check .` | 218 files already formatted | `local-static` |
+| `uv run --locked ruff format --check .` | 219 files already formatted | `local-static` |
 | `uv run --locked python -m mypy` | Passed; 121 source files checked | `local-static` |
-| `uv run --locked python -m pytest -q` | 5,146 passed, 25 skipped, 14 deselected | `local-static`, `mock`, and repository-only checks according to each existing lane |
+| `uv run --locked python -m pytest -q` | 5,148 passed, 25 skipped, 14 deselected | `local-static`, `mock`, and repository-only checks according to each existing lane |
 
 The focused suite proves workflow mechanics only. It does not prove that the
 1,834,426,016-byte upstream artifact is currently reachable or that its real bytes
@@ -98,3 +98,24 @@ relabelled as output of this workflow.
   runtime cache lifecycle, and Kubernetes storage remain later work.
 - Fresh acquisition and cache-hit evidence require explicit authorization for the
   large download and a capable host with the documented disk allowance.
+
+## Independent review
+
+An independent second reader reviewed commit `a29220c` against the complete PR
+brief, ADR 0002, repository conventions, and the public `main...HEAD` diff. The
+review covered correctness, cache and cleanup containment, interruption recovery,
+revision and digest enforcement, credential and log safety, tests, claims, private
+information, machine paths, artifacts, and scope.
+
+One blocking finding was reproduced: a `.part` holding all expected bytes after an
+interruption during hashing or immediately before promotion was treated as needing
+an HTTP Range request from end-of-file. A conforming source would normally return
+HTTP 416, so retry could not recover without cleanup and a full redownload.
+
+The follow-up change verifies an exact-size partial locally before any network
+request, atomically promotes it when valid, discards it clearly when invalid, and
+adds a regression test whose network opener fails if called. No other review
+findings were reported. The reviewer independently ran the focused workflow and
+inventory suites (985 passed before the regression was added), focused lint, the
+security plus workflow suites (630 passed), `git diff --check main...HEAD`, and
+targeted leakage and artifact scans.

@@ -371,7 +371,7 @@ def check_prerequisites(
         state = "partial"
 
     required = max(manifest.expected_size_bytes - existing_bytes, 0)
-    if state != "verified":
+    if state != "verified" and required:
         required += CACHE_HEADROOM_BYTES
     available = shutil.disk_usage(parent).free
     if available < required:
@@ -411,6 +411,35 @@ def _write_response(response: DownloadResponse, partial: Path, mode: str) -> Non
         ) from error
 
 
+def _discard_untrusted_partial(partial: Path) -> None:
+    try:
+        partial.unlink(missing_ok=True)
+    except OSError as error:
+        raise VerificationError(
+            "model verification failed and the untrusted partial could not be discarded"
+        ) from error
+
+
+def _verify_and_promote_partial(
+    partial: Path,
+    artifact: Path,
+    manifest: ModelManifest,
+) -> None:
+    try:
+        verify_artifact(partial, manifest)
+    except VerificationError:
+        _discard_untrusted_partial(partial)
+        raise VerificationError(
+            "model integrity verification failed; the untrusted partial file was discarded"
+        ) from None
+    try:
+        partial.replace(artifact)
+    except OSError as error:
+        raise AcquisitionError(
+            "the verified partial model could not be promoted into the cache"
+        ) from error
+
+
 def acquire(
     manifest: ModelManifest,
     *,
@@ -435,6 +464,14 @@ def acquire(
         raise AcquisitionError(
             "the model cache directory could not be created"
         ) from error
+    if report.existing_bytes == manifest.expected_size_bytes:
+        _verify_and_promote_partial(partial, artifact, manifest)
+        return DownloadResult(
+            artifact=artifact,
+            bytes_verified=manifest.expected_size_bytes,
+            cache_hit=False,
+            resumed_from_bytes=report.existing_bytes,
+        )
     offset = report.existing_bytes
     headers = {"Accept-Encoding": "identity", "User-Agent": "InferOps-model-cache/1"}
     if offset:
@@ -476,23 +513,11 @@ def acquire(
             "model transfer ended early; rerun acquire to resume the partial file"
         )
     if downloaded_size > manifest.expected_size_bytes:
-        partial.unlink(missing_ok=True)
+        _discard_untrusted_partial(partial)
         raise VerificationError(
             "model size verification failed; the oversized partial file was discarded"
         )
-    try:
-        verify_artifact(partial, manifest)
-    except VerificationError:
-        partial.unlink(missing_ok=True)
-        raise VerificationError(
-            "model integrity verification failed; the untrusted partial file was discarded"
-        ) from None
-    try:
-        partial.replace(artifact)
-    except OSError as error:
-        raise AcquisitionError(
-            "the verified partial model could not be promoted into the cache"
-        ) from error
+    _verify_and_promote_partial(partial, artifact, manifest)
     return DownloadResult(
         artifact=artifact,
         bytes_verified=manifest.expected_size_bytes,
