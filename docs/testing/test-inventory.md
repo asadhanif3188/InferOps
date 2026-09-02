@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are seven, and they are listed in their own section rather than
+empty list. There are eight, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -149,11 +149,12 @@ matrix is complete needs to see them together.
 | [`tests/adapters/test_llama_server_pins.py`](../../tests/adapters/test_llama_server_pins.py) | That a constant copied out of an accepted decision still matches its source. The claim about the artifact's hash is certified by a manual procedure, not by this module |
 | [`tests/api/test_api_lifecycle.py`](../../tests/api/test_api_lifecycle.py) | The order of start, drain, and stop. ADR 0010 chose a graceful drain over a remote-stop endpoint and the matrix has no row for it |
 | [`tests/serving/test_model_acquisition.py`](../../tests/serving/test_model_acquisition.py) | The selected source record and cache mechanics using tiny synthetic bytes. The real model's integrity remains certified by the authorization-gated procedure, not by this suite |
+| [`tests/serving/test_runtime_configuration.py`](../../tests/serving/test_runtime_configuration.py) | The pinned local runtime profile, its external model boundary, resources, defaults, health semantics, secret boundary, and compatibility with the real adapter. Runtime startup remains for local-real packaging evidence |
 | [`tests/serving/test_inference_api_surface.py`](../../tests/serving/test_inference_api_surface.py) | The committed API compatibility surface against its document |
 | [`tests/serving/test_inference_api_implementation_agreement.py`](../../tests/serving/test_inference_api_implementation_agreement.py) | Every constant in the API package that repeats a row of that record |
 | [`tests/testing/test_toolchain.py`](../../tests/testing/test_toolchain.py) | The accepted toolchain decision against the configuration implementing it, including the rule that keeps the pytest configuration out of `pyproject.toml` |
 
-The last two are the interesting pair. The matrix's drift claim,
+The two API-surface rows are the interesting pair. The matrix's drift claim,
 `the-published-strategy-and-its-data-cannot-drift-apart`, is written about the
 test strategy's own lane, layer, and claim identifiers. These two suites protect
 the same *kind* of property for a different record, and the matrix has no row for

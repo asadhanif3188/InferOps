@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "profileId": "llama-cpp-local-cpu",
+  "environment": "local",
+  "evidenceClass": "local-static",
+  "runtime": {
+    "runtimeId": "llama-cpp-server",
+    "imageReference": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "sourceRevision": "70adb1b4cea5ee39f867792c78dc59320921eda7",
+    "command": "/app/llama-server",
+    "arguments": [
+      "--model",
+      "/models/Qwen3-1.7B-Q8_0.gguf",
+      "--alias",
+      "qwen3-1.7b-q8_0",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "8080",
+      "--ctx-size",
+      "4096",
+      "--threads",
+      "6",
+      "--parallel",
+      "1",
+      "--n-predict",
+      "128",
+      "--temp",
+      "0",
+      "--metrics"
+    ]
+  },
+  "model": {
+    "sourceRecord": "docs/serving/model-source.v1.json",
+    "cacheRoot": ".cache/inferops/models",
+    "artifactRelativePath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf",
+    "containerPath": "/models/Qwen3-1.7B-Q8_0.gguf",
+    "readOnly": true,
+    "embeddedInImage": false,
+    "alias": "qwen3-1.7b-q8_0",
+    "platformIdentifier": "qwen3-1-7b-q8-0"
+  },
+  "network": {
+    "listenHost": "0.0.0.0",
+    "containerPort": 8080,
+    "adapterEndpoint": "http://llama-server:8080"
+  },
+  "resources": {
+    "cpuRequestCores": 1,
+    "cpuLimitCores": 6,
+    "memoryRequestMiB": 2048,
+    "memoryLimitMiB": 3072,
+    "accelerator": {
+      "kind": "none",
+      "count": 0
+    }
+  },
+  "serving": {
+    "contextSizeTokens": 4096,
+    "defaultMaxOutputTokens": 128,
+    "defaultTemperature": 0,
+    "threads": 6,
+    "parallelSlots": 1
+  },
+  "timeouts": {
+    "startupBudgetMs": 300000,
+    "requestBudgetMs": 120000,
+    "drainBudgetMs": 15000
+  },
+  "health": {
+    "startup": {
+      "kind": "http",
+      "path": "/health",
+      "port": 8080,
+      "readyStatus": 200,
+      "loadingStatus": 503
+    },
+    "readiness": {
+      "kind": "http",
+      "path": "/health",
+      "port": 8080,
+      "readyStatus": 200,
+      "loadingStatus": 503
+    },
+    "liveness": {
+      "kind": "tcp",
+      "port": 8080
+    }
+  },
+  "metrics": {
+    "enabled": true,
+    "path": "/metrics",
+    "port": 8080
+  },
+  "secrets": {
+    "externalOnly": true,
+    "embeddedValues": []
+  }
+}

@@ -48,13 +48,16 @@ URL for while nothing issued the call; the door was not put in the wall before t
 room existed. The room exists, so the set of published paths grew from four to
 five and a test asserts it is exactly those five.
 
-**There is no default for anything ADR 0002 left undecided.** The context length,
+**The generic adapter has no default for anything ADR 0002 left undecided.** The context length,
 the KV budget, the concurrency limit, and the sampling defaults are recorded there
 as undecided, and the 4096 context and 6 threads the trial ran were stated inputs
 so its numbers could be interpreted rather than recommended values. So the context
 size and the thread count are required inputs with no default: an operator
 supplies them and owns them. A default written here would be read back later as a
-project recommendation nobody made.
+project recommendation nobody made. The later
+[local runtime profile](local-runtime-profile.md) now supplies one explicit,
+versioned set of local values. That is a deployment selection passed into this
+adapter, not a fallback hidden inside it.
 
 ## The pins, and what a pin is worth
 
@@ -120,6 +123,12 @@ address and no port**: where the runtime listens is a property of the deployment
 that runs it, and deriving a server's binding from the address its client dials
 is a coincidence in the trial manifest rather than a rule. It generates **no
 sampling parameter**, for the reason above.
+
+The [local runtime profile](local-runtime-profile.md) completes the command with
+the bind address and port, one-slot concurrency, and generation defaults. Its
+offline validator reconstructs the adapter environment and refuses a profile
+that this package cannot parse, which keeps the deployment selection compatible
+without moving deployment concerns into the generic adapter.
 
 ## Required configuration
 

@@ -379,7 +379,10 @@ the same commands as the rest of the adapter layer.
 pins, settings, translation, readiness mapping, metadata parsers, and capability
 declaration; [the inference half](docs/serving/real-runtime-inference.md) holds the
 transport seam, the inference client, the deadlines, the error mapping, and
-`LlamaServerAdapter`.
+`LlamaServerAdapter`. The versioned
+[local runtime profile](docs/serving/local-runtime-profile.md) selects concrete
+deployment values without adding defaults to that generic package; validate it
+with `uv run --locked python -m tools.runtime_configuration check`.
 
 Five rules apply to a change here beyond the usual ones.
 
