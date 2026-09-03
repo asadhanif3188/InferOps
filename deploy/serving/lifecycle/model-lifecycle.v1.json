@@ -186,20 +186,44 @@
     "budgetMs": 300000,
     "pollIntervalMs": 1000,
     "order": [
-      "verify that the pinned image is local; never pull implicitly",
-      "establish the cache state of the pinned artifact",
-      "create the ownership-labelled container with the artifact bind-mounted read-only",
-      "poll liveness and readiness together until readiness reports 200 or the budget is exhausted"
+      {
+        "step": "verify-image-local",
+        "description": "verify that the pinned image is local; never pull implicitly"
+      },
+      {
+        "step": "establish-cache-state",
+        "description": "establish the cache state of the pinned artifact"
+      },
+      {
+        "step": "create-container",
+        "description": "create the ownership-labelled container with the artifact bind-mounted read-only"
+      },
+      {
+        "step": "poll-to-readiness",
+        "description": "poll liveness and readiness together until readiness reports 200 or the budget is exhausted"
+      }
     ]
   },
   "shutdown": {
     "drainTimeoutMs": 15000,
     "stopTimeoutSeconds": 15,
     "order": [
-      "stop accepting new work and report readiness false",
-      "drain accepted work within the drain budget and record whether it finished",
-      "close the adapter transport",
-      "stop and remove only the ownership-labelled container"
+      {
+        "step": "stop-accepting-and-report-unready",
+        "description": "stop accepting new work and report readiness false"
+      },
+      {
+        "step": "drain-within-budget",
+        "description": "drain accepted work within the drain budget and record whether it finished"
+      },
+      {
+        "step": "close-adapter-transport",
+        "description": "close the adapter transport"
+      },
+      {
+        "step": "stop-and-remove-container",
+        "description": "stop and remove only the ownership-labelled container"
+      }
     ]
   },
   "restart": {

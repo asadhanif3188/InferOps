@@ -3,7 +3,8 @@
 Status: **the state model is implemented and validated offline; the cold/warm
 start comparison has been executed three times for real on an authorized host**.
 Every ordering property held every time, and **no cold/warm timing difference was
-established** — the spread between runs is larger than the difference within one.
+established** — the spread between runs exceeds every difference measured within
+one.
 The measured result is in
 [the comparison record](../proof/serving/v1-s2-007-pr1-cold-warm-start.md).
 
@@ -180,9 +181,9 @@ Two honest limits travel with any number it produces:
 
 **What the three executed comparisons actually showed:** every ordering property
 held in all six starts, and the warm start was *slower* than the cold one every
-time, by amounts differing by two orders of magnitude. The spread between runs is
-several times the largest difference within one, so **no cold/warm effect is
-established in either direction**. The figures, and why the host cannot resolve
+time — by 234 ms, 16,032 ms, and 68,532 ms, which is a range of over two orders of
+magnitude. The cold arm alone spread 82,157 ms between runs, more than any of
+those deltas, so **no cold/warm effect is established in either direction**. The figures, and why the host cannot resolve
 one, are in [the comparison record](../proof/serving/v1-s2-007-pr1-cold-warm-start.md).
 
 Results are written to `.cache/inferops/lifecycle`, an ignored workspace-scoped
@@ -202,9 +203,12 @@ uv run --locked python -m tools.model_lifecycle clean --confirm
 ```
 
 `clean` reaches `.cache/inferops/lifecycle` and nothing else. It has no path
-override, refuses a symbolic link in or under the managed tree, and refuses a
-directory that resolves outside the checkout or that is the model cache — the
-last check is by identity rather than by hoping the two paths differ.
+override, refuses a symbolic link in or above the managed tree, and refuses a
+directory that resolves outside the checkout or that is the model cache. The
+model-cache refusal runs **first**, before the check that the directory is the
+pinned one — behind that check it could never fire, and a guard that cannot fire
+is a guard nobody can test. It compares against the cache root the record carries,
+which is itself held to the model source record.
 
 **It cannot delete the model.** Removing the artifact is
 [the acquisition workflow's](model-acquisition.md#workspace-scoped-cleanup) own

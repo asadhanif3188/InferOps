@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import copy
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -72,17 +72,56 @@ SYNTHETIC_BYTES = b"synthetic model bytes"
 
 
 class ScriptedRunner:
-    """Answer every command from a script and retain the exact argument vectors."""
+    """Answer a Docker command by what it asks, and retain the exact vectors.
 
-    def __init__(self, results: Sequence[CommandResult]) -> None:
-        self.results = list(results)
+    Dispatching on the verb rather than on position is deliberate. A positional
+    script encodes the exact number of commands :mod:`tools.runtime_packaging`
+    happens to issue today, so adding one there would break every measurement
+    test in this file with a failure in an unrelated module. This answers the
+    questions the package actually asks, records every vector for inspection,
+    and refuses one it does not recognise.
+    """
+
+    def __init__(
+        self,
+        *,
+        owned: bool = False,
+        running: bool = True,
+        engine_version: str = "29.0.0",
+    ) -> None:
+        #: Whether a container carrying the package's ownership label exists.
+        #: ``docker run`` sets it and ``docker rm`` clears it, as they do really.
+        self.owned = owned
+        self.running = running
+        self.engine_version = engine_version
         self.calls: list[tuple[str, ...]] = []
 
     def run(self, arguments: Sequence[str]) -> CommandResult:
-        self.calls.append(tuple(arguments))
-        if not self.results:
-            raise AssertionError(f"unexpected command: {arguments}")
-        return self.results.pop(0)
+        command = tuple(arguments)
+        self.calls.append(command)
+        package = load_runtime_package()
+
+        if command[1:2] == ("version",):
+            return CommandResult(0, f"{self.engine_version}\n")
+        if command[1:3] == ("image", "inspect"):
+            return CommandResult(0, f"{package.image_reference}\n")
+        if command[1:3] == ("container", "inspect"):
+            if any("State.Running" in argument for argument in command):
+                return CommandResult(0, f"{str(self.running).lower()}\n")
+            if not self.owned:
+                return CommandResult(1, "", "no such container")
+            return CommandResult(0, f"{package.package_id}\n")
+        if command[1:3] == ("container", "ls"):
+            return CommandResult(0, "\n")
+        if command[1:2] == ("run",):
+            self.owned = True
+            return CommandResult(0, "container-id\n")
+        if command[1:2] == ("stop",):
+            return CommandResult(0, "stopped\n")
+        if command[1:2] == ("rm",):
+            self.owned = False
+            return CommandResult(0, "removed\n")
+        raise AssertionError(f"unexpected command: {command}")
 
 
 class FakeClock:
@@ -355,7 +394,32 @@ def test_a_shutdown_that_drains_before_reporting_unready_is_refused(
     order = list(document["shutdown"]["order"])
     order[0], order[1] = order[1], order[0]
     document["shutdown"]["order"] = order
-    _refuses(tmp_path, document, "not graceful")
+    _refuses(tmp_path, document, "not the accepted sequence")
+
+
+def test_rewording_a_step_description_is_not_a_loading_failure(
+    tmp_path: Path,
+) -> None:
+    """The order is matched on step identifiers, not on the prose beside them.
+
+    A record whose steps are checked by substring cannot be reworded without
+    breaking, and a reworded step can silently stop being checked. Both are
+    avoided by giving each step an identifier.
+    """
+    document = copy.deepcopy(LIFECYCLE_DOCUMENT)
+    for step in document["shutdown"]["order"]:
+        step["description"] = f"reworded: {step['description']}"
+
+    reworded = load_lifecycle(_write(tmp_path, document))
+
+    assert reworded.shutdown_steps == load_lifecycle().shutdown_steps
+    assert all(text.startswith("reworded:") for text in reworded.shutdown_order)
+
+
+def test_a_renamed_shutdown_step_is_refused(tmp_path: Path) -> None:
+    document = copy.deepcopy(LIFECYCLE_DOCUMENT)
+    document["shutdown"]["order"][0]["step"] = "drain-first-and-hope"
+    _refuses(tmp_path, document, "not the accepted sequence")
 
 
 def test_only_a_cache_hit_may_proceed_without_a_network(lifecycle) -> None:
@@ -394,11 +458,16 @@ def test_a_restart_that_inherits_readiness_is_refused(tmp_path: Path) -> None:
 
 
 def test_the_measurement_directory_may_not_be_the_model_cache(tmp_path: Path) -> None:
-    """The refusal that stops a cleanup path deleting 1.71 GiB of model bytes."""
+    """The refusal that stops a cleanup path deleting 1.71 GiB of model bytes.
+
+    It asserts the model-cache message specifically. Matching the generic
+    "not the managed one" would pass with this guard deleted, because the pinned
+    directory equality beside it refuses the same document for another reason.
+    """
     _refuses(
         tmp_path,
-        _mutated(("measurement", "directory"), str(MODEL_CACHE_DIRECTORY.as_posix())),
-        "not the managed one",
+        _mutated(("measurement", "directory"), MODEL_CACHE_DIRECTORY.as_posix()),
+        "may not be the model cache",
     )
 
 
@@ -466,29 +535,9 @@ def test_a_cached_file_whose_digest_is_wrong_is_refused(
 # --------------------------------------------------------------------------
 
 
-#: A container that does not exist: the ownership inspect fails and the listing
-#: that follows it finds nothing. Two results, in that order.
-ABSENT = (CommandResult(1, "", "no such container"), CommandResult(0, "\n"))
-
-
-def _observation_script(samples: int) -> list[CommandResult]:
-    """The exact command sequence one successful observation produces, in order."""
-    package = load_runtime_package()
-    return [
-        CommandResult(0, "29.0.0\n"),  # start: docker version
-        CommandResult(0, f"{package.image_reference}\n"),  # start: image inspect
-        *ABSENT,  # start: nothing owns the container name yet
-        CommandResult(0, "container-id\n"),  # start: docker run
-        CommandResult(0, "true\n"),  # start: the process did not exit
-        *[CommandResult(0, "true\n") for _ in range(samples)],  # the sample loop
-        CommandResult(0, f"{package.package_id}\n"),  # stop: the name is ours
-        CommandResult(0, "stopped\n"),  # stop: docker stop
-        CommandResult(0, "removed\n"),  # stop: docker rm
-    ]
-
-
-def _ready_runner(samples: int = 3) -> ScriptedRunner:
-    return ScriptedRunner(_observation_script(samples))
+def _ready_runner() -> ScriptedRunner:
+    """A host with Docker, the pinned image, and no container of our name yet."""
+    return ScriptedRunner()
 
 
 def _completion() -> HttpResponse:
@@ -544,8 +593,8 @@ def test_a_measured_start_records_liveness_passing_while_readiness_is_still_fals
     observation, _ = _observe(
         lifecycle,
         synthetic_cache,
-        statuses=(0, 503, 200),
-        liveness=(False, True, True),
+        statuses=(503, 503, 200),
+        liveness=(True, True, True),
         monkeypatch=monkeypatch,
     )
 
@@ -553,7 +602,39 @@ def test_a_measured_start_records_liveness_passing_while_readiness_is_still_fals
     assert observation.liveness_never_dropped_after_it_passed is True
     assert observation.readiness_false_until_ready is True
     assert observation.cache_state is CacheState.HIT
+    assert [sample.readiness_status for sample in observation.samples] == [
+        503,
+        503,
+        200,
+    ]
+
+
+def test_a_start_whose_socket_was_unreachable_does_not_claim_a_clean_readiness_trace(
+    lifecycle,
+    synthetic_cache: tuple[ModelManifest, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`readinessFalseUntilReady` is a property that can fail, and this is how.
+
+    A sample that reached no socket at all is recorded as status 0. That is not
+    the runtime saying it is loading, so an observation containing one does not
+    get to report a clean readiness trace — which is the whole reason the
+    property is derived from the loading count rather than from "nothing said
+    ready before the end", a form that is true of every observation by
+    construction.
+    """
+    observation, _ = _observe(
+        lifecycle,
+        synthetic_cache,
+        statuses=(0, 503, 200),
+        liveness=(False, True, True),
+        monkeypatch=monkeypatch,
+    )
+
     assert [sample.readiness_status for sample in observation.samples] == [0, 503, 200]
+    assert observation.readiness_false_until_ready is False
+    assert observation.liveness_held_while_loading is True
+    assert observation.first_liveness_ms == observation.samples[1].elapsed_ms
 
 
 def test_a_liveness_probe_that_dropped_mid_load_is_reported_not_hidden(
@@ -602,7 +683,7 @@ def test_a_start_that_fails_still_removes_its_container(
     )
     monkeypatch.setattr("tools.runtime_packaging.core.verify_artifact", lambda *_: None)
     # One sample: the first unexpected status ends the loop immediately.
-    runner = _ready_runner(samples=1)
+    runner = _ready_runner()
     clock = FakeClock()
 
     with pytest.raises(ModelLifecycleError, match="does not publish"):
@@ -631,7 +712,7 @@ def test_a_measured_start_refuses_without_the_real_runtime_confirmation(
         observe_start(
             lifecycle,
             load_runtime_package(),
-            ScriptedRunner([]),
+            ScriptedRunner(),
             observation_id="cold",
             confirmed=False,
             http_get=lambda *_: pytest.fail("no HTTP without confirmation"),
@@ -647,7 +728,7 @@ def test_a_measured_start_refuses_a_cache_that_is_not_a_hit(
         observe_start(
             lifecycle,
             load_runtime_package(),
-            ScriptedRunner([]),
+            ScriptedRunner(),
             observation_id="cold",
             confirmed=True,
             http_get=lambda *_: pytest.fail("no HTTP for an empty cache"),
@@ -663,7 +744,7 @@ def test_a_start_named_by_no_declared_observation_is_refused(
         observe_start(
             lifecycle,
             load_runtime_package(),
-            ScriptedRunner([]),
+            ScriptedRunner(),
             observation_id="lukewarm",
             confirmed=True,
             http_get=lambda *_: pytest.fail("unreachable"),
@@ -683,9 +764,7 @@ def test_the_startup_wait_is_bounded_by_the_budget_the_package_pins(
     )
     monkeypatch.setattr("tools.runtime_packaging.core.verify_artifact", lambda *_: None)
     bounded = replace(lifecycle, startup_budget_ms=1_000)
-    # A 1,000 ms budget at a 250 ms poll is five samples, and the fifth is the
-    # one that finds the deadline reached.
-    runner = ScriptedRunner(_observation_script(samples=5))
+    runner = _ready_runner()
     clock = FakeClock()
 
     with pytest.raises(ModelLifecycleError, match="within the startup budget"):
@@ -717,14 +796,7 @@ def test_a_comparison_reports_both_starts_as_hits_and_the_artifact_as_preserved(
     )
     monkeypatch.setattr("tools.runtime_packaging.core.verify_artifact", lambda *_: None)
     package = load_runtime_package()
-    runner = ScriptedRunner(
-        [
-            *ABSENT,  # compare: nothing owns the name before either start
-            CommandResult(0, "29.0.0\n"),  # environment capture
-            *_observation_script(samples=2),  # the cold start
-            *_observation_script(samples=2),  # the warm start
-        ]
-    )
+    runner = _ready_runner()
     statuses = iter((503, 200, 503, 200))
     clock = FakeClock()
 
@@ -755,7 +827,8 @@ def test_a_comparison_refuses_to_start_beside_an_existing_owned_container(
     lifecycle, tmp_path: Path
 ) -> None:
     package = load_runtime_package()
-    runner = ScriptedRunner([CommandResult(0, f"{package.package_id}\n")])
+    # A container already carries the package's own name.
+    runner = ScriptedRunner(owned=True)
 
     with pytest.raises(ModelLifecycleError, match="already exists"):
         compare_starts(
@@ -776,7 +849,7 @@ def test_a_comparison_refuses_without_the_real_runtime_confirmation(
         compare_starts(
             lifecycle,
             load_runtime_package(),
-            ScriptedRunner([]),
+            ScriptedRunner(),
             confirmed=False,
             http_get=lambda *_: pytest.fail("unreachable"),
             http_post=lambda *_: pytest.fail("unreachable"),
@@ -912,8 +985,59 @@ def test_cleanup_without_confirmation_reports_and_changes_nothing(
 def test_the_results_directory_is_refused_when_it_is_the_model_cache(
     tmp_path: Path,
 ) -> None:
-    lifecycle = load_lifecycle()
-    diverted = replace(lifecycle, result_directory=MODEL_CACHE_DIRECTORY)
+    """Both entry points refuse it, and both name the model cache when they do."""
+    diverted = replace(load_lifecycle(), result_directory=MODEL_CACHE_DIRECTORY)
+
+    with pytest.raises(ModelLifecycleError, match="may not be the model cache"):
+        result_directory(diverted, repo_root=tmp_path)
+    with pytest.raises(ModelLifecycleError, match="may not be the model cache"):
+        clean_results(diverted, repo_root=tmp_path, confirm=True)
+
+
+def test_this_module_s_model_cache_constant_is_held_to_the_source_record() -> None:
+    """It is a convenience alias, not a second answer to where the cache is."""
+    assert load_manifest().cache_path == MODEL_CACHE_DIRECTORY
+
+
+def test_cleanup_refuses_a_symbolic_link_above_the_managed_tree(
+    lifecycle, tmp_path: Path
+) -> None:
+    """A link in the path is refused rather than followed into whatever it names."""
+    real = tmp_path / "elsewhere"
+    real.mkdir()
+    link = tmp_path / ".cache" / "inferops"
+    link.parent.mkdir(parents=True)
+    try:
+        link.symlink_to(real, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("this host does not permit creating a symbolic link")
+
+    with pytest.raises(ModelLifecycleError, match="symbolic link"):
+        clean_results(lifecycle, repo_root=tmp_path, confirm=True)
+
+
+def test_cleanup_refuses_a_symbolic_link_inside_the_results_directory(
+    lifecycle, tmp_path: Path
+) -> None:
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}", encoding="utf-8")
+    write_results(lifecycle, _result(), repo_root=tmp_path)
+    link = tmp_path / EXPECTED_RESULT_DIRECTORY / "linked.json"
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("this host does not permit creating a symbolic link")
+
+    with pytest.raises(ModelLifecycleError, match="symbolic link"):
+        clean_results(lifecycle, repo_root=tmp_path, confirm=True)
+    assert outside.is_file(), "the link's target must not have been removed"
+
+
+def test_a_results_directory_resolving_outside_the_checkout_is_refused(
+    lifecycle, tmp_path: Path
+) -> None:
+    """A repository root that is not a parent of what it resolves to is refused."""
+    diverted = replace(lifecycle, result_directory=Path("../lifecycle"))
 
     with pytest.raises(ModelLifecycleError, match="not the managed one"):
         result_directory(diverted, repo_root=tmp_path)
@@ -944,15 +1068,62 @@ def test_the_measure_command_refuses_without_its_confirmation(
     assert "confirm-real-runtime" in capsys.readouterr().err
 
 
-def test_the_command_reports_a_refusal_without_leaking_a_local_path(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    def refuse(*_args: object, **_kwargs: object) -> Mapping[str, Any]:
-        raise ModelLifecycleError("the lifecycle record is unreadable")
+#: Record mutations that reach a different refusal in `load_lifecycle`. Each is
+#: a real message this tool can print, rather than one a test wrote for itself.
+LEAK_CASES: tuple[tuple[str, tuple[str, ...], object], ...] = (
+    ("schema", ("schemaVersion",), "inferops.io/v2"),
+    ("identity", ("lifecycleId",), "something-else"),
+    ("document", ("documentRef",), "docs/serving/nope.md"),
+    ("probe port", ("probes", "liveness", "port"), 9090),
+    ("ready status", ("probes", "readiness", "readyStatus"), 204),
+    ("budget", ("startup", "budgetMs"), 60000),
+    ("cache root", ("cache", "rootPath"), ".cache/elsewhere"),
+    ("evidence class", ("measurement", "evidenceClass"), "cloud-real-gpu"),
+    ("results directory", ("measurement", "directory"), ".cache/inferops/models"),
+)
 
-    monkeypatch.setattr("tools.model_lifecycle.__main__.load_lifecycle", refuse)
+
+@pytest.mark.parametrize(
+    ("label", "path", "value"), LEAK_CASES, ids=[case[0] for case in LEAK_CASES]
+)
+def test_a_real_refusal_names_no_local_path(
+    label: str,
+    path: tuple[str, ...],
+    value: object,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Every refusal below is one `load_lifecycle` actually raises.
+
+    An earlier version of this test injected a message it had written itself and
+    then asserted that its own message carried no path — which would have passed
+    with every real refusal leaking one. These drive nine distinct refusals
+    through the command and assert that none of them names the temporary
+    directory the broken record was read from, or any absolute path at all.
+    """
+    del label
+    record = _write(tmp_path, _mutated(path, value))
+    monkeypatch.setattr("tools.model_lifecycle.__main__.LIFECYCLE_PATH", record)
+
+    assert main(["check"]) == 3
+
+    error = capsys.readouterr().err
+    assert "REFUSED model lifecycle" in error
+    assert str(tmp_path) not in error
+    for part in tmp_path.parts:
+        if part not in ("\\", "/") and len(part) > 3:
+            assert part not in error, part
+    assert "C:" not in error and "/home/" not in error
+
+
+def test_an_unreadable_record_is_refused_without_naming_where_it_was(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    missing = tmp_path / "absent" / "model-lifecycle.v1.json"
+    monkeypatch.setattr("tools.model_lifecycle.__main__.LIFECYCLE_PATH", missing)
 
     assert main(["check"]) == 3
     error = capsys.readouterr().err
-    assert "REFUSED model lifecycle" in error
-    assert "C:" not in error and "/home/" not in error
+    assert "the lifecycle record is unreadable" in error
+    assert str(tmp_path) not in error

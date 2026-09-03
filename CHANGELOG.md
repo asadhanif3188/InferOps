@@ -95,17 +95,21 @@ once versioned releases begin.
   downloading. Documented in
   [the model lifecycle guide](docs/serving/model-lifecycle.md).
 
-- **The comparison was executed twice on an authorized CPU host, and it does not
-  show a cold/warm speedup.** Each run starts the pinned container, samples
-  liveness and readiness *together* until ready, issues one bounded single-token
-  inference probe, and removes the container in a `finally`; the artifact is
-  re-read and its SHA-256 re-compared between and after the two starts. Every
-  acceptance property held in both runs: both starts were cache hits, liveness
-  passed throughout every loading observation, readiness stayed false until the
-  runtime answered `200`, and the artifact verified unchanged after both restarts.
-  **The timing halves of the comparison did not reproduce.** The full result,
-  including the run-to-run spread and why no cold/warm claim is made from it, is
-  in [the cold and warm start record](docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md).
+- **The comparison was executed three times on an authorized CPU host, and it
+  does not show a cold/warm speedup.** Each run starts the pinned container,
+  samples liveness and readiness *together* until ready, issues one bounded
+  single-token inference probe, and removes the container in a `finally`; the
+  artifact is re-read and its SHA-256 re-compared between and after the two
+  starts. Every acceptance property held in all three runs: every start was a
+  cache hit, liveness passed in all 2,753 loading observations across the six
+  starts with no drop in any of them, readiness stayed false until the runtime
+  answered `200`, and the artifact verified unchanged after every restart.
+  **The timing halves did not reproduce.** The warm start was slower every time,
+  by 234 ms, 16,032 ms, and 68,532 ms, while the cold arm alone spread 82,157 ms
+  across the three runs — larger than every delta measured within one. **No
+  cold/warm effect is claimed in either direction.** The figures, and why this
+  host cannot resolve one, are in
+  [the cold and warm start record](docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md).
 
 - **The registered local serving baseline was executed on an authorized CPU
   host, and it failed — this repository still holds no measured baseline.** A

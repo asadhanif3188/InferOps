@@ -33,10 +33,13 @@ of the cache model are exercised with synthetic bytes by the acquisition suite
 and are reported as such.
 
 **Cleanup is scoped to the directory this tool writes.** :func:`clean_results`
-removes ``.cache/inferops/lifecycle`` and refuses anything else — including, by
-an explicit check, the model cache. Deleting the artifact is the acquisition
-workflow's own confirmed operation, and a lifecycle tool that could reach it
-would be one bad path away from turning a measurement into a 1.71 GiB re-download.
+removes ``.cache/inferops/lifecycle`` and refuses anything else. The model cache
+is refused first and by name, before the pinned-directory equality that would
+otherwise make that refusal unreachable, and it is compared against the cache
+root the loaded record carries rather than against a copy of the path kept here.
+Deleting the artifact is the acquisition workflow's own confirmed operation, and
+a lifecycle tool that could reach it would be one bad path away from turning a
+measurement into a 1.71 GiB re-download.
 """
 
 from __future__ import annotations
@@ -99,14 +102,36 @@ EXPECTED_RESULT_DIRECTORY = Path(".cache/inferops/lifecycle")
 #: guard can refuse it by identity rather than by hoping the paths differ.
 MODEL_CACHE_DIRECTORY = Path(".cache/inferops/models")
 
+#: The startup and shutdown steps, in the only order this V1 accepts. They are
+#: identifiers rather than sentences so that rewording a record's prose is a
+#: documentation change and reordering its steps is a loading failure.
+STARTUP_STEPS: tuple[str, ...] = (
+    "verify-image-local",
+    "establish-cache-state",
+    "create-container",
+    "poll-to-readiness",
+)
+
+#: The first entry is the whole graceful-shutdown property: readiness goes false
+#: before anything is drained. The last is the one that leaves no residue.
+SHUTDOWN_STEPS: tuple[str, ...] = (
+    "stop-accepting-and-report-unready",
+    "drain-within-budget",
+    "close-adapter-transport",
+    "stop-and-remove-container",
+)
+
 #: How often the observation loop asks both probes. Faster than the package's own
 #: readiness poll because the point of the loop is to catch the window in which
 #: liveness passes and readiness does not.
 OBSERVATION_POLL_SECONDS = 0.25
 
 #: A cap on the samples one observation retains, so an unexpectedly long load
-#: cannot write an unbounded result file.
-MAXIMUM_SAMPLES = 4_000
+#: cannot write an unbounded result file. Generous against the bound that
+#: actually stops the loop — the package's startup budget divided by the poll
+#: interval — because reaching it means the loop did not behave as this module
+#: believes, and that is a refusal rather than a truncation.
+MAXIMUM_SAMPLES = 20_000
 
 
 class ModelLifecycleError(RuntimeError):
@@ -204,9 +229,11 @@ class ModelLifecycle:
     cache_rules: tuple[CacheRule, ...]
     startup_budget_ms: int
     startup_poll_interval_ms: int
+    startup_steps: tuple[str, ...]
     startup_order: tuple[str, ...]
     drain_timeout_ms: int
     stop_timeout_seconds: int
+    shutdown_steps: tuple[str, ...]
     shutdown_order: tuple[str, ...]
     artifact_survives_restart: bool
     readiness_resets_on_restart: bool
@@ -298,10 +325,21 @@ class StartObservation:
 
     @property
     def readiness_false_until_ready(self) -> bool:
-        """Whether every sample before the last one reported not-ready."""
-        return all(
-            sample.readiness_status != self.ready_status for sample in self.samples[:-1]
-        ) and bool(self.samples)
+        """Whether every sample but the last reported the runtime's loading status.
+
+        Derived from the loading count rather than from "no early sample said
+        ready", because the sampling loop returns on the first ready answer and
+        so that weaker form is true of every observation this tool can build —
+        a property that cannot fail is not worth publishing. This one fails on a
+        sample that reached no socket, or on any status other than the two the
+        record publishes.
+        """
+        if not self.samples:
+            return False
+        return (
+            len(self.loading_samples) == len(self.samples) - 1
+            and self.samples[-1].readiness_status == self.ready_status
+        )
 
     @property
     def liveness_never_dropped_after_it_passed(self) -> bool:
@@ -475,14 +513,16 @@ def load_lifecycle(
         startup_poll_interval_ms=_integer(
             startup.get("pollIntervalMs"), "startup.pollIntervalMs"
         ),
-        startup_order=_strings(startup.get("order"), "startup.order"),
+        startup_steps=_ordered_steps(startup.get("order"), "startup.order")[0],
+        startup_order=_ordered_steps(startup.get("order"), "startup.order")[1],
         drain_timeout_ms=_integer(
             shutdown.get("drainTimeoutMs"), "shutdown.drainTimeoutMs"
         ),
         stop_timeout_seconds=_integer(
             shutdown.get("stopTimeoutSeconds"), "shutdown.stopTimeoutSeconds"
         ),
-        shutdown_order=_strings(shutdown.get("order"), "shutdown.order"),
+        shutdown_steps=_ordered_steps(shutdown.get("order"), "shutdown.order")[0],
+        shutdown_order=_ordered_steps(shutdown.get("order"), "shutdown.order")[1],
         artifact_survives_restart=_boolean(
             restart.get("artifactSurvives"), "restart.artifactSurvives"
         ),
@@ -543,6 +583,17 @@ def _states(value: Any) -> tuple[StateRule, ...]:
     return tuple(rules)
 
 
+def _ordered_steps(value: Any, field: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Split an ordered list of `{step, description}` into its ids and its prose."""
+    steps: list[str] = []
+    descriptions: list[str] = []
+    for item in _array(value, field):
+        entry = _object(item, f"{field}[]")
+        steps.append(_string(entry.get("step"), f"{field}[].step"))
+        descriptions.append(_string(entry.get("description"), f"{field}[].description"))
+    return tuple(steps), tuple(descriptions)
+
+
 def _transitions(value: Any) -> tuple[Transition, ...]:
     return tuple(
         Transition(
@@ -590,16 +641,11 @@ def _validate(lifecycle: ModelLifecycle, *, repo_root: Path) -> None:
         )
     if lifecycle.lifecycle_id != EXPECTED_LIFECYCLE_ID:
         raise ModelLifecycleError("the lifecycle record has an unexpected identifier")
-    for field, expected in (
-        ("packageRef", EXPECTED_PACKAGE_REF),
-        ("modelSourceRef", EXPECTED_MODEL_SOURCE_REF),
-        ("documentRef", EXPECTED_DOCUMENT_REF),
+    for field, actual, expected in (
+        ("packageRef", lifecycle.package_ref, EXPECTED_PACKAGE_REF),
+        ("modelSourceRef", lifecycle.model_source_ref, EXPECTED_MODEL_SOURCE_REF),
+        ("documentRef", lifecycle.document_ref, EXPECTED_DOCUMENT_REF),
     ):
-        actual = {
-            "packageRef": lifecycle.package_ref,
-            "modelSourceRef": lifecycle.model_source_ref,
-            "documentRef": lifecycle.document_ref,
-        }[field]
         if actual != expected:
             raise ModelLifecycleError(
                 f"the lifecycle record's {field} is not the accepted one"
@@ -741,6 +787,13 @@ def _validate_cache(lifecycle: ModelLifecycle) -> None:
         raise ModelLifecycleError(
             "the cache root disagrees with the model source record"
         )
+    # The convenience constant is held to the record that owns the path. Without
+    # this it would be a second, silent copy of something this module does not
+    # own, and a moved cache would leave it pointing at the wrong directory.
+    if manifest.cache_path != MODEL_CACHE_DIRECTORY:
+        raise ModelLifecycleError(
+            "this module's model-cache constant has drifted from the source record"
+        )
     declared = tuple(rule.cache_state for rule in lifecycle.cache_rules)
     if set(declared) != set(CacheState) or len(declared) != len(set(declared)):
         raise ModelLifecycleError("the cache model must declare each cache state once")
@@ -772,17 +825,20 @@ def _validate_cache(lifecycle: ModelLifecycle) -> None:
 
 
 def _validate_measurement(lifecycle: ModelLifecycle) -> None:
+    # This runs first, before the pinned-directory equality below. Ordered the
+    # other way it would be unreachable — the equality already refuses every
+    # directory that is not the managed one — and an unreachable guard is a
+    # guard nobody can test. The failure it refuses is a cleanup that deletes
+    # 1.71 GiB of model bytes.
+    if lifecycle.result_directory == lifecycle.cache_root:
+        raise ModelLifecycleError(
+            "the measurement directory may not be the model cache"
+        )
     if lifecycle.result_directory != EXPECTED_RESULT_DIRECTORY:
         raise ModelLifecycleError("the measurement directory is not the managed one")
     if lifecycle.result_directory.is_absolute():
         raise ModelLifecycleError(
             "the measurement directory must be workspace-relative"
-        )
-    # Named explicitly rather than left to the equality above, because the
-    # failure this refuses is a cleanup that deletes 1.71 GiB of model bytes.
-    if lifecycle.result_directory == lifecycle.cache_root:
-        raise ModelLifecycleError(
-            "the measurement directory may not be the model cache"
         )
     if lifecycle.evidence_class != EXPECTED_EVIDENCE_CLASS:
         raise ModelLifecycleError(
@@ -794,13 +850,18 @@ def _validate_measurement(lifecycle: ModelLifecycle) -> None:
         raise ModelLifecycleError("a comparison is exactly one cold and one warm start")
     if not lifecycle.startup_order or not lifecycle.shutdown_order:
         raise ModelLifecycleError("the startup and shutdown orders may not be empty")
-    if "readiness false" not in lifecycle.shutdown_order[0]:
+    # Matched on step identifiers rather than on the prose beside them.
+    # Substring-matching the description would make rewording the record a
+    # loading failure, and would let a reworded step silently stop being checked.
+    if lifecycle.shutdown_steps != SHUTDOWN_STEPS:
         raise ModelLifecycleError(
-            "a shutdown that drains before reporting itself unready is not graceful"
+            "the shutdown order is not the accepted sequence: readiness false, "
+            "then drain, then close the adapter, then remove the container"
         )
-    if "remove" not in lifecycle.shutdown_order[-1]:
+    if lifecycle.startup_steps != STARTUP_STEPS:
         raise ModelLifecycleError(
-            "a shutdown that leaves its container behind is residue"
+            "the startup order is not the accepted sequence: image, cache, "
+            "container, then poll to readiness"
         )
 
 
@@ -828,6 +889,13 @@ def observe_cache(
 
     if artifact.is_file():
         size = artifact.stat().st_size
+        # The byte count is checked first because it is the cheaper and more
+        # specific answer: a truncated artifact should be reported as the wrong
+        # size rather than as a digest that happened not to match.
+        if size != resolved.expected_size_bytes:
+            raise ModelLifecycleError(
+                "the cached artifact does not match the pinned byte count"
+            )
         verified = False
         if verify:
             try:
@@ -837,10 +905,6 @@ def observe_cache(
                     "the cached artifact does not match the pinned source record"
                 ) from error
             verified = True
-        if size != resolved.expected_size_bytes:
-            raise ModelLifecycleError(
-                "the cached artifact does not match the pinned byte count"
-            )
         return CacheObservation(
             cache_state=CacheState.HIT,
             artifact=artifact,
@@ -933,10 +997,14 @@ def observe_start(
         stop_started = clock()
         removed = stop(package, runner, confirmed=True)
         stop_ms = _elapsed_ms(clock, stop_started)
-    if not removed:
-        raise ModelLifecycleError(
-            "the measured container could not be verified removed"
-        )
+        if not removed:
+            # Raised inside the `finally` on purpose, so that an observation
+            # which failed *and* leaked its container reports the leak. A
+            # container left behind blocks every subsequent start; the failure
+            # it replaces is chained onto this one rather than lost.
+            raise ModelLifecycleError(
+                "the measured container could not be verified removed"
+            )
 
     first_liveness = next(
         (sample.elapsed_ms for sample in samples if sample.liveness), None
@@ -993,14 +1061,20 @@ def _sample_until_ready(
             )
         except RuntimeEndpointUnavailable:
             response = HttpResponse(0)
-        if len(samples) < MAXIMUM_SAMPLES:
-            samples.append(
-                ProbeSample(
-                    elapsed_ms=_elapsed_ms(clock, since),
-                    liveness=live,
-                    readiness_status=response.status,
-                )
+        if len(samples) >= MAXIMUM_SAMPLES:
+            # Dropping samples here would leave `samples[-1]` a loading sample
+            # and publish its timestamp as the ready time. A wrong number is
+            # worse than a refusal, so this refuses.
+            raise ModelLifecycleError(
+                "the observation retained more samples than this tool publishes"
             )
+        samples.append(
+            ProbeSample(
+                elapsed_ms=_elapsed_ms(clock, since),
+                liveness=live,
+                readiness_status=response.status,
+            )
+        )
         if response.status == lifecycle.readiness_ready_status:
             return tuple(samples)
         if response.status not in (0, lifecycle.readiness_loading_status):
@@ -1122,22 +1196,31 @@ def result_directory(
     *,
     repo_root: Path = REPO_ROOT,
 ) -> Path:
-    """The one directory this tool writes, guarded before it is handed back."""
-    if lifecycle.result_directory != EXPECTED_RESULT_DIRECTORY:
-        raise ModelLifecycleError("the measurement directory is not the managed one")
+    """The one directory this tool writes, guarded before it is handed back.
+
+    The model-cache refusal comes first because it has to be reachable. Behind
+    the pinned-directory equality it would never fire, and a guard that cannot
+    fire is a guard nobody can test. It compares against the cache root the
+    loaded record carries — which ``_validate_cache`` has already held to the
+    model source record — rather than against a second copy of the same path.
+    """
     directory = repo_root / lifecycle.result_directory
     resolved_repo = repo_root.resolve()
     resolved = directory.resolve(strict=False)
+    if lifecycle.result_directory == lifecycle.cache_root or resolved == (
+        repo_root / lifecycle.cache_root
+    ).resolve(strict=False):
+        raise ModelLifecycleError(
+            "the measurement directory may not be the model cache"
+        )
+    if lifecycle.result_directory != EXPECTED_RESULT_DIRECTORY:
+        raise ModelLifecycleError("the measurement directory is not the managed one")
     try:
         resolved.relative_to(resolved_repo)
     except ValueError as error:
         raise ModelLifecycleError(
             "the measurement directory resolves outside the repository"
         ) from error
-    if resolved == (repo_root / MODEL_CACHE_DIRECTORY).resolve(strict=False):
-        raise ModelLifecycleError(
-            "the measurement directory may not be the model cache"
-        )
     candidate = repo_root
     for part in lifecycle.result_directory.parts:
         candidate = candidate / part
@@ -1279,8 +1362,11 @@ def clean_results(
 ) -> CleanupResult:
     """Inspect or remove only this tool's own results directory.
 
-    It cannot reach the model cache, and the guard that stops it is an identity
-    check rather than a path comparison that a symlink could satisfy.
+    It cannot reach the model cache. :func:`result_directory` refuses that
+    target before it refuses anything else, comparing both the declared path and
+    its resolution against the cache root the record carries, and refuses a
+    symbolic link anywhere in or above the managed tree — so a link pointed at
+    the model cache is refused rather than followed.
     """
     directory = result_directory(lifecycle, repo_root=repo_root)
     existed = directory.exists()

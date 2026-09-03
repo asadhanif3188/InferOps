@@ -135,16 +135,32 @@ async def test_a_stopped_lifecycle_refuses_to_begin_serving_again() -> None:
         lifecycle.begin_serving()
 
 
-def test_a_restart_begins_unready_rather_than_inheriting_the_last_answer() -> None:
-    """Readiness resets across a restart; nothing is carried over from the old one."""
+async def test_a_restart_begins_unready_rather_than_inheriting_the_last_answer() -> (
+    None
+):
+    """The two lifecycles are compared, because a restart is a relationship.
+
+    Asserting only that a fresh object starts unready would be asserting the
+    constructor. What matters is that the previous process's answer is gone
+    while the previous object still remembers it: nothing is shared, so nothing
+    is inherited.
+    """
     stopped = ApplicationLifecycle()
     stopped.begin_serving()
-    stopped.begin_shutdown()
+    with stopped.accept():
+        pass
+    assert await stopped.drain() is True
 
     restarted = ApplicationLifecycle()
 
-    assert restarted.state is LifecycleState.STARTING
-    assert restarted.is_accepting_work is False
+    # Compared as a pair rather than asserted one at a time, because the point
+    # is the relationship: the old lifecycle still remembers that it stopped and
+    # the new one has inherited none of it.
+    assert (stopped.state, restarted.state) == (
+        LifecycleState.STOPPED,
+        LifecycleState.STARTING,
+    )
+    assert (stopped.is_accepting_work, restarted.is_accepting_work) == (False, False)
     assert restarted.in_flight == 0
 
 

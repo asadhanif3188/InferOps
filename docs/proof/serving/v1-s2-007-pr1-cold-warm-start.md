@@ -27,8 +27,9 @@ hash-verified model on one contributor CPU host on one day:
 - that every container was stopped and removed.
 
 It establishes **no cold/warm start difference.** The measured deltas do not
-reproduce, and the spread between runs is several times larger than the largest
-delta within one. The reason is diagnosed in [Limitations](#limitations). No
+reproduce — they range over two orders of magnitude — and the spread between runs
+(82,157 ms across the cold arm alone) exceeds every delta measured within a single
+comparison. The reason is diagnosed in [Limitations](#limitations). No
 latency, throughput, or load-time figure here is a benchmark and none may be
 published as one.
 
@@ -36,7 +37,7 @@ published as one.
 
 | Input | Immutable identifier |
 |---|---|
-| Repository revision (branch base) | `639f4639edee4804aa424b87e9cba00fa5872c8f` |
+| Repository revision | the working tree of `feat/v1-s2-007-model-lifecycle`, whose base is `639f4639edee4804aa424b87e9cba00fa5872c8f` on `main`. The command does not exist at that base — it is introduced by this branch — so the runs are attributable to the branch, not to a merged revision |
 | Producing command | `uv run --locked python -m tools.model_lifecycle measure --confirm-real-runtime` |
 | Container image | `ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384` |
 | Model artifact | `Qwen/Qwen3-1.7B-GGUF`, revision `90862c4b9d2787eaed51d12237eafdfe7c5f6077`, file `Qwen3-1.7B-Q8_0.gguf`, `sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a` |
@@ -94,8 +95,11 @@ Each comparison runs, in this order:
 Step 4 is the only variable deliberately changed between the two arms: it is a
 full end-to-end read of the artifact immediately before the warm start.
 
-Sampling: liveness and readiness are asked **at the same moment**, every 250 ms,
-bounded by the package's 300,000 ms startup budget. Asking them together is the
+Sampling: liveness and readiness are asked **at the same moment**, with a 250 ms
+sleep between samples, bounded by the package's 300,000 ms startup budget. The
+250 ms is the sleep and not the period: each sample also runs a container-status
+command and both probes, so the observed period was 355–400 ms
+(`(readyMs − firstLivenessMs) / (samples − 1)` over the six starts below). Asking them together is the
 whole point — a readiness trace alone cannot establish that the process was alive
 during the load, and a liveness trace alone cannot establish that readiness was
 still false. Liveness is a TCP connection to `127.0.0.1:8080`; readiness is
@@ -116,6 +120,7 @@ Schema of the result set:
 | `firstLivenessMs` | integer or null | ms | first sample in which the TCP probe connected |
 | `readyMs` | integer | ms | first sample in which readiness answered `200` |
 | `inferenceMs` | integer | ms | the bounded probe's round trip |
+| `inferenceStatus` | integer | HTTP | the probe's status; its body is discarded |
 | `stopMs` | integer | ms | stop plus remove |
 | `loadingObservations` | integer | count | samples in which readiness answered `503` |
 | `livenessHeldWhileLoading` | boolean | — | liveness passed in at least one loading sample |
@@ -127,8 +132,8 @@ Format: JSON Lines, UTF-8, one record per observation, plus a JSON summary deriv
 from the two.
 
 What was removed before committing, and how. Nothing was removed, because nothing
-sensitive is collected: the record's fields are the fourteen above and a sample
-list of three scalars. The prompt and the completion never enter it — only the
+sensitive is collected: the record's fields are the sixteen above — fifteen rows,
+one of which names two — and a sample list of three scalars. The prompt and the completion never enter it — only the
 probe's HTTP status is retained — and
 `tests/serving/test_model_lifecycle.py::test_an_observation_record_carries_no_prompt_completion_or_model_byte`
 asserts that a serialized observation contains none of `prompt`, `content`,
@@ -160,9 +165,11 @@ Every acceptance property the lifecycle record defines held in every comparison:
 
 **Liveness never failed, once, in any sample of any start.** Across all six
 starts, all 2,759 probe samples connected, and the readiness endpoint answered
-`503` on all but the final sample of each — **2,753 consecutive observations in
-which a healthy process was loading a model and a liveness probe pointed at its
-health endpoint would have been killing it.** The artifact SHA-256 re-verification
+`503` on all but the final sample of each — **2,753 observations, across six
+independent starts, in which a healthy process was loading a model and a liveness
+probe pointed at its health endpoint would have been failing.** Within each start
+the loading observations are consecutive: liveness passed from the first sample to
+the last, with no drop in any of the six. The artifact SHA-256 re-verification
 took 2,828 ms, 3,453 ms, and 4,781 ms.
 
 ### The result that disagrees with the expectation
@@ -178,7 +185,8 @@ different amounts:
 
 The between-comparison spread is what settles it. The cold arm alone ranged from
 133,515 ms to 215,672 ms across the three comparisons — a spread of 82,157 ms,
-larger than two of the three deltas and comparable to the third — and the same
+larger than every delta measured within a comparison: 1.2 times the largest of
+them, 5.1 times the next, and 351 times the smallest — and the same
 host recorded 358,735 ms and 284,406 ms model-load times in
 [the `V1-S2-005` run](v1-s2-005-baseline-raw-results.md) — both larger than every
 figure here. **A cold/warm effect, if one exists on this host, is smaller than the
@@ -214,9 +222,41 @@ no sign claim in either direction.
   is a property of the record; that a probe would see it is not evidenced.
 - **One host, one day, six starts, CPU only.** Nothing here says anything about a
   second host, a GPU, a cluster, concurrency, or sustained load.
+- **The `runtime-starting` state and the symbolic-link cleanup refusals are
+  published but not exercised.** The first was never caught by a sample (above);
+  the second are two tests that skip on this host because Windows would not let
+  them create a link. Both are recorded in
+  [the change-validation record](v1-s2-007-pr1-validation.md) rather than counted
+  as evidence.
 - **These figures must not be cited** by any claim about serving performance,
   capacity, cold-start cost, or model-load cost. They may be cited for the
   ordering properties in [Results](#results) and for nothing else.
+
+## Corrections independent review made to this record
+
+An independent review of the first commit checked every figure here against the
+tables beside it and found four statements stronger than the data:
+
+- **"the spread between runs is several times larger than the largest delta"** —
+  the ratio is 1.2, not "several". The conclusion (no cold/warm effect) survives;
+  the magnitude did not. Both the claim boundary above and the guide were
+  corrected, and the ratios are now stated explicitly.
+- **"every 250 ms"** — 250 ms is the sleep between samples, not the period. The
+  sample counts in the results table imply 355–400 ms, and the method section now
+  says so and shows the arithmetic.
+- **"the record's fields are the fourteen above"** — the record emits sixteen
+  keys; `inferenceStatus` was missing from the schema table. That table is what
+  the no-leakage argument rests on, so an incomplete enumeration weakened it. The
+  row was added.
+- **"larger than two of the three deltas and comparable to the third"** — 82,157
+  is larger than all three. An understatement, corrected for the same reason.
+
+Two further corrections were factual rather than presentational: the provenance
+row named the branch base, at which the producing command does not yet exist, and
+the CHANGELOG said the comparison ran twice. Both are fixed.
+
+Nothing in the measured data changed. No timing, sample count, or acceptance
+value in this record was altered by the review.
 
 ## Authorisation
 

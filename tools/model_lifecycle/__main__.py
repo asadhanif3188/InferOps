@@ -13,6 +13,7 @@ from tools.runtime_packaging.core import (
 )
 
 from .core import (
+    LIFECYCLE_PATH,
     REPO_ROOT,
     CacheState,
     ModelLifecycleError,
@@ -77,7 +78,9 @@ def _print_check(lifecycle_id: str, states: int, transitions: int) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        lifecycle = load_lifecycle()
+        # Named rather than left to the default, so that the record this
+        # command reads is a seam a test can point somewhere else.
+        lifecycle = load_lifecycle(LIFECYCLE_PATH)
 
         if args.command == "check":
             _print_check(
@@ -126,7 +129,10 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "clean":
             cleanup = clean_results(lifecycle, confirm=args.confirm)
-            print(f"directory    {cleanup.directory}")
+            # Printed relative to the checkout. An absolute path here would put
+            # the operator's home directory into whatever this output is pasted
+            # into, and the repository-relative form is the useful one anyway.
+            print(f"directory    {cleanup.directory.relative_to(REPO_ROOT)}")
             print(f"bytes        {cleanup.bytes_found}")
             print(
                 "removed      yes"
