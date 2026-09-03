@@ -1,28 +1,33 @@
 # `V1-S2-005` local serving baseline experiment
 
 Date registered: 2026-09-03
-Date executed: not executed
+Date executed: 2026-09-03
 
 ## Classification and certification
 
-Evidence class: `documented-unexecuted`. The registered experiment declares
-`local-real-cpu` as the class its results will carry; until it is executed, this
-record is a method and carries nothing.
+Evidence class: `local-real-cpu`. The experiment was executed on an authorized
+CPU host on 2026-09-03 against the pinned image and the hash-verified model.
 
-Ceiling this class carries: `none` today. The registered experiment's
-`local-real-cpu` class carries `C2` once a run exists, per
-[the certification document](../../testing/certification.md).
+Ceiling this class carries: `C2`.
 
-Level this record actually supports: **none**. It contains no measurement. It is
-the pre-registration of a method, and the only thing it establishes is what will
-be measured and what would count as a failure.
+Level this record actually supports: **none for any performance claim.** The run
+answered zero requests, so it produced no latency, throughput, token, or resource
+figure. What it does support, at `C2`, is a negative finding: the experiment as
+registered here cannot succeed, for reasons that reproduce deterministically.
 
-Claim boundary: this record establishes that a fixed request fixture, a warm-up,
-a bounded measured phase, a metric set, a percentile method, and a success
-condition were registered before any result was seen, and that the tooling
-implementing them is consistent with the composition it will measure. It
-establishes nothing whatsoever about latency, throughput, resource use, or the
-behaviour of the selected runtime. No performance claim may cite it.
+Claim boundary: this record establishes what was registered before any result was
+seen, and — since 2026-09-03 — that executing it failed. It establishes nothing
+whatsoever about latency, throughput, resource use, or the behaviour of the
+selected runtime. **No performance claim may cite it.** The results and the
+evidence behind them are in
+[the raw result record](v1-s2-005-baseline-raw-results.md).
+
+> [!IMPORTANT]
+> **The registered method is not merely unproven; it is wrong.** The fixture
+> below carries two messages, and the InferOps API accepts exactly one `user`
+> message. Correcting it is a change to a pre-registered experiment and belongs
+> in its own reviewed change, not in the record that reports the failure. The
+> fixture is therefore left exactly as it was registered.
 
 ## Provenance
 
@@ -40,22 +45,26 @@ with any of them.
 
 ## Environment
 
-**Not filled in, deliberately.** The experiment has not been executed, so there is
-no host to record. `tools.serving_baseline environment` captures this table's
-contents at run time and writes them into the raw result set's header, so the
-environment travels with the results rather than being transcribed alongside them.
+Captured by `tools.serving_baseline environment` on the executing host on
+2026-09-03. The same capture is reproduced in full, as JSON, in
+[the raw result record](v1-s2-005-baseline-raw-results.md).
 
 | Property | Value |
 |---|---|
-| Host | To be captured at execution: architecture, logical CPUs |
-| Memory and disk | To be captured at execution: total physical memory, free disk at start |
-| Operating system | To be captured at execution: system and release |
-| Container engine | To be captured at execution: engine server version |
+| Host | `AMD64`, 20 logical CPUs |
+| Memory and disk | 16,836,890,624 bytes physical memory; 85,907,136,512 bytes free disk after the model was cached |
+| Operating system | Windows 11 |
+| Container engine | 29.7.2 |
 | Cluster | none |
 | Accelerator | none; CPU only — the profile pins `accelerator.kind` to `none` |
+| Model storage path | Windows filesystem, reached by the container through Docker Desktop's virtual-machine bind mount |
 
-Number of hosts this was executed on: **zero**. When it is executed it will be
-one, and every claim drawn from it will inherit that.
+The last row is not part of the captured record and is added here because it is
+the property that decides `T4`. The model's bytes cross a virtualized mount, and
+that crossing — not the model's size — is what puts a cold load over budget.
+
+Number of hosts this was executed on: **one**. Every finding drawn from it
+inherits that, and nothing here describes a second host.
 
 ## Method
 
@@ -107,38 +116,74 @@ identity, which aborts immediately rather than being recorded.
 
 ## Results
 
-**Not executed.** No command in the procedure above that touches a real runtime
-has been run.
+**Executed on 2026-09-03, and the hypothesis is refuted.** The full evidence,
+including the verbatim refusal records and the offline reproduction, is in
+[the raw result record](v1-s2-005-baseline-raw-results.md).
 
 | Threshold | Verdict | Measured or observed | Note |
 |---|---|---|---|
-| `T1` | not executed | — | Requires an authorized run on a capable host |
-| `T2` | not executed | — | Requires an authorized run on a capable host |
-| `T3` | not executed | — | Requires an authorized run on a capable host |
-| `T4` | not executed | — | Requires an authorized run on a capable host |
-| `T5` | not executed | — | Requires an authorized run on a capable host |
+| `T1` | **Failed** | 0 of 30 measured requests succeeded; all returned HTTP 400 | Blocking |
+| `T2` | **Not evaluable** | No answer was produced to carry an identity | The refusals do carry `adapter.kind: real`, so nothing mock was involved |
+| `T3` | **Failed** | 30 of 30 measured requests failed | Blocking; the descriptor allows 0 failures |
+| `T4` | **Failed cold, met warm** | Cold 358,735 ms; warm 284,406 ms | Blocking. Budget is 300,000 ms |
+| `T5` | **Not evaluable** | No latency distribution exists | Informational threshold |
+
+The hypothesis was that thirty sequential requests would complete without error.
+Thirty completed with error, every one of them refused by the InferOps API before
+it reached the runtime, with `contract-invalid` naming `messages`.
+
+**The cause is this record's own fixture.** The API accepts exactly one message,
+whose role must be `user`; the fixture registered above carries a `system`
+message and a `user` message. The experiment could not have succeeded on any
+host. A second defect would have prevented a result file even had the fixture
+been accepted: the `run` command blocks after its final request and never writes
+one. Both are characterized in the raw result record as `B1` and `B2`.
 
 Commands that failed, and their output:
 
 ```text
-None. The two commands that were run — `check` and `environment` — both
-succeeded, and neither executes the experiment. No command requiring
---confirm-real-runtime was invoked.
+$ uv run --locked python -m tools.serving_baseline run --confirm-real-runtime
+REFUSED serving baseline: the runtime did not become ready within the startup budget
+exit 3
+    (attempt 1, cold page cache; ownership-scoped cleanup ran and removed the
+     container)
+
+$ uv run --locked python -m tools.serving_baseline run --confirm-real-runtime
+    (attempt 2, warm page cache; runtime ready in 284,406 ms, API ready in
+     297 ms, 33 requests sent and all 33 refused with HTTP 400, then the process
+     hung indefinitely without writing raw.jsonl or summary.json and was
+     terminated. No exit code was produced, because the command cannot produce
+     one.)
 ```
 
-Unexpected observations: none; nothing was observed, because nothing was run.
+Unexpected observations, all three of them:
+
+1. **The warm-up phase failed silently as far as the operator could see.** The
+   command emits nothing until it finishes, and it never finishes, so 33 refusals
+   were only visible in the composition log. An operator watching the terminal
+   sees an indefinite hang and no indication that every request was rejected.
+2. **`tools.serving_baseline check` exits `0` on this fixture.** Offline
+   validation cross-checks the fixture against the composition, the profile, and
+   the model record, but never against the API surface that has to accept it.
+3. **The runtime was never asked to do any work.** `docker stats` sampled the
+   container at 0.00–0.17% CPU throughout the request phase, and the runtime's
+   log records no inference. The experiment measured the API's refusal path.
 
 ## Limitations
 
 - This record establishes no latency, throughput, resource, or capacity figure,
-  and no claim of any kind about the selected runtime's performance.
-- Nothing varied between runs, because there were no runs.
-- The measured phase, the resource sampling, and the model-load timing were not
-  executed; a real run requires the pinned image and the verified model artifact
-  on a capable host, and explicit authorization.
-- When executed, the result will describe one host, one model, one runtime, one
-  quantization, one parallel slot, and one request shape. It will not describe
-  concurrent serving, sustained load, GPU execution, or Kubernetes.
+  and no claim of any kind about the selected runtime's performance. It was
+  executed, and it still establishes none, because nothing was answered.
+- Nothing varied deliberately between the two attempts. The difference in
+  model-load time is page-cache state, which was observed rather than controlled.
+- The resource sampling and the measured latency distribution do not exist. The
+  only real timings produced are the two model-load figures.
+- The result describes one host, one model, one runtime, one quantization, one
+  parallel slot, and one request shape. It does not describe concurrent serving,
+  sustained load, GPU execution, or Kubernetes.
+- `T4`'s warm verdict rests on 15.6 s of margin against a 300 s budget on one
+  host on one day. It should not be read as a statement that this configuration
+  starts within budget in general; the cold measurement says the opposite.
 - **No claim may cite this record for a performance figure**, and no figure the
   registered experiment eventually produces may be published as a benchmark. See
   [the project boundaries](../../architecture/project-boundaries.md).
@@ -149,11 +194,22 @@ Required: **yes**, because execution operates a container, reads the selected
 model's bytes from the verified cache, and occupies the host's CPU for the
 duration of the measured phase.
 
-Granted by: **not obtained**. The following stages were therefore not run: the
-authorized composition start, the model load, the warm-up phase, the measured
-phase, container resource sampling, raw result production, and summary generation
-from real records.
+Granted by: the host owner, on 2026-09-03, in the session that ran it, after
+being told the model download size (1.71 GiB), its source, and the expected CPU
+cost. The grant covered acquiring the model and executing the baseline.
 
-Cleanup verified: not applicable; nothing was started, so nothing was left behind.
-No container was created, no image was pulled, no model byte was read, and no
-result file was written outside the ignored workspace cache.
+Stages that ran: model acquisition and hash verification, the authorized
+composition start, the model load, the warm-up phase, and the measured phase.
+
+Stages that did not run: container resource sampling beyond the first interval,
+raw result production, and summary generation — none of them reachable, because
+the requests were refused and the command never returned. See `B1` and `B2` in
+[the raw result record](v1-s2-005-baseline-raw-results.md).
+
+Cleanup verified: yes. `docker ps -a` reports no `inferops-` container. Attempt
+one's ownership-scoped cleanup ran on its own; attempt two was force-terminated
+past its `finally` block, so its container was removed afterwards by an explicit
+`tools.runtime_packaging stop --confirm-real-runtime`, and that removal was
+confirmed rather than assumed. No image was pulled — the pinned digest was
+already local. The model artifact was downloaded into the ignored workspace cache
+and was not committed. No result file was written anywhere.

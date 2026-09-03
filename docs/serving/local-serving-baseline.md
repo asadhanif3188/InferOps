@@ -1,7 +1,8 @@
 # Local serving baseline
 
-Status: **registered and validated offline; the experiment has not been executed
-and this repository holds no measured baseline yet**.
+Status: **executed on 2026-09-03 and failed; this repository holds no measured
+baseline, and the registered experiment cannot produce one until two defects are
+fixed**.
 
 The versioned
 [`local-baseline.v1.json`](../../deploy/serving/baseline/local-baseline.v1.json)
@@ -15,6 +16,28 @@ the warm-up, the duration bound, and the success criteria in advance is what
 separates a measurement from a search for a number that supports what was already
 believed. The pre-registered record is
 [`v1-s2-005-local-baseline-experiment.md`](../proof/serving/v1-s2-005-local-baseline-experiment.md).
+
+> [!CAUTION]
+> **The registered experiment was executed and it failed. Do not run it expecting
+> a result.** All 33 requests were refused by the InferOps API with HTTP 400
+> `contract-invalid`, no inference ran, and no result file was produced. Two
+> defects cause this, both in the `V1-S2-005-PR1` tooling and both open:
+>
+> - **`B1` — the fixture is outside the API's accepted surface.** The descriptor
+>   sends a `system` message and a `user` message. The API accepts exactly one
+>   message, whose role must be `user`, and refuses anything else with
+>   `contract-invalid` naming `messages`. `tools.serving_baseline check` does not
+>   catch this, because it never validates the fixture against
+>   [`inferops.api.validation`](../../src/inferops/api/validation.py).
+> - **`B2` — `run` cannot terminate.** After the measured phase, execution
+>   returns into `run_foreground`, which calls `server.join()` and blocks until
+>   the server is stopped externally. `write_raw` and `write_summary` are
+>   downstream of that call and are never reached.
+>
+> The evidence is in
+> [the raw result record](../proof/serving/v1-s2-005-baseline-raw-results.md).
+> Fixing either defect changes a pre-registered experiment or product behaviour,
+> so both are left for a reviewed change of their own.
 
 > [!WARNING]
 > **This baseline is not a benchmark and can never become one.** It is a
@@ -124,6 +147,26 @@ Any answer carrying mock identity aborts the run rather than being recorded.
 Exit codes: `0` the criteria were met, `3` refused before or during a bounded
 step, `4` an unexpected local failure, `6` the run completed and its success
 criteria were not met, `130` interrupted.
+
+**In practice the command currently produces none of them except `3`.** Because
+of `B2` it does not return after the measured phase, so `0`, `4`, and `6` are
+unreachable; the only exit observed on a real host is `3`, from the startup
+budget. That is a defect in the command, not a property of the experiment.
+
+### What a real run produced on 2026-09-03
+
+| Observation | Value |
+|---|---|
+| Cold model load | 358,735 ms, against a 300,000 ms `startupBudgetMs` — refused, exit `3` |
+| Warm model load | 284,406 ms across 243 readiness observations — inside budget by 15.6 s |
+| API readiness | 297 ms |
+| Requests attempted | 33 of 33 — three warm-up and thirty measured |
+| Requests answered | **0**. All 33 refused, HTTP 400, `contract-invalid`, in under 16 ms each |
+| Result files written | **None.** `raw.jsonl` and `summary.json` were never created |
+
+A cold load on this host exceeds the startup budget, so the first run on a cold
+page cache fails before any request is sent. The model's bytes cross Docker
+Desktop's virtual-machine bind mount, and that crossing dominates the load.
 
 ## Regenerate the summary from the records
 
