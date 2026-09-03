@@ -21,7 +21,7 @@ from typing import Any
 import pytest
 
 from inferops.api import InferOpsApi
-from tools.local_composition import RunResult, load_composition
+from tools.local_composition import CompositionError, RunResult, load_composition
 from tools.model_acquisition import load_manifest
 from tools.runtime_certification import core
 from tools.runtime_certification.__main__ import main
@@ -437,8 +437,17 @@ class FakeServer:
 
 
 def _fake_run_foreground(
-    *, drained: bool = True, removed: bool = True
+    *,
+    drained: bool = True,
+    removed: bool = True,
+    teardown_error: str | None = None,
+    ready: bool = True,
 ) -> tuple[Any, list[FakeServer]]:
+    """The composition's ordered start, ready, observe, and tear down, faked.
+
+    ``teardown_error`` reproduces the composition raising out of its own
+    ``finally``, which is how a cleanup that also failed reaches the caller.
+    """
     servers: list[FakeServer] = []
 
     def run_foreground(
@@ -462,7 +471,11 @@ def _fake_run_foreground(
                 shutdown_timeout_seconds=1.0,
             )
         )
+        if not ready:
+            raise CompositionError("the runtime did not become ready in its budget")
         on_ready(4_211, 37)
+        if teardown_error is not None:
+            raise CompositionError(teardown_error)
         return RunResult(
             runtime_readiness_ms=4_211,
             api_readiness_ms=37,
@@ -576,6 +589,74 @@ def test_a_failed_assertion_still_stops_the_attached_server(
         )
 
     assert servers[0].stopped is True
+
+
+def test_a_cleanup_failure_does_not_overwrite_the_reason_a_run_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The compound failure, which is the one that loses information quietly.
+
+    The composition raises out of its own `finally`, so a refused assertion
+    followed by an imperfect teardown arrives as a composition error carrying
+    none of what was observed. The refusal is what a reader needs; the teardown
+    failure is the cause chained behind it.
+    """
+    run_foreground, servers = _fake_run_foreground(
+        teardown_error="local composition cleanup was incomplete"
+    )
+    monkeypatch.setattr(core, "run_foreground", run_foreground)
+    monkeypatch.setattr(core, "preflight", lambda *_a, **_k: Path("/models/pinned"))
+
+    with pytest.raises(core.CertificationFailed, match="mock capability") as failure:
+        core.certify(
+            core.load_certification(),
+            confirmed=True,
+            runner=CapacityRunner(),
+            server_factory=lambda *_a, **_k: FakeServer(),
+            get=_get(_models_body(token_usage=False)),
+            post=_post(_completion_body()),
+            free_bytes=lambda _path: 1024**4,
+        )
+
+    assert failure.value.stage == core.STAGE_IDENTITY
+    assert isinstance(failure.value.__cause__, CompositionError)
+    assert servers[0].stopped is True
+
+
+@pytest.mark.parametrize(
+    ("ready", "expected_stage", "expected_reason"),
+    [
+        (True, core.STAGE_CLEANUP, "ordered cleanup"),
+        (False, core.STAGE_COMPOSE, "did not start or become ready"),
+    ],
+    ids=("cleanup-after-observations", "never-reached-readiness"),
+)
+def test_a_composition_failure_names_the_stage_it_actually_reached(
+    monkeypatch: pytest.MonkeyPatch,
+    ready: bool,
+    expected_stage: str,
+    expected_reason: str,
+) -> None:
+    """How far the ordered startup got decides the stage, not the error's wording."""
+    run_foreground, _servers = _fake_run_foreground(
+        ready=ready,
+        teardown_error=("local composition cleanup was incomplete" if ready else None),
+    )
+    monkeypatch.setattr(core, "run_foreground", run_foreground)
+    monkeypatch.setattr(core, "preflight", lambda *_a, **_k: Path("/models/pinned"))
+
+    with pytest.raises(core.CertificationFailed, match=expected_reason) as failure:
+        core.certify(
+            core.load_certification(),
+            confirmed=True,
+            runner=CapacityRunner(),
+            server_factory=lambda *_a, **_k: FakeServer(),
+            get=_get(_models_body()),
+            post=_post(_completion_body()),
+            free_bytes=lambda _path: 1024**4,
+        )
+
+    assert failure.value.stage == expected_stage
 
 
 def test_real_certification_requires_explicit_confirmation() -> None:

@@ -44,8 +44,8 @@ ignored `.cache/inferops/certification/` path.
 | `uv run --locked ruff check .` | Passed; all checks passed | Repository-static |
 | `uv run --locked ruff format --check .` | Passed; 243 files already formatted | Repository-static |
 | `uv run --locked python -m mypy` | Passed; 138 source files checked | Repository-static |
-| `uv run --locked python -m pytest tests/serving/test_runtime_certification.py -q` | Passed; 50 tests | Controlled synthetic certification path |
-| `uv run --locked python -m pytest -q` | Passed; 5,305 passed, 25 skipped, 14 deselected | Default lane; real-runtime tests remained deselected |
+| `uv run --locked python -m pytest tests/serving/test_runtime_certification.py -q` | Passed; 53 tests | Controlled synthetic certification path |
+| `uv run --locked python -m pytest -q` | Passed; 5,308 passed, 25 skipped, 14 deselected | Default lane; real-runtime tests remained deselected |
 | `git diff --check main...HEAD` | No trailing-whitespace or hard-tab match | Repository-static |
 | Markdown trailing-whitespace and hard-tab sweep | No match | Repository-static |
 | Relative Markdown link sweep | No broken target | Repository-static |
@@ -62,7 +62,8 @@ waived assertion, a reduced prerequisite, and an evidence path outside the ignor
 directory; proves that the hardware refusal names every unmet check and runs
 before the artifact hash; proves the mock-identity and mock-capability
 prohibitions at both the identity and the completion boundary; proves that a
-mid-run refusal still stops the attached server; and proves that the record it
+mid-run refusal still stops the attached server; proves that a cleanup that also
+failed does not overwrite the reason a run refused; and proves that the record it
 writes contains neither the prompt nor the completion.
 
 ## Real execution deliberately absent
@@ -90,9 +91,30 @@ ignored, workspace-scoped path.
 
 ## Independent second-eye review
 
-An independent reviewer examined the first commit against the complete PR brief
-before push. The findings and their disposition are recorded in the pull request
-and in the follow-up commit on this branch.
+An independent reviewer examined first commit `055212c` against the complete PR
+brief before push. The reviewer found no critical and no high-severity defect, and
+reported no private-information leakage, no overclaimed evidence label, no scope
+beyond this PR boundary, and no change to an accepted ADR, contract, or API
+surface. It confirmed that the injected `server_factory` and `on_ready` preserve
+the composition's runtime-before-API startup and API-before-runtime teardown, that
+`LocalApiServer` teardown is idempotent under the resulting double stop, and that a
+refused assertion can never reach a `certified` record.
+
+One medium finding was accepted and fixed before push: when a refused assertion was
+followed by an imperfect teardown, the composition raised out of its own `finally`
+and the generic composition message replaced the specific reason the run did not
+certify — precisely the diagnostics the acceptance criterion asks for. The fix
+re-raises the observed refusal with the teardown failure chained behind it, and
+decides the stage from how far the ordered startup actually reached rather than from
+the wording of the composition's error. Two regressions cover the compound failure
+and both single-cause composition failures.
+
+One low finding was also accepted: the token-usage refusal was worded as though
+something had been declared mock when the condition is an absent or false support
+declaration. The message now states the observed condition and why it is mock
+capability metadata. The reviewer's remaining low note — the narrow window between
+the evidence path safety check and the write — is deliberate parity with the
+accepted `CompositionLog` pattern and was not changed here.
 
 ## Limitations
 

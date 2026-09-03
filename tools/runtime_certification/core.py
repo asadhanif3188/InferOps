@@ -783,8 +783,12 @@ def observe_identity(
             "the model list did not name the pinned model revision", stage
         )
     if not identity.token_usage_declared:
+        # The selected real adapter declares token counting supported and the
+        # committed mock declares it unsupported, so an absent or false
+        # declaration here is mock capability metadata whatever else agreed.
         raise CertificationFailed(
-            "the certified path declared mock capability metadata for token usage",
+            "the certified path declares token usage unsupported, which is mock "
+            "capability metadata",
             stage,
         )
     _refuse_mock_identity(
@@ -1102,9 +1106,20 @@ def certify(
             on_ready=on_ready,
         )
     except CompositionError as error:
+        # A cleanup that also failed must not overwrite the reason the run did
+        # not certify. `run_foreground` raises out of its own `finally`, so a
+        # refused assertion followed by an imperfect teardown arrives here as a
+        # composition error carrying none of what was actually observed.
+        if failures:
+            raise failures[0] from error
+        # Nothing was observed, so the stage is decided by how far the ordered
+        # startup reached rather than by the wording of the composition's error.
+        reached_readiness = bool(identities and inferences)
         raise CertificationFailed(
-            "the certified composition did not start, ready, or clean up",
-            STAGE_CLEANUP if failures else STAGE_COMPOSE,
+            "the certified composition could not complete its ordered cleanup"
+            if reached_readiness
+            else "the certified composition did not start or become ready",
+            STAGE_CLEANUP if reached_readiness else STAGE_COMPOSE,
         ) from error
     if failures:
         raise failures[0]
