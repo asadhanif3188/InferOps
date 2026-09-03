@@ -33,7 +33,8 @@ evidence behind them are in
 
 | Input | Immutable identifier |
 |---|---|
-| Repository revision | `965f66971a3a46182c8216bc3de9b0bd8b2a6572` (the base this change branches from) |
+| Repository revision at registration | `965f66971a3a46182c8216bc3de9b0bd8b2a6572` (the base the registering change branched from) |
+| Repository revision at execution | `fbf34f1328760e2c4ad1f026fa96beb13575b624` (a descendant of the row above; the tree the run was performed on) |
 | Container image | `ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384` |
 | Model artifact | `Qwen/Qwen3-1.7B-GGUF`, revision `90862c4b9d2787eaed51d12237eafdfe7c5f6077`, `Qwen3-1.7B-Q8_0.gguf`, `sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a` |
 | Runtime source revision | `70adb1b4cea5ee39f867792c78dc59320921eda7` |

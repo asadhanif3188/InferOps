@@ -210,6 +210,35 @@ None of the following is in this PR's boundary, and none of it is started here.
 5. **Re-run the experiment** once `B1` and `B2` are fixed, and publish the
    baseline this PR could not.
 
+## Independent second-eye review
+
+An independent review of the first commit on this branch verified the change
+against the repository rather than against the records' own prose. It
+re-derived `B1` by calling `parse_chat_completion` on the committed fixture and
+confirmed the quoted refusal reason is byte-for-byte identical to
+`SINGLE_MESSAGE_REASON`; confirmed `B2` by reading `run_foreground`,
+`LocalApiServer.join`, and `execute`, checking both cited line numbers, and
+establishing that no success path calls `request_stop`; and reproduced `B3` live.
+It cross-checked every numeric figure against the profile, the descriptor, and
+the model source record, confirmed the diff touches only Markdown and leaves the
+fixture byte-identical, found no personal path or planning reference, confirmed
+all relative links resolve including the two line-anchored source links, and
+confirmed the seven required section headings are present, in order, without
+duplication.
+
+It raised no critical, high, or medium finding, and one low one.
+
+| Finding | Resolution |
+|---|---|
+| The experiment record's provenance table gave `965f669` as "the base this change branches from" while the raw result record gave `fbf34f1`. Both are correct and the second is a descendant of the first, but a reader comparing the two tables could read them as contradicting each other | Split into two rows — revision **at registration** and revision **at execution** — so the two records state the same fact in the same words. The ancestry was verified with `git merge-base --is-ancestor` rather than assumed |
+
+The reviewer also independently confirmed the coherence this record's
+classification depends on: `local-real-cpu` carries `C2` per
+[the certification document](../../testing/certification.md), a `C2` record must
+name the image digest and the model revision and hash, and this one does — while
+still supporting no performance claim, because the run answered nothing. No
+sentence in the change reads as a performance or benchmark claim.
+
 ## Risks, assumptions, and limitations
 
 - The warm model load fits the 300,000 ms budget by 15.6 s, and only after a
