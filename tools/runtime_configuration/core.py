@@ -32,6 +32,7 @@ from inferops.adapters.llama_cpp import (
     PINNED_MODEL_FILE,
     PINNED_RUNTIME_SOURCE_REVISION,
     LlamaServerSettings,
+    translate,
 )
 from inferops.api.lifecycle import DEFAULT_DRAIN_TIMEOUT_MS
 from inferops.api.selection import (
@@ -557,11 +558,12 @@ def _validate_profile(profile: RuntimeProfile) -> None:
     environment: Mapping[str, str] = profile.adapter_environment()
     try:
         settings = LlamaServerSettings.from_environment(environment)
-        AdapterConfiguration(
+        adapter_configuration = AdapterConfiguration(
             model_identifier=profile.platform_identifier,
             timeout_ms=profile.request_budget_ms,
             max_tokens=profile.default_max_output_tokens,
         )
+        translate(adapter_configuration, settings)
     except (InvalidAdapterConfigError, ValueError) as error:
         raise RuntimeConfigurationError(
             "the runtime profile is incompatible with the real adapter"
