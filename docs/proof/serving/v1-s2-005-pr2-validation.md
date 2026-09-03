@@ -42,7 +42,12 @@ being told the download size, its source, and the expected CPU cost.
 | `python -m tools.runtime_packaging stop --confirm-real-runtime` | `runtime stopped and removed`; cleanup confirmed after the hung run was terminated |
 
 The full evidence is in
-[the raw result record](v1-s2-005-baseline-raw-results.md).
+[the raw result record](v1-s2-005-baseline-raw-results-first-attempt.md).
+> [!NOTE]
+> This file was renamed from `v1-s2-005-baseline-raw-results.md` when the
+> corrected experiment (`fix/v1-s2-005-baseline-tooling-defects`) merged and
+> claimed that name for its successful measurement. Its content is otherwise
+> unchanged from what this validation record describes.
 
 ## Findings
 

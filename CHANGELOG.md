@@ -8,6 +8,39 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The registered local serving baseline is unblocked and has produced its
+  first measured result.** An authorized execution found the experiment
+  `V1-S2-005-PR1` registered could not succeed: the fixture sent a `system`
+  message and a `user` message while the InferOps API accepts exactly one
+  `user` message, and even a successful run would never have returned, because
+  `run` blocked on `server.join()` after the measured phase instead of
+  requesting its own server's stop. Both are fixed. The fixture now sends one
+  message with the system instruction folded in — disclosed and defended in
+  [the experiment record](docs/proof/serving/v1-s2-005-local-baseline-experiment.md#correction-to-the-registered-fixture)
+  as a binary-acceptance correction rather than a measured-value change — and
+  `tools.serving_baseline.core.load_experiment` now validates the committed
+  fixture against `inferops.api.validation.parse_chat_completion` offline, so a
+  fixture the API would refuse fails `check` rather than reaching an authorized
+  run again. `execute` now requests its own server's stop from within
+  `on_ready`, the pattern `tools.runtime_certification.certify` already used
+  for the same reason, rather than changing the shared
+  `tools.local_composition.run_foreground`. A third, pre-existing defect
+  surfaced by the same run is also fixed: a security test's filesystem walk did
+  not know `.cache/` was ignored, so it flagged the acquired model artifact as
+  a candidate for publication; its ignore list and `.gitignore`'s own
+  convention are now aligned.
+
+  **The corrected experiment was executed on an authorized host, and all five
+  pre-registered thresholds are met:** 33 of 33 requests succeeded (3 warm-up,
+  30 measured), model load 269,079 ms against a 300,000 ms budget, P50
+  6,422 ms / P95 17,718 ms / P99 23,516 ms, 0.121 requests/s, 2.067 output
+  tokens/s. Full evidence, including an independently recomputed percentile
+  check and a named limitation in the periodic CPU sampling, is in
+  [the raw result record](docs/proof/serving/v1-s2-005-baseline-raw-results.md).
+  As before, none of this is a benchmark and none may be published as one.
+
 ### Added
 
 - **The registered local serving baseline was executed on an authorized CPU
@@ -25,8 +58,10 @@ once versioned releases begin.
   actually acquired the model into the ignored cache. The evidence, including
   the verbatim refusal records and an offline reproduction that needs no
   container, is in
-  [the raw result record](docs/proof/serving/v1-s2-005-baseline-raw-results.md);
-  the analysis and the follow-up work are in
+  [the raw result record](docs/proof/serving/v1-s2-005-baseline-raw-results-first-attempt.md)
+  (the file this entry originally cited was superseded by the successful
+  re-execution below and renamed to keep both records); the analysis and the
+  follow-up work are in
   [the change-validation record](docs/proof/serving/v1-s2-005-pr2-validation.md).
   The only real timings the run produced are model-load times — 358,735 ms cold,
   which exceeds the 300,000 ms startup budget and fails the run outright, and

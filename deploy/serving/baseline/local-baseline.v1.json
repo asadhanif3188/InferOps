@@ -14,12 +14,8 @@
     "stream": false,
     "messages": [
       {
-        "role": "system",
-        "content": "You are a terse assistant. Answer in at most two sentences."
-      },
-      {
         "role": "user",
-        "content": "Name three things a Kubernetes readiness probe is for."
+        "content": "You are a terse assistant. Answer in at most two sentences. Name three things a Kubernetes readiness probe is for."
       }
     ]
   },

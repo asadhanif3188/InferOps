@@ -249,6 +249,13 @@ IGNORED_PREFIXES = (
     ".venv/",
     "build/",
     "dist/",
+    # `V1-S2-005-PR2` found this list stops one directory short: `.cache/`
+    # holds the workspace-scoped model cache and the baseline's own raw and
+    # summary output, and this walk reported a hash-verified model artifact
+    # under it as a candidate for publication on the first host that had
+    # actually acquired one. `.gitignore` already ignores it; this list
+    # only did not know.
+    ".cache/",
 )
 
 # Extensions a model artifact arrives in. None belongs in public history.
