@@ -419,6 +419,18 @@ generation settings in agreement with the runtime profile, keep concurrency equa
 to the runtime's parallel slots, keep warm-up out of every distribution, and never
 publish a figure it produces as a benchmark.
 
+The [model lifecycle](docs/serving/model-lifecycle.md) is the ordered state model
+spanning the cache and the runtime, and the one place the answer each probe gives
+in each state is written down. Read the record without touching anything with
+`uv run --locked python -m tools.model_lifecycle check`; `states` prints the table
+and `cache` classifies the workspace cache offline, exiting non-zero on anything
+but a hit. `measure` requires `--confirm-real-runtime`, refuses a cache that is not
+already a hit rather than downloading, and removes its container in a `finally`.
+Keep liveness passing while readiness is false during the load and the drain — a
+lifecycle record that lets them agree there describes a deployment a liveness probe
+restarts mid-load — keep the readiness-false-before-drain ordering, and keep
+`clean` unable to reach the model cache.
+
 Five rules apply to a change here beyond the usual ones.
 
 **A pin is compared to its source, never restated.** The runtime image digest and

@@ -120,6 +120,34 @@ async def test_a_drain_that_runs_out_of_budget_reports_that_it_did_not_finish() 
     await task
 
 
+async def test_a_stopped_lifecycle_refuses_to_begin_serving_again() -> None:
+    """A restart is a fresh object, and the state machine is what makes it one.
+
+    Reusing a drained lifecycle would carry the previous process's state into a
+    new one, which is the mechanism behind a restarted deployment reporting
+    itself ready on behalf of something that has not started yet.
+    """
+    lifecycle = ApplicationLifecycle()
+    lifecycle.begin_serving()
+    assert await lifecycle.drain() is True
+
+    with pytest.raises(RuntimeError, match="cannot begin serving"):
+        lifecycle.begin_serving()
+
+
+def test_a_restart_begins_unready_rather_than_inheriting_the_last_answer() -> None:
+    """Readiness resets across a restart; nothing is carried over from the old one."""
+    stopped = ApplicationLifecycle()
+    stopped.begin_serving()
+    stopped.begin_shutdown()
+
+    restarted = ApplicationLifecycle()
+
+    assert restarted.state is LifecycleState.STARTING
+    assert restarted.is_accepting_work is False
+    assert restarted.in_flight == 0
+
+
 async def test_a_termination_handler_reports_which_signals_it_installed() -> None:
     """What is installed is reported, so a platform that supports none is visible.
 
@@ -215,6 +243,27 @@ async def test_the_lifespan_protocol_starts_and_stops_the_application() -> None:
     assert "lifespan.shutdown.complete" in session.result.types
     assert adapter.shutdown_calls == 1
     assert api.lifecycle.state is LifecycleState.STOPPED
+
+
+async def test_a_restarted_api_is_not_ready_until_its_own_startup_has_run() -> None:
+    """The same deployment, composed again after a full lifespan, starts over.
+
+    The adapter is initialized a second time and readiness is false until it has
+    been, which is the API half of "a restart reacquires rather than inherits".
+    """
+    adapter = RecordingAdapter()
+    first = build(adapter)
+    async with asgi_client.LifespanSession(first):
+        assert (await asgi_client.request(first, "GET", READY_PATH)).status == 200
+    assert first.lifecycle.state is LifecycleState.STOPPED
+
+    second = build(adapter)
+    assert (await asgi_client.request(second, "GET", READY_PATH)).status == 503
+    await second.startup()
+
+    assert adapter.initialized is True
+    assert (await asgi_client.request(second, "GET", READY_PATH)).status == 200
+    assert (await asgi_client.request(first, "GET", READY_PATH)).status == 503
 
 
 async def test_a_startup_failure_is_reported_without_the_adapter_message() -> None:

@@ -84,6 +84,11 @@ is not treated as absence: absence is reported only after a successful filtered
 container inventory finds no matching name. No command deletes the model cache
 or pinned image.
 
+The state these commands move a deployment through — and the answer each probe
+gives while it is in each one — is published as
+[the model lifecycle](model-lifecycle.md), whose record is checked against the
+values this package pins.
+
 ## Bounded direct-runtime smoke
 
 On a capable and explicitly authorized host, the complete standalone lifecycle

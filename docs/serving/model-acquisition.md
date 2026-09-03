@@ -70,7 +70,9 @@ uv run --locked python -m tools.model_acquisition verify
 ```
 
 A subsequent `acquire` also verifies the existing bytes and reports `cache hit`
-without opening a network connection.
+without opening a network connection. What a hit, a miss, and a partial each mean
+for a runtime start — and how each is classified without a network connection — is
+in [the model lifecycle](model-lifecycle.md#cache-hit-miss-and-partial).
 
 ## Workspace-scoped cleanup
 
