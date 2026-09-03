@@ -51,10 +51,13 @@ enough to be worth stating here rather than left for a reader to infer:
 **None of it defends a running system.** Nothing in this repository authenticates a
 caller, authorises a request, enforces a network policy, or applies a security
 context to a pod it deployed, because nothing here deploys a pod or serves a request.
-No secret scanner, image scanner, or dependency auditor has been run and recorded,
-and no assessment by an outside party has ever been performed.
+No secret scanner has been run and recorded. An image scanner and a dependency
+auditor have each been run once, by hand, against the pinned runtime image and the
+committed dependency lockfile; neither runs continuously, because no continuous-
+integration service is selected, and no assessment by an outside party has ever been
+performed.
 
 What is enforced is enforced over committed files, over five YAML manifests that are
-smoke and trial apparatus, and by two shell functions on a contributor's own machine.
+smoke and trial apparatus, and by four shell functions on a contributor's own machine.
 A control's status in that baseline is derived from the verification it names rather
 than asserted, which is what stops the list above being read as more than it is.

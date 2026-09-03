@@ -14,7 +14,10 @@
 > controls this repository really enforces. It does **not** make anything safe. No
 > component here authenticates a caller, authorises a request, enforces a network
 > policy, or applies a security context to a pod it deployed, because none of them
-> deploys a pod or serves a request. No scanner has been run and recorded, and no
+> deploys a pod or serves a request. No secret scanner has been run and recorded.
+> An image scanner and a dependency auditor have each been run once, by hand,
+> against the pinned runtime image and the committed dependency lockfile; neither
+> runs continuously, because no continuous-integration service is selected. No
 > assessment by an outside party has ever been performed. A document review is not
 > an assessment, and this record is a document review.
 >
@@ -366,10 +369,11 @@ can commit to without deciding who does it.
 - **Three trust boundaries the architecture left unowned now have an owner**, and
   `B3`, `B4`, and `B5` point at this record instead of forward at a decision that had
   not been made.
-- **Thirty-two controls exist, and twenty-two of them are enforced by something.**
-  Ten act over committed documents, ten over manifests, two on the host through the
-  environment scripts, three by review alone, three are specified for components that
-  do not exist, and four are deferred outright. The distribution is the finding.
+- **Thirty-four controls exist, and twenty-four of them are enforced by something.**
+  Ten act over committed documents, ten over manifests, four on the host — two
+  through the environment scripts and two through the security scanning scripts —
+  three by review alone, three are specified for components that do not exist, and
+  four are deferred outright. The distribution is the finding.
 - **A habit became a property.** The eight pod-security assertions and the digest pin
   held over every manifest here before this change, by convention. A convention is
   enforced by memory; this is now enforced by a suite.
@@ -430,9 +434,13 @@ to report it, which is why the missing reporting channel appears in the register
 `DR-11`'s neighbour rather than as a footnote.
 
 **What must not be inferred.** No control here has ever acted inside a serving
-system. No scanner, image scanner, or dependency auditor has been run and recorded.
-No assessment by an outside party has ever been performed. Every runtime observation
-behind `B1` and `B4` comes from one trial, on one host, on one day.
+system. No secret scanner has been run and recorded. An image scanner and a
+dependency auditor have each been run once, by hand, against the pinned runtime
+image and the committed dependency lockfile — after this record was accepted, and
+recorded separately from it — and neither runs continuously, because no
+continuous-integration service is selected. No assessment by an outside party has
+ever been performed. Every runtime observation behind `B1` and `B4` comes from one
+trial, on one host, on one day.
 
 ## Evidence
 
@@ -446,9 +454,13 @@ behind `B1` and `B4` comes from one trial, on one host, on one day.
 | The runtime pod ran non-root with a read-only root filesystem, once | [Runtime feasibility record](../../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) | `local-real-cpu` | `C2`, for one host on one day |
 | The cluster guard refuses a cluster this project did not create | [Cluster smoke record](../../proof/environment/v1-s0-002-pr2-cluster-smoke.md) | `local-real-cpu` | `C2`, for one host |
 
-**No evidence exists for anything else here.** There is no scanner output, no
-assessment report, no admission-control result, no log record, and no observation of
-any control acting inside a system serving a request.
+**No evidence exists for any other claim of this record.** There is no assessment
+report, no admission-control result, no log record, and no observation of any
+control acting inside a system serving a request. A scanner run against the pinned
+runtime image and the committed dependency lockfile now exists, recorded separately
+in [the V1-S2-006-PR1 validation record](../../proof/security/v1-s2-006-pr1-validation.md)
+rather than in this table, because it is evidence for a control this record did not
+decide.
 
 ## Related records
 

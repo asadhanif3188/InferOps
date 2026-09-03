@@ -8,6 +8,38 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Security
+
+- **Two host-run scan guards now cover the pinned runtime image and the
+  committed dependency lockfile.** `scripts/security/scan-runtime-image.sh`
+  and `scripts/security/scan-dependencies.sh` run Trivy against, respectively,
+  the runtime image `deploy/serving/runtime/container-package.v1.json` pins by
+  digest and `uv.lock` (including its test and checks groups, the only Python
+  dependencies this repository pins), and refuse to report success when a
+  `CRITICAL` or `HIGH` finding turns up with no recorded exception.
+  `scripts/security/generate-sbom.sh` produces a CycloneDX SBOM for each,
+  promoted copies of which are committed under
+  [`docs/proof/security/sbom/`](docs/proof/security/sbom/). Both guards were
+  executed for real on an authorized host: neither target carried a `CRITICAL`
+  or `HIGH` finding, so no exception was recorded, and the full result —
+  including the recorded `MEDIUM` and `LOW` findings — is in
+  [the validation record](docs/proof/security/v1-s2-006-pr1-validation.md).
+  Neither guard runs continuously: no continuous-integration service is
+  selected ([ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
+  D6 stays undecided), so a result is current only as of the day a
+  contributor produced it — the severity policy in
+  [the control matrix](docs/security/control-matrix.md#the-vulnerability-scan-severity-policy)
+  says so explicitly. `DR-07` and `DR-08` in
+  [the deferred-risk register](docs/security/deferred-risks.md) are narrowed
+  to what remains: no lane verifies that a check's own environment resolved
+  from the scanned lockfile, and no build signature or provenance attestation
+  is verified for the runtime image. No InferOps-owned container image exists
+  in V1 — no `Dockerfile` is committed anywhere in this repository — so the
+  "InferOps-owned image is non-root" acceptance criterion for this story is
+  recorded as not applicable rather than satisfied; the only image any
+  manifest references is the third-party runtime image the pre-existing
+  pod- and container-security controls already cover.
+
 ### Fixed
 
 - **The registered local serving baseline is unblocked and has produced its

@@ -80,6 +80,19 @@ is required, and none is selected either.
 `shellcheck` and `kubeconform` are still separate installs and are still not pinned
 by the lockfile, because neither is a Python distribution.
 
+## Supply-chain scanning
+
+[ADR 0008](architecture/decisions/ADR-0008-v1-security-baseline.md) and
+[the control matrix](security/control-matrix.md) name two host-run scan guards.
+Running them needs:
+
+| Tool | Version | Notes |
+|---|---|---|
+| Trivy | `0.74.0` was used | A single binary, installed by the contributor. Not pinned by anything in this repository, the way `shellcheck` and `kubeconform` are not |
+
+No continuous-integration service runs either scan; both are run by hand, the same
+way every check in this repository is.
+
 ## Serving and model prerequisites
 
 [ADR 0002](architecture/decisions/ADR-0002-model-and-serving-runtime.md) now selects

@@ -3,7 +3,7 @@
 Status: **accepted**, in
 [ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). It lists
 every V1 security control, the boundary it acts at, what verifies it, who owns that
-verification, and which record it rests on. Twenty-two of thirty-two controls are
+verification, and which record it rests on. Twenty-four of thirty-four controls are
 enforced by something. The other ten are the reason
 [the deferred-risk register](deferred-risks.md) exists.
 
@@ -118,13 +118,50 @@ access control: it identifies nobody and limits nothing once something is inside
 |---|---|---|---|---|
 | `refuse-to-act-on-a-cluster-this-project-did-not-create` | B2 | `inferops::assert_target_cluster` in [`lib.sh`](../../scripts/environment/lib.sh) | environment | [environment](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
 | `scope-every-kubectl-call-to-the-project-kubeconfig` | B2 | `inferops::kubectl` in [`lib.sh`](../../scripts/environment/lib.sh) | environment | [environment](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
+| `scan-the-pinned-runtime-image-for-known-vulnerabilities` | B1 | `inferops::security::assert_runtime_image_has_no_blocking_vulnerabilities` in [`scripts/security/lib.sh`](../../scripts/security/lib.sh) | security | [security](../proof/security/v1-s2-006-pr1-validation.md) |
+| `scan-python-dependencies-for-known-vulnerabilities` | B1 | `inferops::security::assert_dependencies_have_no_blocking_vulnerabilities` in [`scripts/security/lib.sh`](../../scripts/security/lib.sh) | security | [security](../proof/security/v1-s2-006-pr1-validation.md) |
 
-The first confirms that every node the reachable API server reports is a container
-the cluster tool labelled for this project's cluster. A context name is a label
-somebody chose; the container label is what the guard actually reads. `EX-02` records
-its bypass in the open: a second cluster deliberately given this project's name
-satisfies every check, and nothing running on a contributor's machine could defend
-against the contributor who owns it.
+The first two confirm that every node the reachable API server reports is a
+container the cluster tool labelled for this project's cluster. A context name is a
+label somebody chose; the container label is what the guard actually reads. `EX-02`
+records its bypass in the open: a second cluster deliberately given this project's
+name satisfies every check, and nothing running on a contributor's machine could
+defend against the contributor who owns it.
+
+The last two are scanners, not cluster guards, and what they establish is narrower
+than it may read. Each runs Trivy once, on the machine of whoever invokes it, and
+refuses to report success when a finding at or above the committed blocking
+severity turns up with no recorded exception. Neither runs on a schedule or in a
+continuous-integration lane — [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
+D6 leaves the question of which service would run one undecided — so a result is
+current only as of the day a contributor produced it. [The severity policy
+below](#the-vulnerability-scan-severity-policy) states the threshold and how an
+exception would be recorded against a specific finding.
+
+## The vulnerability-scan severity policy
+
+One threshold, read by both scan guards from
+[`scripts/security/lib.sh`](../../scripts/security/lib.sh) rather than typed into
+each script separately: a finding at `CRITICAL` or `HIGH` severity makes a guard
+refuse to report success. A finding at `MEDIUM` or `LOW` is recorded in the scan
+output named in [the validation record](../proof/security/v1-s2-006-pr1-validation.md)
+and does not block.
+
+An exception against a specific finding is recorded the same way every other
+exception in this baseline is: a new row in `exceptions`, naming the compensating
+control, the residual risk, and when it should be revisited — the four fields
+[`test_every_exception_names_a_compensating_control_and_a_residual_risk`](../../tests/security/test_security_baseline.py)
+already requires of every exception here. No exception exists as of this record: the
+scans in [the validation record](../proof/security/v1-s2-006-pr1-validation.md) found
+no `CRITICAL` or `HIGH` finding in either the pinned runtime image or the committed
+dependency lockfile.
+
+What this policy does not do: it does not publish a vulnerability count, a severity
+distribution, or a scan score as a durable figure — `no-vulnerability-figure-is-published`
+reserves that, because a scan result is dated to the run that produced it and V1 runs
+neither guard continuously. And it says nothing about the runtime image's own build:
+no signature or attestation is verified before the image runs, which `DR-08` still
+carries.
 
 ## What is enforced by review alone
 
