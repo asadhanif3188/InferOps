@@ -22,6 +22,7 @@ from typing import Any
 
 import pytest
 
+from inferops.api.validation import parse_chat_completion
 from tools.runtime_packaging import CommandResult, load_runtime_package
 from tools.serving_baseline import (
     EXPERIMENT_PATH,
@@ -92,6 +93,31 @@ class FakeClock:
         value = self.now
         self.now += self.step
         return value
+
+
+class _FakeServer:
+    """Records whether `execute` asked it to stop before `on_ready` returned.
+
+    A real `run_foreground` blocks on `server.join()` after `on_ready` returns,
+    so a bounded run that never requests its own stop would hang forever. This
+    double makes that requirement a test assertion rather than a fact only
+    visible by running the real composition.
+    """
+
+    def __init__(self) -> None:
+        self.stop_requested = False
+
+    def request_stop(self) -> None:
+        self.stop_requested = True
+
+
+def _recording_server_factory(servers: list[_FakeServer]) -> Any:
+    def server_factory(application: Any, **keywords: Any) -> _FakeServer:
+        server = _FakeServer()
+        servers.append(server)
+        return server
+
+    return server_factory
 
 
 def written_experiment(tmp_path: Path, document: dict[str, Any]) -> Path:
@@ -224,7 +250,23 @@ def test_the_fixture_body_is_the_frozen_request_subset(
     assert set(body) == {"model", "messages", "stream"}
     assert body["stream"] is False
     assert all(set(message) == {"role", "content"} for message in body["messages"])
-    assert [message["role"] for message in body["messages"]] == ["system", "user"]
+    assert [message["role"] for message in body["messages"]] == ["user"]
+
+
+def test_the_committed_fixture_is_accepted_by_the_real_api_validator(
+    experiment: Experiment,
+) -> None:
+    """`V1-S2-005-PR2` found a fixture that passed every offline check here and
+    was still refused by the real API on every one of thirty measured
+    requests, because nothing exercised the real validator against it. This
+    pins the fixture against `inferops.api.validation.parse_chat_completion`
+    directly, the same reader the API uses at request time, so a fixture the
+    API would refuse fails the suite rather than an authorized run.
+    """
+    parse_chat_completion(
+        json.dumps(experiment.fixture.body()).encode("utf-8"),
+        served_model=experiment.fixture.model,
+    )
 
 
 @pytest.mark.parametrize(
@@ -401,6 +443,29 @@ def test_an_assistant_message_in_the_fixture_is_refused(tmp_path: Path) -> None:
         **{"fixture.messages": [{"role": "assistant", "content": "hello"}]}
     )
     with pytest.raises(BaselineError, match="must be system or user"):
+        load_experiment(written_experiment(tmp_path, document))
+
+
+def test_a_fixture_the_real_api_would_refuse_is_refused_offline(
+    tmp_path: Path,
+) -> None:
+    """`V1-S2-005-PR2`'s failure, reproduced as a refusal at load time.
+
+    A two-message fixture is individually well-formed — each message has a
+    valid role and content — so no check above this one would have caught it.
+    Only asking the real API surface whether it would accept the body does,
+    and that is exactly what let the original fixture reach an authorized run
+    and be refused thirty times in a row.
+    """
+    document = mutated(
+        **{
+            "fixture.messages": [
+                {"role": "system", "content": "You are a terse assistant."},
+                {"role": "user", "content": "Name three things."},
+            ]
+        }
+    )
+    with pytest.raises(BaselineError, match="refused by the InferOps API"):
         load_experiment(written_experiment(tmp_path, document))
 
 
@@ -1066,13 +1131,15 @@ def test_a_confirmed_run_warms_up_then_measures(
 ) -> None:
     """The full sequence through injected seams: no container, no model, no socket."""
     sent: list[str] = []
+    servers: list[_FakeServer] = []
 
     def post(url, body, headers, timeout):
         sent.append(headers["X-InferOps-Request-ID"])
         return PostResponse(200, completion())
 
-    def compose(composition, *, confirmed, repo_root, runner, on_ready):
+    def compose(composition, *, confirmed, repo_root, runner, on_ready, server_factory):
         assert confirmed is True
+        server_factory(None)
         on_ready(42_000, 250)
 
     runner = ScriptedRunner(
@@ -1087,6 +1154,7 @@ def test_a_confirmed_run_warms_up_then_measures(
         post=post,
         clock=FakeClock(0.1),
         compose=compose,
+        server_factory=_recording_server_factory(servers),
     )
     assert len(sent) == experiment.total_requests
     assert run.model_load_ms == 42_000
@@ -1101,6 +1169,9 @@ def test_a_confirmed_run_warms_up_then_measures(
     )
     summary = summarize(experiment, run)
     assert summary["successCriteria"]["met"] is True
+    # B2: the run must request its own server's stop before returning, or a
+    # real `run_foreground` would block forever on `server.join()` afterward.
+    assert servers and all(server.stop_requested for server in servers)
 
 
 def test_the_stop_condition_bounds_the_warm_up_too(
@@ -1118,7 +1189,10 @@ def test_the_stop_condition_bounds_the_warm_up_too(
         sent.append(headers["X-InferOps-Request-ID"])
         return PostResponse(200, completion())
 
-    def compose(composition, *, confirmed, repo_root, runner, on_ready):
+    servers: list[_FakeServer] = []
+
+    def compose(composition, *, confirmed, repo_root, runner, on_ready, server_factory):
+        server_factory(None)
         on_ready(1, 1)
 
     run = execute(
@@ -1129,7 +1203,9 @@ def test_the_stop_condition_bounds_the_warm_up_too(
         post=post,
         clock=FakeClock(experiment.max_duration_seconds),
         compose=compose,
+        server_factory=_recording_server_factory(servers),
     )
+    assert servers and all(server.stop_requested for server in servers)
     warmup = [record for record in run.records if record.phase == PHASE_WARMUP]
     measured = [record for record in run.records if record.phase == PHASE_MEASURED]
     # One warm-up request, then the bound fires: without the check in that loop

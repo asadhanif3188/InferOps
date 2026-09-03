@@ -39,6 +39,7 @@ from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from inferops.api.errors import RequestRefused
 from inferops.api.surface import (
     CHAT_COMPLETIONS_PATH,
     CORRELATION_ID_HEADER,
@@ -47,11 +48,14 @@ from inferops.api.surface import (
     EXTENSION_MODEL_REF,
     REQUEST_ID_HEADER,
 )
+from inferops.api.validation import parse_chat_completion
 from tools.local_composition import (
     LocalComposition,
     load_composition,
     run_foreground,
 )
+from tools.local_composition.core import ApiServer
+from tools.local_composition.http_server import LocalApiServer
 from tools.model_acquisition import load_manifest
 from tools.runtime_configuration import load_runtime_profile
 from tools.runtime_packaging import (
@@ -549,6 +553,21 @@ def _validate(experiment: Experiment, composition: LocalComposition) -> None:
         or experiment.fixture.model != profile.platform_identifier
     ):
         raise BaselineError("the baseline fixture does not match the served model")
+    # The composition, the profile, and the model record can all agree with the
+    # descriptor while the fixture body is still a shape the API itself refuses
+    # before any of that is reached. `V1-S2-005-PR2` found this the expensive
+    # way: a fixture that passed every check above was refused by the API on
+    # every one of thirty measured requests. This is the same reader the API
+    # uses at request time, offline and on the descriptor's own body.
+    try:
+        parse_chat_completion(
+            json.dumps(experiment.fixture.body()).encode("utf-8"),
+            served_model=experiment.fixture.model,
+        )
+    except RequestRefused as error:
+        raise BaselineError(
+            f"the baseline fixture is refused by the InferOps API: {error}"
+        ) from error
     if (
         experiment.max_output_tokens != profile.default_max_output_tokens
         or experiment.temperature != profile.default_temperature
@@ -1315,6 +1334,7 @@ def execute(
     clock: Callable[[], float] = time.monotonic,
     composition: LocalComposition | None = None,
     compose: Callable[..., Any] = run_foreground,
+    server_factory: Callable[..., ApiServer] = LocalApiServer,
 ) -> BaselineRun:
     """Compose the real stack, discard the warm-up, and measure the fixed load.
 
@@ -1323,6 +1343,14 @@ def execute(
     place. This function contributes the warm-up, the measured phase, and the
     resource samples, and nothing else. Model-load time is the runtime readiness
     the composition measured; it is not measured a second time here.
+
+    `run_foreground` is written to stay attached until its server is stopped —
+    the right shape for the interactive `local_composition start` command, whose
+    caller stops it by interrupting the process. A bounded run has no interrupt
+    coming, so `on_ready` requests the server's own stop before returning, the
+    same way `tools.runtime_certification.certify` already does for the same
+    reason. Without it, `run_foreground` would block on `server.join()` forever
+    after the measured phase, and this function would never return.
     """
     _require_confirmation(confirmed)
     active = composition if composition is not None else load_composition()
@@ -1334,60 +1362,77 @@ def execute(
     records: list[RequestRecord] = []
     samples: list[ResourceSample] = []
     timings = {"modelLoadMs": 0, "apiReadyMs": 0, "windowMs": 0}
+    servers: list[ApiServer] = []
+
+    def capture(application: Any, **keywords: Any) -> ApiServer:
+        server = server_factory(application, **keywords)
+        servers.append(server)
+        return server
 
     def on_ready(runtime_ms: int, api_ms: int) -> None:
-        timings["modelLoadMs"] = runtime_ms
-        timings["apiReadyMs"] = api_ms
-        started = clock()
+        try:
+            timings["modelLoadMs"] = runtime_ms
+            timings["apiReadyMs"] = api_ms
+            started = clock()
 
-        def out_of_time() -> bool:
-            return clock() - started >= experiment.max_duration_seconds
+            def out_of_time() -> bool:
+                return clock() - started >= experiment.max_duration_seconds
 
-        # The stop condition covers the warm-up as well as the measured phase. A
-        # warm-up request costs exactly what a measured one costs, so a bound that
-        # only starts counting after it is a bound on the cheaper half of the run.
-        for index in range(experiment.warmup_requests):
-            records.append(
-                send_request(
-                    experiment,
-                    active,
-                    sequence=index,
-                    phase=PHASE_WARMUP,
-                    post=post,
-                    clock=clock,
+            # The stop condition covers the warm-up as well as the measured
+            # phase. A warm-up request costs exactly what a measured one does,
+            # so a bound that only starts counting after it is a bound on the
+            # cheaper half of the run.
+            for index in range(experiment.warmup_requests):
+                records.append(
+                    send_request(
+                        experiment,
+                        active,
+                        sequence=index,
+                        phase=PHASE_WARMUP,
+                        post=post,
+                        clock=clock,
+                    )
                 )
-            )
-            if out_of_time():
-                break
-        window_started = clock()
-        for index in range(experiment.measured_requests):
-            records.append(
-                send_request(
-                    experiment,
-                    active,
-                    sequence=experiment.warmup_requests + index,
-                    phase=PHASE_MEASURED,
-                    post=post,
-                    clock=clock,
+                if out_of_time():
+                    break
+            window_started = clock()
+            for index in range(experiment.measured_requests):
+                records.append(
+                    send_request(
+                        experiment,
+                        active,
+                        sequence=experiment.warmup_requests + index,
+                        phase=PHASE_MEASURED,
+                        post=post,
+                        clock=clock,
+                    )
                 )
-            )
-            if (index + 1) % experiment.resource_sample_every_requests == 0:
-                sample = sample_resources(
-                    package,
-                    active_runner,
-                    sequence=experiment.warmup_requests + index,
-                )
-                if sample is not None:
-                    samples.append(sample)
-            if out_of_time():
-                break
-        timings["windowMs"] = max(0, round((clock() - window_started) * 1000))
+                if (index + 1) % experiment.resource_sample_every_requests == 0:
+                    sample = sample_resources(
+                        package,
+                        active_runner,
+                        sequence=experiment.warmup_requests + index,
+                    )
+                    if sample is not None:
+                        samples.append(sample)
+                if out_of_time():
+                    break
+            timings["windowMs"] = max(0, round((clock() - window_started) * 1000))
+        finally:
+            # Requested here rather than left to `run_foreground`'s own
+            # cleanup, so that the call returns once this bounded phase ends
+            # instead of waiting for an interrupt that a scripted run never
+            # sends. `run_foreground`'s `finally` still owns join, close, and
+            # runtime teardown; this only asks the server to stop accepting.
+            for server in servers:
+                server.request_stop()
 
     compose(
         active,
         confirmed=True,
         repo_root=repo_root,
         runner=active_runner,
+        server_factory=capture,
         on_ready=on_ready,
     )
     if not records:
