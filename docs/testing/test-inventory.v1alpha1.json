@@ -440,6 +440,14 @@
       "note": "No published real-runtime claim is certified by this repository-only suite. It starts no container, reads no model byte, and uses synthetic responses; real startup, readiness, inference, resource use, and shutdown remain local-real evidence requiring an authorized run."
     },
     {
+      "module": "tests/serving/test_runtime_certification.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The C2 real-runtime smoke certification: the committed descriptor against the composition, package, profile, and model pins; refusal of a weakened level, class, prerequisite, or assertion; the hardware refusal that runs before the artifact hash; the mock-identity and mock-capability prohibitions; the bounded fixed request; and the machine-readable result and diagnostics records.",
+      "claims": [],
+      "note": "No published real-runtime claim is certified by this repository-only suite. It drives the workflow through injected command, HTTP, capacity, and server seams, starts no container, reads no model byte, and contacts no runtime; the local-real-cpu label the workflow writes is truthful only for an authorized run on a capable host."
+    },
+    {
       "module": "tests/api/test_local_real_composition.py",
       "layer": "mock-integration",
       "marker": "mockintegration",

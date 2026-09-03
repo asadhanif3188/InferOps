@@ -394,7 +394,8 @@
       ],
       "commands": [
         "the procedure in docs/serving/feasibility-workflow.md",
-        "python -m pytest tests/realruntime -m realruntime -q"
+        "python -m pytest tests/realruntime -m realruntime -q",
+        "python -m tools.runtime_certification certify --confirm-real-runtime"
       ],
       "evidenceClass": "local-real-cpu",
       "maxCertification": "C2",
@@ -403,7 +404,7 @@
       "publishable": true,
       "v1Status": "implemented",
       "evidenceRef": "docs/proof/serving/v1-s1-real-runtime-closure.md",
-      "notes": "The manual feasibility procedure ran first and remains recorded separately. On 2026-09-02 the executable suites under tests/realruntime drove the pinned, hash-verified model through both the serving adapter and the InferOps API composed from configuration. The first combined run exposed a runtime-identity telemetry defect; after correction, all 14 checks passed twice. The lane remains manually authorized, capable-host-only, and deselected by default."
+      "notes": "The manual feasibility procedure ran first and remains recorded separately. On 2026-09-02 the executable suites under tests/realruntime drove the pinned, hash-verified model through both the serving adapter and the InferOps API composed from configuration. The first combined run exposed a runtime-identity telemetry defect; after correction, all 14 checks passed twice. V1-S2-004-PR1 added a third way to enter the lane: one bounded certification command that checks prerequisites, composes both components, asserts real identity and one real completion, and writes a machine-readable local-real-cpu record; it has not been run against a runtime. The lane remains manually authorized, capable-host-only, and deselected by default."
     },
     {
       "layerId": "failure-and-resilience",

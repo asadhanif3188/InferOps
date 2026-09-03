@@ -222,6 +222,15 @@ holds the provenance and limitations. The suite remains deselected by the defaul
 marker expression, reads its runtime settings from the process environment, and
 skips when they are unset.
 
+`V1-S2-004-PR1` added a third way into the same lane:
+[the C2 certification command](../serving/real-runtime-certification.md), which
+checks host prerequisites before anything is created, composes both components,
+asserts real identity and one real completion, refuses mock identity or mock
+capability metadata, and writes a machine-readable `local-real-cpu` record. It is
+outside the default lane by construction rather than by marker, because it refuses
+to run without explicit confirmation. **It has not been run against a runtime**,
+so it has produced no record and raised nothing.
+
 `failure-and-resilience` provokes the failures the architecture names as canonical
 errors — model not ready, runtime unreachable, timeout — against the real runtime
 rather than against an anticipated mock. Full C3 certification is out of V1 scope;

@@ -39,10 +39,10 @@ refuses without `--confirm-real-runtime` before starting anything.
 | `uv run --locked python -m tools.serving_baseline check` | Passed; fixture, generation, execution, success criteria, result layout, and unexecuted status printed | `local-static`; contacted no runtime or Docker |
 | `uv run --locked python -m tools.serving_baseline environment` | Passed; sanitized host record emitted with one `docker version` call | `local-static`; read no model byte and started no container |
 | `uv run --locked ruff check .` | Passed | Repository-static |
-| `uv run --locked ruff format --check .` | Passed; 244 files already formatted | Repository-static |
-| `uv run --locked python -m mypy` | Passed; 138 source files checked | Repository-static |
+| `uv run --locked ruff format --check .` | Passed; 250 files already formatted | Repository-static |
+| `uv run --locked python -m mypy` | Passed; 142 source files checked | Repository-static |
 | `uv run --locked python -m pytest tests/serving/test_serving_baseline.py -q` | Passed; 107 tests | Controlled synthetic baseline path |
-| `uv run --locked python -m pytest -q` | Passed; 5,363 passed, 25 skipped, 14 deselected | Default lane; real-runtime tests remained deselected |
+| `uv run --locked python -m pytest -q` | Passed; 5,427 passed, 25 skipped, 14 deselected | Default lane; real-runtime tests remained deselected |
 | `git diff --check` | Passed; no whitespace defect | Repository-static |
 
 The focused suite covers the committed descriptor's agreement with everything it
@@ -117,6 +117,22 @@ The reviewer independently reproduced the lint, type, and test results, and
 independently verified the percentile arithmetic, the throughput unit naming, the
 summary's determinism, the round-trip field symmetry, and the evidence-class
 labels against `docs/testing/certification.md`.
+
+## Merge with the certification change
+
+`V1-S2-004-PR1` merged to `main` after this branch was cut, and `origin/main` was
+merged in here rather than rebased over. The two changes conflicted only in shared
+indexes — `.gitignore`, `CHANGELOG.md`, `CONTRIBUTING.md`, `README.md`,
+`docs/proof/README.md`, and `docs/testing/test-inventory.md` — and every conflict
+was resolved by keeping both sides. No code file conflicted, because this change
+builds on `tools.local_composition` and takes no dependency on
+`tools.runtime_certification`.
+
+The inventory counts were recomputed against the merged data rather than carried
+over from either side: twelve modules defend no published claim and the
+documentation layer holds fourteen. Every figure in the table above was re-run on
+the merged tree, and both `tools.serving_baseline check` and
+`tools.runtime_certification check` pass together.
 
 ## Deferred to PR2
 
