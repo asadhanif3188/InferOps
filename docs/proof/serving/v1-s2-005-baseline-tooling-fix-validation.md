@@ -130,14 +130,23 @@ tokens/s. All five pre-registered thresholds (`T1`–`T5`) are met.
 | `uv run --locked python -m mypy` | Passed; no issues in 142 source files | Repository-static |
 | `uv run --locked python -m tools.serving_baseline check` | Exit `0`, before and after the real fixture is proven to reach the API validator | `local-static`; confirmed by deliberately reintroducing the two-message fixture and observing `check` refuse it with the new error, then restoring the fix |
 | `uv run --locked python -m pytest tests/serving/test_serving_baseline.py -q` | Passed; 109 tests (105 unchanged, 2 changed to assert `B2`'s fix, 2 new for `B1`) | Controlled synthetic baseline path |
-| `uv run --locked python -m pytest tests/security/test_security_baseline.py -q` | Passed; 626 tests, with the model artifact present in the cache | Repository-static; confirms `B3`'s fix against the exact condition that exposed it |
+| `uv run --locked python -m pytest tests/security/test_security_baseline.py -q` | Passed; 628 tests, with the model artifact present in the cache | Repository-static; confirms `B3`'s fix against the exact condition that exposed it |
 | `uv run --locked python -m pytest tests/serving/test_runtime_certification.py tests/api/test_local_real_composition.py -q` | Passed; 63 tests, unchanged | Confirms `run_foreground` and `certify` are unaffected by the `B2` fix, which touches neither |
-| `uv run --locked python -m pytest -q` | Passed; 5,429 passed, 25 skipped, 14 deselected | Full suite, model cache present; zero failures |
+| `uv run --locked python -m pytest -q` | Passed; 5,431 passed, 25 skipped, 14 deselected | Full suite, model cache present; zero failures |
 | `git diff --check` | Passed; no whitespace defect | Repository-static |
 
-The full-suite count (5,429) is two higher than `V1-S2-005-PR1`'s recorded
-5,427 and one higher than `V1-S2-005-PR2`'s 5,428: the two new fixture tests
-this branch adds, cumulative with the earlier branch's own addition. Every
+Both the security-suite and full-suite counts above are the state at this
+commit — with this record's own file and the raw result record both present.
+An intermediate run, taken after the code fix (`d604077`) but before this
+documentation commit added those two files, read 626 and 5,429; the two extra
+tests in each figure are a parametrized documentation check
+(`test_a_reserved_term_appears_only_where_it_is_denied`) that discovers new
+Markdown files under `docs/proof/`, not a change to any test file. The
+independent review that follows re-ran both counts directly against this
+commit and confirmed 628 and 5,431 exactly, which is why the final numbers
+here match the review rather than the intermediate ones. `5,431` is four
+higher than `V1-S2-005-PR1`'s recorded 5,427: two fixture tests this branch
+adds directly, plus the two discovered by the parametrized check. Every
 existing test that ran before this branch still passes; none was weakened to
 make the fixes fit.
 
@@ -194,6 +203,43 @@ Against the parent story `V1-S2-005`:
 `V1-S2-005-PR2`'s failure record both merge.** The failure record documents
 what pre-registration is for; this branch documents the correction and the
 measurement it enabled. Neither alone tells the whole story.
+
+## Independent second-eye review
+
+An independent review of both commits verified rather than trusted the fix and
+the evidence. It called the real `inferops.api.validation.parse_chat_completion`
+against the committed fixture directly and confirmed it is genuinely accepted;
+reconstructed the two-message fixture in a scratch file (never touching the
+committed descriptor) and confirmed `load_experiment` refuses it with the exact
+error text this record quotes, proving the new offline gate is live rather than
+decorative; confirmed `tools/local_composition/core.py` and `http_server.py`
+carry no diff from `main`, so `B2`'s fix genuinely does not touch the shared
+composition module; confirmed `tools.runtime_certification.certify` really does
+use the identical capture/`request_stop`-in-`finally` pattern this fix claims as
+precedent; confirmed the two modified tests would raise `TypeError` against the
+pre-fix code, so they are regression tests rather than decoration; and
+independently recomputed every percentile, hash, and token figure in the raw
+result record from the files still present on this host, all exact.
+
+It raised no critical, high, or medium finding, and one low one: the reported
+throughput figures (121 req/1000s, 2067 tokens/1000s) are computed by integer
+floor division rather than rounding, and a reader could mistake 121 for a
+rounded 121.588 rather than a floored one. The convention was already stated
+once, in [Throughput](v1-s2-005-baseline-raw-results.md#throughput); a second
+mention was added there for a reader who starts elsewhere in the document.
+
+The reviewer also flagged, correctly, that the security-suite and full-suite
+counts this table originally reported (626, 5,429) were measured after the
+code-fix commit but before this documentation commit added two new files that
+a parametrized security test discovers — a real inconsistency between an
+intermediate measurement and the committed state, now corrected above to the
+counts the reviewer verified directly at this commit (628, 5,431). One thing
+the reviewer explicitly could not verify and said so: the 801.97% live CPU
+observation quoted in the raw result record has no artifact to check it
+against, being a one-time reading from the original session; the reviewer
+confirmed only that `sample_resources` is mechanically called between requests
+rather than during them, which is consistent with the record's explanation
+without proving the specific figure.
 
 ## Risks, assumptions, and limitations
 

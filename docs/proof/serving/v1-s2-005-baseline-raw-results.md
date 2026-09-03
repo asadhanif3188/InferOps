@@ -218,6 +218,12 @@ in the committed files — thousandths of a unit per second, as integers, so not
 here differs between platforms that read it back. Both independently recomputed
 from the raw records and confirmed exact.
 
+Both are computed by **integer floor division**
+(`(count * 1_000_000) // window_ms`), not rounding: the true ratio is
+`30 / 246.734 s ≈ 121.588` requests/1000s, which floors to `121`, not the `122`
+a rounded figure would show. The `0.121` and `2.067` decimal forms above are for
+readability only; the committed, exact values are the integer millirates.
+
 ### Tokens
 
 Every one of the 30 measured completions carried exactly 17 output tokens —
