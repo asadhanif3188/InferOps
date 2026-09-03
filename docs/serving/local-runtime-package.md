@@ -6,8 +6,10 @@ not performed by this change**.
 The machine-readable package is
 [`container-package.v1.json`](../../deploy/serving/runtime/container-package.v1.json).
 It translates the selected [local runtime profile](local-runtime-profile.md) into
-one standalone Docker container. It does not compose the InferOps API, create a
-Kubernetes resource, download a model, or pull an image.
+one standalone Docker container. The separate
+[local real composition](local-real-composition.md) composes this package with the
+InferOps API. This package does not create a Kubernetes resource, download a model,
+or pull an image.
 
 Validate the descriptor, its runtime/profile agreement, and the command it would
 run without contacting Docker or reading model bytes:

@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are nine, and they are listed in their own section rather than
+empty list. There are ten, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -116,10 +116,11 @@ check that the set of adapters covered is the set of adapters shipped.
 
 ### `mock-integration` — [`tests/api/`](../../tests/api/)
 
-Nine modules. The API driven through the ASGI interface it implements, against
-the committed mock and controlled doubles: the success shape, the canonical error
-contract at every refusal site, configuration-driven adapter selection, and the
-drain order. **Nothing here crosses a socket** — this repository ships no server.
+Ten modules. The API driven against the committed mock and controlled doubles:
+the success shape, canonical errors, configuration-driven adapter selection, and
+drain order. The local-composition module also crosses a loopback socket into the
+real adapter type over a synthetic transport; it loads no model, contacts no real
+runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
@@ -140,7 +141,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Nine suites protect something no row of the claim matrix names. Each carries its
+Ten suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -149,6 +150,7 @@ matrix is complete needs to see them together.
 | [`tests/architecture/test_domain_dependency_boundary.py`](../../tests/architecture/test_domain_dependency_boundary.py) | The dependency rule. An architecture decision rather than a product claim — and the reason the `unit` layer is possible at all |
 | [`tests/adapters/test_llama_server_pins.py`](../../tests/adapters/test_llama_server_pins.py) | That a constant copied out of an accepted decision still matches its source. The claim about the artifact's hash is certified by a manual procedure, not by this module |
 | [`tests/api/test_api_lifecycle.py`](../../tests/api/test_api_lifecycle.py) | The order of start, drain, and stop. ADR 0010 chose a graceful drain over a remote-stop endpoint and the matrix has no row for it |
+| [`tests/api/test_local_real_composition.py`](../../tests/api/test_local_real_composition.py) | Real-only local wiring, readiness order, reverse cleanup, authorization refusal, and the tooling HTTP carrier through controlled seams; no real-runtime claim can rest on generated transport responses |
 | [`tests/serving/test_model_acquisition.py`](../../tests/serving/test_model_acquisition.py) | The selected source record and cache mechanics using tiny synthetic bytes. The real model's integrity remains certified by the authorization-gated procedure, not by this suite |
 | [`tests/serving/test_runtime_configuration.py`](../../tests/serving/test_runtime_configuration.py) | The pinned local runtime profile, its external model boundary, resources, defaults, health semantics, secret boundary, and compatibility with the real adapter. Runtime startup remains for local-real packaging evidence |
 | [`tests/serving/test_runtime_packaging.py`](../../tests/serving/test_runtime_packaging.py) | The standalone Docker descriptor and guarded lifecycle through injected command and HTTP seams. It proves package mechanics, not a real startup or completion |

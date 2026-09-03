@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "compositionId": "inferops-local-real",
+  "evidenceClass": "local-static",
+  "runtimePackageRef": "deploy/serving/runtime/container-package.v1.json",
+  "api": {
+    "host": "127.0.0.1",
+    "port": 8090,
+    "requestBodyLimitBytes": 1048576,
+    "responseBudgetMs": 122000,
+    "readinessPath": "/health/ready",
+    "readyStatus": 200,
+    "notReadyStatus": 503
+  },
+  "adapter": {
+    "selection": "real",
+    "mockFallback": false,
+    "environment": {
+      "INFEROPS_SERVING_ADAPTER": "real",
+      "INFEROPS_MODEL_IDENTIFIER": "qwen3-1-7b-q8-0",
+      "INFEROPS_REQUEST_TIMEOUT_MS": "120000",
+      "INFEROPS_MAX_OUTPUT_TOKENS": "128",
+      "INFEROPS_DRAIN_TIMEOUT_MS": "15000",
+      "INFEROPS_LLAMA_SERVER_ENDPOINT": "http://127.0.0.1:8080",
+      "INFEROPS_LLAMA_SERVER_MODEL_PATH": "/models/Qwen3-1.7B-Q8_0.gguf",
+      "INFEROPS_LLAMA_SERVER_MODEL_ALIAS": "qwen3-1.7b-q8_0",
+      "INFEROPS_LLAMA_SERVER_CONTEXT_SIZE": "4096",
+      "INFEROPS_LLAMA_SERVER_THREADS": "6",
+      "INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS": "300000",
+      "INFEROPS_LLAMA_SERVER_METRICS_ENABLED": "true",
+      "INFEROPS_SERVICE_VERSION": "0.0.0",
+      "INFEROPS_DEPLOYMENT_ENVIRONMENT": "local",
+      "INFEROPS_CAPABILITY_ID": "inferops-native-serving",
+      "INFEROPS_MODEL_REVISION": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "INFEROPS_RUNTIME_IMAGE_DIGEST": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+    }
+  },
+  "lifecycle": {
+    "startupOrder": [
+      "runtime",
+      "runtime-readiness",
+      "api",
+      "api-readiness"
+    ],
+    "shutdownOrder": [
+      "api",
+      "runtime"
+    ],
+    "engineCommandTimeoutSeconds": 30,
+    "logPath": ".cache/inferops/composition/local-real.jsonl"
+  },
+  "security": {
+    "loopbackOnly": true,
+    "embeddedSecrets": []
+  }
+}

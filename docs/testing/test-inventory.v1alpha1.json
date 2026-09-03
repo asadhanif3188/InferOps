@@ -440,6 +440,14 @@
       "note": "No published real-runtime claim is certified by this repository-only suite. It starts no container, reads no model byte, and uses synthetic responses; real startup, readiness, inference, resource use, and shutdown remain local-real evidence requiring an authorized run."
     },
     {
+      "module": "tests/api/test_local_real_composition.py",
+      "layer": "mock-integration",
+      "marker": "mockintegration",
+      "protects": "The host-local composition's real-only descriptor, runtime-before-API readiness order, reverse cleanup, authorization refusal, and loopback HTTP carrier through synthetic command and runtime transport seams.",
+      "claims": [],
+      "note": "No published real-runtime claim is certified by this controlled suite. It binds one loopback API socket and composes the real adapter type, but the runtime transport returns generated responses and no model, container, image, or real runtime is accessed."
+    },
+    {
       "module": "tests/serving/test_inference_api_implementation_agreement.py",
       "layer": "documentation",
       "marker": "docs",
