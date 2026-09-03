@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "experimentId": "inferops-local-serving-baseline",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real runtime",
+  "certificationCeiling": "C2",
+  "productionBenchmark": false,
+  "compositionRef": "deploy/serving/local/composition.v1.json",
+  "boundariesRef": "docs/architecture/project-boundaries.md",
+  "fixture": {
+    "fixtureId": "single-turn-fixed-v1",
+    "requestPath": "/v1/chat/completions",
+    "model": "qwen3-1-7b-q8-0",
+    "stream": false,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a terse assistant. Answer in at most two sentences."
+      },
+      {
+        "role": "user",
+        "content": "Name three things a Kubernetes readiness probe is for."
+      }
+    ]
+  },
+  "generation": {
+    "maxOutputTokens": 128,
+    "temperature": 0,
+    "contextSizeTokens": 4096,
+    "parallelSlots": 1
+  },
+  "execution": {
+    "warmupRequests": 3,
+    "measuredRequests": 30,
+    "concurrency": 1,
+    "maxDurationSeconds": 900,
+    "requestTimeoutMs": 120000,
+    "resourceSampleEveryRequests": 5
+  },
+  "success": {
+    "minimumSuccessfulRequests": 30,
+    "maximumFailedRequests": 0,
+    "requiredAdapterKind": "real",
+    "requiredModelRef": "qwen3-1-7b-q8-0",
+    "requiredCompletionStatus": 200
+  },
+  "results": {
+    "directory": ".cache/inferops/baseline",
+    "rawFile": "raw.jsonl",
+    "summaryFile": "summary.json",
+    "rawFormat": "application/jsonl",
+    "summaryFormat": "application/json",
+    "percentileMethod": "nearest-rank",
+    "reportedPercentiles": [
+      50,
+      95,
+      99
+    ]
+  }
+}

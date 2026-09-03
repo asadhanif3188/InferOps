@@ -456,6 +456,14 @@
       "note": "No published real-runtime claim is certified by this controlled suite. It binds one loopback API socket and composes the real adapter type, but the runtime transport returns generated responses and no model, container, image, or real runtime is accessed."
     },
     {
+      "module": "tests/serving/test_serving_baseline.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The registered local serving baseline: descriptor agreement with the composition, profile, package, and model record; refusal of drifted fixtures, generation settings, concurrency, duration bounds, success criteria, and result layout; nearest-rank percentile arithmetic; warm-up exclusion; deterministic summary generation; and the raw result set's round trip, refusals, and absence of prompt or completion text.",
+      "claims": [],
+      "note": "No serving measurement is certified by this repository-only suite. Every request is answered by an injected seam, so no container, model byte, runtime socket, or real latency is involved; the measured baseline itself remains local-real evidence requiring an authorized run."
+    },
+    {
       "module": "tests/serving/test_inference_api_implementation_agreement.py",
       "layer": "documentation",
       "marker": "docs",

@@ -410,6 +410,15 @@ before any container exists. Keep its prerequisite refusal ahead of the artifact
 hash, keep the mock-identity and mock-capability prohibitions, and keep the
 prompt, the completion, and every host identifier out of the records it writes.
 
+The [local serving baseline](docs/serving/local-serving-baseline.md) is the
+registered experiment above that composition. Validate it without Docker or model
+access with `uv run --locked python -m tools.serving_baseline check`. Only `run`
+executes it, and only with `--confirm-real-runtime`; `summarize` recomputes the
+summary from committed records and touches nothing else. Keep the fixture and the
+generation settings in agreement with the runtime profile, keep concurrency equal
+to the runtime's parallel slots, keep warm-up out of every distribution, and never
+publish a figure it produces as a benchmark.
+
 Five rules apply to a change here beyond the usual ones.
 
 **A pin is compared to its source, never restated.** The runtime image digest and
