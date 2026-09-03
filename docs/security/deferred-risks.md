@@ -43,7 +43,7 @@ publish. No test can enforce that, and the rule is marked `review` in
 | DR-05 | No pod security property is enforced for a pod this platform deploys | B4 | yes |
 | DR-06 | The transport delivering a model artifact is not authenticated | B1 | yes |
 | DR-07 | No check is verified to have resolved from the committed lockfile | B1 | yes |
-| DR-08 | No image is scanned and no provenance statement is verified | B1 | yes |
+| DR-08 | No provenance statement is verified, and no scan is continuous | B1 | yes |
 | DR-09 | Artifact availability is not defended | B1 | no |
 | DR-10 | No secret manager, rotation policy, or expiry check exists | B3 | yes |
 | DR-11 | No run of a secret scanner over this history is recorded | B6 | no |
@@ -148,12 +148,15 @@ claimed. See `EX-01`, which states the one reason the argument closes at all.
 
 ### DR-07 — No check is verified to have resolved from the committed lockfile
 
-Narrowed on 2026-08-27, and not retired. This entry used to say that no dependency
-lockfile and no packaging manifest existed.
+Narrowed on 2026-08-27 and again on 2026-09-03, and not retired either time. This
+entry used to say that no dependency lockfile and no packaging manifest existed.
 [ADR 0009](../architecture/decisions/ADR-0009-python-toolchain.md) accepted a
 dependency manager, committed a `pyproject.toml` and a hash-bearing `uv.lock`, and
-ran every tool it named — so that half is gone. The half that remains is the half
-that mattered.
+ran every tool it named — so that half is gone. `V1-S2-006-PR1` closed a second
+half: `scan-python-dependencies-for-known-vulnerabilities` runs Trivy against
+`uv.lock`, including its dev and check groups, and a recorded run now exists — see
+[the validation record](../proof/security/v1-s2-006-pr1-validation.md). The half
+that remains is the half that mattered most from the start.
 
 **Why deferred.** The lockfile is an input, not an observation. Nothing in this
 repository records which inputs a given check actually resolved, because there is no
@@ -161,29 +164,46 @@ lane to record it in; `uv run --locked` refuses a run that would change the lock
 that refusal happens on a contributor's machine where nothing here can see it. The
 lockfile also pins Python distributions only: `shellcheck`, `kubeconform`, `kind`,
 `kubectl`, and the container engine are pinned by prose in the prerequisites
-document. And no dependency scanner has ever been run over any of it.
+document.
 
 **What would have to be true.** A lane that resolves from the lockfile and fails when
-the resolution would change it, a pinning approach for the tools that are not Python
-distributions, and a recorded run of a dependency scanner with its version and its
-output.
+the resolution would change it, and a pinning approach for the tools that are not
+Python distributions.
 
 **Not claimed.** No reproducibility property is claimed for the tool chain that runs
 the checks. A committed lockfile is an available input and is not evidence that any
 check used it, and the recorded tool versions in each evidence record remain the only
-trace of what a result was produced with.
+trace of what a result was produced with. A dependency scan having been run once does
+not mean any given check's own environment matched what it scanned.
 
-### DR-08 — No image is scanned and no provenance statement is verified
+### DR-08 — No provenance statement is verified, and no scan is continuous
 
-**Why deferred.** There is no continuous-integration lane to run a scanner in, and a
-scan run once by hand ages into a claim that outlives its result.
+Narrowed on 2026-09-03. This entry used to say that no image was scanned at all.
+`V1-S2-006-PR1` added `scan-the-pinned-runtime-image-for-known-vulnerabilities`:
+[`scripts/security/scan-runtime-image.sh`](../../scripts/security/scan-runtime-image.sh)
+runs Trivy against the digest the runtime contract pins, with a committed severity
+policy and a recorded run — see
+[the validation record](../proof/security/v1-s2-006-pr1-validation.md), which found
+no `CRITICAL` or `HIGH` finding as of that run. What remains is the half a
+contributor running a script by hand cannot close.
 
-**What would have to be true.** A configured lane, a scanner with a recorded version,
-and a policy for what a finding blocks.
+**Why deferred.** There is still no continuous-integration lane — ADR 0005 D6 leaves
+that undecided — so nothing makes the scan recur without a contributor choosing to
+run it again, and a scan run once by hand ages into a claim that outlives its result
+if it is cited as durable rather than dated. Verifying a build signature or
+attestation needs a publisher that emits one, and the selected runtime does not
+publish one today.
 
-**Not claimed.** No vulnerability count, severity distribution, or scan score is
-published, and none may be. A digest pin establishes *what* ran; it establishes
-nothing about what is inside it or who built it.
+**What would have to be true.** A publisher that emits a signature or a build
+attestation and a component that verifies it before the image runs, and a
+continuous-integration service — which ADR 0005 D6 leaves undecided — to make a scan
+recur without a contributor remembering to run it.
+
+**Not claimed.** No provenance, attestation, or build-identity property is claimed. A
+digest pin establishes *what* ran; it says nothing about who built it or how. No
+vulnerability count, severity distribution, or scan score is published as a durable
+posture: a recorded finding is dated to the run that produced it, and no document may
+cite it as still current without rerunning the scan.
 
 ### DR-09 — Artifact availability is not defended
 

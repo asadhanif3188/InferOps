@@ -366,10 +366,11 @@ can commit to without deciding who does it.
 - **Three trust boundaries the architecture left unowned now have an owner**, and
   `B3`, `B4`, and `B5` point at this record instead of forward at a decision that had
   not been made.
-- **Thirty-two controls exist, and twenty-two of them are enforced by something.**
-  Ten act over committed documents, ten over manifests, two on the host through the
-  environment scripts, three by review alone, three are specified for components that
-  do not exist, and four are deferred outright. The distribution is the finding.
+- **Thirty-four controls exist, and twenty-four of them are enforced by something.**
+  Ten act over committed documents, ten over manifests, four on the host — two
+  through the environment scripts and two through the security scanning scripts —
+  three by review alone, three are specified for components that do not exist, and
+  four are deferred outright. The distribution is the finding.
 - **A habit became a property.** The eight pod-security assertions and the digest pin
   held over every manifest here before this change, by convention. A convention is
   enforced by memory; this is now enforced by a suite.

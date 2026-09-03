@@ -1009,6 +1009,65 @@ def test_the_pod_security_gap_is_carried_by_a_deferred_risk() -> None:
 
 
 # --------------------------------------------------------------------------
+# Supply-chain scanning: two host-run guards
+# --------------------------------------------------------------------------
+
+SCAN_CONTROLS = (
+    "scan-the-pinned-runtime-image-for-known-vulnerabilities",
+    "scan-python-dependencies-for-known-vulnerabilities",
+)
+
+SECURITY_LIB_PATH = REPO_ROOT / "scripts" / "security" / "lib.sh"
+
+
+@pytest.mark.parametrize("control_id", SCAN_CONTROLS)
+def test_a_scan_control_is_a_host_script_and_says_so(control_id: str) -> None:
+    row = next(r for r in CONTROLS if r["controlId"] == control_id)
+    assert row["boundaryId"] == "B1"
+    assert row["runtimeScope"] == "host-scripts"
+    assert row["v1Status"] == "enforced-on-the-host"
+    assert row["owner"] == "security"
+    assert row["verification"]["kind"] == "script-guard"
+    assert row["verification"]["ref"] == "scripts/security/lib.sh"
+
+
+def test_the_scan_scripts_parse_and_source_the_shared_library() -> None:
+    for name in ("scan-runtime-image.sh", "scan-dependencies.sh", "generate-sbom.sh"):
+        script = REPO_ROOT / "scripts" / "security" / name
+        assert script.exists(), f"{name} is not committed"
+        body = script.read_text(encoding="utf-8")
+        assert "source" in body and "lib.sh" in body, (
+            f"{name} does not source the shared library"
+        )
+
+
+def test_the_image_scan_reads_the_digest_the_manifests_already_pin() -> None:
+    """The script does not carry its own copy of the pinned digest.
+
+    A second copy is a copy that drifts the day the runtime contract's digest
+    is rotated and a manifest is not, or the other way round. This confirms
+    the script reads the same file the contract lives in, and that the
+    digest in that file is one the manifests under `deploy/` already pin -
+    rather than trusting that the two were written to agree once.
+    """
+    contract_rel = "deploy/serving/runtime/container-package.v1.json"
+    lib_body = SECURITY_LIB_PATH.read_text(encoding="utf-8")
+    assert contract_rel in lib_body, (
+        f"{SECURITY_LIB_PATH.name} does not read {contract_rel}"
+    )
+
+    contract = json.loads((REPO_ROOT / contract_rel).read_text(encoding="utf-8"))
+    image_reference = contract["container"]["imageReference"]
+    assert DIGEST_PINNED.search(image_reference), (
+        f"{contract_rel} names {image_reference}, which is not pinned by digest"
+    )
+    manifest_images = {image for _, image in IMAGES}
+    assert image_reference in manifest_images, (
+        f"{contract_rel} pins {image_reference}, which no manifest under deploy/ pins"
+    )
+
+
+# --------------------------------------------------------------------------
 # The publication boundary
 # --------------------------------------------------------------------------
 
@@ -1309,7 +1368,9 @@ NUMBER_WORDS = {
     12: "twelve",
     15: "fifteen",
     22: "twenty-two",
+    24: "twenty-four",
     32: "thirty-two",
+    34: "thirty-four",
 }
 
 

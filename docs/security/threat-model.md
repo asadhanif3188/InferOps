@@ -133,7 +133,7 @@ because that is the shape of a threat nobody decided about.
 | ID | Threat | Category | Asset | Boundary | Actor | Controls | Deferred |
 |---|---|---|---|---|---|---|---|
 | T-01 | The weight file is substituted in transit | tampering | `model-artifact` | B1 | Transport | `verify-artifact-hash-before-use`, `pin-model-revision` | DR-06 |
-| T-02 | A moving tag resolves to a different image | tampering | `runtime-image` | B1 | Publisher | `pin-image-by-digest`, `verify-artifact-provenance` | DR-08 |
+| T-02 | A moving tag resolves to a different image | tampering | `runtime-image` | B1 | Publisher | `pin-image-by-digest`, `verify-artifact-provenance`, `scan-the-pinned-runtime-image-for-known-vulnerabilities` | DR-08 |
 | T-03 | A publisher withdraws or cannot serve an artifact | denial-of-service | `model-artifact` | B1 | Publisher | none | DR-09 |
 | T-04 | A secret value is pasted into a workload document | information-disclosure | `secret-material` | B3 | Workload owner | `refuse-a-secret-value-in-a-contract` | — |
 | T-05 | A refusal quotes the value it refused | information-disclosure | `secret-material` | B3 | Workload owner | `never-echo-a-document-value-in-a-refusal` | — |
@@ -150,17 +150,24 @@ because that is the shape of a threat nobody decided about.
 | T-16 | Private planning material is published | information-disclosure | `public-history` | B6 | Contributor | `no-personal-filesystem-path-in-a-committed-file`, `review-the-public-diff-for-private-material` | — |
 | T-17 | An evidence record discloses something permanently | information-disclosure | `evidence-record` | B6 | Contributor | `no-tenant-identifier-in-a-committed-record`, `redact-before-promoting-raw-output` | — |
 | T-18 | A control is believed because it is written down | repudiation | `evidence-record` | B6 | Public reader | `derive-a-control-status-from-its-verification`, `no-security-claim-without-a-named-verification` | — |
-| T-19 | A dependency is resolved rather than pinned | tampering | `public-history` | B1 | Publisher | `pin-every-dependency-with-a-committed-lockfile` | DR-07 |
+| T-19 | A dependency is resolved rather than pinned | tampering | `public-history` | B1 | Publisher | `pin-every-dependency-with-a-committed-lockfile`, `scan-python-dependencies-for-known-vulnerabilities` | DR-07 |
 | T-20 | Nothing records who did what | repudiation | `telemetry-signals` | B5 | Caller | `record-what-the-platform-did` | DR-12 |
 | T-21 | A stale cache is trusted instead of a hash | tampering | `model-cache-volume` | B3 | Contributor | `verify-artifact-hash-before-use` | — |
 | T-22 | A secret reference names a place nobody manages | information-disclosure | `secret-material` | B3 | Workload owner | `refuse-a-secret-value-in-a-contract` | DR-10 |
 
-Six of the twenty-two name only a control with no verification at all —
-`verify-artifact-provenance`, `authenticate-and-authorise-a-caller`,
-`limit-what-one-caller-may-consume`, `pin-every-dependency-with-a-committed-lockfile`,
+Four of the twenty-two name only a control with no verification at all —
+`authenticate-and-authorise-a-caller`, `limit-what-one-caller-may-consume`,
 `record-what-the-platform-did`, and `network-policy-in-the-release-namespace`. Those
 rows are naming the gap in the shape of a control so that the register has something
 to point at, and the matrix marks every one of them `deferred` or `specified-only`.
+
+Two more — T-02 and T-19 — name one control with no verification alongside one that
+is now verified on a contributor's host: `verify-artifact-provenance` and
+`pin-every-dependency-with-a-committed-lockfile` stay unverified, and
+`scan-the-pinned-runtime-image-for-known-vulnerabilities` and
+`scan-python-dependencies-for-known-vulnerabilities` sit beside them. A threat row
+naming a verified control is not a closed threat; `DR-08` and `DR-07` still carry
+what the verified half does not reach.
 
 ## Five abuse cases worth reading in full
 

@@ -262,9 +262,10 @@
       "impact": "Two runs of the same manifest execute different code, and a record that names the tag cannot be reproduced or refuted.",
       "controls": [
         "pin-image-by-digest",
-        "verify-artifact-provenance"
+        "verify-artifact-provenance",
+        "scan-the-pinned-runtime-image-for-known-vulnerabilities"
       ],
-      "residualRisk": "A digest fixes what runs; it establishes nothing about what is in it. No image vulnerability scan and no provenance attestation is verified.",
+      "residualRisk": "A digest fixes what runs. A vulnerability scan has now been run once, by hand, against the pinned digest; no provenance attestation is verified, and nothing makes the scan recur without a contributor choosing to. See DR-08.",
       "deferredRiskRef": "DR-08"
     },
     {
@@ -529,9 +530,10 @@
       "abuseCase": "A committed lockfile pins the Python tool chain, and nothing observes whether a given contributor resolved from it. A contributor who installs another way gets whatever the index served that day, and the tools that are not Python distributions are pinned by prose in a document rather than by that file at all.",
       "impact": "A compromised or simply different dependency version changes what the checks do, and the recorded tool versions in a record are the only trace.",
       "controls": [
-        "pin-every-dependency-with-a-committed-lockfile"
+        "pin-every-dependency-with-a-committed-lockfile",
+        "scan-python-dependencies-for-known-vulnerabilities"
       ],
-      "residualRisk": "Reduced and undefended. ADR 0009 accepted the dependency manager and committed a hash-bearing lockfile, so a reproducible input now exists; no lane verifies that any check used it, and no dependency scanner has been run. See DR-07.",
+      "residualRisk": "Reduced and undefended. ADR 0009 accepted the dependency manager and committed a hash-bearing lockfile, so a reproducible input now exists; no lane verifies that any check used it. A dependency scanner has now been run once, by hand, against that lockfile; nothing makes it recur. See DR-07.",
       "deferredRiskRef": "DR-07"
     },
     {
@@ -1321,6 +1323,46 @@
       "whatItDoesNotVerify": "Everything. A digest establishes what ran and says nothing about who built it or how."
     },
     {
+      "controlId": "scan-the-pinned-runtime-image-for-known-vulnerabilities",
+      "statement": "A contributor-run script scans the pinned runtime image, read by digest from the runtime container-package contract, for known operating-system vulnerabilities using Trivy, and refuses to report success when a finding at or above the committed blocking severity is not recorded as an accepted exception.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-02"
+      ],
+      "verification": {
+        "kind": "script-guard",
+        "ref": "scripts/security/lib.sh",
+        "symbol": "inferops::security::assert_runtime_image_has_no_blocking_vulnerabilities"
+      },
+      "runtimeScope": "host-scripts",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-on-the-host",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s2-006-pr1-validation.md",
+      "whatItDoesNotVerify": "That the scan ran recently, or that it runs on every commit. No continuous-integration service is selected - ADR 0005 D6 stays undecided - so nothing but a contributor's own choice makes this recur. It does not verify a build signature or attestation; `verify-artifact-provenance` stays deferred for that. And it reports what Trivy's vulnerability database knew on the day it was queried, which is a moving target: a package the database does not yet know about is not a package the scan can flag."
+    },
+    {
+      "controlId": "scan-python-dependencies-for-known-vulnerabilities",
+      "statement": "A contributor-run script scans the committed uv.lock, including its dev and check dependency groups, for known vulnerabilities using Trivy, and refuses to report success when a finding at or above the committed blocking severity is not recorded as an accepted exception.",
+      "boundaryId": "B1",
+      "threats": [
+        "T-19"
+      ],
+      "verification": {
+        "kind": "script-guard",
+        "ref": "scripts/security/lib.sh",
+        "symbol": "inferops::security::assert_dependencies_have_no_blocking_vulnerabilities"
+      },
+      "runtimeScope": "host-scripts",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-on-the-host",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s2-006-pr1-validation.md",
+      "whatItDoesNotVerify": "That any check's own environment was actually resolved from the scanned lockfile - DR-07 carries that gap, and this control narrows it without closing it. It does not verify a runtime dependency, because the published distribution declares none; the dev and check groups are the only Python dependencies pinned anywhere in this repository. It does not run on every commit, because no continuous-integration service is selected."
+    },
+    {
       "controlId": "record-what-the-platform-did",
       "statement": "Every request, refusal, and control decision leaves a record somebody can read afterwards.",
       "boundaryId": "B5",
@@ -1422,21 +1464,21 @@
       "threats": [
         "T-19"
       ],
-      "whyDeferred": "ADR 0009 accepted a dependency manager and committed a hash-bearing lockfile, so the half of this risk that said no lockfile exists is gone. What is left needs a lane. Nothing observes which inputs a check actually resolved, and shellcheck, kubeconform, kind, kubectl and the container engine are named in prose rather than pinned by that file. No dependency scanner has been run either.",
-      "whatWouldHaveToBeTrue": "A lane that resolves from the lockfile and fails when the resolution would change it, a pinning approach for the tools that are not Python distributions, and a recorded run of a dependency scanner.",
+      "whyDeferred": "ADR 0009 accepted a dependency manager and committed a hash-bearing lockfile, so the half of this risk that said no lockfile exists is gone. Narrowed again by V1-S2-006-PR1: a dependency scanner (Trivy) has now been run once, against uv.lock including its dev and check groups, on the machine that ran it. What is left needs a lane. Nothing observes which inputs a check actually resolved, and shellcheck, kubeconform, kind, kubectl and the container engine are named in prose rather than pinned by that file.",
+      "whatWouldHaveToBeTrue": "A lane that resolves from the lockfile and fails when the resolution would change it, and a pinning approach for the tools that are not Python distributions.",
       "notClaimed": "No reproducibility property is claimed for the tool chain that runs the checks. A committed lockfile is an available input and is not evidence that any check used it.",
       "blocksProductionUse": true
     },
     {
       "riskId": "DR-08",
-      "statement": "No image is scanned for vulnerabilities and no provenance statement is verified.",
+      "statement": "No provenance statement is verified for the pinned runtime image, and no scan of it is continuous.",
       "boundaryId": "B1",
       "threats": [
         "T-02"
       ],
-      "whyDeferred": "There is no continuous-integration lane to run a scanner in, and a scan run once by hand would age into a claim that outlives its result.",
-      "whatWouldHaveToBeTrue": "A configured lane, a scanner with a recorded version, and a policy for what a finding blocks.",
-      "notClaimed": "No vulnerability count, severity distribution, or scan score is published, and none may be.",
+      "whyDeferred": "Narrowed by V1-S2-006-PR1. There is still no continuous-integration lane - ADR 0005 D6 leaves that undecided - so nothing makes a scan recur without a contributor choosing to run one; a scan run once by hand ages into a claim that outlives its result if it is cited as durable. `scripts/security/scan-runtime-image.sh` closes the part of this that a contributor running it can close: it scans the pinned digest with a recorded scanner version and a committed severity policy, on the machine that runs it. Verifying a build signature or attestation needs a publisher that emits one, and the selected runtime does not publish one today.",
+      "whatWouldHaveToBeTrue": "A publisher that emits a signature or a build attestation and a component that verifies it before the image runs, and a continuous-integration service - which ADR 0005 D6 leaves undecided - to make a scan recur without a contributor remembering to run it.",
+      "notClaimed": "No provenance, attestation, or build-identity property is claimed. No vulnerability count, severity distribution, or scan score is published as a durable posture: a recorded finding is dated to the run that produced it, and no document may cite it as still current without rerunning the scan.",
       "blocksProductionUse": true
     },
     {
@@ -1605,7 +1647,7 @@
     },
     {
       "ruleId": "no-vulnerability-figure-is-published",
-      "statement": "V1 publishes no vulnerability count, severity distribution, scan score, or posture rating. There is no scan to derive one from.",
+      "statement": "V1 publishes no vulnerability count, severity distribution, scan score, or posture rating as a durable claim. A scan result is dated to the run that produced it and V1 runs none continuously, so no figure here may be cited without rerunning the scan that would confirm it still holds.",
       "enforcedBy": "review",
       "testRef": null
     },
@@ -1694,7 +1736,7 @@
     },
     {
       "limitationId": "no-scanner-run",
-      "statement": "No secret scanner, image scanner, or dependency auditor has been run and recorded. The configuration for the first is committed; the other two have no configuration."
+      "statement": "No secret scanner has been run and recorded; the configuration for it is committed. An image scanner and a dependency auditor (Trivy) have each been run once, on the machine that ran them, and nothing makes either recur: no continuous-integration service is selected, so a recorded finding is current only as of the day it was produced."
     },
     {
       "limitationId": "no-assessment",

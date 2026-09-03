@@ -195,8 +195,8 @@ Check any changed external link separately and record the date it was checked.
 Changes under `scripts/` must parse and must pass a static analyser at style level:
 
 ```sh
-bash -n scripts/environment/*.sh
-shellcheck -x -S style scripts/environment/*.sh
+bash -n scripts/environment/*.sh scripts/security/*.sh
+shellcheck -x -S style scripts/environment/*.sh scripts/security/*.sh
 ```
 
 `shellcheck` is not vendored. Install it however your platform prefers; a Python

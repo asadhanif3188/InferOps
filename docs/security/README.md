@@ -11,7 +11,7 @@ decisions are accepted; two are explicitly not made.
 > recorded, and no assessment by an outside party has ever been performed.
 >
 > What is enforced is enforced over committed files, over five YAML manifests, and
-> by two shell functions. That is narrow and real. The distance between it and a
+> by four shell functions. That is narrow and real. The distance between it and a
 > defended system is [the deferred-risk register](deferred-risks.md), and it is
 > twelve entries long.
 
@@ -49,12 +49,12 @@ paragraph above it.
 |---|---|---|
 | `enforced-over-documents` | 10 | yes |
 | `enforced-over-manifests` | 10 | yes |
-| `enforced-on-the-host` | 2 | yes |
+| `enforced-on-the-host` | 4 | yes |
 | `review-enforced` | 3 | no |
 | `specified-only` | 3 | no |
 | `deferred` | 4 | no |
 
-Twenty-two of thirty-two controls are enforced by something. Ten are not, and the
+Twenty-four of thirty-four controls are enforced by something. Ten are not, and the
 register says why for each.
 
 `enforced-over-manifests` is the status that needs its own sentence. Every manifest
