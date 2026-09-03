@@ -39,10 +39,10 @@ refuses without `--confirm-real-runtime` before starting anything.
 | `uv run --locked python -m tools.serving_baseline check` | Passed; fixture, generation, execution, success criteria, result layout, and unexecuted status printed | `local-static`; contacted no runtime or Docker |
 | `uv run --locked python -m tools.serving_baseline environment` | Passed; sanitized host record emitted with one `docker version` call | `local-static`; read no model byte and started no container |
 | `uv run --locked ruff check .` | Passed | Repository-static |
-| `uv run --locked ruff format --check .` | Passed; 241 files already formatted | Repository-static |
+| `uv run --locked ruff format --check .` | Passed; 244 files already formatted | Repository-static |
 | `uv run --locked python -m mypy` | Passed; 138 source files checked | Repository-static |
-| `uv run --locked python -m pytest tests/serving/test_serving_baseline.py -q` | Passed; 102 tests | Controlled synthetic baseline path |
-| `uv run --locked python -m pytest -q` | Passed; 5,357 passed, 25 skipped, 14 deselected | Default lane; real-runtime tests remained deselected |
+| `uv run --locked python -m pytest tests/serving/test_serving_baseline.py -q` | Passed; 107 tests | Controlled synthetic baseline path |
+| `uv run --locked python -m pytest -q` | Passed; 5,363 passed, 25 skipped, 14 deselected | Default lane; real-runtime tests remained deselected |
 | `git diff --check` | Passed; no whitespace defect | Repository-static |
 
 The focused suite covers the committed descriptor's agreement with everything it
@@ -72,7 +72,8 @@ holds that line in four places rather than one: the descriptor carries
 otherwise; every raw result header carries the same field and reading one back
 refuses a header claiming to be a benchmark; every summary carries the field plus
 a sentence naming what it is not; and the published guide leads with the
-restriction. Two tests assert each of those refusals directly.
+restriction. Three tests assert those refusals directly: one for the descriptor,
+one for a raw header read back, and one for the summary's own fields.
 
 ## Public-information review
 
@@ -87,8 +88,35 @@ system, release, architecture, logical CPU count, memory, free disk, Python
 version, container engine version, accelerator, and the committed pins. It
 captures no hostname, user name, network identity, or absolute path, and a test
 asserts the exact field set. Generated raw and summary files remain under an
-ignored, workspace-scoped path, and a test asserts that a raw result set contains
-neither the fixture's prompt text nor any completion content.
+ignored, workspace-scoped path. Two tests assert that a raw result set carries
+neither the fixture's prompt text nor any completion content, the second by
+pushing a completion carrying a unique marker through the request path first.
+
+## Independent second-eye review
+
+An independent review of the first commit raised one HIGH and four MEDIUM
+findings, and every one that was valid was fixed in the follow-up commit on this
+branch.
+
+| Finding | Resolution |
+|---|---|
+| `warmupRequests` had no ceiling, and the warm-up loop ignored the duration bound, so the phase ceilings bounded only the half of a run whose numbers get published | Added `MAXIMUM_WARMUP_REQUESTS`, enforced it in the same envelope rule as the measured ceiling, and moved the stop condition into a predicate both loops check |
+| `write_raw` and `write_summary` re-checked the result path after `mkdir` but discarded the result, so the call read as dead code | The re-check's return value is now the directory the write uses, with a comment naming the window it narrows and the one it does not close |
+| `sample_resources`, `_engine_version`, and `total_memory_bytes` caught bare `Exception`, so a signature or protocol bug would degrade a record silently instead of failing | Narrowed to `OSError`/`RuntimePackagingError` and `AttributeError`/`OSError`/`ValueError` respectively |
+| The prompt-and-completion retention test asserted the absence of text no fixture ever supplied, so it was true by construction | Replaced with a test that pushes a completion carrying a unique marker in `choices[].message.content` through the request path and asserts the marker reaches neither the record nor the raw file |
+| The full-suite pass count in this record did not reproduce exactly | Re-run and corrected; both counts in the table above are from the reviewed tree |
+
+Two further observations were accepted as accurate and addressed without a
+behaviour change: the unreachable `max(1, rank)` clamp in `percentile_ms` was
+removed in favour of a comment stating the invariant that makes it unreachable,
+and the concurrency rule now says in code and in a comment that sequential
+dispatch is what the runner actually performs, so the descriptor cannot advertise
+a concurrency no run carries out.
+
+The reviewer independently reproduced the lint, type, and test results, and
+independently verified the percentile arithmetic, the throughput unit naming, the
+summary's determinism, the round-trip field symmetry, and the evidence-class
+labels against `docs/testing/certification.md`.
 
 ## Deferred to PR2
 

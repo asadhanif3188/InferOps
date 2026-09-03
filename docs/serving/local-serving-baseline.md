@@ -57,6 +57,16 @@ first prompt-processing pass. They are recorded — they are in the raw file, ph
 `warmup` — and then excluded from every distribution. A percentile that includes
 them describes the start-up, not the steady state.
 
+### Why both phases are capped in code
+
+`measuredRequests` and `warmupRequests` are each bounded by a constant in
+`tools.serving_baseline`, not by a value read from the descriptor, so a longer run
+cannot be authorized by editing the record that is supposed to bound it. The
+warm-up gets its own ceiling because a warm-up request costs exactly what a
+measured one costs; capping only the phase whose numbers get published would cap
+the wrong half. The duration stop condition covers both phases for the same
+reason.
+
 ### Why concurrency is one
 
 The selected runtime is pinned to a single parallel slot. Sending more than one

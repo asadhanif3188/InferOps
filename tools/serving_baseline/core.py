@@ -57,6 +57,7 @@ from tools.runtime_configuration import load_runtime_profile
 from tools.runtime_packaging import (
     CommandRunner,
     RuntimePackage,
+    RuntimePackagingError,
     SubprocessRunner,
     load_runtime_package,
 )
@@ -76,10 +77,13 @@ EXPECTED_PERCENTILE_METHOD = "nearest-rank"
 EXPECTED_PERCENTILES = (50, 95, 99)
 ADAPTER_MOCK = "mock"
 
-#: The ceiling on a measured phase. It is a floor on the descriptor rather than a
-#: value read from it, so a longer run cannot be authorized by editing the record
-#: that is supposed to bound it.
+#: The ceilings on a run's two phases. Both are constants here rather than values
+#: read from the descriptor, so a longer run cannot be authorized by editing the
+#: record that is supposed to bound it. The warm-up needs its own ceiling: its
+#: requests are as real and as expensive as the measured ones, and bounding only
+#: the phase whose numbers get published would bound the wrong half.
 MAXIMUM_MEASURED_REQUESTS = 200
+MAXIMUM_WARMUP_REQUESTS = 20
 
 #: The ceiling on a raw result file this module reads back. A summary is computed
 #: in memory, and an unbounded input file is how that stops being true.
@@ -558,12 +562,21 @@ def _validate(experiment: Experiment, composition: LocalComposition) -> None:
         composition.environment["INFEROPS_REQUEST_TIMEOUT_MS"]
     ):
         raise BaselineError("the baseline request envelope contradicts the composition")
-    if experiment.concurrency != experiment.parallel_slots:
+    # `execute` dispatches sequentially, so this equality is what keeps the
+    # descriptor honest rather than a setting the runner acts on. If a profile
+    # ever raises `parallelSlots`, concurrent dispatch has to be built before this
+    # rule can be relaxed - otherwise the descriptor would advertise a concurrency
+    # no run performs.
+    if (
+        experiment.concurrency != experiment.parallel_slots
+        or experiment.concurrency != 1
+    ):
         raise BaselineError(
-            "the baseline concurrency must equal the runtime's parallel slots"
+            "the baseline concurrency must equal the runtime's single parallel slot"
         )
     if (
         experiment.measured_requests > MAXIMUM_MEASURED_REQUESTS
+        or experiment.warmup_requests > MAXIMUM_WARMUP_REQUESTS
         or experiment.minimum_successful_requests != experiment.measured_requests
         or experiment.resource_sample_every_requests > experiment.measured_requests
     ):
@@ -616,7 +629,7 @@ def _engine_version(package: RuntimePackage, runner: CommandRunner) -> str | Non
         result = runner.run(
             (package.engine, "version", "--format", "{{.Server.Version}}")
         )
-    except Exception:
+    except (OSError, RuntimePackagingError):
         return None
     if result.returncode != 0:
         return None
@@ -665,7 +678,7 @@ def total_memory_bytes() -> int | None:
         if not kernel32.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
             return None
         return int(status.ullTotalPhys) or None
-    except Exception:
+    except (AttributeError, OSError, ValueError):
         return None
 
 
@@ -767,7 +780,7 @@ def sample_resources(
                 package.container_name,
             )
         )
-    except Exception:
+    except (OSError, RuntimePackagingError):
         return None
     if result.returncode != 0:
         return None
@@ -948,8 +961,10 @@ def percentile_ms(latencies: Sequence[int], percentile: int) -> int:
     if not latencies:
         raise BaselineError("a percentile needs at least one observation")
     ordered = sorted(latencies)
+    # ceil(percentile x n / 100) in integer arithmetic. Both guards above hold, so
+    # the rank is always within 1..n and needs no clamping.
     rank = -((-percentile * len(ordered)) // 100)
-    return ordered[max(1, rank) - 1]
+    return ordered[rank - 1]
 
 
 def summarize(experiment: Experiment, run: BaselineRun) -> dict[str, Any]:
@@ -1085,9 +1100,13 @@ def write_raw(
     repo_root: Path = REPO_ROOT,
 ) -> Path:
     """Write the run header, one record per request, and the resource samples."""
+    result_directory(experiment, repo_root).mkdir(parents=True, exist_ok=True)
+    # Re-checked after `mkdir`, because the components it just created were not
+    # in existence to be inspected by the first check. This narrows the window
+    # rather than closing it: without an atomic no-follow open there is still a
+    # gap between this check and the write below, and the safety this path really
+    # rests on is that the directory is a fixed constant nothing else writes to.
     directory = result_directory(experiment, repo_root)
-    directory.mkdir(parents=True, exist_ok=True)
-    result_directory(experiment, repo_root)
     path = directory / experiment.raw_file
     lines = [
         json.dumps(
@@ -1257,9 +1276,13 @@ def write_summary(
     repo_root: Path = REPO_ROOT,
 ) -> Path:
     """Write the deterministic summary beside the raw records it came from."""
+    result_directory(experiment, repo_root).mkdir(parents=True, exist_ok=True)
+    # Re-checked after `mkdir`, because the components it just created were not
+    # in existence to be inspected by the first check. This narrows the window
+    # rather than closing it: without an atomic no-follow open there is still a
+    # gap between this check and the write below, and the safety this path really
+    # rests on is that the directory is a fixed constant nothing else writes to.
     directory = result_directory(experiment, repo_root)
-    directory.mkdir(parents=True, exist_ok=True)
-    result_directory(experiment, repo_root)
     path = directory / experiment.summary_file
     try:
         path.write_text(
@@ -1316,6 +1339,13 @@ def execute(
         timings["modelLoadMs"] = runtime_ms
         timings["apiReadyMs"] = api_ms
         started = clock()
+
+        def out_of_time() -> bool:
+            return clock() - started >= experiment.max_duration_seconds
+
+        # The stop condition covers the warm-up as well as the measured phase. A
+        # warm-up request costs exactly what a measured one costs, so a bound that
+        # only starts counting after it is a bound on the cheaper half of the run.
         for index in range(experiment.warmup_requests):
             records.append(
                 send_request(
@@ -1327,6 +1357,8 @@ def execute(
                     clock=clock,
                 )
             )
+            if out_of_time():
+                break
         window_started = clock()
         for index in range(experiment.measured_requests):
             records.append(
@@ -1347,7 +1379,7 @@ def execute(
                 )
                 if sample is not None:
                     samples.append(sample)
-            if clock() - started >= experiment.max_duration_seconds:
+            if out_of_time():
                 break
         timings["windowMs"] = max(0, round((clock() - window_started) * 1000))
 

@@ -310,6 +310,7 @@ def test_a_request_envelope_contradicting_the_composition_is_refused(
     ("field", "value"),
     [
         ("execution.measuredRequests", 5_000),
+        ("execution.warmupRequests", 5_000),
         ("success.minimumSuccessfulRequests", 1),
         ("execution.resourceSampleEveryRequests", 999),
     ],
@@ -317,8 +318,22 @@ def test_a_request_envelope_contradicting_the_composition_is_refused(
 def test_an_unsupported_execution_envelope_is_refused(
     tmp_path: Path, field: str, value: Any
 ) -> None:
+    """Both phases are bounded by a constant, not by the record bounding them.
+
+    A warm-up request costs what a measured one costs, so capping only the phase
+    whose numbers get published would leave the expensive half of a run editable
+    from the descriptor.
+    """
     with pytest.raises(BaselineError, match="execution envelope is unsupported"):
         load_experiment(written_experiment(tmp_path, mutated(**{field: value})))
+
+
+@pytest.mark.parametrize("count", [0, -1])
+def test_a_warm_up_that_does_not_happen_is_refused(tmp_path: Path, count: int) -> None:
+    """Zero warm-up means the first measured request measures the cold start."""
+    document = mutated(**{"execution.warmupRequests": count})
+    with pytest.raises(BaselineError, match="at least 1"):
+        load_experiment(written_experiment(tmp_path, document))
 
 
 @pytest.mark.parametrize("seconds", [1, 60, 100_000])
@@ -632,16 +647,61 @@ def test_every_raw_line_is_one_json_document(
     assert kinds.count("request") == 32
 
 
-def test_a_raw_result_set_retains_no_prompt_or_completion(
+def test_a_real_completion_body_never_reaches_the_raw_result_set(
     experiment: Experiment, tmp_path: Path
 ) -> None:
-    """The record is timings and counts. It is never a transcript."""
+    """The record is timings and counts. It is never a transcript.
+
+    A completion carrying real answer text is pushed through the request path and
+    then written, because asserting the absence of text that no fixture ever
+    supplied would pass however the discarding worked.
+    """
+    marker = "PALIMPSEST-ANSWER-TEXT-a4f1"
+    body = completion()
+    body["choices"] = [
+        {
+            "index": 0,
+            "message": {"role": "assistant", "content": marker},
+            "finish_reason": "stop",
+        }
+    ]
+
+    def post(url, body_sent, headers, timeout):
+        return PostResponse(200, body)
+
+    record = send_request(
+        experiment,
+        composition_double(),
+        sequence=0,
+        phase=PHASE_MEASURED,
+        post=post,
+        clock=FakeClock(),
+    )
+    assert marker not in json.dumps(record.document())
+    run = BaselineRun(
+        experiment_id=experiment.experiment_id,
+        evidence_class=experiment.evidence_class,
+        environment=ENVIRONMENT,
+        model_load_ms=1,
+        api_ready_ms=1,
+        records=(record,),
+        samples=(),
+        measured_window_ms=1_000,
+    )
+    text = write_raw(experiment, run, repo_root=tmp_path).read_text(encoding="utf-8")
+    assert marker not in text
+    assert "choices" not in text
+    assert "finish_reason" not in text
+
+
+def test_a_raw_result_set_retains_no_fixture_prompt(
+    experiment: Experiment, tmp_path: Path
+) -> None:
+    """The request side of the same rule: the prompt is not written either."""
     path = write_raw(experiment, run_of([10] * 30), repo_root=tmp_path)
     text = path.read_text(encoding="utf-8")
     for message in experiment.fixture.messages:
         assert message["content"] not in text
-    assert "choices" not in text
-    assert "content" not in text
 
 
 def test_a_raw_record_set_claiming_to_be_a_benchmark_is_refused(
@@ -1041,6 +1101,42 @@ def test_a_confirmed_run_warms_up_then_measures(
     )
     summary = summarize(experiment, run)
     assert summary["successCriteria"]["met"] is True
+
+
+def test_the_stop_condition_bounds_the_warm_up_too(
+    experiment: Experiment, tmp_path: Path
+) -> None:
+    """A clock that exhausts the duration bound during the warm-up ends the run.
+
+    Without a stop check in the warm-up loop the run would send every warm-up
+    request regardless, which is the cheaper-half-only bound the phase ceilings
+    exist to prevent.
+    """
+    sent: list[str] = []
+
+    def post(url, body, headers, timeout):
+        sent.append(headers["X-InferOps-Request-ID"])
+        return PostResponse(200, completion())
+
+    def compose(composition, *, confirmed, repo_root, runner, on_ready):
+        on_ready(1, 1)
+
+    run = execute(
+        experiment,
+        confirmed=True,
+        repo_root=tmp_path,
+        runner=ScriptedRunner([CommandResult(0, "27.1.1\n")]),
+        post=post,
+        clock=FakeClock(experiment.max_duration_seconds),
+        compose=compose,
+    )
+    warmup = [record for record in run.records if record.phase == PHASE_WARMUP]
+    measured = [record for record in run.records if record.phase == PHASE_MEASURED]
+    # One warm-up request, then the bound fires: without the check in that loop
+    # all three would be sent whatever the clock said.
+    assert len(warmup) == 1 < experiment.warmup_requests
+    assert len(measured) < experiment.measured_requests
+    assert len(sent) == len(run.records) < experiment.total_requests
 
 
 # --------------------------------------------------------------------------
