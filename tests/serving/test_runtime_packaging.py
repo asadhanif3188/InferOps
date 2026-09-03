@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -21,13 +22,16 @@ from tools.runtime_packaging import (
     PACKAGE_PATH,
     CommandResult,
     HttpResponse,
+    ReadinessTrace,
     RuntimeEndpointUnavailable,
     RuntimePackagingError,
+    SubprocessRunner,
     container_is_running,
     docker_run_command,
     inference_probe,
     load_runtime_package,
     preflight,
+    smoke,
     start,
     stop,
     tcp_is_live,
@@ -301,6 +305,71 @@ def test_shutdown_refuses_a_container_owned_by_something_else() -> None:
     assert len(runner.calls) == 1
 
 
+def test_shutdown_does_not_treat_engine_failure_as_container_absence() -> None:
+    package = load_runtime_package()
+    runner = ScriptedRunner(
+        [CommandResult(1, stderr="synthetic daemon failure"), CommandResult(1)]
+    )
+
+    with pytest.raises(RuntimePackagingError, match="ownership could not be verified"):
+        stop(package, runner, confirmed=True)
+
+
+def test_shutdown_returns_absent_only_after_a_successful_container_inventory() -> None:
+    package = load_runtime_package()
+    runner = ScriptedRunner([CommandResult(1), CommandResult(0, "")])
+
+    assert stop(package, runner, confirmed=True) is False
+    assert "container" in runner.calls[1]
+    assert "ls" in runner.calls[1]
+
+
+def test_smoke_fails_when_shutdown_cannot_be_verified(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package = load_runtime_package()
+    runner = ScriptedRunner([])
+
+    def no_op(*_args: object, **_kwargs: object) -> None:
+        return None
+
+    def ready(*_args: object, **_kwargs: object) -> ReadinessTrace:
+        return ReadinessTrace((200,), 0)
+
+    monkeypatch.setattr("tools.runtime_packaging.core.start", no_op)
+    monkeypatch.setattr("tools.runtime_packaging.core.wait_ready", ready)
+    monkeypatch.setattr(
+        "tools.runtime_packaging.core.inference_probe", lambda *_args, **_: 200
+    )
+    monkeypatch.setattr("tools.runtime_packaging.core.stop", lambda *_args, **_: False)
+
+    with pytest.raises(RuntimePackagingError, match="complete shutdown"):
+        smoke(
+            package,
+            runner,
+            confirmed=True,
+            http_get=lambda *_: HttpResponse(200),
+            http_post=lambda *_: HttpResponse(200),
+        )
+
+
+def test_container_engine_commands_have_a_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: dict[str, object] = {}
+
+    def expire(*_args: object, **kwargs: object) -> None:
+        observed["timeout"] = kwargs["timeout"]
+        raise subprocess.TimeoutExpired(cmd=["docker", "version"], timeout=0.25)
+
+    monkeypatch.setattr("tools.runtime_packaging.core.subprocess.run", expire)
+
+    with pytest.raises(RuntimePackagingError, match="exceeded its deadline"):
+        SubprocessRunner(timeout_seconds=0.25).run(("docker", "version"))
+
+    assert observed == {"timeout": 0.25}
+
+
 def test_real_operations_require_explicit_confirmation() -> None:
     package = load_runtime_package()
     runner = ScriptedRunner([])
@@ -327,7 +396,7 @@ def test_preflight_refuses_an_absent_model_before_starting_a_container(
     assert all("run" not in call for call in runner.calls)
 
 
-def test_container_liveness_uses_only_the_engine_state() -> None:
+def test_startup_process_guard_uses_only_the_engine_state() -> None:
     package = load_runtime_package()
     runner = ScriptedRunner([CommandResult(0, "true\n")])
 
@@ -357,6 +426,7 @@ def test_an_immediate_startup_exit_is_removed_when_ownership_is_proven(
             CommandResult(0),  # preflight engine
             CommandResult(0),  # preflight image
             CommandResult(1),  # no existing container
+            CommandResult(0, ""),  # successful inventory confirms absence
             CommandResult(0, "container-id\n"),
             CommandResult(0, "false\n"),
             CommandResult(0, f"{package.package_id}\n"),

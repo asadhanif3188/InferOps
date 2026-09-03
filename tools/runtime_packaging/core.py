@@ -37,6 +37,7 @@ OWNERSHIP_LABEL = "io.inferops.package"
 COMPONENT_LABEL = "io.inferops.component"
 EXPECTED_COMPONENT = "serving-runtime"
 MODEL_SOURCE_SENTINEL = "profile:model-cache-artifact"
+ENGINE_COMMAND_TIMEOUT_SECONDS = 30.0
 
 
 class RuntimePackagingError(RuntimeError):
@@ -65,6 +66,11 @@ class CommandRunner(Protocol):
 class SubprocessRunner:
     """Run Docker without a shell and capture text that is never passed through."""
 
+    def __init__(
+        self, *, timeout_seconds: float = ENGINE_COMMAND_TIMEOUT_SECONDS
+    ) -> None:
+        self.timeout_seconds = timeout_seconds
+
     def run(self, arguments: Sequence[str]) -> CommandResult:
         try:
             completed = subprocess.run(
@@ -74,7 +80,12 @@ class SubprocessRunner:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
+                timeout=self.timeout_seconds,
             )
+        except subprocess.TimeoutExpired as error:
+            raise RuntimePackagingError(
+                "the container engine command exceeded its deadline"
+            ) from error
         except OSError as error:
             raise RuntimePackagingError(
                 "the container engine could not be executed"
@@ -615,6 +626,25 @@ def owned_container_exists(package: RuntimePackage, runner: CommandRunner) -> bo
         )
     )
     if result.returncode != 0:
+        listing = runner.run(
+            (
+                package.engine,
+                "container",
+                "ls",
+                "--all",
+                "--filter",
+                f"name=^/{package.container_name}$",
+                "--format",
+                "{{.Names}}",
+            )
+        )
+        if listing.returncode != 0:
+            raise RuntimePackagingError("container ownership could not be verified")
+        names = {line.strip() for line in listing.stdout.splitlines() if line.strip()}
+        if package.container_name in names:
+            raise RuntimePackagingError("container ownership could not be verified")
+        if names:
+            raise RuntimePackagingError("the container inventory was unexpected")
         return False
     if result.stdout.strip() != package.package_id:
         raise RuntimePackagingError(
@@ -864,6 +894,10 @@ def smoke(
     finally:
         if started:
             stopped = stop(package, runner, confirmed=True)
+            if not stopped:
+                raise RuntimePackagingError(
+                    "the runtime smoke could not verify complete shutdown"
+                )
     if readiness is None:
         raise RuntimePackagingError("the runtime smoke did not reach readiness")
     return SmokeResult(readiness, inference_status, stopped)

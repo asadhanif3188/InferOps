@@ -30,11 +30,11 @@ All commands ran from the repository root.
 | Command | Result | Classification |
 |---|---|---|
 | `uv run --locked python -m tools.runtime_packaging check` | Passed. Printed the immutable image, container identity, loopback port, resource request/limit pairs, external read-only model boundary, and `not started` execution state | `local-static` |
-| `uv run --locked python -m pytest tests/serving/test_runtime_packaging.py tests/testing -q` | 1,017 passed | `local-static`; runtime lifecycle responses and model verification are synthetic |
+| `uv run --locked python -m pytest tests/serving/test_runtime_packaging.py tests/testing -q` | 1,021 passed | `local-static`; runtime lifecycle responses and model verification are synthetic |
 | `uv run --locked ruff check .` | Passed | `local-static` |
 | `uv run --locked ruff format --check .` | 230 files already formatted | `local-static` |
 | `uv run --locked python -m mypy` | Passed; 129 source files checked | `local-static` |
-| `uv run --locked python -m pytest -q` | 5,219 passed, 25 skipped, 14 deselected | `local-static`, `mock`, and repository-only checks according to each existing lane |
+| `uv run --locked python -m pytest -q` | 5,223 passed, 25 skipped, 14 deselected | `local-static`, `mock`, and repository-only checks according to each existing lane |
 | Changed-file whitespace, staged-diff whitespace, and relative Markdown link checks | Passed | `local-static` |
 
 The focused suite proves descriptor validation and lifecycle mechanics by
@@ -78,6 +78,9 @@ change's scope.
 - Shutdown acts only on the exact package-owned container name and label, waits
   up to 15 seconds, and removes the container. It does not delete the model cache
   or image.
+- Docker client calls have a 30-second command deadline. Failed ownership
+  inspection is distinguished from absence by a successful exact-name inventory,
+  and smoke fails if complete shutdown cannot be verified.
 
 ## Commands deliberately not executed
 
@@ -117,5 +120,27 @@ change's scope.
 
 ## Independent review
 
-An independent second-eye review is performed after the first implementation
-commit. Its findings and the follow-up commit are recorded here before push.
+An independent second reader reviewed first commit `b7af38c` against the complete
+requirements, accepted runtime references, repository conventions, and public
+`main...HEAD` diff. The review covered package correctness, lifecycle bounds,
+cleanup safety, authorization, model and image handling, tests, evidence claims,
+scope, private information, machine paths, and generated artifacts.
+
+Two findings were reproduced:
+
+1. any failed Docker ownership inspection was treated as container absence, so a
+   daemon failure could make standalone stop return success semantics and smoke
+   finish with unverified cleanup; and
+2. Docker client commands had no process deadline, so a wedged client or daemon
+   could outlive the otherwise bounded workflow.
+
+The follow-up change reports absence only when a successful exact-name container
+inventory confirms it, fails smoke when complete shutdown cannot be verified,
+gives every Docker client invocation a 30-second deadline, sanitizes timeout
+errors, and adds four regression tests. No other review findings were reported.
+
+The reviewer independently ran focused package/profile/inventory tests (1,038
+passed before the regressions were added), focused lint, repository typing (129
+files), the security suite (619 passed), the offline package check, diff checks,
+and targeted leakage and artifact scans. No image, model, container, runtime, or
+cluster operation was executed.
