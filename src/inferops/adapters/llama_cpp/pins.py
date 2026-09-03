@@ -53,6 +53,11 @@ PINNED_IMAGE_DIGEST = (
 #: Repository and digest joined into the reference a workload document carries.
 PINNED_IMAGE_REFERENCE = f"{PINNED_IMAGE_REPOSITORY}@{PINNED_IMAGE_DIGEST}"
 
+#: The source revision used to build the pinned runtime image. The image digest
+#: remains the executable-byte identity; this revision is the human-auditable
+#: source identity the accepted decision records beside it.
+PINNED_RUNTIME_SOURCE_REVISION = "70adb1b4cea5ee39f867792c78dc59320921eda7"
+
 #: The build string the running process reported for that image, once, on one
 #: host. It is an observation and not a pin: the digest is what identifies the
 #: bytes, and this is what the process says about itself.
@@ -91,6 +96,7 @@ class RuntimePin:
     name: str
     repository: str
     digest: str
+    source_revision: str
     decision_ref: str
 
     @property
@@ -118,6 +124,7 @@ PINNED_RUNTIME = RuntimePin(
     name=LLAMA_SERVER_RUNTIME_NAME,
     repository=PINNED_IMAGE_REPOSITORY,
     digest=PINNED_IMAGE_DIGEST,
+    source_revision=PINNED_RUNTIME_SOURCE_REVISION,
     decision_ref=RUNTIME_DECISION_REF,
 )
 

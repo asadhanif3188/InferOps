@@ -424,6 +424,14 @@
       "note": "No published claim is certified by this repository-only suite. It exercises tiny synthetic bytes and proves the workflow mechanics without downloading or verifying the selected model artifact; real artifact integrity remains owned by the authorization-gated real-runtime procedure."
     },
     {
+      "module": "tests/serving/test_runtime_configuration.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The selected local runtime profile: runtime and command pins, external read-only model cache, ports, CPU and memory envelope, context and generation defaults, timeouts, readiness semantics, secret boundary, and lossless translation to the real adapter.",
+      "claims": [],
+      "note": "No published runtime claim is certified by this repository-only suite. It validates committed configuration and temporary mutated fixtures without starting a process, pulling an image, reading model bytes, or contacting a runtime; startup and readiness remain local-real evidence for the packaging change."
+    },
+    {
       "module": "tests/serving/test_inference_api_implementation_agreement.py",
       "layer": "documentation",
       "marker": "docs",

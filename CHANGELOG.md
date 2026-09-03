@@ -10,6 +10,15 @@ once versioned releases begin.
 
 ### Added
 
+- **A digest-pinned local CPU profile for the selected LLM runtime.** The
+  [machine-readable profile](docs/serving/runtime-profile.local.v1.json) fixes the
+  `llama-server` executable and arguments, external read-only model mount, port,
+  CPU and memory envelope, context and generation defaults, timeouts, readiness,
+  liveness, metrics, and no-embedded-secret boundary. The offline
+  [`tools.runtime_configuration`](tools/runtime_configuration/) check validates
+  the record against the runtime/model pins and the real adapter without pulling
+  an image, reading model bytes, or starting a process. Runtime packaging and
+  local-real startup/readiness evidence remain deferred.
 - **Revision-pinned, resumable acquisition for the selected open model.** The new
   [model source record](docs/serving/model-source.v1.json) makes the upstream
   repository, immutable revision, Apache-2.0 licence reference, expected byte

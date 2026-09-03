@@ -41,6 +41,7 @@ from inferops.adapters.llama_cpp import (
     PINNED_MODEL_SHA256,
     PINNED_MODEL_SIZE_BYTES,
     PINNED_RUNTIME,
+    PINNED_RUNTIME_SOURCE_REVISION,
     RUNTIME_DECISION_REF,
     RUNTIME_FEASIBILITY_REF,
 )
@@ -131,6 +132,11 @@ def test_the_image_reference_is_the_executed_one() -> None:
     assert EXECUTED_PAIR["imageReference"] == PINNED_IMAGE_REFERENCE
     assert PINNED_RUNTIME.reference == PINNED_IMAGE_REFERENCE
     assert PINNED_IMAGE_REFERENCE.endswith(f"@{PINNED_IMAGE_DIGEST}")
+
+
+def test_the_runtime_source_revision_is_pinned_with_the_image() -> None:
+    assert PINNED_RUNTIME.source_revision == PINNED_RUNTIME_SOURCE_REVISION
+    assert PINNED_RUNTIME_SOURCE_REVISION in DECISION_TEXT
 
 
 def test_the_image_is_pinned_by_digest_and_never_by_tag() -> None:
