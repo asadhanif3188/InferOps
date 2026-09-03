@@ -51,8 +51,9 @@ of thirty measured requests refused by the InferOps API with `contract-invalid`,
 because the API accepts exactly one message, whose role must be `user`, by
 design — the frozen serving-adapter interface carries a single `prompt` and has
 no parameter a conversation could be passed through without inventing a prompt
-format. The full evidence for that failure is on branch
-`docs/v1-s2-005-local-baseline-results` (commit `39c6237`), not yet merged.
+format. The full evidence for that failure is
+[`v1-s2-005-baseline-raw-results-first-attempt.md`](v1-s2-005-baseline-raw-results-first-attempt.md),
+merged from `docs/v1-s2-005-local-baseline-results` (commit `39c6237`).
 
 The fixture is corrected here, on a separate branch
 (`fix/v1-s2-005-baseline-tooling-defects`), to fold the system instruction into

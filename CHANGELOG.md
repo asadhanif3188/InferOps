@@ -43,6 +43,31 @@ once versioned releases begin.
 
 ### Added
 
+- **The registered local serving baseline was executed on an authorized CPU
+  host, and it failed — this repository still holds no measured baseline.** A
+  model was downloaded and hash-verified, the pinned runtime was started, and
+  thirty-three real requests were sent through the real InferOps API. **All
+  thirty-three were refused with HTTP 400 `contract-invalid` before reaching the
+  runtime, no inference ran, and no result file was produced.** Two defects in
+  the baseline tooling cause this, both open and neither fixed here: the
+  registered fixture sends a `system` message and a `user` message while the API
+  accepts exactly one `user` message, and the `run` command blocks on
+  `server.join()` after its final request so it never writes its raw records or
+  summary. A third, pre-existing defect surfaced alongside them: a security test
+  walks the filesystem without consulting git and so fails on any host that has
+  actually acquired the model into the ignored cache. The evidence, including
+  the verbatim refusal records and an offline reproduction that needs no
+  container, is in
+  [the raw result record](docs/proof/serving/v1-s2-005-baseline-raw-results-first-attempt.md)
+  (the file this entry originally cited was superseded by the successful
+  re-execution below and renamed to keep both records); the analysis and the
+  follow-up work are in
+  [the change-validation record](docs/proof/serving/v1-s2-005-pr2-validation.md).
+  The only real timings the run produced are model-load times — 358,735 ms cold,
+  which exceeds the 300,000 ms startup budget and fails the run outright, and
+  284,406 ms warm — and neither is a benchmark of anything. `V1-S2-005` remains
+  incomplete.
+
 - **A repeatable local serving baseline experiment, registered before it is
   run.** The versioned
   [baseline descriptor](deploy/serving/baseline/local-baseline.v1.json) and
