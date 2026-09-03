@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are eight, and they are listed in their own section rather than
+empty list. There are nine, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -123,11 +123,12 @@ drain order. **Nothing here crosses a socket** — this repository ships no serv
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Ten modules. Committed machine-readable data checked against the documents
+Twelve modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
-source and cache workflow — and, since the API began emitting, the catalog checked
-against what the distribution declares rather than only against its own prose.
+source and cache workflow, runtime profile, and standalone package — and, since
+the API began emitting, the catalog checked against what the distribution declares
+rather than only against its own prose.
 
 ### `real-runtime-smoke` — [`tests/realruntime/`](../../tests/realruntime/)
 
@@ -139,7 +140,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Seven suites protect something no row of the claim matrix names. Each carries its
+Nine suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -150,6 +151,7 @@ matrix is complete needs to see them together.
 | [`tests/api/test_api_lifecycle.py`](../../tests/api/test_api_lifecycle.py) | The order of start, drain, and stop. ADR 0010 chose a graceful drain over a remote-stop endpoint and the matrix has no row for it |
 | [`tests/serving/test_model_acquisition.py`](../../tests/serving/test_model_acquisition.py) | The selected source record and cache mechanics using tiny synthetic bytes. The real model's integrity remains certified by the authorization-gated procedure, not by this suite |
 | [`tests/serving/test_runtime_configuration.py`](../../tests/serving/test_runtime_configuration.py) | The pinned local runtime profile, its external model boundary, resources, defaults, health semantics, secret boundary, and compatibility with the real adapter. Runtime startup remains for local-real packaging evidence |
+| [`tests/serving/test_runtime_packaging.py`](../../tests/serving/test_runtime_packaging.py) | The standalone Docker descriptor and guarded lifecycle through injected command and HTTP seams. It proves package mechanics, not a real startup or completion |
 | [`tests/serving/test_inference_api_surface.py`](../../tests/serving/test_inference_api_surface.py) | The committed API compatibility surface against its document |
 | [`tests/serving/test_inference_api_implementation_agreement.py`](../../tests/serving/test_inference_api_implementation_agreement.py) | Every constant in the API package that repeats a row of that record |
 | [`tests/testing/test_toolchain.py`](../../tests/testing/test_toolchain.py) | The accepted toolchain decision against the configuration implementing it, including the rule that keeps the pytest configuration out of `pyproject.toml` |
