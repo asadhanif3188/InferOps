@@ -1,0 +1,252 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "lifecycleId": "inferops-local-model-lifecycle",
+  "packageRef": "deploy/serving/runtime/container-package.v1.json",
+  "modelSourceRef": "docs/serving/model-source.v1.json",
+  "documentRef": "docs/serving/model-lifecycle.md",
+  "states": [
+    {
+      "stateId": "artifact-absent",
+      "phase": "artifact",
+      "liveness": "not-applicable",
+      "readiness": false,
+      "acceptsWork": false,
+      "description": "No cached artifact and no resumable partial. A start attempted from here fails its preflight; it does not download implicitly."
+    },
+    {
+      "stateId": "artifact-partial",
+      "phase": "artifact",
+      "liveness": "not-applicable",
+      "readiness": false,
+      "acceptsWork": false,
+      "description": "A resumable .part transfer exists and no verified artifact does. The bytes are untrusted until size and SHA-256 both match."
+    },
+    {
+      "stateId": "artifact-verified",
+      "phase": "artifact",
+      "liveness": "not-applicable",
+      "readiness": false,
+      "acceptsWork": false,
+      "description": "The cached artifact matches the source record's size and SHA-256. This is the only artifact state a runtime start is allowed to proceed from."
+    },
+    {
+      "stateId": "runtime-starting",
+      "phase": "runtime",
+      "liveness": "not-applicable",
+      "readiness": false,
+      "acceptsWork": false,
+      "description": "The container exists and its process has not yet bound the published port. A liveness probe has nothing to connect to yet, so the startup budget rather than the liveness probe owns this window."
+    },
+    {
+      "stateId": "runtime-loading",
+      "phase": "runtime",
+      "liveness": "pass",
+      "readiness": false,
+      "acceptsWork": false,
+      "description": "The socket accepts connections and the health endpoint answers 503 while the model loads. This is the state the two probes must disagree about: a liveness probe reading the health endpoint would restart a healthy process mid-load and never converge."
+    },
+    {
+      "stateId": "runtime-ready",
+      "phase": "runtime",
+      "liveness": "pass",
+      "readiness": true,
+      "acceptsWork": true,
+      "description": "The health endpoint answers 200. This is the only state in which inference is possible and the only state that accepts work."
+    },
+    {
+      "stateId": "runtime-draining",
+      "phase": "runtime",
+      "liveness": "pass",
+      "readiness": false,
+      "acceptsWork": false,
+      "description": "Readiness has gone false and accepted work is still finishing. The process is deliberately alive here, so liveness still passes; a liveness failure would kill the drain it was waiting on."
+    },
+    {
+      "stateId": "runtime-stopped",
+      "phase": "runtime",
+      "liveness": "fail",
+      "readiness": false,
+      "acceptsWork": false,
+      "description": "The process is gone and the container has been removed. The verified artifact is untouched, which is what makes the next start a cache hit."
+    }
+  ],
+  "transitions": [
+    {
+      "from": "artifact-absent",
+      "to": "artifact-partial",
+      "trigger": "an explicit acquire transfers part of the pinned file"
+    },
+    {
+      "from": "artifact-absent",
+      "to": "artifact-verified",
+      "trigger": "an explicit acquire completes and the promoted bytes verify"
+    },
+    {
+      "from": "artifact-partial",
+      "to": "artifact-verified",
+      "trigger": "a resumed acquire completes and the promoted bytes verify"
+    },
+    {
+      "from": "artifact-partial",
+      "to": "artifact-absent",
+      "trigger": "an oversized or hash-invalid partial is discarded, or scoped cleanup is confirmed"
+    },
+    {
+      "from": "artifact-verified",
+      "to": "artifact-absent",
+      "trigger": "scoped cleanup of the documented model cache is confirmed"
+    },
+    {
+      "from": "artifact-verified",
+      "to": "runtime-starting",
+      "trigger": "the container is created with the verified artifact bind-mounted read-only"
+    },
+    {
+      "from": "runtime-starting",
+      "to": "runtime-loading",
+      "trigger": "the runtime binds the published port and begins answering its health endpoint"
+    },
+    {
+      "from": "runtime-loading",
+      "to": "runtime-ready",
+      "trigger": "the runtime finishes loading the model and answers 200"
+    },
+    {
+      "from": "runtime-loading",
+      "to": "runtime-stopped",
+      "trigger": "the startup budget is exhausted or the process exits during the load"
+    },
+    {
+      "from": "runtime-ready",
+      "to": "runtime-draining",
+      "trigger": "a termination signal or an explicit stop begins the shutdown"
+    },
+    {
+      "from": "runtime-draining",
+      "to": "runtime-stopped",
+      "trigger": "in-flight work finishes inside the drain budget, or the budget is exhausted and the truncated drain is recorded"
+    },
+    {
+      "from": "runtime-stopped",
+      "to": "runtime-starting",
+      "trigger": "a restart creates a new container against the artifact the previous one left in place"
+    },
+    {
+      "from": "runtime-stopped",
+      "to": "artifact-absent",
+      "trigger": "scoped cleanup of the documented model cache is confirmed after the runtime has stopped"
+    }
+  ],
+  "probes": {
+    "liveness": {
+      "kind": "tcp",
+      "port": 8080,
+      "passesIn": [
+        "runtime-loading",
+        "runtime-ready",
+        "runtime-draining"
+      ],
+      "rationale": "The runtime answers 503 on its health endpoint while the model loads. A liveness probe pointed at that endpoint restarts the process before it can finish loading. A TCP probe distinguishes a live process from a dead one and nothing else, which is the only question liveness is entitled to ask."
+    },
+    "readiness": {
+      "kind": "http",
+      "path": "/health",
+      "readyStatus": 200,
+      "loadingStatus": 503,
+      "trueIn": [
+        "runtime-ready"
+      ],
+      "rationale": "Readiness is false until an observation says otherwise. No state before runtime-ready may report ready, and a ready runtime that later answers 503 becomes not-ready again rather than latching."
+    }
+  },
+  "cache": {
+    "rootPath": ".cache/inferops/models",
+    "states": [
+      {
+        "cacheState": "miss",
+        "mapsTo": "artifact-absent",
+        "requiresNetwork": true,
+        "description": "Nothing cached. A start refuses; an explicit acquire is the only way forward and it transfers the full pinned byte count."
+      },
+      {
+        "cacheState": "partial",
+        "mapsTo": "artifact-partial",
+        "requiresNetwork": true,
+        "description": "A resumable transfer exists. An explicit acquire requests the remaining range; the partial is never promoted before it verifies."
+      },
+      {
+        "cacheState": "hit",
+        "mapsTo": "artifact-verified",
+        "requiresNetwork": false,
+        "description": "The pinned bytes are present. Verification and every start proceed with no network connection at all."
+      }
+    ]
+  },
+  "startup": {
+    "budgetMs": 300000,
+    "pollIntervalMs": 1000,
+    "order": [
+      {
+        "step": "verify-image-local",
+        "description": "verify that the pinned image is local; never pull implicitly"
+      },
+      {
+        "step": "establish-cache-state",
+        "description": "establish the cache state of the pinned artifact"
+      },
+      {
+        "step": "create-container",
+        "description": "create the ownership-labelled container with the artifact bind-mounted read-only"
+      },
+      {
+        "step": "poll-to-readiness",
+        "description": "poll liveness and readiness together until readiness reports 200 or the budget is exhausted"
+      }
+    ]
+  },
+  "shutdown": {
+    "drainTimeoutMs": 15000,
+    "stopTimeoutSeconds": 15,
+    "order": [
+      {
+        "step": "stop-accepting-and-report-unready",
+        "description": "stop accepting new work and report readiness false"
+      },
+      {
+        "step": "drain-within-budget",
+        "description": "drain accepted work within the drain budget and record whether it finished"
+      },
+      {
+        "step": "close-adapter-transport",
+        "description": "close the adapter transport"
+      },
+      {
+        "step": "stop-and-remove-container",
+        "description": "stop and remove only the ownership-labelled container"
+      }
+    ]
+  },
+  "restart": {
+    "artifactSurvives": true,
+    "readinessResets": true,
+    "reacquiresOnMiss": true,
+    "description": "A stop removes the container and nothing else. The verified artifact outlives every runtime state, so a restart is a cache hit and loads with no network connection. A restart against a missing artifact is a miss and refuses until an explicit acquire has run; it never downloads implicitly."
+  },
+  "measurement": {
+    "directory": ".cache/inferops/lifecycle",
+    "rawFile": "raw.jsonl",
+    "summaryFile": "summary.json",
+    "evidenceClass": "local-real-cpu",
+    "certificationCeiling": "C2",
+    "observations": [
+      {
+        "observationId": "cold",
+        "description": "The first start of a comparison. Nothing in this tool has read the artifact's bytes beforehand, so the host's own file cache is left in whatever state it was already in."
+      },
+      {
+        "observationId": "warm",
+        "description": "A second start of a freshly created container, run immediately after the artifact has been read end to end by the integrity verification between the two observations."
+      }
+    ]
+  }
+}

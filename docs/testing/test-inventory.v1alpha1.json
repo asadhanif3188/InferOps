@@ -480,6 +480,14 @@
       "note": "No published claim covers it, for the same reason as the agreement suite beside it. Both are committed data checked against the documents describing them, and the matrix's drift claim names the test strategy's identifiers rather than every published record."
     },
     {
+      "module": "tests/serving/test_model_lifecycle.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The accepted model lifecycle state model: its agreement with the container package, the model source record, and the API's own drain budget; the invariant that liveness passes while readiness is false during the load and the drain; the single ready state; the cache hit, miss, and partial mapping; the restart transition; the shutdown ordering; and the bounded measurement's refusals, its always-removed container, and a cleanup that cannot reach the model cache.",
+      "claims": [],
+      "note": "No published claim is certified by this repository-only suite. Every start is driven through injected command, HTTP, TCP, and clock seams over a synthetic cache of a few bytes, so no container is started, no model byte is read, and every timing it asserts is arithmetic on a fake clock; the measured cold and warm starts remain local-real evidence requiring an authorized run."
+    },
+    {
       "module": "tests/telemetry/test_api_telemetry_agreement.py",
       "layer": "documentation",
       "marker": "docs",

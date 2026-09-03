@@ -231,4 +231,5 @@ __marimo__/
 /.cache/inferops/composition/
 /.cache/inferops/certification/
 /.cache/inferops/baseline/
+/.cache/inferops/lifecycle/
 *.gguf
