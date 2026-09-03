@@ -401,6 +401,15 @@ attached so Ctrl+C can drain the API before removing the owned runtime. Keep its
 API loopback-only, preserve the runtime-before-API startup and API-before-runtime
 shutdown order, and never add a mock fallback.
 
+The [C2 real-runtime certification](docs/serving/real-runtime-certification.md)
+is the repeatable smoke workflow above that composition. Validate its descriptor
+without contacting anything with
+`uv run --locked python -m tools.runtime_certification check`; `certify` requires
+`--confirm-real-runtime` and refuses a host below the selected package's needs
+before any container exists. Keep its prerequisite refusal ahead of the artifact
+hash, keep the mock-identity and mock-capability prohibitions, and keep the
+prompt, the completion, and every host identifier out of the records it writes.
+
 Five rules apply to a change here beyond the usual ones.
 
 **A pin is compared to its source, never restated.** The runtime image digest and

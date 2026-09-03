@@ -10,6 +10,20 @@ once versioned releases begin.
 
 ### Added
 
+- **A repeatable C2 real-runtime smoke certification for the composed serving
+  path.** The versioned
+  [certification descriptor](deploy/serving/certification/c2-smoke.v1.json) and
+  [`tools.runtime_certification`](tools/runtime_certification/) command refuse a
+  host below the selected package's engine CPU, engine memory, and free-disk
+  needs before any container exists, wait for both bounded readiness boundaries
+  through the existing local composition, send one fixed public request through
+  the InferOps API, and refuse any answer carrying mock identity or mock
+  capability metadata. A certified run writes a `local-real-cpu` record labelled
+  `local real runtime`; a failure exits non-zero and stores diagnostics naming
+  the stage. Neither record retains a prompt, a completion, or a host identifier.
+  Default tests drive the workflow through injected seams only. **No authorized
+  real run was performed by this change, so no `C2` claim is made.**
+
 - **One guarded host-local workflow composes the InferOps API with the selected
   real runtime.** The versioned
   [composition descriptor](deploy/serving/local/composition.v1.json) and
