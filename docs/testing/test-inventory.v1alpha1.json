@@ -432,6 +432,14 @@
       "note": "No published runtime claim is certified by this repository-only suite. It validates committed configuration and temporary mutated fixtures without starting a process, pulling an image, reading model bytes, or contacting a runtime; startup and readiness remain local-real evidence for the packaging change."
     },
     {
+      "module": "tests/serving/test_runtime_packaging.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The standalone local runtime package: profile and pin agreement, exact Docker boundary, authorization guard, bounded loading and readiness, direct inference probe, and ownership-scoped shutdown through synthetic command and HTTP seams.",
+      "claims": [],
+      "note": "No published real-runtime claim is certified by this repository-only suite. It starts no container, reads no model byte, and uses synthetic responses; real startup, readiness, inference, resource use, and shutdown remain local-real evidence requiring an authorized run."
+    },
+    {
       "module": "tests/serving/test_inference_api_implementation_agreement.py",
       "layer": "documentation",
       "marker": "docs",

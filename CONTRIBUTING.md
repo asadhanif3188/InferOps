@@ -384,6 +384,15 @@ transport seam, the inference client, the deadlines, the error mapping, and
 deployment values without adding defaults to that generic package; validate it
 with `uv run --locked python -m tools.runtime_configuration check`.
 
+The standalone [local runtime package](docs/serving/local-runtime-package.md)
+translates that profile into a Docker command. Validate its descriptor and exact
+command without Docker or model bytes with
+`uv run --locked python -m tools.runtime_packaging check`. Commands that inspect
+real model bytes or operate Docker require `--confirm-real-runtime`; they never
+pull an image or download a model implicitly. Keep the model mount read-only, the
+published port loopback-only, and cleanup restricted to the package's exact
+ownership label.
+
 Five rules apply to a change here beyond the usual ones.
 
 **A pin is compared to its source, never restated.** The runtime image digest and

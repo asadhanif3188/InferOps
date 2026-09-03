@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "packageId": "llama-cpp-local-runtime",
+  "engine": "docker",
+  "profileRef": "docs/serving/runtime-profile.local.v1.json",
+  "container": {
+    "name": "inferops-llama-server",
+    "imageReference": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "pullPolicy": "never",
+    "entrypoint": "/app/llama-server",
+    "user": "65534:65534",
+    "readOnlyRootFilesystem": true,
+    "restartPolicy": "no",
+    "labels": {
+      "io.inferops.component": "serving-runtime",
+      "io.inferops.package": "llama-cpp-local-runtime"
+    }
+  },
+  "modelMount": {
+    "source": "profile:model-cache-artifact",
+    "target": "/models/Qwen3-1.7B-Q8_0.gguf",
+    "readOnly": true
+  },
+  "temporaryFilesystem": {
+    "target": "/tmp",
+    "sizeMiB": 64,
+    "options": [
+      "rw",
+      "noexec",
+      "nosuid",
+      "nodev",
+      "uid=65534",
+      "gid=65534"
+    ]
+  },
+  "network": {
+    "publishedHost": "127.0.0.1",
+    "publishedPort": 8080,
+    "containerPort": 8080
+  },
+  "resources": {
+    "cpuRequestCores": 1,
+    "cpuLimitCores": 6,
+    "memoryRequestMiB": 2048,
+    "memoryLimitMiB": 3072,
+    "pidsLimit": 256,
+    "accelerator": {
+      "kind": "none",
+      "count": 0
+    }
+  },
+  "security": {
+    "noNewPrivileges": true,
+    "capabilitiesDrop": [
+      "ALL"
+    ],
+    "embeddedSecrets": []
+  },
+  "lifecycle": {
+    "stopTimeoutSeconds": 15,
+    "startupBudgetMs": 300000,
+    "pollIntervalMs": 1000,
+    "loadingStatus": 503,
+    "readyStatus": 200,
+    "readinessPath": "/health",
+    "liveness": {
+      "kind": "tcp",
+      "port": 8080
+    }
+  },
+  "smoke": {
+    "requestPath": "/v1/chat/completions",
+    "requestTimeoutMs": 120000,
+    "maxOutputTokens": 1,
+    "temperature": 0,
+    "prompt": "Reply with one word.",
+    "chatTemplate": {
+      "enableThinking": false
+    }
+  }
+}

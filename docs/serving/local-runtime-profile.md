@@ -1,6 +1,7 @@
 # Local LLM runtime profile
 
-Status: **configured and validated offline; not packaged or started**.
+Status: **configured, packaged, and validated offline; not started by the
+packaging change**.
 
 The machine-readable source is
 [`runtime-profile.local.v1.json`](runtime-profile.local.v1.json). Validate it
@@ -13,8 +14,10 @@ uv run --locked python -m tools.runtime_configuration check
 
 This profile is one explicit local CPU selection for the generic real adapter.
 It does not change the adapter's rule that runtime-specific settings have no
-implicit defaults. Instead, later packaging and composition work can translate
-this versioned record into the adapter environment and the runtime command.
+implicit defaults. The standalone
+[runtime package](local-runtime-package.md) translates this versioned record into
+the runtime command; composition work can later translate it into the adapter
+environment.
 
 ## Pinned process and external model
 
@@ -66,8 +69,9 @@ Startup and readiness use `GET /health`. Status `503` means model loading and
 must remain not-ready; status `200` means the model can accept inference.
 Liveness is a TCP check on port `8080`, so a healthy load does not become a
 liveness failure. Runtime metrics are enabled at `GET /metrics` on the same
-port. Packaging must implement these semantics and live verification must prove
-them; this profile and its tests do not do either.
+port. The standalone package implements these semantics. Its repository tests
+prove the control flow with synthetic seams; live verification is still required
+for local-real startup and readiness evidence.
 
 ## Secrets and validation boundary
 
@@ -83,9 +87,10 @@ bound larger than the context, readiness that reports loading as ready, liveness
 coupled to model readiness, inconsistent ports or arguments, embedded secret
 values, and settings the real adapter cannot parse.
 
-## Deferred to runtime packaging
+## Packaging and remaining execution boundary
 
-No container or composition manifest is added here. No image was pulled, no
-model was downloaded, and no runtime was started. The packaging change must
-consume this profile, run the process without embedding the model or credentials,
-exercise startup/readiness/shutdown, and record the resulting local-real trace.
+The [standalone Docker package](local-runtime-package.md) now consumes this
+profile without embedding the model or credentials and supplies explicit
+startup, readiness, smoke, and shutdown commands. The packaging change did not
+pull the image, download the model, start the runtime, or produce a local-real
+trace. InferOps API composition remains separate work.

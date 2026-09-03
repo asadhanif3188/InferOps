@@ -10,6 +10,14 @@ once versioned releases begin.
 
 ### Added
 
+- **A repeatable standalone package for the selected local runtime.** The
+  [package descriptor](deploy/serving/runtime/container-package.v1.json) and
+  [`tools.runtime_packaging`](tools/runtime_packaging/) command pin the image and
+  process, mount only the hash-verified external model, publish only loopback,
+  constrain resources and process privileges, and provide guarded startup,
+  readiness, bounded inference smoke, and ownership-scoped shutdown. Repository
+  tests exercise the lifecycle through synthetic seams; this change did not pull
+  the image, download the model, or execute the real runtime.
 - **A digest-pinned local CPU profile for the selected LLM runtime.** The
   [machine-readable profile](docs/serving/runtime-profile.local.v1.json) fixes the
   `llama-server` executable and arguments, external read-only model mount, port,
