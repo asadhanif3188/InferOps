@@ -1,7 +1,10 @@
 # Local serving baseline
 
-Status: **registered and validated offline; the experiment has not been executed
-and this repository holds no measured baseline yet**.
+Status: **executed on 2026-09-03. All thirty measured requests succeeded and
+every pre-registered threshold is met.** The measured baseline is
+[`v1-s2-005-local-baseline-experiment.md`](../proof/serving/v1-s2-005-local-baseline-experiment.md),
+with the full raw evidence in
+[`v1-s2-005-baseline-raw-results.md`](../proof/serving/v1-s2-005-baseline-raw-results.md).
 
 The versioned
 [`local-baseline.v1.json`](../../deploy/serving/baseline/local-baseline.v1.json)
@@ -124,6 +127,36 @@ Any answer carrying mock identity aborts the run rather than being recorded.
 Exit codes: `0` the criteria were met, `3` refused before or during a bounded
 step, `4` an unexpected local failure, `6` the run completed and its success
 criteria were not met, `130` interrupted.
+
+### A prior fixture and a prior tooling defect blocked this for one PR cycle
+
+An earlier attempt to execute this experiment found two defects rather than a
+result: the then-registered fixture sent two messages and the InferOps API
+accepts exactly one, so every request was refused before reaching the runtime;
+and even a request that succeeded would never have produced a result file,
+because `run` blocked indefinitely after the measured phase instead of
+returning. Both are fixed as of this guide's current revision — the fixture now
+sends a single message, `load_experiment` validates it against the real API
+surface offline, and `run` requests its own server's stop before returning, the
+same pattern `tools.runtime_certification.certify` already used. The failed
+attempt's full evidence is preserved rather than discarded; see
+[the executed experiment record](../proof/serving/v1-s2-005-local-baseline-experiment.md#correction-to-the-registered-fixture)
+for the disclosure and reasoning.
+
+### What the executed run produced
+
+| Measurement | Value | Budget or bound |
+|---|---|---|
+| Model load | 269,079 ms | 300,000 ms — met, 30.9 s of margin |
+| API ready | 47 ms | — |
+| Requests | 33 of 33 (3 warm-up, 30 measured), all successful | 0 allowed failures |
+| Latency (measured) | P50 6,422 ms; P95 17,718 ms; P99 23,516 ms | `T5`: P99/P50 ≤ 10× — met at 3.66× |
+| Throughput | 0.121 requests/s; 2.067 output tokens/s | Descriptive only; not a benchmark |
+| Tokens | 17 output tokens per completion (temperature 0, fixed prompt) | — |
+
+The full record, including the CPU-sampling limitation that makes the measured
+`0.83%` maximum an understatement of actual load, is in
+[the raw result record](../proof/serving/v1-s2-005-baseline-raw-results.md).
 
 ## Regenerate the summary from the records
 
