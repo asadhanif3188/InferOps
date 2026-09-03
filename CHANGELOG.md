@@ -10,6 +10,26 @@ once versioned releases begin.
 
 ### Added
 
+- **A repeatable local serving baseline experiment, registered before it is
+  run.** The versioned
+  [baseline descriptor](deploy/serving/baseline/local-baseline.v1.json) and
+  [`tools.serving_baseline`](tools/serving_baseline/) command fix the request
+  fixture, generation settings, warm-up, measured request count, concurrency,
+  timeouts, and success criteria; capture a sanitized environment and the
+  immutable model, image, and runtime pins; and turn one authorized run into a
+  JSON Lines raw record set plus a deterministic summary that can be regenerated
+  from it. Latency percentiles use nearest rank, so every reported figure is a
+  value a request actually produced, and warm-up requests are recorded and then
+  excluded from every distribution. Loading refuses a descriptor that drifts from
+  the composition, the runtime profile, or the model record, and any answer
+  carrying mock identity aborts a run rather than being recorded. The method is
+  pre-registered in
+  [the experiment record](docs/proof/serving/v1-s2-005-local-baseline-experiment.md)
+  and documented in [the baseline guide](docs/serving/local-serving-baseline.md).
+  **The experiment was not executed by this change and this repository holds no
+  measured baseline.** The baseline is descriptive and may never be published as
+  a benchmark.
+
 - **One guarded host-local workflow composes the InferOps API with the selected
   real runtime.** The versioned
   [composition descriptor](deploy/serving/local/composition.v1.json) and
