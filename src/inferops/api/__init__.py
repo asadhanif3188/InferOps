@@ -16,8 +16,9 @@ by ``tests/serving/test_inference_api_implementation_agreement.py``.
 interface directly — a callable over a scope, a receive, and a send. ASGI is a
 calling convention rather than a package, so the rule is obeyed without a
 framework-shaped hole in the design, in the same way the real adapter's transport
-obeys it with :mod:`http.client`. **This repository ships no ASGI server**, so
-nothing here has bound a socket; the suites drive the application through its own
+obeys it with :mod:`http.client`. **The distribution ships no ASGI server**;
+repository-local composition tooling provides a narrow loopback HTTP carrier, and
+the API suites otherwise drive the application through its own
 interface, which establishes the routing, the translation, and the lifecycle, and
 nothing about a network.
 

@@ -393,6 +393,14 @@ pull an image or download a model implicitly. Keep the model mount read-only, th
 published port loopback-only, and cleanup restricted to the package's exact
 ownership label.
 
+The [local real composition](docs/serving/local-real-composition.md) is the guarded
+host-local workflow above that package. Validate it without Docker or model access
+with `uv run --locked python -m tools.local_composition check`. Its `start`,
+`status`, and `cleanup` commands require `--confirm-real-runtime`; `start` remains
+attached so Ctrl+C can drain the API before removing the owned runtime. Keep its
+API loopback-only, preserve the runtime-before-API startup and API-before-runtime
+shutdown order, and never add a mock fallback.
+
 Five rules apply to a change here beyond the usual ones.
 
 **A pin is compared to its source, never restated.** The runtime image digest and

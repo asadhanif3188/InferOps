@@ -1,13 +1,15 @@
 # The InferOps inference API
 
-Status: **implemented, and it has answered no network request.**
+Status: **implemented; a repository-tooling loopback carrier is available.**
 [`src/inferops/api/`](../../src/inferops/api/) registers the five endpoints
 [the accepted surface](inference-api-surface.md) decided and answers each of them
 through the serving adapter **configuration selected**. What it is not is a
-running service: the application implements the ASGI calling convention and
-**this repository ships no ASGI server**, so every result behind this document was
-produced by driving the application through its own interface. No socket has been
-bound and no byte has crossed a network.
+running service: the installable distribution implements the ASGI calling
+convention and has no server dependency. The
+[local real composition](local-real-composition.md) adds a narrow loopback HTTP
+carrier under repository tooling. Its controlled default-lane test crosses a
+local socket but loads no model; a real network-serving result still requires the
+authorization-gated real-runtime workflow.
 
 This document is what the API does. [ADR 0010](../architecture/decisions/ADR-0010-inference-api-compatibility-surface.md)
 is why its shape is what it is, and this document does not restate the argument.
@@ -347,7 +349,7 @@ from the program that imported it.
 | A `mock` selection composes the mock and a `real` selection composes the real adapter | Composing from configuration mappings, under `tests/api/test_api_adapter_selection.py` | mock |
 | An unstated selection, and a `real` selection with missing settings, refuse rather than fall back | The same | mock |
 | A real selection reaches a runtime | Established by the opt-in real-runtime API suite against the pinned local Kubernetes runtime | local-real-cpu |
-| This API answers an HTTP request over a socket | **Not established.** No server ships here and none was run | — |
+| This API answers an HTTP request over a loopback socket | **Established only with a controlled transport.** The local carrier test loads no model and cannot certify real serving | [`tests/api/test_local_real_composition.py`](../../tests/api/test_local_real_composition.py) |
 | This API serves a real model | Established through the in-process ASGI application, real adapter, loopback Kubernetes tunnel, pinned runtime, and hash-verified model in the [Sprint 1 closure run](../proof/serving/v1-s1-real-runtime-closure.md) | local-real-cpu |
 
 The evidence class of the repository-only group is `mock`, which ceilings at

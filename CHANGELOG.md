@@ -10,6 +10,17 @@ once versioned releases begin.
 
 ### Added
 
+- **One guarded host-local workflow composes the InferOps API with the selected
+  real runtime.** The versioned
+  [composition descriptor](deploy/serving/local/composition.v1.json) and
+  [`tools.local_composition`](tools/local_composition/) command validate exact
+  real-adapter configuration, start and ready the pinned runtime before the
+  loopback API, keep the process attached, and drain the API before
+  ownership-scoped runtime cleanup. Default tests cover rendering and lifecycle
+  through controlled seams, including a loopback HTTP request to the real adapter
+  type over a synthetic transport. No real runtime or model was executed by this
+  change.
+
 - **A repeatable standalone package for the selected local runtime.** The
   [package descriptor](deploy/serving/runtime/container-package.v1.json) and
   [`tools.runtime_packaging`](tools/runtime_packaging/) command pin the image and
