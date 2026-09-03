@@ -241,7 +241,11 @@ class LocalApiServer:
         self._serving_thread.start()
 
     def request_stop(self) -> None:
-        if self._server is not None:
+        if (
+            self._server is not None
+            and self._serving_thread is not None
+            and self._serving_thread.is_alive()
+        ):
             self._server.shutdown()
 
     def join(self) -> None:

@@ -205,6 +205,27 @@ def test_foreground_orchestration_orders_readiness_and_cleanup(
     assert result.api_drained is True
     assert result.runtime_removed is True
 
+    original_event = core.CompositionLog.event
+
+    def fail_after_api_stop(
+        self: core.CompositionLog, name: str, **fields: object
+    ) -> None:
+        if name == "composition.api.stopped":
+            raise OSError("synthetic log failure")
+        original_event(self, name, **fields)
+
+    monkeypatch.setattr(core.CompositionLog, "event", fail_after_api_stop)
+    events.clear()
+    with pytest.raises(core.CompositionError, match="cleanup was incomplete"):
+        core.run_foreground(
+            core.load_composition(),
+            confirmed=True,
+            repo_root=tmp_path,
+            runner=NoCommandRunner(),
+            server_factory=server_factory,
+        )
+    assert events[-1] == "runtime.stop"
+
 
 def test_loopback_carrier_reaches_explicit_real_adapter_over_controlled_transport() -> (
     None
@@ -262,3 +283,23 @@ def test_loopback_carrier_reaches_explicit_real_adapter_over_controlled_transpor
 def test_real_operations_require_explicit_confirmation() -> None:
     with pytest.raises(core.CompositionError, match="confirm-real-runtime"):
         core.status(core.load_composition(), NoCommandRunner(), confirmed=False)
+
+
+@pytest.mark.parametrize(
+    "linked_relative",
+    [Path(".cache"), Path(".cache/inferops/composition/local-real.jsonl")],
+    ids=("linked-parent", "linked-leaf"),
+)
+def test_composition_log_refuses_a_linked_component(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, linked_relative: Path
+) -> None:
+    linked_path = tmp_path.resolve() / linked_relative
+    original = Path.is_symlink
+
+    def linked(self: Path) -> bool:
+        return self == linked_path or original(self)
+
+    monkeypatch.setattr(Path, "is_symlink", linked)
+
+    with pytest.raises(core.CompositionError, match="log path is unsafe"):
+        core.CompositionLog(core.load_composition(), repo_root=tmp_path)

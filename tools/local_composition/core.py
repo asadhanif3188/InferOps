@@ -9,6 +9,7 @@ with a loopback-only ASGI carrier.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import tomllib
@@ -392,19 +393,32 @@ class CompositionLog:
     def __init__(
         self, composition: LocalComposition, *, repo_root: Path = REPO_ROOT
     ) -> None:
-        self.path = (repo_root / composition.log_path).resolve()
-        expected = (repo_root.resolve() / EXPECTED_LOG_PATH).resolve()
-        if self.path != expected or self.path.is_symlink():
+        self._root = repo_root.resolve()
+        self.path = self._root / composition.log_path
+        if composition.log_path != EXPECTED_LOG_PATH:
             raise CompositionError("the composition log path is unsafe")
         self._lock = threading.Lock()
+        self._ensure_safe()
+
+    def _ensure_safe(self) -> None:
+        candidate = self._root
+        for part in EXPECTED_LOG_PATH.parts:
+            candidate = candidate / part
+            if candidate.is_symlink() or os.path.isjunction(candidate):
+                raise CompositionError("the composition log path is unsafe")
+        if not self.path.resolve().is_relative_to(self._root):
+            raise CompositionError("the composition log path is unsafe")
 
     def reset(self) -> None:
+        self._ensure_safe()
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._ensure_safe()
         self.path.write_text("", encoding="utf-8")
 
     def __call__(self, line: str) -> None:
         if "\n" in line or "\r" in line:
             raise CompositionError("a composition log record must be one line")
+        self._ensure_safe()
         with self._lock, self.path.open("a", encoding="utf-8", newline="\n") as stream:
             stream.write(f"{line}\n")
 
@@ -427,6 +441,7 @@ def read_logs(
     if not log.path.exists():
         return ()
     try:
+        log._ensure_safe()
         if log.path.stat().st_size > 1_048_576:
             raise CompositionError(
                 "the composition log exceeds its readable size bound"
@@ -611,27 +626,37 @@ def run_foreground(
             on_ready(runtime_readiness_ms, api_readiness_ms)
         server.join()
     finally:
-        api_failure: Exception | None = None
+        cleanup_failures: list[Exception] = []
         if api_started and server is not None:
-            server.request_stop()
-            server.join()
+            for action in (server.request_stop, server.join, server.close):
+                try:
+                    action()
+                except Exception as error:
+                    cleanup_failures.append(error)
             try:
-                server.close()
+                log.event(
+                    "composition.api.stopped",
+                    drained=server.application.drained_cleanly is True,
+                )
             except Exception as error:
-                api_failure = error
-            log.event(
-                "composition.api.stopped",
-                drained=server.application.drained_cleanly is True,
-            )
+                cleanup_failures.append(error)
         if runtime_started:
-            runtime_removed = stop_runtime(package, active_runner, confirmed=True)
-            log.event("composition.runtime.removed", removed=runtime_removed)
-            if not runtime_removed:
-                raise CompositionError("runtime cleanup could not be verified")
-        if api_failure is not None:
-            raise CompositionError(
-                "InferOps API cleanup was incomplete"
-            ) from api_failure
+            try:
+                runtime_removed = stop_runtime(package, active_runner, confirmed=True)
+                if not runtime_removed:
+                    cleanup_failures.append(
+                        CompositionError("runtime cleanup could not be verified")
+                    )
+            except Exception as error:
+                cleanup_failures.append(error)
+            try:
+                log.event("composition.runtime.removed", removed=runtime_removed)
+            except Exception as error:
+                cleanup_failures.append(error)
+        if cleanup_failures:
+            raise CompositionError("local composition cleanup was incomplete") from (
+                cleanup_failures[0]
+            )
     return RunResult(
         runtime_readiness_ms=runtime_readiness_ms,
         api_readiness_ms=api_readiness_ms,

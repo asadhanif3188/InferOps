@@ -27,10 +27,10 @@ downloads a model or pulls an image.
 |---|---|---|
 | `uv run --locked python -m tools.local_composition check` | Passed; real selection, loopback endpoints, readiness URL, local log path, and unexecuted status printed | `local-static`; contacted no runtime or Docker |
 | `uv run --locked ruff check .` | Passed | Repository-static |
-| `uv run --locked ruff format --check .` | Passed; 236 files already formatted | Repository-static |
+| `uv run --locked ruff format --check .` | Passed; 237 files already formatted | Repository-static |
 | `uv run --locked python -m mypy` | Passed; 134 source files checked | Repository-static |
-| `uv run --locked python -m pytest tests/api/test_local_real_composition.py tests/testing -q` | Passed; 1,006 tests | Controlled and repository-static |
-| `uv run --locked python -m pytest -q` | Passed; 5,241 passed, 25 skipped, 14 deselected | Default lane; real-runtime tests remained deselected |
+| `uv run --locked python -m pytest tests/api/test_local_real_composition.py -q` | Passed; 10 tests | Controlled synthetic composition path |
+| `uv run --locked python -m pytest -q` | Passed; 5,244 passed, 25 skipped, 14 deselected | Default lane; real-runtime tests remained deselected |
 
 The focused composition suite verifies the exact descriptor, refusal of mock and
 unsafe mutations, runtime-before-API readiness, API-before-runtime cleanup, and
@@ -55,6 +55,18 @@ project identifiers and immutable public model/runtime pins already present on
 completion from a user, personal filesystem path, model artifact, host inventory,
 private URL, or runtime response body. Generated logs remain under an ignored,
 workspace-scoped path and record structured operational fields only.
+
+## Independent second-eye review
+
+An independent reviewer examined first commit `3371eda` against the complete PR
+brief and found two cleanup-boundary defects before push. First, resolved-path
+comparison could follow a pre-existing linked log-path component outside the
+workspace. Second, an API teardown or log-write exception could skip the runtime
+cleanup attempt. The follow-up fixes refuse symlink and junction components before
+each read or write, independently attempt every teardown action, and add regressions
+for linked parent and leaf paths plus a teardown-time log failure. The reviewer also
+reported no private-information leakage and confirmed that no real execution
+occurred.
 
 ## Limitations
 
