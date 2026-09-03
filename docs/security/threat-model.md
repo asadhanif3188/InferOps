@@ -9,12 +9,15 @@ below have no control at all.
 > [!WARNING]
 > Nothing in this repository authenticates a caller, authorises a request, enforces
 > a network policy, or applies a security context to a pod it deployed — because
-> nothing here deploys a pod or serves a request. No scanner has been run and
-> recorded. No assessment by an outside party has ever been performed, and a
+> nothing here deploys a pod or serves a request. No secret scanner has been run
+> and recorded. An image scanner and a dependency auditor have each been run
+> once, by hand, against the pinned runtime image and the committed dependency
+> lockfile; neither runs continuously, because no continuous-integration service
+> is selected. No assessment by an outside party has ever been performed, and a
 > document review is not one.
 >
 > What is really enforced is enforced over committed files, over five YAML
-> manifests, and by two shell functions. That is a narrow and real thing, and the
+> manifests, and by four shell functions. That is a narrow and real thing, and the
 > distance between it and a defended system is
 > [the deferred-risk register](deferred-risks.md).
 

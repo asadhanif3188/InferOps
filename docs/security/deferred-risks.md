@@ -154,7 +154,7 @@ entry used to say that no dependency lockfile and no packaging manifest existed.
 dependency manager, committed a `pyproject.toml` and a hash-bearing `uv.lock`, and
 ran every tool it named — so that half is gone. `V1-S2-006-PR1` closed a second
 half: `scan-python-dependencies-for-known-vulnerabilities` runs Trivy against
-`uv.lock`, including its dev and check groups, and a recorded run now exists — see
+`uv.lock`, including its test and checks groups, and a recorded run now exists — see
 [the validation record](../proof/security/v1-s2-006-pr1-validation.md). The half
 that remains is the half that mattered most from the start.
 

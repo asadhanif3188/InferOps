@@ -7,8 +7,11 @@ decisions are accepted; two are explicitly not made.
 > [!IMPORTANT]
 > Nothing in this repository authenticates a caller, authorises a request, enforces
 > a network policy, or applies a security context to a pod it deployed — because
-> nothing here deploys a pod or serves a request. No scanner has been run and
-> recorded, and no assessment by an outside party has ever been performed.
+> nothing here deploys a pod or serves a request. No secret scanner has been run
+> and recorded. An image scanner and a dependency auditor have each been run once,
+> by hand, against the pinned runtime image and the committed dependency lockfile;
+> neither runs continuously, because no continuous-integration service is
+> selected. No assessment by an outside party has ever been performed.
 >
 > What is enforced is enforced over committed files, over five YAML manifests, and
 > by four shell functions. That is narrow and real. The distance between it and a

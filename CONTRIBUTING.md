@@ -694,8 +694,11 @@ document committed here** only inside a sentence that denies it.
 It checks a baseline, not a system. Nothing in this repository authenticates a
 caller, authorises a request, enforces a network policy, or applies a security
 context to a pod it deployed, because nothing here deploys a pod or serves a request.
-No secret scanner, image scanner, or dependency auditor has been run and recorded,
-and no assessment by an outside party has ever been performed.
+No secret scanner has been run and recorded. An image scanner and a dependency
+auditor have each been run once, by hand, against the pinned runtime image and the
+committed dependency lockfile; neither runs continuously, because no continuous-
+integration service is selected, and no assessment by an outside party has ever
+been performed.
 
 A change that adds a control names the verification for it or declares that it has
 none — there is no third option, and the derivation is what makes that true rather

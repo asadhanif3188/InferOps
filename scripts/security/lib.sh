@@ -105,7 +105,7 @@ inferops::security::assert_runtime_image_has_no_blocking_vulnerabilities() {
     inferops::security::fail "${image} carries a ${severity} finding with no recorded exception; see ${INFEROPS_SECURITY_ARTIFACT_DIR}/runtime-image-scan.json"
 }
 
-# Scans the committed dependency lockfile, including the dev and check
+# Scans the committed dependency lockfile, including the `test` and `checks`
 # groups - the only Python dependencies pinned anywhere in this repository,
 # since the published distribution declares none - and refuses to report
 # success on the same terms as the guard above.
@@ -113,7 +113,7 @@ inferops::security::assert_dependencies_have_no_blocking_vulnerabilities() {
   local severity="${1:-${INFEROPS_SCAN_BLOCKING_SEVERITY}}"
   inferops::security::require_cmd trivy
   mkdir -p "${INFEROPS_SECURITY_ARTIFACT_DIR}"
-  inferops::security::log "scanning uv.lock (including dev and check groups) for ${severity} findings"
+  inferops::security::log "scanning uv.lock (including the test and checks groups) for ${severity} findings"
   (
     cd "${INFEROPS_SECURITY_ROOT}" && trivy fs \
       --scanners vuln \

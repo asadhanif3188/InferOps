@@ -23,7 +23,7 @@ trivy image \
   --output "${INFEROPS_SECURITY_ARTIFACT_DIR}/runtime-image.cyclonedx.json" \
   "${image}"
 
-inferops::security::log "generating an SBOM for uv.lock (including dev and check groups)"
+inferops::security::log "generating an SBOM for uv.lock (including the test and checks groups)"
 (
   cd "${INFEROPS_SECURITY_ROOT}" && trivy fs \
     --include-dev-deps \

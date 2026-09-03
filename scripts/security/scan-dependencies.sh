@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Scans the committed dependency lockfile for known vulnerabilities.
 #
-# Scans uv.lock including the dev and check dependency groups: the published
+# Scans uv.lock including its `test` and `checks` dependency groups: the published
 # distribution declares no runtime dependency (pyproject.toml says so
 # explicitly), so those groups are the only Python dependencies this
 # repository pins anywhere.

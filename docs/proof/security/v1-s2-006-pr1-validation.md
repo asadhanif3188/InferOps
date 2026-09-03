@@ -53,7 +53,7 @@ below rather than skipped silently.
 | Target | How it is pinned |
 |---|---|
 | The runtime image, `ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384` | By digest, in [`deploy/serving/runtime/container-package.v1.json`](../../../deploy/serving/runtime/container-package.v1.json) and in [`deploy/serving/feasibility/llama-server.yaml`](../../../deploy/serving/feasibility/llama-server.yaml). The image was already present on this host from prior local-composition work; nothing was downloaded to run this scan. |
-| The committed dependency lockfile, [`uv.lock`](../../../uv.lock), including its `test` and `checks` groups | The published distribution declares no runtime dependency (`dependencies = []` in `pyproject.toml`), so the dev and check tool groups are the only Python dependencies pinned anywhere in this repository. |
+| The committed dependency lockfile, [`uv.lock`](../../../uv.lock), including its `test` and `checks` groups | The published distribution declares no runtime dependency (`dependencies = []` in `pyproject.toml`), so the `test` and `checks` groups are the only Python dependencies pinned anywhere in this repository. |
 
 No InferOps-owned container image exists in V1. No `Dockerfile` or build step is
 committed anywhere in this repository, and the only container image any manifest
@@ -83,7 +83,7 @@ exit code: 0
 
 ```text
 bash scripts/security/scan-dependencies.sh
-[inferops-security] scanning uv.lock (including dev and check groups) for CRITICAL,HIGH findings
+[inferops-security] scanning uv.lock (including the test and checks groups) for CRITICAL,HIGH findings
 ...
 [inferops-security] no CRITICAL,HIGH finding in uv.lock
 exit code: 0
@@ -115,7 +115,7 @@ claims.
 ```text
 bash scripts/security/generate-sbom.sh
 [inferops-security] generating an SBOM for ghcr.io/ggml-org/llama.cpp@sha256:...15ad384
-[inferops-security] generating an SBOM for uv.lock (including dev and check groups)
+[inferops-security] generating an SBOM for uv.lock (including the test and checks groups)
 [inferops-security] wrote .artifacts/security/runtime-image.cyclonedx.json and .../python-dependencies.cyclonedx.json
 ```
 
@@ -125,7 +125,7 @@ unmodified, into this repository:
 | SBOM | Format | Components | Committed at |
 |---|---|---|---|
 | Runtime image | CycloneDX `1.7` JSON | 393 | [`sbom/v1-s2-006-pr1-runtime-image.cyclonedx.json`](sbom/v1-s2-006-pr1-runtime-image.cyclonedx.json) |
-| Python dependencies (dev and check groups) | CycloneDX `1.7` JSON | 24 | [`sbom/v1-s2-006-pr1-python-dependencies.cyclonedx.json`](sbom/v1-s2-006-pr1-python-dependencies.cyclonedx.json) |
+| Python dependencies (`test` and `checks` groups) | CycloneDX `1.7` JSON | 24 | [`sbom/v1-s2-006-pr1-python-dependencies.cyclonedx.json`](sbom/v1-s2-006-pr1-python-dependencies.cyclonedx.json) |
 
 An SBOM lists what a target is built from; it carries no vulnerability data, which is
 why `trivy`'s own output above notes that `--format cyclonedx` disables vulnerability
@@ -142,7 +142,7 @@ Environment and are not current beyond that day.
 | Target | CRITICAL | HIGH | MEDIUM | LOW |
 |---|---|---|---|---|
 | Runtime image (392 OS packages, Ubuntu 24.04) | 0 | 0 | 622 | 59 |
-| `uv.lock`, dev and check groups | 0 | 0 | 1 | 0 |
+| `uv.lock`, `test` and `checks` groups | 0 | 0 | 1 | 0 |
 
 The one dependency finding: `CVE-2025-71176` in `pytest 8.4.2` (denial-of-service or
 privilege escalation via insecure temporary-directory handling), fixed in `9.0.3`.

@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.7",
-  "serialNumber": "urn:uuid:35a067c7-b878-4dae-bf19-bf19ef896a1d",
+  "serialNumber": "urn:uuid:1b066b49-311e-46fb-92fc-9a4994606c4c",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-09-03T16:26:15+00:00",
+    "timestamp": "2026-09-03T16:54:27+00:00",
     "tools": {
       "components": [
         {
@@ -102,7 +102,7 @@
   },
   "components": [
     {
-      "bom-ref": "2aa0f656-834a-4742-bc60-6a9ca016b928",
+      "bom-ref": "c3706a71-66eb-484f-9aed-c2f4a4d39e50",
       "type": "operating-system",
       "name": "ubuntu",
       "version": "24.04",
@@ -27892,7 +27892,7 @@
   ],
   "dependencies": [
     {
-      "ref": "2aa0f656-834a-4742-bc60-6a9ca016b928",
+      "ref": "c3706a71-66eb-484f-9aed-c2f4a4d39e50",
       "dependsOn": [
         "pkg:deb/ubuntu/alsa-topology-conf@1.2.5.1-2?arch=all&distro=ubuntu-24.04",
         "pkg:deb/ubuntu/alsa-ucm-conf@1.2.10-1ubuntu5.14?arch=all&distro=ubuntu-24.04",
@@ -31042,7 +31042,7 @@
     {
       "ref": "pkg:oci/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384?arch=amd64&repository_url=ghcr.io%2Fggml-org%2Fllama.cpp",
       "dependsOn": [
-        "2aa0f656-834a-4742-bc60-6a9ca016b928"
+        "c3706a71-66eb-484f-9aed-c2f4a4d39e50"
       ]
     }
   ],

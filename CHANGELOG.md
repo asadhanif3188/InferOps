@@ -14,7 +14,7 @@ once versioned releases begin.
   committed dependency lockfile.** `scripts/security/scan-runtime-image.sh`
   and `scripts/security/scan-dependencies.sh` run Trivy against, respectively,
   the runtime image `deploy/serving/runtime/container-package.v1.json` pins by
-  digest and `uv.lock` (including its dev and check groups, the only Python
+  digest and `uv.lock` (including its test and checks groups, the only Python
   dependencies this repository pins), and refuse to report success when a
   `CRITICAL` or `HIGH` finding turns up with no recorded exception.
   `scripts/security/generate-sbom.sh` produces a CycloneDX SBOM for each,

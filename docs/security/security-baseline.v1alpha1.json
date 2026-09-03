@@ -1344,7 +1344,7 @@
     },
     {
       "controlId": "scan-python-dependencies-for-known-vulnerabilities",
-      "statement": "A contributor-run script scans the committed uv.lock, including its dev and check dependency groups, for known vulnerabilities using Trivy, and refuses to report success when a finding at or above the committed blocking severity is not recorded as an accepted exception.",
+      "statement": "A contributor-run script scans the committed uv.lock, including its test and checks dependency groups, for known vulnerabilities using Trivy, and refuses to report success when a finding at or above the committed blocking severity is not recorded as an accepted exception.",
       "boundaryId": "B1",
       "threats": [
         "T-19"
@@ -1360,7 +1360,7 @@
       "v1Status": "enforced-on-the-host",
       "owner": "security",
       "evidenceRef": "docs/proof/security/v1-s2-006-pr1-validation.md",
-      "whatItDoesNotVerify": "That any check's own environment was actually resolved from the scanned lockfile - DR-07 carries that gap, and this control narrows it without closing it. It does not verify a runtime dependency, because the published distribution declares none; the dev and check groups are the only Python dependencies pinned anywhere in this repository. It does not run on every commit, because no continuous-integration service is selected."
+      "whatItDoesNotVerify": "That any check's own environment was actually resolved from the scanned lockfile - DR-07 carries that gap, and this control narrows it without closing it. It does not verify a runtime dependency, because the published distribution declares none; the test and checks groups are the only Python dependencies pinned anywhere in this repository. It does not run on every commit, because no continuous-integration service is selected."
     },
     {
       "controlId": "record-what-the-platform-did",
@@ -1464,7 +1464,7 @@
       "threats": [
         "T-19"
       ],
-      "whyDeferred": "ADR 0009 accepted a dependency manager and committed a hash-bearing lockfile, so the half of this risk that said no lockfile exists is gone. Narrowed again by V1-S2-006-PR1: a dependency scanner (Trivy) has now been run once, against uv.lock including its dev and check groups, on the machine that ran it. What is left needs a lane. Nothing observes which inputs a check actually resolved, and shellcheck, kubeconform, kind, kubectl and the container engine are named in prose rather than pinned by that file.",
+      "whyDeferred": "ADR 0009 accepted a dependency manager and committed a hash-bearing lockfile, so the half of this risk that said no lockfile exists is gone. Narrowed again by V1-S2-006-PR1: a dependency scanner (Trivy) has now been run once, against uv.lock including its test and checks groups, on the machine that ran it. What is left needs a lane. Nothing observes which inputs a check actually resolved, and shellcheck, kubeconform, kind, kubectl and the container engine are named in prose rather than pinned by that file.",
       "whatWouldHaveToBeTrue": "A lane that resolves from the lockfile and fails when the resolution would change it, and a pinning approach for the tools that are not Python distributions.",
       "notClaimed": "No reproducibility property is claimed for the tool chain that runs the checks. A committed lockfile is an available input and is not evidence that any check used it.",
       "blocksProductionUse": true
