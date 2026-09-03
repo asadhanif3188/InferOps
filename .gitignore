@@ -229,4 +229,5 @@ __marimo__/
 #   stay outside Git even if copied elsewhere in the checkout by mistake.
 /.cache/inferops/models/
 /.cache/inferops/composition/
+/.cache/inferops/certification/
 *.gguf

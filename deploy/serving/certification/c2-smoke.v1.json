@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "certificationId": "inferops-c2-real-runtime-smoke",
+  "certificationLevel": "C2",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real runtime",
+  "lane": "real-runtime",
+  "compositionRef": "deploy/serving/local/composition.v1.json",
+  "certificationRef": "docs/testing/certification.md",
+  "prerequisites": {
+    "minimumLogicalCpus": 6,
+    "minimumEngineMemoryBytes": 4294967296,
+    "minimumFreeDiskBytes": 2147483648,
+    "requiresVerifiedModelCache": true,
+    "requiresPinnedRuntimeImage": true,
+    "requiresContainerEngine": true
+  },
+  "readiness": {
+    "runtimeBudgetMs": 300000,
+    "apiBudgetMs": 122000
+  },
+  "request": {
+    "path": "/v1/chat/completions",
+    "modelsPath": "/v1/models",
+    "prompt": "In one sentence, what is Kubernetes?",
+    "requestId": "v1-s2-004-pr1-c2-smoke",
+    "correlationId": "v1-s2-004-pr1-c2-smoke",
+    "timeoutMs": 120000
+  },
+  "assertions": {
+    "requiredAdapterKind": "real",
+    "prohibitedIdentitySubstring": "mock",
+    "requireUsageCounts": true,
+    "requireNonEmptyContent": true,
+    "requirePinnedModelRevision": true
+  },
+  "evidence": {
+    "directory": ".cache/inferops/certification",
+    "resultFile": "c2-smoke.json",
+    "diagnosticsFile": "c2-smoke-diagnostics.json",
+    "retainGeneratedText": false
+  }
+}
