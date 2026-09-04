@@ -1,5 +1,15 @@
 # V1-S2-001-PR1 model acquisition validation
 
+> [!NOTE]
+> **Post-record resolution (2026-09-04):** the evidence this record reported as
+> unproduced now exists and is cited below rather than left open. The workflow's
+> real acquisition was executed by
+> [`V1-S2-005-PR2`](v1-s2-005-pr2-validation.md) on 2026-09-03, and its real
+> absent-state check and verified cache hit were re-executed on 2026-09-04 during
+> the Sprint 2 completion remediation. Nothing above the resolution section is
+> rewritten: this record described what it had at the time, and that is what it
+> still says.
+
 | Field | Value |
 |---|---|
 | Date | 2026-09-02 |
@@ -61,10 +71,14 @@ match the recorded digest.
 
 ## Commands deliberately not executed
 
-- `uv run --locked python -m tools.model_acquisition acquire`: not run because it
-  downloads the 1.71 GiB selected model and no authorization was given.
+- `uv run --locked python -m tools.model_acquisition acquire`: not run **by this
+  PR** because it downloads the 1.71 GiB selected model and no authorization was
+  given. It was run under authorization on 2026-09-03; see the reconciliation
+  section below.
 - `uv run --locked python -m tools.model_acquisition verify`: not run against the
-  real artifact because the cache is absent.
+  real artifact **by this PR** because the cache was absent. It was run against the
+  real artifact on 2026-09-03 and again on 2026-09-04; see the reconciliation
+  section below.
 - `uv run --locked python -m tools.model_acquisition clean --confirm`: not run;
   there was no model cache to remove, and destructive cleanup was unnecessary.
 - Real-runtime, container, Kubernetes, load, paid-service, and production commands:
@@ -85,6 +99,34 @@ are met, but its requested **fresh real acquisition and real cache-hit logs rema
 unproduced** because downloading the full model was explicitly authorization-gated.
 The earlier feasibility record remains the only real download evidence; it is not
 relabelled as output of this workflow.
+
+## Story evidence, reconciled on 2026-09-04
+
+The paragraph above was true when it was written and is left standing. The two
+logs the story asked for have since been produced by **this** workflow, and the
+Sprint 2 completion review required them to be cited here rather than left
+scattered across later records.
+
+| Story evidence | Produced by | Result |
+|---|---|---|
+| Fresh real acquisition | `V1-S2-005-PR2`, 2026-09-03, under an explicit download authorization | `check` reported `state absent (0 bytes present)`; `acquire` reported `verified download verified; 1834426016 bytes`; `verify` reported `SHA-256 matched`. Recorded in [`v1-s2-005-pr2-validation.md`](v1-s2-005-pr2-validation.md) |
+| Real absent-state check | Sprint 2 completion remediation, 2026-09-04 | `state absent (0 bytes present)`; `80.00 GiB free; 1.77 GiB required`. Recorded in [the cache miss observation](v1-s2-007-cache-miss-observation.md) |
+| Real cache hit | Sprint 2 completion remediation, 2026-09-04 | `check` reported `state verified (1834426016 bytes present)`; `verify` reported `Qwen3-1.7B-Q8_0.gguf (1834426016 bytes, SHA-256 matched)`, reading all 1.71 GiB |
+
+Three things this reconciliation deliberately does **not** claim. The 2026-09-03
+acquisition was performed to serve the baseline experiment, not as a rehearsal of
+this workflow, though it used this workflow's commands unchanged. The 2026-09-04
+cache hit was read from an artifact acquired the previous day, so it evidences the
+hit path and not the transfer path. And **no interrupted transfer was ever resumed
+against the real source**: resumption remains proved by synthetic interruption
+only, exactly as the acceptance table above already says.
+
+On the executing host the cached artifact also carries a second hard link outside
+the checkout, which means a `clean --confirm` there frees no space and a later
+"fresh" acquisition on that host would not be fresh. That is a property of one
+machine and changes no repository behaviour; it is recorded in
+[the Sprint 2 completion review](sprint-2-completion-review.md) so that a future
+reader does not mistake a fast local acquisition for a fast download.
 
 ## Risks, assumptions, and deferred work
 

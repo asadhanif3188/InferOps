@@ -2,6 +2,8 @@
 
 Date produced: 2026-09-03
 
+Produced from [the raw-result template](../templates/TEMPLATE-raw-result.md).
+
 ## Classification and certification
 
 Evidence class: `local-real-cpu`. The pinned runtime container was started from a

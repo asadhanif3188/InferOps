@@ -234,8 +234,18 @@ different things at different times: what will be measured, what it ran on, what
 out, and what may therefore be claimed. Collapsing them produces a document where the
 method is written after the results.
 
-A template has produced no record, the catalog records that count as zero, and a test
-refuses any attempt to cite a template path as evidence.
+Each template declares how many records it has produced, a record declares which
+template it came from, and a test derives the first from the second so the two cannot
+drift. A separate test refuses any attempt to cite a template path itself as evidence.
+
+**Amended 2026-09-04.** This section previously read "a template has produced no
+record, the catalog records that count as zero". That was true when this decision was
+accepted and became false once `V1-S2-005` published an experiment record and raw
+results from these formats. The counted truth is one `experiment` record and five
+`raw-result` records; `environment` and `claim-evidence` have produced none, which is
+a real state and stays visible. The count is now derived from the records rather than
+maintained by hand, because the failure here was a hand-maintained number that no
+test could contradict.
 
 ## D7 — Content capture: not decided
 

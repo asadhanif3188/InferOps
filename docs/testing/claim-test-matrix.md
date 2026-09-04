@@ -76,12 +76,22 @@ vocabulary of a security posture appears in those documents only where it is den
 
 It certifies **nothing about whether anything is defended.** Nothing in this
 repository authenticates a caller, authorises a request, enforces a network policy, or
-applies a security context to a pod it deployed; no secret scanner, image scanner, or
-dependency auditor has been run and recorded; and no assessment by an outside party
-has ever been performed. Ten of its thirty-two controls have no verification at all,
-twelve risks are carried rather than reduced, and the eight manifest assertions are
-properties of five YAML files that are smoke and trial apparatus rather than of any
-pod this platform deployed.
+applies a security context to a pod it deployed; no secret scanner has been run and
+recorded; and no assessment by an outside party has ever been performed. Ten of its
+thirty-two controls have no verification at all, twelve risks are carried rather than
+reduced, and the eight manifest assertions are properties of five YAML files that are
+smoke and trial apparatus rather than of any pod this platform deployed.
+
+An image scanner and a dependency auditor **have** each been run once, by hand,
+against the pinned runtime image and the committed dependency lockfile, and recorded
+with two CycloneDX SBOMs in
+[the supply-chain evidence](../proof/security/v1-s2-006-pr1-validation.md). That is
+one Trivy database version, on one day, on one host. Neither scan runs continuously,
+because no continuous-integration service is selected; a scanner is a detector rather
+than a proof of absence; and neither result is cited by any certified claim in the
+table above. A secret scanner is still absent: `gitleaks` is configured in this
+repository but is not installed on the host that ran these checks, so every record
+that mentions it reports it as not run.
 
 The telemetry row is narrow in the same way, and its wording is exact for a
 reason. A prompt, a response, a provider error body, and a secret have **no**

@@ -42,6 +42,53 @@ once versioned releases begin.
 
 ### Fixed
 
+- **The Sprint 2 completion review's blockers are closed and five stale claims
+  are corrected.** The `V1-S2-004` certification workflow has now been *run*:
+  one authorized invocation of `tools.runtime_certification certify
+  --confirm-real-runtime` certified at `C2`, with the runtime ready in
+  285,828 ms against a 300,000 ms budget, one real completion returned in
+  3,140 ms with runtime-derived token counts, and verified teardown. The
+  result is promoted to
+  [a reviewed record](docs/proof/serving/v1-s2-004-c2-certification-result.md),
+  which also reports the two observations that disagree with expectation: the
+  readiness margin is under five per cent, and neither the request nor the
+  correlation identifier was echoed. A real model-cache **miss** was observed
+  for the first time and is recorded in
+  [its own document](docs/proof/serving/v1-s2-007-cache-miss-observation.md);
+  observing a miss turns out to cost no download, because the classifier reads
+  no network and the measured start refuses before creating a container, so
+  `V1-S2-007`'s first acceptance criterion moves from *partially met* to
+  **met**. `V1-S2-001`'s story evidence is reconciled in place against the real
+  acquisition performed by `V1-S2-005-PR2` and a re-executed absent-state check
+  and verified cache hit, and it now says plainly that resumption against the
+  real source is still proved synthetically only. Five `README.md` status
+  entries that described what one past change did — including "the experiment
+  was not executed and no measured baseline exists", which stopped being true
+  when `V1-S2-005-PR2` merged — now describe the repository. The security
+  paragraph in
+  [the claim and test matrix](docs/testing/claim-test-matrix.md) no longer says
+  no image scanner or dependency auditor has been run, which stopped being true
+  when `V1-S2-006-PR1` merged; a secret scanner genuinely has not been run and
+  the corrected wording still says so. The whole reconciliation, including the
+  governance deviation that `V1-S2-005` consumed three merged PRs where the
+  locked plan allows two, is in
+  [the Sprint 2 completion review](docs/proof/serving/sprint-2-completion-review.md).
+
+- **A test was enforcing a claim the repository had outgrown.** The telemetry
+  and evidence catalog declared `recordsProduced: 0` for all four evidence
+  templates and `tests/telemetry/test_telemetry_catalog.py` asserted that zero,
+  so the count could not be corrected without the suite failing. It was true
+  when [ADR 0006](docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
+  was accepted and false from the moment `V1-S2-005` published an experiment
+  record and raw results in those formats. A record now declares its source
+  template in one line beside its title, the catalog states one `experiment`
+  record and five `raw-result` records, and the suite derives the count from the
+  declarations instead of asserting a constant. Counting by section headings was
+  considered and rejected: all four templates share the same required headings,
+  so a structural match cannot tell an experiment record from an environment
+  one. `environment` and `claim-evidence` have still produced nothing, and a
+  test now fails if that stops being visible.
+
 - **The registered local serving baseline is unblocked and has produced its
   first measured result.** An authorized execution found the experiment
   `V1-S2-005-PR1` registered could not succeed: the fixture sent a `system`
