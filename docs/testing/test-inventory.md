@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are thirteen, and they are listed in their own section rather than
+empty list. There are fourteen, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -124,11 +124,12 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Fifteen modules. Committed machine-readable data checked against the documents
+Sixteen modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
-descriptor, registered serving baseline, and model lifecycle state model — and,
+descriptor, registered serving baseline, model lifecycle state model, and the
+local runtime troubleshooting guide — and,
 since the API began emitting, the catalog checked against what the distribution
 declares rather than only against its own prose.
 
@@ -142,7 +143,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Thirteen suites protect something no row of the claim matrix names. Each carries its
+Fourteen suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -158,6 +159,7 @@ matrix is complete needs to see them together.
 | [`tests/serving/test_runtime_certification.py`](../../tests/serving/test_runtime_certification.py) | The C2 certification descriptor, its refusal of a weakened level or waived assertion, the hardware refusal, the mock-identity prohibition, and the record it writes. The `local-real-cpu` label it exercises is truthful only for an authorized run |
 | [`tests/serving/test_serving_baseline.py`](../../tests/serving/test_serving_baseline.py) | The registered baseline's agreement with the composition it measures, its percentile arithmetic, and its deterministic summary. Every request is answered by an injected seam, so no latency here is a serving measurement |
 | [`tests/serving/test_model_lifecycle.py`](../../tests/serving/test_model_lifecycle.py) | The accepted lifecycle state model against the package, the model record, and the API's drain budget; the rule that liveness passes while readiness is false during a load; and a measurement whose every timing is arithmetic on a fake clock |
+| [`tests/serving/test_local_runtime_troubleshooting.py`](../../tests/serving/test_local_runtime_troubleshooting.py) | The published troubleshooting guide against the tools, descriptors, and records it quotes. It establishes that the guide has not drifted, never that following one of its recoveries repairs a fault |
 | [`tests/serving/test_inference_api_surface.py`](../../tests/serving/test_inference_api_surface.py) | The committed API compatibility surface against its document |
 | [`tests/serving/test_inference_api_implementation_agreement.py`](../../tests/serving/test_inference_api_implementation_agreement.py) | Every constant in the API package that repeats a row of that record |
 | [`tests/testing/test_toolchain.py`](../../tests/testing/test_toolchain.py) | The accepted toolchain decision against the configuration implementing it, including the rule that keeps the pytest configuration out of `pyproject.toml` |

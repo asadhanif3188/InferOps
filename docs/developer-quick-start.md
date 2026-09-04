@@ -215,6 +215,13 @@ authorization, exact command, result, and limitations.
 | Real smoke says the backend is loading or unreachable | Check the runtime endpoint and wait within the authorized startup budget; readiness remains false until the model can answer |
 | A real selection fails configuration | Check all variables in the linked runtime configuration. InferOps refuses incomplete real configuration and never falls back to mock |
 
+The table above covers this page's own workflow. A failure in the runtime itself —
+acquisition, integrity, disk, ports, memory, model load, readiness, timeouts,
+cache, connectivity, or shutdown — is diagnosed in
+[the local runtime troubleshooting guide](serving/local-runtime-troubleshooting.md),
+which is organized by symptom and names the check that separates the plausible
+causes.
+
 ## Cleanup
 
 Remove only the two workload directories this page generated, then remove their
