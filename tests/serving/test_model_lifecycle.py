@@ -45,16 +45,21 @@ from tools.model_lifecycle import (
     ModelLifecycleError,
     ProbeOutcome,
     ProbeSample,
+    RestartResult,
     StartObservation,
     clean_results,
+    compare_restart,
     compare_starts,
     load_lifecycle,
     observation_document,
     observe_cache,
     observe_start,
+    read_restart_results,
     read_results,
     result_directory,
     summarize,
+    summarize_restart,
+    write_restart_results,
     write_results,
 )
 from tools.model_lifecycle.__main__ import main
@@ -471,8 +476,36 @@ def test_the_measurement_directory_may_not_be_the_model_cache(tmp_path: Path) ->
     )
 
 
-def test_a_comparison_is_exactly_one_cold_and_one_warm_start(lifecycle) -> None:
-    assert lifecycle.observation_ids == ("cold", "warm")
+def test_the_record_declares_the_three_observations_the_two_comparisons_use(
+    lifecycle,
+) -> None:
+    assert lifecycle.observation_ids == ("cold", "warm", "restart")
+
+
+def test_the_two_comparisons_write_four_distinct_files(lifecycle) -> None:
+    """A restart summary written over a cold/warm summary is the failure here.
+
+    It would not be a corrupted file. It would be a readable one describing an
+    experiment that was never run, which is worse, so the loader refuses a
+    record whose four file names are not four.
+    """
+    names = (
+        lifecycle.raw_file,
+        lifecycle.summary_file,
+        lifecycle.restart_raw_file,
+        lifecycle.restart_summary_file,
+    )
+    assert len(set(names)) == 4
+
+
+def test_a_record_reusing_one_file_name_for_both_comparisons_is_refused(
+    tmp_path: Path,
+) -> None:
+    _refuses(
+        tmp_path,
+        _mutated(("measurement", "restartSummaryFile"), "summary.json"),
+        "four distinct result files",
+    )
 
 
 # --------------------------------------------------------------------------
@@ -823,6 +856,210 @@ def test_a_comparison_reports_both_starts_as_hits_and_the_artifact_as_preserved(
     assert result.environment.model_sha256 == manifest.sha256
 
 
+def _compare_restart(
+    lifecycle,
+    synthetic_cache: tuple[ModelManifest, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    statuses: Sequence[int],
+    reads: list[str],
+) -> RestartResult:
+    """Drive a restart comparison, recording when the artifact is read end to end.
+
+    `reads` receives an entry for every readiness probe and for every end-to-end
+    read of the artifact, in the order they happen, so a test can assert *where*
+    in the sequence each read fell rather than only how many there were.
+    Counting alone would not do: a read moved from after the second start to
+    between the two starts is still the same number of reads.
+
+    **Both** read sites are instrumented, and that is the point. Independent
+    review found this helper patching `tools.runtime_packaging.core` to a silent
+    no-op, which made it blind to the read `preflight` performs before every
+    start -- the read that made an earlier version of the claim below false. A
+    seam muted rather than recorded is a test asserting the absence of something
+    it arranged not to see.
+    """
+    manifest, repo_root = synthetic_cache
+    monkeypatch.setattr(
+        "tools.runtime_packaging.core.load_manifest", lambda *_a, **_k: manifest
+    )
+    # `preflight` hash-verifies the artifact before it creates a container, so
+    # this fires once per start.
+    monkeypatch.setattr(
+        "tools.runtime_packaging.core.verify_artifact",
+        lambda *_: reads.append("preflight-verify"),
+    )
+    # `observe_cache` resolves this name when it reads the artifact end to end.
+    # A patch anywhere else would leave this test asserting nothing.
+    monkeypatch.setattr(
+        "tools.model_lifecycle.core.verify_artifact",
+        lambda *_: reads.append("verify"),
+    )
+    status_iter = iter(statuses)
+    clock = FakeClock()
+
+    def _probe(_url: str, _timeout: float) -> HttpResponse:
+        status = next(status_iter)
+        reads.append(f"probe:{status}")
+        return HttpResponse(status)
+
+    return compare_restart(
+        lifecycle,
+        load_runtime_package(),
+        _ready_runner(),
+        confirmed=True,
+        http_get=_probe,
+        http_post=lambda _url, _body, _timeout: _completion(),
+        tcp_probe=lambda *_: True,
+        manifest=manifest,
+        repo_root=repo_root,
+        clock=clock,
+        sleeper=clock.sleep,
+        now=lambda: 1_700_000_000.0,
+    )
+
+
+def test_a_restart_comparison_reports_the_artifact_as_surviving_the_stop(
+    lifecycle,
+    synthetic_cache: tuple[ModelManifest, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The claim the record makes about a restart, read off a measurement.
+
+    The byte count is compared at three points -- before the first start,
+    between the two, and after the second -- so an artifact that was replaced
+    while nothing was running would be visible rather than assumed away.
+    """
+    reads: list[str] = []
+    result = _compare_restart(
+        lifecycle,
+        synthetic_cache,
+        monkeypatch,
+        statuses=(503, 200, 503, 200),
+        reads=reads,
+    )
+
+    assert result.cold.cache_state is CacheState.HIT
+    assert result.restart.cache_state is CacheState.HIT
+    assert result.cache_state_between is CacheState.HIT
+    assert result.bytes_between == len(SYNTHETIC_BYTES)
+    assert result.verified_after_restart is True
+    assert result.artifact_survived_restart is True
+    assert result.restart_needed_no_network is True
+    assert result.readiness_reset_on_restart is True
+
+
+def test_a_restart_comparison_adds_no_read_of_its_own_between_the_two_starts(
+    lifecycle,
+    synthetic_cache: tuple[ModelManifest, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """What this comparison adds to the interval, which is nothing.
+
+    The cold/warm comparison reads the artifact end to end between its arms on
+    purpose, to warm the host file cache. This one does not: it classifies the
+    cache without opening the file and leaves its own digest read until after
+    both starts.
+
+    The asserted sequence is the whole sequence rather than the part that
+    flatters the claim. It shows `preflight` reading the artifact before each
+    start, which is what makes the stronger claim -- that the interval is
+    read-free -- false, and it is asserted here so that the code and the
+    documents cannot drift back to it.
+    """
+    reads: list[str] = []
+    _compare_restart(
+        lifecycle,
+        synthetic_cache,
+        monkeypatch,
+        statuses=(503, 200, 503, 200),
+        reads=reads,
+    )
+
+    assert reads == [
+        "preflight-verify",
+        "probe:503",
+        "probe:200",
+        "preflight-verify",
+        "probe:503",
+        "probe:200",
+        "verify",
+    ], (
+        "this comparison's own end-to-end read falls after the last probe of "
+        "the second start; the two before the starts belong to preflight and "
+        "are the reason no start measured here is cache-cold"
+    )
+    assert reads.index("verify") == len(reads) - 1
+    assert reads.count("verify") == 1
+
+
+def test_a_restarted_runtime_that_came_back_ready_is_not_reported_as_a_reset(
+    lifecycle,
+    synthetic_cache: tuple[ModelManifest, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The property fails when it should, which is what makes publishing it worth
+    anything.
+
+    The second start answers `200` on its very first sample. Readiness therefore
+    never began false for it, and a comparison that still claimed the reset
+    would be claiming something it did not observe.
+    """
+    reads: list[str] = []
+    result = _compare_restart(
+        lifecycle,
+        synthetic_cache,
+        monkeypatch,
+        statuses=(503, 200, 200),
+        reads=reads,
+    )
+
+    assert result.restart.readiness_started_not_ready is False
+    assert result.readiness_reset_on_restart is False
+    assert reads == [
+        "preflight-verify",
+        "probe:503",
+        "probe:200",
+        "preflight-verify",
+        "probe:200",
+        "verify",
+    ]
+    assert (
+        summarize_restart(lifecycle, result)["acceptance"]["readinessResetOnRestart"]
+        is False
+    )
+
+
+def test_a_restart_comparison_refuses_without_the_real_runtime_confirmation(
+    lifecycle, tmp_path: Path
+) -> None:
+    with pytest.raises(LifecycleRefused, match="confirm-real-runtime"):
+        compare_restart(
+            lifecycle,
+            load_runtime_package(),
+            ScriptedRunner(),
+            confirmed=False,
+            http_get=lambda *_: pytest.fail("unreachable"),
+            http_post=lambda *_: pytest.fail("unreachable"),
+            repo_root=tmp_path,
+        )
+
+
+def test_a_restart_comparison_refuses_to_start_beside_an_existing_container(
+    lifecycle, tmp_path: Path
+) -> None:
+    with pytest.raises(ModelLifecycleError, match="already exists"):
+        compare_restart(
+            lifecycle,
+            load_runtime_package(),
+            ScriptedRunner(owned=True),
+            confirmed=True,
+            http_get=lambda *_: pytest.fail("unreachable"),
+            http_post=lambda *_: pytest.fail("unreachable"),
+            repo_root=tmp_path,
+        )
+
+
 def test_a_comparison_refuses_to_start_beside_an_existing_owned_container(
     lifecycle, tmp_path: Path
 ) -> None:
@@ -935,6 +1172,125 @@ def test_results_round_trip_through_the_managed_directory(
     assert json.loads(summary.read_text(encoding="utf-8"))["lifecycleId"]
     documents = read_results(lifecycle, repo_root=tmp_path)
     assert [document["observationId"] for document in documents] == ["cold", "warm"]
+
+
+def _restart_result() -> RestartResult:
+    return RestartResult(
+        lifecycle_id="inferops-local-model-lifecycle",
+        started_at="2026-01-01T00:00:00+00:00",
+        environment=Environment(
+            platform="synthetic",
+            python_version="3.12.0",
+            engine_version="29.0.0",
+            image_reference=load_runtime_package().image_reference,
+            model_revision="revision",
+            model_sha256="sha256:" + "0" * 64,
+        ),
+        cold=_observation("cold"),
+        restart=_observation("restart"),
+        cache_state_between=CacheState.HIT,
+        bytes_between=len(SYNTHETIC_BYTES),
+        verify_ms=42,
+        verified_after_restart=True,
+    )
+
+
+def test_the_restart_summary_reports_each_property_it_measured(lifecycle) -> None:
+    document = summarize_restart(lifecycle, _restart_result())
+
+    assert document["comparison"] == "restart"
+    assert document["acceptance"] == {
+        "artifactSurvivedRestart": True,
+        "readinessResetOnRestart": True,
+        "restartNeededNoNetwork": True,
+        "livenessHeldWhileLoading": True,
+        "readinessFalseUntilReady": True,
+    }
+    assert document["cacheStateBetweenStarts"] == "hit"
+    assert document["readyMsDelta"] == -40
+    assert document["evidenceClass"] == "local-real-cpu"
+    assert document["certificationCeiling"] == "C2"
+
+
+def test_a_restart_record_carries_no_prompt_completion_or_model_byte(
+    lifecycle,
+) -> None:
+    document = json.dumps(summarize_restart(lifecycle, _restart_result()))
+
+    for forbidden in ("prompt", "content", "message", "choices", "synthetic model"):
+        assert forbidden not in document, forbidden
+
+
+def test_the_two_comparisons_do_not_overwrite_each_other(
+    lifecycle, tmp_path: Path
+) -> None:
+    """Both written into one directory, and both still readable afterwards.
+
+    Written in this order on purpose: the restart pair second, so that a shared
+    file name would leave the cold/warm summary describing the restart run and
+    this assertion would fail on the round trip rather than on the file count.
+    """
+    write_results(lifecycle, _result(), repo_root=tmp_path)
+    restart_raw, restart_summary = write_restart_results(
+        lifecycle, _restart_result(), repo_root=tmp_path
+    )
+
+    assert restart_raw.parent == tmp_path / EXPECTED_RESULT_DIRECTORY
+    assert [
+        d["observationId"] for d in read_results(lifecycle, repo_root=tmp_path)
+    ] == [
+        "cold",
+        "warm",
+    ]
+    assert [
+        d["observationId"] for d in read_restart_results(lifecycle, repo_root=tmp_path)
+    ] == ["cold", "restart"]
+    assert json.loads(restart_summary.read_text(encoding="utf-8"))["comparison"] == (
+        "restart"
+    )
+
+
+def test_a_restart_result_is_refused_before_the_comparison_has_been_run(
+    lifecycle, tmp_path: Path
+) -> None:
+    with pytest.raises(ModelLifecycleError, match="no raw lifecycle result"):
+        read_restart_results(lifecycle, repo_root=tmp_path)
+
+
+def test_cleanup_reaches_both_comparisons_and_still_nothing_else(
+    lifecycle, tmp_path: Path
+) -> None:
+    """The restart files are new, and the cleanup that may reach them is not.
+
+    Scoping is by directory rather than by file name, so a comparison added
+    later lands inside the guarded tree by construction. This asserts that it
+    did rather than trusting that it would.
+    """
+    write_results(lifecycle, _result(), repo_root=tmp_path)
+    write_restart_results(lifecycle, _restart_result(), repo_root=tmp_path)
+    directory = tmp_path / EXPECTED_RESULT_DIRECTORY
+    assert (directory / lifecycle.restart_summary_file).is_file()
+
+    cleanup = clean_results(lifecycle, repo_root=tmp_path, confirm=True)
+
+    assert cleanup.removed is True
+    assert not directory.exists()
+    assert (tmp_path / MODEL_CACHE_DIRECTORY).exists() is False
+
+
+def test_an_observation_with_no_samples_claims_no_readiness_reset() -> None:
+    """The branch the pipeline cannot reach, asserted rather than assumed.
+
+    `_sample_until_ready` never returns an empty tuple, so nothing in normal
+    operation builds this observation. The default still has to be the one that
+    claims less: an observation that watched nothing has not seen readiness
+    start false, and reporting a reset off it would be reporting a measurement
+    nobody took.
+    """
+    observation = replace(_observation("restart"), samples=())
+
+    assert observation.readiness_started_not_ready is False
+    assert observation.readiness_false_until_ready is False
 
 
 def test_a_raw_line_naming_an_undeclared_observation_is_refused(
@@ -1060,11 +1416,96 @@ def test_the_offline_commands_report_the_record_and_the_cache(
         assert str(state) in output
 
 
-def test_the_measure_command_refuses_without_its_confirmation(
+def _redirect_results(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Point the command's results directory at a temporary one.
+
+    `read_results` binds the repository root as a default argument, so patching
+    the module constant would not reach it. The directory resolver is the seam
+    every reader and writer actually goes through, and it is the one that
+    carries the guards, so redirecting it keeps those guards in the path.
+    """
+    directory = tmp_path / EXPECTED_RESULT_DIRECTORY
+    monkeypatch.setattr(
+        "tools.model_lifecycle.core.result_directory",
+        lambda _lifecycle, **_kwargs: directory,
+    )
+    return directory
+
+
+def test_the_results_command_refuses_when_neither_comparison_has_been_run(
+    lifecycle,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """The guard that stops a default-lane invocation operating a real runtime."""
-    assert main(["measure"]) == 3
+    """Nothing measured is a refusal and not a silent success.
+
+    A command that printed two "not run" lines and exited zero would let a
+    script that checks the exit code conclude a measurement had happened.
+    """
+    _redirect_results(monkeypatch, tmp_path)
+
+    assert main(["results"]) == 3
+    output = capsys.readouterr().out
+    assert "cold/warm  not run" in output
+    assert "restart    not run" in output
+
+
+def test_the_results_command_reports_one_comparison_and_names_the_absent_one(
+    lifecycle,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A reader who sees numbers must be able to tell which experiment made them."""
+    _redirect_results(monkeypatch, tmp_path)
+    write_restart_results(lifecycle, _restart_result(), repo_root=tmp_path)
+
+    assert main(["results"]) == 0
+    output = capsys.readouterr().out
+    assert "cold/warm  not run" in output
+    assert "restart    cold" in output
+    assert "restart    restart" in output
+
+
+def test_the_results_command_does_not_report_a_corrupt_result_as_not_run(
+    lifecycle,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The distinction the "not run" line exists to keep.
+
+    A result that exists and disagrees with the record is not an absent one.
+    Printing "not run" over it would hide a corrupt file behind a message that
+    reads like a clean, empty state -- so the absence has its own exception type
+    and everything else reaches the refusal with its own message.
+    """
+    directory = _redirect_results(monkeypatch, tmp_path)
+    write_results(lifecycle, _result(), repo_root=tmp_path)
+    write_restart_results(lifecycle, _restart_result(), repo_root=tmp_path)
+    (directory / lifecycle.restart_raw_file).write_text(
+        json.dumps({"observationId": "lukewarm"}) + "\n", encoding="utf-8"
+    )
+
+    assert main(["results"]) == 3
+    captured = capsys.readouterr()
+    assert "undeclared observation" in captured.err
+    assert "not run" not in captured.out
+
+
+@pytest.mark.parametrize("command", ("measure", "restart"))
+def test_the_measuring_commands_refuse_without_their_confirmation(
+    command: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The guard that stops a default-lane invocation operating a real runtime.
+
+    Parametrised over both comparisons rather than written once. The second
+    command was added after the first, and a guard the new command inherited by
+    accident is one an edit can remove without any test noticing.
+    """
+    assert main([command]) == 3
     assert "confirm-real-runtime" in capsys.readouterr().err
 
 

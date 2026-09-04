@@ -33,8 +33,16 @@ release; neither may create what the other owns.
 
 Three Helm-owned rows are deliberately absent, and the chart declares each in its
 own `Chart.yaml` annotations so that the omission is a statement rather than an
-oversight: `model-acquisition-job` (`V1-S3-003`), `workload-network-policy`
-(`V1-S3-004`), and `telemetry-scrape-configuration` (`V1-S3-007`).
+oversight: `model-acquisition-job`, `workload-network-policy` (`V1-S3-004`), and
+`telemetry-scrape-configuration` (`V1-S3-007`).
+
+`model-acquisition-job` is the one to read twice, because `V1-S3-003` implemented
+the rest of the model cache around it and left it where it was. It needs a
+container image nobody has published and a 1.71 GiB transfer this repository has
+never made from inside a cluster, so it arrives with the Kubernetes serving
+integration. Everything about the claim that does not require filling it — the
+revision-scoped mount, the read-only reference, and the integrity check below —
+is implemented and rendered.
 
 One more object appears in `helm template` output and is **not** in that table:
 the `helm test` pod under [`templates/tests/`](templates/tests/). It is a hook.
@@ -51,6 +59,15 @@ the chart refuses at render time.
 
 The model cache is a `PersistentVolumeClaim` Terraform provisions. This chart
 mounts it read only and never creates it. Referencing is not owning.
+
+**It is mounted at a revision-scoped subdirectory, not at its root.** The chart
+derives `<repository>/<revision>` from `model.artifact.repository` and
+`model.revision` — the same layout the workspace cache already uses — and no
+values path reaches it. A release declaring one revision therefore cannot see
+another revision's directory at all, which is what makes the declared revision
+decide which bytes are read rather than merely being recorded beside them.
+[The storage document](../../docs/environment/model-cache-storage.md) has the
+layout, the integrity modes, and what each teardown operation does to the bytes.
 
 ## `profile` has no default, and that is the point
 
@@ -73,8 +90,11 @@ release is never built:
 
 - a **real** release refuses a `mock-`labelled model identity;
 - a **mock** release refuses anything that is not `mock-`labelled, and refuses a
-  model revision, an alias, a container path, a cache claim, or a secret
-  reference at all;
+  model revision, an alias, an upstream artifact, a cache claim, or a secret
+  reference at all — and has to state `model.integrity.verifyOnStart: none`
+  rather than inherit the shipped `sha256`, because a mock mounts no artifact
+  and a render describing a verification that could not have happened is the
+  same defect as a mock transcript naming a real model;
 - `INFEROPS_SERVING_ADAPTER` is written in one template helper from `profile`
   and from nothing else, and the serving capability is derived the same way and
   appears nowhere in the values contract, so a release cannot install one adapter
@@ -225,6 +245,33 @@ unauthenticated and fingerprints the deployment, which
 [`DR-01`](../../docs/security/deferred-risks.md) already accepts and records.
 Switching these on is therefore a decision about who may reach the pod, not only
 a decision about labels.
+
+## The model artifact is verified before the runtime loads it
+
+Under the real profile the serving pod runs an init container before
+`llama-server`. It reads the mounted artifact and compares it against the byte
+count and the SHA-256 that
+[the model source record](../../docs/serving/model-source.v1.json) pins, and a
+mismatch fails the pod rather than starting a runtime on it.
+
+It runs on **every pod start**, which is what makes it a restart property rather
+than an install-time one: a pod that comes back finds the artifact the previous
+one left behind and re-establishes that it is the artifact this release declared
+before anything serves from it. A verification performed once at install time
+would say nothing about the pod that replaced the one it ran in.
+
+`model.integrity.verifyOnStart` is `sha256` by default, and `size` and `none` are
+explicit downgrades. All three keep the revision scoping, because that is the
+mount rather than a check, and all three still refuse an absent artifact. The
+costs and the limits of each are in
+[the storage document](../../docs/environment/model-cache-storage.md).
+
+The init container is **BusyBox**, for its `sha256sum` and its `wc`. It is the
+same pin `helm test` already uses and the same one four committed manifests under
+`deploy/` carry, so it is not a new dependency; a test compares all of them. It
+is given no environment at all — everything it compares against is rendered into
+its script from a pinned value — and it carries the same security context and the
+same read-only mount as the runtime beside it. **It has never been scheduled.**
 
 Every pod and container carries the six properties every workload manifest in
 this repository carries — no service-account token, non-root with an explicit

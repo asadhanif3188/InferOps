@@ -317,6 +317,45 @@ spec:
         fsGroup: 65534
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: verify-model
+          image: "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              artifact='/models/Qwen3-1.7B-Q8_0.gguf'
+              if [ ! -f "$artifact" ]; then
+                echo "REFUSED: the mounted model cache holds no artifact for the declared revision" >&2
+                exit 1
+              fi
+              present=$(stat -c %s "$artifact")
+              if [ "$present" != "1834426016" ]; then
+                echo "REFUSED: the mounted model artifact does not match the pinned byte count" >&2
+                exit 1
+              fi
+              echo "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a  $artifact" | sha256sum -c -
+              echo "model artifact verified: byte count and SHA-256"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "1"
+              memory: 64Mi
+            requests:
+              cpu: 50m
+              memory: 16Mi
+          volumeMounts:
+            - name: model-cache
+              mountPath: "/models"
+              readOnly: true
+              subPath: "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
       containers:
         - name: runtime
           image: "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
@@ -386,8 +425,9 @@ spec:
               memory: 2Gi
           volumeMounts:
             - name: model-cache
-              mountPath: /models
+              mountPath: "/models"
               readOnly: true
+              subPath: "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077"
             - name: tmp
               mountPath: /tmp
       volumes:

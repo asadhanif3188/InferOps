@@ -239,16 +239,88 @@ model:
   # The immutable upstream revision. An identifier alone pins nothing.
   revision: ""
   alias: ""
-  # Where the artifact is inside the runtime container.
-  containerPath: ""
+
+  # The upstream artifact, pinned the way docs/serving/model-source.v1.json pins
+  # it: a repository, a file, a byte count, and a content hash. A test compares
+  # the real fixture against that record, so a drift here fails the build.
+  #
+  # `repository` and `revision` are what the in-claim location is derived from,
+  # and that derivation is the point of this block rather than a convenience.
+  # See `cache` below.
+  artifact:
+    # The upstream repository, `owner/name`.
+    repository: ""
+    # The file inside it. One path segment; the runtime loads GGUF and nothing
+    # else, so the suffix is refused rather than assumed.
+    fileName: ""
+    # What the bytes must weigh, and what they must hash to. Both are checked
+    # inside the pod before the runtime starts -- see `integrity` below -- so
+    # they are load-bearing values and not documentation.
+    sizeBytes: 0
+    sha256: ""
 
   cache:
     # The name of an existing PersistentVolumeClaim. Terraform owns the claim
     # (`model-cache-volume-claim`); this chart mounts it read only and never
     # creates it. Referencing is not owning.
     claimName: ""
-    subPath: ""
+
+    # The directory the artifact appears in inside the container. The file path
+    # the runtime is given is derived from this and `artifact.fileName`, and is
+    # settable nowhere: a path the operator typed and a path the integrity check
+    # read could otherwise be two different files.
+    mountPath: /models
+
+    # There is deliberately no `subPath` here.
+    #
+    # The claim is mounted at a subdirectory derived from `artifact.repository`
+    # and `revision` -- the same `<repository>/<revision>/` layout the workspace
+    # cache already uses -- so a release declaring one revision cannot be handed
+    # the bytes of another. A free-form subPath was the hole: `revision` was
+    # required, checked against nothing, and had no bearing on which bytes the
+    # container actually read. It now decides the mount, so cache reuse cannot
+    # bypass the revision it claims to be reusing.
     readOnly: true
+
+  # What is checked inside the pod, before `llama-server` is started, on every
+  # start and therefore on every restart.
+  #
+  # `sha256`  read the artifact end to end and compare its digest and its byte
+  #           count against the pins above. This is the default. It costs one
+  #           full read of the artifact per pod start -- roughly 1.71 GiB for
+  #           the selected model -- against a model load this project has
+  #           measured at 129,328 ms to 358,735 ms, so it is a minority of a
+  #           start rather than a new order of cost.
+  # `size`    compare the byte count only. Cheap, and weak: it catches a
+  #           truncated or absent artifact and nothing else.
+  # `none`    read no content. The artifact still has to be there: the
+  #           file-exists refusal is not part of the mode, because a pod that
+  #           started a runtime on a missing file would crash-loop for a reason
+  #           nobody could read off the pod. The revision scoping also still
+  #           holds, because it is the mount rather than a check.
+  #
+  # Required to be `none` under the mock profile, where nothing is mounted and
+  # there is no artifact to read. A mock stating `sha256` would describe a
+  # verification that never happened.
+  integrity:
+    verifyOnStart: sha256
+
+    image:
+      # BusyBox, for its `sha256sum` and its `wc`. It is the same pinned image
+      # `tests.image` uses, which is the same `busybox:1.37.0` index digest four
+      # committed manifests under deploy/ already pin; a test compares all of
+      # them so that one pin cannot become several.
+      repository: docker.io/library/busybox
+      digest: sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+      pullPolicy: IfNotPresent
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 16Mi
+      limits:
+        cpu: "1"
+        memory: 64Mi
 
 # -- ownership and attribution ----------------------------------------------
 #

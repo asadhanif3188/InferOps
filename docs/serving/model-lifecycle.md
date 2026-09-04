@@ -1,12 +1,13 @@
 # Model lifecycle: startup, cache, readiness, restart, and shutdown
 
-Status: **the state model is implemented and validated offline; the cold/warm
-start comparison has been executed three times for real on an authorized host**.
-Every ordering property held every time, and **no cold/warm timing difference was
-established** — the spread between runs exceeds every difference measured within
-one.
-The measured result is in
-[the comparison record](../proof/serving/v1-s2-007-pr1-cold-warm-start.md).
+Status: **the state model is implemented and validated offline; both start
+comparisons have been executed for real on an authorized host** — the cold/warm
+one three times, the restart one once. Every ordering property held every time,
+and **no timing difference was established by either comparison** — the spread
+between runs of one experiment exceeds every difference measured inside one.
+The measured results are in
+[the cold and warm comparison record](../proof/serving/v1-s2-007-pr1-cold-warm-start.md)
+and [the restart record](../proof/serving/v1-s3-003-pr1-restart-reload.md).
 
 Three records already decided pieces of this. [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md)
 selected the model and the runtime; [model acquisition](model-acquisition.md)
@@ -147,6 +148,66 @@ A stop removes the container and nothing else.
 The `runtime-stopped` → `runtime-starting` transition is declared in the record
 and `load_lifecycle` refuses a record without it.
 
+### Measuring a restart, which is not the warm start
+
+There are two comparisons and one read separates them.
+
+```text
+uv run --locked python -m tools.model_lifecycle restart --confirm-real-runtime
+```
+
+`measure` reads the artifact end to end *between* its two starts, so its second
+start finds the host's own file cache warm — that is the variable it exists to
+introduce. `restart` adds no read of its own there: the classification it takes
+between the starts stats the file without opening it, and its digest read waits
+until after both starts.
+
+**That is not the same as the interval being read-free**, and saying it was is a
+claim this document made and withdrew. The start procedure hash-verifies the
+artifact before it creates a container — that is
+[`runtime_packaging.preflight`](../../tools/runtime_packaging/core.py), and it is
+a safety property of starting a runtime rather than anything this comparison
+chose. So a full read precedes **every** start here, which means two things a
+reader of any figure below needs:
+
+- **no start this tool measures is cache-cold.** The artifact was read end to end
+  moments before it.
+- **`createMs` and `readyMs` include that read**, because the observation starts
+  its clock before the start procedure. They are not container creation and
+  model load on their own.
+
+The preflight read is not wasted: it means the bytes were hash-verified
+immediately before the restart as well as after it, so the surviving artifact is
+established either side of the stop rather than only afterwards.
+
+Each of the three restart properties above is measured rather than restated:
+
+- **the artifact survives** — the byte count is compared at the three points it
+  is taken at, before each start and between them; the digest is verified before
+  each start by the start procedure and re-read in full at the end by the
+  comparison;
+- **readiness resets** — the *first* probe sample of the restarted runtime is
+  read, so a process that came back already ready would be visible rather than
+  assumed away. It establishes that the restarted runtime began not-ready, which
+  is what a reset means here; on its own it does not separate that from the fact
+  that every fresh start begins not-ready;
+- **the restart needs no network** — it proceeds from a hit, which is the only
+  state a start may proceed from without one.
+
+Results are written beside the other comparison's under their own two names,
+`restart-raw.jsonl` and `restart-summary.json`, because a restart summary written
+over a cold/warm summary would not be a corrupted file — it would be a readable
+one describing an experiment that was never run. What the executed run found, and
+what it does not support, is in
+[the restart record](../proof/serving/v1-s3-003-pr1-restart-reload.md).
+
+The Kubernetes half of this is a different experiment and has not been run. A
+container restart is not a pod restart: no InferOps API image is published and
+the model cache claim is Terraform-owned and unwritten, so nothing has scheduled
+a replacement pod against a surviving claim. What the chart does about it — the
+revision-scoped mount and the integrity check every replacement pod re-runs — is
+in [the storage document](../environment/model-cache-storage.md).
+
 ## Measuring a cold and a warm start
 
 This operates a real container and requires explicit authorization:
@@ -188,8 +249,16 @@ one, are in [the comparison record](../proof/serving/v1-s2-007-pr1-cold-warm-sta
 
 Results are written to `.cache/inferops/lifecycle`, an ignored workspace-scoped
 path: `raw.jsonl` holds the two observations with every probe sample, and
-`summary.json` holds the derived comparison. Neither carries a prompt, a
-completion, a runtime response body, or a model byte. Read them back with:
+`summary.json` holds the derived comparison. The restart comparison writes
+`restart-raw.jsonl` and `restart-summary.json` beside them. None of the four
+carries a prompt, a completion, a runtime response body, or a model byte.
+
+`results` reports each comparison separately and says `not run` for one that has
+no result, exiting `3` only when neither has been run. A result that exists and
+cannot be read — a malformed line, or an observation the record does not
+declare — is **not** reported as `not run`: it refuses with its own message, so
+that a corrupt file is never printed over with one that reads like a clean empty
+state. Read them back with:
 
 ```text
 uv run --locked python -m tools.model_lifecycle results

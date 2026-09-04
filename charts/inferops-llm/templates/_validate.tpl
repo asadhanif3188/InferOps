@@ -80,11 +80,31 @@ rather than once per test.
 {{- fail "model.alias is required under the real profile: it is the name the runtime serves the artifact under." -}}
 {{- end -}}
 
-{{- if not .Values.model.containerPath -}}
-{{- fail "model.containerPath is required under the real profile." -}}
+{{/*
+The artifact, and why every member of it is required rather than defaulted.
+
+`repository` and `revision` derive the subdirectory the claim is mounted at, so
+between them they decide which bytes the container can reach at all. `fileName`
+completes the path the runtime is given and the path the init container reads --
+one expression, so that the file that was verified and the file that is loaded
+cannot be two files. `sizeBytes` and `sha256` are what the init container
+compares against, so an unstated one is a check that passes by having nothing to
+fail against.
+*/}}
+{{- if not .Values.model.artifact.repository -}}
+{{- fail "model.artifact.repository is required under the real profile. With the revision it derives the subdirectory of the cache claim this release mounts, so it decides which bytes the container can read rather than describing them." -}}
 {{- end -}}
-{{- if not (hasSuffix ".gguf" .Values.model.containerPath) -}}
-{{- fail "model.containerPath must name a .gguf artifact, which is the only format the selected runtime loads." -}}
+{{- if not .Values.model.artifact.fileName -}}
+{{- fail "model.artifact.fileName is required under the real profile." -}}
+{{- end -}}
+{{- if not (hasSuffix ".gguf" .Values.model.artifact.fileName) -}}
+{{- fail "model.artifact.fileName must name a .gguf artifact, which is the only format the selected runtime loads." -}}
+{{- end -}}
+{{- if not (gt (int .Values.model.artifact.sizeBytes) 0) -}}
+{{- fail "model.artifact.sizeBytes is required under the real profile. It is what the pod compares the mounted artifact against before the runtime starts, and a zero would be a check with nothing to fail against." -}}
+{{- end -}}
+{{- if not .Values.model.artifact.sha256 -}}
+{{- fail "model.artifact.sha256 is required under the real profile. A revision pins what the publisher's repository held; a content hash is what establishes that the bytes in the claim are those bytes." -}}
 {{- end -}}
 
 {{- if not .Values.model.cache.claimName -}}
@@ -92,6 +112,12 @@ rather than once per test.
 {{- end -}}
 {{- if not .Values.model.cache.readOnly -}}
 {{- fail "model.cache.readOnly must stay true. The serving deployment mounts the cache; the acquisition job writes it. Writing content is not owning the container, and a serving replica that could write the cache is a second writer nobody decided on." -}}
+{{- end -}}
+{{- if not .Values.model.integrity.image.repository -}}
+{{- fail "model.integrity.image.repository is required under the real profile. The init container runs under every verifyOnStart setting - even none refuses an absent artifact rather than starting a runtime on nothing - and an unpinned image is a different image on a different day." -}}
+{{- end -}}
+{{- if not .Values.model.integrity.image.digest -}}
+{{- fail "model.integrity.image.digest is required under the real profile." -}}
 {{- end -}}
 
 {{- end -}}
@@ -108,8 +134,14 @@ rather than once per test.
 {{- if .Values.model.alias -}}
 {{- fail "model.alias must be empty under the mock profile." -}}
 {{- end -}}
-{{- if .Values.model.containerPath -}}
-{{- fail "model.containerPath must be empty under the mock profile: nothing is mounted and no artifact is read." -}}
+{{- if or .Values.model.artifact.repository .Values.model.artifact.fileName -}}
+{{- fail "model.artifact must be empty under the mock profile: nothing is mounted and no artifact is read." -}}
+{{- end -}}
+{{- if or (gt (int .Values.model.artifact.sizeBytes) 0) .Values.model.artifact.sha256 -}}
+{{- fail "model.artifact.sizeBytes and model.artifact.sha256 must be unset under the mock profile. They are what a pod compares a mounted artifact against, and a mock mounts none, so a value here describes a verification that could not have happened." -}}
+{{- end -}}
+{{- if ne .Values.model.integrity.verifyOnStart "none" -}}
+{{- fail "model.integrity.verifyOnStart must be 'none' under the mock profile, stated rather than left at the shipped default. A mock mounts no artifact, so 'sha256' here would name a check with nothing to read - and the default is the strong setting precisely so that a mock has to say out loud that it verifies nothing." -}}
 {{- end -}}
 {{- if .Values.model.cache.claimName -}}
 {{- fail "model.cache.claimName must be empty under the mock profile. A mock that mounted the model cache would look, from the outside, exactly like a release that served from it." -}}
