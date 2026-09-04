@@ -139,6 +139,7 @@ spec:
     spec:
       serviceAccountName: inferops-inferops-llm
       automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
@@ -162,6 +163,31 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 12
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -183,3 +209,65 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Mi
+---
+# Source: inferops-llm/templates/tests/connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: inferops-inferops-llm-connection-test
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.1.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: mock
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant-mock
+    app.kubernetes.io/component: release-test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  restartPolicy: Never
+  serviceAccountName: inferops-inferops-llm
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: connection
+      image: "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - -e
+        - -c
+      args:
+        - |
+          echo "asking the platform API for readiness"
+          wget -q -T 10 -O - \
+            "http://inferops-inferops-llm:8090/health/ready"
+          echo
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        limits:
+          cpu: 100m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 16Mi

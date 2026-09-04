@@ -11,8 +11,14 @@ and the feasibility trial actually ran. The model comes from a claim Terraform
 owns, mounted read only; the acquisition job that fills it is Helm-owned and
 `planned`, and V1-S3-003 owns it.
 
-As above, no probe. The health endpoint here is the one that returns 503 while
-loading, and pointing liveness at it is the specific defect the trial found.
+The probes are the asymmetry this chart exists to get right. `/health` answers
+503 for the whole of a model load, so readiness and the startup gate ask it and
+**liveness is a TCP connect** -- which is what
+docs/serving/runtime-profile.local.v1.json publishes, and what the V1-S2-007
+observation supports with 2,753 samples in which an HTTP liveness probe would
+have been failing against a healthy loading process. The startup budget is the
+measured load time with margin, and the kubelet runs neither of the other two
+probes until it passes.
 */}}
 apiVersion: apps/v1
 kind: Deployment
@@ -38,12 +44,16 @@ spec:
         app.kubernetes.io/component: serving-runtime
       annotations:
         inferops.io/configuration-checksum: {{ include "inferops-llm.derivedEnv" . | sha256sum }}
+        {{- with (include "inferops-llm.scrapeAnnotations" (dict "context" $ "port" .Values.runtime.containerPort) | trim) }}
+        {{- . | nindent 8 }}
+        {{- end }}
         {{- with (include "inferops-llm.annotations" . | fromYaml) }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
       serviceAccountName: {{ include "inferops-llm.serviceAccountName" . }}
       automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.runtime.lifecycle.terminationGracePeriodSeconds }}
       securityContext:
         {{- include "inferops-llm.podSecurityContext" . | nindent 8 }}
       containers:
@@ -81,6 +91,12 @@ spec:
           {{- with .Values.runtime.extraEnv }}
           env:
             {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with (include "inferops-llm.runtime.probes" . | trim) }}
+          {{- . | nindent 10 }}
+          {{- end }}
+          {{- with (include "inferops-llm.preStop" .Values.runtime.lifecycle | trim) }}
+          {{- . | nindent 10 }}
           {{- end }}
           securityContext:
             {{- include "inferops-llm.containerSecurityContext" . | nindent 12 }}

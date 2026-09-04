@@ -106,6 +106,12 @@ scripts/environment/smoke.sh
 scripts/environment/cluster-down.sh
 ```
 
+Installing the InferOps release into that cluster is a separate procedure with
+its own document:
+[the release lifecycle](helm-release-lifecycle.md). It has never been run — both
+profiles install an API container and no InferOps API image is published — and
+nothing about it may be read as evidence that the chart installs.
+
 None of these accepts an argument it does not understand. Every one of them
 refuses and exits rather than ignoring it, because on a script that deletes
 things the difference between a partial teardown and a full one should never be

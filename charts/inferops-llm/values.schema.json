@@ -54,19 +54,11 @@
         },
         "readinessPath": { "$ref": "#/$defs/httpPath" },
         "livenessPath": { "$ref": "#/$defs/httpPath" },
-        "probes": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": {
-              "description": "Probes belong to V1-S3-002-PR2. The field exists so that a values file written now names the thing that is deferred instead of leaving a reader to notice its absence; the templates render no probe whatever this says.",
-              "type": "boolean"
-            }
-          }
-        },
+        "probes": { "$ref": "#/$defs/probes" },
         "requestTimeoutMs": { "$ref": "#/$defs/positiveMilliseconds" },
         "maxOutputTokens": { "type": "integer", "minimum": 1, "maximum": 32768 },
         "drainTimeoutMs": { "$ref": "#/$defs/positiveMilliseconds" },
+        "lifecycle": { "$ref": "#/$defs/shutdown" },
         "resources": { "$ref": "#/$defs/resources" },
         "nodeSelector": {
           "type": "object",
@@ -106,6 +98,8 @@
         "defaultTemperature": { "type": "number", "minimum": 0, "maximum": 2 },
         "startupBudgetMs": { "$ref": "#/$defs/positiveMilliseconds" },
         "healthPath": { "$ref": "#/$defs/httpPath" },
+        "probes": { "$ref": "#/$defs/probes" },
+        "lifecycle": { "$ref": "#/$defs/shutdown" },
         "resources": { "$ref": "#/$defs/resources" },
         "temporaryFilesystemSizeMi": { "type": "integer", "minimum": 1, "maximum": 4096 },
         "nodeSelector": {
@@ -191,9 +185,22 @@
           "maxLength": 63
         },
         "scrapeAnnotations": {
-          "description": "Nothing collects these. V1-S3-007 decides scrape and discovery, and until it does the annotations are inert.",
+          "description": "Whether every pod carries prometheus.io/scrape, prometheus.io/port, and prometheus.io/path. Nothing collects them: V1-S3-007 decides scrape and discovery, no scrape resource is rendered here, and the annotations are inert until something reads them. Requires `enabled`; the template refuses annotating a port that serves no metrics.",
           "type": "boolean"
         }
+      }
+    },
+
+    "tests": {
+      "description": "The `helm test` hook. It is not part of the installed release: Helm creates it when a test is run and deletes it when the test succeeds.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "$ref": "#/$defs/image" },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 600 },
+        "resources": { "$ref": "#/$defs/resources" }
       }
     },
 
@@ -243,6 +250,54 @@
   },
 
   "$defs": {
+    "probes": {
+      "description": "How the kubelet asks a container whether it started, whether it is ready, and whether it is alive. The paths and the kinds are not settings here: they come from the accepted health mappings in docs/serving/, and the chart writes them. What a values file may change is the timing.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "Off renders no probe at all, on any container of this workload. It exists for the one case that is worse without it - inspecting a container that crashloops before anything can be read out of it - and it is on by default because a workload with no liveness probe is a workload nothing restarts.",
+          "type": "boolean"
+        },
+        "startup": { "$ref": "#/$defs/startupProbe" },
+        "readiness": { "$ref": "#/$defs/steadyProbe" },
+        "liveness": { "$ref": "#/$defs/steadyProbe" }
+      }
+    },
+
+    "startupProbe": {
+      "description": "Stated as a budget rather than as a failure count. failureThreshold is derived from budgetMs and periodSeconds by the template, so a budget cannot be raised without the count following it. Until this probe passes the kubelet runs neither of the other two, which is what stops a slow start being read as a failure.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "budgetMs": { "$ref": "#/$defs/positiveMilliseconds" },
+        "periodSeconds": { "$ref": "#/$defs/probeSeconds" },
+        "timeoutSeconds": { "$ref": "#/$defs/probeSeconds" }
+      }
+    },
+
+    "steadyProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "periodSeconds": { "$ref": "#/$defs/probeSeconds" },
+        "timeoutSeconds": { "$ref": "#/$defs/probeSeconds" },
+        "failureThreshold": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+
+    "shutdown": {
+      "description": "What happens between SIGTERM and SIGKILL. The pause is a preStop sleep action rather than an exec, because an exec needs a shell inside the image and no InferOps image exists yet to be asked whether it has one. The template refuses a grace period that does not cover the pause and the drain together.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preStopSleepSeconds": { "type": "integer", "minimum": 0, "maximum": 300 },
+        "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 }
+      }
+    },
+
+    "probeSeconds": { "type": "integer", "minimum": 1, "maximum": 300 },
+
     "image": {
       "type": "object",
       "additionalProperties": false,

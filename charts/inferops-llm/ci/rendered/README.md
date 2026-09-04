@@ -15,8 +15,9 @@ reads them.
 
 They are **not** evidence that this chart installs. Nothing here has been
 applied to a cluster. A rendered manifest is a file; whether the objects in it
-schedule, become ready, and can be removed without residue is `V1-S3-002-PR2`'s
-question, and it is answered by running the chart rather than by reading it.
+schedule, become ready, and can be removed without residue is answered by
+[the lifecycle script](../../../../scripts/environment/helm-lifecycle.sh), which
+has never been run because no InferOps API image is published.
 
 The API image digest in both files is a placeholder that resolves to no image,
 for the reason [`../real-values.yaml`](../real-values.yaml) states.

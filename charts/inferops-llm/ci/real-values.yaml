@@ -54,3 +54,7 @@ ownership:
 telemetry:
   enabled: true
   deploymentEnvironment: dev
+  # On here and off in the mock fixture, so that both branches of the annotation
+  # appear in a committed render rather than only the one the default takes.
+  # They are inert: nothing in this project scrapes anything.
+  scrapeAnnotations: true

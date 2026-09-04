@@ -45,9 +45,15 @@ from contextlib import contextmanager
 from enum import StrEnum
 
 #: The default budget a drain is given, in milliseconds. It is a default rather
-#: than a decision: no termination grace period is configured anywhere in this
-#: repository, and `ADR 0002` decides no concurrency limit, so there is no
-#: measurement to derive one from.
+#: than a decision: `ADR 0002` decides no concurrency limit, and no drain has
+#: been measured, so there is nothing to derive one from.
+#:
+#: It is no longer unrelated to a termination grace period. The Helm chart
+#: configures one, and refuses a values file where it does not cover this budget
+#: and the pre-stop pause together — because a grace period that expires
+#: mid-drain ends in `SIGKILL`, and the drain this module performs was then
+#: decoration. Nothing has installed that chart, so the relationship is between
+#: two configured numbers and not between two observed behaviours.
 DEFAULT_DRAIN_TIMEOUT_MS = 15_000
 
 #: How often the drain loop checks whether the in-flight count has reached zero.

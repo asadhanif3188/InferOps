@@ -3,8 +3,9 @@
 This suite reads files. It renders nothing by itself, contacts no cluster, pulls
 no image, and installs nothing, so a passing run here is `local-static` evidence
 about a chart and says nothing whatever about a release. Whether this chart
-installs and uninstalls is `V1-S3-002-PR2`'s question and is answered by running
-it, not by reading it.
+installs and uninstalls is answered by running
+`scripts/environment/helm-lifecycle.sh`, which has never been run, and not by
+reading anything here.
 
 Three properties are what this module exists for, and each is a rule stated
 somewhere else in the repository that a chart is in a position to break quietly.
@@ -30,6 +31,14 @@ model revision, and every runtime setting the chart passes as an argument are
 compared against the accepted records they were copied from, so that a fixture
 drifting from `ADR 0002` is a failing build rather than something a reader has
 to notice.
+
+**A probe mapping is read out of a record, not chosen here.** The runtime's
+liveness probe is a TCP connect because its health endpoint answers `503` for
+the whole of a model load, and the API's liveness and readiness paths are the two
+the accepted surface record assigns those roles. Both mappings are compared
+against those records, and the startup budget is compared against the largest
+model load this project has actually measured — so a change that made the chart
+internally consistent and externally wrong fails here.
 
 The rendered manifests under `charts/inferops-llm/ci/rendered/` are committed
 output from a real `helm template` run, recorded in the validation record beside
@@ -71,6 +80,28 @@ RUNTIME_PACKAGE_PATH = (
 )
 RUNTIME_PROFILE_PATH = REPO_ROOT / "docs" / "serving" / "runtime-profile.local.v1.json"
 MODEL_SOURCE_PATH = REPO_ROOT / "docs" / "serving" / "model-source.v1.json"
+API_SURFACE_PATH = (
+    REPO_ROOT / "docs" / "serving" / "inference-api-surface.v1alpha1.json"
+)
+
+# The largest model load this project has measured, in milliseconds: the
+# `V1-S2-005` baseline run on the reference host. The cold and warm start
+# observation recorded 133,515 ms to 215,672 ms across six starts, and that run
+# recorded 358,735 ms and 284,406 ms on the same host.
+#
+# It is quoted here for one purpose and may be cited for no other: a startup
+# probe budget below it would have killed a container mid-load in a start this
+# project actually observed. It is not a performance figure and says nothing
+# about capacity, cold-start cost, or model-load cost.
+LARGEST_MEASURED_LOAD_MS = 358_735
+
+# The annotation that makes an object a hook rather than a resource. Helm renders
+# hooks into `helm template` output alongside everything else, and a hook is
+# created by the operation it is attached to and deleted by its delete policy —
+# so it is not part of the installed release and not a row of the ownership
+# inventory. Every check below that asks "what does this release own" reads the
+# installed set; the hook has its own checks.
+HOOK_ANNOTATION = "helm.sh/hook"
 
 # The Kubernetes version this project pins, as CONTRIBUTING publishes it for
 # `kubeconform`. The chart's own floor is compared against it so that a chart
@@ -126,6 +157,12 @@ INVENTORY = _load_json(INVENTORY_PATH)
 RUNTIME_PACKAGE = _load_json(RUNTIME_PACKAGE_PATH)
 RUNTIME_PROFILE = _load_json(RUNTIME_PROFILE_PATH)
 MODEL_SOURCE = _load_json(MODEL_SOURCE_PATH)
+API_SURFACE = _load_json(API_SURFACE_PATH)
+
+API_PATH_FOR_ROLE = {
+    endpoint["servingContractRole"]: endpoint["path"]
+    for endpoint in API_SURFACE["endpoints"]
+}
 
 FIXTURES = {
     "mock": _load_yaml(CI_DIR / "mock-values.yaml"),
@@ -141,9 +178,42 @@ def _documents(path: Path) -> list[dict]:
     ]
 
 
+def _dig(node: object, dotted: str) -> Any:
+    current = node
+    for part in dotted.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return ABSENT
+        current = current[part]
+    return current
+
+
+def _mapping(node: object, dotted: str) -> dict:
+    """A nested mapping, or an empty one. `ABSENT` is a sentinel and not falsy."""
+    found = _dig(node, dotted)
+    return found if isinstance(found, dict) else {}
+
+
 RENDERED = {
     profile: _documents(RENDERED_DIR / f"{profile}.expected.yaml")
     for profile in ("mock", "real")
+}
+
+
+def _is_hook(document: dict) -> bool:
+    return HOOK_ANNOTATION in (_dig(document, "metadata.annotations") or {})
+
+
+# What a release installs, and what Helm creates for the length of an operation.
+# The distinction is read off the object rather than off the file it came from,
+# so a hook annotation added to a resource template moves it here rather than
+# quietly leaving it counted as something the release owns.
+INSTALLED = {
+    profile: [document for document in documents if not _is_hook(document)]
+    for profile, documents in RENDERED.items()
+}
+HOOKS = {
+    profile: [document for document in documents if _is_hook(document)]
+    for profile, documents in RENDERED.items()
 }
 
 HELM_OWNED = frozenset(
@@ -179,15 +249,6 @@ ROW_FOR_RENDERED = {
 }
 
 
-def _dig(node: object, dotted: str) -> Any:
-    current = node
-    for part in dotted.split("."):
-        if not isinstance(current, dict) or part not in current:
-            return ABSENT
-        current = current[part]
-    return current
-
-
 def _pod_specs(documents: list[dict]) -> list[tuple[str, dict]]:
     out: list[tuple[str, dict]] = []
     for document in documents:
@@ -214,6 +275,11 @@ ALL_RENDERED = [
     for profile, documents in RENDERED.items()
     for document in documents
 ]
+ALL_INSTALLED = [
+    (profile, document)
+    for profile, documents in INSTALLED.items()
+    for document in documents
+]
 ALL_POD_SPECS = [
     (f"{profile}:{label}", spec)
     for profile, documents in RENDERED.items()
@@ -236,9 +302,11 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
     assert CHART_YAML.is_file()
     assert VALUES_SCHEMA.is_file()
     assert len(list(TEMPLATES_DIR.glob("*.yaml"))) >= 5
-    assert len(RENDERED["real"]) == 6, "the real profile renders six objects"
-    assert len(RENDERED["mock"]) == 4, "the mock profile renders four"
-    assert len(ALL_CONTAINERS) == 3
+    assert len(INSTALLED["real"]) == 6, "the real profile installs six objects"
+    assert len(INSTALLED["mock"]) == 4, "the mock profile installs four"
+    assert len(HOOKS["real"]) == 1, "one test hook, in both profiles"
+    assert len(HOOKS["mock"]) == 1
+    assert len(ALL_CONTAINERS) == 5
 
 
 def test_the_chart_declares_the_api_version_and_the_kubernetes_floor() -> None:
@@ -272,9 +340,9 @@ def test_the_chart_accounts_for_every_helm_owned_row() -> None:
     assert not (DECLARED_OWNED & DECLARED_DEFERRED)
 
 
-@pytest.mark.parametrize("profile", sorted(RENDERED))
+@pytest.mark.parametrize("profile", sorted(INSTALLED))
 def test_every_rendered_object_maps_to_a_helm_owned_row(profile: str) -> None:
-    for document in RENDERED[profile]:
+    for document in INSTALLED[profile]:
         kind = document["kind"]
         labels = _dig(document, "metadata.labels") or {}
         component = labels.get("app.kubernetes.io/component")
@@ -519,8 +587,11 @@ def test_the_mock_render_carries_no_real_pin_and_no_runtime() -> None:
     """A mock that mounted the cache and named a revision would be
     indistinguishable, from the outside, from a release that had served from
     one."""
-    kinds = sorted(document["kind"] for document in RENDERED["mock"])
-    assert kinds == ["ConfigMap", "Deployment", "Service", "ServiceAccount"]
+    kinds = sorted(document["kind"] for document in INSTALLED["mock"])
+    assert kinds == ["ConfigMap", "Deployment", "Service", "ServiceAccount"], (
+        "the mock profile installs the API alone; the test hook is not installed "
+        "and is checked separately"
+    )
     body = (RENDERED_DIR / "mock.expected.yaml").read_text(encoding="utf-8")
     for forbidden in (
         MODEL_SOURCE["revision"],
@@ -622,7 +693,11 @@ def test_the_guarded_label_and_annotation_keys_are_the_ones_the_chart_writes() -
 
     written_labels: set[str] = set()
     written_annotations: set[str] = set()
-    for _profile, document in ALL_RENDERED:
+    # Installed objects only. A hook carries `helm.sh/hook` and its delete
+    # policy, which are Helm's keys rather than keys this chart derives, and
+    # counting them here would mean adding them to a refusal list that exists to
+    # protect identity.
+    for _profile, document in ALL_INSTALLED:
         written_labels |= set(_dig(document, "metadata.labels") or {})
         written_annotations |= set(_dig(document, "metadata.annotations") or {})
         template = _dig(document, "spec.template.metadata")
@@ -857,48 +932,422 @@ def test_no_rendered_manifest_carries_a_personal_path_or_a_secret_value(
         assert shape not in body, f"{profile} carries {shape!r}"
 
 
-def test_no_probe_is_rendered_and_the_deferral_is_recorded() -> None:
-    """The absence is the point, and it is an argued absence.
+# --------------------------------------------------------------------------
+# The probes, against the records that decide what they may be
+# --------------------------------------------------------------------------
 
-    The feasibility trial found that the runtime's health endpoint returns 503
-    while loading: correct readiness behaviour, wrong liveness behaviour, so a
-    liveness probe aimed at it restarts the pod mid-load and never converges.
-    Choosing the mapping is `V1-S3-002-PR2`'s work, and a probe added here
-    without that argument would be the defect the trial already found.
+
+def _workload_containers() -> dict[str, dict]:
+    """The API and runtime containers from the real render, by name.
+
+    The real profile is used because it is the only one that renders both. The
+    test hook's container is excluded: it is not a workload and carries no probe.
     """
-    for _, container in ALL_CONTAINERS:
-        for probe in ("readinessProbe", "livenessProbe", "startupProbe"):
-            assert probe not in container, (
-                f"a {probe} is rendered; probes belong to V1-S3-002-PR2, where "
-                "the mapping is argued rather than assumed"
-            )
-    assert VALUES["api"]["probes"]["enabled"] is False
+    return {
+        container["name"]: container for _, container in _containers(INSTALLED["real"])
+    }
 
 
-def test_no_service_account_token_is_mounted_anywhere() -> None:
-    account = next(
-        document
-        for document in RENDERED["real"]
-        if document["kind"] == "ServiceAccount"
+def test_every_workload_container_is_probed() -> None:
+    """A workload with no liveness probe is a workload nothing restarts."""
+    for name, container in _workload_containers().items():
+        for probe in ("startupProbe", "readinessProbe", "livenessProbe"):
+            assert probe in container, f"{name} has no {probe}"
+
+
+def test_the_runtime_liveness_probe_is_the_one_the_record_publishes() -> None:
+    """The single line in this chart that would be wrong if made consistent.
+
+    `llama-server` answers `/health` with `503` for the whole of a model load:
+    correct readiness behaviour, and fatal as a liveness answer. The `V1-S2-007`
+    observation recorded 2,753 samples across six starts in which a healthy
+    process was loading a model and an HTTP liveness probe would have been
+    failing. `runtime-profile.local.v1.json` publishes `health.liveness.kind` as
+    `tcp` for that reason, and this compares the chart against it rather than
+    against the comment beside it.
+    """
+    health = RUNTIME_PROFILE["health"]
+    runtime = _workload_containers()["runtime"]
+
+    assert health["liveness"]["kind"] == "tcp", (
+        "the accepted record no longer publishes a TCP liveness probe; the "
+        "chart's mapping was derived from it and has to be re-derived"
     )
-    assert account["automountServiceAccountToken"] is False
-    for _, spec in ALL_POD_SPECS:
-        assert spec["automountServiceAccountToken"] is False
+    assert "tcpSocket" in runtime["livenessProbe"], (
+        "the runtime's liveness probe is an HTTP GET. Its health endpoint "
+        "answers 503 throughout a model load, so an HTTP liveness probe fails "
+        "for minutes against a healthy process and restarts it into the same load"
+    )
+    assert "httpGet" not in runtime["livenessProbe"]
+
+    for role in ("startup", "readiness"):
+        assert health[role]["kind"] == "http"
+        probe = runtime[f"{role}Probe"]
+        assert probe["httpGet"]["path"] == health[role]["path"]
+        assert probe["httpGet"]["path"] == VALUES["runtime"]["healthPath"]
 
 
-def test_the_chart_grants_the_service_account_nothing() -> None:
-    """No Role and no RoleBinding is rendered, and none is a template.
+def test_the_api_probes_ask_the_paths_the_surface_record_assigns() -> None:
+    """Liveness and readiness are different questions with published answers.
 
-    Least-privilege RBAC is `V1-S3-004`'s. What this chart can honestly say is
-    that the identity it creates has been bound to nothing, which is checked here
-    rather than asserted in prose.
+    `/health/live` answers while the model is loading and while the API is
+    draining; `/health/ready` is false whenever either the API or the selected
+    adapter is unable. Pointing liveness at the readiness path would restart a
+    pod for being not-ready, which is the runtime's defect written in the other
+    workload.
     """
-    for path in TEMPLATES_DIR.iterdir():
-        if not path.is_file():
+    api = _workload_containers()["api"]
+    live = API_PATH_FOR_ROLE["liveness"]
+    ready = API_PATH_FOR_ROLE["readiness"]
+
+    assert api["livenessProbe"]["httpGet"]["path"] == live
+    assert api["startupProbe"]["httpGet"]["path"] == live
+    assert api["readinessProbe"]["httpGet"]["path"] == ready
+    assert live != ready
+
+    assert VALUES["api"]["livenessPath"] == live
+    assert VALUES["api"]["readinessPath"] == ready
+
+
+def test_the_runtime_startup_budget_covers_the_largest_measured_load() -> None:
+    """A budget below a load this project observed is a restart loop.
+
+    Two figures, and they measure different things. `startupBudgetMs` is how long
+    the adapter waits for the runtime; the startup probe's budget is how long the
+    kubelet waits for the container. A kubelet that gives up first makes the
+    adapter's budget unreachable, so the chart refuses that ordering — and the
+    kubelet's budget also has to cover a real load, or the refusal is satisfied
+    by two numbers that are both too small.
+    """
+    startup = VALUES["runtime"]["probes"]["startup"]
+    assert startup["budgetMs"] >= VALUES["runtime"]["startupBudgetMs"]
+    assert startup["budgetMs"] >= LARGEST_MEASURED_LOAD_MS, (
+        f"the startup probe budget is {startup['budgetMs']} ms and this project "
+        f"has measured a {LARGEST_MEASURED_LOAD_MS} ms model load; a container "
+        "would have been killed mid-load in a start that actually happened"
+    )
+
+
+@pytest.mark.parametrize("name", ("api", "runtime"))
+def test_the_rendered_startup_threshold_is_the_configured_budget(name: str) -> None:
+    """The threshold is derived, so the arithmetic is checked rather than read."""
+    container = _workload_containers()[name]
+    startup = VALUES[name]["probes"]["startup"]
+    probe = container["startupProbe"]
+    assert probe["periodSeconds"] == startup["periodSeconds"]
+    granted_ms = probe["failureThreshold"] * probe["periodSeconds"] * 1000
+    assert granted_ms >= startup["budgetMs"], (
+        f"{name}'s startup probe grants {granted_ms} ms against a budget of "
+        f"{startup['budgetMs']} ms; a threshold rounded down is a budget the "
+        "kubelet does not actually give"
+    )
+
+
+@pytest.mark.parametrize("name", ("api", "runtime"))
+def test_no_probe_may_take_longer_than_the_gap_between_probes(name: str) -> None:
+    """A probe that overlaps itself makes its failure count mean something else."""
+    container = _workload_containers()[name]
+    for kind in ("startupProbe", "readinessProbe", "livenessProbe"):
+        probe = container[kind]
+        assert probe["timeoutSeconds"] < probe["periodSeconds"], f"{name}.{kind}"
+
+
+# --------------------------------------------------------------------------
+# Stopping
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", ("api", "runtime"))
+def test_the_grace_period_covers_the_pause_and_the_drain(name: str) -> None:
+    """A drain that ends in SIGKILL was decoration.
+
+    The API's ordering is readiness-false, drain, exit, with a preStop pause in
+    front of it for the endpoint race. The grace period has to cover the pause
+    and the drain together. The runtime does not drain, so it only has to
+    outlast its own pause.
+    """
+    lifecycle = VALUES[name]["lifecycle"]
+    needed = lifecycle["preStopSleepSeconds"]
+    if name == "api":
+        needed += -(-VALUES["api"]["drainTimeoutMs"] // 1000)
+    assert lifecycle["terminationGracePeriodSeconds"] >= needed
+    assert lifecycle["terminationGracePeriodSeconds"] > lifecycle["preStopSleepSeconds"]
+
+
+@pytest.mark.parametrize("name", ("api", "runtime"))
+def test_the_rendered_pod_carries_the_grace_period_and_the_pause(name: str) -> None:
+    """A timing configured and not rendered is a timing nothing applies."""
+    component = {"api": "platform-api", "runtime": "serving-runtime"}[name]
+    spec = next(
+        spec
+        for _, spec in _pod_specs(INSTALLED["real"])
+        for container in spec["containers"]
+        if container["name"] == name
+    )
+    lifecycle = VALUES[name]["lifecycle"]
+    assert (
+        spec["terminationGracePeriodSeconds"]
+        == lifecycle["terminationGracePeriodSeconds"]
+    ), component
+
+    container = _workload_containers()[name]
+    pre_stop = _dig(container, "lifecycle.preStop")
+    assert pre_stop is not ABSENT, f"{name} has no preStop pause"
+    assert pre_stop["sleep"]["seconds"] == lifecycle["preStopSleepSeconds"]
+    assert "exec" not in pre_stop, (
+        "an exec preStop needs a shell inside the image, and no InferOps image "
+        "is published to be asked whether it has one"
+    )
+
+
+# --------------------------------------------------------------------------
+# The test hook, which is not a resource
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("profile", sorted(HOOKS))
+def test_the_only_hook_is_a_test_and_it_deletes_itself(profile: str) -> None:
+    """A hook that outlived its operation would be residue an uninstall misses."""
+    for document in HOOKS[profile]:
+        annotations = _dig(document, "metadata.annotations")
+        assert annotations[HOOK_ANNOTATION] == "test", (
+            "the only hook this chart renders is a test. An install or upgrade "
+            "hook would run against a cluster as part of a release, and nothing "
+            "here has established what that should do"
+        )
+        policy = annotations["helm.sh/hook-delete-policy"]
+        assert "hook-succeeded" in policy
+        assert "before-hook-creation" in policy
+        assert document["kind"] == "Pod"
+        assert _dig(document, "spec.restartPolicy") == "Never", (
+            "a test that retries reports the retry rather than the failure"
+        )
+
+
+def test_the_hook_is_not_counted_as_something_the_release_owns() -> None:
+    """The one thing that would quietly break the ownership partition."""
+    for profile in sorted(HOOKS):
+        for document in HOOKS[profile]:
+            component = (_dig(document, "metadata.labels") or {}).get(
+                "app.kubernetes.io/component"
+            )
+            assert component == "release-test"
+            assert (document["kind"], component) not in ROW_FOR_RENDERED
+    for profile in sorted(INSTALLED):
+        for document in INSTALLED[profile]:
+            assert not _is_hook(document)
+
+
+def test_the_test_pod_asks_every_service_the_profile_renders() -> None:
+    """A test that checked one half would pass on a release with one half up."""
+    for profile in sorted(HOOKS):
+        services = [
+            document["metadata"]["name"]
+            for document in INSTALLED[profile]
+            if document["kind"] == "Service"
+        ]
+        assert services, profile
+        body = " ".join(
+            argument
+            for _, container in _containers(HOOKS[profile])
+            for argument in container["args"]
+        )
+        for service in services:
+            assert f"//{service}:" in body, (
+                f"the {profile} test pod does not ask {service} for anything"
+            )
+
+
+# --------------------------------------------------------------------------
+# What a rollback needs to be possible at all
+# --------------------------------------------------------------------------
+
+
+def test_a_selector_is_drawn_only_from_things_a_rollback_cannot_change() -> None:
+    """`spec.selector` is immutable after a Deployment is created.
+
+    A selector carrying the chart version, the profile, or anything from
+    `commonLabels` would make the next revision a different object rather than an
+    update to this one — and revision 1 would then be unreachable by a rollback,
+    which is the failure mode that looks like a working chart until somebody
+    needs it.
+    """
+    allowed = {
+        "app.kubernetes.io/name",
+        "app.kubernetes.io/instance",
+        "app.kubernetes.io/component",
+    }
+    selectors = [
+        _dig(document, "spec.selector.matchLabels")
+        for _profile, document in ALL_INSTALLED
+        if document["kind"] == "Deployment"
+    ]
+    assert len(selectors) == 3, "two Deployments under real, one under mock"
+    for selector in selectors:
+        assert set(selector) == allowed, selector
+        assert "inferops.io/profile" not in selector
+        assert "helm.sh/chart" not in selector
+
+
+def test_the_configuration_object_is_named_stably() -> None:
+    """A name carrying a hash orphans the old object on every upgrade.
+
+    The checksum belongs on the pod template, where it rolls the pods, and not in
+    the ConfigMap's name, where it would leave one object per revision behind and
+    make a rollback re-create rather than re-point.
+    """
+    helpers = (TEMPLATES_DIR / "_helpers.tpl").read_text(encoding="utf-8")
+    body = _define_body(helpers, "configMapName")
+    for forbidden in ("sha256sum", "Chart.Version", "randAlpha", "now"):
+        assert forbidden not in body, body
+    for _profile, document in ALL_INSTALLED:
+        if document["kind"] != "ConfigMap":
             continue
-        body = path.read_text(encoding="utf-8")
-        for kind in ("kind: Role", "kind: ClusterRole", "kind: RoleBinding"):
-            assert kind not in body, f"{path.name} renders a {kind}"
+        name = document["metadata"]["name"]
+        assert CHART["version"] not in name, name
+
+    for _profile, document in ALL_INSTALLED:
+        if document["kind"] != "Deployment":
+            continue
+        annotations = _mapping(document, "spec.template.metadata.annotations")
+        assert "inferops.io/configuration-checksum" in annotations, (
+            "a configuration change would not roll the pods, and the running "
+            "processes would keep an environment nothing reports"
+        )
+
+
+# --------------------------------------------------------------------------
+# The scrape annotations, which are configuration and not a collector
+# --------------------------------------------------------------------------
+
+
+def test_the_scrape_annotations_follow_the_switch_that_governs_them() -> None:
+    """On in one fixture and off in the other, so both branches are committed."""
+    keys = {"prometheus.io/scrape", "prometheus.io/port", "prometheus.io/path"}
+
+    assert FIXTURES["real"]["telemetry"]["scrapeAnnotations"] is True
+    assert VALUES["telemetry"]["scrapeAnnotations"] is False, (
+        "the default has to stay off: nothing in this project collects anything"
+    )
+
+    seen = 0
+    for profile, expected in (("real", True), ("mock", False)):
+        for document in INSTALLED[profile]:
+            if document["kind"] != "Deployment":
+                continue
+            seen += 1
+            annotations = _mapping(document, "spec.template.metadata.annotations")
+            assert (keys <= set(annotations)) is expected, (
+                profile,
+                document["metadata"]["name"],
+            )
+            if not expected:
+                continue
+            port = int(annotations["prometheus.io/port"])
+            container = _dig(document, "spec.template.spec.containers")[0]
+            assert port == container["ports"][0]["containerPort"], (
+                "the annotated port is not the port the container listens on"
+            )
+            assert (
+                annotations["prometheus.io/path"] == VALUES["telemetry"]["metricsPath"]
+            )
+    assert seen == 3, "two Deployments under real, one under mock"
+
+
+def test_no_scrape_resource_is_rendered() -> None:
+    """`telemetry-scrape-configuration` is deferred, and stays deferred.
+
+    Pod annotations are a field on a workload. A ServiceMonitor, a PodMonitor, or
+    a scrape config is a resource beside it, and choosing one is `V1-S3-007`'s.
+    """
+    assert "telemetry-scrape-configuration" in DECLARED_DEFERRED
+    for _profile, document in ALL_RENDERED:
+        assert document["kind"] not in ("ServiceMonitor", "PodMonitor")
+
+
+# --------------------------------------------------------------------------
+# The flag that would give one resource two owners
+# --------------------------------------------------------------------------
+
+
+# The flag, on a line that is not a comment. It is deliberately not matched
+# against `helm` on the same line: a shell continuation puts the flag on a line
+# of its own, which is exactly how a real one would be written, and a rule that
+# needed both on one line would miss it.
+#
+# Prose that forbids the flag has to be able to name it, and `Chart.yaml`,
+# `_validate.tpl`, the chart README, and CONTRIBUTING all do. So this reads the
+# two places that run commands rather than describe them.
+COMMENT = re.compile(r"^\s*#")
+RUNNABLE_ROOTS = ("scripts", ".github")
+
+
+def test_nothing_that_runs_passes_create_namespace() -> None:
+    """One flag, and it is the default suggestion in most documentation.
+
+    `helm install --create-namespace` makes Helm an owner of a namespace the
+    ownership inventory assigns to Terraform, and the release's own uninstall
+    then deletes a prerequisite. The chart cannot refuse a flag that creates the
+    namespace it is being installed into, so the refusal has to live here — and
+    in `tests/architecture/test_cluster_lifecycle_safety.py`, which reads the
+    same rule off shell commands with their continuations joined.
+    """
+    tracked = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "--", *RUNNABLE_ROOTS],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert tracked.returncode == 0, tracked.stderr
+    paths = [
+        REPO_ROOT / line
+        for line in tracked.stdout.splitlines()
+        if line and not line.endswith(".md")
+    ]
+    assert len(paths) >= 5, "the file list is empty; this check would pass on air"
+
+    offenders = [
+        f"{path.relative_to(REPO_ROOT)}:{number}"
+        for path in paths
+        if path.is_file()
+        for number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        )
+        if "--create-namespace" in line and not COMMENT.match(line)
+    ]
+    assert not offenders, offenders
+
+
+@pytest.mark.parametrize(
+    "sample",
+    (
+        "helm install inferops charts/inferops-llm --create-namespace",
+        "  --create-namespace \\",
+        '  inferops::helm upgrade --install "${R}" "${C}" --create-namespace -n x',
+    ),
+)
+def test_the_create_namespace_rule_rejects_what_it_exists_to_reject(
+    sample: str,
+) -> None:
+    """A rule that has never been shown a violation may not have one.
+
+    The second sample is the shape the first version of this rule let through: a
+    shell continuation, with the flag on a line carrying nothing else.
+    """
+    assert "--create-namespace" in sample and not COMMENT.match(sample), sample
+
+
+@pytest.mark.parametrize(
+    "sample",
+    (
+        "# --create-namespace is deliberately absent and must stay absent.",
+        "  # rather than passing `--create-namespace`, which would hand the",
+    ),
+)
+def test_the_create_namespace_rule_accepts_a_comment_that_names_it(
+    sample: str,
+) -> None:
+    assert COMMENT.match(sample), sample
 
 
 # --------------------------------------------------------------------------

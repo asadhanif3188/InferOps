@@ -18,10 +18,9 @@ of real serving behaviour, however closely the response resembles one. The rule
 is docs/serving/mock-and-real-boundary.md.
 {{- else }}
 This release installs the real serving path. It is not yet proven to run: no
-InferOps API image is published, no probe is configured, and this chart's
-install and uninstall behaviour is not certified by anything in this repository.
-V1-S3-002-PR2 adds probes and the lifecycle tests; V1-S3-006 certifies real
-inference through Kubernetes.
+InferOps API image is published, and no cluster in this project has installed
+this chart. The probes, the shutdown ordering, and the release test below are
+configured and unrun. V1-S3-006 certifies real inference through Kubernetes.
 {{- end }}
 
 What this chart does not install, so that a reader is not left inferring it:
@@ -31,8 +30,17 @@ What this chart does not install, so that a reader is not left inferring it:
   - a NetworkPolicy (V1-S3-004);
   - any scrape or collector configuration (V1-S3-007).
 
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }}
+
 Reaching the API:
 
   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "inferops-llm.fullname" . }} {{ .Values.api.service.port }}:{{ .Values.api.service.port }}
 
 There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall {{ .Release.Name }} --namespace {{ .Release.Namespace }}

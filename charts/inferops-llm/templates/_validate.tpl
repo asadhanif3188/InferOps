@@ -215,4 +215,75 @@ which tenant they belong to.
 {{- end -}}
 {{- end -}}
 
+{{/* -- probes, and the budgets they are given -------------------------- */}}
+
+{{/*
+Three rules, and the first is the one this PR exists to get right.
+
+A startup probe whose budget is smaller than the adapter's own startup budget
+makes that budget unreachable: the kubelet kills the container while the adapter
+is still inside the window it was told it had, and restarts it into the same
+load. The measured loads are the reason the default is twice the published
+figure -- V1-S2-007 recorded 133,515 ms to 215,672 ms across six starts, and
+V1-S2-005 recorded 358,735 ms on the same host -- and this refusal is what stops
+a values file quietly taking it back.
+
+A probe whose timeout is not shorter than its period overlaps itself: the next
+attempt starts before the previous one has been given up on, and the failure
+count then measures something other than consecutive failures.
+*/}}
+
+{{- range $component := list "api" "runtime" -}}
+{{- $probes := (index $.Values $component).probes -}}
+{{- if $probes.enabled -}}
+{{- range $kind := list "startup" "readiness" "liveness" -}}
+{{- $probe := index $probes $kind -}}
+{{- if ge (int $probe.timeoutSeconds) (int $probe.periodSeconds) -}}
+{{- fail (printf "%s.probes.%s.timeoutSeconds must be less than periodSeconds. A probe that may take as long as the interval between probes overlaps itself, and the failure threshold then counts something other than consecutive failures." $component $kind) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- if .Values.runtime.probes.enabled -}}
+{{- if lt (int .Values.runtime.probes.startup.budgetMs) (int .Values.runtime.startupBudgetMs) -}}
+{{- fail "runtime.probes.startup.budgetMs must be at least runtime.startupBudgetMs. The first is how long the kubelet waits for the container and the second is how long the adapter waits for the model; a kubelet that gives up first kills the container mid-load and restarts it into the same load, which makes the adapter's budget unreachable rather than generous." -}}
+{{- end -}}
+{{- end -}}
+
+{{/* -- shutdown, and whether the grace period covers it ------------------ */}}
+
+{{/*
+The API drains: readiness goes false, what is in flight finishes, the process
+exits. The pause before that is for the endpoint race. A grace period that does
+not cover both ends in SIGKILL, and a drain that ends in SIGKILL was decoration.
+
+The runtime does not drain -- `llama-server` is stopped rather than asked to
+finish -- so it only has to outlast its own pause.
+*/}}
+
+{{- $apiDrainSeconds := div (add (int .Values.api.drainTimeoutMs) 999) 1000 -}}
+{{- $apiNeeded := add (int .Values.api.lifecycle.preStopSleepSeconds) $apiDrainSeconds -}}
+{{- if lt (int .Values.api.lifecycle.terminationGracePeriodSeconds) $apiNeeded -}}
+{{- fail (printf "api.lifecycle.terminationGracePeriodSeconds must cover the preStop pause and the drain together, which is %d seconds for the values given. A period shorter than that ends in SIGKILL part-way through a drain the API performed to avoid exactly that." $apiNeeded) -}}
+{{- end -}}
+
+{{- if le (int .Values.runtime.lifecycle.terminationGracePeriodSeconds) (int .Values.runtime.lifecycle.preStopSleepSeconds) -}}
+{{- fail "runtime.lifecycle.terminationGracePeriodSeconds must be greater than preStopSleepSeconds, or the pause consumes the whole period and the process is killed rather than stopped." -}}
+{{- end -}}
+
+{{/* -- telemetry --------------------------------------------------------- */}}
+
+{{- if and .Values.telemetry.scrapeAnnotations (not .Values.telemetry.enabled) -}}
+{{- fail "telemetry.scrapeAnnotations requires telemetry.enabled. Annotating a port as scrapeable when the workload publishes no metrics advertises an endpoint that answers nothing, and a collector that believed it would report the absence as a scrape failure rather than as a decision." -}}
+{{- end -}}
+
+{{/* -- the chart's own test ---------------------------------------------- */}}
+
+{{- if .Values.tests.enabled -}}
+{{- if or (not .Values.tests.image.repository) (not .Values.tests.image.digest) -}}
+{{- fail "tests.image.repository and tests.image.digest are required while tests.enabled is true. The test pod needs an HTTP client, and an unpinned one is a different client on a different day." -}}
+{{- end -}}
+{{- end -}}
+
 {{- end -}}

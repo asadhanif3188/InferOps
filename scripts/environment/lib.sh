@@ -50,6 +50,21 @@ readonly INFEROPS_KUBECONFIG_REL=".kube/inferops-dev.config"
 readonly INFEROPS_NAMESPACE="inferops-smoke"
 readonly INFEROPS_PART_OF_SELECTOR="app.kubernetes.io/part-of=inferops"
 
+# The Helm release, and the namespace it installs into. A separate namespace
+# from the smoke one on purpose: the smoke workload and the InferOps release are
+# different things with different lifetimes, and sharing a namespace would make
+# "what did this release leave behind" unanswerable.
+#
+# ADR 0001 (D5) requires the `inferops-` prefix, and the chart refuses a release
+# namespace without it.
+readonly INFEROPS_RELEASE_NAME="inferops"
+readonly INFEROPS_RELEASE_NAMESPACE="inferops-release"
+readonly INFEROPS_CHART_PATH="charts/inferops-llm"
+
+# What identifies one release's objects. Helm sets this label on everything it
+# installs, so it is what a residue check asks about.
+readonly INFEROPS_RELEASE_SELECTOR="app.kubernetes.io/instance=${INFEROPS_RELEASE_NAME}"
+
 # --- Pinned versions --------------------------------------------------------
 
 # Checked, not assumed. A contributor running a different kind release is told
@@ -224,6 +239,14 @@ inferops::require_cmd() {
 # a context this project does not own by inheriting an ambient KUBECONFIG.
 inferops::kubectl() {
   kubectl --kubeconfig "${INFEROPS_KUBECONFIG}" --context "${INFEROPS_KUBE_CONTEXT}" "$@"
+}
+
+# The same argument for helm, and a sharper one. Helm reads KUBECONFIG exactly
+# as kubectl does, and `helm uninstall` against an inherited context deletes a
+# release on whatever cluster that context happens to name. Every helm call in
+# these scripts goes through this wrapper, and a test asserts it.
+inferops::helm() {
+  helm --kubeconfig "${INFEROPS_KUBECONFIG}" --kube-context "${INFEROPS_KUBE_CONTEXT}" "$@"
 }
 
 # Fails loudly rather than reporting "no clusters" when the engine cannot be

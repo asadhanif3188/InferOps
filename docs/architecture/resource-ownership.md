@@ -3,11 +3,22 @@
 Status: **accepted as the V1 ownership boundary**, in
 [ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md). Half of it is
 now written against: `V1-S3-002-PR1` added the Helm chart at
-[`charts/inferops-llm/`](../../charts/inferops-llm/), and there is still no
-Terraform configuration. **Every row below is still `planned` or `deferred`, and
-that is correct**: a chart renders objects, and a rendered object is a file. None
-of the resources in the release table exists in a cluster, because nothing here
-has installed one.
+[`charts/inferops-llm/`](../../charts/inferops-llm/), `V1-S3-002-PR2` added the
+release lifecycle procedure at
+[`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh),
+and there is still no Terraform configuration. **Every row below is still
+`planned` or `deferred`, and that is correct**: a chart renders objects, a
+rendered object is a file, and a procedure nobody has executed changes nothing in
+a cluster. None of the resources in the release table exists in a cluster,
+because nothing here has installed one — and the lifecycle script cannot be run
+until an InferOps API image exists.
+
+The script does record one thing this document had left implicit. Until Terraform
+is written, something has to create the namespace a release installs into, and
+that something must not be Helm. The script creates it, labels it
+`inferops.io/lifecycle=prerequisite`, and says it is standing in for `V1-S3-005`
+— which keeps the prerequisite half of the boundary a stand-in rather than a
+second owner.
 
 What did change is that the chart is now checked against this document.
 `tests/architecture/test_helm_chart.py` reads the release table and refuses a
