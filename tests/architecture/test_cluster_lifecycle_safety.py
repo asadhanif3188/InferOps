@@ -96,19 +96,30 @@ MUTATING_KUBECTL_VERBS = (
 # Operations whose blast radius is the whole machine rather than this project's
 # own objects. ADR 0001 (D6) forbids every one of them, and a script is not the
 # place to discover that a contributor's unrelated containers are gone.
-FORBIDDEN_FRAGMENTS = (
-    "docker system prune",
-    "docker volume prune",
-    "docker image prune",
-    "docker container prune",
-    "docker network prune",
-    "docker builder prune",
-    "--all-namespaces",
-    "-A ",
-    "kubectl config delete-context",
-    "kubectl config use-context",
-    "rm -rf",
+#
+# Patterns rather than substrings, because the shapes that matter here are tokens
+# and a substring cannot tell a token from the middle of a word. `-A ` with a
+# trailing space -- the first form of this rule -- missed `kubectl get pods -A`
+# outright, because there is nothing after the flag to match the space against.
+FORBIDDEN_PATTERNS = (
+    (
+        "engine-wide prune",
+        r"\bdocker\s+(system|volume|image|container|network|builder)\s+prune\b",
+    ),
+    (
+        "touching the default kubeconfig's contexts",
+        r"kubectl\s+config\s+(delete|use)-context\b",
+    ),
+    (
+        "recursive force delete",
+        r"\brm\s+-[a-zA-Z]*r[a-zA-Z]*f\b|\brm\s+-[a-zA-Z]*f[a-zA-Z]*r\b",
+    ),
 )
+
+# Every namespace at once, in either spelling. `-A` is matched as a token rather
+# than as the substring `"-A "`, which was the first form of this rule and which
+# missed the flag whenever it ended a line.
+ACROSS_ALL_NAMESPACES = re.compile(r"--all-namespaces(?![\w-])|(?<![\w-])-A(?![\w-])")
 
 
 def script_text(name: str) -> str:
@@ -130,6 +141,14 @@ def code_lines(name: str) -> list[tuple[int, str]]:
     scope it are routinely written across four lines, and a rule that read them
     separately would see an unscoped delete on the first line every time. Reading
     a shell command one physical line at a time does not read the command.
+
+    Two shapes this does not understand, stated because a reader should not have
+    to infer the boundary: a comment appearing part-way through a continuation is
+    spliced into the command rather than dropped, and a heredoc body is read as
+    if it were code. Neither occurs in these scripts. A rule that fired on either
+    would be a false positive rather than a missed violation, which is the safe
+    direction for this to be wrong in, and adding a shell parser to close a gap
+    nothing exercises would cost more than it defends.
     """
     lines: list[tuple[int, str]] = []
     pending: list[str] = []
@@ -241,36 +260,155 @@ def test_every_cluster_deletion_names_the_cluster() -> None:
     assert not offenders, offenders
 
 
-def test_every_object_deletion_is_scoped() -> None:
-    """A delete is namespaced and either label-selected or named. Never both absent.
+# A resource name after `kubectl delete <kind>`. It may not begin with a hyphen,
+# and that restriction is the whole point of writing it out: `[\w-]+` accepts
+# `--all`, so the first form of this rule read `delete pod --all` as a named
+# deletion and let the most dangerous shape in the vocabulary through.
+DELETE_NAMES_A_RESOURCE = re.compile(r"delete\s+[\w,]+[/ ]+[A-Za-z0-9][\w.-]*")
+
+# `--all` on a delete means every object of that kind. Inside the project's own
+# namespace that is arguably harmless, but it is one mistyped `-n` away from not
+# being, and nothing here needs it.
+DELETE_TAKES_EVERYTHING = re.compile(r"(?<![\w-])--all(?![\w-])")
+
+INVOKES_DELETE = re.compile(r"(?<!::)\bkubectl\s+delete\b|inferops::kubectl delete")
+
+
+def deletion_lines() -> list[tuple[str, int, str]]:
+    """Every kubectl deletion in the environment scripts, as a logical line."""
+    return [row for row in all_code_lines() if INVOKES_DELETE.search(row[2])]
+
+
+def test_there_are_deletions_to_check() -> None:
+    """The rules below say nothing about a repository with no deletions in it."""
+    assert len(deletion_lines()) >= 3
+
+
+def deletion_is_scoped(line: str) -> bool:
+    """A delete is namespaced *and* either label-selected or named.
 
     The one shape allowed without a namespace flag is the deletion of the
     project's own namespace, which names its target outright.
+
+    One function rather than an assertion written inline, because the
+    adversarial-input tests at the end of this module have to apply exactly the
+    rule the suite enforces. A second copy of it would drift, and the copy that
+    drifted would be the one certifying that the rule works.
     """
-    namespace_delete = 'delete namespace "${INFEROPS_NAMESPACE}"'
-    offenders = []
-    for name, number, line in all_code_lines():
-        if not re.search(r"(?<!::)\bkubectl\s+delete\b|inferops::kubectl delete", line):
-            continue
-        if namespace_delete in line:
-            continue
-        scoped = '-n "${INFEROPS_NAMESPACE}"' in line
-        selected = '-l "${INFEROPS_PART_OF_SELECTOR}"' in line or re.search(
-            r"delete\s+\w+[/ ][\w-]+", line
-        )
-        if not (scoped or selected):
-            offenders.append(f"{name}:{number}: {line.strip()}")
+    if 'delete namespace "${INFEROPS_NAMESPACE}"' in line:
+        return True
+    scoped = '-n "${INFEROPS_NAMESPACE}"' in line
+    selected = '-l "${INFEROPS_PART_OF_SELECTOR}"' in line or (
+        DELETE_NAMES_A_RESOURCE.search(line) is not None
+    )
+    return scoped and selected
+
+
+def test_every_object_deletion_is_scoped() -> None:
+    offenders = [
+        f"{name}:{number}: {line.strip()}"
+        for name, number, line in deletion_lines()
+        if not deletion_is_scoped(line)
+    ]
     assert not offenders, offenders
 
 
-@pytest.mark.parametrize("fragment", FORBIDDEN_FRAGMENTS)
-def test_no_script_reaches_beyond_this_project(fragment: str) -> None:
+def test_no_deletion_takes_every_object_of_a_kind() -> None:
+    offenders = [
+        f"{name}:{number}: {line.strip()}"
+        for name, number, line in deletion_lines()
+        if DELETE_TAKES_EVERYTHING.search(line)
+    ]
+    assert not offenders, offenders
+
+
+def test_nothing_that_changes_state_crosses_every_namespace() -> None:
+    """`-A` and `--all-namespaces` are refused on anything that changes something.
+
+    Not on everything. `smoke.sh` reads `kubectl top pods -A` when in-cluster
+    metrics happen to be available, and a read across namespaces has no blast
+    radius: it deletes nothing, changes nothing, and leaves nothing behind. What
+    ADR 0001 (D6) forbids is acting outside this project's own namespace, so that
+    is what this refuses, rather than every appearance of the flag.
+    """
+    mutating = re.compile(rf"kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b")
     offenders = [
         f"{name}:{number}: {line.strip()}"
         for name, number, line in all_code_lines()
-        if fragment in line
+        if mutating.search(line) and ACROSS_ALL_NAMESPACES.search(line)
     ]
     assert not offenders, offenders
+
+
+@pytest.mark.parametrize(
+    "label,pattern", FORBIDDEN_PATTERNS, ids=[label for label, _ in FORBIDDEN_PATTERNS]
+)
+def test_no_script_reaches_beyond_this_project(label: str, pattern: str) -> None:
+    compiled = re.compile(pattern)
+    offenders = [
+        f"{name}:{number}: {line.strip()}"
+        for name, number, line in all_code_lines()
+        if compiled.search(line)
+    ]
+    assert not offenders, (label, offenders)
+
+
+def rules_reject(line: str) -> bool:
+    """Whether any rule in this module would refuse a line."""
+    mutating = re.search(rf"kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b", line)
+    deletes = INVOKES_DELETE.search(line) is not None
+    return (
+        (deletes and DELETE_TAKES_EVERYTHING.search(line) is not None)
+        or (deletes and not deletion_is_scoped(line))
+        or (mutating is not None and ACROSS_ALL_NAMESPACES.search(line) is not None)
+        or any(re.search(pattern, line) for _, pattern in FORBIDDEN_PATTERNS)
+    )
+
+
+@pytest.mark.parametrize(
+    "sample",
+    (
+        # The shape that got through the first version of the scoping rule,
+        # because `[\w-]+` read `--all` as a resource name.
+        'inferops::kubectl delete pod --all -n "${INFEROPS_NAMESPACE}"',
+        # Namespaced but naming nothing.
+        'inferops::kubectl delete pod -n "${INFEROPS_NAMESPACE}"',
+        # The shape that got through the first version of the sweep rule,
+        # because the flag ended the line and `"-A "` needs a space after it.
+        "inferops::kubectl delete pods -A",
+        "inferops::kubectl delete pods --all-namespaces",
+        "docker system prune -f",
+        "docker volume prune",
+        "kubectl config use-context kind-inferops-dev",
+        "rm -rf /",
+        "rm -fr /",
+    ),
+)
+def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:
+    """A static rule that has never been shown a violation may not have one.
+
+    Each line above is written to break a rule. Without this, the suite passing
+    tells a reader only that these scripts are clean today, and nothing about
+    whether the rules would notice if they stopped being. Two of these samples
+    are the exact shapes an earlier version of this module let through.
+    """
+    assert rules_reject(sample), sample
+
+
+@pytest.mark.parametrize(
+    "sample",
+    (
+        # Every deletion the scripts actually make, and the read across
+        # namespaces that has no blast radius and must not be refused.
+        'inferops::kubectl delete namespace "${INFEROPS_NAMESPACE}" --ignore-not-found=true',
+        'inferops::kubectl delete job hello-world-verify -n "${INFEROPS_NAMESPACE}"',
+        "inferops::kubectl top pods -A",
+        "inferops::kubectl get pods -n kube-system -o wide",
+    ),
+)
+def test_the_rules_accept_what_the_scripts_legitimately_do(sample: str) -> None:
+    """A rule that refuses everything is as useless as one that refuses nothing."""
+    assert not rules_reject(sample), sample
 
 
 def test_nothing_writes_to_the_default_kubeconfig() -> None:

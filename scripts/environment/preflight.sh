@@ -75,7 +75,9 @@ inferops::section "Disk"
 # V1-S3-001. It is not a static requirement met once: ADR 0001 (R11) records that
 # a teardown does not return host free space, so a host that had room last month
 # is not evidence that it has room now.
-read -r disk_path disk_kind <<<"$(inferops::disk_probe_target)"
+# The kind first and the path last, so that a path containing a space arrives
+# whole rather than truncated at the first one.
+read -r disk_kind disk_path <<<"$(inferops::disk_probe_target)"
 
 if free_bytes="$(inferops::free_disk_bytes "${disk_path}")"; then
   inferops::log "measuring ${disk_path} (${disk_kind})"

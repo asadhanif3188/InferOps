@@ -128,17 +128,24 @@ same read-only script reaches the same answer twice.
 
 Measured on the reference host with the node image already cached:
 
-| Step | Elapsed |
-|---|---|
-| `cluster-up.sh`, including verification | 69 s |
-| Of which the control plane reaching Ready | 13-16 s across four creations |
-| `cluster-verify.sh` on its own | 6-7 s |
-| `smoke.sh` | 23 s |
-| `cluster-down.sh --workload` | 38 s |
-| `cluster-down.sh` | 17 s |
+| Step | Elapsed | Spread across three runs |
+|---|---|---|
+| `cluster-up.sh`, including verification | 53 s | 53-69 s |
+| Of which the control plane reaching Ready | 13-16 s | quoted from ADR 0001, across four creations |
+| `cluster-verify.sh` on its own | 5 s | 3-7 s |
+| `smoke.sh` | 19 s | 19-23 s |
+| `cluster-down.sh --workload` | 39 s | 38-39 s |
+| `cluster-down.sh` | 8 s | 8-17 s |
 
-A first run on a host without the node image adds the download of roughly
-1.35 GB. These are one host's figures, not a specification.
+The middle column is the certifying run recorded in
+[the lifecycle result](../proof/environment/v1-s3-001-pr1-cluster-lifecycle.md),
+except the second row, which is quoted from ADR 0001. The right-hand column is
+the spread over the three runs of the same sequence made while this was written,
+and is there so that nobody reads a single measurement as a budget. Teardown
+varies most, because it varies with how much the engine has to reclaim.
+
+These are one host's figures, not a specification. A first run on a host without
+the node image adds the download of roughly 1.35 GB.
 
 ## Verifying a cluster you already have
 

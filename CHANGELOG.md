@@ -137,8 +137,11 @@ once versioned releases begin.
   script rather than by a second copy of the same checks, and
   `proof.sh` runs it again standalone in each cycle — because "verify is
   repeatable" is a result only if the same read-only script reaches the same
-  answer twice. It was run five times across three cluster states with identical
-  output in [the lifecycle result](docs/proof/environment/v1-s3-001-pr1-cluster-lifecycle.md).
+  answer twice. It was run five times in
+  [the lifecycle result](docs/proof/environment/v1-s3-001-pr1-cluster-lifecycle.md):
+  four against a live cluster in three different states, all passing, with the two
+  run back to back byte-identical under `diff`; and once against the torn-down
+  cluster, where it correctly reported three problems at once and failed.
 
   `preflight.sh` now checks the third figure of
   [ADR 0001](docs/architecture/decisions/ADR-0001-local-development-environment.md)

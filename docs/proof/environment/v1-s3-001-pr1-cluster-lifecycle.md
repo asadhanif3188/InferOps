@@ -3,7 +3,8 @@
 Date: 2026-09-04
 
 Classification: **local real evidence**, redacted. A cluster was created, verified
-five times, exercised, partially torn down, fully torn down, and confirmed clean.
+four times while it existed and once after it was gone, exercised, partially torn
+down, fully torn down, and confirmed clean.
 Nothing here is mock, synthetic, or estimated.
 
 Claim boundary: one Windows host, one architecture, one point in time. It
@@ -38,30 +39,34 @@ cluster-verify.sh          (against the torn-down state)
 verify-clean.sh
 ```
 
-Started `2026-09-04T05:58:58Z`, finished `2026-09-04T06:01:45Z`.
+Started `2026-09-04T06:27:21Z`, finished `2026-09-04T06:30:04Z`.
 
 ## Result and elapsed time
 
 | Step | Exit | Elapsed |
 |---|---:|---:|
-| `preflight.sh` | 1 | 12 s |
-| `cluster-up.sh` | 0 | 55 s |
-| `cluster-verify.sh` #1 | 0 | 6 s |
-| `cluster-verify.sh` #2 | 0 | 6 s |
-| `smoke.sh` | 0 | 22 s |
-| `cluster-verify.sh` #3, after the smoke workload | 0 | 5 s |
-| `cluster-down.sh --workload` | 0 | 38 s |
+| `preflight.sh` | **1, see the host limitation below** | 12 s |
+| `cluster-up.sh` | 0 | 53 s |
+| `cluster-verify.sh` #1 | 0 | 5 s |
+| `cluster-verify.sh` #2 | 0 | 5 s |
+| `smoke.sh` | 0 | 19 s |
+| `cluster-verify.sh` #3, after the smoke workload | 0 | 4 s |
+| `cluster-down.sh --workload` | 0 | 39 s |
 | `cluster-verify.sh` #4, after the partial teardown | 0 | 5 s |
-| `cluster-down.sh` | 0 | 9 s |
-| `cluster-verify.sh` #5, against the torn-down state | **1, intended** | 4 s |
-| `verify-clean.sh` | 0 | 4 s |
+| `cluster-down.sh` | 0 | 8 s |
+| `cluster-verify.sh` #5, against the torn-down state | **1, intended** | 3 s |
+| `verify-clean.sh` | 0 | 6 s |
 
 The node image was already cached. A first run on a host without it adds the
 transfer of roughly 1.35 GB.
 
-An earlier invocation of the same `cluster-up.sh` in the same session took 69 s;
-55 s is the figure from the certifying run above. Both are one host's numbers and
-neither is a specification.
+The same sequence was run three times in this session, against successive states
+of the scripts. The table above is the last of them, run against the code as
+committed. The spread across all three: `cluster-up.sh` 53-69 s, `cluster-down.sh`
+8-17 s, `smoke.sh` 19-23 s, and each `cluster-verify.sh` 3-7 s. Every run reached
+the same exit codes and the same findings; the teardown figure varies most,
+because it varies with how much the engine has to reclaim. All are one host's
+numbers and none is a specification.
 
 ## Environment
 
@@ -89,18 +94,19 @@ the engine matched the pin:
 [inferops] node image digest matches the pin: sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256
 ```
 
-Every control-plane component was running 38 seconds after the node appeared:
+Every control-plane component was running within 31 seconds of the node
+appearing:
 
 ```text
 NAME                                                 READY   STATUS    RESTARTS   AGE
-coredns-66bc5c9577-chx8h                             1/1     Running   0          29s
-coredns-66bc5c9577-gjjgj                             1/1     Running   0          29s
-etcd-inferops-dev-control-plane                      1/1     Running   0          36s
-kindnet-t6hl5                                        1/1     Running   0          29s
-kube-apiserver-inferops-dev-control-plane            1/1     Running   0          36s
-kube-controller-manager-inferops-dev-control-plane   1/1     Running   0          36s
-kube-proxy-6kt8q                                     1/1     Running   0          29s
-kube-scheduler-inferops-dev-control-plane            1/1     Running   0          38s
+coredns-66bc5c9577-8qgz7                             1/1     Running   0          23s
+coredns-66bc5c9577-n4d79                             1/1     Running   0          23s
+etcd-inferops-dev-control-plane                      1/1     Running   0          31s
+kindnet-gmjhr                                        1/1     Running   0          23s
+kube-apiserver-inferops-dev-control-plane            1/1     Running   0          30s
+kube-controller-manager-inferops-dev-control-plane   1/1     Running   0          29s
+kube-proxy-bb8zz                                     1/1     Running   0          23s
+kube-scheduler-inferops-dev-control-plane            1/1     Running   0          31s
 ```
 
 ## Verify, five times
@@ -139,9 +145,15 @@ reported no difference.
 [inferops] cluster 'inferops-dev' is present, identified, pinned, and healthy.
 ```
 
-The same output was produced after the smoke workload was deployed and again
-after the partial teardown removed it, which is the point: the cluster's health is
-not a function of what happens to be scheduled on it.
+Runs #3 and #4, after the smoke workload was deployed and after the partial
+teardown removed it, reported the same findings and exited `0`. They were read
+rather than diffed, because the pod listing they print necessarily differs -- pod
+ages advance and the smoke workload comes and goes. The `[inferops]` findings
+above were the same in all four, which is the point: the cluster's health is not a
+function of what happens to be scheduled on it.
+
+Run #5 is the exception and is meant to be. It ran against the torn-down state,
+reported three problems, and exited `1`; it is recorded as F2 below.
 
 ## Destroy
 

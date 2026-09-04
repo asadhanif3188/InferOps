@@ -76,9 +76,18 @@ inferops::section "Node readiness"
 if [ "${identified}" -eq 1 ]; then
   inferops::kubectl get nodes -o wide
 
-  # Bounded, and short. This is a verification of a cluster that is meant to be
-  # up already, not the wait that follows creation; a node still coming up after
-  # 60 seconds is a finding rather than something to sit through.
+  # Bounded, and short, in both of the ways this script is reached.
+  #
+  # Run on its own, it verifies a cluster that is meant to be up already, and a
+  # node still coming up after 60 seconds is a finding rather than something to
+  # sit through.
+  #
+  # Run from cluster-up.sh, it is not the wait that follows creation either:
+  # `kind create cluster --wait 300s` has already blocked on the control-plane
+  # node's Ready condition before this script starts. What happens here is a
+  # re-assertion of a condition that has already been met, which is why the
+  # budget could come down from the 180 seconds cluster-up.sh used to allow
+  # itself without shortening any wait a contributor depends on.
   if inferops::kubectl wait --for=condition=Ready node --all --timeout=60s; then
     inferops::log "every node reports Ready."
   else

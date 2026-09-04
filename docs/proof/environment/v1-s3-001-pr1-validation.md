@@ -51,15 +51,15 @@ this change did not cause.
 
 ```text
 uv run --locked ruff check .          All checks passed!
-uv run --locked ruff format --check . 270 files already formatted
+uv run --locked ruff format --check . 271 files already formatted
 uv run --locked python -m mypy        Success: no issues found in 148 source files
-uv run --locked python -m pytest -q   5729 passed, 27 skipped, 14 deselected in 78.92s
+uv run --locked python -m pytest -q   5738 passed, 27 skipped, 14 deselected
 ```
 
 The suite this change adds:
 
 ```text
-uv run --locked python -m pytest tests/architecture -q   523 passed in 1.52s
+uv run --locked python -m pytest tests/architecture -q   531 passed
 ```
 
 ### The new suite is not vacuous
@@ -80,6 +80,30 @@ The first three rows are the ones that matter most: three of the suite's rules
 failed on the code as committed before this change, and two of those were fixed in
 the scripts rather than in the test.
 
+The suite now also carries its own adversarial inputs. Nine lines written to break
+a rule are asserted to be refused, and four lines the scripts legitimately contain
+are asserted to be accepted — because a rule that refuses everything is as useless
+as one that refuses nothing. Two of the nine are the exact shapes an earlier
+version of this module let through, named below.
+
+### What a second review found
+
+The change was reviewed independently before it was finished. Three findings were
+material and all three are fixed here; they are recorded rather than quietly
+absorbed, because two of them were holes in checks whose whole purpose is to be
+trusted.
+
+| Finding | Why it mattered | Fix |
+|---|---|---|
+| `read -r disk_path disk_kind <<<"$(inferops::disk_probe_target)"` put the path first, so `read` truncated any path containing a space and glued the tag onto the remainder | `INFEROPS_DISK_VOLUME` is the documented way to point the check at a relocated engine disk, and on Windows those paths routinely contain a space. The truncated path would not resolve, the measurement would be skipped, and a threshold that must not be skippable would be — silently | The word comes first and the path last, so the whole remainder including spaces lands in the path. Verified against a real directory whose name contains a space |
+| The "is this delete named" rule used `[\w-]+` for the resource name, which accepts `--all`, so `kubectl delete pod --all -n <ns>` read as a named deletion | A rule written to catch a dropped `-l` accepted the most dangerous shape in the vocabulary. Nothing in the scripts uses it, so it was a hole in a guarantee rather than a live defect — but the guarantee is what the documents claim | The name may not begin with a hyphen, `--all` on a delete is refused outright, and the scoping rule now requires namespaced **and** selected rather than either. Both shapes are in the adversarial inputs |
+| The all-namespaces rule matched the substring `"-A "`, which cannot match the flag at the end of a line | Same class of hole: `kubectl delete pods -A` would have passed | Matched as a token in either spelling. Narrowed at the same time to commands that change something: `smoke.sh` reads `kubectl top pods -A`, and a read across namespaces has no blast radius, so refusing it would have been a rule broader than its own rationale |
+
+Two smaller findings were also acted on: the runbook's timing table mixed figures
+from different invocations and now labels the certifying run and the spread
+separately, and "verified five times with identical output" overstated what the
+fifth run does — it runs against the torn-down cluster and correctly fails.
+
 ### Documentation
 
 The repository-wide link and whitespace checks run inside the default lane and
@@ -92,9 +116,11 @@ and `verify-clean`. `proof.sh --cycles N` was **not** executed, because it runs
 preflight first and preflight refuses this host; that is recorded in the lifecycle
 record along with why.
 
-The elapsed times published in the runbook are the measured figures from that run,
-and the "13-16 s across four creations" row is quoted from ADR 0001 rather than
-re-measured here.
+The elapsed times published in the runbook are the certifying run's own figures,
+in a column labelled as such, beside a second column giving the spread across the
+three runs of the same sequence made while this was written. The one row that is
+not a measurement from here — "13-16 s" for the control plane reaching Ready — is
+labelled on the page as quoted from ADR 0001.
 
 ### Private-information review
 
@@ -117,7 +143,7 @@ The diff was read for anything that should not be published. Checked and clear:
 
 | Criterion | Status | Where |
 |---|---|---|
-| Create and verify are repeatable | Met | `cluster-verify.sh` is read-only and was run five times across three cluster states with identical output; `cluster-up.sh --recreate` recreates from any state |
+| Create and verify are repeatable | Met | `cluster-verify.sh` is read-only. Four of its five runs were against a live cluster and all four passed; the two run back to back against the same state were compared with `diff` and were byte-identical. The fifth ran against the torn-down state and correctly failed. `cluster-up.sh --recreate` recreates from any state |
 | Destroy targets only the named InferOps cluster | Met, and now tested | Unchanged behaviour from Sprint 0, plus static rules that every cluster deletion names the cluster and every object deletion is namespaced and label-scoped or named |
 | Required host resources are checked | Met | Processors, memory reaching the container VM, and free disk, each compared against ADR 0001 (D7)'s minimum tier, with the constants held to that table by test |
 | Failure leaves actionable diagnostics | Met | `cluster-verify.sh` reports every problem in one run and prints the cluster list, labelled containers, and recent `kube-system` events before exiting non-zero; five injected failures are recorded in the lifecycle result |

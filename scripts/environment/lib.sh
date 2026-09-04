@@ -134,7 +134,7 @@ inferops::gib() { awk -v b="$1" 'BEGIN { printf "%.2f GiB", b / 1024 / 1024 / 10
 inferops::gb() { awk -v b="$1" 'BEGIN { printf "%.2f GB", b / 1000 / 1000 / 1000 }'; }
 
 # The volume whose free space constrains a cluster on this host, as two fields:
-# the path to measure, and a word saying what that path is.
+# a word saying what the path is, then the path itself.
 #
 #   configured        INFEROPS_DISK_VOLUME was set, and names it.
 #   engine-data-root  The engine's own data directory is visible out here, so the
@@ -147,9 +147,15 @@ inferops::gb() { awk -v b="$1" 'BEGIN { printf "%.2f GB", b / 1000 / 1000 / 1000
 # the engine's actual storage. The third is a proxy, and it is the same proxy
 # ADR 0001 (D7) states its own tier against and (R11) measured the reference host
 # with, which is why a threshold may be applied to it at all.
+#
+# The word comes first and the path last so that `read -r kind path` puts the
+# whole remainder — spaces and all — into the path. A contributor relocating the
+# engine's virtual disk on Windows is likely to put it somewhere with a space in
+# the name, and the other field order would truncate it at the first one, fail to
+# measure it, and downgrade a threshold that must not be downgradable.
 inferops::disk_probe_target() {
   if [ -n "${INFEROPS_DISK_VOLUME}" ]; then
-    printf '%s configured' "${INFEROPS_DISK_VOLUME}"
+    printf 'configured %s' "${INFEROPS_DISK_VOLUME}"
     return 0
   fi
 
@@ -158,13 +164,13 @@ inferops::disk_probe_target() {
     engine_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
   fi
   if [ -n "${engine_root}" ] && [ -d "${engine_root}" ]; then
-    printf '%s engine-data-root' "${engine_root}"
+    printf 'engine-data-root %s' "${engine_root}"
     return 0
   fi
 
   case "${OSTYPE:-}" in
-    msys* | cygwin*) printf '%s host-volume' "$(cygpath -u "${SYSTEMDRIVE:-C:}")" ;;
-    *) printf '/ host-volume' ;;
+    msys* | cygwin*) printf 'host-volume %s' "$(cygpath -u "${SYSTEMDRIVE:-C:}")" ;;
+    *) printf 'host-volume /' ;;
   esac
 }
 
