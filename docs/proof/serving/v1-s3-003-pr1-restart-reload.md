@@ -14,14 +14,33 @@ uv run --locked python -m tools.model_lifecycle restart --confirm-real-runtime
 
 ## What this comparison is, and what it is not
 
-It is the [cold and warm start comparison](v1-s2-007-pr1-cold-warm-start.md) with
-that comparison's one variable taken back out. `measure` reads the artifact end
-to end **between** its two starts, deliberately, so the second start finds the
-host file cache warm. `restart` reads nothing in between — the classification
-taken between the starts stats the file and does not open it — so **the only
-thing that changed between these two starts is that a runtime stopped and another
-one began against the bytes it left behind.** The digest is re-read after both
-starts, where a 1.71 GiB read can no longer move a figure.
+It is the [cold and warm start comparison](v1-s2-007-pr1-cold-warm-start.md)
+without the read that comparison adds between its arms. `measure` reads the
+artifact end to end **between** its two starts, deliberately, so the second start
+finds the host file cache warm. `restart` adds no read there — the classification
+taken between the starts stats the file and does not open it — and leaves its own
+digest read until after both starts.
+
+**It does not make the interval read-free, and an earlier draft of this record
+said it did.** Independent review of this change found the claim false:
+[`runtime_packaging.preflight`](../../../tools/runtime_packaging/core.py)
+hash-verifies the artifact before it creates a container, so a full read of
+1,834,426,016 bytes precedes **every** start here — the first as much as the
+second. Two things follow, and every figure below has to be read with them:
+
+- **Neither start was cache-cold.** The artifact was read end to end moments
+  before each of them. The observation named `cold` is the *first* start, not a
+  cold one, and the same is true of the `cold` arm of the earlier cold/warm
+  record, which runs through the same procedure.
+- **`create ms` and `ready ms` include that read.** The observation starts its
+  clock before the start procedure, so both figures contain a preflight hash as
+  well as container creation and model loading. The 8,500 ms and 4,859 ms
+  creation figures below are consistent with that: a full digest read of this
+  artifact measured 3,500 ms in the same run.
+
+The preflight read is not wasted here. It means the bytes were hash-verified
+immediately **before** the restart as well as after it, so the surviving artifact
+is established either side of the stop rather than only at the end.
 
 It is **not a pod restart.** No InferOps API image is published and the model
 cache claim is Terraform-owned and unwritten, so nothing has scheduled a
@@ -60,8 +79,10 @@ observed rather than controlled; this is that disclosure made specific.
 | cache state | `hit` | `hit` |
 | artifact bytes | 1,834,426,016 | 1,834,426,016 |
 
-Between the two starts: cache `hit`, 1,834,426,016 bytes, **stat only, not read**.
-After both starts: SHA-256 re-read in 3,500 ms, matching the pinned digest.
+Between the two starts: cache `hit`, 1,834,426,016 bytes, **stat only, not read
+by the comparison** — the second start's own preflight then read it in full, as
+every start does. After both starts: SHA-256 re-read in 3,500 ms, matching the
+pinned digest.
 
 `readyMsDelta` is **−25,563 ms**, the restart minus the first start.
 
@@ -69,17 +90,20 @@ After both starts: SHA-256 re-read in 3,500 ms, matching the pinned digest.
 
 **Nothing on its own.** It is one pair of starts on one host on one day, and this
 project's own attempts at the same experiment today spread from 129,328 ms to
-338,375 ms — an order of magnitude more variance than the delta. The
+338,375 ms — a range of 209,047 ms, 8.2 times the delta. The
 [cold and warm comparison](v1-s2-007-pr1-cold-warm-start.md) reached the same
 conclusion from three executions and recorded that no cold/warm effect could be
 established in either direction. **No restart effect is established here either**,
 and no figure in this record may be quoted as a restart cost.
 
 The implied read rate is the number that explains the spread, and it is not a
-model-loading rate: 1,834,426,016 bytes in 129,328 ms is 14.2 MB/s, and in
-338,375 ms it is 5.4 MB/s. Every load this project has recorded on this host sits
-between those, which is the throughput range of a Docker Desktop bind mount from
-the Windows filesystem rather than anything about the model or the runtime.
+model-loading rate: 1,834,426,016 bytes in 129,328 ms is 14.2 MB/s, and the
+slowest load this project has recorded on this host — 358,735 ms, from the
+`V1-S2-005` first attempt — is 5.1 MB/s. Every load recorded on this host sits
+between those two, which is the throughput range of a Docker Desktop bind mount
+from the Windows filesystem rather than anything about the model or the runtime.
+An earlier draft of this paragraph gave the floor as 5.4 MB/s from today's
+slowest run and still said "every load", which its own table contradicted.
 
 ## The properties the record claims about a restart
 
@@ -87,8 +111,8 @@ All five were measured. None is restated from the document.
 
 | Property | Result | How it was established |
 |---|---|---|
-| The artifact survives the stop | **true** | The byte count matched at all three points — before the first start, between the two, and after the second — and the digest was re-read afterwards and matched |
-| Readiness resets | **true** | The **first** probe sample of the restarted runtime reported `503`. A process that came back already ready would have reported `200` here and the property would have been false |
+| The artifact survives the stop | **true** | The byte count matched at all three points it is compared at — before the first start, between the two, and before the second. The digest was verified by the start procedure before each start and re-read in full by the comparison after both, so it was established either side of the stop. The post-restart byte count is checked but not compared into the property: `observe_cache` refuses a wrong length outright, so a mismatch there is a refusal rather than a `false` |
+| Readiness resets | **true** | The **first** probe sample of the restarted runtime reported `503`. A process that came back already ready would have reported `200` here and the property would have been false. It establishes that the restarted runtime began not-ready; on its own it does not separate that from the fact that every fresh start begins not-ready |
 | The restart needs no network | **true** | It proceeded from a cache `hit`, which is the only state the record permits a start to proceed from without one |
 | Liveness held while loading | **true** in both | 400 and 343 samples respectively in which liveness passed while readiness answered `503` |
 | Readiness false until ready | **true** in both | Every sample but the last carried the loading status, and the last carried the ready status |
@@ -145,7 +169,10 @@ in the method.
   pod, a bound claim, a kubelet, or the init container this change added — that
   container has never been scheduled.
 - **It is not a cold start.** Both arms were cache hits, both followed a full
-  model load minutes earlier, and neither controlled the host page cache.
+  model load minutes earlier, neither controlled the host page cache, and each
+  was preceded by a full hash read of the artifact by the start procedure. No
+  start this project has measured, in this record or the cold/warm one, is a
+  cold-cache start.
 - **It establishes no restart effect.** The delta is smaller than the run-to-run
   spread of the same experiment on the same host on the same day.
 - **It certifies no serving performance.** One single-token inference probe per

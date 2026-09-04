@@ -39,14 +39,20 @@ once versioned releases begin.
   BusyBox pin this repository already carries, is given no environment at all, and
   **has never been scheduled**.
 
-- **A restart comparison, which is the cold/warm comparison with its one variable
-  taken back out.** `python -m tools.model_lifecycle restart
-  --confirm-real-runtime` starts the pinned runtime, stops and removes it, and
-  starts it again against the bytes it left behind — reading nothing in between,
-  so the only thing that changed between the two starts is that a runtime
-  stopped. The classification taken between the starts stats the file and does
-  not open it, for exactly that reason; the digest is re-read after both starts,
-  where a 1.71 GiB read can no longer move a figure. Each of the three restart
+- **A restart comparison, which adds no read of its own between the two
+  starts.** `python -m tools.model_lifecycle restart --confirm-real-runtime`
+  starts the pinned runtime, stops and removes it, and starts it again against
+  the bytes it left behind. The classification taken between the starts stats
+  the file and does not open it, and this comparison's own digest read is left
+  until after both starts — where the cold/warm comparison deliberately reads
+  the artifact end to end between its arms to warm the host file cache.
+
+  It does **not** make the interval read-free, and an earlier draft of this
+  entry said it did. `runtime_packaging.preflight` hash-verifies the artifact
+  before every start, so a full read precedes each arm. Two consequences travel
+  with that and are now stated wherever the comparison is: **no start this tool
+  measures is cache-cold**, and **`createMs` and `readyMs` include that read**
+  because the clock starts before it. Each of the three restart
   properties the lifecycle record claims is measured rather than restated: the
   artifact survives, readiness resets — read off the *first* probe sample of the
   restarted runtime, so a process that came back already ready would be visible —
@@ -54,7 +60,18 @@ once versioned releases begin.
   network. Results are written under their own two file names beside the other
   comparison, because a restart summary written over a cold/warm summary would
   not be a corrupted file but a readable one describing an experiment that was
-  never run.
+  never run — and `results` reports each comparison separately, saying "not run"
+  for an absent one while letting a corrupt one refuse with its own message.
+
+  **It was executed**, and all five properties held; the figures and the six
+  attempts it took are in
+  [the restart record](docs/proof/serving/v1-s3-003-pr1-restart-reload.md). It is
+  a *container* restart, not a pod restart — nothing here has run in Kubernetes —
+  and its `readyMs` delta establishes nothing, because the same experiment on the
+  same host on the same day spread further than the delta. The record also names
+  a conflict this found and did not resolve: the accepted 300,000 ms
+  `startup.budgetMs` is below loads this host produces, and the chart's own
+  kubelet budget is already 600,000 ms for that reason.
 
 - **The release now says how it starts and how it stops, and the one probe that
   is not an HTTP GET is the point.** The chart configures a startup, readiness,
@@ -103,10 +120,22 @@ once versioned releases begin.
   annotation map whether or not they are switched on, for the same duplicate-key
   reason the identity labels are.
 
+### Removed
+
+- **`model.containerPath` and `model.cache.subPath` are gone from the chart's
+  values contract.** Both are now derived — the first from `model.cache.mountPath`
+  and `model.artifact.fileName`, the second from `model.artifact.repository` and
+  `model.revision` — because a settable in-claim path is how a release comes to
+  read a revision it did not declare, and a settable container path is how the
+  file that was verified and the file that was served come to be two files. The
+  chart has never been installed anywhere, so no release is affected; a values
+  file written against the previous contract is refused by the schema rather than
+  silently accepted.
+
 ### Changed
 
 - **The chart suite went from 115 checks to 127 and the lifecycle suite from 74
-  to 87.** The new chart properties are the model cache ones: that the mount is
+  to 91.** The new chart properties are the model cache ones: that the mount is
   scoped to the declared revision, that no values path reaches that scoping, that
   the file the init container verifies is the file the runtime is given, that the
   pinned byte count survives the render as an integer, that the init container is
@@ -115,11 +144,14 @@ once versioned releases begin.
   it reads the artifact after both starts rather than between them, that a
   restarted runtime which came back already ready is reported as **not** a reset,
   and that scoped cleanup reaches both comparisons' results and still cannot
-  reach the model cache. One defect was found by writing them: the pinned byte
+  reach the model cache. Two defects were found by writing them: the pinned byte
   count reached the template as a float and rendered as `1.834426016e+09`, so the
-  comparison it fed could neither pass nor fail.
+  comparison it fed could neither pass nor fail; and the entry below this one
+  said the previous change took the chart suite to 112 checks when it took it to
+  115, which is corrected here because two adjacent entries about one suite
+  cannot both be right.
 
-- **The chart suite went from 77 checks to 112, and the script suite learned
+- **The chart suite went from 77 checks to 115, and the script suite learned
   about Helm.** New properties: that every workload container is probed, that the
   probe mapping matches the accepted health records, that the rendered startup
   threshold really grants the configured budget, that no probe timeout is as long

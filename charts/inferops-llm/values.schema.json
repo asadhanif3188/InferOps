@@ -168,9 +168,10 @@
               "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
             },
             "mountPath": {
-              "description": "The directory the artifact appears in inside the container. Absolute, and never the root: a claim mounted over / would replace the container's own filesystem.",
+              "description": "The directory the artifact appears in inside the container. A closed character class, and that is a security property rather than tidiness: this value is composed with fileName into the path the integrity init container executes a shell script against, so anything the pattern admits is something a shell sees. Absolute, every segment starting alphanumeric - which is also what refuses the root directory and any .. segment.",
               "type": "string",
-              "pattern": "^/[^\\s/][^\\s]*$"
+              "maxLength": 253,
+              "pattern": "^(/[A-Za-z0-9][A-Za-z0-9._-]*)+$"
             },
             "readOnly": { "type": "boolean" }
           }

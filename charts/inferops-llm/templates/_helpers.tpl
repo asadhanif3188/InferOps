@@ -458,13 +458,32 @@ a program would mean adding an image to build one into.
 container command and leaves an unresolved reference exactly as written, so the
 shell -- not the kubelet -- is what evaluates these.
 
+**Every value this script carries reaches a shell.** Independent review of this
+change found that `model.cache.mountPath` did not: its pattern forbade only
+whitespace, so a values file could close the assignment below and append its own
+commands -- and the first of them could be `exit 0`, which is an integrity check
+that reports success without reading anything. What refuses that now is
+`values.schema.json`, where `mountPath` joined `artifact.repository`,
+`artifact.fileName`, `revision`, and `sha256` as a closed character class. The
+single quotes on the assignment are the second line rather than the first: with
+the pattern in place nothing can reach them, and they are here because the cost
+of being wrong about that is a check that passes by not running.
+
+The byte count comes from `stat` and not from `wc -c`, and the difference is not
+style. **BusyBox's `wc -c` reads the stream**: measured in the pinned image at
+0.87 s for 256 MiB against 0.00 s for `stat -c %s`. Written with `wc`, the
+default mode read the artifact twice -- once to count it and once to hash it --
+which on the bind-mount throughput this project has measured would add minutes
+to every pod start, and the `size` mode would have been a full read described as
+a cheap one.
+
 The three modes differ only in how much they read. None of them decides which
 file is read: that is the mount, and it is revision-scoped whatever this says.
 */}}
 {{- define "inferops-llm.model.verifyScript" -}}
 {{- $artifact := include "inferops-llm.model.containerPath" . -}}
 set -eu
-artifact="{{ $artifact }}"
+artifact='{{ $artifact }}'
 if [ ! -f "$artifact" ]; then
   echo "REFUSED: the mounted model cache holds no artifact for the declared revision" >&2
   exit 1
@@ -472,7 +491,7 @@ fi
 {{- if eq .Values.model.integrity.verifyOnStart "none" }}
 echo "model artifact present; content not verified (model.integrity.verifyOnStart=none)"
 {{- else }}
-present=$(wc -c < "$artifact")
+present=$(stat -c %s "$artifact")
 if [ "$present" != "{{ printf "%d" (int64 .Values.model.artifact.sizeBytes) }}" ]; then
   echo "REFUSED: the mounted model artifact does not match the pinned byte count" >&2
   exit 1

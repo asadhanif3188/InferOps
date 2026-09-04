@@ -866,16 +866,31 @@ def _compare_restart(
 ) -> RestartResult:
     """Drive a restart comparison, recording when the artifact is read end to end.
 
-    `reads` is appended to by the stubbed verification, so a test can assert
-    *where* in the sequence the 1.71 GiB read happened rather than only that it
-    happened. That ordering is the difference between this comparison and the
-    cold/warm one.
+    `reads` receives an entry for every readiness probe and for every end-to-end
+    read of the artifact, in the order they happen, so a test can assert *where*
+    in the sequence each read fell rather than only how many there were.
+    Counting alone would not do: a read moved from after the second start to
+    between the two starts is still the same number of reads.
+
+    **Both** read sites are instrumented, and that is the point. Independent
+    review found this helper patching `tools.runtime_packaging.core` to a silent
+    no-op, which made it blind to the read `preflight` performs before every
+    start -- the read that made an earlier version of the claim below false. A
+    seam muted rather than recorded is a test asserting the absence of something
+    it arranged not to see.
     """
     manifest, repo_root = synthetic_cache
     monkeypatch.setattr(
         "tools.runtime_packaging.core.load_manifest", lambda *_a, **_k: manifest
     )
-    monkeypatch.setattr("tools.runtime_packaging.core.verify_artifact", lambda *_: None)
+    # `preflight` hash-verifies the artifact before it creates a container, so
+    # this fires once per start.
+    monkeypatch.setattr(
+        "tools.runtime_packaging.core.verify_artifact",
+        lambda *_: reads.append("preflight-verify"),
+    )
+    # `observe_cache` resolves this name when it reads the artifact end to end.
+    # A patch anywhere else would leave this test asserting nothing.
     monkeypatch.setattr(
         "tools.model_lifecycle.core.verify_artifact",
         lambda *_: reads.append("verify"),
@@ -883,12 +898,17 @@ def _compare_restart(
     status_iter = iter(statuses)
     clock = FakeClock()
 
+    def _probe(_url: str, _timeout: float) -> HttpResponse:
+        status = next(status_iter)
+        reads.append(f"probe:{status}")
+        return HttpResponse(status)
+
     return compare_restart(
         lifecycle,
         load_runtime_package(),
         _ready_runner(),
         confirmed=True,
-        http_get=lambda _url, _timeout: HttpResponse(next(status_iter)),
+        http_get=_probe,
         http_post=lambda _url, _body, _timeout: _completion(),
         tcp_probe=lambda *_: True,
         manifest=manifest,
@@ -929,18 +949,23 @@ def test_a_restart_comparison_reports_the_artifact_as_surviving_the_stop(
     assert result.readiness_reset_on_restart is True
 
 
-def test_a_restart_comparison_does_not_read_the_artifact_between_the_two_starts(
+def test_a_restart_comparison_adds_no_read_of_its_own_between_the_two_starts(
     lifecycle,
     synthetic_cache: tuple[ModelManifest, Path],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The one thing that makes this comparison different from the other one.
+    """What this comparison adds to the interval, which is nothing.
 
-    Reading the artifact end to end between the starts is what the cold/warm
-    comparison does on purpose: it warms the host's file cache. A restart
-    comparison that did the same would be measuring that read rather than the
-    restart, so the digest is re-read once, after both starts, where it can no
-    longer move a figure.
+    The cold/warm comparison reads the artifact end to end between its arms on
+    purpose, to warm the host file cache. This one does not: it classifies the
+    cache without opening the file and leaves its own digest read until after
+    both starts.
+
+    The asserted sequence is the whole sequence rather than the part that
+    flatters the claim. It shows `preflight` reading the artifact before each
+    start, which is what makes the stronger claim -- that the interval is
+    read-free -- false, and it is asserted here so that the code and the
+    documents cannot drift back to it.
     """
     reads: list[str] = []
     _compare_restart(
@@ -951,10 +976,21 @@ def test_a_restart_comparison_does_not_read_the_artifact_between_the_two_starts(
         reads=reads,
     )
 
-    assert reads == ["verify"], (
-        "the artifact is read end to end exactly once, and it is after both "
-        "starts rather than between them"
+    assert reads == [
+        "preflight-verify",
+        "probe:503",
+        "probe:200",
+        "preflight-verify",
+        "probe:503",
+        "probe:200",
+        "verify",
+    ], (
+        "this comparison's own end-to-end read falls after the last probe of "
+        "the second start; the two before the starts belong to preflight and "
+        "are the reason no start measured here is cache-cold"
     )
+    assert reads.index("verify") == len(reads) - 1
+    assert reads.count("verify") == 1
 
 
 def test_a_restarted_runtime_that_came_back_ready_is_not_reported_as_a_reset(
@@ -980,6 +1016,14 @@ def test_a_restarted_runtime_that_came_back_ready_is_not_reported_as_a_reset(
 
     assert result.restart.readiness_started_not_ready is False
     assert result.readiness_reset_on_restart is False
+    assert reads == [
+        "preflight-verify",
+        "probe:503",
+        "probe:200",
+        "preflight-verify",
+        "probe:200",
+        "verify",
+    ]
     assert (
         summarize_restart(lifecycle, result)["acceptance"]["readinessResetOnRestart"]
         is False
@@ -1234,6 +1278,21 @@ def test_cleanup_reaches_both_comparisons_and_still_nothing_else(
     assert (tmp_path / MODEL_CACHE_DIRECTORY).exists() is False
 
 
+def test_an_observation_with_no_samples_claims_no_readiness_reset() -> None:
+    """The branch the pipeline cannot reach, asserted rather than assumed.
+
+    `_sample_until_ready` never returns an empty tuple, so nothing in normal
+    operation builds this observation. The default still has to be the one that
+    claims less: an observation that watched nothing has not seen readiness
+    start false, and reporting a reset off it would be reporting a measurement
+    nobody took.
+    """
+    observation = replace(_observation("restart"), samples=())
+
+    assert observation.readiness_started_not_ready is False
+    assert observation.readiness_false_until_ready is False
+
+
 def test_a_raw_line_naming_an_undeclared_observation_is_refused(
     lifecycle, tmp_path: Path
 ) -> None:
@@ -1355,6 +1414,84 @@ def test_the_offline_commands_report_the_record_and_the_cache(
     output = capsys.readouterr().out
     for state in LifecycleState:
         assert str(state) in output
+
+
+def _redirect_results(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Point the command's results directory at a temporary one.
+
+    `read_results` binds the repository root as a default argument, so patching
+    the module constant would not reach it. The directory resolver is the seam
+    every reader and writer actually goes through, and it is the one that
+    carries the guards, so redirecting it keeps those guards in the path.
+    """
+    directory = tmp_path / EXPECTED_RESULT_DIRECTORY
+    monkeypatch.setattr(
+        "tools.model_lifecycle.core.result_directory",
+        lambda _lifecycle, **_kwargs: directory,
+    )
+    return directory
+
+
+def test_the_results_command_refuses_when_neither_comparison_has_been_run(
+    lifecycle,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Nothing measured is a refusal and not a silent success.
+
+    A command that printed two "not run" lines and exited zero would let a
+    script that checks the exit code conclude a measurement had happened.
+    """
+    _redirect_results(monkeypatch, tmp_path)
+
+    assert main(["results"]) == 3
+    output = capsys.readouterr().out
+    assert "cold/warm  not run" in output
+    assert "restart    not run" in output
+
+
+def test_the_results_command_reports_one_comparison_and_names_the_absent_one(
+    lifecycle,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A reader who sees numbers must be able to tell which experiment made them."""
+    _redirect_results(monkeypatch, tmp_path)
+    write_restart_results(lifecycle, _restart_result(), repo_root=tmp_path)
+
+    assert main(["results"]) == 0
+    output = capsys.readouterr().out
+    assert "cold/warm  not run" in output
+    assert "restart    cold" in output
+    assert "restart    restart" in output
+
+
+def test_the_results_command_does_not_report_a_corrupt_result_as_not_run(
+    lifecycle,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The distinction the "not run" line exists to keep.
+
+    A result that exists and disagrees with the record is not an absent one.
+    Printing "not run" over it would hide a corrupt file behind a message that
+    reads like a clean, empty state -- so the absence has its own exception type
+    and everything else reaches the refusal with its own message.
+    """
+    directory = _redirect_results(monkeypatch, tmp_path)
+    write_results(lifecycle, _result(), repo_root=tmp_path)
+    write_restart_results(lifecycle, _restart_result(), repo_root=tmp_path)
+    (directory / lifecycle.restart_raw_file).write_text(
+        json.dumps({"observationId": "lukewarm"}) + "\n", encoding="utf-8"
+    )
+
+    assert main(["results"]) == 3
+    captured = capsys.readouterr()
+    assert "undeclared observation" in captured.err
+    assert "not run" not in captured.out
 
 
 @pytest.mark.parametrize("command", ("measure", "restart"))

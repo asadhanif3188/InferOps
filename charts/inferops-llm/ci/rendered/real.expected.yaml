@@ -326,12 +326,12 @@ spec:
             - -c
             - |
               set -eu
-              artifact="/models/Qwen3-1.7B-Q8_0.gguf"
+              artifact='/models/Qwen3-1.7B-Q8_0.gguf'
               if [ ! -f "$artifact" ]; then
                 echo "REFUSED: the mounted model cache holds no artifact for the declared revision" >&2
                 exit 1
               fi
-              present=$(wc -c < "$artifact")
+              present=$(stat -c %s "$artifact")
               if [ "$present" != "1834426016" ]; then
                 echo "REFUSED: the mounted model artifact does not match the pinned byte count" >&2
                 exit 1

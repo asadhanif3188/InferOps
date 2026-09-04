@@ -147,8 +147,9 @@ Three restart properties are claimed by
 and each is measured rather than asserted:
 
 - **the artifact survives** — the cache is classified between the two starts and
-  its digest re-read after them, and the byte count is compared at all three
-  points;
+  its digest re-read in full after them, the byte count is compared at the three
+  points it is taken at, and the start procedure hash-verifies the artifact
+  before each start as well;
 - **readiness resets** — the first probe sample of the restarted runtime is read,
   so a process that came back already ready would be visible rather than assumed
   away;
@@ -162,6 +163,11 @@ uv run --locked python -m tools.model_lifecycle restart --confirm-real-runtime
 It operates a real container and reads real model bytes, so it requires the
 confirmation. It never downloads, and it never simulates a miss: a real miss is a
 1.71 GiB transfer that no tool in this repository performs implicitly.
+
+One thing it does **not** establish, because the start procedure hash-verifies
+the artifact before every start: that either of its starts was cache-cold. The
+[restart record](../proof/serving/v1-s3-003-pr1-restart-reload.md) states what
+that costs the figures.
 
 ## Cleanup, and what each tool may not reach
 
@@ -191,5 +197,5 @@ owned by a layer that has not been written.
 - **`size` and `none` are weaker than they look.** `size` catches a truncated
   file and nothing else; a same-length substitution passes it.
 - **No figure here is a performance claim.** The load times quoted are from one
-  contributor host on CPU, and this project's own runs of the same experiment
-  have spread more than 82 seconds between them.
+  contributor host on CPU, and the restart experiment's own attempts on that host
+  on one day spread 209 seconds between them — from 129,328 ms to 338,375 ms.

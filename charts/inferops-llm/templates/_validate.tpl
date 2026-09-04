@@ -113,10 +113,6 @@ fail against.
 {{- if not .Values.model.cache.readOnly -}}
 {{- fail "model.cache.readOnly must stay true. The serving deployment mounts the cache; the acquisition job writes it. Writing content is not owning the container, and a serving replica that could write the cache is a second writer nobody decided on." -}}
 {{- end -}}
-{{- if eq .Values.model.cache.mountPath "/" -}}
-{{- fail "model.cache.mountPath may not be the root directory: a claim mounted over / replaces the container's own filesystem." -}}
-{{- end -}}
-
 {{- if not .Values.model.integrity.image.repository -}}
 {{- fail "model.integrity.image.repository is required under the real profile. The init container runs under every verifyOnStart setting - even none refuses an absent artifact rather than starting a runtime on nothing - and an unpinned image is a different image on a different day." -}}
 {{- end -}}

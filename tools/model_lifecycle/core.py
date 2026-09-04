@@ -138,6 +138,16 @@ class ModelLifecycleError(RuntimeError):
     """An expected, safely reportable lifecycle refusal."""
 
 
+class ResultsNotWritten(ModelLifecycleError):
+    """The comparison has not been run. Distinct from a result that will not read.
+
+    The command reports an absent result as "not run" and says so per
+    comparison. It must not report a corrupt one that way: a malformed line and
+    an undeclared observation are both a result that exists and disagrees with
+    the record, and printing "not run" over either would hide it.
+    """
+
+
 class LifecycleRefused(ModelLifecycleError):
     """A real-runtime operation was requested without its confirmation."""
 
@@ -417,16 +427,28 @@ class ComparisonResult:
 class RestartResult:
     """A start, a stop, and the start that followed it against the same bytes.
 
-    This is the cold/warm comparison with the one variable that comparison
-    introduces taken back out. :func:`compare_starts` reads the artifact end to
-    end between its two starts, which warms the host's file cache and is the
-    whole point of it; a restart reads nothing in between, so the only thing
-    that changed between the two starts is that a runtime stopped.
+    **This comparison adds no read of its own between the two starts.**
+    :func:`compare_starts` reads the artifact end to end between its arms, on
+    purpose, to warm the host file cache; this one classifies the cache without
+    opening the file and leaves the digest read until after both starts.
 
-    The classification taken between the two starts is deliberately the cheap
-    one -- it stats the file and does not open it -- because a full digest read
-    there would turn this back into the warm comparison. The digest is read
-    after the second start instead, where it can no longer influence a figure.
+    What it does *not* do is make the interval read-free, and an earlier version
+    of this docstring said it did. Independent review found the claim false:
+    ``runtime_packaging.preflight`` hash-verifies the artifact before **every**
+    start, so a full read happens inside each :func:`observe_start` before its
+    container is created. The honest statement is the narrower one above, and
+    two consequences of the wider one travel with it:
+
+    * **no start this tool measures is cache-cold**, because a full read of the
+      artifact immediately precedes it;
+    * **``create_ms`` and ``ready_ms`` include that read**, because
+      :func:`observe_start` starts its clock before ``start``. They are not
+      container-creation and model-load times on their own.
+
+    The preflight read is not waste here, though: it means the bytes were
+    hash-verified immediately *before* the restart as well as after it, so
+    :attr:`artifact_survived_restart` rests on a verification either side of the
+    stop rather than only on the one this function performs.
     """
 
     lifecycle_id: str
@@ -1300,17 +1322,21 @@ def compare_restart(
     The three properties the accepted record claims about a restart are what
     this measures, and each is measured rather than restated:
 
-    * **the artifact survives** -- the cache is classified between the two
-      starts and verified after the second, and the byte count is compared
-      across all three points;
-    * **readiness resets** -- the first sample of the second start is read, so a
+    * **the artifact survives** — the byte count is compared before the first
+      start, between the two, and after the second, and the digest is verified
+      by ``preflight`` before each start and again by this function afterwards;
+    * **readiness resets** — the first sample of the second start is read, so a
       runtime that came back already ready would be visible rather than assumed
-      away;
-    * **the second start needs no network** -- it proceeds from a hit, which is
+      away. It establishes that the restarted runtime began not-ready, which is
+      what a reset means here; it does not on its own separate that from the
+      fact that every fresh start begins not-ready;
+    * **the second start needs no network** — it proceeds from a hit, which is
       the only cache state the record lets a start proceed from at all.
 
-    Nothing here downloads, and nothing here simulates a miss. A real miss is a
-    1.71 GiB transfer that this module has never performed.
+    See :class:`RestartResult` for what this comparison does and does not
+    control about the host cache. Nothing here downloads, and nothing here
+    simulates a miss. A real miss is a 1.71 GiB transfer that this module has
+    never performed.
     """
     _require_confirmation(confirmed)
     if owned_container_exists(package, runner):
@@ -1336,9 +1362,12 @@ def compare_restart(
         sleeper=sleeper,
     )
 
-    # Stats the artifact; does not open it. Reading it here would warm the
-    # host's file cache and turn the second start into the warm arm of the
-    # other comparison, which is the one variable this one exists to remove.
+    # Stats the artifact; does not open it. A full read here is what the
+    # cold/warm comparison does on purpose, and adding a second one would make
+    # this the same experiment. It does not make the interval read-free: the
+    # next start's own preflight hash-verifies the artifact before it creates a
+    # container, which is a property of the packaging layer rather than of this
+    # comparison, and is recorded as such.
     between = observe_cache(resolved, repo_root=repo_root)
 
     restart = observe_start(
@@ -1507,9 +1536,10 @@ def summarize_restart(
 
     ``readyMsDelta`` is the restarted start minus the first one. It is a
     difference between two starts on one host on one day and it is not a
-    cold-start cost, a percentile, or a capacity figure -- the cold arm of the
+    cold-start cost, a percentile, or a capacity figure — the cold arm of the
     cold/warm comparison spread 82,157 ms between runs of the same experiment,
-    which is larger than any delta that comparison produced.
+    which is larger than any delta that comparison produced. Both figures also
+    include the preflight hash read described on :class:`RestartResult`.
     """
     return {
         "schemaVersion": EXPECTED_SCHEMA_VERSION,
@@ -1620,7 +1650,7 @@ def _read_raw(
 ) -> Sequence[Mapping[str, Any]]:
     raw = result_directory(lifecycle, repo_root=repo_root) / file_name
     if not raw.is_file():
-        raise ModelLifecycleError("no raw lifecycle result has been written")
+        raise ResultsNotWritten("no raw lifecycle result has been written")
     documents: list[Mapping[str, Any]] = []
     for line in raw.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -1694,6 +1724,7 @@ __all__ = [
     "ProbeOutcome",
     "ProbeSample",
     "RestartResult",
+    "ResultsNotWritten",
     "RuntimePackagingError",
     "StartObservation",
     "StateRule",

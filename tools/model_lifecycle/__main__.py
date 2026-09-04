@@ -17,6 +17,7 @@ from .core import (
     REPO_ROOT,
     CacheState,
     ModelLifecycleError,
+    ResultsNotWritten,
     clean_results,
     compare_restart,
     compare_starts,
@@ -142,7 +143,12 @@ def main(argv: list[str] | None = None) -> int:
             ):
                 try:
                     documents = reader(lifecycle)
-                except ModelLifecycleError:
+                except ResultsNotWritten:
+                    # Only an absent result is "not run". A malformed line or an
+                    # undeclared observation is a result that exists and
+                    # disagrees with the record, and it is allowed to reach the
+                    # refusal below with its own message rather than being
+                    # printed over.
                     print(f"{label:<10} not run")
                     continue
                 found = True
