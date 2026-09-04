@@ -75,6 +75,43 @@ once versioned releases begin.
 
 ### Added
 
+- **A second engineer can now diagnose a local runtime failure from what they
+  observed.** [The local runtime troubleshooting guide](docs/serving/local-runtime-troubleshooting.md)
+  is organised by symptom rather than by component, because the symptom is the
+  only input available on arrival. It covers prerequisites, model acquisition and
+  integrity, disk, ports, memory and OOM, slow model load, readiness, the three
+  separate timeout budgets, cache corruption and staleness, API-to-runtime
+  connectivity, shutdown and cleanup, and the case where the honest answer is
+  that the host cannot support the profile. **Every diagnostic on it was
+  executed** on one host and recorded in
+  [the validation record](docs/proof/serving/v1-s2-008-pr1-validation.md); the
+  recoveries that start a container, transfer 1.71 GiB, or take a measurement
+  remain authorization-gated and were **not** run, and the page labels each one.
+  Kubernetes is excluded deliberately: no chart exists and no documented workflow
+  deploys a manifest, so a section for it would be advice rather than
+  documentation.
+
+  One host behaviour was reproduced rather than inferred and is published because
+  it costs a second engineer an hour: **Git Bash on Windows rewrites
+  `INFEROPS_LLAMA_SERVER_MODEL_PATH`**, so a correct container-absolute
+  `/models/Qwen3-1.7B-Q8_0.gguf` arrives as a Windows path and the adapter
+  refuses it, naming a value nobody typed. `MSYS_NO_PATHCONV=1` or PowerShell
+  avoids it. No code changed for this; it is a shell behaviour, and the guide now
+  says so.
+
+  The guide is machine-checked rather than proofread.
+  [`tests/serving/test_local_runtime_troubleshooting.py`](tests/serving/test_local_runtime_troubleshooting.py)
+  holds every command it prints to a module and subcommand that exist, every exit
+  code to the constant the tool returns, and every port, byte count, budget,
+  memory bound, cache root, ownership label, and capacity floor to the record
+  that owns it. It also refuses a credential-shaped flag or value anywhere in the
+  file and reads the port tuple out of the diagnostic a reader actually pastes
+  into a shell, rather than settling for the number appearing somewhere on the
+  page. The guide additionally publishes an unresolved limitation instead of
+  hiding it: one recorded run on the measured host exceeded the 300,000 ms
+  startup budget, and the budget has **not** been raised, because raising it
+  would hide the finding.
+
 - **One ordered model lifecycle state model now spans the cache and the runtime,
   and a measured cold and warm start comparison exists.** The versioned
   [lifecycle record](deploy/serving/lifecycle/model-lifecycle.v1.json) and

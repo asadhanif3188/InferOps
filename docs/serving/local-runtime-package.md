@@ -87,7 +87,9 @@ or pinned image.
 The state these commands move a deployment through — and the answer each probe
 gives while it is in each one — is published as
 [the model lifecycle](model-lifecycle.md), whose record is checked against the
-values this package pins.
+values this package pins. When one of them refuses or fails,
+[the troubleshooting guide](local-runtime-troubleshooting.md) maps the symptom
+and the exit code to the check that localizes it.
 
 ## Bounded direct-runtime smoke
 

@@ -488,6 +488,14 @@
       "note": "No published claim is certified by this repository-only suite. Every start is driven through injected command, HTTP, TCP, and clock seams over a synthetic cache of a few bytes, so no container is started, no model byte is read, and every timing it asserts is arithmetic on a fake clock; the measured cold and warm starts remain local-real evidence requiring an authorized run."
     },
     {
+      "module": "tests/serving/test_local_runtime_troubleshooting.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The published local runtime troubleshooting guide against the repository it describes: every tool command it prints names a module and a subcommand that exist, every exit code it publishes is the one the tool returns, every port, byte count, budget, memory bound, cache root, ownership label, and capacity floor matches the record that owns it, every relative link resolves, no command sample carries a credential or a redirect, and the Kubernetes exclusion and one-host limitation stay stated.",
+      "claims": [],
+      "note": "No published claim is certified by this repository-only suite. It reads the document and the records it quotes and executes nothing: the diagnostics the guide publishes were run once and recorded in docs/proof/serving/v1-s2-008-pr1-validation.md, and the recoveries that start a container or transfer model bytes remain authorization-gated and unexecuted. A passing result establishes that the guide has not drifted, never that following it repairs a fault."
+    },
+    {
       "module": "tests/telemetry/test_api_telemetry_agreement.py",
       "layer": "documentation",
       "marker": "docs",
