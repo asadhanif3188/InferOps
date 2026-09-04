@@ -122,6 +122,65 @@ once versioned releases begin.
 
 ### Added
 
+- **The InferOps LLM stack is packaged as a Helm chart, and the chart cannot
+  quietly install the wrong one.** [`charts/inferops-llm/`](charts/inferops-llm/)
+  renders the platform API and — under the real profile — the `llama.cpp` server
+  [ADR 0002](docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md)
+  selected, as one release: a ServiceAccount, a ConfigMap, and one Deployment and
+  Service per workload. It renders exactly the rows
+  [the ownership inventory](docs/architecture/resource-ownership.md) gives Helm,
+  it renders **no** `Namespace` and **no** `PersistentVolumeClaim` because those
+  are Terraform's, and the three Helm-owned rows it does not render —
+  `model-acquisition-job`, `workload-network-policy`, and
+  `telemetry-scrape-configuration` — are declared as deferred in the chart's own
+  metadata, so a row that is neither rendered nor declared fails the build.
+  `values.schema.json` is applied by Helm on every install, upgrade, template,
+  and lint: every image is a `sha256` digest and a tag is refused wherever it is
+  written, every workload states both a request and a limit, and a secret
+  reference has a name, a Secret, and a key and no member that could hold a
+  value. `profile` is `mock` or `real`, **has no default**, and an omission
+  renders nothing — which is
+  [rule 5 of the mock and real boundary](docs/serving/mock-and-real-boundary.md)
+  made structural rather than remembered. The adapter selection is written in one
+  template helper from `profile` and from nothing else, the serving capability is
+  derived with it and appears nowhere in the values contract, and `extraEnv` is
+  *refused* rather than merged if it names any variable the chart derives —
+  because a merge that lands last is exactly how a real release comes to publish
+  `mock`. A real release refuses a `mock-`labelled model identity and a mock
+  release refuses a model revision, an alias, a container path, a cache claim, or
+  a secret reference at all, which are the refusals
+  `src/inferops/adapters/` already raises at start-up, moved to render time so
+  the release is never built. Both profiles lint under `--strict` and validate
+  against Kubernetes `1.34.0`; the exercised refusals, the seven checks that the
+  new suite is not vacuous, and everything this change did **not** do are in
+  [the validation record](docs/proof/architecture/v1-s3-002-pr1-validation.md).
+  **Nothing has installed this chart.** No InferOps API image is published — no
+  `Dockerfile` is committed anywhere in this repository, so both committed values
+  files carry an image digest that is the SHA-256 of a stated string and resolves
+  to nothing — no probe is configured, and no cluster has seen any of it.
+  Installation, uninstallation, and probes are `V1-S3-002-PR2`'s, and
+  `a-helm-release-installs-and-uninstalls-without-residue` remains a recorded
+  coverage gap.
+
+- **The Helm chart is checked against the ownership inventory on every run of the
+  default lane, on a machine with no Helm.**
+  [`tests/architecture/test_helm_chart.py`](tests/architecture/test_helm_chart.py)
+  reads the chart and two committed `helm template` renders of it and holds them
+  to the release half of the inventory, to the accepted pins, and to the six pod
+  and container security properties every workload manifest here carries. The
+  runtime image digest, the model revision, and the exact argument vector the
+  chart passes the runtime are compared against
+  `deploy/serving/runtime/container-package.v1.json`,
+  `docs/serving/model-source.v1.json`, and
+  `docs/serving/runtime-profile.local.v1.json`, so a fixture drifting from an
+  accepted decision fails the build rather than sitting unread. Where `helm` is
+  installed the suite additionally re-renders and compares, which is what keeps
+  the snapshots output rather than prose; where it is not, those two tests skip
+  and everything else still runs. `helm` joins `shellcheck` and `kubeconform` in
+  [the prerequisites](docs/prerequisites.md) as a separate, unpinned, and
+  **optional** install. The suite reads files: it installs nothing, contacts no
+  cluster, and certifies nothing about a release.
+
 - **The local cluster can now be verified as a step of its own, and the host's
   disk is checked before anything is created.**
   `scripts/environment/cluster-verify.sh` answers five questions about a cluster
@@ -1356,6 +1415,40 @@ once versioned releases begin.
   legitimately for, and five boundary rules that make the distinction operational.
 
 ### Changed
+
+- **Five documents stopped saying that no Helm chart exists, because one does.**
+  Each said it as a present-tense fact and each is now accurate about what
+  arrived and what did not.
+  [ADR 0004](docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)'s
+  status note said the record decided boundaries for components that do not
+  exist; it now names the two that do and says plainly that no decision in it has
+  changed. [The ownership document](docs/architecture/resource-ownership.md)
+  opened by saying nothing described in it is implemented, and closed by saying
+  no check could compare the inventory against the Terraform and Helm that get
+  written; the release half of that check now exists and is named, the Terraform
+  half is still a commitment, and every row in the release table is still
+  `planned` — a chart renders objects, and a rendered object is a file.
+  [CONTRIBUTING](CONTRIBUTING.md) said the architecture suite checks a design
+  commitment and not an implementation, and that it needs `pytest` alone; it now
+  says which half is which and names the two libraries the chart suite added.
+  [The runtime troubleshooting document](docs/serving/local-runtime-troubleshooting.md)
+  said Kubernetes is out of scope because no chart exists; the reason is now that
+  no documented workflow installs the one that does. `DR-04` and `DR-05` in
+  [the deferred-risk register](docs/security/deferred-risks.md) said a policy has
+  no chart to live in and that no rendering path produces pod specifications;
+  both facts changed and **neither risk did** — the chart carries no policy
+  because `V1-S3-004` owns it, and no admission control refuses a specification
+  that omits the properties.
+
+- **The test inventory's architecture layer said two modules and had meant three
+  since `V1-S3-001-PR1`.** It says four now, and names what each protects. The
+  count is prose rather than data and nothing recomputes it, which is why it
+  drifted; the drift is recorded in the document rather than quietly repaired.
+  The coverage gap for
+  `a-helm-release-installs-and-uninstalls-without-residue` no longer says no
+  chart exists — it says a chart exists and nothing installs it, which is the
+  same gap for a different reason.
+
 
 - The architecture summary, claim/test matrix, and root status table now describe
   the API's emitted metrics, structured records, and enforced redaction boundary

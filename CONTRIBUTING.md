@@ -265,7 +265,9 @@ Changes under `docs/architecture/`, `tests/architecture/`, or
 python -m pytest tests/architecture -q
 ```
 
-It reads only files in this repository and needs `pytest` alone. It checks the
+It reads only files in this repository and needs `pytest`, `PyYAML`, and
+`jsonschema` — the last two arrived with the chart suite, which parses the chart
+and validates its values against the chart's own schema. It checks the
 committed ownership inventory
 [`docs/architecture/resource-ownership.v1alpha1.json`](docs/architecture/resource-ownership.v1alpha1.json):
 that every resource has exactly one owner, that the Terraform and Helm sets do not
@@ -278,9 +280,15 @@ only by rows marked implemented, and that
 [the ownership document](docs/architecture/resource-ownership.md) and the data
 publish the same identifiers in both directions.
 
-It checks a design commitment, not an implementation. No Terraform configuration
-and no Helm chart exists, so nothing here can establish that the inventory
-describes them. A change that adds a resource adds a row; a change that moves one
+It checked a design commitment and now checks half an implementation. No Terraform
+configuration exists, so nothing here can establish that the inventory describes
+it. A Helm chart does, at [`charts/inferops-llm/`](charts/inferops-llm/), and
+`tests/architecture/test_helm_chart.py` holds it to the release half of the
+inventory: it renders only rows the inventory gives Helm, it renders no
+Terraform-owned object, and every Helm-owned row is either rendered or named in
+the chart's own deferred list. That suite reads the chart and two committed
+renders of it; it installs nothing, so it establishes nothing about whether a
+release installs. A change that adds a resource adds a row; a change that moves one
 between owners is an architecture change and needs
 [ADR 0004](docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 updated with it.
@@ -898,6 +906,39 @@ Container images in manifests must be pinned by digest, not by tag alone. A tag 
 a label that can be moved; a digest is what the engine actually resolves. The
 security suite above checks this over every YAML document under `deploy/`, alongside
 the eight pod-security assertions every manifest here carries.
+
+### The Helm chart
+
+Changes under [`charts/`](charts/) must pass the architecture suite, which reads
+the chart and its two committed renders on every run and needs no Helm:
+
+```sh
+python -m pytest tests/architecture/test_helm_chart.py -q
+```
+
+`helm` itself is not vendored, for the same reason `shellcheck` and `kubeconform`
+are not. Where it is installed, four more commands apply and the suite's drift
+check stops skipping. All of them take a values file: the chart's shipped
+defaults select no serving profile and are refused on purpose, so a lint with no
+`--values` is expected to fail with that refusal rather than to pass.
+
+```sh
+helm lint charts/inferops-llm --strict --namespace inferops-platform   --values charts/inferops-llm/ci/real-values.yaml
+helm lint charts/inferops-llm --strict --namespace inferops-platform   --values charts/inferops-llm/ci/mock-values.yaml
+helm template inferops charts/inferops-llm --namespace inferops-platform   --values charts/inferops-llm/ci/real-values.yaml   | kubeconform -strict -summary -kubernetes-version 1.34.0 -
+helm template inferops charts/inferops-llm --namespace inferops-platform   --values charts/inferops-llm/ci/mock-values.yaml   | kubeconform -strict -summary -kubernetes-version 1.34.0 -
+```
+
+A change to a template or to the values contract also regenerates the committed
+renders under [`charts/inferops-llm/ci/rendered/`](charts/inferops-llm/ci/rendered/),
+by the command in the README beside them. A stale copy is a failing test wherever
+`helm` is installed and an invisible divergence everywhere else, which is why the
+regeneration is part of the change rather than a follow-up.
+
+**Never pass `--create-namespace`.** It is one flag, it is the default suggestion
+in most documentation, and it silently makes both Terraform and Helm own the
+namespace. The chart refuses a namespace that is not prefixed `inferops-`; it
+cannot refuse a flag that creates one.
 
 Then inspect the full diff and search it for credentials, private planning content,
 personal paths, generated files, and unsupported capability claims. Report the exact

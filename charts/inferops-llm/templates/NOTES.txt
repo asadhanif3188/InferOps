@@ -1,0 +1,38 @@
+InferOps LLM release {{ .Release.Name }} rendered into namespace {{ .Release.Namespace }}.
+
+  profile:    {{ .Values.profile }}
+  capability: {{ include "inferops-llm.capabilityId" . }}
+  API image:  {{ include "inferops-llm.api.image" . }}
+{{- if eq .Values.profile "real" }}
+  runtime:    {{ include "inferops-llm.runtime.image" . }}
+  model:      {{ .Values.model.identifier }} at revision {{ .Values.model.revision }}
+  cache:      claim {{ .Values.model.cache.claimName }}, mounted read only
+{{- end }}
+
+{{ if eq .Values.profile "mock" }}
+THIS RELEASE SERVES A MOCK.
+
+It installs no serving runtime, mounts no model, and loads no weights. Nothing
+it returns is model output, and no result taken from it may be cited as evidence
+of real serving behaviour, however closely the response resembles one. The rule
+is docs/serving/mock-and-real-boundary.md.
+{{- else }}
+This release installs the real serving path. It is not yet proven to run: no
+InferOps API image is published, no probe is configured, and this chart's
+install and uninstall behaviour is not certified by anything in this repository.
+V1-S3-002-PR2 adds probes and the lifecycle tests; V1-S3-006 certifies real
+inference through Kubernetes.
+{{- end }}
+
+What this chart does not install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim, which are Terraform's;
+  - the model acquisition job, which fills the cache (V1-S3-003);
+  - a NetworkPolicy (V1-S3-004);
+  - any scrape or collector configuration (V1-S3-007).
+
+Reaching the API:
+
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "inferops-llm.fullname" . }} {{ .Values.api.service.port }}:{{ .Values.api.service.port }}
+
+There is no ingress and no load balancer. V1 installs neither.

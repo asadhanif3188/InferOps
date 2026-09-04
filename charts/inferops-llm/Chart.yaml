@@ -1,0 +1,45 @@
+# The InferOps LLM release: the platform API and, under the real profile, the
+# serving runtime ADR 0002 selected, installed as one release.
+#
+# This chart owns the release layer and nothing else. The namespace it installs
+# into, that namespace's metadata, and the model cache claim are Terraform's,
+# per the accepted boundary in docs/architecture/resource-ownership.md, and this
+# chart renders none of them. `--create-namespace` is forbidden.
+apiVersion: v2
+name: inferops-llm
+description: The InferOps platform API and its serving runtime, as one release.
+type: application
+
+# The chart's own version. It is not the platform version and not the model
+# version: the API build is `api.image`, the runtime build is `runtime.image`,
+# and the model is `model.revision`. Three separate pins, because a single
+# number covering all of them would be the thing that hides a change.
+version: 0.1.0
+
+# What this chart installs, when the API image exists to install. No InferOps
+# image is published: `platform-api-container-image` is `planned` in the
+# ownership inventory and no Dockerfile is committed, so `appVersion` names the
+# repository revision the templates were written against rather than a release
+# nobody can pull.
+appVersion: "0.1.0"
+
+kubeVersion: ">=1.34.0-0"
+
+keywords:
+  - inferops
+  - llm
+  - inference
+
+home: https://github.com/asadhanif3188/InferOps
+sources:
+  - https://github.com/asadhanif3188/InferOps
+
+annotations:
+  # The ownership inventory rows this chart is allowed to render. A reviewer
+  # reads this list against docs/architecture/resource-ownership.v1alpha1.json,
+  # and tests/architecture/test_helm_chart.py reads it for them.
+  inferops.io/owned-resources: >-
+    workload-service-account,platform-api-deployment,platform-api-service,
+    serving-runtime-deployment,serving-runtime-service,runtime-configuration
+  inferops.io/deferred-resources: >-
+    model-acquisition-job,workload-network-policy,telemetry-scrape-configuration

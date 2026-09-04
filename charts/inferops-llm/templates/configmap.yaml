@@ -1,0 +1,23 @@
+{{- include "inferops-llm.validate" . -}}
+{{/*
+`runtime-configuration` in the ownership inventory: rendered from validated
+values, and holding no secret value.
+
+Both workloads read this one object. `INFEROPS_SERVING_ADAPTER` is in it, it
+comes from `profile`, and no other values path reaches it — which is the whole
+of the mock and real selection, in one place a reviewer can read at a glance.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inferops-llm.configMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime-configuration
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "inferops-llm.derivedEnv" . | nindent 2 }}

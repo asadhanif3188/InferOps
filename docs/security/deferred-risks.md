@@ -108,12 +108,14 @@ allows none.
 
 ### DR-04 — No network policy exists, and the local plugin's enforcement is untested
 
-**Why deferred.** A policy object belongs to a release, and no chart exists to carry
-one. Committing a policy now would produce a manifest nothing installs and a control
-nothing applies.
+**Why deferred.** A policy object belongs to a release. A chart now exists —
+`V1-S3-002-PR1` added it — and it deliberately carries no policy: `V1-S3-004` owns
+the network policy, and committing one here would produce a manifest nothing
+installs and a control nothing applies.
 
-**What would have to be true.** A Helm chart, and an executed test showing that a
-policy denies traffic on the cluster this project actually uses. The second is the
+**What would have to be true.** A policy in that chart, and an executed test showing
+that it denies traffic on the cluster this project actually uses. Neither has
+happened, so this risk is unchanged by the chart's arrival. The executed test is the
 one that is easy to skip, and skipping it produces the worst outcome available here:
 a policy object that looks like a control and is ignored by the plugin.
 
@@ -123,12 +125,17 @@ a policy object that looks like a control and is ignored by the plugin.
 
 **Why deferred.** This platform deploys no pod. The eight pod-security assertions are
 enforced over every manifest committed here, which is a property of five YAML files
-rather than of a cluster.
+rather than of a cluster. Since `V1-S3-002-PR1` the same six properties are also
+asserted over the chart's committed renders, by
+`tests/architecture/test_helm_chart.py` rather than by this suite — which widens
+what is checked and changes nothing about what is enforced, because a rendered
+manifest is another file.
 
-**What would have to be true.** A rendering path that produces pod specifications,
-and an admission policy in the cluster that refuses one which does not carry the
-properties. Which of the two enforces it is `D14` in the decision record and is
-explicitly not decided.
+**What would have to be true.** A rendering path that produces pod specifications —
+the chart now is one — and an admission policy in the cluster that refuses a
+specification which does not carry the properties. Nothing here has the second, and
+it is what this risk turns on. Which of the two enforces it is `D14` in the decision
+record and is explicitly not decided.
 
 **Not claimed.** No document may describe a workload this platform deployed as
 constrained, because it has deployed none. See `EX-04`.

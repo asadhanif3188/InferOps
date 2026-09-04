@@ -1,0 +1,224 @@
+# Default values for the inferops-llm chart.
+#
+# Read the two rules below before changing anything here.
+#
+# 1. `profile` has no default. It is `mock` or `real`, it must be stated, and an
+#    omission renders nothing - it is refused. This mirrors
+#    `INFEROPS_SERVING_ADAPTER` in src/inferops/api/selection.py, which is
+#    required with no default and no fallback for the same reason: rule 5 of
+#    docs/serving/mock-and-real-boundary.md says a mock may never be what the
+#    mandatory serving path gets by omission. A chart whose default installed a
+#    mock would hand out one per `helm install` rather than one per test.
+#
+# 2. Nothing here carries a secret value. Secret material is referenced by name
+#    through `security.secretRefs` and read from Kubernetes at run time. The
+#    schema refuses a literal, and so does the template.
+
+# -- which serving path this release installs -------------------------------
+#
+# `mock`  the API alone, serving the committed fixture replayer. It installs no
+#         runtime, mounts no model, and may not carry a real pin. It certifies
+#         nothing about serving.
+# `real`  the API and the ADR 0002 runtime, reading the model from a cache claim
+#         Terraform owns.
+#
+# Empty is not `mock`. Empty is a refusal.
+profile: ""
+
+# -- naming and placement ---------------------------------------------------
+nameOverride: ""
+fullnameOverride: ""
+
+# The release namespace must already exist and must be prefixed `inferops-`
+# (ADR 0001 D5). Terraform creates it; this chart installs into it and never
+# creates it. Set to false only to install into a namespace whose name a future
+# decision changes; the prefix check is the isolation rule, not a style rule.
+namespacePrefixCheck: true
+
+# -- the platform API -------------------------------------------------------
+api:
+  replicaCount: 1
+
+  image:
+    # No InferOps image is published. `platform-api-container-image` is
+    # `planned` in the ownership inventory, no Dockerfile is committed, and this
+    # value therefore has no default that would resolve. State the repository
+    # and the digest of an image you built and loaded into the cluster.
+    repository: ""
+    # Digest only. A tag is a label that can be moved; a digest is what the
+    # engine resolves. The schema refuses anything that is not `sha256:` and
+    # sixty-four hexadecimal characters.
+    digest: ""
+    pullPolicy: IfNotPresent
+
+  # The port the API listens on inside the pod, and the port its Service
+  # publishes. ClusterIP only: V1 installs no ingress controller and no load
+  # balancer (ADR 0001 D2), so external access is an explicit port-forward.
+  containerPort: 8090
+  service:
+    port: 8090
+    annotations: {}
+
+  # docs/serving/inference-api-surface.v1alpha1.json publishes both paths.
+  readinessPath: /health/ready
+  livenessPath: /health/live
+
+  # Probes are configured here and are deliberately not wired into the workload
+  # templates by this change: V1-S3-002-PR2 owns probes, and the feasibility
+  # record shows why they are their own piece of work - a liveness probe aimed
+  # at a loading endpoint restarts the pod mid-load and never converges.
+  probes:
+    enabled: false
+
+  requestTimeoutMs: 120000
+  maxOutputTokens: 128
+  drainTimeoutMs: 15000
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # Extra environment for the API container. Every name the chart derives is
+  # reserved: supplying one here is refused rather than merged, because the
+  # merge order is exactly how a real release would come to publish `mock` - or
+  # the reverse.
+  extraEnv: []
+
+# -- the serving runtime (profile: real only) -------------------------------
+runtime:
+  replicaCount: 1
+
+  image:
+    # Pinned by digest to the image ADR 0002 selected and the feasibility trial
+    # actually ran. Kept identical to
+    # deploy/serving/runtime/container-package.v1.json; a test compares them.
+    repository: ghcr.io/ggml-org/llama.cpp
+    digest: sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+    pullPolicy: IfNotPresent
+
+  command: /app/llama-server
+  containerPort: 8080
+  service:
+    port: 8080
+    annotations: {}
+
+  # docs/serving/runtime-profile.local.v1.json publishes these.
+  contextSizeTokens: 4096
+  threads: 6
+  parallelSlots: 1
+  defaultMaxOutputTokens: 128
+  defaultTemperature: 0
+  startupBudgetMs: 300000
+
+  healthPath: /health
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "6"
+      memory: 3Gi
+
+  # A writable scratch directory, because the root filesystem is read only.
+  temporaryFilesystemSizeMi: 64
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  extraEnv: []
+
+# -- the model --------------------------------------------------------------
+#
+# Required under `real`, and refused under `mock`: a mock loads no weights, and
+# a mock release that carried a revision would read back as one that had.
+model:
+  # The platform identifier the API checks a caller's `model` member against.
+  identifier: ""
+  # The immutable upstream revision. An identifier alone pins nothing.
+  revision: ""
+  alias: ""
+  # Where the artifact is inside the runtime container.
+  containerPath: ""
+
+  cache:
+    # The name of an existing PersistentVolumeClaim. Terraform owns the claim
+    # (`model-cache-volume-claim`); this chart mounts it read only and never
+    # creates it. Referencing is not owning.
+    claimName: ""
+    subPath: ""
+    readOnly: true
+
+# -- ownership and attribution ----------------------------------------------
+#
+# These become labels on every object and identity on everything the API emits.
+#
+# The serving capability is NOT here. It is derived from `profile`, in the same
+# place and for the same reason the adapter kind is: `inferops-native-serving`
+# and `inferops-mock-serving` are disjoint by design, and a second value
+# carrying that label would be a way to install a mock and publish the real
+# capability - or the reverse.
+ownership:
+  # The team accountable for the workload. DNS-safe, because it is a label value.
+  owner: ""
+  # The workload this release serves, and the version of its contract document.
+  workloadId: ""
+  workloadVersion: ""
+  # Attribution. `tenant` and `costCenter` are annotations rather than labels:
+  # docs/telemetry/redaction.md keeps a tenant identifier out of anything a
+  # selector groups by, and a label is exactly that.
+  tenant: ""
+  costCenter: ""
+
+commonLabels: {}
+commonAnnotations: {}
+
+# -- telemetry --------------------------------------------------------------
+telemetry:
+  # Whether the runtime exposes its own metrics endpoint, and whether the API
+  # publishes its metrics port on the Service.
+  enabled: true
+  metricsPath: /metrics
+  # The environment label every emitted record carries. `dev` is the
+  # conservative default and the one environment V1 has: a figure from a laptop
+  # that defaulted to `dev` is never read as a figure from somewhere else.
+  deploymentEnvironment: dev
+  # The build of the API this release installs. Empty rather than `unknown`: an
+  # unstated identity is empty and never invented.
+  serviceVersion: ""
+  # Nothing collects these. `telemetry-scrape-configuration` is Helm-owned and
+  # `planned`; V1-S3-007 decides scrape and discovery. This chart exposes ports
+  # and identity, and configures no collector.
+  scrapeAnnotations: false
+
+# -- security ---------------------------------------------------------------
+#
+# The pod and container fields below are the six properties every workload
+# manifest in this repository already carries. V1-S3-004 owns enforcement - the
+# policy validation, the least-privilege service account, and the NetworkPolicy.
+# This chart configures them; it does not prove that a cluster refused a
+# workload that omitted them.
+security:
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+
+  serviceAccount:
+    # Created by this release and named for it: an identity that outlives what
+    # it identifies is a permission nobody is watching.
+    create: true
+    name: ""
+    annotations: {}
+
+  # Secret material, by reference only. The chart mounts nothing and reads
+  # nothing; it names Kubernetes Secrets the workload owner created out of band.
+  # A literal value here is refused by the schema and by the template.
+  secretRefs: []

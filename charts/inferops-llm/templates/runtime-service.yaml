@@ -1,0 +1,31 @@
+{{- include "inferops-llm.validate" . -}}
+{{- if eq .Values.profile "real" }}
+{{/*
+`serving-runtime-service` in the ownership inventory: internal to the release,
+and not a public surface. The API reaches the runtime through this name, and
+`INFEROPS_LLAMA_SERVER_ENDPOINT` is built from it rather than configured beside
+it, so the two cannot disagree.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inferops-llm.runtimeServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: serving-runtime
+  {{- $annotations := merge (dict) .Values.runtime.service.annotations (include "inferops-llm.annotations" . | fromYaml) }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "inferops-llm.runtime.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.runtime.service.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}

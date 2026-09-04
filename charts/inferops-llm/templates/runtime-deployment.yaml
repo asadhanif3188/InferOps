@@ -1,0 +1,121 @@
+{{- include "inferops-llm.validate" . -}}
+{{- if eq .Values.profile "real" }}
+{{/*
+`serving-runtime-deployment` in the ownership inventory, and the reason the
+mock profile is a smaller release rather than a differently configured one:
+under `mock` this object is not rendered at all, so there is nothing an operator
+could point at and describe as the serving runtime.
+
+The arguments are the ones docs/serving/runtime-profile.local.v1.json publishes
+and the feasibility trial actually ran. The model comes from a claim Terraform
+owns, mounted read only; the acquisition job that fills it is Helm-owned and
+`planned`, and V1-S3-003 owns it.
+
+As above, no probe. The health endpoint here is the one that returns 503 while
+loading, and pointing liveness at it is the specific defect the trial found.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inferops-llm.runtimeServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: serving-runtime
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.runtime.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "inferops-llm.runtime.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "inferops-llm.labels" . | nindent 8 }}
+        app.kubernetes.io/component: serving-runtime
+      annotations:
+        inferops.io/configuration-checksum: {{ include "inferops-llm.derivedEnv" . | sha256sum }}
+        {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "inferops-llm.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "inferops-llm.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: runtime
+          image: {{ include "inferops-llm.runtime.image" . | quote }}
+          imagePullPolicy: {{ .Values.runtime.image.pullPolicy }}
+          command:
+            - {{ .Values.runtime.command | quote }}
+          args:
+            - --model
+            - {{ .Values.model.containerPath | quote }}
+            - --alias
+            - {{ .Values.model.alias | quote }}
+            - --host
+            - "0.0.0.0"
+            - --port
+            - {{ .Values.runtime.containerPort | quote }}
+            - --ctx-size
+            - {{ .Values.runtime.contextSizeTokens | quote }}
+            - --threads
+            - {{ .Values.runtime.threads | quote }}
+            - --parallel
+            - {{ .Values.runtime.parallelSlots | quote }}
+            - --n-predict
+            - {{ .Values.runtime.defaultMaxOutputTokens | quote }}
+            - --temp
+            - {{ .Values.runtime.defaultTemperature | quote }}
+            {{- if .Values.telemetry.enabled }}
+            - --metrics
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.runtime.containerPort }}
+              protocol: TCP
+          {{- with .Values.runtime.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- include "inferops-llm.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.runtime.resources | nindent 12 }}
+          volumeMounts:
+            - name: model-cache
+              mountPath: {{ dir .Values.model.containerPath }}
+              readOnly: true
+              {{- with .Values.model.cache.subPath }}
+              subPath: {{ . | quote }}
+              {{- end }}
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            {{- /* Terraform provisions this claim. Referencing is not owning,
+                   and this chart renders no PersistentVolumeClaim. */}}
+            claimName: {{ .Values.model.cache.claimName }}
+            readOnly: true
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ printf "%dMi" (int .Values.runtime.temporaryFilesystemSizeMi) }}
+      {{- with .Values.runtime.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.runtime.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.runtime.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

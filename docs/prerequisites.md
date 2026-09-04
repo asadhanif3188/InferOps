@@ -84,7 +84,15 @@ No task runner is required, and none is selected. No continuous-integration serv
 is required, and none is selected either.
 
 `shellcheck` and `kubeconform` are still separate installs and are still not pinned
-by the lockfile, because neither is a Python distribution.
+by the lockfile, because neither is a Python distribution. `helm` joined them with
+`V1-S3-002-PR1`, on the same terms:
+
+| Tool | Version | Notes |
+|---|---|---|
+| Helm | `v3.21.4` was used | Needed only to lint, render, or install [the chart](../charts/inferops-llm/README.md). The chart suite reads the chart and two committed renders of it without Helm, so the default lane is unaffected by its absence; where Helm is installed, the suite additionally re-renders and compares |
+
+Nothing in this repository installs Helm, and nothing requires it to be present.
+A contributor without it can run every check the default lane runs.
 
 ## Supply-chain scanning
 

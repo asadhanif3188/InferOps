@@ -1,0 +1,21 @@
+# What never goes into a packaged chart.
+#
+# `ci/` is excluded deliberately: those files are render fixtures for the tests
+# in this repository, and one of them carries a placeholder image digest that
+# resolves to nothing. Shipping them inside a package would put a values file
+# that cannot install next to one that can.
+.DS_Store
+.git/
+.gitignore
+.bzr/
+.hg/
+.svn/
+*.swp
+*.tmp
+*.orig
+*~
+.project
+.idea/
+*.tmproj
+.vscode/
+ci/

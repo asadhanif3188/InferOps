@@ -1,0 +1,31 @@
+{{- include "inferops-llm.validate" . -}}
+{{/*
+`platform-api-service` in the ownership inventory.
+
+ClusterIP, with no node port and no ingress. The accepted local Kubernetes
+distribution ships neither an ingress controller nor a load-balancer
+implementation, and ADR 0001 D2 records that as a known cost rather than
+something to work around here. External access is an explicit port-forward.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: platform-api
+  {{- $annotations := merge (dict) .Values.api.service.annotations (include "inferops-llm.annotations" . | fromYaml) }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "inferops-llm.api.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.api.service.port }}
+      targetPort: http
+      protocol: TCP
