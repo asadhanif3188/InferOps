@@ -66,14 +66,14 @@ static suite rather than by `shellcheck`.
 uv run --locked ruff check .           All checks passed!
 uv run --locked ruff format --check .  277 files already formatted
 uv run --locked python -m mypy         Success: no issues found in 149 source files
-uv run --locked python -m pytest -q    5883 passed, 27 skipped, 14 deselected
+uv run --locked python -m pytest -q    5886 passed, 27 skipped, 14 deselected
 ```
 
 The same suite with `helm` absent from the path, which is the state of a
 contributor who has not installed it:
 
 ```text
-uv run --locked python -m pytest -q    5881 passed, 29 skipped, 14 deselected
+uv run --locked python -m pytest -q    5884 passed, 29 skipped, 14 deselected
 ```
 
 Two tests, and only two, change state between those runs: the drift comparison
@@ -82,12 +82,12 @@ for each profile.
 The two suites this change edits:
 
 ```text
-uv run --locked python -m pytest tests/architecture/test_helm_chart.py -q               112 passed
+uv run --locked python -m pytest tests/architecture/test_helm_chart.py -q               115 passed
 uv run --locked python -m pytest tests/architecture/test_cluster_lifecycle_safety.py -q  79 passed
-uv run --locked python -m pytest tests/architecture/ -q                                 661 passed
+uv run --locked python -m pytest tests/architecture/ -q                                 664 passed
 ```
 
-The chart suite went from 77 tests to 112.
+The chart suite went from 77 tests to 115.
 
 ### Helm
 
@@ -144,13 +144,17 @@ one refused the render; the message quoted is the first line of Helm's output.
 | `--set-string commonAnnotations.prometheus\.io/port=nine` | `commonAnnotations may not set an annotation this chart derives. Refused annotation: prometheus.io/port` |
 | `--set-string api.service.annotations.prometheus\.io/scrape=false` | `a per-object annotations map may not set an annotation this chart derives` |
 | `--set commonAnnotations."prometheus\.io/port"=9999` | refused earlier, by the schema: an annotation value must be a string |
+| `--set runtime.lifecycle.progressDeadlineSeconds=500` | `runtime.lifecycle.progressDeadlineSeconds must exceed the startup budget, which is 600 seconds for the values given` |
+| `--set api.readinessPath=/health/live` | `api.readinessPath and api.livenessPath must be different paths` |
 
-The fourteen refusals `V1-S3-002-PR1` added were not re-exercised individually;
-they are covered by the suite and by both lints continuing to pass.
+The last two were added after this record's first draft, for the reasons in the
+next section. The fourteen refusals `V1-S3-002-PR1` added were not re-exercised
+individually; they are covered by the suite and by both lints continuing to
+pass.
 
 ## The suite is not vacuous
 
-Ten rules were broken one at a time, the suite was run, and the file was
+Twelve rules were broken one at a time, the suite was run, and the file was
 restored. Every one turned red.
 
 | What was broken | Test that failed |
@@ -165,20 +169,97 @@ restored. Every one turned red.
 | The scrape annotations disappear from the real render | `test_the_scrape_annotations_follow_the_switch_that_governs_them` |
 | The configuration checksum stops rolling the pods | `test_the_configuration_object_is_named_stably` |
 | An install is given `--create-namespace` | `test_nothing_that_runs_passes_create_namespace` |
+| The rollout deadline is pulled inside the startup budget | `test_the_rollout_deadline_is_outside_the_startup_budget` |
+| The test hook picks a different BusyBox from the one `deploy/` pins | `test_the_test_hook_image_is_the_pin_this_repository_already_carries` |
 
-The last one is worth reading twice. The first version of that rule required
-`helm` and the flag on the same physical line, and a shell continuation puts the
-flag on a line of its own — which is how a real one would be written. The
-non-vacuity check caught it: the mutation stayed green. The rule now reads any
-non-comment line, and the shape that got through is a committed sample.
+The `--create-namespace` row is worth reading twice. The first version of that
+rule required `helm` and the flag on the same physical line, and a shell
+continuation puts the flag on a line of its own — which is how a real one would
+be written. The non-vacuity check caught it: the mutation stayed green. The rule
+now reads any non-comment line, and the shape that got through is a committed
+sample.
+
+## What independent review found, and what it changed
+
+Two independent reviews ran against the first commit before anything was pushed:
+one general and one security-focused. **Neither found a `CRITICAL`.** The
+security review found no `HIGH` either, and confirmed what it was asked to break:
+no path in the new script can reach a cluster this project does not own — every
+`helm` and `kubectl` call is pinned to the project kubeconfig and context, and
+the identity guard runs before any mutating call — no secret, credential, or
+personal path appears anywhere in the diff, and all six hardening properties are
+present on both Deployments and the new hook pod.
+
+Four things changed as a result, and one of them was my own repair of the first.
+
+**`HIGH` — the residue assertions could pass on a question nobody answered.**
+`kubectl get ... 2>/dev/null | wc -l || true` returns `0` when the query
+*succeeds and finds nothing* and also when it *fails*. So a namespace whose API
+server refused the query would have been reported as a clean removal. The
+queries now go through a function that separates the two, and every caller stops
+rather than continuing on an unanswered question.
+
+**And the first fix for it had the same defect one level deeper.** Written as
+`count="$(count_lines "$(release_objects pvc)")"`, a failing *inner* command
+substitution never reaches the assignment's exit status, so the diagnostic
+printed and the script carried on. Demonstrated both shapes in a scratch script —
+the nested one reports `result=[0] script continued`, the unnested one aborts —
+and the callers are now unnested, with a comment saying why the shape matters.
+
+**`MEDIUM` — the API's two health paths were two free-form strings.** The values
+file says liveness and readiness are "never pointed at the other's path", and
+nothing refused it: `--set api.readinessPath=/health/live` rendered cleanly with
+all three probes on one path, which is the runtime's defect written into the
+other workload. A refusal now exists and is exercised above.
+
+**`MEDIUM` — the busybox claim in this record was false**, and is corrected in
+[Diff hygiene](#diff-hygiene) below. Both reviews found it independently.
+
+**`LOW`s, all acted on:** the measured-range figure was mislabelled (`215,672 ms`
+is the cold arm's maximum across three comparisons, not the six-start maximum,
+which is `215,906 ms`) and the `V1-S2-005` figures cite the first-attempt record
+rather than the recorded run, which loaded in `269,079 ms`; the chart README did
+not name the test image; the word "inert" overstated the scrape annotations,
+which are the legacy Prometheus auto-discovery keys and would be read by any
+collector using that convention; the namespace-prefix check in the script guards
+a constant rather than operator input and now says so; and
+`_dig(...) or {}` returned the `ABSENT` sentinel rather than an empty mapping,
+which would have produced a stack trace instead of an assertion — every such use
+now goes through `_mapping`.
+
+**One finding was deliberately not acted on.** The security review noted that
+`docs/security/security-baseline.v1alpha1.json`'s `pin-image-by-digest` control
+names a verification symbol scoped to `deploy/`, so the chart's images are pinned
+and checked by a different suite than the one the control cites. That is the same
+`deploy/`-versus-`charts/` seam `V1-S3-002-PR1` recorded as a limitation and
+assigned to `V1-S3-004`; editing an accepted security record is outside this PR's
+boundary, so it is reported here instead.
+
+**One defect was found without review, and is the reason to state the reviews did
+not find everything.** `progressDeadlineSeconds` defaults to 600 seconds — the
+same number as the runtime's startup budget — and the two are different clocks.
+The kubelet can still be patiently waiting for a container the Deployment
+controller has already marked `ProgressDeadlineExceeded`, so an `install --wait`
+would report a failure that is a slow model load. Both Deployments now set it
+explicitly and the chart refuses a value inside the startup budget.
+
+None of these fixes changes a rendered manifest except the two
+`progressDeadlineSeconds` lines: regenerating both renders after the review fixes
+produces a diff of exactly those three lines against the first commit, which is
+the check that the new guards refuse bad input rather than altering good output.
 
 ## What was found while writing this, and not changed
 
 **The published adapter startup budget is smaller than two measured model
 loads.** `docs/serving/runtime-profile.local.v1.json` publishes
-`timeouts.startupBudgetMs` as `300000`. The `V1-S2-005` baseline run recorded
-`358,735 ms` and `284,406 ms` on the reference host, and the first of those
-exceeds the published budget.
+`timeouts.startupBudgetMs` as `300000`. The
+[`V1-S2-005` first attempt](../serving/v1-s2-005-baseline-raw-results-first-attempt.md)
+recorded `358,735 ms` cold and `284,406 ms` warm on the reference host, and the
+first of those exceeds the published budget. That record already says so — it
+marks `T4` as failed cold and met warm — and
+[the runtime troubleshooting document](../../serving/local-runtime-troubleshooting.md)
+already publishes the comparison. What is new here is only that a Kubernetes
+probe budget now has to be chosen against it.
 
 This is a pre-existing inconsistency in an accepted record and **it was not
 changed here**: changing an accepted contract is outside this PR's boundary. It
@@ -203,13 +284,17 @@ exists and cannot be run.
 ## Diff hygiene
 
 The public diff was read in full. It contains no credential, no personal
-filesystem path, no private planning content, and no generated artifact. The one
-new external reference is `docker.io/library/busybox`, pinned to the
-multi-architecture index digest of `busybox:1.37.0`, read from the registry with
-`docker buildx imagetools inspect` on the date above. It is the image the
-`helm test` hook needs an HTTP client from, and it is the only image in this
-chart that is neither the InferOps API nor the runtime `ADR 0002` selected. It
-has never been pulled into a cluster by anything here.
+filesystem path, no private planning content, and no generated artifact.
+
+It adds **no new external dependency.** The `helm test` hook needs an HTTP
+client and uses BusyBox, and the digest it names —
+`sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0` — is the
+same `busybox:1.37.0` index digest four committed manifests under `deploy/`
+already pin. An earlier draft of this record called it a new external reference;
+that was wrong, and the correction produced a check rather than only a
+retraction: a test now compares the chart's copy against the ones under
+`deploy/` and fails if they diverge. The image has never been pulled into a
+cluster by anything here.
 
 Two pre-existing findings, in files this change does not touch, are unchanged:
 trailing whitespace in `v1-s1-002-pr1-cumulative-review-fixes.md`, and a
@@ -229,6 +314,15 @@ link-check false positive in `docs/proof/README.md`.
 - **The `helm test` hook has never run,** so nothing establishes that BusyBox's
   `wget` behaves as the template assumes under a read-only root filesystem and a
   non-root uid.
+- **The `helm test` hook's container behaviour was checked outside Kubernetes.**
+  Two BusyBox containers on a local Docker network, the client run with uid
+  65534, a read-only root filesystem, and all capabilities dropped: `wget -q -T
+  10 -O -` printed the body and exited `0` against a served path, and printed
+  `server returned error: HTTP/1.1 404 Not Found` and exited `1` against a
+  missing one. That is `local real` container evidence about BusyBox, and it is
+  **not** evidence about a Kubernetes pod, a Service, or this chart.
+- **The security baseline's `pin-image-by-digest` control does not cite the suite
+  that checks this chart's images.** Reported above; not changed here.
 - **Upgrade and rollback *safety* is not addressed.** The script establishes that
   a rollback is mechanically possible. What an upgrade does under load, and what
   it costs, is `V1-S3-008`'s.

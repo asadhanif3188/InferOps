@@ -112,6 +112,14 @@ api:
   lifecycle:
     preStopSleepSeconds: 5
     terminationGracePeriodSeconds: 30
+    # How long a rollout may make no progress before Kubernetes declares it
+    # failed. It has a default -- 600 seconds -- and leaving it at the default
+    # is the defect this field exists to prevent: the default is not derived
+    # from the startup budget, so a container the kubelet is still patiently
+    # waiting for can belong to a rollout the Deployment controller has already
+    # given up on, and an install waiting on that rollout reports a failure that
+    # is a slow start. The template refuses a value inside the startup budget.
+    progressDeadlineSeconds: 300
 
   resources:
     requests:
@@ -167,8 +175,9 @@ runtime:
   #
   # The startup budget is 600,000 ms and not the 300,000 ms `startupBudgetMs`
   # publishes, because the measured loads do not fit inside the smaller number.
-  # V1-S2-007 recorded 133,515 ms to 215,672 ms across six starts and V1-S2-005
-  # recorded 358,735 ms and 284,406 ms on the same host. A startup probe budgeted
+  # V1-S2-007 recorded 133,515 ms to 215,906 ms across six starts, and the
+  # V1-S2-005 first attempt recorded 358,735 ms cold and 284,406 ms warm on the
+  # same host; its later recorded run loaded in 269,079 ms. A probe budgeted
   # at 300,000 ms would have killed the container mid-load in the slowest of
   # those and restarted it into the same load. The two numbers measure different
   # things - one is how long the adapter waits for the runtime, the other how
@@ -197,6 +206,12 @@ runtime:
   lifecycle:
     preStopSleepSeconds: 5
     terminationGracePeriodSeconds: 30
+    # 900 rather than the 600-second default, because the startup budget alone
+    # is 600 and a rollout still pulling a runtime image has made no progress
+    # the controller can see. The margin is for the pull and the scheduling, and
+    # it is a budget rather than a measurement: nothing here has pulled an image
+    # into a cluster.
+    progressDeadlineSeconds: 900
 
   resources:
     requests:
@@ -281,6 +296,11 @@ telemetry:
   # discovery mechanism that reads them can find these pods without this chart
   # deciding what that mechanism is. Requires `enabled`: annotating a port that
   # serves no metrics is refused rather than rendered.
+  #
+  # `inert` describes this environment rather than the annotation. These are the
+  # legacy Prometheus auto-discovery keys, so a cluster-wide Prometheus using
+  # that convention would start scraping without anything here asking it to, and
+  # /metrics is unauthenticated (docs/security/deferred-risks.md, DR-01).
   scrapeAnnotations: false
 
 # -- the chart's own test ----------------------------------------------------
@@ -297,11 +317,11 @@ telemetry:
 tests:
   enabled: true
   image:
-    # BusyBox, for its `wget`. Pinned to the multi-architecture index digest of
-    # `busybox:1.37.0`, read from the registry rather than copied from a
-    # tutorial. It is the only image here that is neither the InferOps API nor
-    # the runtime ADR 0002 pinned, and it is here because a test that speaks HTTP
-    # needs an image that can.
+    # BusyBox, for its `wget`. It is the only image here that is neither the
+    # InferOps API nor the runtime ADR 0002 pinned, and it is not a new
+    # dependency: this is the same `busybox:1.37.0` index digest four committed
+    # manifests under deploy/ already pin, and a test compares them so that two
+    # copies of one pin cannot drift into two pins.
     repository: docker.io/library/busybox
     digest: sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
     pullPolicy: IfNotPresent

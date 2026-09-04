@@ -113,6 +113,7 @@ metadata:
     inferops.io/tenant: demo
 spec:
   replicas: 1
+  progressDeadlineSeconds: 300
   selector:
     matchLabels:
       app.kubernetes.io/name: inferops-llm

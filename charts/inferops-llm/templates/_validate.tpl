@@ -224,9 +224,9 @@ A startup probe whose budget is smaller than the adapter's own startup budget
 makes that budget unreachable: the kubelet kills the container while the adapter
 is still inside the window it was told it had, and restarts it into the same
 load. The measured loads are the reason the default is twice the published
-figure -- V1-S2-007 recorded 133,515 ms to 215,672 ms across six starts, and
-V1-S2-005 recorded 358,735 ms on the same host -- and this refusal is what stops
-a values file quietly taking it back.
+figure -- V1-S2-007 recorded 133,515 ms to 215,906 ms across six starts, and the
+V1-S2-005 first attempt recorded 358,735 ms on the same host -- and this refusal
+is what stops a values file quietly taking it back.
 
 A probe whose timeout is not shorter than its period overlaps itself: the next
 attempt starts before the previous one has been given up on, and the failure
@@ -242,6 +242,21 @@ count then measures something other than consecutive failures.
 {{- fail (printf "%s.probes.%s.timeoutSeconds must be less than periodSeconds. A probe that may take as long as the interval between probes overlaps itself, and the failure threshold then counts something other than consecutive failures." $component $kind) -}}
 {{- end -}}
 {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+The API's two health paths answer different questions and may not be the same
+path. `/health/live` answers while the model is loading and while the API is
+draining; `/health/ready` is false whenever either the API or the adapter is
+unable. A liveness probe pointed at the readiness answer restarts a pod for
+being not-ready, which is the defect the feasibility trial found on the runtime
+written in the other workload -- and two free-form strings are exactly how it
+gets written by accident.
+*/}}
+{{- if .Values.api.probes.enabled -}}
+{{- if eq .Values.api.readinessPath .Values.api.livenessPath -}}
+{{- fail "api.readinessPath and api.livenessPath must be different paths. Liveness asks whether the process is alive and readiness whether the adapter can serve; pointing them at one answer restarts a pod for being not-ready, which is the defect docs/serving/runtime-profile.local.v1.json exists to keep out of the runtime's probes." -}}
 {{- end -}}
 {{- end -}}
 
@@ -270,6 +285,27 @@ finish -- so it only has to outlast its own pause.
 
 {{- if le (int .Values.runtime.lifecycle.terminationGracePeriodSeconds) (int .Values.runtime.lifecycle.preStopSleepSeconds) -}}
 {{- fail "runtime.lifecycle.terminationGracePeriodSeconds must be greater than preStopSleepSeconds, or the pause consumes the whole period and the process is killed rather than stopped." -}}
+{{- end -}}
+
+{{/*
+The third timeout, and the one whose default quietly disagrees with the other
+two.
+
+`progressDeadlineSeconds` defaults to 600. The runtime's startup budget is 600 by
+default as well, and the two are not the same clock: the kubelet is still
+patiently waiting for a container while the Deployment controller has already
+marked the rollout `ProgressDeadlineExceeded`. An install waiting on that rollout
+then reports a failure that is a slow model load, which is the same defect as an
+HTTP liveness probe on a loading endpoint wearing different clothes.
+*/}}
+{{- range $component := list "api" "runtime" -}}
+{{- $values := index $.Values $component -}}
+{{- if $values.probes.enabled -}}
+{{- $budgetSeconds := div (add (int $values.probes.startup.budgetMs) 999) 1000 -}}
+{{- if le (int $values.lifecycle.progressDeadlineSeconds) $budgetSeconds -}}
+{{- fail (printf "%s.lifecycle.progressDeadlineSeconds must exceed the startup budget, which is %d seconds for the values given. The two are different clocks -- the kubelet waits for the container, the Deployment controller waits for the rollout -- and a deadline inside the budget turns a slow start into a failed rollout." $component $budgetSeconds) -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{/* -- telemetry --------------------------------------------------------- */}}

@@ -147,11 +147,12 @@ and until it passes the kubelet runs neither of the other two.
 
 **The startup budget is 600,000 ms and not the 300,000 ms `startupBudgetMs`
 publishes.** The measured loads do not fit in the smaller number: 133,515 ms to
-215,672 ms across six starts in that observation, and 358,735 ms and 284,406 ms
-on the same host in
-[the V1-S2-005 baseline run](../../docs/proof/serving/v1-s2-005-baseline-raw-results.md).
-A startup probe budgeted at 300,000 ms would have killed the container mid-load
-in the slowest of those. The two numbers measure different things — one is how
+215,906 ms across the six starts in that observation, and 358,735 ms cold and
+284,406 ms warm on the same host in
+[the V1-S2-005 first attempt](../../docs/proof/serving/v1-s2-005-baseline-raw-results-first-attempt.md);
+[its later recorded run](../../docs/proof/serving/v1-s2-005-baseline-raw-results.md)
+loaded in 269,079 ms. A startup probe budgeted at 300,000 ms would have killed
+the container mid-load in the slowest of those. The two numbers measure different things — one is how
 long the adapter waits for the runtime, the other how long the kubelet waits for
 the container — and the chart refuses a startup budget below the adapter's,
 because a kubelet that gives up first makes the adapter's budget unreachable.
@@ -179,6 +180,15 @@ not drain — `llama-server` is stopped rather than asked to finish, and stoppin
 it was measured at 1,234 ms to 1,672 ms — so it only has to outlast its own
 pause.
 
+There is a third timeout, and it is the one with a default that quietly
+disagrees with the other two. `progressDeadlineSeconds` defaults to **600
+seconds**, and the runtime's startup budget is 600 seconds as well. They are not
+the same clock: the kubelet can still be patiently waiting for a container the
+Deployment controller has already marked `ProgressDeadlineExceeded`, and an
+`install --wait` on that rollout reports a failure that is a slow model load.
+The chart sets it explicitly on both workloads and refuses a value inside the
+startup budget.
+
 ## Telemetry, security, and what neither means
 
 The chart configures the identity every emitted record carries — service version,
@@ -205,6 +215,16 @@ deciding what that mechanism is. All three keys are refused in `commonAnnotation
 and in every per-object map whether or not they are switched on, because a
 hand-written `prometheus.io/port` beside a derived one is the same duplicate-key
 hazard the other guards exist for.
+
+One caveat on the word *inert*, because it is a property of this environment and
+not of the annotation. These three keys are the legacy Prometheus
+auto-discovery convention, so a cluster-wide Prometheus configured that way —
+deployed by anyone, not necessarily by this project — would begin scraping this
+workload with no further InferOps-side configuration. `/metrics` is
+unauthenticated and fingerprints the deployment, which
+[`DR-01`](../../docs/security/deferred-risks.md) already accepts and records.
+Switching these on is therefore a decision about who may reach the pod, not only
+a decision about labels.
 
 Every pod and container carries the six properties every workload manifest in
 this repository carries — no service-account token, non-root with an explicit
@@ -243,7 +263,17 @@ paper:
 `helm test` runs the hook pod described above. It is the one check that
 distinguishes a rollout Kubernetes called successful from a release that
 actually answers: a `Service` selecting nothing looks identical to a working one
-until something asks it.
+until something asks.
+
+The hook pod runs **BusyBox**, for its `wget`, pinned by digest like everything
+else here. It is the only image in this chart that is neither the InferOps API
+nor the runtime, and it is **not a new dependency**: it is the same
+`busybox:1.37.0` index digest that
+[`deploy/smoke/hello-world.yaml`](../../deploy/smoke/hello-world.yaml),
+[`deploy/smoke/verify-job.yaml`](../../deploy/smoke/verify-job.yaml), and the two
+feasibility manifests already pin. A test compares the chart's copy against
+theirs, because two copies of one pin are one pin only until somebody edits one
+of them.
 
 ## Checking it
 

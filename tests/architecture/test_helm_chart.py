@@ -85,9 +85,10 @@ API_SURFACE_PATH = (
 )
 
 # The largest model load this project has measured, in milliseconds: the
-# `V1-S2-005` baseline run on the reference host. The cold and warm start
-# observation recorded 133,515 ms to 215,672 ms across six starts, and that run
-# recorded 358,735 ms and 284,406 ms on the same host.
+# `V1-S2-005` first attempt on the reference host, which recorded 358,735 ms cold
+# and 284,406 ms warm. The cold and warm start observation recorded 133,515 ms to
+# 215,906 ms across six starts, and the later `V1-S2-005` recorded run loaded in
+# 269,079 ms.
 #
 # It is quoted here for one purpose and may be cited for no other: a startup
 # probe budget below it would have killed a container mid-load in a start this
@@ -200,7 +201,7 @@ RENDERED = {
 
 
 def _is_hook(document: dict) -> bool:
-    return HOOK_ANNOTATION in (_dig(document, "metadata.annotations") or {})
+    return HOOK_ANNOTATION in _mapping(document, "metadata.annotations")
 
 
 # What a release installs, and what Helm creates for the length of an operation.
@@ -344,7 +345,7 @@ def test_the_chart_accounts_for_every_helm_owned_row() -> None:
 def test_every_rendered_object_maps_to_a_helm_owned_row(profile: str) -> None:
     for document in INSTALLED[profile]:
         kind = document["kind"]
-        labels = _dig(document, "metadata.labels") or {}
+        labels = _mapping(document, "metadata.labels")
         component = labels.get("app.kubernetes.io/component")
         key = (kind, component)
         assert key in ROW_FOR_RENDERED, (
@@ -412,9 +413,9 @@ def test_the_tenant_identifier_is_an_annotation_and_never_a_label() -> None:
     """A label is what a query groups by, and the redaction rules keep a tenant
     identifier out of exactly that."""
     for profile, document in ALL_RENDERED:
-        labels = _dig(document, "metadata.labels") or {}
+        labels = _mapping(document, "metadata.labels")
         assert not any("tenant" in key for key in labels), profile
-        annotations = _dig(document, "metadata.annotations") or {}
+        annotations = _mapping(document, "metadata.annotations")
         assert annotations.get("inferops.io/tenant") == "demo", profile
 
 
@@ -625,7 +626,7 @@ def test_the_real_render_carries_no_mock_labelled_identity() -> None:
     assert not configuration["INFEROPS_MODEL_IDENTIFIER"].lower().startswith("mock-")
     assert "mock" not in configuration["INFEROPS_CAPABILITY_ID"]
     for document in RENDERED["real"]:
-        labels = _dig(document, "metadata.labels") or {}
+        labels = _mapping(document, "metadata.labels")
         assert labels["inferops.io/profile"] == "real"
 
 
@@ -698,8 +699,8 @@ def test_the_guarded_label_and_annotation_keys_are_the_ones_the_chart_writes() -
     # counting them here would mean adding them to a refusal list that exists to
     # protect identity.
     for _profile, document in ALL_INSTALLED:
-        written_labels |= set(_dig(document, "metadata.labels") or {})
-        written_annotations |= set(_dig(document, "metadata.annotations") or {})
+        written_labels |= set(_mapping(document, "metadata.labels"))
+        written_annotations |= set(_mapping(document, "metadata.annotations"))
         template = _dig(document, "spec.template.metadata")
         if isinstance(template, dict):
             written_labels |= set(template.get("labels") or {})
@@ -1100,6 +1101,74 @@ def test_the_rendered_pod_carries_the_grace_period_and_the_pause(name: str) -> N
     )
 
 
+def test_the_test_hook_image_is_the_pin_this_repository_already_carries() -> None:
+    """Two copies of one pin are one pin only until somebody edits one of them.
+
+    The hook needs an HTTP client, and this repository already pins one: four
+    committed manifests under `deploy/` use the same `busybox:1.37.0` index
+    digest. The chart copies that digest rather than choosing its own, so this
+    compares them — a chart that drifted would introduce a second image under a
+    name that reads like the first.
+    """
+    tracked = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "--", "deploy"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert tracked.returncode == 0, tracked.stderr
+    digests = {
+        match
+        for line in tracked.stdout.splitlines()
+        if line.endswith(".yaml")
+        for match in re.findall(
+            r"image:\s*busybox:[^@\s]+@(sha256:[0-9a-f]{64})",
+            (REPO_ROOT / line).read_text(encoding="utf-8"),
+        )
+    }
+    assert digests, "no busybox pin was found under deploy/; this check read nothing"
+    assert len(digests) == 1, f"deploy/ already disagrees with itself: {digests}"
+    assert VALUES["tests"]["image"]["digest"] in digests, (
+        "the chart's test image is a different busybox from the one this "
+        f"repository already pins: {VALUES['tests']['image']['digest']} vs {digests}"
+    )
+    # The repository strings differ deliberately: the chart states a fully
+    # qualified name because its schema splits repository from digest, and the
+    # manifests state the short name Kubernetes resolves the same way.
+    assert VALUES["tests"]["image"]["repository"].endswith("busybox")
+
+
+@pytest.mark.parametrize("name", ("api", "runtime"))
+def test_the_rollout_deadline_is_outside_the_startup_budget(name: str) -> None:
+    """Three timeouts, and this is the one with a default that disagrees.
+
+    `progressDeadlineSeconds` defaults to 600, and the runtime's startup budget
+    is 600 by default too. They are not the same clock: the kubelet is still
+    waiting for the container while the Deployment controller has already marked
+    the rollout `ProgressDeadlineExceeded`, and an install waiting on that
+    rollout reports a failure that is a slow model load.
+    """
+    budget_seconds = -(-VALUES[name]["probes"]["startup"]["budgetMs"] // 1000)
+    deadline = VALUES[name]["lifecycle"]["progressDeadlineSeconds"]
+    assert deadline > budget_seconds, (
+        f"{name} gives the rollout {deadline} s and the container {budget_seconds} s"
+    )
+
+    component = {"api": "platform-api", "runtime": "serving-runtime"}[name]
+    rendered = [
+        _dig(document, "spec.progressDeadlineSeconds")
+        for _profile, document in ALL_INSTALLED
+        if document["kind"] == "Deployment"
+        and _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
+        == component
+    ]
+    assert rendered, component
+    assert all(value == deadline for value in rendered), (
+        f"{component} does not carry the configured deadline; the Kubernetes "
+        "default of 600 s would apply and it is not derived from anything here"
+    )
+
+
 # --------------------------------------------------------------------------
 # The test hook, which is not a resource
 # --------------------------------------------------------------------------
@@ -1128,7 +1197,7 @@ def test_the_hook_is_not_counted_as_something_the_release_owns() -> None:
     """The one thing that would quietly break the ownership partition."""
     for profile in sorted(HOOKS):
         for document in HOOKS[profile]:
-            component = (_dig(document, "metadata.labels") or {}).get(
+            component = _mapping(document, "metadata.labels").get(
                 "app.kubernetes.io/component"
             )
             assert component == "release-test"

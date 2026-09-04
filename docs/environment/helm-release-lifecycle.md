@@ -42,6 +42,11 @@ scripts/environment/helm-lifecycle.sh --values path/to/your-values.yaml
 5. **Installs**, with `--wait` and a fifteen-minute timeout. The timeout has to
    outlast a model load: the measured range on the reference host was 133,515 ms
    to 358,735 ms, and a shorter timeout would report a slow load as a failure.
+   Helm's timeout is not the only clock involved — the Deployment's own
+   `progressDeadlineSeconds` defaults to 600 seconds, which is inside the
+   runtime's startup budget, so the chart sets it explicitly rather than
+   inheriting a default that would fail the rollout underneath a wait that had
+   not expired.
 6. **Runs `helm test`**, which is the one check that separates a rollout
    Kubernetes called successful from a release that answers. A `Service`
    selecting nothing and a working one are indistinguishable until something

@@ -61,9 +61,15 @@ inferops::require_cmd kubectl
 inferops::require_engine
 inferops::assert_target_cluster
 
+# Not input validation: the namespace is a readonly constant in lib.sh and
+# nothing here can change it, so this branch cannot be taken today. It is here
+# for the edit that changes that constant -- ADR 0001 (D5) makes the prefix the
+# isolation rule, and the chart's own refusal only fires once a render has been
+# reached. Stated plainly because a check that reads like a guard on operator
+# input and is not one is worse than no check at all.
 case "${INFEROPS_RELEASE_NAMESPACE}" in
   inferops-*) ;;
-  *) inferops::fail "the release namespace must be prefixed 'inferops-' (ADR 0001 D5). It is '${INFEROPS_RELEASE_NAMESPACE}'." ;;
+  *) inferops::fail "the release namespace must be prefixed 'inferops-' (ADR 0001 D5). It is '${INFEROPS_RELEASE_NAMESPACE}', which means the constant in lib.sh was changed without this rule being reconsidered." ;;
 esac
 
 chart_dir="${INFEROPS_ROOT}/${INFEROPS_CHART_PATH}"
@@ -129,8 +135,45 @@ fi
 # removed. A claim is the one thing in this namespace that must survive an
 # uninstall, and counting is how that is asserted without this script needing to
 # know which claim a values file named.
-claims_before="$(inferops::kubectl get pvc -n "${INFEROPS_RELEASE_NAMESPACE}" \
-  -o name 2>/dev/null | wc -l | tr -d ' ' || true)"
+#
+# Asked through a function that separates "the answer is none" from "the question
+# could not be asked". Discarding stderr and swallowing the exit status would make
+# an API server that refused the query indistinguishable from a namespace with no
+# claims -- and the residue assertions below would then certify a clean removal
+# on the strength of a question nobody answered. That is the same reading
+# verify-clean.sh already refuses for the cluster: a check that cannot fail is
+# worse than no check.
+# It reports on stderr and returns non-zero rather than calling inferops::fail,
+# and the callers below never nest it inside another substitution. Both of those
+# are load-bearing: `exit` inside `$( )` ends the subshell, and in
+# `outer "$(inner)"` a failing inner substitution does not reach the assignment's
+# status -- so a nested call would print the diagnosis and carry on, which is the
+# failure this function exists to prevent wearing a different hat.
+inferops::release_objects() {
+  local kinds="$1"
+  local output
+  if ! output="$(inferops::kubectl get "${kinds}" \
+    -n "${INFEROPS_RELEASE_NAMESPACE}" "${@:2}" -o name)"; then
+    inferops::warn "the query for ${kinds} in '${INFEROPS_RELEASE_NAMESPACE}' did not answer."
+    return 1
+  fi
+  printf '%s' "${output}"
+}
+
+inferops::count_lines() {
+  # `grep -c .` exits non-zero on no matches, which is the count being zero
+  # rather than a failure, so only that status is absorbed.
+  printf '%s' "$1" | grep -c . || true
+}
+
+# The unanswered-query message names what it could not establish, because a
+# script that stops here has proved nothing either way.
+readonly UNANSWERED="An unanswered query is not an empty result, and every assertion about what this release left behind depends on the difference."
+
+if ! claims_before_raw="$(inferops::release_objects pvc)"; then
+  inferops::fail "could not count the persistent volume claims before installing. ${UNANSWERED}"
+fi
+claims_before="$(inferops::count_lines "${claims_before_raw}")"
 inferops::log "persistent volume claims present before install: ${claims_before}"
 
 if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
@@ -241,10 +284,11 @@ report_residue() {
 # Everything Helm installs carries the release's instance label, so this is the
 # question "did uninstall remove the release" asked of the cluster rather than
 # of Helm's own bookkeeping.
-remaining="$(inferops::kubectl get \
+if ! remaining="$(inferops::release_objects \
   deployments,replicasets,services,configmaps,serviceaccounts,pods,pvc \
-  -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" \
-  -o name 2>/dev/null || true)"
+  -l "${INFEROPS_RELEASE_SELECTOR}")"; then
+  inferops::fail "could not ask what survived the uninstall. ${UNANSWERED}"
+fi
 if [ -n "${remaining}" ]; then
   report_residue "objects labelled '${INFEROPS_RELEASE_SELECTOR}' survived the uninstall:"
   printf '%s\n' "${remaining}"
@@ -268,8 +312,10 @@ else
   report_residue "namespace '${INFEROPS_RELEASE_NAMESPACE}' was removed by an uninstall. It is a prerequisite and must outlive the release."
 fi
 
-claims_after="$(inferops::kubectl get pvc -n "${INFEROPS_RELEASE_NAMESPACE}" \
-  -o name 2>/dev/null | wc -l | tr -d ' ' || true)"
+if ! claims_after_raw="$(inferops::release_objects pvc)"; then
+  inferops::fail "could not count the persistent volume claims after uninstalling. ${UNANSWERED}"
+fi
+claims_after="$(inferops::count_lines "${claims_after_raw}")"
 if [ "${claims_after}" = "${claims_before}" ]; then
   inferops::log "persistent volume claims: ${claims_after}, unchanged by the release."
 else

@@ -69,7 +69,19 @@ once versioned releases begin.
   `--create-namespace`. Ten of them were verified by breaking what they defend;
   one of the ten — the `--create-namespace` rule — was found to be wrong by that
   check and widened, because a shell continuation puts the flag on a line of its
-  own. **Still nothing has installed this chart**, and it cannot be installed:
+  own. Two independent reviews then ran before anything was pushed, and neither
+  found a `CRITICAL`. What they did find was a residue check that returned the
+  same answer whether the cluster said "nothing" or said nothing at all; an API
+  liveness and readiness path pair that no rule kept apart, so one `--set` could
+  point all three probes at the readiness answer; and a claim in this project's
+  own evidence record that the test image was a new external dependency, when
+  four committed manifests under `deploy/` already pin that exact digest. All
+  three are fixed, and the last produced a test comparing the chart's copy of the
+  pin against theirs. A fourth defect was found without review:
+  `progressDeadlineSeconds` defaults to 600 seconds, the same number as the
+  runtime's startup budget, so the Deployment controller can fail a rollout the
+  kubelet is still waiting on — both workloads now set it explicitly and the
+  chart refuses a value inside the budget. **Still nothing has installed this chart**, and it cannot be installed:
   both profiles run an API container and no InferOps API image is published.
   [The validation record](docs/proof/architecture/v1-s3-002-pr2-validation.md)
   states that blocker, the nine refusals exercised against real Helm, and one

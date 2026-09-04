@@ -29,6 +29,7 @@ metadata:
   {{- end }}
 spec:
   replicas: {{ .Values.api.replicaCount }}
+  progressDeadlineSeconds: {{ .Values.api.lifecycle.progressDeadlineSeconds }}
   selector:
     matchLabels:
       {{- include "inferops-llm.api.selectorLabels" . | nindent 6 }}
