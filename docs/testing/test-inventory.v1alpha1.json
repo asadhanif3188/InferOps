@@ -243,6 +243,14 @@
       "note": null
     },
     {
+      "module": "tests/architecture/test_cluster_lifecycle_safety.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The local cluster lifecycle scripts against the safety and ownership rules ADR 0001 states for them: every deletion names the cluster or is namespaced and label-scoped, no kubectl invocation can inherit an ambient kubeconfig, nothing prunes the engine or sweeps all namespaces, the read-only scripts stay read-only, every script refuses an argument it does not understand, and the host thresholds and the node-image pin are the documented ones wherever they are written.",
+      "claims": [],
+      "note": "No published claim covers it. The claim that a local cluster is created and removed without residue belongs to the cluster-smoke layer, which runs against a real engine; this suite reads the scripts as text and could not support that claim if it named it. It defends the properties that make a runtime result reproducible rather than the result itself."
+    },
+    {
       "module": "tests/architecture/test_domain_dependency_boundary.py",
       "layer": "architecture-inventory",
       "marker": "architecture",

@@ -61,34 +61,17 @@ inferops::log "kind: $(kind version -q)"
 inferops::log "engine server: $(docker version --format '{{.Server.Version}}')"
 inferops::log "node image (pinned): kindest/node:${INFEROPS_NODE_IMAGE_TAG}@${INFEROPS_NODE_IMAGE_DIGEST}"
 
-# The digest the node actually runs, read back from the engine and compared. A
-# pin that is never checked is decoration; this is the check. Read the image's
-# repository digest rather than the container's image ID, because the two are
-# only incidentally equal and on some engines never are.
-node_image="$(docker inspect "${INFEROPS_CLUSTER_NAME}-control-plane" \
-  --format '{{.Config.Image}}' 2>/dev/null || true)"
-running_digest="$(docker image inspect "${node_image}" \
-  --format '{{range .RepoDigests}}{{.}}{{"\n"}}{{end}}' 2>/dev/null |
-  sed -n 's|^kindest/node@||p' | head -1 || true)"
-
-if [ "${running_digest}" = "${INFEROPS_NODE_IMAGE_DIGEST}" ]; then
-  inferops::log "node image digest verified: ${running_digest}"
-elif [ -z "${running_digest}" ]; then
-  # An image built or loaded locally has no repository digest at all. Say so
-  # rather than reporting a mismatch that would send someone hunting a
-  # difference that does not exist.
-  inferops::warn "the node image reports no repository digest, so the pin could not be verified against the running node."
-else
-  inferops::fail "node image digest mismatch: expected ${INFEROPS_NODE_IMAGE_DIGEST}, running ${running_digest}. The pin did not take effect and this run is not reproducible."
-fi
-
 inferops::kubectl version -o yaml | sed -n '1,80p'
 
-inferops::section "Node and control-plane health"
+# Every remaining question about the new cluster — is it ours, is it running the
+# pinned image, are its nodes Ready, is its control plane healthy, do the client
+# and server versions agree — is the same question cluster-verify.sh answers, so
+# it is asked by running that script rather than by a second implementation here.
+# Two implementations of one check drift, and the one that drifts is always the
+# one nobody runs on its own.
+inferops::section "Verifying the new cluster"
 
-inferops::kubectl get nodes -o wide
-inferops::kubectl wait --for=condition=Ready node --all --timeout=180s
-inferops::kubectl get pods -n kube-system -o wide
+"$(dirname "${BASH_SOURCE[0]}")/cluster-verify.sh"
 
 inferops::section "Ready"
 

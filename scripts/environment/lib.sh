@@ -69,6 +69,17 @@ readonly INFEROPS_MAX_SKEW="1"
 # (D7) states the minimum tier as 6 GiB reaching the container VM.
 readonly INFEROPS_MIN_ENGINE_MEM_BYTES="6442450944"
 
+# The same tier's processor figure. It was a bare literal inside preflight until
+# V1-S3-001; a documented requirement that lives in one script and not beside the
+# requirement it enforces is a requirement waiting to disagree with itself.
+readonly INFEROPS_MIN_ENGINE_CPUS="4"
+
+# The same tier's disk figure: 20 GB free on one volume. Decimal GB, not GiB,
+# because that is the unit D7's table states and the unit its measured column was
+# recorded in. Converting it here to keep the arithmetic honest would silently
+# raise the bar by 7%.
+readonly INFEROPS_MIN_FREE_DISK_BYTES="20000000000"
+
 # --- Paths ------------------------------------------------------------------
 
 inferops::repo_root() {
@@ -93,6 +104,15 @@ INFEROPS_KUBECONFIG="$(inferops::native_path "${INFEROPS_KUBECONFIG_POSIX}")"
 readonly INFEROPS_KUBECONFIG
 readonly INFEROPS_ARTIFACT_DIR="${INFEROPS_ROOT}/.artifacts"
 
+# Which volume the disk requirement is measured on. It selects what is measured;
+# it cannot lower the threshold or skip the check.
+#
+# Overridable because ADR 0001 (R1) names relocating the engine's virtual disk as
+# one of the ways to satisfy this tier. Once it has been moved, the volume that
+# constrains a cluster is no longer the default one, and measuring the default
+# would fail a host that in fact has the room.
+readonly INFEROPS_DISK_VOLUME="${INFEROPS_DISK_VOLUME:-}"
+
 # --- Output -----------------------------------------------------------------
 
 inferops::log() { printf '[inferops] %s\n' "$*"; }
@@ -103,6 +123,95 @@ inferops::fail() {
 }
 
 inferops::section() { printf '\n[inferops] === %s ===\n' "$*"; }
+
+# --- Measurement ------------------------------------------------------------
+
+# Binary and decimal renderings of a byte count. Two functions rather than one,
+# because D7 states memory in GiB and disk in GB, and printing either figure in
+# the other unit would make a contributor compare a measurement against a
+# threshold expressed differently.
+inferops::gib() { awk -v b="$1" 'BEGIN { printf "%.2f GiB", b / 1024 / 1024 / 1024 }'; }
+inferops::gb() { awk -v b="$1" 'BEGIN { printf "%.2f GB", b / 1000 / 1000 / 1000 }'; }
+
+# The volume whose free space constrains a cluster on this host, as two fields:
+# a word saying what the path is, then the path itself.
+#
+#   configured        INFEROPS_DISK_VOLUME was set, and names it.
+#   engine-data-root  The engine's own data directory is visible out here, so the
+#                     figure is the engine's own.
+#   host-volume       It is not — on Windows and macOS it is a path inside a
+#                     virtual machine — so the volume the engine places that
+#                     machine's virtual disk on by default is measured instead.
+#
+# The distinction is reported rather than hidden because only the first two are
+# the engine's actual storage. The third is a proxy, and it is the same proxy
+# ADR 0001 (D7) states its own tier against and (R11) measured the reference host
+# with, which is why a threshold may be applied to it at all.
+#
+# The word comes first and the path last so that `read -r kind path` puts the
+# whole remainder — spaces and all — into the path. A contributor relocating the
+# engine's virtual disk on Windows is likely to put it somewhere with a space in
+# the name, and the other field order would truncate it at the first one, fail to
+# measure it, and downgrade a threshold that must not be downgradable.
+inferops::disk_probe_target() {
+  if [ -n "${INFEROPS_DISK_VOLUME}" ]; then
+    printf 'configured %s' "${INFEROPS_DISK_VOLUME}"
+    return 0
+  fi
+
+  local engine_root=""
+  if command -v docker >/dev/null 2>&1; then
+    engine_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+  fi
+  if [ -n "${engine_root}" ] && [ -d "${engine_root}" ]; then
+    printf 'engine-data-root %s' "${engine_root}"
+    return 0
+  fi
+
+  case "${OSTYPE:-}" in
+    msys* | cygwin*) printf 'host-volume %s' "$(cygpath -u "${SYSTEMDRIVE:-C:}")" ;;
+    *) printf 'host-volume /' ;;
+  esac
+}
+
+# Free bytes on the volume holding a path. Prints nothing and returns 1 when the
+# figure cannot be read, so that a caller can say "not measured" rather than
+# treat an unreadable volume as an empty one and fail a host that is fine.
+#
+# `df -P` is the POSIX-specified single-line-per-filesystem form; without it a
+# long device name wraps onto its own line and the field indices below shift.
+# `-k` fixes the block size at 1024 bytes rather than inheriting whatever
+# BLOCK_SIZE or POSIXLY_CORRECT happens to be set to in the caller's environment.
+inferops::free_disk_bytes() {
+  local blocks
+  blocks="$(df -P -k "$1" 2>/dev/null | awk 'NR == 2 { print $4 }' || true)"
+  case "${blocks}" in
+    '' | *[!0-9]*) return 1 ;;
+  esac
+  printf '%s' "$((blocks * 1024))"
+}
+
+# The repository digest of the image the control-plane node is actually running,
+# or nothing when the engine cannot tell us.
+#
+# The repository digest, not the container's image ID: the two are only
+# incidentally equal and on some engines never are, so comparing the wrong one
+# reports a mismatch that does not exist. An image built or loaded locally has no
+# repository digest at all, and that case is empty rather than mismatched — a
+# caller has to distinguish "different" from "unknowable".
+#
+# This lives here rather than in the script that creates the cluster because
+# creation and verification must compare the pin the same way. A pin checked one
+# way at creation and another way afterwards is two pins.
+inferops::running_node_digest() {
+  local node_image
+  node_image="$(docker inspect "${INFEROPS_CLUSTER_NAME}-control-plane" \
+    --format '{{.Config.Image}}' 2>/dev/null || true)"
+  [ -n "${node_image}" ] || return 0
+  docker image inspect "${node_image}" \
+    --format '{{range .RepoDigests}}{{.}}{{"\n"}}{{end}}' 2>/dev/null |
+    sed -n 's|^kindest/node@||p' | head -1 || true
+}
 
 # --- Guards -----------------------------------------------------------------
 

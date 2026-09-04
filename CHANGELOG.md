@@ -122,6 +122,61 @@ once versioned releases begin.
 
 ### Added
 
+- **The local cluster can now be verified as a step of its own, and the host's
+  disk is checked before anything is created.**
+  `scripts/environment/cluster-verify.sh` answers five questions about a cluster
+  and changes nothing: does kind report one by this project's name; is the
+  project-scoped kubeconfig present and does its context resolve to node
+  containers kind labelled for this cluster; is the node running the pinned
+  image digest; is every node Ready and every `kube-system` pod running or
+  completed; and does the server report the minor version the pin should
+  produce. It runs all five before reporting, so a cluster that is wrong in
+  three ways says so once, and on failure it prints the cluster list, the
+  labelled containers, and recent `kube-system` events before exiting non-zero.
+  `cluster-up.sh` now verifies the cluster it just created by running that
+  script rather than by a second copy of the same checks, and
+  `proof.sh` runs it again standalone in each cycle — because "verify is
+  repeatable" is a result only if the same read-only script reaches the same
+  answer twice. It was run five times in
+  [the lifecycle result](docs/proof/environment/v1-s3-001-pr1-cluster-lifecycle.md):
+  four against a live cluster in three different states, all passing, with the two
+  run back to back byte-identical under `diff`; and once against the torn-down
+  cluster, where it correctly reported three problems at once and failed.
+
+  `preflight.sh` now checks the third figure of
+  [ADR 0001](docs/architecture/decisions/ADR-0001-local-development-environment.md)
+  (D7)'s minimum tier, which had never been checked: **20 GB free on one
+  volume**. Where the container engine's data directory exists on the host
+  filesystem that directory is measured; on Windows and macOS it does not exist
+  out here, so the volume the engine places its virtual disk on by default is
+  measured instead and reported as the proxy it is. `INFEROPS_DISK_VOLUME`
+  selects a different volume for a contributor who has relocated the virtual
+  disk; it cannot lower the threshold or skip the check. The processor figure
+  moved out of a bare literal in `preflight.sh` and into `lib.sh` beside the
+  other two, and all three are now held to D7's table by test rather than by
+  memory.
+
+  Three scripts silently ignored arguments — `preflight.sh`, `smoke.sh`, and
+  `verify-clean.sh` — and now refuse them. On a script that deletes things, the
+  difference between a partial teardown and a full one should never be decided
+  by a typo nobody was told about. The gap was found by the new test suite, not
+  by review.
+
+- **The cluster lifecycle scripts' safety rules are now enforced by a test
+  rather than by review.**
+  [`tests/architecture/test_cluster_lifecycle_safety.py`](tests/architecture/test_cluster_lifecycle_safety.py)
+  reads every script under `scripts/environment/` as text and holds it to what
+  ADR 0001 (D5, D6) says about it: every `kind delete cluster` names the
+  cluster, every object deletion is namespaced and either label-selected or
+  named, every mutating `kubectl` call goes through the wrapper that pins
+  `--kubeconfig` and `--context`, nothing prunes the engine or sweeps all
+  namespaces or writes to the default kubeconfig, the read-only scripts contain
+  no mutating verb at all, every script refuses an argument it does not
+  understand, and the node-image pin is one value in `lib.sh`, the kind config,
+  the ADR, and the runbook. It executes nothing; what the scripts do to a real
+  cluster stays the cluster-smoke layer's evidence. Three of its rules failed on
+  the code as it stood, and two of those were fixed in the scripts.
+
 - **A second engineer can now diagnose a local runtime failure from what they
   observed.** [The local runtime troubleshooting guide](docs/serving/local-runtime-troubleshooting.md)
   is organised by symptom rather than by component, because the symptom is the

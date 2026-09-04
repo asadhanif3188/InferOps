@@ -10,6 +10,9 @@
 # shellcheck source=scripts/environment/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+[ "$#" -eq 0 ] ||
+  inferops::fail "expected no arguments, got $#: $*. Usage: smoke.sh"
+
 inferops::require_cmd kubectl
 inferops::assert_target_cluster
 

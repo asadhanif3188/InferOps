@@ -50,6 +50,12 @@ while [ "${cycle}" -le "${cycles}" ]; do
   # a later cycle silently reuse stale state.
   "${here}/cluster-up.sh" --recreate
 
+  inferops::section "Cycle ${cycle} of ${cycles}: verify"
+  # Creation already ran this once. Running it again here, on its own, is what
+  # makes "verify is repeatable" a result rather than a claim: the same read-only
+  # script against the same cluster has to reach the same answer.
+  "${here}/cluster-verify.sh"
+
   inferops::section "Cycle ${cycle} of ${cycles}: smoke"
   "${here}/smoke.sh"
 

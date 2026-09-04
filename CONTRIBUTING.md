@@ -258,8 +258,8 @@ invalidate one is breaking by definition.
 
 ### Architecture ownership inventory
 
-Changes under `docs/architecture/` or `tests/architecture/` must pass the
-architecture suite:
+Changes under `docs/architecture/`, `tests/architecture/`, or
+`scripts/environment/` must pass the architecture suite:
 
 ```sh
 python -m pytest tests/architecture -q
@@ -292,6 +292,20 @@ outside the standard library and this distribution — which is checklist questi
 dependency to the domain is an amendment to
 [ADR 0004](docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 with an argument attached, not a new import.
+
+The same suite also reads the local cluster lifecycle scripts and holds them to
+the safety rules [ADR 0001](docs/architecture/decisions/ADR-0001-local-development-environment.md)
+(D5, D6) states for them: every cluster deletion names the cluster, every object
+deletion is namespaced and either label-selected or named, every mutating
+`kubectl` call goes through the wrapper that pins `--kubeconfig` and `--context`,
+nothing prunes the engine or sweeps all namespaces, the read-only scripts contain
+no mutating verb, and every script refuses an argument it does not understand. It
+also compares the three host thresholds in `lib.sh` against ADR 0001 (D7)'s
+minimum-tier table, and the node-image pin against every place the repository
+publishes it.
+
+It reads the scripts as text and executes none of them. What they do to a real
+cluster is the cluster-smoke layer's evidence, produced by running them.
 
 A change touching components, ownership, deployment, telemetry, trust boundaries,
 or scope also works through
