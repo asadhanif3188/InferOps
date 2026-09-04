@@ -5,9 +5,14 @@ Two things here are load-bearing rather than conventional.
 
 The adapter selection is derived from `.Values.profile` in exactly one place --
 `inferops-llm.derivedEnv` -- and there is no values path that reaches
-`INFEROPS_SERVING_ADAPTER` any other way. `inferops-llm.checkedExtraEnv` refuses
-a reserved name instead of merging it, so a real release cannot acquire a `mock`
-label, or the reverse, by an override that happens to be applied last.
+`INFEROPS_SERVING_ADAPTER` any other way. Every free-form values map that reaches
+a rendered object -- `extraEnv`, `secretRefs`, `commonLabels`, `commonAnnotations`,
+and the per-object annotation maps -- is checked against the derived names in
+`inferops-llm.validate` and **refused** rather than merged, so a real release
+cannot acquire a `mock` identity, or the reverse, through an override that happens
+to be applied last. That refusal covers the labels as well as the environment,
+because the label is the identity a dashboard, a selector, and a scoped teardown
+sweep all read.
 
 The label set carries `inferops.io/lifecycle: release`. The ownership document
 records that a scoped teardown sweeping `app.kubernetes.io/part-of=inferops`
@@ -37,6 +42,36 @@ namespace it is bound to today.
 
 {{- define "inferops-llm.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+The label keys this chart derives, and the annotation keys, each as a list.
+
+They exist so that `inferops-llm.validate` can refuse a `commonLabels` or
+`commonAnnotations` entry that collides with one, rather than appending it and
+producing a mapping with the same key twice. A duplicate key is not a rendering
+curiosity: every parser this project's output passes through resolves it
+last-one-wins, so an appended `inferops.io/profile` is the value a reader, a
+selector, and a teardown sweep all see.
+*/}}
+{{- define "inferops-llm.derivedLabelKeys" -}}
+- helm.sh/chart
+- app.kubernetes.io/name
+- app.kubernetes.io/instance
+- app.kubernetes.io/version
+- app.kubernetes.io/managed-by
+- app.kubernetes.io/part-of
+- app.kubernetes.io/component
+- inferops.io/lifecycle
+- inferops.io/profile
+- inferops.io/owner
+- inferops.io/workload
+{{- end -}}
+
+{{- define "inferops-llm.derivedAnnotationKeys" -}}
+- inferops.io/tenant
+- inferops.io/cost-center
+- inferops.io/configuration-checksum
 {{- end -}}
 
 {{/*

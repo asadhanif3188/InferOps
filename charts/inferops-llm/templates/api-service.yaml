@@ -15,7 +15,10 @@ metadata:
   labels:
     {{- include "inferops-llm.labels" . | nindent 4 }}
     app.kubernetes.io/component: platform-api
-  {{- $annotations := merge (dict) .Values.api.service.annotations (include "inferops-llm.annotations" . | fromYaml) }}
+  {{- /* The derived map is the destination, because sprig gives the
+       destination precedence. A colliding key is refused before this
+       runs; the order is here so that the two guards are independent. */}}
+  {{- $annotations := merge (include "inferops-llm.annotations" . | fromYaml) .Values.api.service.annotations }}
   {{- with $annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

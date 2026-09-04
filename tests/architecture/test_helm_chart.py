@@ -539,11 +539,23 @@ def test_the_mock_render_carries_no_real_pin_and_no_runtime() -> None:
 
 
 def test_the_real_render_carries_no_mock_labelled_identity() -> None:
+    """Checked field by field rather than by scanning the whole file.
+
+    A whole-file search for the substring would also fail on an owner named
+    `team-demock` or a workload named `unmocked-service`, both of which the
+    schema permits and neither of which says anything about the adapter. A check
+    that fails for a reason unrelated to the property it defends gets suppressed
+    the first time it does, so it is scoped to the fields that carry identity.
+    """
     configuration = next(
         document for document in RENDERED["real"] if document["kind"] == "ConfigMap"
     )["data"]
+    assert configuration["INFEROPS_SERVING_ADAPTER"] == "real"
     assert not configuration["INFEROPS_MODEL_IDENTIFIER"].lower().startswith("mock-")
-    assert "mock" not in (RENDERED_DIR / "real.expected.yaml").read_text("utf-8")
+    assert "mock" not in configuration["INFEROPS_CAPABILITY_ID"]
+    for document in RENDERED["real"]:
+        labels = _dig(document, "metadata.labels") or {}
+        assert labels["inferops.io/profile"] == "real"
 
 
 def test_each_fixture_declares_what_its_profile_permits() -> None:
@@ -559,6 +571,130 @@ def test_each_fixture_declares_what_its_profile_permits() -> None:
     real = FIXTURES["real"]
     assert real["profile"] == "real"
     assert not real["model"]["identifier"].startswith("mock-")
+
+
+def test_every_free_form_map_that_reaches_an_object_is_guarded() -> None:
+    """The refusal set covers every values map that reaches a rendered object.
+
+    Independent review of this change found the guard applied to `extraEnv` and
+    `secretRefs` and not to the label and annotation maps, which meant a mock
+    release could be rendered carrying `inferops.io/profile: real` from a
+    schema-valid `--set`. Appending a key a mapping already has produces it
+    twice, and every parser the output passes through keeps the appended one — so
+    the merge was a relabelling rather than a decoration.
+
+    This reads the guards rather than the render, because a render made from the
+    committed fixtures cannot show a guard that is missing. The refusals
+    themselves were exercised against `helm` and are recorded in
+    `docs/proof/architecture/v1-s3-002-pr1-validation.md`.
+    """
+    guards = (TEMPLATES_DIR / "_validate.tpl").read_text(encoding="utf-8")
+    for surface in (
+        ".Values.commonLabels",
+        ".Values.commonAnnotations",
+        ".Values.api.service.annotations",
+        ".Values.runtime.service.annotations",
+        ".Values.security.serviceAccount.annotations",
+        ".Values.security.secretRefs",
+        "extraEnv",
+        "INFEROPS_POD_NAME",
+    ):
+        assert surface in guards, (
+            f"{surface} reaches a rendered object and no refusal names it"
+        )
+
+
+def test_the_guarded_label_and_annotation_keys_are_the_ones_the_chart_writes() -> None:
+    """The refusal lists and the writers are compared, not trusted.
+
+    Two lists that have to agree and are maintained separately drift. So the keys
+    the guard refuses are read out of the helper that declares them, and every
+    key the label and annotation helpers actually emit is checked against it — a
+    label added to the helper and forgotten in the list fails here.
+    """
+    helpers = (TEMPLATES_DIR / "_helpers.tpl").read_text(encoding="utf-8")
+    declared_labels = set(
+        re.findall(r"^- (\S+)$", _define_body(helpers, "derivedLabelKeys"), re.M)
+    )
+    declared_annotations = set(
+        re.findall(r"^- (\S+)$", _define_body(helpers, "derivedAnnotationKeys"), re.M)
+    )
+
+    written_labels: set[str] = set()
+    written_annotations: set[str] = set()
+    for _profile, document in ALL_RENDERED:
+        written_labels |= set(_dig(document, "metadata.labels") or {})
+        written_annotations |= set(_dig(document, "metadata.annotations") or {})
+        template = _dig(document, "spec.template.metadata")
+        if isinstance(template, dict):
+            written_labels |= set(template.get("labels") or {})
+            written_annotations |= set(template.get("annotations") or {})
+
+    # The fixtures supply no extra label or annotation of their own, so every key
+    # in a render is one the chart wrote.
+    assert written_labels <= declared_labels, written_labels - declared_labels
+    assert written_annotations <= declared_annotations, (
+        written_annotations - declared_annotations
+    )
+    # And the identity keys the whole boundary rests on are certainly in the list.
+    assert {
+        "inferops.io/profile",
+        "inferops.io/lifecycle",
+        "app.kubernetes.io/part-of",
+    } <= declared_labels
+
+
+def _define_body(source: str, name: str) -> str:
+    """The body of one `define` block, by name."""
+    match = re.search(
+        rf'{{{{- define "inferops-llm\.{name}" -}}}}(.*?){{{{- end -}}}}',
+        source,
+        re.S,
+    )
+    assert match, name
+    return match.group(1)
+
+
+def test_the_derived_annotations_win_a_merge_they_are_not_meant_to_lose() -> None:
+    """Sprig gives the destination precedence, and the destination was wrong.
+
+    The refusal above makes a collision impossible, so this ordering is belt and
+    braces — deliberately, because the two guards then fail independently rather
+    than one silently covering for the other.
+    """
+    for name in ("serviceaccount.yaml", "api-service.yaml", "runtime-service.yaml"):
+        body = (TEMPLATES_DIR / name).read_text(encoding="utf-8")
+        merge_line = next(
+            line
+            for line in body.splitlines()
+            if "merge" in line and "annotations" in line
+        )
+        derived = merge_line.index('include "inferops-llm.annotations"')
+        supplied = merge_line.index(".Values.")
+        assert derived < supplied, (
+            f"{name} merges the values-supplied annotations as the destination, "
+            "which sprig gives precedence to"
+        )
+
+
+def test_the_runtime_container_receives_no_inferops_environment() -> None:
+    """Stated because the documents say it, and it is easy to change by accident.
+
+    `llama.cpp` reads no `INFEROPS_` variable; its configuration is its argument
+    vector. Giving it variables it ignores would suggest it emitted something it
+    does not, and `security.secretRefs` reaching it would suggest the runtime can
+    hold a credential. Both are disclaimed in the chart README and in
+    `values.yaml`, so both are checked here.
+    """
+    runtime = next(
+        container
+        for _, container in _containers(RENDERED["real"])
+        if container["name"] == "runtime"
+    )
+    for entry in runtime.get("env") or []:
+        assert not entry["name"].startswith("INFEROPS_"), entry["name"]
+        assert "valueFrom" not in entry
+    assert "envFrom" not in runtime
 
 
 # --------------------------------------------------------------------------
@@ -638,9 +774,19 @@ def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() ->
         "the placeholder is justified by there being no published API image; if "
         "that row is implemented, the fixtures name a real digest instead"
     )
-    assert not list(REPO_ROOT.glob("**/Dockerfile")), (
-        "a Dockerfile appeared, so the reason the API image is a placeholder no "
-        "longer holds"
+    tracked = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "--", "*Dockerfile*"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    # Tracked files only. A repository-wide glob would also walk `.venv/`, where a
+    # `Dockerfile` belonging to somebody else's package would fail this for a
+    # reason that has nothing to do with whether InferOps publishes an image.
+    assert tracked.returncode == 0, tracked.stderr
+    assert not tracked.stdout.strip(), (
+        "a Dockerfile is committed, so the reason the API image is a placeholder "
+        "no longer holds"
     )
 
 

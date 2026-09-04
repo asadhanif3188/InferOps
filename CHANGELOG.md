@@ -146,11 +146,25 @@ once versioned releases begin.
   derived with it and appears nowhere in the values contract, and `extraEnv` is
   *refused* rather than merged if it names any variable the chart derives —
   because a merge that lands last is exactly how a real release comes to publish
-  `mock`. A real release refuses a `mock-`labelled model identity and a mock
+  `mock`. **Every** free-form values map that reaches a rendered object is
+  refused rather than merged when it collides with a derived name — `extraEnv`,
+  `secretRefs`, `commonLabels`, `commonAnnotations`, and the three per-object
+  annotation maps — because appending a label a mapping already carries produces
+  the key twice and every parser keeps the appended one. That covers
+  `inferops.io/profile`, and it covers `app.kubernetes.io/part-of` and
+  `inferops.io/lifecycle`, which are the labels a scoped teardown is planned to
+  select on. A real release refuses a `mock-`labelled model identity and a mock
   release refuses a model revision, an alias, a container path, a cache claim, or
   a secret reference at all, which are the refusals
   `src/inferops/adapters/` already raises at start-up, moved to render time so
-  the release is never built. Both profiles lint under `--strict` and validate
+  the release is never built. The label half of that guard was missing from the
+  first draft and independent review broke the claim with a single schema-valid
+  `--set`; the chart was fixed rather than the claim narrowed, and
+  [the validation record](docs/proof/architecture/v1-s3-002-pr1-validation.md)
+  records what was found, including two smaller identity holes — the pod name
+  supplied through the downward API could be overwritten by `extraEnv`, and
+  sprig's `merge` gave a per-object annotation map precedence over the derived
+  attribution, so one release could disagree with itself about its own tenant. Both profiles lint under `--strict` and validate
   against Kubernetes `1.34.0`; the exercised refusals, the seven checks that the
   new suite is not vacuous, and everything this change did **not** do are in
   [the validation record](docs/proof/architecture/v1-s3-002-pr1-validation.md).

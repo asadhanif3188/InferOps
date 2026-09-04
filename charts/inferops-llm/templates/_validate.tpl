@@ -131,9 +131,23 @@ rather than once per test.
 
 {{/* -- environment overrides may not reach a derived name --------------- */}}
 
-{{- $reserved := (include "inferops-llm.derivedEnv" . | fromYaml) -}}
+{{/*
+The reserved set is every name the chart writes: the configuration it derives
+from `profile`, and the pod identity it supplies through the downward API. The
+second is in the set for the same reason as the first -- `INFEROPS_POD_NAME` is
+the replica label everything this process emits carries, a duplicate environment
+name is resolved last-one-wins by the kubelet, and an entry that could overwrite
+it would make an identity the API server supplies into one an operator typed.
+*/}}
+{{- $reserved := merge
+      (dict)
+      (include "inferops-llm.derivedEnv" . | fromYaml)
+      (dict "INFEROPS_POD_NAME" "") -}}
 {{- range $component := list "api" "runtime" -}}
 {{- range $entry := (index $.Values $component).extraEnv -}}
+{{- if eq $entry.name "INFEROPS_POD_NAME" -}}
+{{- fail (printf "%s.extraEnv may not set the pod identity. It is supplied through the downward API, and a duplicate environment name is resolved last-one-wins by the kubelet, so an entry here would turn a value the API server supplies into one an operator typed." $component) -}}
+{{- end -}}
 {{- if hasKey $reserved $entry.name -}}
 {{- fail (printf "%s.extraEnv may not set a name this chart derives. The chart writes it from 'profile' and from nothing else, and a merge that could overwrite it is exactly how a real release comes to publish 'mock', or the reverse. Refused name: %s" $component $entry.name) -}}
 {{- end -}}
@@ -151,6 +165,53 @@ rather than once per test.
 {{- end -}}
 {{- if hasPrefix "INFEROPS_" $entry.name -}}
 {{- fail "security.secretRefs may not bind a name in the INFEROPS_ namespace. That namespace is the chart's configuration surface, and a secret bound into it would put credential-shaped configuration where a reader expects rendered configuration." -}}
+{{- end -}}
+{{- end -}}
+
+{{/* -- a label or annotation may not shadow a derived one ---------------- */}}
+
+{{/*
+The same rule as the environment, on the surface it is easier to forget.
+
+A label appended after a derived one produces a mapping carrying that key twice,
+and every parser this output passes through resolves it last-one-wins. So
+`commonLabels` naming `inferops.io/profile` does not decorate a release, it
+relabels it -- and a mock release labelled `real` is precisely what rule 1 of the
+mock and real boundary forbids, because the label is what identifies the artifact
+from the artifact itself.
+
+`app.kubernetes.io/part-of` and `inferops.io/lifecycle` are here for a second
+reason. The ownership document's scoped-teardown resolution selects on exactly
+those two, so a release that could rewrite them could exempt itself from the
+sweep that is meant to remove it, or present itself as a Terraform-owned
+prerequisite.
+*/}}
+
+{{- $labelKeys := (include "inferops-llm.derivedLabelKeys" . | fromYamlArray) -}}
+{{- range $key, $value := .Values.commonLabels -}}
+{{- if has $key $labelKeys -}}
+{{- fail (printf "commonLabels may not set a label this chart derives. Appending one produces the same key twice, and the appended value is the one every parser keeps -- so this relabels the release rather than decorating it. Refused label: %s" $key) -}}
+{{- end -}}
+{{- end -}}
+
+{{- $annotationKeys := (include "inferops-llm.derivedAnnotationKeys" . | fromYamlArray) -}}
+{{- range $key, $value := .Values.commonAnnotations -}}
+{{- if has $key $annotationKeys -}}
+{{- fail (printf "commonAnnotations may not set an annotation this chart derives. Refused annotation: %s" $key) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+The per-object annotation maps, which reach one object each. Left unchecked they
+do something worse than the release-wide map: they desynchronise attribution
+*within* one release, so two objects installed by the same command disagree about
+which tenant they belong to.
+*/}}
+{{- range $map := list .Values.api.service.annotations .Values.runtime.service.annotations .Values.security.serviceAccount.annotations -}}
+{{- range $key, $value := $map -}}
+{{- if has $key $annotationKeys -}}
+{{- fail (printf "a per-object annotations map may not set an annotation this chart derives; two objects in one release would then disagree about it. Refused annotation: %s" $key) -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 

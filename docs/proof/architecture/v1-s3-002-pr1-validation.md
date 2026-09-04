@@ -41,14 +41,14 @@ it.
 uv run --locked ruff check .           All checks passed!
 uv run --locked ruff format --check .  275 files already formatted
 uv run --locked python -m mypy         Success: no issues found in 149 source files
-uv run --locked python -m pytest -q    5824 passed, 27 skipped, 14 deselected
+uv run --locked python -m pytest -q    5828 passed, 27 skipped, 14 deselected
 ```
 
 The same suite with `helm` absent from the path, which is the state of a
 contributor who has not installed it:
 
 ```text
-uv run --locked python -m pytest -q    5822 passed, 29 skipped, 14 deselected
+uv run --locked python -m pytest -q    5826 passed, 29 skipped, 14 deselected
 ```
 
 Two tests, and only two, change state between those runs: the drift comparison
@@ -57,7 +57,7 @@ for each profile. Everything else the new suite asserts runs either way.
 The suite this change adds:
 
 ```text
-uv run --locked python -m pytest tests/architecture/test_helm_chart.py -q   73 passed
+uv run --locked python -m pytest tests/architecture/test_helm_chart.py -q   77 passed
 ```
 
 ### Helm
@@ -123,6 +123,13 @@ run; each produced the refusal quoted, and each is also asserted by the suite.
 | `--namespace default` | `Error: ... the release namespace must be prefixed 'inferops-' (ADR 0001 D5) ... Never pass --create-namespace` |
 | `api.extraEnv` naming `INFEROPS_SERVING_ADAPTER` with value `mock` | `Error: ... may not set a name this chart derives ... Refused name: INFEROPS_SERVING_ADAPTER` |
 | `api.image.digest=latest` | `Error: values don't meet the specifications of the schema(s) ... at '/api/image/digest': 'latest' does not match pattern '^$\|^sha256:[0-9a-f]{64}$'` |
+| `commonLabels."inferops.io/profile"=real` on a **mock** release | `Error: ... commonLabels may not set a label this chart derives ... Refused label: inferops.io/profile` |
+| `commonLabels."app.kubernetes.io/part-of"=escaped` | `Error: ... Refused label: app.kubernetes.io/part-of` |
+| `commonLabels."inferops.io/lifecycle"=prerequisite` | `Error: ... Refused label: inferops.io/lifecycle` |
+| `commonAnnotations."inferops.io/tenant"=spoofed` | `Error: ... commonAnnotations may not set an annotation this chart derives. Refused annotation: inferops.io/tenant` |
+| `api.service.annotations."inferops.io/tenant"=spoofed` | `Error: ... a per-object annotations map may not set an annotation this chart derives; two objects in one release would then disagree about it` |
+| `api.extraEnv` naming `INFEROPS_POD_NAME` | `Error: ... may not set the pod identity. It is supplied through the downward API, and a duplicate environment name is resolved last-one-wins by the kubelet` |
+| `commonLabels.team=platform` and an `example.com/...` service annotation | Renders. Six objects, unchanged. A map that collides with nothing is merged as written |
 
 The last is refused by the values schema rather than by a template, which is the
 division intended: the schema decides the shape of one value, and the templates
@@ -131,8 +138,10 @@ decide the rules that need to see two at once.
 ### The new suite is not vacuous
 
 A suite of static assertions can pass because the property holds or because the
-assertion never looks at anything. Seven rules were checked by breaking the thing
-they defend, confirming a red result, and reverting.
+assertion never looks at anything. Eleven rules were checked by breaking the thing
+they defend, confirming a red result, and reverting. The last four defend the
+guards independent review added; the two skips in their rows are the drift
+comparisons, run in a shell without `helm` on the path.
 
 | What was broken | Result |
 |---|---|
@@ -142,12 +151,82 @@ they defend, confirming a red result, and reverting.
 | `model-acquisition-job` removed from the chart's deferred list, leaving a Helm-owned row unaccounted for | `1 failed, 72 passed` |
 | A `livenessProbe` added to a rendered container | `2 failed, 71 passed` |
 | A `Namespace` appended to a render | `6 failed, 69 passed` |
-| All four files restored | `73 passed` |
+| `inferops.io/profile` removed from the guarded label list | `1 failed, 74 passed, 2 skipped` |
+| The `commonLabels` refusal deleted from `_validate.tpl` | `1 failed, 74 passed, 2 skipped` |
+| One service's annotation merge put back in the losing order | `1 failed, 74 passed, 2 skipped` |
+| An `INFEROPS_` variable added to the runtime container in a render | `1 failed, 74 passed, 2 skipped` |
+| Every file restored | `77 passed` |
 
 The `Namespace` case failing six assertions rather than one is worth reading as a
 result: an object Terraform owns fails the Terraform-disjointness check, the
 row-mapping check, the label checks, and the object-count check together, because
 each was written to catch it from a different direction.
+
+### What independent review found, and what it changed
+
+The first commit on this branch was reviewed independently before it was pushed.
+The review broke the change's own headline claim, and the claim was not weakened
+to fit — the chart was fixed and the guard extended. Recording it here because a
+defect found by review and repaired quietly is a defect nobody learns from.
+
+**The guard was applied to the environment and not to the labels.** `extraEnv`
+and `secretRefs` were refused if they named something the chart derives.
+`commonLabels`, `commonAnnotations`, and the three per-object annotation maps
+were merged. So this, with no template edited and every schema rule satisfied:
+
+```text
+helm template x charts/inferops-llm --namespace inferops-platform \
+  --values charts/inferops-llm/ci/mock-values.yaml \
+  --set commonLabels."inferops\.io/profile"=real
+```
+
+rendered a mock release whose every object carried `inferops.io/profile` twice —
+`mock`, then `real` — and every parser the output passes through keeps the second.
+Parsed with PyYAML, all four objects reported `real`. The same route rewrote
+`app.kubernetes.io/part-of` and `inferops.io/lifecycle`, which are the two labels
+[the ownership document](../../architecture/resource-ownership.md) names as what a
+scoped teardown will select on: a release able to rewrite them could exempt itself
+from the sweep meant to remove it, or present itself as a Terraform-owned
+prerequisite.
+
+That falsified "real evidence values cannot silently select mock" for the
+identity a dashboard, a selector, and a teardown tool read, while leaving the
+serving behaviour correct — `INFEROPS_SERVING_ADAPTER` was never reachable this
+way. It is the difference between the release being wrong and the release *saying*
+it is something else, and rule 1 of the mock and real boundary is specifically
+about the second.
+
+Two smaller findings from the same review:
+
+- `INFEROPS_POD_NAME` was not in the reserved set, because the set was built from
+  the derived configuration alone and the pod name comes from a separate
+  downward-API helper. `api.extraEnv` naming it rendered the variable twice, and
+  the kubelet resolves that last-one-wins, turning an identity the API server
+  supplies into one an operator typed.
+- Sprig's `merge` gives precedence to its **destination**, and every per-object
+  annotation merge had the values-supplied map as the destination. A schema-valid
+  `api.service.annotations."inferops.io/tenant"` therefore won on the `Service`
+  while the other three objects in the same release kept the derived value — one
+  release disagreeing with itself about its own attribution.
+
+All three are fixed: the refusal now covers every free-form map that reaches a
+rendered object, the derived keys are declared once in `_helpers.tpl` and read by
+the guard rather than repeated, and the merge order is corrected as well, so the
+two guards fail independently instead of one covering for the other. Each refusal
+is in the table above and each is defended by a test in the vacuity table. **None
+of the fixes changed a rendered manifest**: `git diff` over
+`charts/inferops-llm/ci/rendered/` after regenerating both files is empty, which
+is the check that the guards refuse bad input rather than altering good output.
+
+Review also corrected two documentation overclaims and two fragile assertions.
+The chart README said the release carries pod identity and secret references
+without saying that both reach the API container only — the runtime container
+gets no environment at all, because `llama.cpp` reads none and its configuration
+is its argument vector. A test now holds that. And two assertions would have
+failed for reasons unrelated to what they defend: a whole-file search for the
+substring `mock` in the real render, which an owner named `team-demock` would
+trip, and a repository-wide glob for a `Dockerfile` that also walked `.venv/`.
+Both are scoped to what they are actually about.
 
 ### Diff hygiene
 
@@ -228,6 +307,14 @@ nothing. Least-privilege RBAC is `V1-S3-004`'s.
   on the authoring host. The Kubernetes schema version it validated against is
   pinned on the command line and is the number this repository publishes.
 - **One informational lint finding is unresolved**: the chart sets no icon.
+- **The refusals are checked against `helm`, and the tests that defend them read
+  the guards rather than a render.** A render made from the two committed
+  fixtures cannot demonstrate a guard that is missing, which is exactly how the
+  label hole survived the first round of tests. The refusals themselves were
+  provoked with `helm` and are in the table above; the suite checks that each
+  surface is named by a refusal and that the guarded key list matches what the
+  chart actually writes. That is weaker than executing every refusal on every
+  run, and it is stated rather than glossed.
 
 ## Acceptance criteria
 
@@ -235,7 +322,7 @@ nothing. Least-privilege RBAC is `V1-S3-004`'s.
 |---|---|
 | Helm lint, render, and schema checks pass | **Met.** Both profiles lint under `--strict`, both render, both validate against Kubernetes `1.34.0`, and the values schema is applied by Helm on every operation |
 | The chart configures API, runtime, model, resources, ownership, telemetry, and security | **Met.** Each is a values section, each reaches a rendered object, and the suite checks each |
-| Real evidence values cannot silently select mock | **Met.** The selection has no default and one write site; the capability is derived with it; `extraEnv` is refused rather than merged if it names a derived variable; and each profile refuses the other's model identity, in the same direction the platform's own adapters do |
+| Real evidence values cannot silently select mock | **Met, after a fix.** The selection has no default and one write site, the capability is derived with it, each profile refuses the other's model identity in the same direction the platform's own adapters do, and **every** free-form values map that reaches a rendered object — `extraEnv`, `secretRefs`, `commonLabels`, `commonAnnotations`, and the three per-object annotation maps — is refused rather than merged when it collides with a derived name. The last clause is the fix: as first written the guard covered the environment and not the labels, and a schema-valid `--set` rendered a mock release labelled `real`. The section above records what that broke and how it was found |
 | No manual manifest editing is required | **Met** for what this PR renders. Two committed values files render the whole release with no edit to a template. It is **not** met for the release as a whole, because the release is incomplete: probes, the acquisition job, the network policy, and scrape configuration are absent by design |
 | Install and uninstall succeed | **Not met, and not attempted.** This is `V1-S3-002-PR2`'s criterion. Nothing here has installed anything, and no result in this record may be read as evidence about it |
 

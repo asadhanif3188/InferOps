@@ -56,7 +56,7 @@ made structural: *a mock may never be the default in the mandatory path*. A char
 whose default were `mock` would hand out one per `helm install` rather than one
 per test, and the difference is invisible from outside the pod.
 
-Four more refusals hold the two profiles apart. Each is the same rule the
+More refusals hold the two profiles apart. The first two are the same rules the
 platform's own adapters enforce at start-up, moved to render time so that the
 release is never built:
 
@@ -65,12 +65,25 @@ release is never built:
   model revision, an alias, a container path, a cache claim, or a secret
   reference at all;
 - `INFEROPS_SERVING_ADAPTER` is written in one template helper from `profile`
-  and from nothing else, and `extraEnv` is **refused** rather than merged if it
-  names any variable the chart derives — because a merge that lands last is
-  exactly how a real release comes to publish `mock`;
-- the serving capability is derived the same way and appears nowhere in the
-  values contract, so a release cannot install one adapter and publish the
-  other's capability.
+  and from nothing else, and the serving capability is derived the same way and
+  appears nowhere in the values contract, so a release cannot install one adapter
+  and publish the other's capability;
+- **every free-form map that reaches a rendered object is refused rather than
+  merged if it collides with something the chart derives.** That is `extraEnv`,
+  `secretRefs`, `commonLabels`, `commonAnnotations`, and the three per-object
+  annotation maps. A merge that lands last is exactly how a real release comes to
+  publish `mock` — and the label matters as much as the variable, because
+  appending `inferops.io/profile` to a mapping that already has it produces the
+  key twice and every parser keeps the appended one. The same refusal protects
+  `app.kubernetes.io/part-of` and `inferops.io/lifecycle`, which are what a
+  scoped teardown selects on: a release able to rewrite those could exempt itself
+  from the sweep meant to remove it, or present itself as a Terraform-owned
+  prerequisite. `INFEROPS_POD_NAME` is refused too, because the kubelet resolves
+  a duplicate environment name last-one-wins, which would turn an identity the
+  API server supplies into one an operator typed.
+
+A map that collides with nothing is merged as written; `commonLabels.team` and an
+`example.com/…` annotation both render.
 
 ## Configuring it
 
@@ -98,7 +111,12 @@ published and no `Dockerfile` is committed anywhere in this repository.
 
 The chart configures the identity every emitted record carries — service version,
 environment, capability, release, workload, owner, model revision, runtime image
-digest — and supplies the pod name through the downward API. The tenant and cost
+digest — and supplies the pod name through the downward API. **That is the API
+container only.** The runtime container receives no InferOps environment and no
+secret reference at all: `llama.cpp` reads none, its configuration is its argument
+vector, and giving it variables it ignores would suggest it emitted something it
+does not. `security.secretRefs` therefore reaches the API and nothing else, which
+is a limit of this chart rather than of the values contract. The tenant and cost
 centre are **annotations rather than labels**, because a label is what a query
 groups by and
 [the redaction rules](../../docs/telemetry/redaction.md) keep a tenant identifier

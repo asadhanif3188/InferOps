@@ -221,4 +221,8 @@ security:
   # Secret material, by reference only. The chart mounts nothing and reads
   # nothing; it names Kubernetes Secrets the workload owner created out of band.
   # A literal value here is refused by the schema and by the template.
+  #
+  # These reach the API container and nothing else. The runtime container gets no
+  # environment at all: llama.cpp reads none, its configuration is its argument
+  # vector, and a variable it ignores would suggest it read one.
   secretRefs: []
