@@ -111,7 +111,7 @@ scattered across later records.
 |---|---|---|
 | Fresh real acquisition | `V1-S2-005-PR2`, 2026-09-03, under an explicit download authorization | `check` reported `state absent (0 bytes present)`; `acquire` reported `verified download verified; 1834426016 bytes`; `verify` reported `SHA-256 matched`. Recorded in [`v1-s2-005-pr2-validation.md`](v1-s2-005-pr2-validation.md) |
 | Real absent-state check | Sprint 2 completion remediation, 2026-09-04 | `state absent (0 bytes present)`; `80.00 GiB free; 1.77 GiB required`. Recorded in [the cache miss observation](v1-s2-007-cache-miss-observation.md) |
-| Real cache hit | Sprint 2 completion remediation, 2026-09-04 | `check` reported `state verified (1834426016 bytes present)`; `verify` reported `Qwen3-1.7B-Q8_0.gguf (1834426016 bytes, SHA-256 matched)`, reading all 1.71 GiB |
+| Real cache hit | Sprint 2 completion remediation, 2026-09-04 | `check` reported `state verified (1834426016 bytes present)`; `verify` reported `Qwen3-1.7B-Q8_0.gguf (1834426016 bytes, SHA-256 matched)`, reading all 1.71 GiB. Recorded in [the Sprint 2 completion review](sprint-2-completion-review.md#method), whose method section lists both commands; this is the acquisition workflow's own output, not the lifecycle tool's |
 
 Three things this reconciliation deliberately does **not** claim. The 2026-09-03
 acquisition was performed to serve the baseline experiment, not as a rehearsal of

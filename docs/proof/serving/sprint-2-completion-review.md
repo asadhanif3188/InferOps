@@ -285,13 +285,13 @@ run over every changed file.
 | Real cache miss and refusal | **Observed.** `miss`, exit `3`, no container created |
 | Real cache hit and integrity | **Verified.** 1,834,426,016 bytes, SHA-256 matched |
 | Ruff lint | Passed; all checks passed |
-| Ruff formatting | Passed; 267 files already formatted |
+| Ruff formatting | Passed; 268 files already formatted |
 | Strict mypy | Passed; 147 source files checked |
-| Default pytest lane | Passed; 5,663 passed, 27 skipped, 14 deselected. Real-runtime tests remained deselected |
-| Focused telemetry catalog suite | Passed; 458 tests, including the replaced template-count assertions |
+| Default pytest lane | Passed; 5,666 passed, 27 skipped, 14 deselected. Real-runtime tests remained deselected |
+| Focused telemetry catalog suite | Passed; 461 tests, including the replaced template-count assertions and the three added in response to review |
 | `git diff --check main` | No trailing-whitespace or hard-tab match |
 | Markdown whitespace/hard-tab sweep | No match across every changed file |
-| Relative Markdown link sweep | 258 relative links checked in changed files; no broken target |
+| Relative Markdown link sweep | 272 relative links checked across the 14 changed Markdown files; no broken target |
 | Private-information sweep | No absolute path, username, planning-repository reference, or credential-shaped string in any changed file |
 | `gitleaks detect --config .gitleaks.toml --no-banner` | **Not run**; `gitleaks` is not installed on this host |
 
@@ -299,17 +299,45 @@ The `gitleaks` row is reported rather than claimed, exactly as every prior recor
 this repository reports it. A secret scanner has still never been run here, which is
 why the matrix correction above left that half of the sentence standing.
 
+### Two numbers this record got wrong before review
+
+Independent review caught two miscounts in the table above, and they had the same
+cause, which is worth stating because it is a trap this kind of record sets for
+itself: **both figures were taken before this document existed to be counted.**
+
+| Row | First draft said | Actual | Why |
+|---|---|---|---|
+| Ruff formatting | 267 files | **268** | Ruff formats Markdown as well as Python. The repository holds 121 Markdown and 147 Python files on this branch. 267 was the count from a moment when this record had not been written |
+| Relative link sweep | 258 links | **270** | This record contains 12 relative links of its own. 270 − 12 = 258, which is exactly the sweep that ran before it was added |
+
+Neither error changed a verdict — formatting passed either way and no link was ever
+broken — but a record whose own numbers are stale by one file is the failure this
+repository treats as a defect, and correcting it quietly would have been a second
+one.
+
+The link figure in the Results table above reads **272**, not the 270 in this table.
+Both are right at different moments: 270 was the count at the reviewed commit, and
+the two corrections made in response to review each added one link. Restating the
+reviewed figure and the current one separately is the point — collapsing them would
+reintroduce exactly the error this section exists to record.
+
 ### The test count moved, and by how much it should have
 
-The Sprint 2 head collects 5,686 selected tests; this branch collects 5,690. The
+The Sprint 2 head collects 5,686 selected tests; this branch collects 5,693. The
 review reported 5,659 passed and 27 skipped at the head, which is that same 5,686.
-The four are accounted for individually rather than assumed:
+The seven are accounted for individually rather than assumed:
 
 | Change | Tests |
 |---|---|
 | The replaced template-count assertion, still four parametrized cases | 0 |
 | `test_a_template_that_produced_nothing_says_so_rather_than_going_quiet` | +1 |
 | `test_a_reserved_term_appears_only_where_it_is_denied`, parametrized per Markdown document, over three new records | +3 |
+| `test_a_record_declaring_a_template_carries_every_required_section`, added in response to review | +1 |
+| `test_no_committed_evidence_record_still_holds_a_placeholder`, added in response to review | +1 |
+| `test_the_placeholder_check_refuses_the_line_that_got_past_review`, added in response to review | +1 |
+
+The first four landed in the first commit; the last three answer review findings and
+landed in the second.
 
 No test was deleted, and the skip count is unchanged at 27 — the two symbolic-link
 cleanup cases this host cannot create, plus the 25 that predate Sprint 2. None of
@@ -351,10 +379,83 @@ nothing was downloaded — the image and the model artifact were already present
 Cleanup: verified. `docker ps -a` was empty after every run, and the model cache
 was restored and re-verified.
 
-Review: an independent second reader examined the first commit of this branch
-against the completion review's eight required items before push. The findings and
-what they changed are recorded below.
+Review: two independent reviewers examined commit `cc88b70`, this branch's first
+commit, against the eight required items, before anything was pushed. One reviewed
+the change adversarially; the other checked eighteen named factual claims against
+the repository and the raw run logs. What they found, and what it changed, is
+recorded below — including a defect in this document itself.
 
 ## Independent second-eye review
 
-INDEPENDENT_REVIEW_PLACEHOLDER
+Two reviewers examined commit `cc88b70` before push: one adversarial code review of
+the whole change, one fact-check of eighteen named claims against the repository and
+the raw run logs. Both reproduced rather than trusted — each independently re-ran the
+lint, type, and test lanes, built a worktree at the Sprint 2 head to diff the test
+counts, read `observe_cache` and `observe_start` directly, and hand-counted the
+`Produced from` declarations.
+
+### The critical finding was in this document
+
+**The first draft of this record committed an unfilled `INDEPENDENT_REVIEW_PLACEHOLDER`
+token directly beneath a sentence asserting, in completed past tense, that an
+independent review had already happened and was "recorded below."** Nothing was
+recorded below. The same false completed-tense claim had been propagated into
+[the C2 certification record](v1-s2-004-c2-certification-result.md).
+
+That is precisely the defect this repository defines itself against — a document
+reading as more finished than the thing it describes — committed inside the record
+whose purpose is to catch exactly that. It is recorded here rather than quietly
+filled, because a remediation that hides its own worst finding is not a remediation.
+
+Three things changed in response. The placeholder is gone and this section holds the
+actual review. The two Authorisation sentences no longer assert a completed review
+in a commit where none existed; they name the commit reviewed and what the reviewers
+did. And a test now fails the suite if any committed record under `docs/proof/`
+carries a surviving placeholder token, so the next occurrence is caught by the build
+rather than by a reviewer's attention.
+
+That test is deliberately narrow, and its limits are stated in its own docstring: it
+catches the `PLACEHOLDER` token style and a record that still opens as a template. It
+does **not** police angle-bracket notation, because records legitimately use `<url>`,
+`<redacted>`, `<module>`, and `<repository root>` as generic notation, and a check
+that fired on those would be turned off within a week.
+
+### The two miscounted figures
+
+Both are corrected above and both had the same cause: the figure was taken before
+this record existed to be counted. Ruff formatting was recorded as 267 files and is
+268, because ruff formats Markdown as well as Python. The relative-link sweep was
+recorded as 258 links and is 270, this record's own 12 being the difference.
+
+### The uncited evidence row
+
+The `V1-S2-001` reconciliation table cited a source for two of its three rows. The
+third — the real cache hit — quoted `model_acquisition` output with no link, and the
+commit message claimed all three were cited. The row now names where that output
+lives and distinguishes it from the lifecycle tool's differently-worded output for
+the same artifact.
+
+### What the reviewers checked and did not dispute
+
+Recorded because a review that only lists faults understates what was verified:
+
+- The embedded certification result file was compared field by field against the file
+  the run generated: identical, with no difference.
+- The readiness-margin arithmetic was recomputed: 4.724 per cent, under the five per
+  cent the record claims.
+- All five cache-miss command outputs, including every exit code, matched the run log
+  verbatim.
+- `observe_cache` was confirmed to reach no socket, and `observe_start` to refuse
+  before `start()` is reached — so the cache-miss argument holds and the criterion
+  upgrade is not the silent reinterpretation the sprint review forbade.
+- The `+4` test delta was reproduced test-by-test against a worktree at the Sprint 2
+  head, and the template counts were re-derived by hand.
+- The `V1-S2-005` three-landing topology was re-checked by commit parentage:
+  `561d0d6` and `39c6237` are the only single-parent commits in the Sprint 2 range.
+- No private information, and no scope beyond the eight required items.
+
+One reviewer raised, and this record already disclosed, that the template count rests
+on a record's own declaration rather than on its structure. The suite now also
+requires a declaring record to carry every required evidence section, which closes
+the weaker half of that gap; it still cannot tell a truthful declaration from a
+mistaken one, and the [Limitations](#limitations) section continues to say so.

@@ -278,6 +278,9 @@ Cleanup: verified by the run itself and re-checked afterwards. The API was drain
 the runtime container was stopped and removed, and `docker ps -a` listed no
 container after the run.
 
-Review: recorded in
-[the Sprint 2 completion review](sprint-2-completion-review.md), together with the
-independent second-eye review of this change.
+Review: two independent reviewers examined the commit that produced this record.
+Their findings, and the corrections those findings forced, are recorded in
+[the Sprint 2 completion review](sprint-2-completion-review.md#independent-second-eye-review).
+Neither reviewer disputed any figure in this document: the embedded result file was
+compared field by field against the file the run generated and found identical, and
+the readiness-margin arithmetic was recomputed independently.
