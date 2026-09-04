@@ -1,0 +1,342 @@
+---
+# Source: inferops-llm/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inferops-inferops-llm
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.1.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: workload-identity
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+automountServiceAccountToken: false
+---
+# Source: inferops-llm/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inferops-inferops-llm-configuration
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.1.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: runtime-configuration
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+data:
+  INFEROPS_SERVING_ADAPTER: "real"
+  INFEROPS_REQUEST_TIMEOUT_MS: "120000"
+  INFEROPS_MAX_OUTPUT_TOKENS: "128"
+  INFEROPS_DRAIN_TIMEOUT_MS: "15000"
+  INFEROPS_DEPLOYMENT_ENVIRONMENT: "dev"
+  INFEROPS_CAPABILITY_ID: "inferops-native-serving"
+  INFEROPS_RELEASE_ID: "inferops"
+  INFEROPS_SERVICE_VERSION: ""
+  INFEROPS_WORKLOAD_ID: "support-assistant"
+  INFEROPS_WORKLOAD_VERSION: "0.1.0"
+  INFEROPS_OWNER_ID: "team-platform-demo"
+  INFEROPS_MODEL_IDENTIFIER: "qwen3-1-7b-q8-0"
+  INFEROPS_MODEL_REVISION: "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+  INFEROPS_RUNTIME_IMAGE_DIGEST: "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+  INFEROPS_LLAMA_SERVER_ENDPOINT: "http://inferops-inferops-llm-runtime:8080"
+  INFEROPS_LLAMA_SERVER_MODEL_PATH: "/models/Qwen3-1.7B-Q8_0.gguf"
+  INFEROPS_LLAMA_SERVER_MODEL_ALIAS: "qwen3-1.7b-q8_0"
+  INFEROPS_LLAMA_SERVER_CONTEXT_SIZE: "4096"
+  INFEROPS_LLAMA_SERVER_THREADS: "6"
+  INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS: "300000"
+  INFEROPS_LLAMA_SERVER_METRICS_ENABLED: "true"
+---
+# Source: inferops-llm/templates/api-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: inferops-inferops-llm
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.1.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: platform-api
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/component: platform-api
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http
+      protocol: TCP
+---
+# Source: inferops-llm/templates/runtime-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: inferops-inferops-llm-runtime
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.1.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: serving-runtime
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/component: serving-runtime
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+# Source: inferops-llm/templates/api-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inferops-inferops-llm
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.1.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: platform-api
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+      app.kubernetes.io/component: platform-api
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: inferops-llm-0.1.0
+        app.kubernetes.io/name: inferops-llm
+        app.kubernetes.io/instance: inferops
+        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: inferops
+        inferops.io/lifecycle: release
+        inferops.io/profile: real
+        inferops.io/owner: team-platform-demo
+        inferops.io/workload: support-assistant
+        app.kubernetes.io/component: platform-api
+      annotations:
+        inferops.io/configuration-checksum: 9e5b5c320271d6896044b3bae8d771c24d5c891c2ecdf188845bb03b4051fb47
+        inferops.io/cost-center: demo-cost-center
+        inferops.io/tenant: demo
+    spec:
+      serviceAccountName: inferops-inferops-llm
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: "localhost/inferops-api@sha256:7961c9f9ce773095461498774bc2f25053bcba6d01c40d8448da65e217091e50"
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8090
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: inferops-inferops-llm-configuration
+          env:
+            - name: INFEROPS_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+---
+# Source: inferops-llm/templates/runtime-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inferops-inferops-llm-runtime
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.1.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: serving-runtime
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+      app.kubernetes.io/component: serving-runtime
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: inferops-llm-0.1.0
+        app.kubernetes.io/name: inferops-llm
+        app.kubernetes.io/instance: inferops
+        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: inferops
+        inferops.io/lifecycle: release
+        inferops.io/profile: real
+        inferops.io/owner: team-platform-demo
+        inferops.io/workload: support-assistant
+        app.kubernetes.io/component: serving-runtime
+      annotations:
+        inferops.io/configuration-checksum: 9e5b5c320271d6896044b3bae8d771c24d5c891c2ecdf188845bb03b4051fb47
+        inferops.io/cost-center: demo-cost-center
+        inferops.io/tenant: demo
+    spec:
+      serviceAccountName: inferops-inferops-llm
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: runtime
+          image: "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+          imagePullPolicy: IfNotPresent
+          command:
+            - "/app/llama-server"
+          args:
+            - --model
+            - "/models/Qwen3-1.7B-Q8_0.gguf"
+            - --alias
+            - "qwen3-1.7b-q8_0"
+            - --host
+            - "0.0.0.0"
+            - --port
+            - "8080"
+            - --ctx-size
+            - "4096"
+            - --threads
+            - "6"
+            - --parallel
+            - "1"
+            - --n-predict
+            - "128"
+            - --temp
+            - "0"
+            - --metrics
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "6"
+              memory: 3Gi
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: inferops-model-cache
+            readOnly: true
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi

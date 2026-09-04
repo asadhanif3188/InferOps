@@ -1,0 +1,39 @@
+# The mock profile, as a render fixture. THIS IS A MOCK.
+#
+# A release rendered from this file installs the API alone. It installs no
+# serving runtime, mounts no model, and loads no weights, and nothing it returns
+# may be cited as evidence of real serving behaviour. The rule is
+# docs/serving/mock-and-real-boundary.md; the identity below carries the `mock-`
+# prefix so that the label lives in the artifact rather than in the directory it
+# happens to sit in.
+#
+# `api.image.digest` is the same placeholder the real fixture uses and is
+# documented there: the SHA-256 of the ASCII string
+# `inferops-api-image-not-yet-published`, which resolves to no image.
+#
+# What is deliberately absent, because the chart refuses each one under this
+# profile: a model revision, a model alias, a container path, a cache claim, and
+# any secret reference. A mock that carried a revision would read back as a
+# release that had loaded one.
+
+profile: mock
+
+api:
+  image:
+    repository: localhost/inferops-api
+    digest: sha256:7961c9f9ce773095461498774bc2f25053bcba6d01c40d8448da65e217091e50
+    pullPolicy: Never
+
+model:
+  identifier: mock-fixed-fixture
+
+ownership:
+  owner: team-platform-demo
+  workloadId: support-assistant-mock
+  workloadVersion: 0.1.0
+  tenant: demo
+  costCenter: demo-cost-center
+
+telemetry:
+  enabled: true
+  deploymentEnvironment: ci

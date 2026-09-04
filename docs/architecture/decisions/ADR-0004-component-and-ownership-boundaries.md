@@ -10,10 +10,16 @@
 | Superseded by | None |
 
 > [!IMPORTANT]
-> This record decides boundaries for components that **do not exist**. There is no
-> platform API, no adapter, no Helm chart, and no Terraform configuration in this
-> repository. Nothing here is evidence that the design works; it is a constraint on
-> what may be built, adopted before there is an implementation to argue with.
+> This record decided boundaries for components that did not exist when it was
+> accepted. Two of them do now: the platform API and its adapters are implemented,
+> and `V1-S3-002-PR1` added the Helm chart under
+> [`charts/inferops-llm/`](../../../charts/inferops-llm/). There is still no
+> Terraform configuration. **No decision below has changed**, and the arrival of a
+> chart is not evidence that the design works: nothing in this repository has
+> installed it, so what exists is a chart that renders, not a release that runs.
+>
+> The constraint is what the record is for, and it is now a constraint something
+> can be checked against rather than only a commitment about future work.
 >
 > One half of it is machine-checked. The ownership inventory this record accepts is
 > committed as data and validated by `tests/architecture/test_resource_ownership.py`,

@@ -259,6 +259,16 @@
       "note": "No published claim covers the dependency rule. It is an architecture decision rather than a claim about the product, and the claim matrix names none — but the rule is what makes the unit layer possible at all, so the check is here rather than deferred until a claim needs it."
     },
     {
+      "module": "tests/architecture/test_helm_chart.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The Helm chart against the ownership inventory and the accepted pins: that it renders only what Helm is allowed to own and no Terraform-owned object, that every Helm-owned row is either rendered or declared deferred, that the mock and real selection is derived from the profile in one place the values contract cannot reach, that every image is digest-pinned and every workload carries the six pod and container security fields, and that the runtime digest, the model revision, and the runtime arguments still match the records they were copied from.",
+      "claims": [
+        "no-resource-in-the-architecture-has-two-owners"
+      ],
+      "note": "It reads the chart and two committed renders of it. It installs nothing and contacts no cluster, so it says nothing about whether a release installs or uninstalls; that is the kubernetes-smoke layer's question, and the claim it would answer is still a recorded gap."
+    },
+    {
       "module": "tests/architecture/test_resource_ownership.py",
       "layer": "architecture-inventory",
       "marker": "architecture",
@@ -576,7 +586,7 @@
     },
     {
       "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
-      "reason": "No chart exists. The claim names the kubernetes-smoke layer, which declares no test paths.",
+      "reason": "A chart exists and nothing installs it. The claim names the kubernetes-smoke layer, which declares no test paths, and installing is what the claim is about: tests/architecture/test_helm_chart.py reads the chart and two committed renders of it without applying anything.",
       "coveredBy": null
     },
     {

@@ -1,10 +1,20 @@
 # V1 resource ownership
 
 Status: **accepted as the V1 ownership boundary**, in
-[ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md). Nothing
-described here is implemented: there is no Terraform configuration and no Helm
-chart in this repository. The rows below are commitments about what those will be
-allowed to own when they are written.
+[ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md). Half of it is
+now written against: `V1-S3-002-PR1` added the Helm chart at
+[`charts/inferops-llm/`](../../charts/inferops-llm/), and there is still no
+Terraform configuration. **Every row below is still `planned` or `deferred`, and
+that is correct**: a chart renders objects, and a rendered object is a file. None
+of the resources in the release table exists in a cluster, because nothing here
+has installed one.
+
+What did change is that the chart is now checked against this document.
+`tests/architecture/test_helm_chart.py` reads the release table and refuses a
+chart that renders something it does not name, or that renders a Terraform-owned
+object, or that leaves a Helm-owned row neither rendered nor declared deferred.
+The last paragraph of this document used to say that no such check could exist.
+It exists for the release layer; it does not exist for Terraform.
 
 The authoritative form of this document is data, not prose:
 [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json). The tables
@@ -217,6 +227,13 @@ all of it. So a resource that survives a wider operation survives every narrower
 one, and a survival list that skips an operation and claims a larger one is
 refused.
 
+Checked by `tests/architecture/test_helm_chart.py`, for the release layer only:
+that the committed chart renders every row the release table gives it or declares
+the row deferred, that it renders no Terraform-owned object and no `Namespace`,
+that it mounts the model cache claim without creating it, and that every rendered
+object carries the isolation label and the release lifecycle marker.
+
 Not checked by anything, because there is nothing to check it against: that the
-inventory describes the Terraform and Helm that get written. That check arrives with
-the implementation, and until then this file is a commitment, not a verification.
+inventory describes the **Terraform** that gets written. That check arrives with
+the implementation, and until then the prerequisite half of this file is a
+commitment rather than a verification.

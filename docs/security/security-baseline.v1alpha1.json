@@ -1428,8 +1428,8 @@
       "threats": [
         "T-12"
       ],
-      "whyDeferred": "A policy object belongs to a release, and no chart exists to carry it. Committing one now would produce a manifest nothing installs and a control nothing applies.",
-      "whatWouldHaveToBeTrue": "A Helm chart, and an executed test showing that a policy denies traffic on the cluster this project actually uses. The second is the one that is easy to skip.",
+      "whyDeferred": "A policy object belongs to a release. A chart now exists and deliberately carries no policy: V1-S3-004 owns the network policy, and committing one here would produce a manifest nothing installs and a control nothing applies.",
+      "whatWouldHaveToBeTrue": "A policy in the chart, and an executed test showing that it denies traffic on the cluster this project actually uses. The chart arrived with V1-S3-002-PR1 and neither half of this has, so the risk is unchanged. The executed test is the one that is easy to skip.",
       "notClaimed": "No network isolation property is claimed at any boundary.",
       "blocksProductionUse": true
     },
@@ -1440,8 +1440,8 @@
       "threats": [
         "T-11"
       ],
-      "whyDeferred": "This platform deploys no pod. The six pod-security properties are enforced over every manifest committed here, which is a repository property rather than a cluster one.",
-      "whatWouldHaveToBeTrue": "A rendering path that produces pod specifications, and an admission policy in the cluster that refuses one that does not carry the properties.",
+      "whyDeferred": "This platform deploys no pod. The six pod-security properties are enforced over every manifest committed here and, since V1-S3-002-PR1, over the chart's committed renders as well, which is a repository property rather than a cluster one.",
+      "whatWouldHaveToBeTrue": "A rendering path that produces pod specifications, which the chart now is, and an admission policy in the cluster that refuses one that does not carry the properties, which nothing here has. The second is what this risk turns on.",
       "notClaimed": "No document may describe a workload this platform deployed as constrained, because it has deployed none.",
       "blocksProductionUse": true
     },

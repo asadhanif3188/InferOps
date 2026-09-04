@@ -1,0 +1,92 @@
+{{- include "inferops-llm.validate" . -}}
+{{/*
+`platform-api-deployment` in the ownership inventory.
+
+No probe is rendered. That is deliberate and it is the one omission a reader
+should not repair casually: the feasibility trial recorded that the runtime's
+health endpoint returns 503 while loading, which is correct readiness behaviour
+and wrong liveness behaviour, so a liveness probe aimed at it restarts the pod
+mid-load and never converges. Probes are V1-S3-002-PR2's, with the mapping
+argued rather than assumed.
+
+Nothing here is evidence that this deployment runs. No InferOps API image is
+published, and this chart has not been installed.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: platform-api
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "inferops-llm.api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "inferops-llm.labels" . | nindent 8 }}
+        app.kubernetes.io/component: platform-api
+      annotations:
+        {{- /* A configuration change must roll the pods; without this the
+               ConfigMap changes and the running processes keep the old
+               environment, which is a difference nothing would report. */}}
+        inferops.io/configuration-checksum: {{ include "inferops-llm.derivedEnv" . | sha256sum }}
+        {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "inferops-llm.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "inferops-llm.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: api
+          image: {{ include "inferops-llm.api.image" . | quote }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.containerPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "inferops-llm.configMapName" . }}
+          env:
+            {{- include "inferops-llm.downwardEnv" . | nindent 12 }}
+            {{- with (include "inferops-llm.secretEnv" . | trim) }}
+            {{- . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.api.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          securityContext:
+            {{- include "inferops-llm.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+      {{- with .Values.api.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

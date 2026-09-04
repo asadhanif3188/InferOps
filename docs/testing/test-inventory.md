@@ -103,9 +103,14 @@ read a WorkloadContract.
 
 ### `architecture-inventory` — [`tests/architecture/`](../../tests/architecture/)
 
-Two modules. The committed ownership inventory against the documents describing
-it, and every module under `src/inferops/` read for the imports the dependency
-rule forbids.
+Four modules. The committed ownership inventory against the documents describing
+it; every module under `src/inferops/` read for the imports the dependency rule
+forbids; the local cluster lifecycle scripts read for the safety rules ADR 0001
+states for them; and the Helm chart read against the release half of the
+ownership inventory, its accepted pins, and the mock and real boundary.
+
+The count said two until this story and had been wrong since `V1-S3-001-PR1`
+added the third. It is not machine-checked, which is why it drifted.
 
 ### `adapter` — [`tests/adapters/`](../../tests/adapters/)
 
@@ -183,7 +188,7 @@ and, where something outside pytest defends it, what that is.
 | `the-model-artifact-matches-its-published-hash` | No pytest module computes or compares the hash. The real-runtime suite drives a running runtime, and the runtime exposes no hash of the file it loaded | The download step of [the feasibility workflow](../serving/feasibility-workflow.md), with both hashes recorded in [its evidence record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
 | `a-local-cluster-is-created-and-removed-without-residue` | The `kubernetes-smoke` layer declares no test paths | [`scripts/environment/`](../../scripts/environment/), run by hand, with the record under [`docs/proof/environment/`](../proof/environment/) |
 | `no-credential-or-model-artifact-enters-public-history` | The `security-scan` layer is planned. A configuration and an allowlist are committed and no recorded run of a scanner exists | Nothing yet |
-| `a-helm-release-installs-and-uninstalls-without-residue` | No chart exists, and the layer the claim names declares no test paths | Nothing yet |
+| `a-helm-release-installs-and-uninstalls-without-residue` | A chart exists and nothing installs it; the layer the claim names declares no test paths | Nothing yet. The chart suite reads the chart, and reading is not installing |
 | `sustained-throughput-and-capacity-under-load` | Deferred out of V1. A module here would produce output nothing may publish | Nothing, deliberately |
 
 The first two rows are the ones worth reading twice. Both claims are

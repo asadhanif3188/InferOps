@@ -17,9 +17,12 @@ Everything here is the host-local path: the
 [standalone runtime package](local-runtime-package.md), the
 [local real composition](local-real-composition.md), and the
 [lifecycle](model-lifecycle.md) that spans them. **Kubernetes is deliberately out
-of scope.** No chart exists, no manifest in this repository is deployed by any
-documented workflow, and a troubleshooting section for a deployment path nobody
-can follow would be advice rather than documentation.
+of scope.** A chart exists — [`charts/inferops-llm/`](../../charts/inferops-llm/),
+added by `V1-S3-002-PR1` — and no documented workflow installs it: it has no
+probes, no lifecycle test, and no published API image to run. Nothing in this
+repository deploys a manifest, so a troubleshooting section for a deployment path
+nobody can follow would still be advice rather than documentation. It arrives
+when the path does.
 
 ## Before anything else
 

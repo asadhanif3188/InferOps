@@ -1,0 +1,56 @@
+# The real profile, as a render fixture.
+#
+# This file is an input to `helm lint` and `helm template` and to
+# tests/architecture/test_helm_chart.py. It is not a deployable values file and
+# installing from it would fail on the first image pull, for one reason stated
+# plainly here rather than discovered later:
+#
+#   `api.image.digest` is a PLACEHOLDER. It is the SHA-256 of the ASCII string
+#   `inferops-api-image-not-yet-published`, which anyone can recompute, and no
+#   image with that digest exists in any registry. No InferOps API image is
+#   published: `platform-api-container-image` is `planned` in the ownership
+#   inventory and no Dockerfile is committed anywhere in this repository. The
+#   value is here because the chart refuses an unpinned image, and a fixture
+#   that satisfied the refusal with a movable tag would have taught the render
+#   check to accept one.
+#
+# Every other pinned value is real and is copied from the accepted records: the
+# runtime digest from ADR 0002 and deploy/serving/runtime/container-package.v1.json,
+# the model revision from docs/serving/model-source.v1.json, and the runtime
+# settings from docs/serving/runtime-profile.local.v1.json. A test compares them,
+# so a drift between this fixture and an accepted decision fails the build rather
+# than sitting here unread.
+
+profile: real
+
+api:
+  image:
+    repository: localhost/inferops-api
+    digest: sha256:7961c9f9ce773095461498774bc2f25053bcba6d01c40d8448da65e217091e50
+    pullPolicy: Never
+
+runtime:
+  image:
+    repository: ghcr.io/ggml-org/llama.cpp
+    digest: sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+    pullPolicy: IfNotPresent
+
+model:
+  identifier: qwen3-1-7b-q8-0
+  revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  alias: qwen3-1.7b-q8_0
+  containerPath: /models/Qwen3-1.7B-Q8_0.gguf
+  cache:
+    claimName: inferops-model-cache
+    readOnly: true
+
+ownership:
+  owner: team-platform-demo
+  workloadId: support-assistant
+  workloadVersion: 0.1.0
+  tenant: demo
+  costCenter: demo-cost-center
+
+telemetry:
+  enabled: true
+  deploymentEnvironment: dev

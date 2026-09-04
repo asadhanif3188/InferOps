@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inferops.io/charts/inferops-llm/values.schema.json",
+  "title": "inferops-llm chart values",
+  "description": "The values contract for the InferOps LLM release. Helm validates every install, upgrade, template, and lint against this file. Three properties it exists to make structural rather than remembered: profile has no default and no third value, so an omission cannot select the mock; every image reference is a sha256 digest, because a tag is a label that can be moved; and no field anywhere accepts a secret value, because secret material is referenced by name and read from Kubernetes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile",
+    "api",
+    "runtime",
+    "model",
+    "ownership",
+    "telemetry",
+    "security"
+  ],
+  "properties": {
+    "profile": {
+      "description": "Which serving path this release installs. The empty string is the shipped default and is refused by the template: it is not `mock`, and a chart whose omission selected a mock would violate rule 5 of the mock and real boundary once per install.",
+      "type": "string",
+      "enum": ["", "mock", "real"]
+    },
+    "nameOverride": { "type": "string", "maxLength": 63 },
+    "fullnameOverride": { "type": "string", "maxLength": 63 },
+    "namespacePrefixCheck": { "type": "boolean" },
+    "commonLabels": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/labelValue" }
+    },
+    "commonAnnotations": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["replicaCount", "image", "containerPort", "service", "resources"],
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "image": { "$ref": "#/$defs/image" },
+        "containerPort": { "$ref": "#/$defs/port" },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["port"],
+          "properties": {
+            "port": { "$ref": "#/$defs/port" },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+        "readinessPath": { "$ref": "#/$defs/httpPath" },
+        "livenessPath": { "$ref": "#/$defs/httpPath" },
+        "probes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Probes belong to V1-S3-002-PR2. The field exists so that a values file written now names the thing that is deferred instead of leaving a reader to notice its absence; the templates render no probe whatever this says.",
+              "type": "boolean"
+            }
+          }
+        },
+        "requestTimeoutMs": { "$ref": "#/$defs/positiveMilliseconds" },
+        "maxOutputTokens": { "type": "integer", "minimum": 1, "maximum": 32768 },
+        "drainTimeoutMs": { "$ref": "#/$defs/positiveMilliseconds" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "extraEnv": { "$ref": "#/$defs/extraEnv" }
+      }
+    },
+
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["replicaCount", "image", "command", "containerPort", "service", "resources"],
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "image": { "$ref": "#/$defs/image" },
+        "command": { "type": "string", "minLength": 1, "pattern": "^/" },
+        "containerPort": { "$ref": "#/$defs/port" },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["port"],
+          "properties": {
+            "port": { "$ref": "#/$defs/port" },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+        "contextSizeTokens": { "type": "integer", "minimum": 1, "maximum": 1048576 },
+        "threads": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "parallelSlots": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "defaultMaxOutputTokens": { "type": "integer", "minimum": 1, "maximum": 32768 },
+        "defaultTemperature": { "type": "number", "minimum": 0, "maximum": 2 },
+        "startupBudgetMs": { "$ref": "#/$defs/positiveMilliseconds" },
+        "healthPath": { "$ref": "#/$defs/httpPath" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "temporaryFilesystemSizeMi": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "tolerations": { "$ref": "#/$defs/tolerations" },
+        "affinity": { "$ref": "#/$defs/affinity" },
+        "extraEnv": { "$ref": "#/$defs/extraEnv" }
+      }
+    },
+
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identifier", "revision", "cache"],
+      "properties": {
+        "identifier": {
+          "description": "The platform model identifier. Required under the real profile and refused under the mock profile; the template decides which, because a JSON Schema cannot see `profile` from here without duplicating the whole object.",
+          "type": "string",
+          "maxLength": 63,
+          "pattern": "^$|^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "revision": {
+          "description": "The immutable upstream model revision, as a forty-character commit identifier. An identifier alone pins nothing.",
+          "type": "string",
+          "pattern": "^$|^[0-9a-f]{40}$"
+        },
+        "alias": { "type": "string", "maxLength": 253 },
+        "containerPath": {
+          "type": "string",
+          "pattern": "^$|^/[^\\s]*$"
+        },
+        "cache": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["claimName"],
+          "properties": {
+            "claimName": {
+              "description": "An existing PersistentVolumeClaim, owned by Terraform. This chart mounts it and never creates it.",
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
+            },
+            "subPath": { "type": "string", "pattern": "^$|^[^/][^\\s]*$" },
+            "readOnly": { "type": "boolean" }
+          }
+        }
+      }
+    },
+
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "workloadId"],
+      "properties": {
+        "owner": { "$ref": "#/$defs/dnsSafeOrEmpty" },
+        "workloadId": { "$ref": "#/$defs/dnsSafeOrEmpty" },
+        "workloadVersion": {
+          "type": "string",
+          "pattern": "^$|^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "tenant": { "type": "string", "maxLength": 63 },
+        "costCenter": { "type": "string", "maxLength": 63 }
+      }
+    },
+
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "deploymentEnvironment"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "metricsPath": { "$ref": "#/$defs/httpPath" },
+        "deploymentEnvironment": {
+          "description": "The catalog bounds this attribute at four distinct values and V1 has one. `dev` is the conservative default: a figure from a laptop that defaulted to `dev` is never read as a figure from somewhere else.",
+          "type": "string",
+          "enum": ["dev", "ci", "local", "test"]
+        },
+        "serviceVersion": {
+          "description": "Empty rather than `unknown`. A `service.version` of `unknown` sorts, groups, and reads like a release somebody shipped.",
+          "type": "string",
+          "maxLength": 63
+        },
+        "scrapeAnnotations": {
+          "description": "Nothing collects these. V1-S3-007 decides scrape and discovery, and until it does the annotations are inert.",
+          "type": "boolean"
+        }
+      }
+    },
+
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runAsUser", "runAsGroup", "serviceAccount", "secretRefs"],
+      "properties": {
+        "runAsUser": { "$ref": "#/$defs/nonRootId" },
+        "runAsGroup": { "$ref": "#/$defs/nonRootId" },
+        "fsGroup": { "$ref": "#/$defs/nonRootId" },
+        "serviceAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["create"],
+          "properties": {
+            "create": { "type": "boolean" },
+            "name": { "$ref": "#/$defs/dnsSafeOrEmpty" },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+        "secretRefs": {
+          "description": "Secret material by reference. There is no `value` member and there never will be: a chart that could carry a literal is a chart that will, and it would carry it into rendered manifests, release history, and whatever reads them.",
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "secretName", "key"],
+            "properties": {
+              "name": {
+                "description": "The environment variable the value is bound to.",
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "maxLength": 63
+              },
+              "secretName": { "$ref": "#/$defs/dnsSafe" },
+              "key": { "type": "string", "minLength": 1, "maxLength": 253 }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "digest"],
+      "properties": {
+        "repository": {
+          "description": "A registry path with no tag and no digest attached; the digest is a separate field so that neither can be written without the other being visible.",
+          "type": "string",
+          "maxLength": 255,
+          "pattern": "^$|^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)*$"
+        },
+        "digest": {
+          "description": "sha256 and sixty-four hexadecimal characters. A tag is refused, including a tag that happens to look immutable.",
+          "type": "string",
+          "pattern": "^$|^sha256:[0-9a-f]{64}$"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"]
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requests", "limits"],
+      "description": "Both halves are required. A workload with no request is scheduled anywhere and a workload with no limit is bounded by nothing, and neither is a state this chart lets a values file reach by omission.",
+      "properties": {
+        "requests": { "$ref": "#/$defs/resourceQuantities" },
+        "limits": { "$ref": "#/$defs/resourceQuantities" }
+      }
+    },
+    "resourceQuantities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu", "memory"],
+      "properties": {
+        "cpu": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?m?$"
+        },
+        "memory": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|k|M|G|T)?$"
+        }
+      }
+    },
+    "extraEnv": {
+      "description": "Extra environment for a container. Every name the chart derives is reserved and the template refuses one here rather than merging it, because the merge order is exactly how a real release would come to publish `mock`.",
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "maxLength": 63
+          },
+          "value": { "type": "string", "maxLength": 1024 }
+        }
+      }
+    },
+    "tolerations": {
+      "description": "Passed through to the pod specification unchanged. The members are Kubernetes' own and are validated by the API server, so this schema states the policy rather than restating the upstream shape - an object here that declared neither would accept a typo silently.",
+      "type": "array",
+      "maxItems": 16,
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "affinity": {
+      "description": "Passed through unchanged, for the same reason as tolerations.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "httpPath": { "type": "string", "pattern": "^/[A-Za-z0-9._~/-]*$" },
+    "positiveMilliseconds": { "type": "integer", "minimum": 1, "maximum": 3600000 },
+    "nonRootId": {
+      "description": "Non-zero. Root is not a uid this chart lets a values file select.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "dnsSafe": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    },
+    "dnsSafeOrEmpty": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^$|^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    },
+    "labelValue": {
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^$|^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$"
+    }
+  }
+}
