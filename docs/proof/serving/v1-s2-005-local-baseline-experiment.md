@@ -3,6 +3,8 @@
 Date registered: 2026-09-03
 Date executed: 2026-09-03
 
+Produced from [the experiment template](../templates/TEMPLATE-experiment.md).
+
 ## Classification and certification
 
 Evidence class: `local-real-cpu`. Executed on an authorized CPU host on

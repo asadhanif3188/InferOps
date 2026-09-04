@@ -8,23 +8,32 @@ reproducible evidence.
 > This repository provides governance documentation, a local development
 > environment, a published workload contract and domain, mock and real serving
 > adapters, an ASGI inference API, workload scaffolding, verified model-cache
-> tooling, and a loopback-only local composition workflow. It does not provide a
-> deployable platform, a production network server, or a released
-> V1 capability. Nothing here deploys or admits a workload.
+> tooling, a loopback-only local composition workflow, a C2 real-runtime
+> certification workflow, a model lifecycle state model, a measured local serving
+> baseline, and software-supply-chain evidence. It does not provide a deployable
+> platform, a production network server, or a released V1 capability. Nothing here
+> deploys or admits a workload.
 >
-> A serving runtime and model **have** now been selected and proven once, on one
-> host, under
-> [a recorded feasibility trial](docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md).
-> That is a decision backed by evidence, not a capability: there is no serving
-> path in this repository that anyone can deploy, and the trial's own manifests
+> A serving runtime and model **have** been selected, and the selected model
+> **does** now serve real completions through the InferOps API on a contributor's
+> own machine: see
+> [the C2 certification result](docs/proof/serving/v1-s2-004-c2-certification-result.md)
+> and [the measured baseline](docs/proof/serving/v1-s2-005-baseline-raw-results.md).
+> That is a working local path backed by evidence, not a capability anyone can
+> deploy. Every run behind it is loopback-only, on one host, on CPU, started by
+> hand under explicit authorization. Nothing here is exposed to a network,
+> authenticated, authorized, scheduled, or defended, and the manifests that exist
 > are apparatus rather than a product.
 
 ## Repository status
 
-The repository has established its public foundations and implemented the first
-local developer paths through the contract, adapters, ASGI API, and scaffolder.
-The [Sprint 1 developer quick start](docs/developer-quick-start.md) is the shortest
-verified entry point. Any capability claim must link to reproducible evidence and
+The repository has established its public foundations, implemented the local
+developer paths through the contract, adapters, ASGI API, and scaffolder, and
+proved a real local serving path end to end: the pinned runtime loads the
+hash-verified model, the API serves a real completion, and the run is certified at
+`C2`. The [developer quick start](docs/developer-quick-start.md) is the shortest
+verified entry point; the real path needs a capable host and explicit
+authorization. Any capability claim must link to reproducible evidence and
 identify whether the result is documented, synthetic, mock, estimated, or produced
 by a real runtime.
 
@@ -32,18 +41,18 @@ by a real runtime.
 
 | Topic | Entry point | Current status |
 |---|---|---|
-| Developer quick start | [docs/developer-quick-start.md](docs/developer-quick-start.md) | Mock workflow executed locally; real-runtime API smoke documented as authorization-gated and not executed by this change |
+| Developer quick start | [docs/developer-quick-start.md](docs/developer-quick-start.md) | Mock workflow executed locally; the real-runtime API smoke is authorization-gated and has been executed and recorded — see [the Sprint 1 real-runtime closure](docs/proof/serving/v1-s1-real-runtime-closure.md) |
 | Contribution and review | [CONTRIBUTING.md](CONTRIBUTING.md) | Accepted repository convention |
 | Repository governance | [docs/governance/repository.md](docs/governance/repository.md) | Accepted for this repository skeleton |
 | Supported-host prerequisites | [docs/prerequisites.md](docs/prerequisites.md) | Documentation and local development supported; serving requirements measured on one host |
 | Local development cluster | [docs/environment/local-cluster.md](docs/environment/local-cluster.md) | Executed and evidenced on one Windows host |
 | Serving runtime and model feasibility | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Procedure executed once; one runtime and model revision selected |
-| Model acquisition | [docs/serving/model-acquisition.md](docs/serving/model-acquisition.md) | Revision-pinned, resumable, hash-verifying workspace cache workflow; no model download executed by this change |
+| Model acquisition | [docs/serving/model-acquisition.md](docs/serving/model-acquisition.md) | Revision-pinned, resumable, hash-verifying workspace cache workflow; executed against the real 1.71 GiB artifact, which downloaded and verified against its published SHA-256. Resumption after interruption is proved synthetically only |
 | Local LLM runtime profile | [docs/serving/local-runtime-profile.md](docs/serving/local-runtime-profile.md) | Digest-pinned process, external model mount, CPU resources, generation defaults, timeouts, and health semantics validated offline |
 | Local runtime package | [docs/serving/local-runtime-package.md](docs/serving/local-runtime-package.md) | Standalone Docker command, loopback exposure, bounded startup/readiness/inference/shutdown, and ownership-scoped cleanup validated through offline and synthetic checks |
-| Local real composition | [docs/serving/local-real-composition.md](docs/serving/local-real-composition.md) | One guarded workflow starts the pinned runtime before a real-adapter API, checks both readiness boundaries, and cleans up in reverse order; no real run performed by this change |
-| Real-runtime certification | [docs/serving/real-runtime-certification.md](docs/serving/real-runtime-certification.md) | Repeatable C2 smoke workflow with hardware refusal, bounded readiness, real identity assertions, and labelled evidence output; no authorized real run performed by this change |
-| Local serving baseline | [docs/serving/local-serving-baseline.md](docs/serving/local-serving-baseline.md) | Fixed fixture, warm-up, bounded measured phase, sanitized environment capture, raw record format, and deterministic summary registered before any run; the experiment was not executed and no measured baseline exists |
+| Local real composition | [docs/serving/local-real-composition.md](docs/serving/local-real-composition.md) | One guarded workflow starts the pinned runtime before a real-adapter API, checks both readiness boundaries, and cleans up in reverse order; executed against the real runtime on one CPU host, repeatedly |
+| Real-runtime certification | [docs/serving/real-runtime-certification.md](docs/serving/real-runtime-certification.md) | Repeatable C2 smoke workflow with hardware refusal, bounded readiness, real identity assertions, and labelled evidence output; one authorized run [certified at `C2`](docs/proof/serving/v1-s2-004-c2-certification-result.md) on 2026-09-04, with under five per cent of headroom against the readiness budget. The failure path is exercised synthetically only |
+| Local serving baseline | [docs/serving/local-serving-baseline.md](docs/serving/local-serving-baseline.md) | Fixed fixture, warm-up, bounded measured phase, sanitized environment capture, raw record format, and deterministic summary registered before any run; [executed on 2026-09-03](docs/proof/serving/v1-s2-005-baseline-raw-results.md), all 30 measured requests succeeded and every pre-registered threshold was met. One host, one day, CPU only, and not a benchmark |
 | Model lifecycle | [docs/serving/model-lifecycle.md](docs/serving/model-lifecycle.md) | Ordered state model spanning cache and runtime, with the answer each probe gives in each state; validated offline and measured on an authorized CPU host across three cold/warm comparisons; every ordering property held and no cold/warm timing difference was established |
 | Local runtime troubleshooting | [docs/serving/local-runtime-troubleshooting.md](docs/serving/local-runtime-troubleshooting.md) | Symptom-oriented diagnosis and recovery for acquisition, integrity, disk, ports, memory, model load, readiness, timeouts, cache, connectivity, and shutdown; every diagnostic executed on one host and machine-checked against the records it quotes, with the authorization-gated recoveries described rather than run |
 | Mock and real serving boundary | [docs/serving/mock-and-real-boundary.md](docs/serving/mock-and-real-boundary.md) | Accepted rule; a mock may never certify real runtime behaviour |
@@ -67,7 +76,7 @@ by a real runtime.
 | Worked cost example | [docs/cost/worked-example.md](docs/cost/worked-example.md) | Every figure synthetic and recomputed by the suite; confidence `none` and no figure for what anything costs |
 | Threat model and security baseline | [docs/security/README.md](docs/security/README.md) | Baseline accepted and machine-checked; nothing here defends a running system, and twelve risks are carried rather than reduced |
 | Deferred security risks | [docs/security/deferred-risks.md](docs/security/deferred-risks.md) | Twelve risks and four accepted exceptions; ten of the twelve block production use |
-| Evidence records and templates | [docs/proof/README.md](docs/proof/README.md) | Four templates published; a template is a format and has produced no record |
+| Evidence records and templates | [docs/proof/README.md](docs/proof/README.md) | Four templates published, two of which have produced records; the full record index is in [docs/proof/README.md](docs/proof/README.md) |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published, which is a gap the baseline records |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | Unreleased changes only |

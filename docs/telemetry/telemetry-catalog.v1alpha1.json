@@ -1312,7 +1312,7 @@
       "path": "docs/proof/templates/TEMPLATE-experiment.md",
       "purpose": "Registers what will be measured, how, and what result would count as a failure, before the run happens.",
       "v1Status": "published",
-      "recordsProduced": 0
+      "recordsProduced": 1
     },
     {
       "templateId": "environment",
@@ -1326,7 +1326,7 @@
       "path": "docs/proof/templates/TEMPLATE-raw-result.md",
       "purpose": "Describes a machine-readable result set, its schema, its hash, and what was removed from it before it was committed.",
       "v1Status": "published",
-      "recordsProduced": 0
+      "recordsProduced": 5
     },
     {
       "templateId": "claim-evidence",

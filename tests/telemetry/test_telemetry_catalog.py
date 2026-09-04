@@ -1014,9 +1014,157 @@ def test_every_template_says_it_is_a_template(row: dict) -> None:
     assert "is a **template**" in text, row["path"]
 
 
+PRODUCED_FROM = re.compile(
+    r"^Produced from \[[^\]]+\]\((?:\.\./)*templates/TEMPLATE-([a-z-]+)\.md\)\.$",
+    re.MULTILINE,
+)
+
+
+def _records_declaring_each_template() -> dict[str, list[str]]:
+    """Every committed record under ``docs/proof/`` that names its source template.
+
+    A record declares its template; the catalog states a count; this suite makes
+    the two agree. Counting by section headings was rejected: all four templates
+    share the same required headings, so a structural match cannot tell an
+    experiment record from an environment one, and a count nobody can check is
+    the thing this repository treats as a defect.
+    """
+    found: dict[str, list[str]] = {row["templateId"]: [] for row in TEMPLATES}
+    proof_root = REPO_ROOT / "docs" / "proof"
+    for path in sorted(proof_root.rglob("*.md")):
+        if path.parent.name == "templates":
+            continue
+        for template_id in PRODUCED_FROM.findall(path.read_text(encoding="utf-8")):
+            assert template_id in found, (
+                f"{path.relative_to(REPO_ROOT).as_posix()} declares the unknown "
+                f"template {template_id!r}"
+            )
+            found[template_id].append(path.relative_to(proof_root).as_posix())
+    return found
+
+
 @pytest.mark.parametrize("row", TEMPLATES, ids=lambda row: row["templateId"])
-def test_a_template_has_produced_nothing_and_says_so(row: dict) -> None:
-    assert row["recordsProduced"] == 0, row["templateId"]
+def test_a_template_declares_the_records_it_actually_produced(row: dict) -> None:
+    """The count is a fact about committed records, not a number somebody typed.
+
+    This assertion previously read ``== 0`` for every template. That was true when
+    it was written and became false once ``V1-S2-005`` published an experiment
+    record and raw results from these formats, at which point a test was enforcing
+    a claim the repository had already outgrown. Corrected in the Sprint 2
+    completion remediation.
+    """
+    declared = _records_declaring_each_template()[row["templateId"]]
+    assert row["recordsProduced"] == len(declared), (
+        f"{row['templateId']} declares recordsProduced={row['recordsProduced']} "
+        f"but {len(declared)} record(s) name it: {declared}"
+    )
+
+
+def test_a_template_that_produced_nothing_says_so_rather_than_going_quiet() -> None:
+    """A format with no record yet is a real state and must stay visible."""
+    produced = _records_declaring_each_template()
+    unused = sorted(tid for tid, records in produced.items() if not records)
+    assert unused, (
+        "every template now has a record, so the catalog can no longer show the "
+        "difference between a format that is used and one that is only published; "
+        "this suite needs a new way to keep that distinction visible"
+    )
+
+
+def test_a_record_declaring_a_template_carries_every_required_section() -> None:
+    """A declaration is a claim about shape, so the shape is checked.
+
+    This does not make the declaration trustworthy — the four templates share the
+    same required headings, so nothing here can tell a record that declares
+    ``raw-result`` from one that should have declared ``environment``. What it does
+    refuse is the weaker failure: a document that claims a template and is not
+    record-shaped at all. The residual gap is stated in the Sprint 2 completion
+    review rather than left for a reader to find.
+    """
+    proof_root = REPO_ROOT / "docs" / "proof"
+    for template_id, records in _records_declaring_each_template().items():
+        for relative in records:
+            text = (proof_root / relative).read_text(encoding="utf-8")
+            headings = HEADING.findall(text)
+            for section in SECTIONS:
+                assert headings.count(section["heading"]) == 1, {
+                    "record": relative,
+                    "declares": template_id,
+                    "missing or duplicated heading": section["heading"],
+                    "found": headings,
+                }
+
+
+UNFILLED_PLACEHOLDER = re.compile(r"^`?[A-Z0-9_]*PLACEHOLDER[A-Z0-9_]*`?$")
+
+
+def test_no_committed_evidence_record_still_holds_a_placeholder() -> None:
+    """A record that reads as finished while holding a placeholder is the defect.
+
+    This exists because it happened. The Sprint 2 completion review was first
+    committed with a bare ``INDEPENDENT_REVIEW_PLACEHOLDER`` line sitting directly
+    beneath a sentence asserting, in completed past tense, that the review had
+    already happened and was recorded below it. A reviewer caught it; the build did
+    not, and the build should.
+
+    It matches a placeholder token **alone on its own line**, because that is the
+    shape the failure actually takes: a placeholder stands where content should be,
+    so it occupies the line content would have occupied. A record that discusses a
+    placeholder inside a sentence is describing one rather than carrying one, and the
+    first draft of this check could not tell the two apart — it failed against the
+    very record that documents the incident.
+
+    It is deliberately narrow in one more way. It does **not** police angle-bracket
+    notation, because committed records legitimately write ``<url>``, ``<redacted>``,
+    ``<module>``, and ``<repository root>`` as generic notation. A check that fired
+    on those would be switched off, and a switched-off check protects nothing.
+    """
+    proof_root = REPO_ROOT / "docs" / "proof"
+    for path in sorted(proof_root.rglob("*.md")):
+        if path.parent.name == "templates" or path.name.startswith("TEMPLATE-"):
+            continue
+        relative = path.relative_to(REPO_ROOT).as_posix()
+        text = path.read_text(encoding="utf-8")
+        for number, line in enumerate(text.splitlines(), 1):
+            assert not UNFILLED_PLACEHOLDER.match(line.strip()), (
+                f"{relative}:{number} is an unfilled placeholder standing where "
+                f"content belongs: {line.strip()!r}"
+            )
+        assert not text.lstrip().startswith("# TEMPLATE"), (
+            f"{relative} is still shaped as an unfilled template"
+        )
+
+
+def test_the_placeholder_check_refuses_the_line_that_got_past_review() -> None:
+    """The check above passes over every committed record, so prove it can fail.
+
+    A check whose only evidence is that nothing currently trips it is a check
+    nobody has tested. These are the two literal lines this branch committed and a
+    reviewer had to catch, plus the prose that describes them, which must not trip.
+    """
+    caught = (
+        "INDEPENDENT_REVIEW_PLACEHOLDER",
+        "PYTEST_RESULT_PLACEHOLDER",
+        "`INDEPENDENT_REVIEW_PLACEHOLDER`",
+        "PLACEHOLDER",
+    )
+    for line in caught:
+        assert UNFILLED_PLACEHOLDER.match(line.strip()), (
+            f"the check would have let {line!r} through"
+        )
+
+    allowed = (
+        "committed an unfilled `INDEPENDENT_REVIEW_PLACEHOLDER` token",
+        "It refuses the PLACEHOLDER token style and a record",
+        "| Default pytest lane | Passed; 5,663 passed, 27 skipped |",
+        "## Independent second-eye review",
+        "",
+    )
+    for line in allowed:
+        assert not UNFILLED_PLACEHOLDER.match(line.strip()), (
+            f"the check would wrongly refuse {line!r}, which describes a "
+            "placeholder rather than being one"
+        )
 
 
 def test_no_template_is_cited_as_evidence_for_a_claim() -> None:

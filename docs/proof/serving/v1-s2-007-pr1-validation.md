@@ -1,5 +1,14 @@
 # V1-S2-007-PR1 change validation
 
+> [!NOTE]
+> **Post-record resolution (2026-09-04):** the two items this record deferred were
+> resolved during the Sprint 2 completion remediation. A real cache **miss** was
+> observed, and the refusal it triggers was measured, in
+> [the cache miss observation](v1-s2-007-cache-miss-observation.md); the first
+> acceptance criterion below is amended from *partially met* to **met** and now
+> cites it. The stale `README.md` sentence reported at the foot of this record was
+> corrected in the same change. The original record is otherwise unaltered.
+
 | Field | Value |
 |---|---|
 | Date | 2026-09-03 |
@@ -147,7 +156,7 @@ restarted API is not ready until its own startup has run.
 
 | Criterion | Status | Where |
 |---|---|---|
-| Cache hit/miss behaviour is documented and measurable | **Met** for hit; **partially met** for miss | The three cache states are published and mapped; `cache` classifies them offline and exits non-zero on anything but a hit. Both measured starts recorded `hit`. A real *miss* is a 1.71 GiB download and was not performed; the miss and partial paths remain synthetic-only, as the acquisition suite already covered them |
+| Cache hit/miss behaviour is documented and measurable | **Met** | The three cache states are published and mapped; `cache` classifies them offline and exits non-zero on anything but a hit. Both measured starts recorded `hit`. The **miss** half was outstanding when this record was written and was closed on 2026-09-04 by [a real miss observation](v1-s2-007-cache-miss-observation.md): `cache` reported `miss`, `0 of 1834426016`, `artifact-absent`, exit `3`, and `measure` refused before creating any container. Observing a miss costs no download; only recovering from one does. The `partial` state remains synthetic-only |
 | Liveness does not restart a healthy loading process | **Met**, and measured | Refused as a record invariant, and observed directly: 413 and 450 consecutive samples in the first comparison in which liveness passed while readiness answered `503` |
 | Readiness remains false until inference is possible | **Met**, and measured | `readinessFalseUntilReady` was true in every measured start, and each start's bounded inference probe returned HTTP 200 immediately after the first `200` readiness observation |
 | Shutdown drains or rejects new work safely | **Met** | Ordering enforced in the record and in `ApplicationLifecycle`; every measured container was verified stopped and removed |
@@ -155,9 +164,12 @@ restarted API is not ready until its own startup has run.
 
 ## Deferred, and reported rather than implemented
 
-- **A real cache miss was not measured.** It costs a 1.71 GiB download and no such
-  authorization was given. The record documents the miss path; it is not
-  evidenced.
+- **A real cache miss was not measured *by this PR*.** This record assumed it cost
+  a 1.71 GiB download. That was half right: recovering from a miss costs a
+  download, observing one does not, because `observe_cache` reads no network and
+  `observe_start` refuses ahead of any container creation. It was measured on
+  2026-09-04 in [the cache miss observation](v1-s2-007-cache-miss-observation.md).
+  The `partial` state is still not evidenced.
 - **A page-cache-controlled cold start was not achieved.** See the limitation
   section of [the comparison record](v1-s2-007-pr1-cold-warm-start.md); the host's
   file cache state before a run is observed, not controlled.
@@ -167,10 +179,15 @@ restarted API is not ready until its own startup has run.
 - **`V1-S2-008` (local runtime troubleshooting) is untouched.** It depends on this
   story and remains the next PR's scope.
 
-## Observation for a follow-up, not fixed here
+## Observation for a follow-up, since resolved
 
 [`README.md`](../../../README.md) still describes the local serving baseline as
 "the experiment was not executed and no measured baseline exists". That became
 untrue when `V1-S2-005-PR2` merged and a measured baseline was published. It is
 outside this PR's boundary and is recorded here rather than corrected in an
 unrelated edit.
+
+**Resolved 2026-09-04.** The Sprint 2 completion review found the same defect
+independently, and the remediation corrected that sentence along with four other
+status entries that had gone stale in the same way. See
+[the Sprint 2 completion review](sprint-2-completion-review.md).

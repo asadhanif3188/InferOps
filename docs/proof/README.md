@@ -18,7 +18,7 @@ nominate its own strength.
 |---|---|
 | Governance | [`v1-s0-001-pr1.md`](governance/v1-s0-001-pr1.md) |
 | Environment | [host inventory](environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke](environment/v1-s0-002-pr2-cluster-smoke.md), and the two change-validation records beside them |
-| Serving | [runtime feasibility](serving/v1-s0-003-pr2-runtime-feasibility.md), [Sprint 1 real-runtime closure](serving/v1-s1-real-runtime-closure.md), [`v1-s0-012-pr1-validation.md`](serving/v1-s0-012-pr1-validation.md), [Sprint 1 completion remediation](serving/sprint-1-completion-remediation-validation.md), [`v1-s2-002-pr2-validation.md`](serving/v1-s2-002-pr2-validation.md), [`v1-s2-003-pr1-validation.md`](serving/v1-s2-003-pr1-validation.md), [`v1-s2-004-pr1-validation.md`](serving/v1-s2-004-pr1-validation.md), the [executed local baseline experiment](serving/v1-s2-005-local-baseline-experiment.md) with its [raw results](serving/v1-s2-005-baseline-raw-results.md), the [measured cold and warm start comparison](serving/v1-s2-007-pr1-cold-warm-start.md), [`v1-s2-008-pr1-validation.md`](serving/v1-s2-008-pr1-validation.md), and the change-validation records beside them |
+| Serving | [runtime feasibility](serving/v1-s0-003-pr2-runtime-feasibility.md), [Sprint 1 real-runtime closure](serving/v1-s1-real-runtime-closure.md), [`v1-s0-012-pr1-validation.md`](serving/v1-s0-012-pr1-validation.md), [Sprint 1 completion remediation](serving/sprint-1-completion-remediation-validation.md), [`v1-s2-002-pr2-validation.md`](serving/v1-s2-002-pr2-validation.md), [`v1-s2-003-pr1-validation.md`](serving/v1-s2-003-pr1-validation.md), [`v1-s2-004-pr1-validation.md`](serving/v1-s2-004-pr1-validation.md), the [executed local baseline experiment](serving/v1-s2-005-local-baseline-experiment.md) with its [raw results](serving/v1-s2-005-baseline-raw-results.md), the [measured cold and warm start comparison](serving/v1-s2-007-pr1-cold-warm-start.md) with its [real cache miss observation](serving/v1-s2-007-cache-miss-observation.md), the [C2 real-runtime certification result](serving/v1-s2-004-c2-certification-result.md), [`v1-s2-008-pr1-validation.md`](serving/v1-s2-008-pr1-validation.md), the [Sprint 2 completion review](serving/sprint-2-completion-review.md), and the change-validation records beside them |
 | Contracts | [`v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) |
 | Domain | [`v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md) |
 | Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md) |
@@ -70,6 +70,25 @@ a section quietly.
 
 ## What a template is not
 
-A template is a format, and a format is not evidence. None of the four has produced
-a record yet, the catalog records that count as zero, and a test refuses any attempt
-to cite a template path as the evidence behind a claim.
+A template is a format, and a format is not evidence. A test refuses any attempt to
+cite a template path as the evidence behind a claim, and no filled record may keep a
+`<placeholder>`.
+
+Two of the four have now produced records. A record made from a template says so in
+one line near its title — `Produced from [the raw-result template](...)` — and
+[the catalog](../telemetry/telemetry-catalog.v1alpha1.json) states a count that
+`tests/telemetry/` derives from those declarations, so neither can drift from the
+other.
+
+| Template | Records produced |
+|---|---|
+| `experiment` | 1 |
+| `environment` | 0 |
+| `raw-result` | 5 |
+| `claim-evidence` | 0 |
+
+`environment` and `claim-evidence` have produced nothing. That is worth stating
+rather than hiding: the environment facts this project relies on are spread through
+individual records instead of being collected once, and no claim in
+[the matrix](../testing/claim-test-matrix.md) has yet been bound to its evidence in
+the one-claim-per-record form the fourth template exists to enforce.
