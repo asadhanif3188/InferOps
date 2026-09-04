@@ -55,6 +55,7 @@ The outputs are the ones the guide describes.
 | `uv run --locked python -m tools.runtime_configuration check` | `0`; profile, command, model mount, health semantics |
 | `uv run --locked python -m tools.local_composition check` | `0`; adapter `real`, mock fallback disabled, both loopback endpoints |
 | `uv run --locked python -m tools.local_composition logs --lines 3` | `0`; three structured records, no prompt or completion present |
+| `uv run --locked python -m tools.local_composition status --confirm-real-runtime` | **`5`**, not `0`; `owned=False running=False live=False ready=False`. Nothing was composed, so "composed but not ready" is the correct answer and the exit code the guide documents |
 | `uv run --locked python -m tools.runtime_certification check` | `0`; prerequisites `cpus>=6`, `memory>=4294967296`, `disk>=2147483648` |
 | `uv run --locked python -m tools.serving_baseline check` | `0`; registered fixture, phases, and success criteria |
 | `docker version --format "{{.Server.Version}}"` | `0`; an engine is reachable on this host |
@@ -93,6 +94,58 @@ publish: a second engineer following the documented configuration on the shell
 the quick start recommends for Windows hits a refusal that names a value they
 never entered.
 
+## What independent review found, and what changed because of it
+
+The guide and its suite were reviewed independently before this branch was
+pushed. Four findings, all accepted; three corrected here, one already true and
+now defended.
+
+**One was a genuine overclaim in the guide, and it is the reason a second pass
+exists.** The timeout table presented `INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS`
+as having a 300,000 ms **default**, in explicit contrast to the request timeout
+beside it. It does not. `settings.py` reads it through `_required_int`, the same
+refusing accessor as the request timeout, and lists it in
+`REQUIRED_ENVIRONMENT_VARIABLES`; only the drain budget has a code fallback. The
+error was verified rather than accepted on assertion: a real configuration with
+that one variable omitted was executed and produced
+`INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS: is required and is not set`.
+
+A reader who trusted that row would have omitted the variable expecting a
+five-minute fallback and got a refusal at startup instead. The table now reads
+`Required. No default` for both, and says that the 300,000 ms and 120,000 ms
+figures elsewhere on the page are values the descriptors *select* rather than
+values the distribution supplies.
+
+Nothing caught it, because **every individual number on the page was correct** —
+the check compared the figure with the record that owned it and never asked
+whether the sentence around the figure was true. `test_the_timeout_table_says_required_exactly_where_the_code_requires`
+now reads the requirement claim out of each row and compares it with the set of
+variables the code refuses to run without, derived from the two modules that read
+the environment. Reverting the row to the old wording fails it.
+
+**One diagnostic the guide prints had not been executed.**
+`local_composition status --confirm-real-runtime` was absent from the table
+above while the page claimed every diagnostic on it had been run. It has now been
+run, and it is the more useful result for having been: it exited **`5`**, not
+`0` — "composed but not ready", the exact distinction the guide tells a reader to
+draw from the exit code rather than the message.
+
+**One test was weaker than its name.** The readiness check asserted only that
+`503` and `200` each appeared somewhere in the prose. Swapping the two rows of
+the readiness table — so the page claimed a `200` during load meant loading and a
+`503` meant ready — left both tokens present and the test passing, while
+reversing the most safety-critical fact on the page. It now reads the row each
+status sits in.
+
+**One link check saw only half of each link.** Fragments were stripped before the
+existence check, so a heading renamed in another document would silently strand a
+reader at the top of a long page. All five cross-document fragments were correct;
+a check now keeps them so.
+
+The three corrections were verified by mutation — the old wording, the swapped
+readiness rows, and a renamed anchor each fail the new checks — rather than by
+observing that the suite still passes.
+
 ## Validation results
 
 | Command | Result | Evidence boundary |
@@ -100,7 +153,7 @@ never entered.
 | `uv run --locked ruff check .` | Passed; all checks passed | Repository-static |
 | `uv run --locked ruff format --check .` | Passed; 265 files already formatted | Repository-static |
 | `uv run --locked python -m mypy` | Passed; 147 source files checked | Repository-static |
-| `uv run --locked python -m pytest tests/serving/test_local_runtime_troubleshooting.py -q` | Passed; 100 tests | Repository-static; reads files only |
+| `uv run --locked python -m pytest tests/serving/test_local_runtime_troubleshooting.py -q` | Passed; 107 tests | Repository-static; reads files only |
 | `uv run --locked python -m pytest tests/testing -q` | Passed; 1,034 tests | Repository-static; inventory and strategy agreement |
 | `uv run --locked python -m pytest -q` | Passed; 5,652 passed, 27 skipped, 14 deselected | Default lane; real-runtime tests remained deselected. The 27 skips are pre-existing and unchanged by this branch |
 | `git diff --check main...HEAD` | No trailing-whitespace or hard-tab match | Repository-static |

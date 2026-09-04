@@ -107,8 +107,14 @@ once versioned releases begin.
   that owns it. It also refuses a credential-shaped flag or value anywhere in the
   file and reads the port tuple out of the diagnostic a reader actually pastes
   into a shell, rather than settling for the number appearing somewhere on the
-  page. The guide additionally publishes an unresolved limitation instead of
-  hiding it: one recorded run on the measured host exceeded the 300,000 ms
+  page. Independent review before merge caught the guide calling
+  `INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS` a 300,000 ms *default* when the code
+  requires it with none — a reader who trusted that row would have omitted it and
+  got a refusal — and the check that now compares each row's requirement claim
+  with the set of variables the distribution refuses to run without exists
+  because every individual number on the page had been correct while the sentence
+  around one of them was not. The guide additionally publishes an unresolved
+  limitation instead of hiding it: one recorded run on the measured host exceeded the 300,000 ms
   startup budget, and the budget has **not** been raised, because raising it
   would hide the finding.
 

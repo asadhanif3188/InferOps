@@ -423,10 +423,35 @@ def test_the_documented_ownership_label_is_the_package_label() -> None:
 
 
 def test_the_readiness_statuses_are_the_ones_the_lifecycle_record_declares() -> None:
+    """Not just present: attached to the right meaning.
+
+    Independent review found the first form of this test asserting only that
+    ``503`` and ``200`` each appeared somewhere in the prose. Swapping the two
+    rows of the readiness table — so the page said a `200` during load meant
+    `runtime-loading` and a `503` meant ready — left both tokens present and the
+    test passing, while reversing the single most safety-critical fact on the
+    page. Presence is not agreement, so the row each status sits in is read.
+    """
     readiness = LIFECYCLE["probes"]["readiness"]
-    assert f"`{readiness['loadingStatus']}`" in PROSE
-    assert f"`{readiness['readyStatus']}`" in PROSE
+    loading = readiness["loadingStatus"]
+    ready = readiness["readyStatus"]
     assert readiness["path"] in DOCUMENT
+
+    rows = [line for line in PROSE.splitlines() if line.startswith("| `")]
+    loading_row = next(
+        (row for row in rows if f"`{loading}` on `{readiness['path']}`" in row), None
+    )
+    ready_row = next(
+        (row for row in rows if f"`{ready}` on `{readiness['path']}`" in row), None
+    )
+    assert loading_row is not None, f"no row reads `{loading}` on `{readiness['path']}`"
+    assert ready_row is not None, f"no row reads `{ready}` on `{readiness['path']}`"
+
+    #: The loading status must be explained as loading, and must not be the row
+    #: that describes a ready runtime. The ready status is the mirror.
+    assert "runtime-loading" in loading_row, loading_row
+    assert "runtime-loading" not in ready_row, ready_row
+    assert "ready" in ready_row.lower(), ready_row
 
 
 # --------------------------------------------------------------------------
@@ -454,6 +479,79 @@ def test_the_required_request_timeout_is_still_required() -> None:
     assert "_required_int(environment, ENV_REQUEST_TIMEOUT_MS)" in selection
 
 
+#: The timeout table's rows: the variable, and the cell claiming whether it is
+#: required. Read from the document so that the claim itself is the thing tested.
+TIMEOUT_ROW = re.compile(
+    r"^\| `(?P<name>INFEROPS_[A-Z_]+)` \| (?P<requirement>[^|]+?) \|", re.MULTILINE
+)
+
+
+def _variables_the_distribution_requires() -> set[str]:
+    """Every variable read through the refusing accessor, from the source.
+
+    Derived from the two modules that read the environment rather than listed
+    here, because a list here would be a third copy of the answer and the whole
+    point is that the document is compared with the code.
+    """
+    required: set[str] = set()
+    for relative in (
+        Path("src") / "inferops" / "api" / "selection.py",
+        Path("src") / "inferops" / "adapters" / "llama_cpp" / "settings.py",
+    ):
+        source = (REPO_ROOT / relative).read_text(encoding="utf-8")
+        constants = dict(
+            re.findall(r'^(ENV_[A-Z_]+) = "(INFEROPS_[A-Z_]+)"', source, re.MULTILINE)
+        )
+        for constant in re.findall(
+            r"_required(?:_int)?\([^,]+, (ENV_[A-Z_]+)\)", source
+        ):
+            if constant in constants:
+                required.add(constants[constant])
+    return required
+
+
+def test_the_timeout_table_says_required_exactly_where_the_code_requires() -> None:
+    """The check that a "mention the number" assertion cannot make.
+
+    Independent review found this table calling 300,000 ms the *default* for
+    ``INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS``, in explicit contrast to the
+    request timeout beside it. The variable is in fact required with no default —
+    read through the same refusing accessor — so a reader who omitted it expecting
+    a five-minute fallback got a refusal instead. Nothing caught it, because every
+    number on the page was individually correct.
+
+    So the claim is compared with the code rather than the figure with a record: a
+    row saying "required" must name a variable the distribution refuses to run
+    without, and a row offering a default must name one it does not.
+    """
+    required = _variables_the_distribution_requires()
+    rows = TIMEOUT_ROW.findall(PROSE)
+    assert len(rows) >= 3, rows
+
+    for name, requirement in rows:
+        claims_required = "required" in requirement.lower()
+        claims_default = "default" in requirement.lower() and not claims_required
+        assert claims_required or claims_default, (name, requirement)
+        assert claims_required == (name in required), {
+            "variable": name,
+            "the page says": requirement.strip(),
+            "the code requires it": name in required,
+        }
+
+
+def test_the_startup_budget_is_read_through_the_refusing_accessor() -> None:
+    """Named on its own because it is the row that was wrong.
+
+    A general check that passes for the wrong reason is how the first version of
+    this suite missed it, so the specific fact is asserted where a reader of the
+    test file can see it.
+    """
+    assert (
+        "INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS"
+        in _variables_the_distribution_requires()
+    )
+
+
 # --------------------------------------------------------------------------
 # Links, scope, and the claims it is entitled to make
 # --------------------------------------------------------------------------
@@ -475,6 +573,42 @@ def test_every_relative_link_resolves(target: str) -> None:
     if not path:
         return
     assert (SERVING_DIR / path).exists(), target
+
+
+def _anchors(document: Path) -> set[str]:
+    """The GitHub-style anchors a Markdown document's own headings produce."""
+    anchors: set[str] = set()
+    for line in _strip_fences(document.read_text(encoding="utf-8")).splitlines():
+        if not line.startswith("#"):
+            continue
+        heading = line.lstrip("#").strip()
+        slug = re.sub(r"[^a-z0-9 -]", "", heading.lower()).replace(" ", "-")
+        anchors.add(slug)
+    return anchors
+
+
+FRAGMENT_TARGETS = [target for target in relative_targets() if "#" in target]
+
+
+@pytest.mark.parametrize("target", FRAGMENT_TARGETS, ids=lambda target: target)
+def test_every_cross_document_fragment_names_a_heading_that_exists(
+    target: str,
+) -> None:
+    """The half of a link the existence check cannot see.
+
+    ``test_every_relative_link_resolves`` strips the fragment before checking the
+    file, so a link to a real document and a heading that was later renamed
+    passes it while landing the reader at the top of a long page instead of at
+    the section the sentence promised. Independent review pointed this out; the
+    five fragments were correct at the time, and this is what keeps them so.
+    """
+    path, fragment = target.split("#", 1)
+    if not path:
+        return
+    assert fragment in _anchors(SERVING_DIR / path), {
+        "target": target,
+        "headings in that document": sorted(_anchors(SERVING_DIR / path)),
+    }
 
 
 def test_the_page_links_to_its_own_validation_record() -> None:

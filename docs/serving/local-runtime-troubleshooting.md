@@ -305,16 +305,23 @@ one has told you something about the hardware.
 Three separate budgets, and confusing them is the usual reason a timeout is
 "fixed" in the wrong place.
 
-| Budget | Default | Bounds |
+| Budget | Required? | Bounds |
 |---|---|---|
-| `INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS` | 300,000 ms | How long the model may take to become ready |
-| `INFEROPS_REQUEST_TIMEOUT_MS` | **no default; required** | How long one inference request may take |
-| `INFEROPS_DRAIN_TIMEOUT_MS` | 15,000 ms | How long a graceful shutdown gives in-flight work |
+| `INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS` | **Required. No default** | How long the model may take to become ready |
+| `INFEROPS_REQUEST_TIMEOUT_MS` | **Required. No default** | How long one inference request may take |
+| `INFEROPS_DRAIN_TIMEOUT_MS` | Optional; defaults to 15,000 ms | How long a graceful shutdown gives in-flight work |
 
-The request budget has no default on purpose:
+**Only the drain budget has a fallback.** Omit either of the other two and the
+deployment refuses at startup, naming the variable — it does not quietly adopt a
+number. The 300,000 ms and 120,000 ms figures quoted elsewhere on this page are
+what this deployment's descriptors *select*; they are not values the distribution
+would supply on your behalf.
+
+The two required budgets have no default on purpose:
 [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md)
 decides no deadline, and a number invented by the API would be read back as a
-recommendation nobody made.
+recommendation nobody made. The drain budget's 15,000 ms is itself described as a
+default rather than a decision.
 
 Sizing it from the only measured evidence this project has — thirty single,
 sequential requests on one CPU host, which is **not** a benchmark and may not be
