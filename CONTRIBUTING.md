@@ -938,7 +938,17 @@ regeneration is part of the change rather than a follow-up.
 **Never pass `--create-namespace`.** It is one flag, it is the default suggestion
 in most documentation, and it silently makes both Terraform and Helm own the
 namespace. The chart refuses a namespace that is not prefixed `inferops-`; it
-cannot refuse a flag that creates one.
+cannot refuse a flag that creates one. Two suites fail if any command in this
+repository passes it, and prose that forbids it is allowed to name it.
+
+The release lifecycle — install, `helm test`, upgrade, rollback, uninstall, and
+the assertion that the uninstall left the prerequisites and nothing else — is
+[`scripts/environment/helm-lifecycle.sh`](scripts/environment/helm-lifecycle.sh),
+documented in
+[the lifecycle record](docs/environment/helm-release-lifecycle.md). **It has
+never been run**, and it cannot be until an InferOps API image exists: both
+profiles install an API container and no image is published. Do not cite it, or
+anything under `charts/`, as evidence that this chart installs.
 
 Then inspect the full diff and search it for credentials, private planning content,
 personal paths, generated files, and unsupported capability claims. Report the exact

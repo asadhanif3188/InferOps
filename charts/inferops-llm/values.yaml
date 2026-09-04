@@ -63,16 +63,63 @@ api:
   readinessPath: /health/ready
   livenessPath: /health/live
 
-  # Probes are configured here and are deliberately not wired into the workload
-  # templates by this change: V1-S3-002-PR2 owns probes, and the feasibility
-  # record shows why they are their own piece of work - a liveness probe aimed
-  # at a loading endpoint restarts the pod mid-load and never converges.
+  # Probes, and the mapping docs/serving/inference-api-surface.v1alpha1.json
+  # publishes. `/health/live` answers while the model is loading and while the
+  # API is draining; `/health/ready` is false whenever either the API or the
+  # selected adapter is unable. Liveness asks the first and readiness the
+  # second, and neither is ever pointed at the other's path - pointing liveness
+  # at a readiness answer is the defect the feasibility trial found on the
+  # runtime, and it is the same defect wherever it is written.
+  #
+  # `startup.budgetMs` is a budget rather than a count: failureThreshold is
+  # derived from it and periodSeconds, so the arithmetic cannot drift from the
+  # intent. Until a startup probe succeeds the kubelet runs neither of the other
+  # two, which is what stops a slow start being read as a failure.
   probes:
-    enabled: false
+    enabled: true
+    startup:
+      # The API binds its port as soon as the process is up. It does not wait
+      # for the runtime: adapter readiness is asked per request rather than at
+      # start-up, so this budget covers a slow image start and not a model load.
+      budgetMs: 60000
+      periodSeconds: 5
+      timeoutSeconds: 2
+    readiness:
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    liveness:
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
 
   requestTimeoutMs: 120000
   maxOutputTokens: 128
   drainTimeoutMs: 15000
+
+  # Shutdown, in the order src/inferops/api/lifecycle.py fixes: readiness goes
+  # false, what is in flight drains, the process exits.
+  #
+  # `preStopSleepSeconds` is here because endpoint removal is asynchronous. The
+  # kubelet sends SIGTERM and the EndpointSlice update races it, so without a
+  # pause a pod can be handed work after it stopped accepting any. It is a
+  # `sleep` action rather than an `exec`: an `exec` needs a shell inside the
+  # image, and no InferOps image exists yet to be asked whether it has one.
+  #
+  # The grace period has to cover the pause and the drain together. The template
+  # refuses a value that does not, because a period that expires mid-drain ends
+  # in SIGKILL and the drain the API performed was then decoration.
+  lifecycle:
+    preStopSleepSeconds: 5
+    terminationGracePeriodSeconds: 30
+    # How long a rollout may make no progress before Kubernetes declares it
+    # failed. It has a default -- 600 seconds -- and leaving it at the default
+    # is the defect this field exists to prevent: the default is not derived
+    # from the startup budget, so a container the kubelet is still patiently
+    # waiting for can belong to a rollout the Deployment controller has already
+    # given up on, and an install waiting on that rollout reports a failure that
+    # is a slow start. The template refuses a value inside the startup budget.
+    progressDeadlineSeconds: 300
 
   resources:
     requests:
@@ -119,6 +166,52 @@ runtime:
   startupBudgetMs: 300000
 
   healthPath: /health
+
+  # The mapping docs/serving/runtime-profile.local.v1.json publishes, and the
+  # reason it is not the obvious one: `/health` answers 503 while the model
+  # loads. That is correct readiness behaviour and wrong liveness behaviour, so
+  # liveness is a TCP connect and never an HTTP GET. The record's own
+  # `health.liveness.kind` is `tcp`; a test compares the chart against it.
+  #
+  # The startup budget is 600,000 ms and not the 300,000 ms `startupBudgetMs`
+  # publishes, because the measured loads do not fit inside the smaller number.
+  # V1-S2-007 recorded 133,515 ms to 215,906 ms across six starts, and the
+  # V1-S2-005 first attempt recorded 358,735 ms cold and 284,406 ms warm on the
+  # same host; its later recorded run loaded in 269,079 ms. A probe budgeted
+  # at 300,000 ms would have killed the container mid-load in the slowest of
+  # those and restarted it into the same load. The two numbers measure different
+  # things - one is how long the adapter waits for the runtime, the other how
+  # long the kubelet waits for the container - and the template refuses a startup
+  # budget below the adapter's, because a kubelet that gives up first makes the
+  # adapter's budget unreachable.
+  probes:
+    enabled: true
+    startup:
+      budgetMs: 600000
+      periodSeconds: 10
+      timeoutSeconds: 3
+    readiness:
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    liveness:
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+
+  # `llama-server` has no drain protocol: it is stopped rather than asked to
+  # finish. V1-S2-007 measured stop-and-remove at 1,234 ms to 1,672 ms across six
+  # starts, so thirty seconds is not a tuned figure - it is an obviously
+  # sufficient one. The pause is for the same endpoint race as the API's.
+  lifecycle:
+    preStopSleepSeconds: 5
+    terminationGracePeriodSeconds: 30
+    # 900 rather than the 600-second default, because the startup budget alone
+    # is 600 and a rollout still pulling a runtime image has made no progress
+    # the controller can see. The margin is for the pull and the scheduling, and
+    # it is a budget rather than a measurement: nothing here has pulled an image
+    # into a cluster.
+    progressDeadlineSeconds: 900
 
   resources:
     requests:
@@ -194,10 +287,55 @@ telemetry:
   # The build of the API this release installs. Empty rather than `unknown`: an
   # unstated identity is empty and never invented.
   serviceVersion: ""
-  # Nothing collects these. `telemetry-scrape-configuration` is Helm-owned and
-  # `planned`; V1-S3-007 decides scrape and discovery. This chart exposes ports
-  # and identity, and configures no collector.
+  # Whether every pod carries `prometheus.io/scrape`, `prometheus.io/port`, and
+  # `prometheus.io/path`. Off by default, and inert either way: nothing in this
+  # project collects anything, no scrape resource is rendered, and
+  # `telemetry-scrape-configuration` stays deferred to V1-S3-007. The
+  # annotations are here because they are the one form of scrape configuration
+  # that is a field on the workload rather than a resource beside it, so a
+  # discovery mechanism that reads them can find these pods without this chart
+  # deciding what that mechanism is. Requires `enabled`: annotating a port that
+  # serves no metrics is refused rather than rendered.
+  #
+  # `inert` describes this environment rather than the annotation. These are the
+  # legacy Prometheus auto-discovery keys, so a cluster-wide Prometheus using
+  # that convention would start scraping without anything here asking it to, and
+  # /metrics is unauthenticated (docs/security/deferred-risks.md, DR-01).
   scrapeAnnotations: false
+
+# -- the chart's own test ----------------------------------------------------
+#
+# `helm test` runs one pod that asks each Service this release renders for its
+# health endpoint and exits non-zero if either does not answer.
+#
+# It is a hook, which means three things a reader should not have to infer: it
+# is not part of the installed release, it is created by `helm test` and deleted
+# when it succeeds, and it appears in `helm template` output because Helm
+# renders hooks alongside everything else.
+#
+# It has never been run. No cluster has installed this chart.
+tests:
+  enabled: true
+  image:
+    # BusyBox, for its `wget`. It is the only image here that is neither the
+    # InferOps API nor the runtime ADR 0002 pinned, and it is not a new
+    # dependency: this is the same `busybox:1.37.0` index digest four committed
+    # manifests under deploy/ already pin, and a test compares them so that two
+    # copies of one pin cannot drift into two pins.
+    repository: docker.io/library/busybox
+    digest: sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+    pullPolicy: IfNotPresent
+  # Per request, not for the whole test. `helm test` has already waited for the
+  # release; a Service that does not answer in ten seconds is not slow, it is
+  # not there.
+  timeoutSeconds: 10
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
 
 # -- security ---------------------------------------------------------------
 #

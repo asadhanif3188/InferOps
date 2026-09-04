@@ -8,6 +8,87 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Added
+
+- **The release now says how it starts and how it stops, and the one probe that
+  is not an HTTP GET is the point.** The chart configures a startup, readiness,
+  and liveness probe for each workload, and the mapping is read out of accepted
+  records rather than chosen: the API's liveness and readiness paths are the two
+  [the API surface record](docs/serving/inference-api-surface.v1alpha1.json)
+  assigns those roles, and **the serving runtime's liveness probe is a TCP
+  connect**. Its `/health` endpoint answers `503` for the whole of a model load —
+  correct readiness behaviour, fatal liveness behaviour — and
+  [the cold and warm start observation](docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md)
+  recorded 2,753 samples across six starts in which a healthy loading process
+  would have been failing an HTTP liveness probe.
+  [`runtime-profile.local.v1.json`](docs/serving/runtime-profile.local.v1.json)
+  publishes `health.liveness.kind` as `tcp` for that reason, and a test compares
+  the chart against it. The startup budget is `600,000 ms` rather than the
+  `300,000 ms` the adapter's own `startupBudgetMs` publishes, because the
+  measured loads do not fit in the smaller number; the chart refuses a Kubernetes
+  budget below the adapter's, and a test refuses a default below the largest load
+  this project has measured. Shutdown follows the order
+  [`src/inferops/api/lifecycle.py`](src/inferops/api/lifecycle.py) fixes —
+  readiness false, drain, exit — behind a `preStop` sleep action for the endpoint
+  race, with a termination grace period the chart refuses unless it covers the
+  pause and the drain together.
+
+- **The chart has a test, and the release has a lifecycle procedure.**
+  `helm test` runs a hook pod that asks every Service the release renders for its
+  health endpoint, which is the one check that separates a rollout Kubernetes
+  called successful from a release that answers.
+  [`scripts/environment/helm-lifecycle.sh`](scripts/environment/helm-lifecycle.sh)
+  installs, tests, upgrades, asserts the upgrade reached the rendered
+  configuration, rolls back to revision 1, asserts the rollback undid it,
+  uninstalls, and then asserts both halves of removal: that no object carrying
+  the release label survived, and that the namespace and every
+  `PersistentVolumeClaim` did. It is documented in
+  [the lifecycle record](docs/environment/helm-release-lifecycle.md) and its
+  safety properties — every `helm` call through a wrapper that names the
+  kubeconfig and context, every release operation naming a namespace, and no
+  command anywhere passing `--create-namespace` — are asserted by
+  [the script suite](tests/architecture/test_cluster_lifecycle_safety.py).
+
+- **Optional scrape annotations, and nothing that collects them.**
+  `telemetry.scrapeAnnotations` adds `prometheus.io/scrape`, `port`, and `path`
+  to every pod. It is off by default and inert either way: no scrape resource is
+  rendered and `telemetry-scrape-configuration` stays deferred to `V1-S3-007`.
+  All three keys are refused in `commonAnnotations` and in every per-object
+  annotation map whether or not they are switched on, for the same duplicate-key
+  reason the identity labels are.
+
+### Changed
+
+- **The chart suite went from 77 checks to 112, and the script suite learned
+  about Helm.** New properties: that every workload container is probed, that the
+  probe mapping matches the accepted health records, that the rendered startup
+  threshold really grants the configured budget, that no probe timeout is as long
+  as its own period, that a grace period covers what it has to contain, that the
+  only hook is a test that deletes itself, that a `Deployment` selector is drawn
+  only from things a rollback cannot change, and that nothing that runs passes
+  `--create-namespace`. Ten of them were verified by breaking what they defend;
+  one of the ten — the `--create-namespace` rule — was found to be wrong by that
+  check and widened, because a shell continuation puts the flag on a line of its
+  own. Two independent reviews then ran before anything was pushed, and neither
+  found a `CRITICAL`. What they did find was a residue check that returned the
+  same answer whether the cluster said "nothing" or said nothing at all; an API
+  liveness and readiness path pair that no rule kept apart, so one `--set` could
+  point all three probes at the readiness answer; and a claim in this project's
+  own evidence record that the test image was a new external dependency, when
+  four committed manifests under `deploy/` already pin that exact digest. All
+  three are fixed, and the last produced a test comparing the chart's copy of the
+  pin against theirs. A fourth defect was found without review:
+  `progressDeadlineSeconds` defaults to 600 seconds, the same number as the
+  runtime's startup budget, so the Deployment controller can fail a rollout the
+  kubelet is still waiting on — both workloads now set it explicitly and the
+  chart refuses a value inside the budget. **Still nothing has installed this chart**, and it cannot be installed:
+  both profiles run an API container and no InferOps API image is published.
+  [The validation record](docs/proof/architecture/v1-s3-002-pr2-validation.md)
+  states that blocker, the nine refusals exercised against real Helm, and one
+  finding it deliberately did not act on — the adapter's published startup budget
+  is smaller than two model loads this project has measured, which is an accepted
+  record and not this PR's to change.
+
 ### Security
 
 - **Two host-run scan guards now cover the pinned runtime image and the
@@ -171,8 +252,8 @@ once versioned releases begin.
   **Nothing has installed this chart.** No InferOps API image is published — no
   `Dockerfile` is committed anywhere in this repository, so both committed values
   files carry an image digest that is the SHA-256 of a stated string and resolves
-  to nothing — no probe is configured, and no cluster has seen any of it.
-  Installation, uninstallation, and probes are `V1-S3-002-PR2`'s, and
+  to nothing — and no cluster has seen any of it. Probes and the release
+  lifecycle arrived in `V1-S3-002-PR2`, below, and
   `a-helm-release-installs-and-uninstalls-without-residue` remains a recorded
   coverage gap.
 

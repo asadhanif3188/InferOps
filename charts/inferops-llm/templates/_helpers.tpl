@@ -72,6 +72,9 @@ selector, and a teardown sweep all see.
 - inferops.io/tenant
 - inferops.io/cost-center
 - inferops.io/configuration-checksum
+- prometheus.io/scrape
+- prometheus.io/port
+- prometheus.io/path
 {{- end -}}
 
 {{/*
@@ -161,6 +164,143 @@ inferops-native-serving
 {{- else -}}
 inferops-mock-serving
 {{- end -}}
+{{- end -}}
+
+{{/*
+The scrape annotations, when `telemetry.scrapeAnnotations` asks for them.
+
+They are the one form of scrape configuration that is a field on the workload
+rather than a resource beside it, which is why they are here while
+`telemetry-scrape-configuration` stays deferred to V1-S3-007: this says where
+metrics are, and it does not decide what reads them or where they go. Nothing in
+this project reads them today.
+
+They are refused in `commonAnnotations` and in every per-object map whether or
+not they are switched on, because a hand-written `prometheus.io/port` beside a
+derived one is the duplicate-key hazard the other guards exist for.
+*/}}
+{{- define "inferops-llm.scrapeAnnotations" -}}
+{{- $root := .context -}}
+{{- if and $root.Values.telemetry.enabled $root.Values.telemetry.scrapeAnnotations }}
+prometheus.io/scrape: "true"
+prometheus.io/port: {{ .port | quote }}
+prometheus.io/path: {{ $root.Values.telemetry.metricsPath | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+How many consecutive startup-probe failures fit inside a budget.
+
+Stated as a budget in the values file and converted here, so that raising the
+budget cannot leave the count behind. Integer arithmetic, rounding up: a
+threshold rounded down is a budget the kubelet does not actually give.
+*/}}
+{{- define "inferops-llm.startupFailureThreshold" -}}
+{{- $period := mul (int .periodSeconds) 1000 -}}
+{{- div (add (int .budgetMs) (sub $period 1)) $period -}}
+{{- end -}}
+
+{{/*
+The API's three probes.
+
+The mapping is the one docs/serving/inference-api-surface.v1alpha1.json
+publishes rather than a choice made here: `/health/live` answers while the model
+is loading and while the API is draining, and `/health/ready` is the conjunction
+of the API accepting work and the selected adapter reporting itself able. So
+liveness asks the first and readiness the second, and neither is ever pointed at
+the other's path.
+
+Until the startup probe passes the kubelet runs neither of the other two. That
+is what makes a slow start a slow start rather than a restart loop.
+*/}}
+{{- define "inferops-llm.api.probes" -}}
+{{- if .Values.api.probes.enabled }}
+startupProbe:
+  httpGet:
+    path: {{ .Values.api.livenessPath }}
+    port: http
+  periodSeconds: {{ .Values.api.probes.startup.periodSeconds }}
+  timeoutSeconds: {{ .Values.api.probes.startup.timeoutSeconds }}
+  failureThreshold: {{ include "inferops-llm.startupFailureThreshold" (dict "budgetMs" .Values.api.probes.startup.budgetMs "periodSeconds" .Values.api.probes.startup.periodSeconds) }}
+readinessProbe:
+  httpGet:
+    path: {{ .Values.api.readinessPath }}
+    port: http
+  periodSeconds: {{ .Values.api.probes.readiness.periodSeconds }}
+  timeoutSeconds: {{ .Values.api.probes.readiness.timeoutSeconds }}
+  failureThreshold: {{ .Values.api.probes.readiness.failureThreshold }}
+livenessProbe:
+  httpGet:
+    path: {{ .Values.api.livenessPath }}
+    port: http
+  periodSeconds: {{ .Values.api.probes.liveness.periodSeconds }}
+  timeoutSeconds: {{ .Values.api.probes.liveness.timeoutSeconds }}
+  failureThreshold: {{ .Values.api.probes.liveness.failureThreshold }}
+{{- end }}
+{{- end -}}
+
+{{/*
+The runtime's three probes, and the one asymmetry in this chart.
+
+**Liveness is a TCP connect and readiness is an HTTP GET, and they are not
+interchangeable.** `llama-server` answers `/health` with 503 for the whole of a
+model load: correct readiness behaviour, and fatal as a liveness answer. The
+V1-S2-007 observation recorded 2,753 samples across six starts in which a healthy
+process was loading a model and an HTTP liveness probe would have been failing.
+docs/serving/runtime-profile.local.v1.json publishes `health.liveness.kind` as
+`tcp` for that reason, and a test compares this template against it.
+
+The socket is accepted several seconds before the model is loaded, which is why
+the TCP probe cannot serve as the startup gate either. The startup probe is the
+HTTP one, and its budget is the measured load time with margin.
+*/}}
+{{- define "inferops-llm.runtime.probes" -}}
+{{- if .Values.runtime.probes.enabled }}
+startupProbe:
+  httpGet:
+    path: {{ .Values.runtime.healthPath }}
+    port: http
+  periodSeconds: {{ .Values.runtime.probes.startup.periodSeconds }}
+  timeoutSeconds: {{ .Values.runtime.probes.startup.timeoutSeconds }}
+  failureThreshold: {{ include "inferops-llm.startupFailureThreshold" (dict "budgetMs" .Values.runtime.probes.startup.budgetMs "periodSeconds" .Values.runtime.probes.startup.periodSeconds) }}
+readinessProbe:
+  httpGet:
+    path: {{ .Values.runtime.healthPath }}
+    port: http
+  periodSeconds: {{ .Values.runtime.probes.readiness.periodSeconds }}
+  timeoutSeconds: {{ .Values.runtime.probes.readiness.timeoutSeconds }}
+  failureThreshold: {{ .Values.runtime.probes.readiness.failureThreshold }}
+livenessProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: {{ .Values.runtime.probes.liveness.periodSeconds }}
+  timeoutSeconds: {{ .Values.runtime.probes.liveness.timeoutSeconds }}
+  failureThreshold: {{ .Values.runtime.probes.liveness.failureThreshold }}
+{{- end }}
+{{- end -}}
+
+{{/*
+The pause between SIGTERM and the process being asked to stop.
+
+A `sleep` action rather than an `exec`: an `exec` needs a shell inside the image,
+and no InferOps image is published to be asked whether it has one. Kubernetes has
+accepted a sleep action natively since 1.30 and this chart's floor is 1.34.
+
+It exists because endpoint removal is asynchronous. The kubelet sends SIGTERM and
+the EndpointSlice update races it, so without a pause a pod can be handed work
+after it has stopped accepting any.
+*/}}
+{{- define "inferops-llm.preStop" -}}
+{{- if gt (int .preStopSleepSeconds) 0 }}
+lifecycle:
+  preStop:
+    sleep:
+      seconds: {{ int .preStopSleepSeconds }}
+{{- end }}
+{{- end -}}
+
+{{- define "inferops-llm.tests.image" -}}
+{{- printf "%s@%s" .Values.tests.image.repository .Values.tests.image.digest -}}
 {{- end -}}
 
 {{- define "inferops-llm.api.image" -}}

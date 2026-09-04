@@ -64,6 +64,7 @@ ENTRY_POINTS = (
     "proof.sh",
     "smoke.sh",
     "verify-clean.sh",
+    "helm-lifecycle.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
@@ -249,6 +250,101 @@ def test_the_wrapper_names_both_the_kubeconfig_and_the_context() -> None:
     )
 
 
+# Helm subcommands that change something. `template`, `lint`, `show`, `status`,
+# `history`, and `get` are absent because they read; `test` is here because it
+# creates a pod, and `rollback` because it replaces what is running.
+MUTATING_HELM_VERBS = (
+    "install",
+    "upgrade",
+    "uninstall",
+    "delete",
+    "rollback",
+    "test",
+    "package",
+    "push",
+)
+
+
+def test_the_helm_wrapper_names_both_the_kubeconfig_and_the_context() -> None:
+    """Helm reads KUBECONFIG exactly as kubectl does, and uninstalls releases.
+
+    A bare `helm uninstall` inherits whatever context the contributor's shell
+    carries, which on a developer machine is routinely a real cluster, and it
+    deletes every object of a release there.
+    """
+    assert (
+        'helm --kubeconfig "${INFEROPS_KUBECONFIG}" '
+        '--kube-context "${INFEROPS_KUBE_CONTEXT}" "$@"' in LIB_TEXT
+    )
+
+
+# A line that only prints. `inferops::log`, `warn`, and `fail` take a message and
+# run no tool, and the messages here quote the command a contributor should run
+# by hand after a failure -- which is the most useful thing they can say and
+# contains the words the rule above looks for.
+#
+# The exemption is withdrawn the moment a line substitutes a command into its
+# message: `inferops::fail "$(helm uninstall x)"` runs the uninstall.
+PRINTS_ONLY = re.compile(r"^inferops::(log|warn|fail)\s")
+
+
+def prints_rather_than_runs(line: str) -> bool:
+    return PRINTS_ONLY.match(line.strip()) is not None and "$(" not in line
+
+
+def test_a_mutating_helm_call_goes_through_the_wrapper() -> None:
+    bare = re.compile(rf"(?<!::)\bhelm\s+({'|'.join(MUTATING_HELM_VERBS)})\b")
+    offenders = [
+        f"{name}:{number}: {line.strip()}"
+        for name, number, line in all_code_lines()
+        if bare.search(line)
+        and "inferops::helm" not in line
+        and not prints_rather_than_runs(line)
+    ]
+    assert not offenders, offenders
+
+
+def test_there_are_helm_calls_to_check() -> None:
+    """The rule above says nothing about a repository that invokes no helm."""
+    calls = [
+        row for row in all_code_lines() if re.search(r"inferops::helm\s+\w", row[2])
+    ]
+    assert len(calls) >= 5, calls
+
+
+def test_every_release_operation_names_a_namespace() -> None:
+    """A helm call with no --namespace acts on whatever the context defaults to.
+
+    Which, for a release the project owns, is a release somewhere else with the
+    same name -- or, more often, an install into `default` that nothing later
+    looks for.
+    """
+    verbs = re.compile(rf"inferops::helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b")
+    offenders = [
+        f"{name}:{number}: {line.strip()}"
+        for name, number, line in all_code_lines()
+        if verbs.search(line)
+        and "--namespace" not in line
+        and not prints_rather_than_runs(line)
+    ]
+    assert not offenders, offenders
+
+
+def test_no_helm_call_creates_the_namespace_it_installs_into() -> None:
+    """`--create-namespace` gives Terraform's namespace a second owner.
+
+    The release's own uninstall would then delete a prerequisite. The chart
+    cannot refuse the flag -- it creates the namespace the chart is being
+    installed into -- so the refusal lives here and in the chart suite.
+    """
+    offenders = [
+        f"{name}:{number}: {line.strip()}"
+        for name, number, line in all_code_lines()
+        if "--create-namespace" in line and not line.lstrip().startswith("#")
+    ]
+    assert not offenders, offenders
+
+
 def test_every_cluster_deletion_names_the_cluster() -> None:
     """`kind delete cluster` with no --name deletes whatever kind calls default."""
     offenders = [
@@ -357,10 +453,25 @@ def rules_reject(line: str) -> bool:
     """Whether any rule in this module would refuse a line."""
     mutating = re.search(rf"kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b", line)
     deletes = INVOKES_DELETE.search(line) is not None
+    bare_helm = re.search(rf"(?<!::)\bhelm\s+({'|'.join(MUTATING_HELM_VERBS)})\b", line)
+    wrapped_helm = re.search(
+        rf"inferops::helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b", line
+    )
     return (
         (deletes and DELETE_TAKES_EVERYTHING.search(line) is not None)
         or (deletes and not deletion_is_scoped(line))
         or (mutating is not None and ACROSS_ALL_NAMESPACES.search(line) is not None)
+        or (
+            bare_helm is not None
+            and "inferops::helm" not in line
+            and not prints_rather_than_runs(line)
+        )
+        or (
+            wrapped_helm is not None
+            and "--namespace" not in line
+            and not prints_rather_than_runs(line)
+        )
+        or ("--create-namespace" in line and not line.lstrip().startswith("#"))
         or any(re.search(pattern, line) for _, pattern in FORBIDDEN_PATTERNS)
     )
 
@@ -382,6 +493,13 @@ def rules_reject(line: str) -> bool:
         "kubectl config use-context kind-inferops-dev",
         "rm -rf /",
         "rm -fr /",
+        # The helm equivalents: an uninstall that inherits a context, and the
+        # one flag that gives a Terraform-owned namespace a second owner.
+        'helm uninstall inferops --namespace "${INFEROPS_RELEASE_NAMESPACE}"',
+        'inferops::helm install "${R}" "${C}" --namespace "${N}" --create-namespace',
+        'inferops::helm upgrade "${R}" "${C}" --wait',
+        # The message exemption is not a way in: this one runs the uninstall.
+        'inferops::fail "$(helm uninstall inferops --namespace x)"',
     ),
 )
 def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:
@@ -404,6 +522,15 @@ def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:
         'inferops::kubectl delete job hello-world-verify -n "${INFEROPS_NAMESPACE}"',
         "inferops::kubectl top pods -A",
         "inferops::kubectl get pods -n kube-system -o wide",
+        # Every helm call helm-lifecycle.sh actually makes, plus the comment that
+        # has to be able to name the flag it forbids.
+        'inferops::helm install "${R}" "${C}" --namespace "${N}" --wait',
+        'inferops::helm uninstall "${R}" --namespace "${N}" --wait',
+        'inferops::helm rollback "${R}" 1 --namespace "${N}" --wait',
+        'inferops::helm history "${R}" --namespace "${N}"',
+        "# --create-namespace is deliberately absent and must stay absent.",
+        # Telling a contributor what to run by hand, which runs nothing.
+        'inferops::warn "Remove it with: helm uninstall inferops --namespace x"',
     ),
 )
 def test_the_rules_accept_what_the_scripts_legitimately_do(sample: str) -> None:

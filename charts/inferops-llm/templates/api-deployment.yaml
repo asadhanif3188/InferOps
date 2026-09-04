@@ -2,12 +2,15 @@
 {{/*
 `platform-api-deployment` in the ownership inventory.
 
-No probe is rendered. That is deliberate and it is the one omission a reader
-should not repair casually: the feasibility trial recorded that the runtime's
-health endpoint returns 503 while loading, which is correct readiness behaviour
-and wrong liveness behaviour, so a liveness probe aimed at it restarts the pod
-mid-load and never converges. Probes are V1-S3-002-PR2's, with the mapping
-argued rather than assumed.
+The probes ask the two questions the accepted API surface record separates:
+`/health/live` answers while the model is loading and while the API is draining,
+and `/health/ready` is false whenever either the API or the selected adapter is
+unable. Liveness asks the first, readiness the second, and neither is pointed at
+the other's path.
+
+Shutdown is the order src/inferops/api/lifecycle.py fixes -- readiness false,
+drain, exit -- with a preStop pause in front of it for the endpoint race, and a
+grace period the template refuses unless it covers both.
 
 Nothing here is evidence that this deployment runs. No InferOps API image is
 published, and this chart has not been installed.
@@ -26,6 +29,7 @@ metadata:
   {{- end }}
 spec:
   replicas: {{ .Values.api.replicaCount }}
+  progressDeadlineSeconds: {{ .Values.api.lifecycle.progressDeadlineSeconds }}
   selector:
     matchLabels:
       {{- include "inferops-llm.api.selectorLabels" . | nindent 6 }}
@@ -39,12 +43,16 @@ spec:
                ConfigMap changes and the running processes keep the old
                environment, which is a difference nothing would report. */}}
         inferops.io/configuration-checksum: {{ include "inferops-llm.derivedEnv" . | sha256sum }}
+        {{- with (include "inferops-llm.scrapeAnnotations" (dict "context" $ "port" .Values.api.containerPort) | trim) }}
+        {{- . | nindent 8 }}
+        {{- end }}
         {{- with (include "inferops-llm.annotations" . | fromYaml) }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
       serviceAccountName: {{ include "inferops-llm.serviceAccountName" . }}
       automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.api.lifecycle.terminationGracePeriodSeconds }}
       securityContext:
         {{- include "inferops-llm.podSecurityContext" . | nindent 8 }}
       containers:
@@ -66,6 +74,12 @@ spec:
             {{- with .Values.api.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- with (include "inferops-llm.api.probes" . | trim) }}
+          {{- . | nindent 10 }}
+          {{- end }}
+          {{- with (include "inferops-llm.preStop" .Values.api.lifecycle | trim) }}
+          {{- . | nindent 10 }}
+          {{- end }}
           securityContext:
             {{- include "inferops-llm.containerSecurityContext" . | nindent 12 }}
           resources:

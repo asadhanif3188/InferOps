@@ -1,11 +1,15 @@
 # The `inferops-llm` chart
 
-Status: **the chart exists and nothing has installed it.** No InferOps API image
-is published, no probe is configured, and no lifecycle test has been run against
-a cluster. What is checked here is that the chart renders, that what it renders
-is what the ownership inventory lets Helm own, and that a release cannot quietly
-be the wrong one. Whether it installs, becomes ready, and uninstalls without
-residue is `V1-S3-002-PR2`'s question, and reading a chart does not answer it.
+Status: **the chart is complete and nothing has installed it.** The probes, the
+shutdown ordering, the release test, and the lifecycle script all exist; none of
+them has been run against a cluster, because no InferOps API image is published
+and no release can start without one. What is checked here is that the chart
+renders, that what it renders is what the ownership inventory lets Helm own,
+that the probe mapping is the one the accepted health records publish, and that
+a release cannot quietly be the wrong one. Whether it installs, becomes ready,
+and uninstalls without residue is answered by running
+[`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh),
+and it has not been run. Reading a chart does not answer it.
 
 It packages two workloads as one release: the platform API, and — under the real
 profile — the `llama.cpp` server
@@ -31,6 +35,13 @@ Three Helm-owned rows are deliberately absent, and the chart declares each in it
 own `Chart.yaml` annotations so that the omission is a statement rather than an
 oversight: `model-acquisition-job` (`V1-S3-003`), `workload-network-policy`
 (`V1-S3-004`), and `telemetry-scrape-configuration` (`V1-S3-007`).
+
+One more object appears in `helm template` output and is **not** in that table:
+the `helm test` pod under [`templates/tests/`](templates/tests/). It is a hook.
+Helm creates it when a test is run and deletes it when the test succeeds, so it
+is not part of the installed release and it is not a row the inventory assigns
+to anybody. The test suite tells the two apart by reading the `helm.sh/hook`
+annotation rather than by counting objects.
 
 Nothing Terraform owns is rendered. In particular **no `Namespace`**, and
 **`--create-namespace` must never be passed**: it is one flag, it is the default
@@ -107,6 +118,77 @@ a **placeholder API image digest** that resolves to no image, for the reason
 [`ci/real-values.yaml`](ci/real-values.yaml) states: no InferOps image is
 published and no `Dockerfile` is committed anywhere in this repository.
 
+## Probes, and the one that is not an HTTP GET
+
+The mapping is not invented here. Both halves of it are already published in
+accepted records, and the chart is compared against them by
+[`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py):
+
+| Container | Startup | Readiness | Liveness |
+|---|---|---|---|
+| API | `GET /health/live` | `GET /health/ready` | `GET /health/live` |
+| Runtime | `GET /health` | `GET /health` | **TCP connect** |
+
+The runtime's liveness probe is a TCP connect, and that is the one line in this
+chart that would be wrong if somebody made it consistent. `llama-server` answers
+`/health` with `503` for the whole of a model load. That is correct readiness
+behaviour and fatal liveness behaviour: a liveness probe aimed at it fails
+throughout the load, restarts the pod, and restarts it into the same load. The
+[cold and warm start observation](../../docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md)
+recorded **2,753 samples across six starts** in which a healthy process was
+loading a model and an HTTP liveness probe would have been failing, and
+[`runtime-profile.local.v1.json`](../../docs/serving/runtime-profile.local.v1.json)
+publishes `health.liveness.kind` as `tcp` for that reason.
+
+The socket is accepted several seconds before the model is loaded — the same
+observation never once caught the runtime before its port was bound — so the TCP
+probe cannot serve as the startup gate either. The startup gate is the HTTP one,
+and until it passes the kubelet runs neither of the other two.
+
+**The startup budget is 600,000 ms and not the 300,000 ms `startupBudgetMs`
+publishes.** The measured loads do not fit in the smaller number: 133,515 ms to
+215,906 ms across the six starts in that observation, and 358,735 ms cold and
+284,406 ms warm on the same host in
+[the V1-S2-005 first attempt](../../docs/proof/serving/v1-s2-005-baseline-raw-results-first-attempt.md);
+[its later recorded run](../../docs/proof/serving/v1-s2-005-baseline-raw-results.md)
+loaded in 269,079 ms. A startup probe budgeted at 300,000 ms would have killed
+the container mid-load in the slowest of those. The two numbers measure different things — one is how
+long the adapter waits for the runtime, the other how long the kubelet waits for
+the container — and the chart refuses a startup budget below the adapter's,
+because a kubelet that gives up first makes the adapter's budget unreachable.
+Neither figure is a performance claim; both are quoted only as the range a
+probe budget has to cover on one host.
+
+## Stopping
+
+Shutdown follows the order
+[`src/inferops/api/lifecycle.py`](../../src/inferops/api/lifecycle.py) fixes:
+readiness goes false, what is in flight drains, the process exits. In front of
+it is a `preStop` pause, because endpoint removal is asynchronous — the kubelet
+sends `SIGTERM` and the `EndpointSlice` update races it, so without a pause a
+pod can be handed work after it has stopped accepting any.
+
+The pause is a `sleep` action rather than an `exec`. An `exec` needs a shell
+inside the image, and no InferOps image exists to be asked whether it has one.
+Kubernetes has accepted a sleep action natively since 1.30 and this chart's
+floor is 1.34.
+
+The grace period has to cover the pause and the drain together, and the chart
+refuses a values file where it does not: a period that expires mid-drain ends in
+`SIGKILL`, and a drain that ends in `SIGKILL` was decoration. The runtime does
+not drain — `llama-server` is stopped rather than asked to finish, and stopping
+it was measured at 1,234 ms to 1,672 ms — so it only has to outlast its own
+pause.
+
+There is a third timeout, and it is the one with a default that quietly
+disagrees with the other two. `progressDeadlineSeconds` defaults to **600
+seconds**, and the runtime's startup budget is 600 seconds as well. They are not
+the same clock: the kubelet can still be patiently waiting for a container the
+Deployment controller has already marked `ProgressDeadlineExceeded`, and an
+`install --wait` on that rollout reports a failure that is a slow model load.
+The chart sets it explicitly on both workloads and refuses a value inside the
+startup budget.
+
 ## Telemetry, security, and what neither means
 
 The chart configures the identity every emitted record carries — service version,
@@ -120,8 +202,29 @@ is a limit of this chart rather than of the values contract. The tenant and cost
 centre are **annotations rather than labels**, because a label is what a query
 groups by and
 [the redaction rules](../../docs/telemetry/redaction.md) keep a tenant identifier
-out of exactly that. Nothing collects any of it: no scrape configuration is
-rendered, and choosing one is `V1-S3-007`'s.
+out of exactly that.
+
+`telemetry.scrapeAnnotations` adds `prometheus.io/scrape`, `prometheus.io/port`,
+and `prometheus.io/path` to every pod. It is off by default and inert either
+way: **nothing in this project collects anything.** No scrape resource is
+rendered, `telemetry-scrape-configuration` stays deferred to `V1-S3-007`, and
+the annotations are here only because they are the one form of scrape
+configuration that is a field on the workload rather than a resource beside it —
+so a discovery mechanism that reads them can find these pods without this chart
+deciding what that mechanism is. All three keys are refused in `commonAnnotations`
+and in every per-object map whether or not they are switched on, because a
+hand-written `prometheus.io/port` beside a derived one is the same duplicate-key
+hazard the other guards exist for.
+
+One caveat on the word *inert*, because it is a property of this environment and
+not of the annotation. These three keys are the legacy Prometheus
+auto-discovery convention, so a cluster-wide Prometheus configured that way —
+deployed by anyone, not necessarily by this project — would begin scraping this
+workload with no further InferOps-side configuration. `/metrics` is
+unauthenticated and fingerprints the deployment, which
+[`DR-01`](../../docs/security/deferred-risks.md) already accepts and records.
+Switching these on is therefore a decision about who may reach the pod, not only
+a decision about labels.
 
 Every pod and container carries the six properties every workload manifest in
 this repository carries — no service-account token, non-root with an explicit
@@ -133,14 +236,44 @@ chart. Least-privilege RBAC, admission policy, and the network policy are
 of files, checked by
 [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py).
 
-## No probes, deliberately
+## Installing, upgrading, rolling back, removing
 
-The feasibility trial recorded that the runtime's health endpoint returns `503`
-while the model loads. That is correct readiness behaviour and wrong liveness
-behaviour, so a liveness probe aimed at it restarts the pod mid-load and never
-converges. Choosing the mapping is work with an argument attached, and it belongs
-to `V1-S3-002-PR2`. A probe added here without that argument would reproduce a
-defect the project has already paid to find, so the suite fails if one appears.
+Read [the lifecycle document](../../docs/environment/helm-release-lifecycle.md)
+before running anything. Three properties of it are worth stating here because
+they are what makes the ownership boundary hold at run time rather than only on
+paper:
+
+- **The namespace has to exist first, and `--create-namespace` must never be
+  passed.** It is one flag, it is the default suggestion in most documentation,
+  and it silently gives one resource two owners. Terraform owns the namespace;
+  `V1-S3-005` writes that Terraform, and until it does the lifecycle script
+  creates the namespace itself and says so.
+- **`helm uninstall` is the whole of removal.** It removes this release and
+  nothing else. The namespace and the model cache claim survive it by design —
+  that is what makes them prerequisites — and the lifecycle script asserts both
+  that no release object is left and that both prerequisites are still there.
+- **Rollback works because nothing that changes between revisions is
+  immutable.** A `Deployment`'s selector cannot be changed after creation, so
+  the selector is drawn from the release name, the chart name, and the component
+  and from nothing else — not the profile, not the chart version, not
+  `commonLabels`. The `ConfigMap` name is stable for the same reason, and the
+  configuration checksum rides on the pod template so that a rollback rolls the
+  pods rather than leaving them on the configuration they were rolled back from.
+
+`helm test` runs the hook pod described above. It is the one check that
+distinguishes a rollout Kubernetes called successful from a release that
+actually answers: a `Service` selecting nothing looks identical to a working one
+until something asks.
+
+The hook pod runs **BusyBox**, for its `wget`, pinned by digest like everything
+else here. It is the only image in this chart that is neither the InferOps API
+nor the runtime, and it is **not a new dependency**: it is the same
+`busybox:1.37.0` index digest that
+[`deploy/smoke/hello-world.yaml`](../../deploy/smoke/hello-world.yaml),
+[`deploy/smoke/verify-job.yaml`](../../deploy/smoke/verify-job.yaml), and the two
+feasibility manifests already pin. A test compares the chart's copy against
+theirs, because two copies of one pin are one pin only until somebody edits one
+of them.
 
 ## Checking it
 

@@ -1,0 +1,77 @@
+{{- include "inferops-llm.validate" . -}}
+{{- if .Values.tests.enabled }}
+{{/*
+The chart's own test: one pod that asks every Service this release renders for
+its health endpoint, and exits non-zero if any of them does not answer.
+
+**This is a hook, not a resource.** Helm creates it when `helm test` is run and
+deletes it when it succeeds, so it is not part of the installed release and it
+is not one of the rows the ownership inventory assigns to Helm. It appears in
+`helm template` output because Helm renders hooks alongside everything else, and
+`tests/architecture/test_helm_chart.py` reads the hook annotation to keep the two
+apart rather than counting this object as something a release owns.
+
+What it establishes, when it is run, is what `helm install --wait` cannot: that
+the Services select something, that the endpoints resolve, and that what is
+behind them answers the path this chart told the kubelet to probe. A rollout
+that reported success and a Service that selects nothing look identical from
+outside until somebody asks.
+
+It has never been run. No cluster has installed this chart. The image is BusyBox,
+pinned by digest, and it is the only image in this chart that is neither the
+InferOps API nor the runtime ADR 0002 selected.
+*/}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}-connection-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: release-test
+  annotations:
+    helm.sh/hook: test
+    {{- /* Deleted when it succeeds, and again before the next one is created.
+           A failed test pod is deliberately left behind: its logs are the only
+           record of what did not answer. */}}
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- /* Never, not OnFailure: a test that retries reports the retry rather than
+         the failure, and `helm test` is asking one question. */}}
+  restartPolicy: Never
+  serviceAccountName: {{ include "inferops-llm.serviceAccountName" . }}
+  automountServiceAccountToken: false
+  securityContext:
+    {{- include "inferops-llm.podSecurityContext" . | nindent 4 }}
+  containers:
+    - name: connection
+      image: {{ include "inferops-llm.tests.image" . | quote }}
+      imagePullPolicy: {{ .Values.tests.image.pullPolicy }}
+      command:
+        - /bin/sh
+        - -e
+        - -c
+      args:
+        - |
+          {{- /* `-e` above, and one `wget` per endpoint. A non-200 status makes
+                 wget exit non-zero, which fails the pod, which fails the test.
+                 Output goes to stdout so that a failure leaves the response in
+                 the pod log rather than in a file on a read-only filesystem. */}}
+          echo "asking the platform API for readiness"
+          wget -q -T {{ .Values.tests.timeoutSeconds }} -O - \
+            "http://{{ include "inferops-llm.fullname" . }}:{{ .Values.api.service.port }}{{ .Values.api.readinessPath }}"
+          echo
+          {{- if eq .Values.profile "real" }}
+          echo "asking the serving runtime for health"
+          wget -q -T {{ .Values.tests.timeoutSeconds }} -O - \
+            "{{ include "inferops-llm.runtimeEndpoint" . }}{{ .Values.runtime.healthPath }}"
+          echo
+          {{- end }}
+      securityContext:
+        {{- include "inferops-llm.containerSecurityContext" . | nindent 8 }}
+      resources:
+        {{- toYaml .Values.tests.resources | nindent 8 }}
+{{- end }}
