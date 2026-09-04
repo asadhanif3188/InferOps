@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are fourteen, and they are listed in their own section rather than
+empty list. There are fifteen, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -143,12 +143,13 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Fourteen suites protect something no row of the claim matrix names. Each carries its
+Fifteen suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
 | Module | What it protects instead |
 |---|---|
+| [`tests/architecture/test_cluster_lifecycle_safety.py`](../../tests/architecture/test_cluster_lifecycle_safety.py) | How the local cluster lifecycle scripts are written: scoped deletions, no ambient kubeconfig, no engine-wide prune, and thresholds that match the tier they enforce. The claim that a cluster is created and removed without residue belongs to the cluster-smoke layer, which runs the scripts instead of reading them |
 | [`tests/architecture/test_domain_dependency_boundary.py`](../../tests/architecture/test_domain_dependency_boundary.py) | The dependency rule. An architecture decision rather than a product claim — and the reason the `unit` layer is possible at all |
 | [`tests/adapters/test_llama_server_pins.py`](../../tests/adapters/test_llama_server_pins.py) | That a constant copied out of an accepted decision still matches its source. The claim about the artifact's hash is certified by a manual procedure, not by this module |
 | [`tests/api/test_api_lifecycle.py`](../../tests/api/test_api_lifecycle.py) | The order of start, drain, and stop. ADR 0010 chose a graceful drain over a remote-stop endpoint and the matrix has no row for it |

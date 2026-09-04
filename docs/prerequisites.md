@@ -32,7 +32,7 @@ Tools:
 |---|---|---|
 | A Docker-API-compatible engine | Any reachable server | Verified against Docker Engine `29.3.1` |
 | kind | `v0.32.0` | Verify the published checksum before running it |
-| kubectl | 1.33, 1.34, or 1.35 | Must stay within one minor version of the pinned node image |
+| kubectl | 1.33, 1.34, or 1.35 | Must stay within one minor version of the pinned node image. A container desktop application's bundled kubectl may have moved past it; see [the runbook](environment/local-cluster.md) |
 | A POSIX shell | Any | On Windows, the shell supplied with Git is sufficient |
 
 Minimum host, measured rather than estimated:
@@ -47,6 +47,12 @@ Minimum host, measured rather than estimated:
 The cluster itself consumes about 0.7 GiB of memory and 1.1 GB of engine storage
 while running, plus a ~1.35 GB cached node image. The remaining headroom is for
 whatever you schedule beside it.
+
+`scripts/environment/preflight.sh` measures three of the four rows above --
+processors, the memory reaching the container VM, and free disk -- and refuses
+rather than warns when one is short. Host memory is the row it does not measure,
+because on Windows and macOS it is not the binding figure; the VM allocation
+beneath it is, and that one is read from the engine.
 
 Two caveats a contributor should know before relying on this:
 

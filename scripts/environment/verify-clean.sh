@@ -10,6 +10,9 @@
 # shellcheck source=scripts/environment/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+[ "$#" -eq 0 ] ||
+  inferops::fail "expected no arguments, got $#: $*. Usage: verify-clean.sh"
+
 inferops::require_cmd kind
 
 # Not just "is the CLI installed" but "does the engine answer". Every check below

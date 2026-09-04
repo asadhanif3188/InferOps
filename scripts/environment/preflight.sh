@@ -8,6 +8,12 @@
 # shellcheck source=scripts/environment/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+# This script takes no options, so an argument is a contributor expecting
+# something it will not do. Accepting it silently would report "all prerequisite
+# checks passed" for a run that ignored what was asked of it.
+[ "$#" -eq 0 ] ||
+  inferops::fail "expected no arguments, got $#: $*. Usage: preflight.sh"
+
 failures=0
 note_failure() {
   inferops::warn "$1"
@@ -48,19 +54,49 @@ if command -v docker >/dev/null 2>&1; then
     engine_cpus="$(docker info --format '{{.NCPU}}')"
     engine_mem="$(docker info --format '{{.MemTotal}}')"
     inferops::log "engine CPUs: ${engine_cpus}"
-    inferops::log "engine memory: $(awk -v b="${engine_mem}" 'BEGIN { printf "%.2f GiB", b/1024/1024/1024 }') (${engine_mem} bytes)"
+    inferops::log "engine memory: $(inferops::gib "${engine_mem}") (${engine_mem} bytes)"
 
     # This is the binding constraint on Windows and macOS: the VM's allocation,
     # not the host's installed memory.
     if [ "${engine_mem}" -lt "${INFEROPS_MIN_ENGINE_MEM_BYTES}" ]; then
-      note_failure "engine memory is below the $(awk -v b="${INFEROPS_MIN_ENGINE_MEM_BYTES}" 'BEGIN { printf "%.0f GiB", b/1024/1024/1024 }') minimum tier; raise the container VM allocation."
+      note_failure "engine memory is $(inferops::gib "${engine_mem}"), below the $(inferops::gib "${INFEROPS_MIN_ENGINE_MEM_BYTES}") minimum tier; raise the container VM allocation."
     fi
-    if [ "${engine_cpus}" -lt 4 ]; then
-      note_failure "engine sees ${engine_cpus} CPUs; the minimum tier is 4."
+    if [ "${engine_cpus}" -lt "${INFEROPS_MIN_ENGINE_CPUS}" ]; then
+      note_failure "engine sees ${engine_cpus} CPUs; the minimum tier is ${INFEROPS_MIN_ENGINE_CPUS}."
     fi
   else
     note_failure "the container engine is not reachable. Start it and retry."
   fi
+fi
+
+inferops::section "Disk"
+
+# The third figure in D7's minimum tier, and the one that was never checked until
+# V1-S3-001. It is not a static requirement met once: ADR 0001 (R11) records that
+# a teardown does not return host free space, so a host that had room last month
+# is not evidence that it has room now.
+read -r disk_path disk_kind <<<"$(inferops::disk_probe_target)"
+
+if free_bytes="$(inferops::free_disk_bytes "${disk_path}")"; then
+  inferops::log "measuring ${disk_path} (${disk_kind})"
+  inferops::log "free space: $(inferops::gb "${free_bytes}") (${free_bytes} bytes)"
+
+  case "${disk_kind}" in
+    host-volume)
+      # Said aloud every time, not only on failure. A figure whose meaning
+      # depends on the platform has to carry that meaning with it, or the next
+      # reader will take a proxy for a measurement of the engine's own storage.
+      inferops::log "the engine's data root is not visible on this host's filesystem, so this is the volume its virtual disk sits on by default rather than the engine's own storage. Set INFEROPS_DISK_VOLUME if you have relocated it."
+      ;;
+  esac
+
+  if [ "${free_bytes}" -lt "${INFEROPS_MIN_FREE_DISK_BYTES}" ]; then
+    note_failure "free space on ${disk_path} is $(inferops::gb "${free_bytes}"), below the $(inferops::gb "${INFEROPS_MIN_FREE_DISK_BYTES}") minimum tier. The cluster costs roughly 1.1 GB while it exists and the node image a further 1.35 GB, and neither figure is the whole of what a serving path will need."
+  fi
+else
+  # Not measured is not the same as not enough. Reporting it as a failure would
+  # block a host that is fine on a volume this script could not read.
+  inferops::warn "could not read free space on ${disk_path} (${disk_kind}); the $(inferops::gb "${INFEROPS_MIN_FREE_DISK_BYTES}") minimum tier was not checked."
 fi
 
 inferops::section "Cluster state"
