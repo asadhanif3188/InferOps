@@ -1,4 +1,4 @@
-"""Commands for the model lifecycle state model and its cold/warm comparison."""
+"""Commands for the model lifecycle state model and its two start comparisons."""
 
 from __future__ import annotations
 
@@ -18,11 +18,15 @@ from .core import (
     CacheState,
     ModelLifecycleError,
     clean_results,
+    compare_restart,
     compare_starts,
     load_lifecycle,
     observe_cache,
+    read_restart_results,
     read_results,
     summarize,
+    summarize_restart,
+    write_restart_results,
     write_results,
 )
 
@@ -36,13 +40,22 @@ def build_parser() -> argparse.ArgumentParser:
         prog="python -m tools.model_lifecycle",
         description=(
             "Read the accepted model lifecycle state model, classify the model "
-            "cache offline, or run an authorized cold/warm start comparison. No "
-            "command downloads a model or an image."
+            "cache offline, or run one of two authorized start comparisons: "
+            "'measure' for cold against warm, 'restart' for a start against the "
+            "start that follows a stop. No command downloads a model or an image."
         ),
     )
     parser.add_argument(
         "command",
-        choices=("check", "states", "cache", "measure", "results", "clean"),
+        choices=(
+            "check",
+            "states",
+            "cache",
+            "measure",
+            "restart",
+            "results",
+            "clean",
+        ),
     )
     parser.add_argument(
         "--confirm-real-runtime",
@@ -118,14 +131,31 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         if args.command == "results":
-            for document in read_results(lifecycle):
-                print(
-                    f"{document['observationId']:<6} ready {document['readyMs']} ms; "
-                    f"cache {document['cacheState']}; "
-                    f"loading observations {document['loadingObservations']}; "
-                    f"liveness while loading {document['livenessHeldWhileLoading']}"
-                )
-            return EXIT_OK
+            # Each comparison is reported if it has been run, and its absence is
+            # said out loud rather than printed as an empty section. A reader
+            # who sees only one heading should be able to tell which experiment
+            # produced the numbers under it.
+            found = False
+            for label, reader in (
+                ("cold/warm", read_results),
+                ("restart", read_restart_results),
+            ):
+                try:
+                    documents = reader(lifecycle)
+                except ModelLifecycleError:
+                    print(f"{label:<10} not run")
+                    continue
+                found = True
+                for document in documents:
+                    print(
+                        f"{label:<10} {document['observationId']:<8} "
+                        f"ready {document['readyMs']} ms; "
+                        f"cache {document['cacheState']}; "
+                        f"loading observations {document['loadingObservations']}; "
+                        f"liveness while loading "
+                        f"{document['livenessHeldWhileLoading']}"
+                    )
+            return EXIT_OK if found else EXIT_REFUSED
 
         if args.command == "clean":
             cleanup = clean_results(lifecycle, confirm=args.confirm)
@@ -143,6 +173,41 @@ def main(argv: list[str] | None = None) -> int:
 
         package = load_runtime_package()
         runner = SubprocessRunner()
+
+        if args.command == "restart":
+            restart_result = compare_restart(
+                lifecycle,
+                package,
+                runner,
+                confirmed=args.confirm_real_runtime,
+                http_get=http_get,
+                http_post=http_post,
+            )
+            raw, summary = write_restart_results(lifecycle, restart_result)
+            document = summarize_restart(lifecycle, restart_result)
+            for name in ("cold", "restart"):
+                observation = document[name]
+                print(
+                    f"{name:<8} ready {observation['readyMs']} ms; "
+                    f"create {observation['createMs']} ms; "
+                    f"first liveness {observation['firstLivenessMs']} ms; "
+                    f"inference {observation['inferenceMs']} ms; "
+                    f"stop {observation['stopMs']} ms"
+                )
+            print(
+                f"between  cache {document['cacheStateBetweenStarts']}; "
+                f"{document['bytesBetweenStarts']} bytes (stat only, not read)"
+            )
+            print(
+                f"verify   {document['artifactVerifyMs']} ms "
+                "(SHA-256 re-read, after both starts)"
+            )
+            print(f"delta    {document['readyMsDelta']} ms restart minus cold")
+            print(f"accept   {document['acceptance']}")
+            print(f"raw      {raw.relative_to(REPO_ROOT)}")
+            print(f"summary  {summary.relative_to(REPO_ROOT)}")
+            return EXIT_OK
+
         result = compare_starts(
             lifecycle,
             package,

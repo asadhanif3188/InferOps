@@ -307,7 +307,10 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
     assert len(INSTALLED["mock"]) == 4, "the mock profile installs four"
     assert len(HOOKS["real"]) == 1, "one test hook, in both profiles"
     assert len(HOOKS["mock"]) == 1
-    assert len(ALL_CONTAINERS) == 5
+    assert len(ALL_CONTAINERS) == 6, (
+        "five workload and hook containers, plus the model integrity init "
+        "container the real profile runs before its runtime"
+    )
 
 
 def test_the_chart_declares_the_api_version_and_the_kubernetes_floor() -> None:
@@ -386,6 +389,205 @@ def test_the_model_cache_is_referenced_and_never_created() -> None:
         "a serving replica that could write the model cache is a second writer "
         "nobody decided on; the acquisition job is the one sanctioned writer"
     )
+
+
+def test_the_acquisition_job_is_declared_deferred_rather_than_forgotten() -> None:
+    """The one Helm-owned row this story left where it was, said out loud.
+
+    V1-S3-003 implemented the reference side of the model cache handoff -- the
+    revision-scoped mount and the integrity check -- and not the writing side,
+    which needs an image nobody has published. A row that is neither rendered
+    nor declared deferred is owned on paper by a tool that has never heard of
+    it, so this asserts the declaration rather than the omission.
+    """
+    assert "model-acquisition-job" in DECLARED_DEFERRED
+    assert any(
+        resource["resourceId"] == "model-acquisition-job"
+        and resource["owner"] == "helm"
+        and resource["v1Status"] == "planned"
+        for resource in INVENTORY["resources"]
+    )
+    for profile, documents in INSTALLED.items():
+        assert not [d for d in documents if d["kind"] == "Job"], (
+            f"{profile} renders a Job while the acquisition row is deferred"
+        )
+
+
+# --------------------------------------------------------------------------
+# The model cache: which bytes a pod can reach, and what it checks first
+# --------------------------------------------------------------------------
+
+# The in-claim location, derived the way the chart derives it and compared
+# against the layout the model source record already publishes for the
+# workspace cache. One layout described in one place; a claim laid out
+# differently from the checkout would be a second scheme nobody wrote down.
+EXPECTED_CACHE_SUBPATH = "/".join(
+    MODEL_SOURCE["cache"]["artifactRelativePath"].split("/")[:-1]
+)
+
+
+def _model_mounts(profile: str) -> list[tuple[str, dict]]:
+    return [
+        (label, mount)
+        for label, container in _containers(INSTALLED[profile])
+        for mount in container.get("volumeMounts") or []
+        if mount["name"] == "model-cache"
+    ]
+
+
+def _verify_script(profile: str) -> str:
+    """The init container script, which is the last member of its command."""
+    return _init_containers(profile)["verify-model"]["command"][-1]
+
+
+def test_the_model_cache_mount_is_scoped_to_the_declared_revision() -> None:
+    """The acceptance criterion, as a mount rather than as a check.
+
+    The claim is mounted at its repository-and-revision subdirectory and not at
+    its root, so a release declaring one revision cannot see another revision
+    directory at all. Before this the revision was required, compared against
+    nothing, and had no bearing on which bytes a container read.
+    """
+    mounts = _model_mounts("real")
+    assert mounts, "the real profile mounts the model cache somewhere"
+
+    revision = FIXTURES["real"]["model"]["revision"]
+    for label, mount in mounts:
+        assert mount.get("subPath") == EXPECTED_CACHE_SUBPATH, (
+            f"{label} mounts the claim at {mount.get('subPath')!r} rather than "
+            f"at the revision-scoped {EXPECTED_CACHE_SUBPATH!r}"
+        )
+        assert revision in mount["subPath"], (
+            f"{label} mounts a path the declared revision does not appear in, "
+            "so the revision decides nothing about which bytes are readable"
+        )
+        assert mount["readOnly"] is True, label
+
+
+def test_no_values_path_reaches_the_in_claim_location() -> None:
+    """A settable subPath would put the hole back.
+
+    Two halves, because either one alone is satisfiable while the other is not:
+    the schema accepts no `model.cache.subPath` at all, and no template reads
+    one. The templates are searched as text because the property being asserted
+    is the absence of a read, and there is no rendered artifact of an absence.
+    """
+    cache_schema = SCHEMA["properties"]["model"]["properties"]["cache"]
+    assert cache_schema["additionalProperties"] is False
+    assert "subPath" not in cache_schema["properties"], (
+        "the values contract accepts a free-form in-claim path again"
+    )
+    assert "subPath" not in VALUES["model"]["cache"]
+
+    templates = sorted(TEMPLATES_DIR.rglob("*.tpl")) + sorted(
+        TEMPLATES_DIR.rglob("*.yaml")
+    )
+    assert templates, "this check read no templates"
+    for template in templates:
+        text = template.read_text(encoding="utf-8")
+        assert ".Values.model.cache.subPath" not in text, (
+            f"{template.name} reads an in-claim path out of the values file"
+        )
+
+
+def test_the_verified_artifact_and_the_served_artifact_are_one_path() -> None:
+    """An integrity check on a file nobody serves proves nothing.
+
+    The path is derived once, so the --model argument, the environment the API
+    reads, and the file the init container hashes are the same expression. This
+    reads all three back out of the render and compares them.
+    """
+    runtime = _workload_containers()["runtime"]
+    served = runtime["args"][runtime["args"].index("--model") + 1]
+
+    cache = FIXTURES["real"]["model"]["cache"]
+    artifact = FIXTURES["real"]["model"]["artifact"]
+    derived = "{}/{}".format(cache["mountPath"], artifact["fileName"])
+
+    assert served == derived
+    assert served == RUNTIME_PROFILE["model"]["containerPath"], (
+        "the derived path is no longer the one the accepted runtime profile "
+        "publishes, so the chart and the record describe different files"
+    )
+    assert served.endswith(MODEL_SOURCE["file"])
+
+    configuration = next(
+        document for document in INSTALLED["real"] if document["kind"] == "ConfigMap"
+    )
+    assert configuration["data"]["INFEROPS_LLAMA_SERVER_MODEL_PATH"] == served
+    assert served in _verify_script("real"), (
+        "the init container reads a path the runtime does not load"
+    )
+
+
+def test_the_integrity_check_runs_before_the_runtime_and_on_every_start() -> None:
+    """An init container rather than a job, and that is the restart property.
+
+    A verification performed once at install time says nothing about the pod
+    that replaced the one it ran in. This one runs on every pod start, so a
+    replacement pod re-establishes that the surviving artifact is the artifact
+    the release declared before anything serves from it.
+    """
+    runtime_deployment = next(
+        document
+        for document in INSTALLED["real"]
+        if document["kind"] == "Deployment"
+        and _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
+        == "serving-runtime"
+    )
+    spec = runtime_deployment["spec"]["template"]["spec"]
+    assert [c["name"] for c in spec["initContainers"]] == ["verify-model"]
+    assert [c["name"] for c in spec["containers"]] == ["runtime"]
+
+    artifact = FIXTURES["real"]["model"]["artifact"]
+    script = _verify_script("real")
+
+    assert str(artifact["sizeBytes"]) in script, (
+        "the pinned byte count is not in the rendered script as an integer. A "
+        "large YAML number that reaches a template as a float renders in "
+        "scientific notation, and the comparison then holds against a string "
+        "no byte count will ever equal"
+    )
+    assert artifact["sha256"].removeprefix("sha256:") in script
+    assert "sha256sum" in script
+
+
+def test_the_integrity_container_is_given_no_environment() -> None:
+    """Everything it compares against is rendered from a pinned value.
+
+    An environment variable would be a second way to say what the artifact
+    should be, and the kubelet resolves a duplicate name last-one-wins -- so a
+    check configurable by environment is a check an extraEnv entry could
+    satisfy.
+    """
+    verifier = _init_containers("real")["verify-model"]
+    assert "env" not in verifier
+    assert "envFrom" not in verifier
+
+
+def test_the_mock_profile_mounts_nothing_and_verifies_nothing() -> None:
+    """A mock that verified an artifact would describe a read it never did."""
+    assert _model_mounts("mock") == []
+    assert _init_containers("mock") == {}
+    assert FIXTURES["mock"]["model"]["integrity"]["verifyOnStart"] == "none"
+    assert "artifact" not in FIXTURES["mock"]["model"]
+    assert "cache" not in FIXTURES["mock"]["model"]
+
+
+def test_the_shipped_default_verifies_the_most_and_not_the_least() -> None:
+    """The default is the strong setting, and the weak ones are stated choices.
+
+    A chart defaulting to `size` would leave every release that did not think
+    about it comparing a byte count, and a same-length substitution passes a
+    byte count.
+    """
+    assert VALUES["model"]["integrity"]["verifyOnStart"] == "sha256"
+    integrity = SCHEMA["properties"]["model"]["properties"]["integrity"]
+    assert integrity["properties"]["verifyOnStart"]["enum"] == [
+        "sha256",
+        "size",
+        "none",
+    ]
 
 
 def test_every_rendered_object_carries_the_isolation_and_lifecycle_labels() -> None:
@@ -636,9 +838,13 @@ def test_each_fixture_declares_what_its_profile_permits() -> None:
     assert mock["model"]["identifier"].startswith("mock-")
     assert "revision" not in mock["model"]
     assert "alias" not in mock["model"]
-    assert "containerPath" not in mock["model"]
+    assert "artifact" not in mock["model"]
     assert "cache" not in mock["model"]
     assert "security" not in mock
+    assert mock["model"]["integrity"]["verifyOnStart"] == "none", (
+        "stated rather than inherited: the shipped default is the strong "
+        "setting, so a mock has to say out loud that it verifies nothing"
+    )
 
     real = FIXTURES["real"]
     assert real["profile"] == "real"
@@ -823,8 +1029,23 @@ def test_the_real_fixture_pins_the_model_the_source_record_pins() -> None:
     assert model["revision"] == MODEL_SOURCE["revision"]
     assert model["identifier"] == RUNTIME_PROFILE["model"]["platformIdentifier"]
     assert model["alias"] == RUNTIME_PROFILE["model"]["alias"]
-    assert model["containerPath"] == RUNTIME_PROFILE["model"]["containerPath"]
-    assert model["containerPath"].endswith(MODEL_SOURCE["file"])
+
+
+def test_the_real_fixture_pins_the_artifact_the_source_record_pins() -> None:
+    """Four values that decide which bytes a pod reads and whether it accepts
+    them, compared against the one record that publishes them.
+
+    `repository` and `revision` derive the subdirectory of the claim the release
+    mounts; `sizeBytes` and `sha256` are what the pod compares the mounted file
+    against. A fixture free to state its own would be a release verifying an
+    artifact against numbers it chose.
+    """
+    artifact = FIXTURES["real"]["model"]["artifact"]
+
+    assert artifact["repository"] == MODEL_SOURCE["repository"]
+    assert artifact["fileName"] == MODEL_SOURCE["file"]
+    assert artifact["sizeBytes"] == MODEL_SOURCE["expectedSizeBytes"]
+    assert artifact["sha256"] == MODEL_SOURCE["sha256"]
 
 
 def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() -> None:
@@ -941,11 +1162,24 @@ def test_no_rendered_manifest_carries_a_personal_path_or_a_secret_value(
 def _workload_containers() -> dict[str, dict]:
     """The API and runtime containers from the real render, by name.
 
-    The real profile is used because it is the only one that renders both. The
-    test hook's container is excluded: it is not a workload and carries no probe.
+    The real profile is used because it is the only one that renders both. Two
+    kinds of container are excluded, for the same reason: neither is a workload
+    and neither carries a probe. The test hook's, because it is a hook; and the
+    model integrity init container's, because an init container runs to
+    completion before the kubelet probes anything.
     """
     return {
-        container["name"]: container for _, container in _containers(INSTALLED["real"])
+        container["name"]: container
+        for label, container in _containers(INSTALLED["real"])
+        if ".containers[" in label
+    }
+
+
+def _init_containers(profile: str) -> dict[str, dict]:
+    return {
+        container["name"]: container
+        for label, container in _containers(INSTALLED[profile])
+        if ".initContainers[" in label
     }
 
 
@@ -1132,10 +1366,15 @@ def test_the_test_hook_image_is_the_pin_this_repository_already_carries() -> Non
         "the chart's test image is a different busybox from the one this "
         f"repository already pins: {VALUES['tests']['image']['digest']} vs {digests}"
     )
+    assert VALUES["model"]["integrity"]["image"]["digest"] in digests, (
+        "the model integrity init container is a different busybox from the one "
+        "this repository already pins"
+    )
     # The repository strings differ deliberately: the chart states a fully
     # qualified name because its schema splits repository from digest, and the
     # manifests state the short name Kubernetes resolves the same way.
     assert VALUES["tests"]["image"]["repository"].endswith("busybox")
+    assert VALUES["model"]["integrity"]["image"]["repository"].endswith("busybox")
 
 
 @pytest.mark.parametrize("name", ("api", "runtime"))

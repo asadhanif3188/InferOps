@@ -10,6 +10,52 @@ once versioned releases begin.
 
 ### Added
 
+- **The model cache mount is scoped to the declared revision, and a release can
+  no longer read bytes it did not name.** The chart mounted the Terraform-owned
+  claim at its root with a free-form `subPath`, so `model.revision` was required,
+  compared against nothing, and had no bearing on which bytes a container read.
+  The claim is now mounted at the `<repository>/<revision>` subdirectory the
+  chart derives from `model.artifact.repository` and `model.revision` — the same
+  layout [the model source record](docs/serving/model-source.v1.json) already
+  publishes for the workspace cache — and no values path reaches it. A release
+  declaring one revision cannot see another revision's directory at all. The path
+  the runtime is given as `--model` is derived from the same pair, so the file
+  that is verified and the file that is served cannot be two files.
+  [The storage document](docs/environment/model-cache-storage.md) has the layout,
+  the ownership boundary, and what each teardown operation does to the bytes.
+
+- **The serving pod verifies the artifact before it loads it, on every start.**
+  An init container reads the mounted file and compares its byte count and
+  SHA-256 against the pins the model source record publishes; a mismatch fails
+  the pod rather than starting a runtime on it. It runs on every pod start and
+  therefore on every restart, which is what makes it a restart property: a
+  verification performed once at install time says nothing about the pod that
+  replaced the one it ran in. `model.integrity.verifyOnStart` is `sha256` by
+  default, with `size` and `none` as explicit downgrades that still keep the
+  revision scoping — that is the mount rather than a check — and still refuse an
+  absent artifact. The mock profile must state `none`, because a mock mounts no
+  artifact and a render describing a verification that could not have happened is
+  the same defect as a mock transcript naming a real model. The container is the
+  BusyBox pin this repository already carries, is given no environment at all, and
+  **has never been scheduled**.
+
+- **A restart comparison, which is the cold/warm comparison with its one variable
+  taken back out.** `python -m tools.model_lifecycle restart
+  --confirm-real-runtime` starts the pinned runtime, stops and removes it, and
+  starts it again against the bytes it left behind — reading nothing in between,
+  so the only thing that changed between the two starts is that a runtime
+  stopped. The classification taken between the starts stats the file and does
+  not open it, for exactly that reason; the digest is re-read after both starts,
+  where a 1.71 GiB read can no longer move a figure. Each of the three restart
+  properties the lifecycle record claims is measured rather than restated: the
+  artifact survives, readiness resets — read off the *first* probe sample of the
+  restarted runtime, so a process that came back already ready would be visible —
+  and the restart proceeds from a hit, which is the only state that needs no
+  network. Results are written under their own two file names beside the other
+  comparison, because a restart summary written over a cold/warm summary would
+  not be a corrupted file but a readable one describing an experiment that was
+  never run.
+
 - **The release now says how it starts and how it stops, and the one probe that
   is not an HTTP GET is the point.** The chart configures a startup, readiness,
   and liveness probe for each workload, and the mapping is read out of accepted
@@ -58,6 +104,20 @@ once versioned releases begin.
   reason the identity labels are.
 
 ### Changed
+
+- **The chart suite went from 115 checks to 127 and the lifecycle suite from 74
+  to 87.** The new chart properties are the model cache ones: that the mount is
+  scoped to the declared revision, that no values path reaches that scoping, that
+  the file the init container verifies is the file the runtime is given, that the
+  pinned byte count survives the render as an integer, that the init container is
+  given no environment, and that the acquisition row is declared deferred rather
+  than forgotten. The new lifecycle properties are the restart comparison's: that
+  it reads the artifact after both starts rather than between them, that a
+  restarted runtime which came back already ready is reported as **not** a reset,
+  and that scoped cleanup reaches both comparisons' results and still cannot
+  reach the model cache. One defect was found by writing them: the pinned byte
+  count reached the template as a float and rendered as `1.834426016e+09`, so the
+  comparison it fed could neither pass nor fail.
 
 - **The chart suite went from 77 checks to 112, and the script suite learned
   about Helm.** New properties: that every workload container is probed, that the

@@ -362,7 +362,7 @@ INFEROPS_MODEL_IDENTIFIER: {{ .Values.model.identifier | quote }}
 INFEROPS_MODEL_REVISION: {{ .Values.model.revision | quote }}
 INFEROPS_RUNTIME_IMAGE_DIGEST: {{ .Values.runtime.image.digest | quote }}
 INFEROPS_LLAMA_SERVER_ENDPOINT: {{ include "inferops-llm.runtimeEndpoint" . | quote }}
-INFEROPS_LLAMA_SERVER_MODEL_PATH: {{ .Values.model.containerPath | quote }}
+INFEROPS_LLAMA_SERVER_MODEL_PATH: {{ include "inferops-llm.model.containerPath" . | quote }}
 INFEROPS_LLAMA_SERVER_MODEL_ALIAS: {{ .Values.model.alias | quote }}
 INFEROPS_LLAMA_SERVER_CONTEXT_SIZE: {{ .Values.runtime.contextSizeTokens | quote }}
 INFEROPS_LLAMA_SERVER_THREADS: {{ .Values.runtime.threads | quote }}
@@ -397,4 +397,121 @@ here.
       name: {{ .secretName }}
       key: {{ .key }}
 {{- end }}
+{{- end -}}
+
+{{/*
+The model artifact: where it lives inside the claim, and where the container
+sees it.
+
+Both are derived, and neither is settable, because the pair is what makes the
+declared revision decide which bytes are read.
+
+`cacheSubPath` is `<repository>/<revision>`, with the repository's separator
+replaced the way the workspace cache already replaces it -- so the claim holds
+the same layout `docs/serving/model-source.v1.json` publishes for the checkout,
+and one artifact record describes both. Mounting the claim *at* that
+subdirectory rather than at its root is the whole mechanism: a release declaring
+one revision cannot see another revision's directory at all, so cache reuse
+cannot bypass the revision it claims to be reusing. A values file that could
+write this path would put that back.
+
+`containerPath` is the mount directory and the pinned file name. It is what the
+runtime is given as `--model` and what the integrity check reads, and it is one
+expression so that those two cannot be different files.
+*/}}
+{{- define "inferops-llm.model.cacheSubPath" -}}
+{{- printf "%s/%s" (replace "/" "--" .Values.model.artifact.repository) .Values.model.revision -}}
+{{- end -}}
+
+{{- define "inferops-llm.model.containerPath" -}}
+{{- printf "%s/%s" (trimSuffix "/" .Values.model.cache.mountPath) .Values.model.artifact.fileName -}}
+{{- end -}}
+
+{{- define "inferops-llm.model.integrityImage" -}}
+{{- printf "%s@%s" .Values.model.integrity.image.repository .Values.model.integrity.image.digest -}}
+{{- end -}}
+
+{{/*
+The read-only mount of the Terraform-owned claim, written once and used by both
+containers that need it.
+
+`readOnly` is stated on the mount and on the volume, and `subPath` selects the
+revision directory. Two containers referring to one definition is what stops the
+init container verifying one path while the runtime loads another -- which would
+be an integrity check that proved something about a file nobody served.
+*/}}
+{{- define "inferops-llm.model.volumeMount" -}}
+- name: model-cache
+  mountPath: {{ .Values.model.cache.mountPath | quote }}
+  readOnly: true
+  subPath: {{ include "inferops-llm.model.cacheSubPath" . | quote }}
+{{- end -}}
+
+{{/*
+What the init container runs before `llama-server` is started.
+
+It is deliberately a plain POSIX script and not a program: BusyBox is the only
+thing in the pod that can read the artifact before the runtime does, and adding
+a program would mean adding an image to build one into.
+
+`$(...)` appears in it. Kubernetes performs its own `$(VAR)` substitution over a
+container command and leaves an unresolved reference exactly as written, so the
+shell -- not the kubelet -- is what evaluates these.
+
+The three modes differ only in how much they read. None of them decides which
+file is read: that is the mount, and it is revision-scoped whatever this says.
+*/}}
+{{- define "inferops-llm.model.verifyScript" -}}
+{{- $artifact := include "inferops-llm.model.containerPath" . -}}
+set -eu
+artifact="{{ $artifact }}"
+if [ ! -f "$artifact" ]; then
+  echo "REFUSED: the mounted model cache holds no artifact for the declared revision" >&2
+  exit 1
+fi
+{{- if eq .Values.model.integrity.verifyOnStart "none" }}
+echo "model artifact present; content not verified (model.integrity.verifyOnStart=none)"
+{{- else }}
+present=$(wc -c < "$artifact")
+if [ "$present" != "{{ printf "%d" (int64 .Values.model.artifact.sizeBytes) }}" ]; then
+  echo "REFUSED: the mounted model artifact does not match the pinned byte count" >&2
+  exit 1
+fi
+{{- if eq .Values.model.integrity.verifyOnStart "sha256" }}
+echo "{{ trimPrefix "sha256:" .Values.model.artifact.sha256 }}  $artifact" | sha256sum -c -
+echo "model artifact verified: byte count and SHA-256"
+{{- else }}
+echo "model artifact verified: byte count only (model.integrity.verifyOnStart=size)"
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+The init container itself.
+
+It runs on every pod start, which is what makes it a restart property rather
+than an install-time one: a pod that comes back finds the artifact where the
+previous one left it, and re-establishes that it is the artifact this release
+declared before anything serves from it. A verification performed once at
+install time would say nothing about the pod that replaced the one it ran in.
+
+It carries the same security context and the same read-only mount as the
+runtime, and it is given no environment at all: everything it compares against
+is rendered into the script from a pinned value.
+*/}}
+{{- define "inferops-llm.model.verifyInitContainer" -}}
+- name: verify-model
+  image: {{ include "inferops-llm.model.integrityImage" . | quote }}
+  imagePullPolicy: {{ .Values.model.integrity.image.pullPolicy }}
+  command:
+    - /bin/sh
+    - -c
+    - |
+      {{- include "inferops-llm.model.verifyScript" . | nindent 6 }}
+  securityContext:
+    {{- include "inferops-llm.containerSecurityContext" . | nindent 4 }}
+  resources:
+    {{- toYaml .Values.model.integrity.resources | nindent 4 }}
+  volumeMounts:
+    {{- include "inferops-llm.model.volumeMount" . | nindent 4 }}
 {{- end -}}
