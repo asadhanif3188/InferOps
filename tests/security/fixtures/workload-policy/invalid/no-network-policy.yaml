@@ -1,0 +1,50 @@
+# THIS FIXTURE IS DELIBERATELY BROKEN. It is not deployed and not deployable.
+#
+# A correct workload with no policy object beside it. The release installs a pod
+# that may reach anything in the cluster and be reached by anything in it, and
+# nothing in the manifest says so: this is the failure that is invisible in a
+# diff, because it is an absence rather than a wrong value.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fixture-api
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fixture
+        app.kubernetes.io/instance: fixture
+    spec:
+      serviceAccountName: fixture-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: localhost/fixture@sha256:e52c1893568a326665fb95480bdaf5279ce85a4b82faa0aa33dc6f2b4dec3744
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

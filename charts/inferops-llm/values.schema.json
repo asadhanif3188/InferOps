@@ -246,21 +246,61 @@
     "security": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["runAsUser", "runAsGroup", "serviceAccount", "secretRefs"],
+      "required": [
+        "runAsUser",
+        "runAsGroup",
+        "serviceAccount",
+        "networkPolicy",
+        "secretRefs"
+      ],
       "properties": {
         "runAsUser": { "$ref": "#/$defs/nonRootId" },
         "runAsGroup": { "$ref": "#/$defs/nonRootId" },
         "fsGroup": { "$ref": "#/$defs/nonRootId" },
         "serviceAccount": {
+          "description": "One identity per workload. `name` was a single member before V1-S3-004 and is now one per component, because a shared account is a grant nobody scoped: the first RoleBinding written for one workload reaches the other. Neither account is granted anything today, and this chart renders no Role and no RoleBinding.",
           "type": "object",
           "additionalProperties": false,
           "required": ["create"],
           "properties": {
             "create": { "type": "boolean" },
-            "name": { "$ref": "#/$defs/dnsSafeOrEmpty" },
+            "api": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": { "$ref": "#/$defs/dnsSafeOrEmpty" }
+              }
+            },
+            "runtime": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": { "$ref": "#/$defs/dnsSafeOrEmpty" }
+              }
+            },
             "annotations": {
               "type": "object",
               "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+        "networkPolicy": {
+          "description": "The release's own network policy: a default-deny over every pod this release installs, plus the named paths a working release needs. A policy object is not enforcement, and on the accepted local cluster it is not enforced: an executed experiment established that kindnetd applies no policy, so what this renders is a correct policy that nothing applies. DR-04 carries it and EX-05 records it.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "dns": {
+              "description": "The cluster's resolver, by label rather than by address. Every pod here reaches everything by Service name, so an egress denial that forgets DNS denies everything and reports it as a connection error. These are values because the resolver's labels belong to the cluster's add-ons rather than to this chart.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["namespaceSelector", "podSelector", "port"],
+              "properties": {
+                "namespaceSelector": { "$ref": "#/$defs/labelSelectorLabels" },
+                "podSelector": { "$ref": "#/$defs/labelSelectorLabels" },
+                "port": { "$ref": "#/$defs/port" }
+              }
             }
           }
         },
@@ -289,6 +329,14 @@
   },
 
   "$defs": {
+    "labelSelectorLabels": {
+      "description": "A non-empty label set used as a NetworkPolicy selector. Empty is refused rather than defaulted: an empty `matchLabels` selects everything, so a resolver selector somebody cleared would silently open egress to every pod in the cluster instead of failing.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 8,
+      "additionalProperties": { "$ref": "#/$defs/labelValue" }
+    },
+
     "probes": {
       "description": "How the kubelet asks a container whether it started, whether it is ready, and whether it is alive. The paths and the kinds are not settings here: they come from the accepted health mappings in docs/serving/, and the chart writes them. What a values file may change is the timing.",
       "type": "object",

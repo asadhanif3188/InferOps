@@ -1,0 +1,65 @@
+# THIS FIXTURE IS DELIBERATELY BROKEN. It is not deployed and not deployable.
+#
+# A container that states a CPU request and nothing else. It is scheduled
+# somewhere, and then it is bounded by nothing: one serving runtime with no
+# memory limit is the whole node, and the node is the cluster here. `T-10` is the
+# threat, and an explicit envelope is the only control in V1 that acts on it.
+# Nothing rate limits a caller, which `DR-02` carries.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fixture-default-deny
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fixture-api
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fixture
+        app.kubernetes.io/instance: fixture
+    spec:
+      serviceAccountName: fixture-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: localhost/fixture@sha256:e52c1893568a326665fb95480bdaf5279ce85a4b82faa0aa33dc6f2b4dec3744
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m

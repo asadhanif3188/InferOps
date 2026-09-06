@@ -412,21 +412,105 @@ tests:
 # -- security ---------------------------------------------------------------
 #
 # The pod and container fields below are the six properties every workload
-# manifest in this repository already carries. V1-S3-004 owns enforcement - the
-# policy validation, the least-privilege service account, and the NetworkPolicy.
-# This chart configures them; it does not prove that a cluster refused a
-# workload that omitted them.
+# manifest in this repository carries. What V1-S3-004 added beside them is the
+# other three halves of the same idea: an identity per workload, a network
+# policy that starts from a denial, and a validator that reads the rendered
+# output and refuses a workload that dropped any of it.
+#
+# The validator is `python -m tools.workload_policy`, it reads committed
+# renders, and what it establishes stops at the file. **No cluster has installed
+# this chart**, no admission controller enforces any of this on a pod, and a
+# check over a rendered manifest is not a check on a running workload. See
+# docs/security/workload-policy.md, which states the distance between the two.
 security:
   runAsUser: 65534
   runAsGroup: 65534
   fsGroup: 65534
 
+  # One identity per workload, created by this release and named for it: an
+  # identity that outlives what it identifies is a permission nobody is
+  # watching, and one identity shared by two workloads is a grant nobody scoped.
+  #
+  # Neither account is granted anything. This chart renders no Role and no
+  # RoleBinding, and no pod mounts a token, so the separation is about what a
+  # future binding cannot accidentally reach rather than about a privilege
+  # either one holds today.
+  #
+  # `create: false` is the escape hatch for a cluster that provisions accounts
+  # elsewhere, and it now requires a name for each workload. It used to mean
+  # something else as well: with no names, every pod fell back to the
+  # namespace's `default` account, and the release rendered output this chart's
+  # own workload policy refuses - a supported setting defeating a control the
+  # chart advertises. An unnamed account under `create: false` is refused, and so
+  # is the literal name `default`, because a rule that only catches the omission
+  # teaches the workaround.
   serviceAccount:
-    # Created by this release and named for it: an identity that outlives what
-    # it identifies is a permission nobody is watching.
     create: true
-    name: ""
+    api:
+      # Empty means `<release>-api`, and is only valid while `create` is true.
+      # Naming one here is for a cluster whose account names are decided outside
+      # this chart.
+      name: ""
+    runtime:
+      name: ""
     annotations: {}
+
+  # The release's own network policy: deny first, then open exactly the paths a
+  # working release needs.
+  #
+  # Four objects are rendered when this is on: a default-deny over every pod
+  # this release installs, an API rule, a runtime rule, and a rule for the
+  # `helm test` pod. The runtime is given no egress at all, because
+  # `llama-server` reads a mounted file and answers a socket and reaches nothing.
+  #
+  # **A policy object is not enforcement, and here it is not enforced.** Whether a
+  # policy is applied at all is the cluster network plugin's decision; the
+  # accepted local cluster is kind with its default CNI, kindnetd, and an
+  # executed experiment applied a total deny on that plugin and watched
+  # pod-to-pod traffic, DNS, and a direct CoreDNS query all keep working. See
+  # docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md. What is
+  # rendered below is a correct policy that nothing applies. `DR-04` carries it
+  # and `EX-05` records it; a policy the cluster ignores looks exactly like a
+  # control, which is why the sentence is here rather than only in the register.
+  #
+  # `enabled: false` renders no policy at all. That is a defensible choice on the
+  # accepted cluster, which is now known not to enforce them - an object nothing
+  # applies is clutter that reads as a control - and it is a **trade**, stated
+  # here rather than discovered:
+  # the release then satisfies no default-deny, and
+  # `python -m tools.workload_policy` refuses the render with one
+  # `network-policy-in-the-release-namespace` finding per workload. That refusal
+  # is the intended, visible consequence rather than a bug; a test renders with
+  # this off and asserts it. Turning it off gives up the control, and the gate
+  # says so out loud instead of the release quietly losing it.
+  #
+  # One thing this policy set does NOT account for, and it is the failure worth
+  # knowing about before installing on a cluster that enforces policy: a kubelet
+  # probe arrives from the node rather than from a pod, so the default-deny's
+  # ingress rules do not describe it. Whether a plugin permits node-sourced
+  # traffic to a denied pod is the plugin's answer, not this object's, and if it
+  # does not, every pod here fails readiness and the release never becomes ready.
+  # Nothing here has been installed, so this is a caveat rather than an
+  # observation.
+  networkPolicy:
+    enabled: true
+
+    # The cluster's DNS resolver, addressed by label rather than by address.
+    # Every pod here reaches everything by Service name, so a policy that denies
+    # egress and forgets DNS denies everything - and it surfaces as a connection
+    # error rather than as a policy error, which is the failure that makes
+    # people give up on network policy.
+    #
+    # These are values because the resolver's labels belong to the cluster's
+    # add-ons and not to this chart. `kubernetes.io/metadata.name` is set on
+    # every namespace by the API server itself, so it is not a label anyone has
+    # to remember to apply.
+    dns:
+      namespaceSelector:
+        kubernetes.io/metadata.name: kube-system
+      podSelector:
+        k8s-app: kube-dns
+      port: 53
 
   # Secret material, by reference only. The chart mounts nothing and reads
   # nothing; it names Kubernetes Secrets the workload owner created out of band.

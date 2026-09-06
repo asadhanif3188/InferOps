@@ -10,6 +10,45 @@ once versioned releases begin.
 
 ### Added
 
+- **Every workload the chart installs presents an identity of its own, and the
+  release starts from a network denial.** The chart rendered one `ServiceAccount`
+  that both Deployments named; it now renders one per workload. Neither is
+  granted anything — no `Role`, no `ClusterRole`, and no binding of either is
+  rendered anywhere in this chart, and no pod mounts a token — so the split
+  changes no privilege today. It changes what the first grant can reach: a
+  `RoleBinding` written for the API and attached to a shared account is a grant to
+  the serving runtime as well, made by somebody who was not thinking about the
+  serving runtime. Beside them the chart now renders four `NetworkPolicy` objects:
+  a deny of both ingress and egress over every pod the release installs, and one
+  rule each for the API, the runtime, and the `helm test` pod. The API is
+  reachable on its own port from the release's own pods and may resolve DNS and
+  reach the runtime; the runtime is reachable on its own port and may reach
+  nothing, because `llama-server` reads a mounted file and answers a socket. The
+  deny selects the release's own pods rather than the namespace, so a
+  Terraform-owned prerequisite beside it is untouched, and it omits the component
+  label so that a component added later arrives denied rather than uncovered.
+  `security.serviceAccount.name` became `security.serviceAccount.api.name` and
+  `.runtime.name`, and the chart version moved to `0.2.0`; nothing has installed
+  `0.1.0`, so no upgrade path is owed to anyone.
+
+- **A workload policy that reads rendered manifests, and nine fixtures that
+  establish it refuses.** `python -m tools.workload_policy` applies twelve rules to
+  a bundle of Kubernetes manifests — the six pod and container security properties,
+  digest pinning, least exposure, an explicit resource envelope on every container,
+  a dedicated service account, no credential-shaped environment name carrying a
+  literal, and a default-deny selecting every workload. Every rule identifier is a
+  control identifier in [the security baseline](docs/security/security-baseline.v1alpha1.json),
+  and a test compares the two sets in both directions. Two rules apply to a release
+  and not to the one-shot apparatus under `deploy/`, and the scope is read off the
+  `inferops.io/lifecycle` label rather than chosen by whoever runs the check, so no
+  invocation can ask for the lighter policy; a test holds the exemption to exactly
+  two rules. Nine committed fixtures each drop one control and a committed record
+  says which rules each must produce, compared in both directions — because a
+  validator with no failing input can have every rule reading the wrong field and
+  pass on every run, which is the outcome that looks exactly like enforcement.
+  [The policy document](docs/security/workload-policy.md) publishes the rules and
+  states what checking a manifest does not establish.
+
 - **The model cache mount is scoped to the declared revision, and a release can
   no longer read bytes it did not name.** The chart mounted the Terraform-owned
   claim at its root with a free-form `subPath`, so `model.revision` was required,
@@ -136,7 +175,94 @@ once versioned releases begin.
   file written against the previous contract is refused by the schema rather than
   silently accepted.
 
+### Fixed
+
+- **The network policy this release renders is not enforced, and now the register
+  says so.** `DR-04` had carried one question since it was written: does the local
+  cluster's network plugin actually refuse traffic a policy denies. It was run. A
+  `NetworkPolicy` denying all ingress and all egress was applied to a real cluster
+  running `kindnetd` — the plugin a `kind` cluster ships — and pod-to-pod traffic
+  by IP, DNS resolution, and a direct query to CoreDNS all continued to work. The
+  plugin runs with no feature gate enabling policy enforcement and does not
+  enforce. So the four objects the chart renders are a **correct policy that
+  nothing applies** where this project runs.
+
+  `DR-04` moved from *untested* to *tested and negative*, which is a worse position
+  than the register previously recorded, and it still blocks production use.
+  `EX-05`'s residual risk — that a policy the cluster ignores looks exactly like a
+  control — was written as a hypothetical and is now an observation. Every sentence
+  in the chart, the values file, the schema, the security documents, and the three
+  copies of the `B3` boundary row that described this enforcement as *untested* has
+  been corrected, because they became false the moment the test ran.
+  [The raw result](docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+  records the procedure, the cluster it ran on, and what does and does not
+  transfer to the accepted one. Closing it needs a policy-capable CNI, or kindnetd
+  with enforcement switched on — both changes to an accepted environment decision.
+
+  The kubelet-probe caveat could not be settled by the same run: a deny that is not
+  enforced starves nothing, so the probe kept working for the wrong reason.
+
+  Separately, both committed renders were applied against a real API server with
+  `--dry-run=server`, which runs admission and defaulting rather than a schema.
+  All eleven real-profile objects, all seven mock-profile objects, and the `helm
+  test` hook pod were accepted.
+
+### Fixed
+
+- **Two independent reviews of the workload-policy change found six defects, and
+  all six are fixed.** The one worth naming first is the shape rather than the
+  instance: `security.serviceAccount.create: false` is documented and
+  schema-legal, and with no names supplied it pointed every pod at the
+  namespace's `default` account — so the chart rendered a release that its own
+  new validator refuses, once per pod, and nothing said so. **A control a
+  supported setting can switch off is a control that holds by default.**
+  `create: false` now requires a name per workload and refuses the literal
+  `default`; the case the setting exists for still renders and still passes.
+  `security.networkPolicy.enabled: false` is the same shape and is deliberately
+  not refused — an operator on a cluster that ignores policy objects may
+  reasonably want none — but the render is then refused by the validator with one
+  finding per workload, and a test asserts that rather than leaving the trade to
+  a comment. The validator also compared pod labels without comparing
+  namespaces, so a deny in one namespace was counted as covering a workload in
+  another, which is a policy Kubernetes would never apply; read an omitted
+  `policyTypes` as isolating nothing rather than as the `Ingress` Kubernetes
+  defaults it to; and matched credential-shaped names with one regular
+  expression that let `DB_SECRETS`, `APP_CREDENTIALS`, `clientSecret`, and
+  `client-secret` carry a literal straight through. Matching is now done over
+  split tokens across four naming conventions and held by a committed table of
+  names that must and must not match — the second half of which exists because
+  `MAX_OUTPUT_TOKENS` is a chart value here and a token count, not a credential.
+
+- **The `B3` boundary said "No policy object exists" while the same file's own
+  risk register said the chart renders four.** The baseline's boundary table and
+  [the architecture](docs/architecture/system-architecture.md) carry that
+  sentence verbatim by design, so both were corrected together: the gap at the
+  namespace boundary is now an untested enforcement rather than an absent
+  object, which is a different gap and not a smaller one.
+
+- **The evidence record claimed `kubeconform` was not run because it is not
+  installed.** It is installed, running it was one command, and every object in
+  both renders — the four new `NetworkPolicy` objects included — validates
+  against the Kubernetes 1.34 schemas. The record now carries the result and
+  keeps the correction visible, because a record that misstates what a host has
+  is a record whose other statements a reader has no reason to trust.
+
 ### Changed
+
+- **`network-policy-in-the-release-namespace` moved out of `specified-only`, and
+  what moved is the policy rather than its enforcement.** The control was decided
+  for a chart nobody had written; the chart now renders the policy and a test
+  refuses a render whose workloads are not described as denied in both directions,
+  so it is `enforced-over-manifests`. A `NetworkPolicy` is applied by the cluster's
+  network plugin and not by the object, no cluster has installed this chart, and
+  whether the accepted local cluster's plugin applies one **has never been tested
+  here**. `DR-04` is rewritten to carry exactly that half and still blocks
+  production use; `EX-05` records the exception with its compensating control and
+  its residual risk. The baseline gains four further controls — a dedicated
+  identity per workload, an explicit resource envelope, no secret value in a
+  rendered manifest, and the fixture check itself — taking it from thirty-four
+  controls to thirty-eight and from twenty-four enforced to twenty-nine, with every
+  count each document states recomputed from the data.
 
 - **The chart suite went from 115 checks to 127 and the lifecycle suite from 74
   to 91.** The new chart properties are the model cache ones: that the mount is

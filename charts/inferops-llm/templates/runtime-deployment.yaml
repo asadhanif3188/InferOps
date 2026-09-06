@@ -62,7 +62,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      serviceAccountName: {{ include "inferops-llm.serviceAccountName" . }}
+      serviceAccountName: {{ include "inferops-llm.runtime.serviceAccountName" . }}
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: {{ .Values.runtime.lifecycle.terminationGracePeriodSeconds }}
       securityContext:

@@ -48,6 +48,7 @@ Each of these rests on an executed record in [`docs/proof/`](../proof/).
 | `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | documentation | repository-only | C0 | security |
 | `a-cost-figure-cannot-be-presented-as-a-bill` | documentation | repository-only | C0 | documentation |
 | `a-security-control-cannot-claim-enforcement-it-does-not-have` | documentation | repository-only | C0 | security |
+| `a-workload-manifest-that-omits-a-required-security-control-is-refused` | documentation | repository-only | C0 | security |
 | `a-local-cluster-is-created-and-removed-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | real-runtime-smoke | capable-host | C2 | serving |
 | `the-model-artifact-matches-its-published-hash` | real-runtime-smoke | capable-host | C2 | serving |
@@ -113,6 +114,22 @@ accepted with a pre-registered threshold explicitly not met. And the hash claim 
 load-bearing in a way the others are not: the downloader does not validate TLS
 certificates, so the published hash is the entire integrity argument for the
 transfer rather than a redundant check on it.
+
+The workload-policy row is the newest, and it is the one whose scope is easiest to
+overread. It certifies that a committed manifest dropping a required workload
+security control is refused, citing the rules it drops and no others: both committed
+chart renders satisfy every rule, the apparatus under `deploy/` satisfies every rule
+that reaches it, and nine fixtures each dropping one control are compared against a
+committed record of which rules each must produce — in both directions, so a fixture
+refused for a different reason is a failure rather than a pass.
+
+It certifies **nothing about a running workload.** The validator reads YAML. It holds
+no credential, contacts no cluster, and stops nothing being applied; no admission
+control applies any of its rules to a pod; and the network policy the chart renders
+is applied by a cluster network plugin that
+[an executed experiment](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+established does not apply it. `DR-04` and `DR-05` carry both gaps and `EX-05`
+records the first.
 
 ## Planned
 

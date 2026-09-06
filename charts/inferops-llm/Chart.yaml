@@ -14,7 +14,13 @@ type: application
 # version: the API build is `api.image`, the runtime build is `runtime.image`,
 # and the model is `model.revision`. Three separate pins, because a single
 # number covering all of them would be the thing that hides a change.
-version: 0.1.0
+#
+# 0.2.0 rather than 0.1.1: V1-S3-004 renders resources this chart did not render
+# before and changes the shape of `security.serviceAccount`, and a values file
+# written against 0.1.0 is refused rather than silently reinterpreted. Nothing
+# has installed 0.1.0, so no upgrade path is owed to anyone; the bump is for the
+# reader who compares two renders.
+version: 0.2.0
 
 # What this chart installs, when the API image exists to install. No InferOps
 # image is published: `platform-api-container-image` is `planned` in the
@@ -39,7 +45,8 @@ annotations:
   # reads this list against docs/architecture/resource-ownership.v1alpha1.json,
   # and tests/architecture/test_helm_chart.py reads it for them.
   inferops.io/owned-resources: >-
-    workload-service-account,platform-api-deployment,platform-api-service,
-    serving-runtime-deployment,serving-runtime-service,runtime-configuration
+    workload-service-account,workload-network-policy,platform-api-deployment,
+    platform-api-service,serving-runtime-deployment,serving-runtime-service,
+    runtime-configuration
   inferops.io/deferred-resources: >-
-    model-acquisition-job,workload-network-policy,telemetry-scrape-configuration
+    model-acquisition-job,telemetry-scrape-configuration

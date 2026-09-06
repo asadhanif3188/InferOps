@@ -94,7 +94,7 @@ sixth is new here.
 |---|---|---|---|
 | B1 artifact | Container images, model weights | Digest and hash pinning, hash verified before use | serving |
 | B2 cluster | Every platform action on Kubernetes | Cluster identity guard and scoped teardown, in the environment scripts | environment |
-| B3 namespace | Everything a release installs | Nothing. A network policy is planned and its enforcement by the local cluster's network plugin is untested | security |
+| B3 namespace | Everything a release installs | A rendered default-deny, which the local cluster's network plugin was measured not to enforce | security |
 | B4 workload | Process privilege inside a pod | Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none | security |
 | B5 caller | Inference requests and their responses | **Nothing.** There is no authentication, no authorization, no rate limit, and no tenant isolation | security |
 | B6 publication | Every file, record, and message this project commits or pushes in public | Ignore rules for host state and the project kubeconfig, a committed secret-scan configuration, and a suite that refuses a tenant identifier or a personal filesystem path in a committed file | security |

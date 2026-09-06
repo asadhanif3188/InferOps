@@ -293,7 +293,7 @@
     },
     {
       "resourceId": "workload-service-account",
-      "name": "The workload service account",
+      "name": "The workload service accounts",
       "kind": "v1/ServiceAccount",
       "owner": "helm",
       "lifecycle": "release",
@@ -302,7 +302,7 @@
       "destroyedBy": "helm uninstall",
       "survives": ["pod restart"],
       "referencedBy": [],
-      "handoff": "Least-privilege and release-scoped. It is not a prerequisite: an identity that outlives the thing it identifies is a permission nobody is watching.",
+      "handoff": "One per workload since V1-S3-004, release-scoped, and granted nothing: the chart renders no Role and no RoleBinding, and no pod mounts a token. Two accounts rather than one because a RoleBinding written for one workload and attached to a shared account is a grant to the other, made by somebody not thinking about the other. Not a prerequisite: an identity that outlives the thing it identifies is a permission nobody is watching.",
       "evidenceRef": null
     },
     {
@@ -400,7 +400,7 @@
       "destroyedBy": "helm uninstall",
       "survives": ["pod restart"],
       "referencedBy": [],
-      "handoff": "Scoped to the release's own pods. Whether the accepted local cluster's network plugin enforces one has not been tested here, so a policy in this release is a declaration until a test proves enforcement.",
+      "handoff": "Rendered since V1-S3-004: a default-deny over the release's own pods and one rule each for the API, the runtime, and the release test, scoped to the release rather than to the namespace so that a Terraform-owned prerequisite beside it is untouched. Whether the accepted local cluster's network plugin enforces one has still not been tested here, so it is a declaration until an executed test proves otherwise (DR-04, EX-05).",
       "evidenceRef": null
     },
     {

@@ -24,17 +24,19 @@ release; neither may create what the other owns.
 
 | Rendered | Kind | Profile |
 |---|---|---|
-| `workload-service-account` | `ServiceAccount` | both |
+| `workload-service-account` | `ServiceAccount`, one per workload | both |
+| `workload-network-policy` | `NetworkPolicy`, four of them | both |
 | `runtime-configuration` | `ConfigMap` | both |
 | `platform-api-deployment` | `Deployment` | both |
 | `platform-api-service` | `Service`, `ClusterIP` | both |
 | `serving-runtime-deployment` | `Deployment` | real only |
 | `serving-runtime-service` | `Service`, `ClusterIP` | real only |
 
-Three Helm-owned rows are deliberately absent, and the chart declares each in its
+Two Helm-owned rows are deliberately absent, and the chart declares each in its
 own `Chart.yaml` annotations so that the omission is a statement rather than an
-oversight: `model-acquisition-job`, `workload-network-policy` (`V1-S3-004`), and
-`telemetry-scrape-configuration` (`V1-S3-007`).
+oversight: `model-acquisition-job` and `telemetry-scrape-configuration`
+(`V1-S3-007`). `workload-network-policy` was the third until `V1-S3-004` rendered
+it.
 
 `model-acquisition-job` is the one to read twice, because `V1-S3-003` implemented
 the rest of the model cache around it and left it where it was. It needs a
@@ -276,12 +278,48 @@ same read-only mount as the runtime beside it. **It has never been scheduled.**
 Every pod and container carries the six properties every workload manifest in
 this repository carries — no service-account token, non-root with an explicit
 uid, `RuntimeDefault` seccomp, no privilege escalation, a read-only root
-filesystem, and every capability dropped. The service account is created and
-**granted nothing**: no `Role` and no `RoleBinding` is rendered anywhere in this
-chart. Least-privilege RBAC, admission policy, and the network policy are
-`V1-S3-004`'s, and none of the above is enforced by a cluster — it is a property
-of files, checked by
-[`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py).
+filesystem, and every capability dropped.
+
+`V1-S3-004` added three things beside them.
+
+**One identity per workload.** The API and the serving runtime each get a
+`ServiceAccount` of their own, and each is **granted nothing**: no `Role`, no
+`ClusterRole`, and no binding of either is rendered anywhere in this chart, and no
+pod mounts a token. Two names granted nothing are two names granted nothing, so
+this establishes no privilege difference today. What it establishes is that the
+first `RoleBinding` somebody writes for one workload cannot reach the other, which
+is what a shared account produces the first time anything is granted at all.
+
+**A network policy that starts from a denial.** Four objects: a deny of both
+ingress and egress over every pod this release installs, and one rule each for the
+API, the runtime, and the `helm test` pod. The API is reachable on its own port
+from this release's own pods and may resolve DNS and reach the runtime; the
+runtime is reachable on its own port and may reach **nothing** — `llama-server`
+reads a mounted file and answers a socket, and an egress allowance it never uses
+is a hole with no purpose. The deny selects this release's pods rather than the
+namespace, because a `podSelector` of `{}` would also deny for Terraform-owned
+prerequisites this chart does not own.
+
+**A validator that refuses a render which dropped any of it.**
+[`python -m tools.workload_policy`](../../docs/security/workload-policy.md) reads a
+bundle of manifests and refuses one whose workloads have lost an identity, an
+explicit resource envelope, a digest pin, a default-deny, or any of the six pod and
+container properties — and nine committed fixtures, each dropping one control,
+establish that it refuses rather than only passing.
+
+**None of it is enforced by a cluster.** All three are properties of files, checked
+by [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py)
+and [`tests/security/test_workload_policy.py`](../../tests/security/test_workload_policy.py).
+No cluster has installed this chart.
+
+The network policy is worse than unproven and the difference is worth reading. It is
+applied by the cluster's network plugin rather than by the object, and
+[an executed experiment](../../docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+established that `kindnetd` — the plugin the accepted local cluster ships — **does
+not apply one**. A total deny was installed and pod-to-pod traffic, DNS, and a direct
+CoreDNS query all kept working. So these four objects are a correct policy that
+nothing applies, where this project runs. `DR-04` carries that and `EX-05` records
+it. Admission control still does not exist either, which is what `DR-05` turns on.
 
 ## Installing, upgrading, rolling back, removing
 

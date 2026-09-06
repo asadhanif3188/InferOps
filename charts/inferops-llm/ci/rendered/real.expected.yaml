@@ -1,12 +1,227 @@
 ---
+# Source: inferops-llm/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inferops-inferops-llm-default-deny
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.2.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: workload-network-policy
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Source: inferops-llm/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inferops-inferops-llm-api
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.2.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: workload-network-policy
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+      app.kubernetes.io/component: platform-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inferops-llm
+              app.kubernetes.io/instance: inferops
+      ports:
+        - port: 8090
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inferops-llm
+              app.kubernetes.io/instance: inferops
+              app.kubernetes.io/component: serving-runtime
+      ports:
+        - port: 8080
+          protocol: TCP
+---
+# Source: inferops-llm/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inferops-inferops-llm-runtime
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.2.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: workload-network-policy
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+      app.kubernetes.io/component: serving-runtime
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inferops-llm
+              app.kubernetes.io/instance: inferops
+      ports:
+        - port: 8080
+          protocol: TCP
+---
+# Source: inferops-llm/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inferops-inferops-llm-release-test
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.2.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: workload-network-policy
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+      app.kubernetes.io/component: release-test
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inferops-llm
+              app.kubernetes.io/instance: inferops
+              app.kubernetes.io/component: platform-api
+      ports:
+        - port: 8090
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inferops-llm
+              app.kubernetes.io/instance: inferops
+              app.kubernetes.io/component: serving-runtime
+      ports:
+        - port: 8080
+          protocol: TCP
+---
 # Source: inferops-llm/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: inferops-inferops-llm
+  name: inferops-inferops-llm-api
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.1.0
+    helm.sh/chart: inferops-llm-0.2.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: workload-identity
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+automountServiceAccountToken: false
+---
+# Source: inferops-llm/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inferops-inferops-llm-runtime
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.2.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -29,7 +244,7 @@ metadata:
   name: inferops-inferops-llm-configuration
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.1.0
+    helm.sh/chart: inferops-llm-0.2.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -73,7 +288,7 @@ metadata:
   name: inferops-inferops-llm
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.1.0
+    helm.sh/chart: inferops-llm-0.2.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -106,7 +321,7 @@ metadata:
   name: inferops-inferops-llm-runtime
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.1.0
+    helm.sh/chart: inferops-llm-0.2.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -139,7 +354,7 @@ metadata:
   name: inferops-inferops-llm
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.1.0
+    helm.sh/chart: inferops-llm-0.2.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -164,7 +379,7 @@ spec:
   template:
     metadata:
       labels:
-        helm.sh/chart: inferops-llm-0.1.0
+        helm.sh/chart: inferops-llm-0.2.0
         app.kubernetes.io/name: inferops-llm
         app.kubernetes.io/instance: inferops
         app.kubernetes.io/version: "0.1.0"
@@ -183,7 +398,7 @@ spec:
         inferops.io/cost-center: demo-cost-center
         inferops.io/tenant: demo
     spec:
-      serviceAccountName: inferops-inferops-llm
+      serviceAccountName: inferops-inferops-llm-api
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
       securityContext:
@@ -263,7 +478,7 @@ metadata:
   name: inferops-inferops-llm-runtime
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.1.0
+    helm.sh/chart: inferops-llm-0.2.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -288,7 +503,7 @@ spec:
   template:
     metadata:
       labels:
-        helm.sh/chart: inferops-llm-0.1.0
+        helm.sh/chart: inferops-llm-0.2.0
         app.kubernetes.io/name: inferops-llm
         app.kubernetes.io/instance: inferops
         app.kubernetes.io/version: "0.1.0"
@@ -307,7 +522,7 @@ spec:
         inferops.io/cost-center: demo-cost-center
         inferops.io/tenant: demo
     spec:
-      serviceAccountName: inferops-inferops-llm
+      serviceAccountName: inferops-inferops-llm-runtime
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
       securityContext:
@@ -447,7 +662,7 @@ metadata:
   name: inferops-inferops-llm-connection-test
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.1.0
+    helm.sh/chart: inferops-llm-0.2.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -465,7 +680,7 @@ metadata:
     inferops.io/tenant: demo
 spec:
   restartPolicy: Never
-  serviceAccountName: inferops-inferops-llm
+  serviceAccountName: inferops-inferops-llm-api
   automountServiceAccountToken: false
   securityContext:
     runAsNonRoot: true

@@ -340,6 +340,70 @@ HTTP liveness probe on a loading endpoint wearing different clothes.
 {{- end -}}
 {{- end -}}
 
+{{/* -- the identities, and the escape hatch that defeated the control ---- */}}
+
+{{/*
+`security.serviceAccount.create: false` exists for a cluster whose accounts are
+provisioned outside this chart. It used to mean something else as well, and
+independent review of this change found it: with `create: false` and no names,
+every pod fell back to the namespace's `default` account -- so a documented,
+schema-legal setting made the chart render a release that its own workload policy
+refuses, with one `use-a-dedicated-service-account-per-workload` finding per pod.
+
+A control defeated by a supported setting is a control that holds by default
+rather than a control. So the escape hatch keeps the half it was for -- name
+accounts this chart did not create -- and loses the half nobody wanted: an
+unnamed account is now a refusal rather than a silent fallback to the identity
+every other pod in the namespace already presents.
+
+Naming `default` explicitly is refused too. It is the same outcome reached by
+typing it, and a rule that only catches the omission teaches the workaround.
+*/}}
+
+{{- if not .Values.security.serviceAccount.create -}}
+{{- range $component := list "api" "runtime" -}}
+{{- $name := (index $.Values.security.serviceAccount $component).name -}}
+{{- if not $name -}}
+{{- fail (printf "security.serviceAccount.%s.name is required when security.serviceAccount.create is false. Without it the pod falls back to the namespace's 'default' account, which every other pod in that namespace also presents - so the release renders output this chart's own workload policy refuses. Name the account your cluster provisions, or leave create true and let this release own the identity." $component) -}}
+{{- end -}}
+{{- if eq $name "default" -}}
+{{- fail (printf "security.serviceAccount.%s.name may not be 'default'. That is the namespace's shared identity, and a workload presenting it is one a later RoleBinding reaches without anybody deciding so." $component) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/* -- the network policy, and the two ways it becomes a decoration ------ */}}
+
+{{/*
+Both refusals here exist because the failure they catch is silent.
+
+A `matchLabels` of `{}` selects **every pod**, so a resolver selector somebody
+emptied does not narrow egress to DNS, it opens egress to everything -- and the
+release keeps working, which is what makes it silent. `values.schema.json`
+refuses an empty map for the same reason; this is the second guard, because the
+schema is skipped by `helm template --set` in some Helm versions and the two are
+worth being independent.
+
+A release that installs a policy denying its own health check is the other one.
+The `helm test` pod has to reach both Services, so a policy set is refused if the
+test hook is enabled and the DNS port is not the one the resolver answers on. The
+port is checked rather than assumed because a resolver on a non-standard port
+with the standard rule produces a release whose test fails for a reason nobody
+would look for here.
+*/}}
+
+{{- if .Values.security.networkPolicy.enabled -}}
+{{- if not .Values.security.networkPolicy.dns.namespaceSelector -}}
+{{- fail "security.networkPolicy.dns.namespaceSelector may not be empty. An empty matchLabels selects every namespace, so an emptied selector does not narrow the DNS egress rule, it opens egress to the whole cluster - and the release keeps working, which is why this is refused rather than defaulted." -}}
+{{- end -}}
+{{- if not .Values.security.networkPolicy.dns.podSelector -}}
+{{- fail "security.networkPolicy.dns.podSelector may not be empty. An empty matchLabels selects every pod in the selected namespaces, which is the same silent widening as an empty namespace selector." -}}
+{{- end -}}
+{{- if not (and (gt (int .Values.security.networkPolicy.dns.port) 0) (le (int .Values.security.networkPolicy.dns.port) 65535)) -}}
+{{- fail "security.networkPolicy.dns.port must be a port. Nothing in this release reaches anything except by Service name, so a DNS rule that names the wrong port denies every connection and reports it as a connection failure rather than as a policy one." -}}
+{{- end -}}
+{{- end -}}
+
 {{/* -- telemetry --------------------------------------------------------- */}}
 
 {{- if and .Values.telemetry.scrapeAnnotations (not .Values.telemetry.enabled) -}}

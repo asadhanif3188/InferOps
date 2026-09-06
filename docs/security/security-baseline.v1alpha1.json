@@ -108,8 +108,8 @@
       "boundaryId": "B3",
       "name": "The namespace boundary",
       "whatCrosses": "Everything a release installs",
-      "enforcedToday": "Nothing. A network policy is planned and its enforcement by the local cluster's network plugin is untested",
-      "notDefended": "Traffic between namespaces, and traffic leaving the cluster. No policy object exists, and no release exists to carry one.",
+      "enforcedToday": "A rendered default-deny, which the local cluster's network plugin was measured not to enforce",
+      "notDefended": "Traffic between namespaces, and traffic leaving the cluster. A policy object now exists and an executed experiment established that kindnetd does not apply it, so nothing is defended here and the object is inert rather than merely unproven.",
       "mappedInArchitecture": true,
       "owner": "security"
     },
@@ -291,7 +291,8 @@
       "abuseCase": "An author puts the credential itself into the locator field, or into a value field, because it is faster than wiring up a reference.",
       "impact": "The credential enters a document store, a review thread, and any log that quotes the document.",
       "controls": [
-        "refuse-a-secret-value-in-a-contract"
+        "refuse-a-secret-value-in-a-contract",
+        "no-secret-value-in-a-rendered-manifest"
       ],
       "residualRisk": "The heuristic catches a published credential prefix and a high-entropy opaque segment. A short, low-entropy secret has the shape of a name and passes.",
       "deferredRiskRef": null
@@ -384,7 +385,8 @@
       "abuseCase": "The selected runtime is single-process and reported four slots in the one trial. A caller sending concurrent long-context requests occupies all of them.",
       "impact": "Every other caller receives a timeout, and the platform has no queue to report.",
       "controls": [
-        "limit-what-one-caller-may-consume"
+        "limit-what-one-caller-may-consume",
+        "declare-explicit-resource-requests-and-limits"
       ],
       "residualRisk": "Undefended. No rate limit, no quota, no concurrency limit, and no measurement of behaviour under concurrency exists - the one trial was single and sequential.",
       "deferredRiskRef": "DR-02"
@@ -404,7 +406,9 @@
         "read-only-root-filesystem",
         "drop-all-capabilities",
         "seccomp-runtime-default",
-        "do-not-mount-a-service-account-token"
+        "do-not-mount-a-service-account-token",
+        "use-a-dedicated-service-account-per-workload",
+        "refuse-a-workload-manifest-that-omits-a-required-control"
       ],
       "residualRisk": "Enforced over every manifest committed here, and observed once in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none, and no admission control exists to enforce it for a pod it does not own.",
       "deferredRiskRef": "DR-05"
@@ -421,7 +425,7 @@
       "controls": [
         "network-policy-in-the-release-namespace"
       ],
-      "residualRisk": "Specified for a chart that does not exist, and the local cluster's network plugin has never been tested for whether it enforces a policy at all.",
+      "residualRisk": "Specified for a chart that does not exist, and the local cluster's network plugin was measured not to enforce a policy at all.",
       "deferredRiskRef": "DR-04"
     },
     {
@@ -515,7 +519,8 @@
       "impact": "The project publishes a security posture it does not have, which is the failure this whole baseline exists to prevent.",
       "controls": [
         "derive-a-control-status-from-its-verification",
-        "no-security-claim-without-a-named-verification"
+        "no-security-claim-without-a-named-verification",
+        "refuse-a-workload-manifest-that-omits-a-required-control"
       ],
       "residualRisk": "The derivation checks that a named verification exists and that a status matches it. It cannot check that the verification is a good one.",
       "deferredRiskRef": null
@@ -1082,23 +1087,104 @@
     },
     {
       "controlId": "network-policy-in-the-release-namespace",
-      "statement": "A release installs a default-deny network policy and opens only the paths the workload needs.",
+      "statement": "A release installs a default-deny network policy over its own pods and opens only the paths the workload needs. The chart renders four: a deny of both directions for every pod the release installs, and one rule each for the API, the serving runtime, and the release test.",
       "boundaryId": "B3",
       "threats": [
         "T-12"
       ],
       "verification": {
-        "kind": "none",
-        "ref": null,
-        "symbol": null
+        "kind": "automated-test",
+        "ref": "tests/security/test_workload_policy.py",
+        "symbol": "test_every_committed_render_satisfies_the_workload_policy"
       },
-      "runtimeScope": "repository-only",
-      "specifiedFor": "the Helm chart, which has not been written",
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
       "restsOnAConfiguration": false,
-      "v1Status": "specified-only",
+      "v1Status": "enforced-over-manifests",
       "owner": "platform",
-      "evidenceRef": null,
-      "whatItDoesNotVerify": "Everything, and one thing beyond that: whether the local cluster's network plugin enforces a policy object at all has never been tested."
+      "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
+      "whatItDoesNotVerify": "That any policy is ever applied, and on the accepted plugin none is. A NetworkPolicy is enforced by the cluster's network plugin and not by the object, and an executed experiment established that kindnetd does not enforce one, so what this chart renders is inert there. What is checked is that a rendered release describes its pods as denied in both directions. It does not describe the kubelet probe path, which arrives from the node rather than from a pod, so a plugin that denies node-sourced traffic to a denied pod would leave every pod here failing readiness. A release rendered with security.networkPolicy.enabled false carries no policy and is refused by this check rather than silently losing it. EX-05 records the enforcement gap and DR-04 still carries it."
+    },
+    {
+      "controlId": "use-a-dedicated-service-account-per-workload",
+      "statement": "Every workload a release installs names a service account of its own, and never the namespace's shared `default`. The chart renders one per workload and grants neither of them anything: no Role and no RoleBinding is rendered anywhere in it.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-11"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_workload_policy.py",
+        "symbol": "test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-over-manifests",
+      "owner": "platform",
+      "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
+      "whatItDoesNotVerify": "Any privilege either account holds, because neither holds one. Two names granted nothing are two names granted nothing; what the separation establishes is that a future RoleBinding written for one workload cannot reach the other, and nothing about a cluster, which has installed none of this. It also says nothing about an account provisioned outside the chart: `security.serviceAccount.create: false` now requires a name per workload and refuses `default`, so the chart cannot render a shared identity, but what that named account is bound to elsewhere is not visible in a manifest."
+    },
+    {
+      "controlId": "declare-explicit-resource-requests-and-limits",
+      "statement": "Every container in every workload a release installs states a CPU and memory request and a CPU and memory limit. A container with no request is scheduled anywhere; a container with no limit is bounded by nothing.",
+      "boundaryId": "B4",
+      "threats": [
+        "T-10"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_workload_policy.py",
+        "symbol": "test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-over-manifests",
+      "owner": "platform",
+      "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
+      "whatItDoesNotVerify": "That the numbers are the right numbers, or that a limit was ever reached. It also limits no caller: one workload's envelope is not a bound on how much of it one caller may consume, which DR-02 carries."
+    },
+    {
+      "controlId": "no-secret-value-in-a-rendered-manifest",
+      "statement": "No credential-shaped environment name in a rendered manifest carries a literal value. Secret material reaches a container through a `secretKeyRef`, and the chart renders the reference and never the value.",
+      "boundaryId": "B3",
+      "threats": [
+        "T-04"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_workload_policy.py",
+        "symbol": "test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
+      "whatItDoesNotVerify": "Anything about a value behind a reference, or a secret whose environment name is not credential-shaped. The rule reads the name carrying a literal and never the shape of a value, deliberately: a rule matching value shapes would be a rule that reads secrets."
+    },
+    {
+      "controlId": "refuse-a-workload-manifest-that-omits-a-required-control",
+      "statement": "A committed fixture that drops each control is checked against a committed record of the rules it must produce, in both directions, so the validator has been watched refusing every rule it can cite rather than only passing.",
+      "boundaryId": "B6",
+      "threats": [
+        "T-11",
+        "T-18"
+      ],
+      "verification": {
+        "kind": "automated-test",
+        "ref": "tests/security/test_workload_policy.py",
+        "symbol": "test_the_fixtures_between_them_exercise_every_rule"
+      },
+      "runtimeScope": "trial-apparatus",
+      "specifiedFor": null,
+      "restsOnAConfiguration": false,
+      "v1Status": "enforced-over-manifests",
+      "owner": "security",
+      "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
+      "whatItDoesNotVerify": "That anything refuses a workload. This refuses a file. No admission controller applies any of these rules to a pod, and DR-05 carries that."
     },
     {
       "controlId": "ignore-and-refuse-generated-host-state",
@@ -1423,14 +1509,14 @@
     },
     {
       "riskId": "DR-04",
-      "statement": "No network policy exists, and whether the local cluster's network plugin would enforce one has never been tested.",
+      "statement": "The local cluster's network plugin does not enforce a network policy, so the policy the chart renders is inert.",
       "boundaryId": "B3",
       "threats": [
         "T-12"
       ],
-      "whyDeferred": "A policy object belongs to a release. A chart now exists and deliberately carries no policy: V1-S3-004 owns the network policy, and committing one here would produce a manifest nothing installs and a control nothing applies.",
-      "whatWouldHaveToBeTrue": "A policy in the chart, and an executed test showing that it denies traffic on the cluster this project actually uses. The chart arrived with V1-S3-002-PR1 and neither half of this has, so the risk is unchanged. The executed test is the one that is easy to skip.",
-      "notClaimed": "No network isolation property is claimed at any boundary.",
+      "whyDeferred": "V1-S3-004 wrote the policy half and then executed the test that decides it. A default-deny of all ingress and all egress was applied to a real cluster running kindnetd, and pod-to-pod traffic, DNS, and a direct CoreDNS query all continued to work: the plugin runs with no feature gate enabling policy enforcement and does not enforce. The chart renders a correct policy that nothing applies.",
+      "whatWouldHaveToBeTrue": "A network plugin that enforces policy on the accepted cluster: either a policy-capable CNI installed in place of the default, or kindnetd with policy enforcement switched on if the pinned release supports it and deploy/kind/inferops-dev.yaml is changed to ask for it. Either is a change to an accepted environment decision and belongs to a decision record. The connection test was run and is recorded; what it found is that there is nothing to be refused by.",
+      "notClaimed": "No network isolation property is claimed at any boundary, and the rendered policy may not be described as a control while the plugin ignores it.",
       "blocksProductionUse": true
     },
     {
@@ -1440,8 +1526,8 @@
       "threats": [
         "T-11"
       ],
-      "whyDeferred": "This platform deploys no pod. The six pod-security properties are enforced over every manifest committed here and, since V1-S3-002-PR1, over the chart's committed renders as well, which is a repository property rather than a cluster one.",
-      "whatWouldHaveToBeTrue": "A rendering path that produces pod specifications, which the chart now is, and an admission policy in the cluster that refuses one that does not carry the properties, which nothing here has. The second is what this risk turns on.",
+      "whyDeferred": "This platform deploys no pod. The six pod-security properties are enforced over every manifest committed here and, since V1-S3-002-PR1, over the chart's committed renders as well; since V1-S3-004-PR1 a workload policy also refuses a render that drops an identity, an envelope, a rendered secret, or a default-deny. All of it is a repository property rather than a cluster one.",
+      "whatWouldHaveToBeTrue": "A rendering path that produces pod specifications, which the chart now is, and an admission policy in the cluster that refuses one that does not carry the properties, which nothing here has. The second is what this risk turns on, and a validator that reads a file is not it.",
       "notClaimed": "No document may describe a workload this platform deployed as constrained, because it has deployed none.",
       "blocksProductionUse": true
     },
@@ -1569,6 +1655,15 @@
       "residualRisk": "The enforcement is real and its subject is small. Every manifest this repository publishes carries the properties, and this repository publishes no manifest that serves a V1 workload.",
       "revisitedWhen": "A rendering path produces pod specifications, at which point the check must move from committed manifests to rendered output and be joined by admission control.",
       "deferredRiskRef": "DR-05"
+    },
+    {
+      "exceptionId": "EX-05",
+      "statement": "The release renders a network policy that the accepted local cluster's network plugin was measured not to enforce.",
+      "acceptedIn": "docs/security/workload-policy.md",
+      "compensatingControl": "least-exposure-no-manifest-publishes-a-service",
+      "residualRisk": "A policy object the cluster ignores looks exactly like a control, and the object is the artifact that travels. This was written as a hypothetical and is now an observation: an executed experiment established that kindnetd ignores it. What actually limits reachability today is that both Services are ClusterIP with no Ingress, so anything outside the cluster needs a deliberate port-forward from a machine already holding the cluster's credential - which identifies nobody and limits nothing once something is inside. Between pods in the namespace, nothing is defended at all.",
+      "revisitedWhen": "The accepted cluster runs a plugin that enforces policy, at which point the connection test is worth repeating and can succeed. It was run on kindnetd and nothing was refused.",
+      "deferredRiskRef": "DR-04"
     }
   ],
 
@@ -1773,6 +1868,14 @@
     {
       "limitationId": "no-reporting-channel",
       "statement": "There is no private vulnerability reporting channel, so this project cannot accept a confidential report about any gap named here."
+    },
+    {
+      "limitationId": "the-workload-policy-reads-a-file",
+      "statement": "The workload policy parses YAML. It holds no credential, contacts no cluster, and stops nothing being applied, so a refusal is a refusal of a manifest and never of a workload. A pod running with a property it would refuse is a pod it will never see."
+    },
+    {
+      "limitationId": "the-trial-apparatus-is-outside-two-rules",
+      "statement": "The manifests under deploy/ name no service account and are covered by no network policy, and the workload policy does not require them to: they are one-shot smoke and trial apparatus rather than a release, and the scope is read off the release lifecycle label rather than chosen by whoever runs the check. A test holds the exemption to exactly two rules."
     }
   ]
 }
