@@ -1,4 +1,10 @@
-"""The model lifecycle state model and its bounded cold/warm start measurement."""
+"""The model lifecycle state model and its bounded start measurements.
+
+Two comparisons, and the difference between them is one read. The cold/warm pair
+reads the artifact end to end between its two starts, so the second one finds the
+host's file cache warm. The restart pair reads nothing in between, so the only
+thing that changed between its two starts is that a runtime stopped.
+"""
 
 from .core import (
     EXPECTED_RESULT_DIRECTORY,
@@ -16,19 +22,25 @@ from .core import (
     ModelLifecycleError,
     ProbeOutcome,
     ProbeSample,
+    RestartResult,
+    ResultsNotWritten,
     StartObservation,
     StateRule,
     Transition,
     capture_environment,
     clean_results,
+    compare_restart,
     compare_starts,
     load_lifecycle,
     observation_document,
     observe_cache,
     observe_start,
+    read_restart_results,
     read_results,
     result_directory,
     summarize,
+    summarize_restart,
+    write_restart_results,
     write_results,
 )
 
@@ -48,18 +60,24 @@ __all__ = [
     "ModelLifecycleError",
     "ProbeOutcome",
     "ProbeSample",
+    "RestartResult",
+    "ResultsNotWritten",
     "StartObservation",
     "StateRule",
     "Transition",
     "capture_environment",
     "clean_results",
+    "compare_restart",
     "compare_starts",
     "load_lifecycle",
     "observation_document",
     "observe_cache",
     "observe_start",
+    "read_restart_results",
     "read_results",
     "result_directory",
     "summarize",
+    "summarize_restart",
+    "write_restart_results",
     "write_results",
 ]

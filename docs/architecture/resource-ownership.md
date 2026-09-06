@@ -6,7 +6,11 @@ now written against: `V1-S3-002-PR1` added the Helm chart at
 [`charts/inferops-llm/`](../../charts/inferops-llm/), `V1-S3-002-PR2` added the
 release lifecycle procedure at
 [`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh),
-and there is still no Terraform configuration. **Every row below is still
+`V1-S3-003-PR1` wrote the reference side of the model cache handoff — a
+revision-scoped read-only mount and an integrity check before the runtime starts,
+described in
+[the storage document](../environment/model-cache-storage.md) — and there is
+still no Terraform configuration. **Every row below is still
 `planned` or `deferred`, and that is correct**: a chart renders objects, a
 rendered object is a file, and a procedure nobody has executed changes nothing in
 a cluster. None of the resources in the release table exists in a cluster,
@@ -104,7 +108,7 @@ crossed by accident rather than by argument:
 |---|---|:---:|---|
 | `platform-namespace` | `v1/Namespace` | Yes | Terraform creates it; Helm installs into it |
 | `namespace-metadata` | Object metadata | Yes | Namespace-level metadata is Terraform's; per-object metadata inside a release is Helm's |
-| `model-cache-volume-claim` | `v1/PersistentVolumeClaim` | Yes | Terraform provisions it empty; a Helm-owned job fills it; the serving deployment mounts it read-only |
+| `model-cache-volume-claim` | `v1/PersistentVolumeClaim` | Yes | Terraform provisions it empty; a Helm-owned job fills it; the serving deployment mounts it read-only, at a revision-scoped subdirectory rather than at its root |
 | `platform-resource-quota` | `v1/ResourceQuota` | Yes | **Deferred out of V1.** Named so that if it is ever added it lands on the prerequisite side rather than inside a chart |
 
 ### The release
@@ -117,7 +121,7 @@ crossed by accident rather than by argument:
 | `serving-runtime-deployment` | `apps/v1 Deployment` | Separate from the API for the reasons in [the system architecture](system-architecture.md) |
 | `serving-runtime-service` | `v1/Service` | Internal to the release; not a public surface |
 | `runtime-configuration` | `v1/ConfigMap` | Rendered from a validated contract. Holds no secret value |
-| `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive |
+| `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive. Still `planned`: `V1-S3-003` implemented the reference side of the handoff and left the writing side, which needs an unpublished image and a 1.71 GiB transfer, to the Kubernetes serving integration |
 | `workload-network-policy` | `networking.k8s.io/v1 NetworkPolicy` | A declaration until a test proves the local cluster's network plugin enforces one |
 | `telemetry-scrape-configuration` | Release configuration | Inert until a collector exists |
 
@@ -241,8 +245,10 @@ refused.
 Checked by `tests/architecture/test_helm_chart.py`, for the release layer only:
 that the committed chart renders every row the release table gives it or declares
 the row deferred, that it renders no Terraform-owned object and no `Namespace`,
-that it mounts the model cache claim without creating it, and that every rendered
-object carries the isolation label and the release lifecycle marker.
+that it mounts the model cache claim without creating it — read-only, and at a
+subdirectory derived from the declared revision rather than at the claim's root —
+and that every rendered object carries the isolation label and the release
+lifecycle marker.
 
 Not checked by anything, because there is nothing to check it against: that the
 inventory describes the **Terraform** that gets written. That check arrives with

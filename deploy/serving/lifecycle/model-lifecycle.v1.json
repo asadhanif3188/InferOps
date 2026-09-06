@@ -236,6 +236,8 @@
     "directory": ".cache/inferops/lifecycle",
     "rawFile": "raw.jsonl",
     "summaryFile": "summary.json",
+    "restartRawFile": "restart-raw.jsonl",
+    "restartSummaryFile": "restart-summary.json",
     "evidenceClass": "local-real-cpu",
     "certificationCeiling": "C2",
     "observations": [
@@ -246,6 +248,10 @@
       {
         "observationId": "warm",
         "description": "A second start of a freshly created container, run immediately after the artifact has been read end to end by the integrity verification between the two observations."
+      },
+      {
+        "observationId": "restart",
+        "description": "A second start created immediately after the first was stopped and removed, with the artifact deliberately not read in between. It is the warm observation with the one variable that observation introduces taken back out, so the only thing that changed between the two starts is that a runtime stopped and another one began against the bytes it left behind."
       }
     ]
   }

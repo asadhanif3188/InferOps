@@ -115,7 +115,7 @@
     "model": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["identifier", "revision", "cache"],
+      "required": ["identifier", "revision", "artifact", "cache", "integrity"],
       "properties": {
         "identifier": {
           "description": "The platform model identifier. Required under the real profile and refused under the mock profile; the template decides which, because a JSON Schema cannot see `profile` from here without duplicating the whole object.",
@@ -129,14 +129,37 @@
           "pattern": "^$|^[0-9a-f]{40}$"
         },
         "alias": { "type": "string", "maxLength": 253 },
-        "containerPath": {
-          "type": "string",
-          "pattern": "^$|^/[^\\s]*$"
-        },
-        "cache": {
+        "artifact": {
+          "description": "The upstream artifact, pinned the way docs/serving/model-source.v1.json pins it. repository and the model revision are what the in-claim location is derived from, so a release cannot be handed the bytes of a revision it did not name; sizeBytes and sha256 are what the pod checks before the runtime starts.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["claimName"],
+          "required": ["repository", "fileName", "sizeBytes", "sha256"],
+          "properties": {
+            "repository": {
+              "description": "The upstream repository, as owner/name.",
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
+            "fileName": {
+              "description": "The artifact file, as one path segment. A name carrying a separator or a dot segment would reach outside the revision directory the mount selects, which is the whole of the revision scoping.",
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
+            "sizeBytes": { "type": "integer", "minimum": 0 },
+            "sha256": {
+              "description": "sha256 and sixty-four hexadecimal characters, as the model source record publishes it.",
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            }
+          }
+        },
+        "cache": {
+          "description": "Where the artifact comes from and where it appears. There is deliberately no subPath: the in-claim directory is derived from the pinned repository and revision, because a free-form one is how a release comes to read a revision it did not declare.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["claimName", "mountPath"],
           "properties": {
             "claimName": {
               "description": "An existing PersistentVolumeClaim, owned by Terraform. This chart mounts it and never creates it.",
@@ -144,8 +167,24 @@
               "maxLength": 253,
               "pattern": "^$|^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$"
             },
-            "subPath": { "type": "string", "pattern": "^$|^[^/][^\\s]*$" },
+            "mountPath": {
+              "description": "The directory the artifact appears in inside the container. A closed character class, and that is a security property rather than tidiness: this value is composed with fileName into the path the integrity init container executes a shell script against, so anything the pattern admits is something a shell sees. Absolute, every segment starting alphanumeric - which is also what refuses the root directory and any .. segment.",
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^(/[A-Za-z0-9][A-Za-z0-9._-]*)+$"
+            },
             "readOnly": { "type": "boolean" }
+          }
+        },
+        "integrity": {
+          "description": "What is read inside the pod before the runtime starts, on every start and therefore on every restart. sha256 reads the artifact end to end; size compares the byte count only; none reads nothing. Revision scoping holds under all three because it is the mount rather than a check.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["verifyOnStart", "image"],
+          "properties": {
+            "verifyOnStart": { "type": "string", "enum": ["sha256", "size", "none"] },
+            "image": { "$ref": "#/$defs/image" },
+            "resources": { "$ref": "#/$defs/resources" }
           }
         }
       }

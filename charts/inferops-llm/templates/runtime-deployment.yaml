@@ -8,8 +8,18 @@ could point at and describe as the serving runtime.
 
 The arguments are the ones docs/serving/runtime-profile.local.v1.json publishes
 and the feasibility trial actually ran. The model comes from a claim Terraform
-owns, mounted read only; the acquisition job that fills it is Helm-owned and
-`planned`, and V1-S3-003 owns it.
+owns, mounted read only -- **at the `<repository>/<revision>` subdirectory this
+release derives**, so the declared revision decides which bytes are readable
+rather than merely being recorded beside them. What fills the claim is
+`model-acquisition-job`, which is Helm-owned, still `planned`, and still on the
+chart's deferred list: it needs an image nobody has published and a 1.71 GiB
+transfer, and both arrive with the Kubernetes serving integration.
+
+Before `llama-server` starts, an init container reads the mounted artifact and
+compares it against the pinned byte count and SHA-256. It runs on every pod
+start, which is what makes it a restart property: a replacement pod
+re-establishes that the surviving artifact is the one this release declared
+before anything serves from it.
 
 The probes are the asymmetry this chart exists to get right. `/health` answers
 503 for the whole of a model load, so readiness and the startup gate ask it and
@@ -57,6 +67,8 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.runtime.lifecycle.terminationGracePeriodSeconds }}
       securityContext:
         {{- include "inferops-llm.podSecurityContext" . | nindent 8 }}
+      initContainers:
+        {{- include "inferops-llm.model.verifyInitContainer" . | nindent 8 }}
       containers:
         - name: runtime
           image: {{ include "inferops-llm.runtime.image" . | quote }}
@@ -65,7 +77,7 @@ spec:
             - {{ .Values.runtime.command | quote }}
           args:
             - --model
-            - {{ .Values.model.containerPath | quote }}
+            - {{ include "inferops-llm.model.containerPath" . | quote }}
             - --alias
             - {{ .Values.model.alias | quote }}
             - --host
@@ -104,12 +116,7 @@ spec:
           resources:
             {{- toYaml .Values.runtime.resources | nindent 12 }}
           volumeMounts:
-            - name: model-cache
-              mountPath: {{ dir .Values.model.containerPath }}
-              readOnly: true
-              {{- with .Values.model.cache.subPath }}
-              subPath: {{ . | quote }}
-              {{- end }}
+            {{- include "inferops-llm.model.volumeMount" . | nindent 12 }}
             - name: tmp
               mountPath: /tmp
       volumes:

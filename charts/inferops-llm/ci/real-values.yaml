@@ -39,10 +39,23 @@ model:
   identifier: qwen3-1-7b-q8-0
   revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
   alias: qwen3-1.7b-q8_0
-  containerPath: /models/Qwen3-1.7B-Q8_0.gguf
+  # Every member below is copied from docs/serving/model-source.v1.json, and a
+  # test compares them. The repository and the revision derive the
+  # subdirectory of the claim this release mounts, so they are what decides
+  # which bytes the container can read.
+  artifact:
+    repository: Qwen/Qwen3-1.7B-GGUF
+    fileName: Qwen3-1.7B-Q8_0.gguf
+    sizeBytes: 1834426016
+    sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a
   cache:
     claimName: inferops-model-cache
+    mountPath: /models
     readOnly: true
+  # Stated rather than left implicit, so that the strong setting appears in a
+  # committed render. Nothing has run it: no cluster has installed this chart.
+  integrity:
+    verifyOnStart: sha256
 
 ownership:
   owner: team-platform-demo

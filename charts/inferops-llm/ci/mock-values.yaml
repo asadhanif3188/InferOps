@@ -12,9 +12,14 @@
 # `inferops-api-image-not-yet-published`, which resolves to no image.
 #
 # What is deliberately absent, because the chart refuses each one under this
-# profile: a model revision, a model alias, a container path, a cache claim, and
-# any secret reference. A mock that carried a revision would read back as a
+# profile: a model revision, a model alias, an upstream artifact, a cache claim,
+# and any secret reference. A mock that carried a revision would read back as a
 # release that had loaded one.
+#
+# One thing is deliberately *present* for the same reason. The shipped default
+# for `model.integrity.verifyOnStart` is `sha256`, and a mock mounts no
+# artifact, so this file states `none`: it has to say out loud that it verifies
+# nothing rather than inherit a setting naming a check with nothing to read.
 
 profile: mock
 
@@ -26,6 +31,8 @@ api:
 
 model:
   identifier: mock-fixed-fixture
+  integrity:
+    verifyOnStart: none
 
 ownership:
   owner: team-platform-demo

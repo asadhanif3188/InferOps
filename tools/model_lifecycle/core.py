@@ -138,6 +138,16 @@ class ModelLifecycleError(RuntimeError):
     """An expected, safely reportable lifecycle refusal."""
 
 
+class ResultsNotWritten(ModelLifecycleError):
+    """The comparison has not been run. Distinct from a result that will not read.
+
+    The command reports an absent result as "not run" and says so per
+    comparison. It must not report a corrupt one that way: a malformed line and
+    an undeclared observation are both a result that exists and disagrees with
+    the record, and printing "not run" over either would hide it.
+    """
+
+
 class LifecycleRefused(ModelLifecycleError):
     """A real-runtime operation was requested without its confirmation."""
 
@@ -242,6 +252,8 @@ class ModelLifecycle:
     result_directory: Path
     raw_file: str
     summary_file: str
+    restart_raw_file: str
+    restart_summary_file: str
     evidence_class: str
     certification_ceiling: str
     observation_ids: tuple[str, ...]
@@ -342,6 +354,21 @@ class StartObservation:
         )
 
     @property
+    def readiness_started_not_ready(self) -> bool:
+        """Whether the first sample of this start found readiness not ready.
+
+        This is what "readiness resets" means as a measurement rather than as a
+        claim. A restarted runtime that inherited the previous process's answer
+        would report ready on its first sample, and a restart observation whose
+        first sample is already ready has measured nothing about the reset --
+        so the property is read off the first sample rather than assumed from
+        the fact that a new container was created.
+        """
+        if not self.samples:
+            return False
+        return self.samples[0].readiness_status != self.ready_status
+
+    @property
     def liveness_never_dropped_after_it_passed(self) -> bool:
         """Whether liveness, once passing, kept passing for the rest of the load.
 
@@ -394,6 +421,73 @@ class ComparisonResult:
             and self.cold.cache_state is CacheState.HIT
             and self.warm.cache_state is CacheState.HIT
         )
+
+
+@dataclass(frozen=True, slots=True)
+class RestartResult:
+    """A start, a stop, and the start that followed it against the same bytes.
+
+    **This comparison adds no read of its own between the two starts.**
+    :func:`compare_starts` reads the artifact end to end between its arms, on
+    purpose, to warm the host file cache; this one classifies the cache without
+    opening the file and leaves the digest read until after both starts.
+
+    What it does *not* do is make the interval read-free, and an earlier version
+    of this docstring said it did. Independent review found the claim false:
+    ``runtime_packaging.preflight`` hash-verifies the artifact before **every**
+    start, so a full read happens inside each :func:`observe_start` before its
+    container is created. The honest statement is the narrower one above, and
+    two consequences of the wider one travel with it:
+
+    * **no start this tool measures is cache-cold**, because a full read of the
+      artifact immediately precedes it;
+    * **``create_ms`` and ``ready_ms`` include that read**, because
+      :func:`observe_start` starts its clock before ``start``. They are not
+      container-creation and model-load times on their own.
+
+    The preflight read is not waste here, though: it means the bytes were
+    hash-verified immediately *before* the restart as well as after it, so
+    :attr:`artifact_survived_restart` rests on a verification either side of the
+    stop rather than only on the one this function performs.
+    """
+
+    lifecycle_id: str
+    started_at: str
+    environment: Environment
+    cold: StartObservation
+    restart: StartObservation
+    cache_state_between: CacheState
+    bytes_between: int
+    verify_ms: int
+    verified_after_restart: bool
+
+    @property
+    def artifact_survived_restart(self) -> bool:
+        """Whether the same bytes were in place before, between, and after."""
+        return (
+            self.cold.cache_state is CacheState.HIT
+            and self.restart.cache_state is CacheState.HIT
+            and self.cache_state_between is CacheState.HIT
+            and self.verified_after_restart
+            and self.cold.artifact_bytes
+            == self.bytes_between
+            == self.restart.artifact_bytes
+        )
+
+    @property
+    def readiness_reset_on_restart(self) -> bool:
+        """Whether the restarted runtime began not-ready rather than inheriting."""
+        return self.restart.readiness_started_not_ready
+
+    @property
+    def restart_needed_no_network(self) -> bool:
+        """Whether the second start proceeded from a hit, which needs no network.
+
+        Only a hit proceeds without a network connection, and the record says so
+        in its own cache table. This reads that back off the observation rather
+        than restating it.
+        """
+        return self.restart.cache_state is CacheState.HIT
 
 
 @dataclass(frozen=True, slots=True)
@@ -538,6 +632,12 @@ def load_lifecycle(
         ),
         raw_file=_string(measurement.get("rawFile"), "measurement.rawFile"),
         summary_file=_string(measurement.get("summaryFile"), "measurement.summaryFile"),
+        restart_raw_file=_string(
+            measurement.get("restartRawFile"), "measurement.restartRawFile"
+        ),
+        restart_summary_file=_string(
+            measurement.get("restartSummaryFile"), "measurement.restartSummaryFile"
+        ),
         evidence_class=_string(
             measurement.get("evidenceClass"), "measurement.evidenceClass"
         ),
@@ -846,8 +946,24 @@ def _validate_measurement(lifecycle: ModelLifecycle) -> None:
         )
     if lifecycle.certification_ceiling != EXPECTED_CEILING:
         raise ModelLifecycleError("the measurement declares an unexpected ceiling")
-    if lifecycle.observation_ids != ("cold", "warm"):
-        raise ModelLifecycleError("a comparison is exactly one cold and one warm start")
+    if lifecycle.observation_ids != ("cold", "warm", "restart"):
+        raise ModelLifecycleError(
+            "the declared observations are exactly cold, warm, and restart"
+        )
+    # Two comparisons write into one directory, so four distinct file names is
+    # the property that keeps them from overwriting each other. A restart
+    # summary written over a cold/warm summary would not be a corrupted file --
+    # it would be a readable one describing the wrong experiment.
+    files = (
+        lifecycle.raw_file,
+        lifecycle.summary_file,
+        lifecycle.restart_raw_file,
+        lifecycle.restart_summary_file,
+    )
+    if len(set(files)) != len(files):
+        raise ModelLifecycleError(
+            "the two comparisons must write four distinct result files"
+        )
     if not lifecycle.startup_order or not lifecycle.shutdown_order:
         raise ModelLifecycleError("the startup and shutdown orders may not be empty")
     # Matched on step identifiers rather than on the prose beside them.
@@ -1186,6 +1302,107 @@ def compare_starts(
     )
 
 
+def compare_restart(
+    lifecycle: ModelLifecycle,
+    package: RuntimePackage,
+    runner: CommandRunner,
+    *,
+    confirmed: bool,
+    http_get: HttpGet,
+    http_post: HttpPost,
+    tcp_probe: TcpProbe | None = None,
+    manifest: ModelManifest | None = None,
+    repo_root: Path = REPO_ROOT,
+    clock: Clock = time.monotonic,
+    sleeper: Sleeper = time.sleep,
+    now: Clock = time.time,
+) -> RestartResult:
+    """A first start, a stop, and the start that follows it against the same bytes.
+
+    The three properties the accepted record claims about a restart are what
+    this measures, and each is measured rather than restated:
+
+    * **the artifact survives** — the byte count is compared before the first
+      start, between the two, and after the second, and the digest is verified
+      by ``preflight`` before each start and again by this function afterwards;
+    * **readiness resets** — the first sample of the second start is read, so a
+      runtime that came back already ready would be visible rather than assumed
+      away. It establishes that the restarted runtime began not-ready, which is
+      what a reset means here; it does not on its own separate that from the
+      fact that every fresh start begins not-ready;
+    * **the second start needs no network** — it proceeds from a hit, which is
+      the only cache state the record lets a start proceed from at all.
+
+    See :class:`RestartResult` for what this comparison does and does not
+    control about the host cache. Nothing here downloads, and nothing here
+    simulates a miss. A real miss is a 1.71 GiB transfer that this module has
+    never performed.
+    """
+    _require_confirmation(confirmed)
+    if owned_container_exists(package, runner):
+        raise ModelLifecycleError(
+            "a container with the package's own name already exists; stop it first"
+        )
+    resolved = manifest or load_manifest()
+    environment = capture_environment(package, runner, manifest=resolved)
+    started_at = datetime.fromtimestamp(now(), tz=UTC).isoformat(timespec="seconds")
+
+    cold = observe_start(
+        lifecycle,
+        package,
+        runner,
+        observation_id="cold",
+        confirmed=True,
+        http_get=http_get,
+        http_post=http_post,
+        tcp_probe=tcp_probe,
+        manifest=resolved,
+        repo_root=repo_root,
+        clock=clock,
+        sleeper=sleeper,
+    )
+
+    # Stats the artifact; does not open it. A full read here is what the
+    # cold/warm comparison does on purpose, and adding a second one would make
+    # this the same experiment. It does not make the interval read-free: the
+    # next start's own preflight hash-verifies the artifact before it creates a
+    # container, which is a property of the packaging layer rather than of this
+    # comparison, and is recorded as such.
+    between = observe_cache(resolved, repo_root=repo_root)
+
+    restart = observe_start(
+        lifecycle,
+        package,
+        runner,
+        observation_id="restart",
+        confirmed=True,
+        http_get=http_get,
+        http_post=http_post,
+        tcp_probe=tcp_probe,
+        manifest=resolved,
+        repo_root=repo_root,
+        clock=clock,
+        sleeper=sleeper,
+    )
+
+    # After both starts, where a 1.71 GiB read can no longer move a figure.
+    verify_started = clock()
+    after = observe_cache(resolved, repo_root=repo_root, verify=True)
+    verify_ms = _elapsed_ms(clock, verify_started)
+
+    return RestartResult(
+        lifecycle_id=lifecycle.lifecycle_id,
+        started_at=started_at,
+        environment=environment,
+        cold=cold,
+        restart=restart,
+        cache_state_between=between.cache_state,
+        bytes_between=between.bytes_present,
+        verify_ms=verify_ms,
+        verified_after_restart=after.verified,
+    )
+
+
 # --------------------------------------------------------------------------
 # Results, and the cleanup that may only reach them
 # --------------------------------------------------------------------------
@@ -1259,7 +1476,21 @@ def observation_document(observation: StartObservation) -> dict[str, Any]:
             observation.liveness_never_dropped_after_it_passed
         ),
         "readinessFalseUntilReady": observation.readiness_false_until_ready,
+        "readinessStartedNotReady": observation.readiness_started_not_ready,
         "samples": [_sample_document(sample) for sample in observation.samples],
+    }
+
+
+def _environment_document(environment: Environment) -> dict[str, Any]:
+    """The host facts, written once so that two summaries cannot describe them
+    differently."""
+    return {
+        "platform": environment.platform,
+        "pythonVersion": environment.python_version,
+        "engineVersion": environment.engine_version,
+        "imageReference": environment.image_reference,
+        "modelRevision": environment.model_revision,
+        "modelSha256": environment.model_sha256,
     }
 
 
@@ -1272,14 +1503,7 @@ def summarize(lifecycle: ModelLifecycle, result: ComparisonResult) -> dict[str, 
         "evidenceClass": lifecycle.evidence_class,
         "certificationCeiling": lifecycle.certification_ceiling,
         "startedAt": result.started_at,
-        "environment": {
-            "platform": result.environment.platform,
-            "pythonVersion": result.environment.python_version,
-            "engineVersion": result.environment.engine_version,
-            "imageReference": result.environment.image_reference,
-            "modelRevision": result.environment.model_revision,
-            "modelSha256": result.environment.model_sha256,
-        },
+        "environment": _environment_document(result.environment),
         "cold": observation_document(result.cold),
         "warm": observation_document(result.warm),
         "artifactVerifyMs": result.verify_ms,
@@ -1303,6 +1527,78 @@ def summarize(lifecycle: ModelLifecycle, result: ComparisonResult) -> dict[str, 
             "artifactSurvivedRestart": result.artifact_survived_restart,
         },
     }
+
+
+def summarize_restart(
+    lifecycle: ModelLifecycle, result: RestartResult
+) -> dict[str, Any]:
+    """The restart comparison as a deterministic document.
+
+    ``readyMsDelta`` is the restarted start minus the first one. It is a
+    difference between two starts on one host on one day and it is not a
+    cold-start cost, a percentile, or a capacity figure — the cold arm of the
+    cold/warm comparison spread 82,157 ms between runs of the same experiment,
+    which is larger than any delta that comparison produced. Both figures also
+    include the preflight hash read described on :class:`RestartResult`.
+    """
+    return {
+        "schemaVersion": EXPECTED_SCHEMA_VERSION,
+        "lifecycleId": result.lifecycle_id,
+        "comparison": "restart",
+        "evidenceClass": lifecycle.evidence_class,
+        "certificationCeiling": lifecycle.certification_ceiling,
+        "startedAt": result.started_at,
+        "environment": _environment_document(result.environment),
+        "cold": observation_document(result.cold),
+        "restart": observation_document(result.restart),
+        "cacheStateBetweenStarts": str(result.cache_state_between),
+        "bytesBetweenStarts": result.bytes_between,
+        "artifactVerifyMs": result.verify_ms,
+        "verifiedAfterRestart": result.verified_after_restart,
+        "readyMsDelta": result.restart.ready_ms - result.cold.ready_ms,
+        "acceptance": {
+            "artifactSurvivedRestart": result.artifact_survived_restart,
+            "readinessResetOnRestart": result.readiness_reset_on_restart,
+            "restartNeededNoNetwork": result.restart_needed_no_network,
+            "livenessHeldWhileLoading": (
+                result.cold.liveness_held_while_loading
+                and result.restart.liveness_held_while_loading
+            ),
+            "readinessFalseUntilReady": (
+                result.cold.readiness_false_until_ready
+                and result.restart.readiness_false_until_ready
+            ),
+        },
+    }
+
+
+def write_restart_results(
+    lifecycle: ModelLifecycle,
+    result: RestartResult,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> tuple[Path, Path]:
+    """Write the restart observations and summary under their own two names.
+
+    Their own names, and not the cold/warm pair's, because a restart summary
+    written over a cold/warm summary would not be a corrupted file. It would be
+    a readable one describing an experiment that was never run.
+    """
+    directory = result_directory(lifecycle, repo_root=repo_root)
+    directory.mkdir(parents=True, exist_ok=True)
+    raw = directory / lifecycle.restart_raw_file
+    summary = directory / lifecycle.restart_summary_file
+    lines = [
+        json.dumps(observation_document(observation), sort_keys=True)
+        for observation in (result.cold, result.restart)
+    ]
+    raw.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    summary.write_text(
+        json.dumps(summarize_restart(lifecycle, result), indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
+    return raw, summary
 
 
 def write_results(
@@ -1333,10 +1629,28 @@ def read_results(
     *,
     repo_root: Path = REPO_ROOT,
 ) -> Sequence[Mapping[str, Any]]:
-    """Read back the raw observations, refusing a line that is not one."""
-    raw = result_directory(lifecycle, repo_root=repo_root) / lifecycle.raw_file
+    """Read back the cold/warm observations, refusing a line that is not one."""
+    return _read_raw(lifecycle, lifecycle.raw_file, repo_root=repo_root)
+
+
+def read_restart_results(
+    lifecycle: ModelLifecycle,
+    *,
+    repo_root: Path = REPO_ROOT,
+) -> Sequence[Mapping[str, Any]]:
+    """Read back the restart observations, refusing a line that is not one."""
+    return _read_raw(lifecycle, lifecycle.restart_raw_file, repo_root=repo_root)
+
+
+def _read_raw(
+    lifecycle: ModelLifecycle,
+    file_name: str,
+    *,
+    repo_root: Path,
+) -> Sequence[Mapping[str, Any]]:
+    raw = result_directory(lifecycle, repo_root=repo_root) / file_name
     if not raw.is_file():
-        raise ModelLifecycleError("no raw lifecycle result has been written")
+        raise ResultsNotWritten("no raw lifecycle result has been written")
     documents: list[Mapping[str, Any]] = []
     for line in raw.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -1409,20 +1723,26 @@ __all__ = [
     "ModelLifecycleError",
     "ProbeOutcome",
     "ProbeSample",
+    "RestartResult",
+    "ResultsNotWritten",
     "RuntimePackagingError",
     "StartObservation",
     "StateRule",
     "Transition",
     "capture_environment",
     "clean_results",
+    "compare_restart",
     "compare_starts",
     "load_lifecycle",
     "model_artifact_path",
     "observation_document",
     "observe_cache",
     "observe_start",
+    "read_restart_results",
     "read_results",
     "result_directory",
     "summarize",
+    "summarize_restart",
+    "write_restart_results",
     "write_results",
 ]
