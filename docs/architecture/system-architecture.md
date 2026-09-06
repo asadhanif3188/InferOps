@@ -495,7 +495,7 @@ empty placement list rather than a convention.
 |---|---|---|---|
 | B1 artifact | Container images, model weights | Digest and hash pinning, hash verified before use | The pinning rules in ADR 0002 |
 | B2 cluster | Every platform action on Kubernetes | Cluster identity guard and scoped teardown, in the environment scripts | ADR 0001 D5 and D6 |
-| B3 namespace | Everything a release installs | A rendered default-deny, whose enforcement by the local cluster's network plugin is untested | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
+| B3 namespace | Everything a release installs | A rendered default-deny, which the local cluster's network plugin was measured not to enforce | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
 | B4 workload | Process privilege inside a pod | Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
 | B5 caller | Inference requests and their responses | **Nothing.** There is no authentication, no authorization, no rate limit, and no tenant isolation | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
 

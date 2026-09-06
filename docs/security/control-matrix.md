@@ -218,12 +218,17 @@ policy objects and a test refuses a render whose workloads are not described as
 denied in both directions, so the control moved up to the manifest block.
 
 **What moved is the policy, and not its enforcement.** A NetworkPolicy is applied by
-the cluster's network plugin rather than by the object, whether the accepted local
-cluster's plugin applies one has never been tested here, and no cluster has installed
-this chart. `DR-04` is narrowed to exactly that half and still blocks production use;
-`EX-05` records the exception with its compensating control and its residual risk.
-A policy the cluster ignores looks exactly like a control, which is why this is
-written in three places rather than one.
+the cluster's network plugin rather than by the object, and
+[an executed experiment](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+established that `kindnetd` — the plugin the accepted local cluster ships — **does
+not enforce one**. A default-deny of all ingress and all egress was applied and
+pod-to-pod traffic, DNS, and a direct CoreDNS query all continued to work.
+
+So the control is `enforced-over-manifests` and the thing it renders is inert where
+this project runs. Both halves are true and they have to be read together. `DR-04`
+carries it and still blocks production use; `EX-05` records the exception, and its
+residual risk — that a policy the cluster ignores looks exactly like a control — is
+now an observation rather than a caution.
 
 ## What is deferred outright
 

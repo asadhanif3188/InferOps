@@ -285,7 +285,7 @@
           }
         },
         "networkPolicy": {
-          "description": "The release's own network policy: a default-deny over every pod this release installs, plus the named paths a working release needs. A policy object is not enforcement. Whether a policy is applied at all is the cluster network plugin's decision, and whether the accepted local cluster's plugin applies one has never been tested here; DR-04 carries the gap and EX-05 records it.",
+          "description": "The release's own network policy: a default-deny over every pod this release installs, plus the named paths a working release needs. A policy object is not enforcement, and on the accepted local cluster it is not enforced: an executed experiment established that kindnetd applies no policy, so what this renders is a correct policy that nothing applies. DR-04 carries it and EX-05 records it.",
           "type": "object",
           "additionalProperties": false,
           "required": ["enabled"],

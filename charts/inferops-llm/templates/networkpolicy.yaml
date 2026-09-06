@@ -37,13 +37,18 @@ the first thing to check if a policy-enforcing cluster ever refuses to bring thi
 release up.
 
 **What this does NOT establish, and the sentence to carry away.** A NetworkPolicy
-is enforced by the cluster's network plugin, not by the object. The accepted
-local cluster (ADR 0001 D2) is `kind` with its default CNI, and whether that
-plugin enforces a policy object **has never been tested here**. No cluster has
-installed this chart. So this is a rendered declaration whose enforcement is
-unverified, `DR-04` still stands, and `EX-05` records the gap rather than
-letting the presence of the object imply the absence of it. A policy the cluster
-ignores looks exactly like a control, which is the reason to write this down.
+is enforced by the cluster's network plugin, not by the object -- and the plugin
+this project runs does not enforce it. The accepted local cluster (ADR 0001 D2)
+is `kind` with its default CNI, `kindnetd`, and an executed experiment applied a
+total deny on that plugin and watched pod-to-pod traffic, DNS, and a direct
+CoreDNS query all keep working. See
+docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md.
+
+So everything below is a **correct policy that nothing applies**, where this
+project runs today. It is rendered anyway, because it is right and because a
+policy-capable CNI would enforce it unchanged -- but nobody may read the presence
+of these objects as a control. `DR-04` carries that and still blocks production
+use; `EX-05` records it.
 */}}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

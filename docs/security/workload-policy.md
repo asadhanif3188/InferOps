@@ -206,29 +206,35 @@ does not replace.
 **A kubelet probe is not covered either, and that one can stop a release
 working.** A probe also arrives from the node, so no ingress rule here describes
 it. Where a plugin does not permit node-sourced traffic to a denied pod, every
-pod in this release fails readiness and the release never becomes ready. Nothing
-here has been installed, so this is a caveat rather than an observation — and it
-is the first thing to check if a policy-enforcing cluster ever refuses to bring
-this release up.
+pod in this release fails readiness and the release never becomes ready. The
+experiment above could not answer this: a deny that is not enforced starves
+nothing, so the probe kept working for the wrong reason. It stays a caveat, it
+needs a policy-capable CNI to settle, and it is the first thing to check if a
+policy-enforcing cluster ever refuses to bring this release up.
 
 ### The part that is not enforcement
 
-**A NetworkPolicy is applied by the cluster's network plugin, not by the object.**
-The accepted local cluster ([ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md)
-D2) is `kind` with its default CNI, and whether that plugin applies a policy
-object **has never been tested here**. No cluster has installed this chart, and
-no run of anything on a cluster is recorded for this story.
+**A NetworkPolicy is applied by the cluster's network plugin, not by the object —
+and the plugin this project runs does not apply it.** The accepted local cluster
+([ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md)
+D2) is `kind` with its default CNI, `kindnetd`.
+[An executed experiment](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+applied a default-deny of all ingress and all egress to a real cluster running
+that plugin: pod-to-pod traffic by IP, DNS resolution, and a direct query to
+CoreDNS all continued to work, and the plugin runs with no feature gate that
+would ask it to enforce.
 
-So what exists is a rendered declaration whose enforcement is unverified. `DR-04`
-still stands and still blocks production use; `EX-05` records the exception with
-its compensating control and its residual risk. The reason this is written in
-three places rather than one is that a policy the cluster ignores looks exactly
-like a control, and the object is the artifact that travels.
+So what the chart renders is a **correct policy that nothing applies**. `DR-04`
+moved from *untested* to *tested and negative*, which is a worse position than
+the register previously recorded, and it still blocks production use. `EX-05`
+records the exception, and its residual risk — that a policy the cluster ignores
+looks exactly like a control — is now an observation rather than a caution.
 
-What would close it is one executed test on the cluster this project actually
-uses: install the release, attempt a connection the policy denies, and record
-that it was refused. That is a cluster experiment, it was not authorised for this
-story, and it is recorded as not run rather than described as pending.
+What would close it is a plugin that enforces: either a policy-capable CNI in
+place of the default, or `kindnetd` with enforcement switched on if the pinned
+release supports it and the cluster definition is changed to ask for it. Both are
+changes to an accepted environment decision and belong to a decision record
+rather than to this document.
 
 ## Related records
 

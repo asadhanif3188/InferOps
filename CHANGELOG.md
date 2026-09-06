@@ -177,6 +177,38 @@ once versioned releases begin.
 
 ### Fixed
 
+- **The network policy this release renders is not enforced, and now the register
+  says so.** `DR-04` had carried one question since it was written: does the local
+  cluster's network plugin actually refuse traffic a policy denies. It was run. A
+  `NetworkPolicy` denying all ingress and all egress was applied to a real cluster
+  running `kindnetd` — the plugin a `kind` cluster ships — and pod-to-pod traffic
+  by IP, DNS resolution, and a direct query to CoreDNS all continued to work. The
+  plugin runs with no feature gate enabling policy enforcement and does not
+  enforce. So the four objects the chart renders are a **correct policy that
+  nothing applies** where this project runs.
+
+  `DR-04` moved from *untested* to *tested and negative*, which is a worse position
+  than the register previously recorded, and it still blocks production use.
+  `EX-05`'s residual risk — that a policy the cluster ignores looks exactly like a
+  control — was written as a hypothetical and is now an observation. Every sentence
+  in the chart, the values file, the schema, the security documents, and the three
+  copies of the `B3` boundary row that described this enforcement as *untested* has
+  been corrected, because they became false the moment the test ran.
+  [The raw result](docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+  records the procedure, the cluster it ran on, and what does and does not
+  transfer to the accepted one. Closing it needs a policy-capable CNI, or kindnetd
+  with enforcement switched on — both changes to an accepted environment decision.
+
+  The kubelet-probe caveat could not be settled by the same run: a deny that is not
+  enforced starves nothing, so the probe kept working for the wrong reason.
+
+  Separately, both committed renders were applied against a real API server with
+  `--dry-run=server`, which runs admission and defaulting rather than a schema.
+  All eleven real-profile objects, all seven mock-profile objects, and the `helm
+  test` hook pod were accepted.
+
+### Fixed
+
 - **Two independent reviews of the workload-policy change found six defects, and
   all six are fixed.** The one worth naming first is the shape rather than the
   instance: `security.serviceAccount.create: false` is documented and

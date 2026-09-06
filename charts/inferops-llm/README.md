@@ -310,11 +310,16 @@ establish that it refuses rather than only passing.
 **None of it is enforced by a cluster.** All three are properties of files, checked
 by [`tests/architecture/test_helm_chart.py`](../../tests/architecture/test_helm_chart.py)
 and [`tests/security/test_workload_policy.py`](../../tests/security/test_workload_policy.py).
-No cluster has installed this chart. The network policy in particular is applied by
-the cluster's network plugin rather than by the object, and whether the accepted
-local cluster's plugin applies one **has never been tested here** — `DR-04` carries
-that and `EX-05` records it. Admission control still does not exist, which is what
-`DR-05` turns on.
+No cluster has installed this chart.
+
+The network policy is worse than unproven and the difference is worth reading. It is
+applied by the cluster's network plugin rather than by the object, and
+[an executed experiment](../../docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+established that `kindnetd` — the plugin the accepted local cluster ships — **does
+not apply one**. A total deny was installed and pod-to-pod traffic, DNS, and a direct
+CoreDNS query all kept working. So these four objects are a correct policy that
+nothing applies, where this project runs. `DR-04` carries that and `EX-05` records
+it. Admission control still does not exist either, which is what `DR-05` turns on.
 
 ## Installing, upgrading, rolling back, removing
 

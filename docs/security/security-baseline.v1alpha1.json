@@ -108,8 +108,8 @@
       "boundaryId": "B3",
       "name": "The namespace boundary",
       "whatCrosses": "Everything a release installs",
-      "enforcedToday": "A rendered default-deny, whose enforcement by the local cluster's network plugin is untested",
-      "notDefended": "Traffic between namespaces, and traffic leaving the cluster. A policy object now exists and nothing has established that any cluster applies it, which is a different gap from the one this line used to record and not a smaller one.",
+      "enforcedToday": "A rendered default-deny, which the local cluster's network plugin was measured not to enforce",
+      "notDefended": "Traffic between namespaces, and traffic leaving the cluster. A policy object now exists and an executed experiment established that kindnetd does not apply it, so nothing is defended here and the object is inert rather than merely unproven.",
       "mappedInArchitecture": true,
       "owner": "security"
     },
@@ -425,7 +425,7 @@
       "controls": [
         "network-policy-in-the-release-namespace"
       ],
-      "residualRisk": "Specified for a chart that does not exist, and the local cluster's network plugin has never been tested for whether it enforces a policy at all.",
+      "residualRisk": "Specified for a chart that does not exist, and the local cluster's network plugin was measured not to enforce a policy at all.",
       "deferredRiskRef": "DR-04"
     },
     {
@@ -1103,7 +1103,7 @@
       "v1Status": "enforced-over-manifests",
       "owner": "platform",
       "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
-      "whatItDoesNotVerify": "That any policy is ever applied. A NetworkPolicy is enforced by the cluster's network plugin and not by the object, whether the accepted local cluster's plugin applies one has never been tested here, and no cluster has installed this chart. What is checked is that a rendered release describes its pods as denied in both directions. It does not describe the kubelet probe path, which arrives from the node rather than from a pod, so a plugin that denies node-sourced traffic to a denied pod would leave every pod here failing readiness. A release rendered with security.networkPolicy.enabled false carries no policy and is refused by this check rather than silently losing it. EX-05 records the enforcement gap and DR-04 still carries it."
+      "whatItDoesNotVerify": "That any policy is ever applied, and on the accepted plugin none is. A NetworkPolicy is enforced by the cluster's network plugin and not by the object, and an executed experiment established that kindnetd does not enforce one, so what this chart renders is inert there. What is checked is that a rendered release describes its pods as denied in both directions. It does not describe the kubelet probe path, which arrives from the node rather than from a pod, so a plugin that denies node-sourced traffic to a denied pod would leave every pod here failing readiness. A release rendered with security.networkPolicy.enabled false carries no policy and is refused by this check rather than silently losing it. EX-05 records the enforcement gap and DR-04 still carries it."
     },
     {
       "controlId": "use-a-dedicated-service-account-per-workload",
@@ -1509,14 +1509,14 @@
     },
     {
       "riskId": "DR-04",
-      "statement": "Whether the local cluster's network plugin enforces a network policy has never been tested, so the policy the chart renders is a declaration.",
+      "statement": "The local cluster's network plugin does not enforce a network policy, so the policy the chart renders is inert.",
       "boundaryId": "B3",
       "threats": [
         "T-12"
       ],
-      "whyDeferred": "V1-S3-004 wrote the policy half: the chart renders a default-deny over the release's own pods and three rules opening only what the workloads need, and a validator refuses a render whose workloads are not described as denied in both directions. The executed half is missing and it is the half that decides anything - a NetworkPolicy is applied by the network plugin rather than by the object, and no cluster has installed this chart.",
-      "whatWouldHaveToBeTrue": "One executed test on the cluster this project actually uses: install the release, attempt a connection the policy denies, and record that it was refused. The policy arrived with V1-S3-004 and that test has not been run, so the risk is narrowed to its enforcement half rather than closed. It is the easy one to skip, which is why it is written as the whole of what remains.",
-      "notClaimed": "No network isolation property is claimed at any boundary.",
+      "whyDeferred": "V1-S3-004 wrote the policy half and then executed the test that decides it. A default-deny of all ingress and all egress was applied to a real cluster running kindnetd, and pod-to-pod traffic, DNS, and a direct CoreDNS query all continued to work: the plugin runs with no feature gate enabling policy enforcement and does not enforce. The chart renders a correct policy that nothing applies.",
+      "whatWouldHaveToBeTrue": "A network plugin that enforces policy on the accepted cluster: either a policy-capable CNI installed in place of the default, or kindnetd with policy enforcement switched on if the pinned release supports it and deploy/kind/inferops-dev.yaml is changed to ask for it. Either is a change to an accepted environment decision and belongs to a decision record. The connection test was run and is recorded; what it found is that there is nothing to be refused by.",
+      "notClaimed": "No network isolation property is claimed at any boundary, and the rendered policy may not be described as a control while the plugin ignores it.",
       "blocksProductionUse": true
     },
     {
@@ -1658,11 +1658,11 @@
     },
     {
       "exceptionId": "EX-05",
-      "statement": "The release renders a network policy whose enforcement by the accepted local cluster's network plugin has never been tested.",
+      "statement": "The release renders a network policy that the accepted local cluster's network plugin was measured not to enforce.",
       "acceptedIn": "docs/security/workload-policy.md",
       "compensatingControl": "least-exposure-no-manifest-publishes-a-service",
-      "residualRisk": "A policy object the cluster ignores looks exactly like a control, and the object is the artifact that travels. What actually limits reachability today is that both Services are ClusterIP with no Ingress, so anything outside the cluster needs a deliberate port-forward from a machine already holding the cluster's credential - which identifies nobody and limits nothing once something is inside. Between pods in the namespace, nothing is established at all.",
-      "revisitedWhen": "A release is installed on the cluster this project uses and a connection the policy denies is attempted and recorded as refused. That is the executed half DR-04 still carries.",
+      "residualRisk": "A policy object the cluster ignores looks exactly like a control, and the object is the artifact that travels. This was written as a hypothetical and is now an observation: an executed experiment established that kindnetd ignores it. What actually limits reachability today is that both Services are ClusterIP with no Ingress, so anything outside the cluster needs a deliberate port-forward from a machine already holding the cluster's credential - which identifies nobody and limits nothing once something is inside. Between pods in the namespace, nothing is defended at all.",
+      "revisitedWhen": "The accepted cluster runs a plugin that enforces policy, at which point the connection test is worth repeating and can succeed. It was run on kindnetd and nothing was refused.",
       "deferredRiskRef": "DR-04"
     }
   ],

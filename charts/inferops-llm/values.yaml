@@ -463,16 +463,20 @@ security:
   # `helm test` pod. The runtime is given no egress at all, because
   # `llama-server` reads a mounted file and answers a socket and reaches nothing.
   #
-  # **A policy object is not enforcement.** Whether a policy is applied at all is
-  # the cluster network plugin's decision, the accepted local cluster is kind
-  # with its default CNI, and whether that plugin enforces one has never been
-  # tested here. This chart has never been installed. `DR-04` carries the gap and
-  # `EX-05` records it; a policy the cluster ignores looks exactly like a
+  # **A policy object is not enforcement, and here it is not enforced.** Whether a
+  # policy is applied at all is the cluster network plugin's decision; the
+  # accepted local cluster is kind with its default CNI, kindnetd, and an
+  # executed experiment applied a total deny on that plugin and watched
+  # pod-to-pod traffic, DNS, and a direct CoreDNS query all keep working. See
+  # docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md. What is
+  # rendered below is a correct policy that nothing applies. `DR-04` carries it
+  # and `EX-05` records it; a policy the cluster ignores looks exactly like a
   # control, which is why the sentence is here rather than only in the register.
   #
-  # `enabled: false` renders no policy at all. It is a real choice for a cluster
-  # known not to enforce them - an object nothing applies is clutter that reads
-  # as a control - and it is a **trade**, stated here rather than discovered:
+  # `enabled: false` renders no policy at all. That is a defensible choice on the
+  # accepted cluster, which is now known not to enforce them - an object nothing
+  # applies is clutter that reads as a control - and it is a **trade**, stated
+  # here rather than discovered:
   # the release then satisfies no default-deny, and
   # `python -m tools.workload_policy` refuses the render with one
   # `network-policy-in-the-release-namespace` finding per workload. That refusal

@@ -39,7 +39,7 @@ publish. No test can enforce that, and the rule is marked `review` in
 | DR-01 | No caller is authenticated and no request is authorised | B5 | yes |
 | DR-02 | There is no rate limit, quota, or concurrency limit | B5 | yes |
 | DR-03 | A tenant identifier is never validated against an entitlement | B5 | yes |
-| DR-04 | The rendered network policy's enforcement by the local plugin is untested | B3 | yes |
+| DR-04 | The local plugin does not enforce the rendered network policy | B3 | yes |
 | DR-05 | No pod security property is enforced for a pod this platform deploys | B4 | yes |
 | DR-06 | The transport delivering a model artifact is not authenticated | B1 | yes |
 | DR-07 | No check is verified to have resolved from the committed lockfile | B1 | yes |
@@ -106,7 +106,7 @@ identifier has no permitted placement in a committed evidence record, because th
 sensitivity class [the telemetry catalog](../telemetry/telemetry-catalog.md) gave it
 allows none.
 
-### DR-04 — The rendered network policy's enforcement by the local plugin is untested
+### DR-04 — The local plugin does not enforce the rendered network policy
 
 This entry was rewritten by `V1-S3-004-PR1` and **not retired**. Its first half is
 gone; the half that decides anything is untouched, and it is worth being exact about
@@ -120,19 +120,28 @@ described as denied in both directions — including the case that looks like a
 default-deny and is not, a policy declaring only `Ingress` in `policyTypes` and
 leaving egress wide open.
 
-**Why deferred.** A NetworkPolicy is applied by the cluster's network plugin and not
-by the object. The accepted local cluster is `kind` with its default CNI, whether
-that plugin applies a policy object has never been tested here, and no cluster has
-installed this chart. So what exists is a rendered declaration, and a declaration
-that is ignored is worse than an absence in exactly one way: it looks like a control.
+**Why deferred.** The test was run, and it failed. A default-deny of all ingress and
+all egress was applied to a real cluster running `kindnetd` — the plugin a `kind`
+cluster ships — and pod-to-pod traffic by IP, DNS resolution, and a direct query to
+CoreDNS all continued to work. The plugin runs with no feature gate enabling policy
+enforcement and does not enforce. [The raw result](v1-s3-004-pr1-network-policy-enforcement.md) records the
+procedure, the environment, and what it does and does not transfer.
 
-**What would have to be true.** One executed test on the cluster this project
-actually uses: install the release, attempt a connection the policy denies, and
-record that it was refused. That test was not authorised for `V1-S3-004-PR1` and it
-was not run. It is the easy one to skip, which is why it is written here as the whole
-of what remains rather than as one item among several.
+So what exists is a **correct policy that nothing applies**, and a declaration that
+is ignored is worse than an absence in exactly one way: it looks like a control.
+This entry moved from *untested* to *tested and negative*, which is a worse position
+than the register previously recorded rather than a better one.
 
-**Not claimed.** No network isolation property is claimed at any boundary. See
+**What would have to be true.** A network plugin that enforces policy on the accepted
+cluster — either a policy-capable CNI installed in place of the default, or
+`kindnetd` with enforcement switched on if the pinned release supports it and
+[the cluster definition](../../deploy/kind/inferops-dev.yaml) is changed to ask for
+it. Both are changes to an accepted environment decision and belong to a decision
+record rather than to this register. The connection test itself no longer needs
+authorising; it needs something to be refused by.
+
+**Not claimed.** No network isolation property is claimed at any boundary, and the
+rendered policy may not be described as a control while the plugin ignores it. See
 `EX-05`.
 
 ### DR-05 — No pod security property is enforced for a pod this platform deploys
@@ -311,7 +320,7 @@ control the baseline declares.
 | EX-02 | The cluster identity guard is satisfied by a second cluster given this project's name | `refuse-to-act-on-a-cluster-this-project-did-not-create` | — |
 | EX-03 | The secret-scan allowlist covers two directories wholesale | `no-credential-or-artifact-in-public-history` | DR-11 |
 | EX-04 | The pod-security properties are enforced over apparatus, not over a serving path | `run-as-non-root` | DR-05 |
-| EX-05 | The rendered network policy's enforcement by the local network plugin is untested | `least-exposure-no-manifest-publishes-a-service` | DR-04 |
+| EX-05 | The local network plugin was measured not to enforce the rendered network policy | `least-exposure-no-manifest-publishes-a-service` | DR-04 |
 
 ### EX-01 — The transport is not authenticated
 
@@ -374,23 +383,24 @@ The first half of that condition has been met. `V1-S3-004-PR1` moved the check t
 rendered output and widened it, and the exception stands because the second half —
 admission control — does not exist and nothing here creates it.
 
-### EX-05 — The rendered network policy is a declaration, not an enforcement
+### EX-05 — The rendered network policy is a declaration the plugin ignores
 
 Accepted in [the workload policy document](workload-policy.md).
 
 **Residual risk.** A policy object the cluster ignores looks exactly like a control,
 and the object is the artifact that travels: it appears in a render, in a diff, and
 in a list of what a release installs, and none of those says whether the plugin read
-it. What actually limits reachability today is the compensating control — both
-Services are `ClusterIP` and no Ingress is declared, so anything outside the cluster
-needs a deliberate port-forward from a machine that already holds the cluster's
-credential. That identifies nobody and limits nothing once something is inside.
-**Between pods in the namespace, nothing is established at all.**
+it. **That sentence was written as a hypothetical and is now an observation** —
+[the executed experiment](v1-s3-004-pr1-network-policy-enforcement.md) established that `kindnetd` ignores it. What
+actually limits reachability today is the compensating control: both Services are
+`ClusterIP` and no Ingress is declared, so anything outside the cluster needs a
+deliberate port-forward from a machine that already holds the cluster's credential.
+That identifies nobody and limits nothing once something is inside. **Between pods
+in the namespace, nothing is defended at all.**
 
-**Revisit when** a release is installed on the cluster this project uses and a
-connection the policy denies is attempted and recorded as refused. That is the
-executed half `DR-04` still carries, and it was not run for the story that added the
-policy.
+**Revisit when** the accepted cluster runs a plugin that enforces policy, at which
+point the connection test is worth repeating and can succeed. It was run on
+`kindnetd` and nothing was refused.
 
 ## What this register does not do
 

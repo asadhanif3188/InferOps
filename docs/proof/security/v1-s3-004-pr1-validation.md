@@ -6,14 +6,19 @@ controls the security baseline requires. This record is what was run, what it
 found, and — the section that matters most for a security change — what it does
 not support.
 
-**Evidence class.** Everything asserted here is `local-static`: files read,
-rendered, and compared, with a `C0` ceiling. **Nothing in this change has run
-inside Kubernetes.** No cluster has installed the chart, no pod has presented
-either service account, no network policy object has ever been applied, and no
-connection has been attempted against one. The one experiment that would say
-something about enforcement was not authorised for this story and was not run;
-[the section below](#what-was-not-run-and-why) says so in the terms
-`DR-04` uses.
+**Evidence class.** Most of what is asserted here is `local-static`: files read,
+rendered, and compared, with a `C0` ceiling. **No release has been installed** —
+no InferOps API image is published, so none could be — and no pod has presented
+either service account.
+
+Two things were later executed on a real cluster and are `local-real`:
+[the network-policy enforcement experiment](v1-s3-004-pr1-network-policy-enforcement.md)
+and a server-side validation of both renders. The first answered the question
+`DR-04` has carried since it was written, and **answered it unfavourably**:
+`kindnetd`, the plugin the accepted local cluster ships, does not enforce a
+NetworkPolicy, so the four objects this change renders are inert where this
+project runs. That record states which cluster it ran on and what does and does
+not transfer.
 
 ## What the change is
 
@@ -196,10 +201,24 @@ three documents this change adds resolves.
 
 ## What was not run, and why
 
-**No cluster experiment.** The story authorised no Kubernetes experiment, and
-none was performed. Nothing here was installed, applied, scheduled, or connected
-to. Specifically not run: `helm install`, `helm test`, `kubectl apply` of any
-policy object, and any attempt to make a connection a policy denies.
+**No release was installed, and none could be.** No InferOps API image is
+published — `platform-api-container-image` is `planned`, no Dockerfile is
+committed, and the `api.image.digest` in both fixtures is the documented
+placeholder that resolves to nothing. So `helm install`, `helm test`, and any
+observation of a release becoming ready remain out of reach until a later story
+publishes that image.
+
+**A network-policy experiment was run, after this record was first written.**
+The story as briefed authorised none, and the first version of this record said
+so. One was subsequently authorised and executed; [the enforcement result](v1-s3-004-pr1-network-policy-enforcement.md) carries the procedure and
+the environment. What it found is recorded here rather than only there, because
+it makes several sentences elsewhere in this change false and they were corrected
+together: a total deny was applied on `kindnetd` and pod-to-pod traffic, DNS, and
+a direct CoreDNS query all continued to work.
+
+**The kubelet-probe question was not answered.** It could not be. A deny that is
+not enforced starves nothing, so the probe kept working for the wrong reason. It
+needs a policy-capable CNI to settle and stays a caveat.
 
 **`shellcheck` was not run.** It is not installed on this host, and this change
 edits no shell script.
@@ -274,16 +293,18 @@ any of it is refused, citing the rules it dropped and no others.
 
 **Not established, and the distance is the point.**
 
-*A policy object is not enforcement.* A `NetworkPolicy` is applied by the
-cluster's network plugin rather than by the object. The accepted local cluster is
-`kind` with its default CNI, whether that plugin applies a policy object **has
-never been tested here**, and no cluster has installed this chart. What exists is
-a rendered declaration. `DR-04` was rewritten to carry exactly that half — it was
-"no network policy exists, and enforcement is untested" and is now "the rendered
-policy's enforcement is untested" — and it still blocks production use. `EX-05`
-records the exception, names `least-exposure-no-manifest-publishes-a-service` as
-the compensating control, and states the residual risk: between pods in the
-namespace, nothing is established at all.
+*A policy object is not enforcement, and here it is not enforced.* A
+`NetworkPolicy` is applied by the cluster's network plugin rather than by the
+object, and [the enforcement result](v1-s3-004-pr1-network-policy-enforcement.md) established that `kindnetd` applies none. What this change
+renders is a **correct policy that nothing applies**. `DR-04` has been rewritten
+twice on this branch and ended worse than it started: from "no network policy
+exists, and enforcement is untested", through "the rendered policy's enforcement
+is untested", to "the local plugin does not enforce the rendered policy". It
+still blocks production use. `EX-05` records the exception, names
+`least-exposure-no-manifest-publishes-a-service` as the compensating control, and
+its residual risk — that a policy the cluster ignores looks exactly like a
+control — is now an observation rather than a caution. Between pods in the
+namespace, nothing is defended at all.
 
 *A validator that reads files is not admission control.* `DR-05` is unchanged in
 substance. This platform deploys no pod, nothing here refuses one, and the module
@@ -335,4 +356,5 @@ none of them runs anywhere.
 | What is undefended, and the exceptions accepted | [Deferred risks and exceptions](../../security/deferred-risks.md) |
 | The decision these controls belong to | [ADR 0008](../../architecture/decisions/ADR-0008-v1-security-baseline.md) |
 | The chart these rules are applied to | [`charts/inferops-llm/README.md`](../../../charts/inferops-llm/README.md) |
+| The executed network-policy enforcement result | [`v1-s3-004-pr1-network-policy-enforcement.md`](v1-s3-004-pr1-network-policy-enforcement.md) |
 | The change this one builds on | [V1-S3-003-PR1](../architecture/v1-s3-003-pr1-validation.md) |

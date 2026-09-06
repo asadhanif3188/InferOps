@@ -126,8 +126,10 @@ refused for a different reason is a failure rather than a pass.
 It certifies **nothing about a running workload.** The validator reads YAML. It holds
 no credential, contacts no cluster, and stops nothing being applied; no admission
 control applies any of its rules to a pod; and the network policy the chart renders
-is applied by a cluster network plugin whose behaviour has never been tested here.
-`DR-04` and `DR-05` carry both gaps and `EX-05` records the second.
+is applied by a cluster network plugin that
+[an executed experiment](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+established does not apply it. `DR-04` and `DR-05` carry both gaps and `EX-05`
+records the first.
 
 ## Planned
 
