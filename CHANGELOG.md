@@ -70,8 +70,12 @@ once versioned releases begin.
   and its `readyMs` delta establishes nothing, because the same experiment on the
   same host on the same day spread further than the delta. The record also names
   a conflict this found and did not resolve: the accepted 300,000 ms
-  `startup.budgetMs` is below loads this host produces, and the chart's own
-  kubelet budget is already 600,000 ms for that reason.
+  `startup.budgetMs` is below loads this host produces **when its container
+  virtual machine is left at the platform default**, and the chart's own kubelet
+  budget is already 600,000 ms for that reason. Raising the allocation from
+  7.60 GiB to 9.716 GiB took the same load to 202,984–224,562 ms and the
+  measurement then passed twice with no warm-up; `docs/prerequisites.md` records
+  what the smaller allocation costs.
 
 - **The release now says how it starts and how it stops, and the one probe that
   is not an HTTP GET is the point.** The chart configures a startup, readiness,

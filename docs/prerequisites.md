@@ -121,7 +121,7 @@ second host has ever run this.
 | CPU instruction set | AVX2 | AVX-512 is **not** required |
 | Accelerator | None | The CPU path is complete on its own |
 | Memory for the serving pod | A 3 GiB limit, against a 2.167 GiB worst-case charge | Do not size this from the runtime's 531 MiB of private memory; the weights are memory-mapped and the difference is not academic |
-| Memory reaching the container VM | 7.60 GiB was sufficient beside a running cluster | This is what was available, not a measured floor |
+| Memory reaching the container VM | 7.60 GiB served, but see the note | This is what was available, not a measured floor. `V1-S3-003` later measured what it costs: at 7.60 GiB a cold model load ran 305,296 ms and 338,375 ms and repeatedly exceeded the 300,000 ms startup budget the lifecycle record sets, so the restart measurement refused four times; at 9.716 GiB, set through `.wslconfig`, the same host loaded in 202,984 ms to 224,562 ms and passed without a warm-up. Serving works at either. If a load or a lifecycle measurement is refusing on a Windows or macOS host, the virtual machine allocation is the first thing to look at |
 | Free disk | ~2.0 GiB added — 1.71 GiB of weights plus a 293.0 MiB runtime image | Plus whatever the cluster itself needs |
 | Network | Enough to fetch 1.71 GiB, resumably | The reference run took 19 minutes and needed a resume partway |
 

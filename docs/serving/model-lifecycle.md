@@ -2,7 +2,7 @@
 
 Status: **the state model is implemented and validated offline; both start
 comparisons have been executed for real on an authorized host** — the cold/warm
-one three times, the restart one once. Every ordering property held every time,
+one three times, the restart one three times across two virtual-machine sizes. Every ordering property held every time,
 and **no timing difference was established by either comparison** — the spread
 between runs of one experiment exceeds every difference measured inside one.
 The measured results are in

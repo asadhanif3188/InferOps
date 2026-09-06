@@ -142,26 +142,75 @@ tooling; they produced no committed artefact.
 
 Every attempt removed its container. `docker ps -a` was empty after each.
 
+Three further executions followed on the next day, after the virtual machine was
+resized. They are in the addendum below.
+
+## Addendum, 2026-09-06: the refusals were a starved virtual machine
+
+Everything above was measured with the container virtual machine at its platform
+default. This host has no `.wslconfig`, so WSL 2 took the lesser of half the
+installed memory and 8 GB, and the engine reported **7.60 GiB**. The model is
+1.71 GiB and the serving container is capped at 3 GiB, which leaves little room
+for the virtual machine to keep the artifact in its page cache between starts —
+so nearly every start re-read all 1,834,426,016 bytes across the Docker Desktop
+bind mount.
+
+Raising the allocation to `memory=10GB` in `%USERPROFILE%\.wslconfig`, followed by
+`wsl --shutdown`, took the engine to **9.716 GiB**. The measurement was then run
+twice, **with no warm-up of any kind**, several minutes apart, on an otherwise
+quiet host:
+
+| Run | first start | restart | delta | Outcome |
+|---|---:|---:|---:|---|
+| A, 02:40 UTC | 224,562 ms | 163,766 ms | −60,796 ms | Passed |
+| B, ~03:05 UTC | 202,984 ms | 183,203 ms | −19,781 ms | Passed |
+
+All five properties held in both. Both cleared the 300,000 ms budget with 25% to
+33% to spare, and **neither needed the warm-up that the run in the body of this
+record depended on**. Run B followed a gap long enough for Docker Desktop's
+Resource Saver — enabled with a 30-second idle timer on this host — to have
+idled the virtual machine, and it passed anyway, so that setting is not what was
+blocking the measurement either.
+
+The two deltas point in the same direction as the one in the body and are still
+worth nothing individually: −60,796 ms and −19,781 ms differ from each other by
+more than the smaller of them.
+
+### One contaminated run, recorded so it is not mistaken for evidence
+
+Between the two clean runs, a measurement was taken while a **second**
+`llama-server` container was still running and holding the artifact resident. It
+returned 16,704 ms and 14,640 ms — roughly ten times faster than anything else
+here. **It is not evidence and no figure from it may be quoted.** It is recorded
+because of what it demonstrates rather than what it measures: when the file is
+genuinely cached, the load is seconds, so essentially the whole of a 200-second
+figure in this record is the bind-mount read and not the model or the runtime.
+
 ## A conflict this found, and did not resolve
 
-**The accepted 300,000 ms `startup.budgetMs` is below loads this host produces.**
-It is carried by
+**The accepted 300,000 ms `startup.budgetMs` is below loads this host produces
+when its virtual machine is starved.** It is carried by
 [`model-lifecycle.v1.json`](../../../deploy/serving/lifecycle/model-lifecycle.v1.json),
 held to the container package by `load_lifecycle`, and it refused four of the six
-runs above. Two no-budget diagnostics measured 305,296 ms and 338,375 ms; the
-`V1-S2-005` first attempt had already recorded 358,735 ms.
+runs above. Two no-budget diagnostics measured 305,296 ms and 338,375 ms at
+7.60 GiB; the `V1-S2-005` first attempt had already recorded 358,735 ms.
+
+The addendum narrows that but does not withdraw it. At 9.716 GiB the same host
+loads in 202,984 ms to 224,562 ms and the budget is comfortable. At 7.60 GiB it
+is a coin flip. So the budget is not simply wrong — it is **undocumented as
+configuration-dependent**, and a contributor on the platform default will hit
+refusals that look like a broken tool.
 
 The chart does not share that budget. `runtime.probes.startup.budgetMs` is
 600,000 ms and the values file says why: *the measured loads do not fit inside
-the smaller number.* So the release layer and the accepted runtime record
-disagree about what a plausible load is, and the smaller of the two is the one
-that decides whether this measurement can run at all.
+the smaller number.* So the release layer and the accepted runtime record still
+disagree about what a plausible load is.
 
-**Nothing here changes it.** Raising a budget the container package pins is a
-change to an accepted decision, it is outside this PR's boundary, and it is
-reported rather than made. What made this measurement possible instead was a
-warm-up start immediately before it, which is disclosed above rather than hidden
-in the method.
+**Nothing here changes either number.** Raising a budget the container package
+pins is a change to an accepted decision, it is outside this PR's boundary, and
+it is reported rather than made. What is now known, and was not when the body of
+this record was written, is that the cheaper remedy is a correctly sized virtual
+machine rather than a larger budget.
 
 ## What this does not support
 
@@ -172,7 +221,13 @@ in the method.
   model load minutes earlier, neither controlled the host page cache, and each
   was preceded by a full hash read of the artifact by the start procedure. No
   start this project has measured, in this record or the cold/warm one, is a
-  cold-cache start.
+  cold-cache start. The addendum's runs came closer — no warm-up preceded them —
+  but the preflight hash still did, so they are not cold either.
+- **The addendum does not establish a memory floor.** Two configurations were
+  tried on one host: 7.60 GiB, where the measurement usually failed, and
+  9.716 GiB, where it twice did not. Nothing between them was tested, and
+  `scripts/environment/lib.sh` still enforces its 6 GiB minimum tier unchanged.
+  One host and two data points do not move a floor other contributors depend on.
 - **It establishes no restart effect.** The delta is smaller than the run-to-run
   spread of the same experiment on the same host on the same day.
 - **It certifies no serving performance.** One single-token inference probe per

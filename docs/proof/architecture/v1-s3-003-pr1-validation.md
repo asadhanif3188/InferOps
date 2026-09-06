@@ -245,8 +245,13 @@ on the same host on the same day spread from 129,328 ms to 338,375 ms — a rang
 of 209,047 ms, which is 8.2 times the 25,563 ms difference between the two arms.
 
 **A conflict was found and is reported rather than resolved.** The accepted
-300,000 ms `startup.budgetMs` is below loads this host produces, and the chart's
-own kubelet budget is already 600,000 ms for that reason — so the release layer
+300,000 ms `startup.budgetMs` is below loads this host produces **when its
+container virtual machine is left at the platform default of 7.60 GiB**. After
+the allocation was raised to 9.716 GiB the same measurement ran twice with no
+warm-up at all, at 224,562 ms and 202,984 ms — comfortably inside the budget. The
+addendum to the restart record carries both configurations. The conflict is
+narrowed rather than withdrawn: the chart's own kubelet budget is already
+600,000 ms for the same load, so the release layer
 and the accepted runtime record disagree about what a plausible load is. Raising
 a budget the container package pins is a change to an accepted decision and is
 outside this PR's boundary. Nothing here changed it.
