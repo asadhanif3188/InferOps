@@ -108,8 +108,8 @@
       "boundaryId": "B3",
       "name": "The namespace boundary",
       "whatCrosses": "Everything a release installs",
-      "enforcedToday": "Nothing. A network policy is planned and its enforcement by the local cluster's network plugin is untested",
-      "notDefended": "Traffic between namespaces, and traffic leaving the cluster. No policy object exists, and no release exists to carry one.",
+      "enforcedToday": "A rendered default-deny, whose enforcement by the local cluster's network plugin is untested",
+      "notDefended": "Traffic between namespaces, and traffic leaving the cluster. A policy object now exists and nothing has established that any cluster applies it, which is a different gap from the one this line used to record and not a smaller one.",
       "mappedInArchitecture": true,
       "owner": "security"
     },
@@ -1103,7 +1103,7 @@
       "v1Status": "enforced-over-manifests",
       "owner": "platform",
       "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
-      "whatItDoesNotVerify": "That any policy is ever applied. A NetworkPolicy is enforced by the cluster's network plugin and not by the object, whether the accepted local cluster's plugin applies one has never been tested here, and no cluster has installed this chart. What is checked is that a rendered release describes its pods as denied in both directions. EX-05 records the gap and DR-04 still carries it."
+      "whatItDoesNotVerify": "That any policy is ever applied. A NetworkPolicy is enforced by the cluster's network plugin and not by the object, whether the accepted local cluster's plugin applies one has never been tested here, and no cluster has installed this chart. What is checked is that a rendered release describes its pods as denied in both directions. It does not describe the kubelet probe path, which arrives from the node rather than from a pod, so a plugin that denies node-sourced traffic to a denied pod would leave every pod here failing readiness. A release rendered with security.networkPolicy.enabled false carries no policy and is refused by this check rather than silently losing it. EX-05 records the enforcement gap and DR-04 still carries it."
     },
     {
       "controlId": "use-a-dedicated-service-account-per-workload",
@@ -1123,7 +1123,7 @@
       "v1Status": "enforced-over-manifests",
       "owner": "platform",
       "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
-      "whatItDoesNotVerify": "Any privilege either account holds, because neither holds one. Two names granted nothing are two names granted nothing; what the separation establishes is that a future RoleBinding written for one workload cannot reach the other, and nothing about a cluster, which has installed none of this."
+      "whatItDoesNotVerify": "Any privilege either account holds, because neither holds one. Two names granted nothing are two names granted nothing; what the separation establishes is that a future RoleBinding written for one workload cannot reach the other, and nothing about a cluster, which has installed none of this. It also says nothing about an account provisioned outside the chart: `security.serviceAccount.create: false` now requires a name per workload and refuses `default`, so the chart cannot render a shared identity, but what that named account is bound to elsewhere is not visible in a manifest."
     },
     {
       "controlId": "declare-explicit-resource-requests-and-limits",

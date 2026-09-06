@@ -34,6 +34,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import Any, Final
 
 # --------------------------------------------------------------------------
@@ -73,14 +74,107 @@ WORKLOAD_KINDS: Final[frozenset[str]] = frozenset(
 #: digest is what the engine resolves.
 DIGEST_PINNED: Final[re.Pattern[str]] = re.compile(r"^[^@\s]+@sha256:[0-9a-f]{64}$")
 
-#: Environment variable names whose value is credential-shaped by name alone.
+#: Words that make an environment variable's name credential-shaped.
+#:
 #: The check is on the *name carrying a literal*, never on the shape of the
-#: value: a rule that matched value shapes would be a rule that reads secrets.
-SECRET_NAME_HINT: Final[re.Pattern[str]] = re.compile(
-    r"(?:^|_)(?:SECRET|PASSWORD|PASSWD|TOKEN|CREDENTIAL|APIKEY|API_KEY|PRIVATE_KEY)"
-    r"(?:_|$)",
-    flags=re.IGNORECASE,
+#: value: a rule that matched value shapes would be a rule that reads secrets,
+#: and its findings would be where they got published.
+#:
+#: The first version of this was a single regex anchored on `_` or end-of-string,
+#: and independent review found it missing the plural. `DB_SECRETS`,
+#: `APP_CREDENTIALS`, `clientSecret`, and `client-secret` all carried a literal
+#: past it, and plural naming is not an exotic convention. Matching is now done
+#: over split tokens rather than by one pattern, because the four ways these
+#: names are written -- `SNAKE_CASE`, `kebab-case`, `camelCase`, and run
+#: together -- are four different boundary rules and one regex covering all of
+#: them is a regex nobody can check by reading.
+SECRET_WORDS: Final[frozenset[str]] = frozenset(
+    {
+        "SECRET",
+        "PASSWORD",
+        "PASSWD",
+        "PASSPHRASE",
+        "CREDENTIAL",
+        "TOKEN",
+        "APIKEY",
+        "PRIVATEKEY",
+        "ACCESSKEY",
+        "SIGNINGKEY",
+        "PWD",
+    }
 )
+
+#: Words that survive being run together with something else, so they are looked
+#: for inside a token as well as as a whole one. `SECRETKEY` and `CLIENTSECRET`
+#: are one token each and both name a secret.
+#:
+#: `TOKEN` is deliberately **not** here. It is a whole token or nothing, because
+#: `TOKENIZER` is a substring match and is not a credential.
+SECRET_WORDS_INSIDE_A_TOKEN: Final[frozenset[str]] = frozenset(
+    {"SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "APIKEY", "PRIVATEKEY"}
+)
+
+#: Words that make the following `TOKEN` a count rather than a credential.
+#:
+#: This project counts tokens for a living: `MAX_OUTPUT_TOKENS` is a chart value,
+#: and the telemetry catalog and the inference API surface both use these words
+#: for exactly that. Refusing them would be a check failing for a reason
+#: unrelated to the property it defends, which is the kind of check that gets
+#: suppressed the first time it fires.
+TOKEN_IS_A_COUNT_AFTER: Final[frozenset[str]] = frozenset(
+    {
+        "MAX",
+        "MIN",
+        "NUM",
+        "TOTAL",
+        "COUNT",
+        "OUTPUT",
+        "INPUT",
+        "CONTEXT",
+        "PROMPT",
+        "COMPLETION",
+        "PER",
+    }
+)
+
+#: Splits a name into words: on `_`, `-` and `.`, and at a camelCase boundary.
+_NAME_TOKENS: Final[re.Pattern[str]] = re.compile(
+    r"[A-Z]+(?![a-z])|[A-Z][a-z]+|[a-z]+|[0-9]+"
+)
+
+
+def names_a_secret(name: str) -> bool:
+    """Whether an environment variable's name is credential-shaped.
+
+    A heuristic, and its limits are published beside the rule rather than left
+    for a reader to discover: it reads a name, so a credential in a variable
+    called `CONFIG_B` passes it, and a token *count* called `MAX_TOKENS` would
+    have failed it if the exclusion above did not exist.
+    """
+    tokens = [token.upper() for token in _NAME_TOKENS.findall(name)]
+
+    # `API_KEY` and `PRIVATE_KEY` are two tokens each and one word each, so
+    # adjacent pairs are joined and checked as well. `KEY` on its own is not a
+    # secret word -- `MODEL_KEY` is a lookup and `SORT_KEY` is an ordering -- so
+    # this is the only way those two are reached.
+    joined = {a + b for a, b in pairwise(tokens)}
+    if joined & SECRET_WORDS:
+        return True
+
+    for index, token in enumerate(tokens):
+        # A trailing plural is the same word: SECRETS, CREDENTIALS, TOKENS.
+        singular = token[:-1] if len(token) > 3 and token.endswith("S") else token
+        if singular == "TOKEN":
+            previous = tokens[index - 1] if index else ""
+            if previous in TOKEN_IS_A_COUNT_AFTER:
+                continue
+            return True
+        if singular in SECRET_WORDS or token in SECRET_WORDS:
+            return True
+        if any(word in token for word in SECRET_WORDS_INSIDE_A_TOKEN):
+            return True
+    return False
+
 
 #: The service account name every namespace already has. A workload naming it,
 #: or naming none, is a workload sharing an identity with everything else in the
@@ -223,6 +317,17 @@ def is_release_bundle(documents: Sequence[Manifest]) -> bool:
     return False
 
 
+def _namespace(document: Manifest) -> str:
+    """An object's namespace, with the API server's own default filled in.
+
+    A missing `metadata.namespace` means `default` at apply time, so an object
+    that states nothing and one that states `default` are the same object and
+    have to compare equal here.
+    """
+    value = _dig(document, "metadata.namespace")
+    return value if isinstance(value, str) and value else "default"
+
+
 def _pod_labels(document: Manifest) -> dict[str, str]:
     """The labels the pods of a workload carry, which is what a policy selects.
 
@@ -269,7 +374,15 @@ def _denies_everything(policy: Manifest) -> tuple[bool, bool]:
     spec = policy.get("spec")
     if not isinstance(spec, dict):
         return False, False
-    types = spec.get("policyTypes") or []
+    types = spec.get("policyTypes")
+    if types is None:
+        # Kubernetes defaults an omitted `policyTypes` to `Ingress`, plus
+        # `Egress` when an egress block is present -- never to nothing. Reading
+        # the absence as "isolates neither direction" would report a policy that
+        # really does isolate ingress as covering nothing, which is conservative
+        # but wrong, and the wrongness would be invisible because it only ever
+        # produces a finding.
+        types = ["Ingress"] + (["Egress"] if spec.get("egress") else [])
     denies_ingress = "Ingress" in types and not spec.get("ingress")
     denies_egress = "Egress" in types and not spec.get("egress")
     return denies_ingress, denies_egress
@@ -420,7 +533,7 @@ def _check_secret_references(document: Manifest, spec: Manifest) -> Iterator[Fin
             if not isinstance(entry, dict):
                 continue
             name = entry.get("name", "")
-            if not isinstance(name, str) or not SECRET_NAME_HINT.search(name):
+            if not isinstance(name, str) or not names_a_secret(name):
                 continue
             if "value" in entry:
                 yield Finding(
@@ -503,8 +616,18 @@ def _check_network_policy(documents: Sequence[Manifest]) -> Iterator[Finding]:
     ]
     for workload in workloads:
         labels = _pod_labels(workload)
+        namespace = _namespace(workload)
         ingress = egress = False
         for policy in policies:
+            # A NetworkPolicy's podSelector reaches only its own namespace. It
+            # cannot select a pod anywhere else, so a bundle holding objects from
+            # two namespaces -- which one invocation over several files easily is
+            # -- must not have a policy in one counted as covering a workload in
+            # the other. Independent review found this: without the comparison,
+            # a fully compliant workload in `team-b` was reported as covered by a
+            # deny in `team-a`.
+            if _namespace(policy) != namespace:
+                continue
             if not _selects(_dig(policy, "spec.podSelector"), labels):
                 continue
             denies_ingress, denies_egress = _denies_everything(policy)
@@ -516,13 +639,21 @@ def _check_network_policy(documents: Sequence[Manifest]) -> Iterator[Finding]:
             if not covered
         ]
         if missing:
+            # A bare Pod has no `spec.template`, so pointing every finding at one
+            # would name a field the object does not have.
+            field = (
+                "metadata.labels"
+                if workload.get("kind") == "Pod"
+                else "spec.template.metadata.labels"
+            )
             yield Finding(
                 rule="network-policy-in-the-release-namespace",
                 subject=_subject(workload),
-                field="spec.template.metadata.labels",
+                field=field,
                 message=(
-                    "no NetworkPolicy in this bundle selects the workload's pods "
-                    f"and denies {' and '.join(missing)} by default"
+                    "no NetworkPolicy in this bundle is in the workload's "
+                    "namespace, selects its pods, and denies "
+                    f"{' and '.join(missing)} by default"
                 ),
             )
 

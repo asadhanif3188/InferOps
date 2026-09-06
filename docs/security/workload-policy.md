@@ -85,6 +85,43 @@ carries a value read out of the manifest — the same rule
 the same reason: the field most likely to hold something sensitive is the one
 that was refused for looking wrong.
 
+Its limits are a heuristic's limits and are stated rather than implied. It reads
+a name, so a credential in a variable called `CONFIG_B` passes it untouched. The
+first version was one regular expression anchored on `_` or end-of-string, and
+independent review found it letting `DB_SECRETS`, `APP_CREDENTIALS`,
+`clientSecret`, and `client-secret` through — plural and camelCase being
+conventions rather than exotica. Matching is now done over split tokens, across
+`SNAKE_CASE`, `kebab-case`, `camelCase`, and words run together, and a committed
+table of names that must and must not match is what holds it there. The second
+half of that table is not decoration: `MAX_OUTPUT_TOKENS` is a chart value in
+this repository and a token *count*, and a check that refused it would be a check
+failing for a reason unrelated to the property it defends — which is the kind
+somebody suppresses the first time it fires.
+
+### Two chart settings could have switched a rule off, and one no longer can
+
+Independent review of this change found a defect worth publishing rather than
+quietly fixing, because the shape of it recurs: **a control a supported setting
+can switch off is a control that holds by default.**
+
+`security.serviceAccount.create: false` is documented, schema-legal, and exists
+for a cluster whose accounts are provisioned outside this chart. With no names
+supplied it used to point every pod at the namespace's `default` account — so the
+chart rendered a release that this policy refuses, once per pod, and nothing said
+so. It is now a refusal at render time: `create: false` requires a name for each
+workload, and the literal name `default` is refused too, because a rule that only
+catches the omission teaches the workaround. The half the setting exists for is
+untouched, and a test renders it and puts the result through this validator.
+
+`security.networkPolicy.enabled: false` is the other one, and it is **not**
+refused. An operator on a cluster known not to apply policy objects may
+reasonably want none rendered — an object nothing applies is clutter that reads
+as a control. What must not happen is the release quietly losing the property,
+and it does not: the render is refused with one
+`network-policy-in-the-release-namespace` finding per workload, and a test
+asserts exactly that rather than leaving the trade to a sentence in a values
+file. Switching it off gives up the control, visibly.
+
 ### Two rules apply to a release and not to the apparatus
 
 `use-a-dedicated-service-account-per-workload` and
@@ -165,6 +202,14 @@ permits it is the plugin's answer rather than this object's, and it is the only
 way anything outside the cluster reaches the API at all — which
 `least-exposure-no-manifest-publishes-a-service` already carries and this policy
 does not replace.
+
+**A kubelet probe is not covered either, and that one can stop a release
+working.** A probe also arrives from the node, so no ingress rule here describes
+it. Where a plugin does not permit node-sourced traffic to a denied pod, every
+pod in this release fails readiness and the release never becomes ready. Nothing
+here has been installed, so this is a caveat rather than an observation — and it
+is the first thing to check if a policy-enforcing cluster ever refuses to bring
+this release up.
 
 ### The part that is not enforcement
 

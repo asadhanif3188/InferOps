@@ -27,6 +27,15 @@ the acquisition path that would download is a separate Job, deferred, and it
 would carry its own policy. An egress allowance it does not use is a hole with
 no purpose, so it gets none, and the default-deny above is what holds it.
 
+**The probe path is not described here, and that is the failure to know about.**
+A kubelet probe arrives from the node rather than from a pod, so no ingress rule
+below covers it. Whether a plugin permits node-sourced traffic to a denied pod is
+the plugin's answer rather than this object's, and where it does not, every pod
+in this release fails readiness and the release never becomes ready. Nothing here
+has been installed, so that is a caveat rather than an observation -- and it is
+the first thing to check if a policy-enforcing cluster ever refuses to bring this
+release up.
+
 **What this does NOT establish, and the sentence to carry away.** A NetworkPolicy
 is enforced by the cluster's network plugin, not by the object. The accepted
 local cluster (ADR 0001 D2) is `kind` with its default CNI, and whether that

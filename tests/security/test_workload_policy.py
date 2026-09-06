@@ -40,6 +40,7 @@ from tools.workload_policy import (
     RULE_IDS,
     check_documents,
     is_release_bundle,
+    names_a_secret,
 )
 
 pytestmark = pytest.mark.docs
@@ -335,3 +336,195 @@ def test_the_command_emits_a_stable_json_report() -> None:
     }
     again = _run("--json", str(INVALID_DIR / "unbounded-resources.yaml"))
     assert again.stdout == result.stdout, "two runs over one input disagree"
+
+
+# --------------------------------------------------------------------------
+# The credential-shaped name heuristic, as a table
+# --------------------------------------------------------------------------
+
+# Names that must be treated as credential-shaped, and names that must not.
+#
+# This exists because the first version of the matcher was one regex anchored on
+# `_` or end-of-string, and independent review found it letting `DB_SECRETS`,
+# `APP_CREDENTIALS`, `clientSecret`, and `client-secret` through -- plural and
+# camelCase naming being conventions rather than exotica. A table is the check
+# that would have caught it, and a fixture is not: one fixture exercises one
+# spelling.
+#
+# The second column matters as much as the first. A check that fires on
+# `MAX_OUTPUT_TOKENS` -- a chart value in this repository, and a token *count*
+# rather than a credential -- is a check that fails for a reason unrelated to
+# the property it defends, and that is the kind of check somebody suppresses the
+# first time it fires.
+CREDENTIAL_SHAPED = (
+    "DB_SECRETS",
+    "APP_CREDENTIALS",
+    "K8S_SECRETS",
+    "SECRETKEY",
+    "client-secret",
+    "clientSecret",
+    "dbPassword",
+    "DB_PASSWORD",
+    "AWS_SECRET_ACCESS_KEY",
+    "AUTH_TOKEN",
+    "REFRESH_TOKENS",
+    "JWT_SECRET",
+    "API_KEY",
+    "APIKEY",
+    "PRIVATE_KEY",
+    "SIGNING_KEY",
+    "DB_PASSWD",
+    "UPSTREAM_PASSPHRASE",
+    "REGISTRY_CREDENTIALS",
+)
+
+NOT_CREDENTIAL_SHAPED = (
+    "INFEROPS_MAX_OUTPUT_TOKENS",
+    "MAX_TOKENS",
+    "PROMPT_TOKENS",
+    "CONTEXT_TOKENS",
+    "TOKENIZER_PATH",
+    "INFEROPS_RELEASE_ID",
+    "INFEROPS_SERVING_ADAPTER",
+    "INFEROPS_POD_NAME",
+    "MODEL_ALIAS",
+    "MODEL_KEY",
+    "SORT_KEY",
+    "BYPASS_CACHE",
+)
+
+
+@pytest.mark.parametrize("name", CREDENTIAL_SHAPED)
+def test_a_credential_shaped_name_is_recognised(name: str) -> None:
+    assert names_a_secret(name), (
+        f"{name} carries a literal past the check, in a spelling people use"
+    )
+
+
+@pytest.mark.parametrize("name", NOT_CREDENTIAL_SHAPED)
+def test_a_name_that_is_not_a_credential_is_left_alone(name: str) -> None:
+    assert not names_a_secret(name), (
+        f"{name} is refused as credential-shaped and is not one; a refusal for "
+        "the wrong reason is the kind that gets suppressed"
+    )
+
+
+def test_every_environment_name_the_chart_derives_is_left_alone() -> None:
+    """The matcher is held to this repository's own vocabulary, not a guess.
+
+    `INFEROPS_MAX_OUTPUT_TOKENS` is a real configuration key here. Reading the
+    derived names out of the committed render rather than listing them means a
+    key added later is covered without anybody remembering to add it.
+    """
+    configuration = next(
+        document for document in RENDERS["real"] if document["kind"] == "ConfigMap"
+    )["data"]
+    offenders = [key for key in configuration if names_a_secret(key)]
+    assert not offenders, (
+        f"the matcher calls {offenders} credential-shaped; these are the chart's "
+        "own derived configuration keys and none of them is a secret"
+    )
+
+
+# --------------------------------------------------------------------------
+# A policy only reaches its own namespace
+# --------------------------------------------------------------------------
+
+
+def test_a_policy_in_another_namespace_does_not_cover_a_workload() -> None:
+    """A NetworkPolicy's podSelector cannot reach outside its own namespace.
+
+    Independent review found this: without the namespace comparison, a bundle
+    holding a deny in one namespace and a workload in another reported the
+    workload as covered -- by a policy Kubernetes would never apply to it. One
+    invocation over several files is easily such a bundle, and the trial
+    apparatus check is already one.
+    """
+    deny: dict[str, Any] = {
+        "apiVersion": "networking.k8s.io/v1",
+        "kind": "NetworkPolicy",
+        "metadata": {"name": "deny", "namespace": "team-a"},
+        "spec": {
+            "podSelector": {"matchLabels": {"app": "x"}},
+            "policyTypes": ["Ingress", "Egress"],
+        },
+    }
+    workload: dict[str, Any] = {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": {
+            "name": "w",
+            "namespace": "team-b",
+            "labels": {"inferops.io/lifecycle": "release"},
+        },
+        "spec": {
+            "template": {
+                "metadata": {"labels": {"app": "x"}},
+                "spec": {
+                    "serviceAccountName": "w",
+                    "automountServiceAccountToken": False,
+                    "securityContext": {
+                        "runAsNonRoot": True,
+                        "runAsUser": 65534,
+                        "seccompProfile": {"type": "RuntimeDefault"},
+                    },
+                    "containers": [
+                        {
+                            "name": "c",
+                            "image": "localhost/x@sha256:" + "0" * 64,
+                            "securityContext": {
+                                "allowPrivilegeEscalation": False,
+                                "readOnlyRootFilesystem": True,
+                                "capabilities": {"drop": ["ALL"]},
+                            },
+                            "resources": {
+                                "requests": {"cpu": "1m", "memory": "1Mi"},
+                                "limits": {"cpu": "1", "memory": "2Mi"},
+                            },
+                        }
+                    ],
+                },
+            }
+        },
+    }
+    across = check_documents([deny, workload])
+    assert [f.rule for f in across] == ["network-policy-in-the-release-namespace"], (
+        "a deny in team-a was counted as covering a workload in team-b"
+    )
+
+    deny["metadata"]["namespace"] = "team-b"
+    assert not check_documents([deny, workload]), (
+        "the same deny in the same namespace should cover the workload"
+    )
+
+
+def test_an_omitted_policy_types_is_read_the_way_kubernetes_defaults_it() -> None:
+    """Kubernetes defaults an absent `policyTypes`, and never to nothing.
+
+    An omitted field means `Ingress`, plus `Egress` when an egress block is
+    present. Reading the absence as "isolates neither direction" would report a
+    policy that really does isolate ingress as covering nothing -- conservative,
+    invisible, and wrong.
+    """
+    from tools.workload_policy.core import _denies_everything
+
+    assert _denies_everything({"spec": {"podSelector": {}, "ingress": []}}) == (
+        True,
+        False,
+    )
+    assert _denies_everything({"spec": {"podSelector": {}}}) == (True, False)
+    assert _denies_everything(
+        {"spec": {"podSelector": {}, "policyTypes": ["Ingress"]}}
+    ) == (True, False)
+    assert _denies_everything(
+        {"spec": {"podSelector": {}, "policyTypes": ["Ingress", "Egress"]}}
+    ) == (True, True)
+    assert _denies_everything(
+        {
+            "spec": {
+                "podSelector": {},
+                "policyTypes": ["Ingress", "Egress"],
+                "egress": [{"to": []}],
+            }
+        }
+    ) == (True, False)

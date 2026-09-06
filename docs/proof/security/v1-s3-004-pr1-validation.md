@@ -62,10 +62,10 @@ passes on every run, and a passing run is what enforcement looks like.
 uv run --locked ruff check .           All checks passed!
 uv run --locked ruff format --check .  287 files already formatted
 uv run --locked mypy .                 Success: no issues found in 153 source files
-uv run --locked python -m pytest -q    6032 passed, 27 skipped, 14 deselected
+uv run --locked python -m pytest -q    6069 passed, 27 skipped, 14 deselected
 ```
 
-The default lane went from 5,918 passing to 6,032. The `main` figure was measured
+The default lane went from 5,918 passing to 6,069. The `main` figure was measured
 in a clean worktree checked out at `main` and removed afterwards, rather than by
 stashing: several suites parametrise over the published Markdown files and over
 the committed controls, so a stash that left this change's new documents in the
@@ -76,10 +76,10 @@ measurement avoided it rather than rediscovering it.
 The suites this change touches, before and after:
 
 ```text
-tests/security/test_workload_policy.py          new         36 passed
-tests/architecture/test_helm_chart.py           127  ->    151 passed
-tests/security/                                 667  ->    738 passed
-tests/architecture/                             676  ->    700 passed
+tests/security/test_workload_policy.py          new         70 passed
+tests/architecture/test_helm_chart.py           127  ->    154 passed
+tests/security/                                 667  ->    772 passed
+tests/architecture/                             676  ->    703 passed
 tests/testing/                                 1052  ->   1071 passed
 ```
 
@@ -130,6 +130,29 @@ helm lint charts/inferops-llm --strict --namespace inferops-platform \
   --values charts/inferops-llm/ci/mock-values.yaml    1 chart(s) linted, 0 failed
 ```
 
+```text
+helm template ... --values charts/inferops-llm/ci/real-values.yaml \
+  | kubeconform -strict -summary -kubernetes-version 1.34.0 -
+Summary: 12 resources found parsing stdin - Valid: 12, Invalid: 0, Errors: 0
+
+helm template ... --values charts/inferops-llm/ci/mock-values.yaml \
+  | kubeconform -strict -summary -kubernetes-version 1.34.0 -
+Summary: 8 resources found parsing stdin - Valid: 8, Invalid: 0, Errors: 0
+
+kubeconform -strict -summary -kubernetes-version 1.34.0 deploy/smoke/*.yaml
+Summary: 5 resources found in 2 files - Valid: 5, Invalid: 0, Errors: 0
+```
+
+**The first version of this record said `kubeconform` was not run because it is
+not installed on this host, and called the four new `NetworkPolicy` objects
+unvalidated against the upstream schema.** Both halves were false, and
+independent review of this change found it. `kubeconform` is on `PATH`, running
+it was one command, and every object in both renders — the policies included —
+validates against the Kubernetes 1.34 schemas. The correction is left visible
+rather than quietly applied, because a record that misstates what a host has is
+a record whose other statements a reader has no reason to trust, and this project
+turns entirely on those statements being literally true.
+
 Both renders were regenerated with the command
 [the render README](../../../charts/inferops-llm/ci/rendered/README.md) publishes,
 and the suite's own re-render comparison passes, so the committed files are the
@@ -160,11 +183,16 @@ The pre-existing lines are left alone: that record is a statement about a moment
 that has passed, and reformatting it would be editing a record rather than fixing
 a document.
 
-The link scan reports one line, `docs/proof/README.md -> ...`, which this change
-edits only to add a row to. It is a false positive: the document quotes the
+The link scan reports **two** lines, `docs/proof/README.md -> ...` and
+`docs/proof/security/v1-s3-004-pr1-validation.md -> ...`. Both are false
+positives and the second is this record's own: `docs/proof/README.md` quotes the
 literal string `Produced from [the raw-result template](...)` as an illustration
-of what a promoted record carries, and the scan cannot tell an illustration from
-a link. Every relative link in the three documents this change adds resolves.
+of what a promoted record carries, the scan cannot tell an illustration from a
+link, and the sentence above — which quotes that illustration in order to explain
+it — reproduces the false positive one document further on. The first version of
+this section said "one line", which was true of the tree before this record was
+written into it and false of the tree as committed. Every relative link in the
+three documents this change adds resolves.
 
 ## What was not run, and why
 
@@ -173,20 +201,63 @@ none was performed. Nothing here was installed, applied, scheduled, or connected
 to. Specifically not run: `helm install`, `helm test`, `kubectl apply` of any
 policy object, and any attempt to make a connection a policy denies.
 
-**`kubeconform` was not run.** It is not installed on this host. The chart suite's
-own render checks parse both committed renders as YAML and hold every object to
-the properties this repository requires, which is not the same as a schema
-validation against the Kubernetes 1.34 API and is not presented as one. The
-`networking.k8s.io/v1 NetworkPolicy` objects this change adds are therefore
-**unvalidated against the upstream schema**, and that is the one gap in this
-record a reader should weigh before installing anything.
-
 **`shellcheck` was not run.** It is not installed on this host, and this change
 edits no shell script.
 
 **No scanner was run for this change.** The image and dependency scans recorded in
 [the V1-S2-006 record](v1-s2-006-pr1-validation.md) are unchanged by it: no image
 reference and no dependency moved.
+
+## What two independent reviews found
+
+Both reviews ran before this branch was pushed and neither was given the answer
+in advance. Between them they found six defects; all six are fixed in the second
+commit on this branch, and they are listed because a review that finds nothing
+and a review nobody ran produce the same record.
+
+**A supported setting switched a control off.** `security.serviceAccount.create:
+false` is documented and schema-legal, and with no names supplied it pointed
+every pod at the namespace's `default` account — so the chart rendered a release
+this story's own validator refuses, once per pod, and nothing anywhere said so. A
+control a supported setting can switch off is a control that holds by default.
+`create: false` now requires a name per workload and refuses the literal
+`default`, the half the setting exists for still renders and still passes, and
+three tests cover it. `security.networkPolicy.enabled: false` is the same shape
+and is deliberately *not* refused — an operator on a cluster that ignores policy
+objects may reasonably want none — but the render is refused by the validator
+with one finding per workload, and a test asserts that rather than leaving the
+trade to a sentence in a values file.
+
+**A policy in one namespace was counted as covering a workload in another.** A
+`NetworkPolicy`'s `podSelector` reaches only its own namespace. The rule compared
+labels and never namespaces, so a fabricated bundle with a deny in `team-a` and a
+compliant workload in `team-b` produced no finding at all — a workload reported
+covered by a policy Kubernetes would never apply to it. Neither committed render
+triggers it, because one `helm template` emits one namespace; the check over
+`deploy/` is already a multi-file bundle, which is how it would have arrived.
+
+**The credential-shaped name check missed the plural.** One regular expression
+anchored on `_` or end-of-string let `DB_SECRETS`, `APP_CREDENTIALS`,
+`clientSecret`, and `client-secret` carry a literal straight through. Matching is
+now done over split tokens across four naming conventions, held by a committed
+table of names that must and must not match — the second half of which exists
+because `MAX_OUTPUT_TOKENS` is a chart value here and a token count, and a check
+that refused it would fail for a reason unrelated to the property it defends.
+
+**An omitted `policyTypes` was read as isolating nothing.** Kubernetes defaults
+it to `Ingress`, plus `Egress` where an egress block is present. The old reading
+was conservative, wrong, and invisible — it could only ever produce a finding.
+
+**`kubeconform` was reported as absent when it was installed.** Corrected above,
+and the correction closed the gap the record had described as unclosed.
+
+**The stale boundary.** `B3` in the baseline still read "A network policy is
+planned" and "No policy object exists", which this same change made false while
+`DR-04` two hundred lines away recorded the truth. The boundary table and
+[the architecture](../../architecture/system-architecture.md) carry that sentence
+verbatim by design, so both were corrected together: the gap at `B3` is now an
+untested enforcement rather than an absent object, which is a different gap and
+not a smaller one.
 
 ## What this establishes, and what it does not
 
@@ -223,6 +294,12 @@ now says outright that a validator reading a file is not what the risk turns on.
 *Two names granted nothing are two names granted nothing.* The service account
 split establishes no privilege difference today. What it establishes is that a
 future binding written for one workload cannot reach the other.
+
+*Two settings are a trade rather than a hole, and one is still a trade.*
+`security.networkPolicy.enabled: false` renders no policy, and the validator then
+refuses the release. That is the intended, visible consequence, and it means the
+control is available to be switched off by whoever installs — with a refusal
+attached, rather than silently.
 
 *The trial apparatus is outside two rules.* The manifests under `deploy/` name no
 service account and are covered by no network policy. The policy does not require

@@ -60,6 +60,8 @@ from typing import Any
 import pytest
 import yaml
 
+from tools.workload_policy import check_documents
+
 pytestmark = pytest.mark.architecture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -1932,3 +1934,114 @@ def test_no_policy_reaches_outside_the_release_or_the_resolver() -> None:
                         assert selector.get("app.kubernetes.io/instance"), (
                             f"{profile} opens a path to a pod outside this release"
                         )
+
+
+# --------------------------------------------------------------------------
+# The two settings that could hand the chart's own gate a release it refuses
+# --------------------------------------------------------------------------
+
+
+def _render(*overrides: str) -> subprocess.CompletedProcess[str]:
+    """`helm template` with the real fixture and some `--set` overrides.
+
+    A fixed argument vector with no shell: `helm` is resolved from PATH by
+    `shutil.which` and every other member is a constant or a repository path.
+    """
+    helm = shutil.which("helm")
+    if helm is None:
+        pytest.skip("helm is not on PATH; see CONTRIBUTING.md for the commands")
+    argv = [
+        helm,
+        "template",
+        "inferops",
+        str(CHART_DIR),
+        "--namespace",
+        "inferops-platform",
+        "--values",
+        str(CI_DIR / "real-values.yaml"),
+    ]
+    for override in overrides:
+        argv.extend(["--set", override])
+    return subprocess.run(argv, capture_output=True, text=True, check=False)
+
+
+def test_an_unnamed_external_service_account_is_refused_rather_than_defaulted() -> None:
+    """The escape hatch that used to defeat the control it sits beside.
+
+    `security.serviceAccount.create: false` is documented, schema-legal, and
+    exists for a cluster that provisions accounts elsewhere. With no names it
+    used to point every pod at the namespace's `default` account -- so the chart
+    rendered a release its own workload policy refuses, once per pod, and
+    nothing said so. Independent review found it.
+
+    A control a supported setting can switch off is a control that holds by
+    default. The render is now refused instead, and naming `default` explicitly
+    is refused too: a rule that only catches the omission teaches the workaround.
+    """
+    unnamed = _render("security.serviceAccount.create=false")
+    assert unnamed.returncode != 0, (
+        "create=false with no names renders, and what it renders is a release "
+        "whose pods all present the namespace's shared identity"
+    )
+    assert "security.serviceAccount.api.name is required" in unnamed.stderr
+
+    explicit = _render(
+        "security.serviceAccount.create=false",
+        "security.serviceAccount.api.name=default",
+        "security.serviceAccount.runtime.name=external-runtime",
+    )
+    assert explicit.returncode != 0, "naming 'default' reaches the same place"
+    assert "may not be 'default'" in explicit.stderr
+
+
+def test_externally_provisioned_accounts_still_render_and_still_pass() -> None:
+    """The half of the escape hatch that was worth keeping.
+
+    Refusing the unnamed case would be worthless if it also refused the case the
+    setting exists for, so this renders it and puts the result through the same
+    validator the story ships.
+    """
+    result = _render(
+        "security.serviceAccount.create=false",
+        "security.serviceAccount.api.name=external-api",
+        "security.serviceAccount.runtime.name=external-runtime",
+    )
+    assert result.returncode == 0, result.stderr
+    documents = [
+        document
+        for document in yaml.safe_load_all(result.stdout.replace("\r\n", "\n"))
+        if isinstance(document, dict)
+    ]
+    named = {_dig(spec, "serviceAccountName") for _, spec in _pod_specs(documents)}
+    assert named == {"external-api", "external-runtime"}, named
+    assert not [d for d in documents if d["kind"] == "ServiceAccount"], (
+        "create=false must render no account; the cluster provisions them"
+    )
+    assert not check_documents(documents), (
+        "a release naming externally provisioned accounts is refused by the "
+        "policy, which would make the supported configuration unusable"
+    )
+
+
+def test_switching_the_network_policy_off_is_a_trade_the_gate_reports() -> None:
+    """`networkPolicy.enabled: false` is a real choice and it gives up a control.
+
+    It is not refused: a policy object a cluster ignores is clutter that reads
+    as a control, and an operator on such a cluster may reasonably want none.
+    What must not happen is the release quietly losing the property. It does not:
+    the workload policy refuses the render, once per workload, and this asserts
+    that rather than leaving the trade to a sentence in a values file.
+    """
+    result = _render("security.networkPolicy.enabled=false")
+    assert result.returncode == 0, result.stderr
+    documents = [
+        document
+        for document in yaml.safe_load_all(result.stdout.replace("\r\n", "\n"))
+        if isinstance(document, dict)
+    ]
+    assert not [d for d in documents if d["kind"] == "NetworkPolicy"]
+    findings = check_documents(documents)
+    assert findings, "the release lost its default-deny and nothing reported it"
+    assert {finding.rule for finding in findings} == {
+        "network-policy-in-the-release-namespace"
+    }, "switching the policy off should cost exactly the policy control"

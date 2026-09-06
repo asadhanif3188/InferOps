@@ -340,6 +340,38 @@ HTTP liveness probe on a loading endpoint wearing different clothes.
 {{- end -}}
 {{- end -}}
 
+{{/* -- the identities, and the escape hatch that defeated the control ---- */}}
+
+{{/*
+`security.serviceAccount.create: false` exists for a cluster whose accounts are
+provisioned outside this chart. It used to mean something else as well, and
+independent review of this change found it: with `create: false` and no names,
+every pod fell back to the namespace's `default` account -- so a documented,
+schema-legal setting made the chart render a release that its own workload policy
+refuses, with one `use-a-dedicated-service-account-per-workload` finding per pod.
+
+A control defeated by a supported setting is a control that holds by default
+rather than a control. So the escape hatch keeps the half it was for -- name
+accounts this chart did not create -- and loses the half nobody wanted: an
+unnamed account is now a refusal rather than a silent fallback to the identity
+every other pod in the namespace already presents.
+
+Naming `default` explicitly is refused too. It is the same outcome reached by
+typing it, and a rule that only catches the omission teaches the workaround.
+*/}}
+
+{{- if not .Values.security.serviceAccount.create -}}
+{{- range $component := list "api" "runtime" -}}
+{{- $name := (index $.Values.security.serviceAccount $component).name -}}
+{{- if not $name -}}
+{{- fail (printf "security.serviceAccount.%s.name is required when security.serviceAccount.create is false. Without it the pod falls back to the namespace's 'default' account, which every other pod in that namespace also presents - so the release renders output this chart's own workload policy refuses. Name the account your cluster provisions, or leave create true and let this release own the identity." $component) -}}
+{{- end -}}
+{{- if eq $name "default" -}}
+{{- fail (printf "security.serviceAccount.%s.name may not be 'default'. That is the namespace's shared identity, and a workload presenting it is one a later RoleBinding reaches without anybody deciding so." $component) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
 {{/* -- the network policy, and the two ways it becomes a decoration ------ */}}
 
 {{/*

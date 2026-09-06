@@ -20,6 +20,7 @@ from .core import (
     Finding,
     check_documents,
     is_release_bundle,
+    names_a_secret,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "Finding",
     "check_documents",
     "is_release_bundle",
+    "names_a_secret",
 ]

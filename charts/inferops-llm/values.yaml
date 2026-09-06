@@ -436,15 +436,20 @@ security:
   # future binding cannot accidentally reach rather than about a privilege
   # either one holds today.
   #
-  # `create: false` points both at the namespace's `default` account, which this
-  # release does not own. It is the escape hatch for a cluster that provisions
-  # accounts elsewhere, and it is the one setting here that gives up the
-  # separation above.
+  # `create: false` is the escape hatch for a cluster that provisions accounts
+  # elsewhere, and it now requires a name for each workload. It used to mean
+  # something else as well: with no names, every pod fell back to the
+  # namespace's `default` account, and the release rendered output this chart's
+  # own workload policy refuses - a supported setting defeating a control the
+  # chart advertises. An unnamed account under `create: false` is refused, and so
+  # is the literal name `default`, because a rule that only catches the omission
+  # teaches the workaround.
   serviceAccount:
     create: true
     api:
-      # Empty means `<release>-api`. Naming one here is for a cluster whose
-      # account names are decided outside this chart.
+      # Empty means `<release>-api`, and is only valid while `create` is true.
+      # Naming one here is for a cluster whose account names are decided outside
+      # this chart.
       name: ""
     runtime:
       name: ""
@@ -465,9 +470,24 @@ security:
   # `EX-05` records it; a policy the cluster ignores looks exactly like a
   # control, which is why the sentence is here rather than only in the register.
   #
-  # `enabled: false` renders no policy at all, which is the honest setting for a
-  # cluster known not to enforce them: an object nothing applies is clutter that
-  # reads as a control.
+  # `enabled: false` renders no policy at all. It is a real choice for a cluster
+  # known not to enforce them - an object nothing applies is clutter that reads
+  # as a control - and it is a **trade**, stated here rather than discovered:
+  # the release then satisfies no default-deny, and
+  # `python -m tools.workload_policy` refuses the render with one
+  # `network-policy-in-the-release-namespace` finding per workload. That refusal
+  # is the intended, visible consequence rather than a bug; a test renders with
+  # this off and asserts it. Turning it off gives up the control, and the gate
+  # says so out loud instead of the release quietly losing it.
+  #
+  # One thing this policy set does NOT account for, and it is the failure worth
+  # knowing about before installing on a cluster that enforces policy: a kubelet
+  # probe arrives from the node rather than from a pod, so the default-deny's
+  # ingress rules do not describe it. Whether a plugin permits node-sourced
+  # traffic to a denied pod is the plugin's answer, not this object's, and if it
+  # does not, every pod here fails readiness and the release never becomes ready.
+  # Nothing here has been installed, so this is a caveat rather than an
+  # observation.
   networkPolicy:
     enabled: true
 

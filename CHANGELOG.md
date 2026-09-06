@@ -175,6 +175,46 @@ once versioned releases begin.
   file written against the previous contract is refused by the schema rather than
   silently accepted.
 
+### Fixed
+
+- **Two independent reviews of the workload-policy change found six defects, and
+  all six are fixed.** The one worth naming first is the shape rather than the
+  instance: `security.serviceAccount.create: false` is documented and
+  schema-legal, and with no names supplied it pointed every pod at the
+  namespace's `default` account — so the chart rendered a release that its own
+  new validator refuses, once per pod, and nothing said so. **A control a
+  supported setting can switch off is a control that holds by default.**
+  `create: false` now requires a name per workload and refuses the literal
+  `default`; the case the setting exists for still renders and still passes.
+  `security.networkPolicy.enabled: false` is the same shape and is deliberately
+  not refused — an operator on a cluster that ignores policy objects may
+  reasonably want none — but the render is then refused by the validator with one
+  finding per workload, and a test asserts that rather than leaving the trade to
+  a comment. The validator also compared pod labels without comparing
+  namespaces, so a deny in one namespace was counted as covering a workload in
+  another, which is a policy Kubernetes would never apply; read an omitted
+  `policyTypes` as isolating nothing rather than as the `Ingress` Kubernetes
+  defaults it to; and matched credential-shaped names with one regular
+  expression that let `DB_SECRETS`, `APP_CREDENTIALS`, `clientSecret`, and
+  `client-secret` carry a literal straight through. Matching is now done over
+  split tokens across four naming conventions and held by a committed table of
+  names that must and must not match — the second half of which exists because
+  `MAX_OUTPUT_TOKENS` is a chart value here and a token count, not a credential.
+
+- **The `B3` boundary said "No policy object exists" while the same file's own
+  risk register said the chart renders four.** The baseline's boundary table and
+  [the architecture](docs/architecture/system-architecture.md) carry that
+  sentence verbatim by design, so both were corrected together: the gap at the
+  namespace boundary is now an untested enforcement rather than an absent
+  object, which is a different gap and not a smaller one.
+
+- **The evidence record claimed `kubeconform` was not run because it is not
+  installed.** It is installed, running it was one command, and every object in
+  both renders — the four new `NetworkPolicy` objects included — validates
+  against the Kubernetes 1.34 schemas. The record now carries the result and
+  keeps the correction visible, because a record that misstates what a host has
+  is a record whose other statements a reader has no reason to trust.
+
 ### Changed
 
 - **`network-policy-in-the-release-namespace` moved out of `specified-only`, and
