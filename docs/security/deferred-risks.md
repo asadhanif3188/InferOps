@@ -2,7 +2,7 @@
 
 Status: **accepted register**, in
 [ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). Twelve risks
-V1 carries rather than reduces, and four weaknesses it accepts with a compensating
+V1 carries rather than reduces, and five weaknesses it accepts with a compensating
 control. Ten of the twelve block production use.
 
 This is the document that makes the rest of the security baseline honest. A control
@@ -39,7 +39,7 @@ publish. No test can enforce that, and the rule is marked `review` in
 | DR-01 | No caller is authenticated and no request is authorised | B5 | yes |
 | DR-02 | There is no rate limit, quota, or concurrency limit | B5 | yes |
 | DR-03 | A tenant identifier is never validated against an entitlement | B5 | yes |
-| DR-04 | No network policy exists, and the local plugin's enforcement is untested | B3 | yes |
+| DR-04 | The rendered network policy's enforcement by the local plugin is untested | B3 | yes |
 | DR-05 | No pod security property is enforced for a pod this platform deploys | B4 | yes |
 | DR-06 | The transport delivering a model artifact is not authenticated | B1 | yes |
 | DR-07 | No check is verified to have resolved from the committed lockfile | B1 | yes |
@@ -106,20 +106,34 @@ identifier has no permitted placement in a committed evidence record, because th
 sensitivity class [the telemetry catalog](../telemetry/telemetry-catalog.md) gave it
 allows none.
 
-### DR-04 — No network policy exists, and the local plugin's enforcement is untested
+### DR-04 — The rendered network policy's enforcement by the local plugin is untested
 
-**Why deferred.** A policy object belongs to a release. A chart now exists —
-`V1-S3-002-PR1` added it — and it deliberately carries no policy: `V1-S3-004` owns
-the network policy, and committing one here would produce a manifest nothing
-installs and a control nothing applies.
+This entry was rewritten by `V1-S3-004-PR1` and **not retired**. Its first half is
+gone; the half that decides anything is untouched, and it is worth being exact about
+which is which.
 
-**What would have to be true.** A policy in that chart, and an executed test showing
-that it denies traffic on the cluster this project actually uses. Neither has
-happened, so this risk is unchanged by the chart's arrival. The executed test is the
-one that is easy to skip, and skipping it produces the worst outcome available here:
-a policy object that looks like a control and is ignored by the plugin.
+**What changed.** The chart renders a network policy. Four objects: a deny of both
+directions over every pod the release installs, and one rule each for the API, the
+serving runtime, and the release test. The runtime is given no egress at all.
+[The workload policy](workload-policy.md) refuses a render whose workloads are not
+described as denied in both directions — including the case that looks like a
+default-deny and is not, a policy declaring only `Ingress` in `policyTypes` and
+leaving egress wide open.
 
-**Not claimed.** No network isolation property is claimed at any boundary.
+**Why deferred.** A NetworkPolicy is applied by the cluster's network plugin and not
+by the object. The accepted local cluster is `kind` with its default CNI, whether
+that plugin applies a policy object has never been tested here, and no cluster has
+installed this chart. So what exists is a rendered declaration, and a declaration
+that is ignored is worse than an absence in exactly one way: it looks like a control.
+
+**What would have to be true.** One executed test on the cluster this project
+actually uses: install the release, attempt a connection the policy denies, and
+record that it was refused. That test was not authorised for `V1-S3-004-PR1` and it
+was not run. It is the easy one to skip, which is why it is written here as the whole
+of what remains rather than as one item among several.
+
+**Not claimed.** No network isolation property is claimed at any boundary. See
+`EX-05`.
 
 ### DR-05 — No pod security property is enforced for a pod this platform deploys
 
@@ -127,15 +141,19 @@ a policy object that looks like a control and is ignored by the plugin.
 enforced over every manifest committed here, which is a property of five YAML files
 rather than of a cluster. Since `V1-S3-002-PR1` the same six properties are also
 asserted over the chart's committed renders, by
-`tests/architecture/test_helm_chart.py` rather than by this suite — which widens
-what is checked and changes nothing about what is enforced, because a rendered
-manifest is another file.
+`tests/architecture/test_helm_chart.py` rather than by this suite; since
+`V1-S3-004-PR1` [a workload policy](workload-policy.md) also refuses a render that
+drops a dedicated identity, an explicit resource envelope, a rendered secret, or a
+default-deny. All of that widens what is checked and changes nothing about what is
+enforced, because a rendered manifest is another file.
 
 **What would have to be true.** A rendering path that produces pod specifications —
 the chart now is one — and an admission policy in the cluster that refuses a
 specification which does not carry the properties. Nothing here has the second, and
-it is what this risk turns on. Which of the two enforces it is `D14` in the decision
-record and is explicitly not decided.
+it is what this risk turns on. **A validator that reads a file is not it**, however
+many rules it applies: it holds no credential, contacts no cluster, and stops
+nothing being applied. Which of the two enforces it is `D14` in the decision record
+and is explicitly not decided.
 
 **Not claimed.** No document may describe a workload this platform deployed as
 constrained, because it has deployed none. See `EX-04`.
@@ -281,7 +299,7 @@ present cannot be demonstrated in operation.
 
 ## Accepted exceptions
 
-Four weaknesses this project accepts rather than fixes. Each names where it was
+Five weaknesses this project accepts rather than fixes. Each names where it was
 accepted, the compensating control that makes it tolerable, what remains undefended
 anyway, and the condition under which it should be revisited. A test refuses an
 exception missing any of them, and refuses one whose compensating control is not a
@@ -293,6 +311,7 @@ control the baseline declares.
 | EX-02 | The cluster identity guard is satisfied by a second cluster given this project's name | `refuse-to-act-on-a-cluster-this-project-did-not-create` | — |
 | EX-03 | The secret-scan allowlist covers two directories wholesale | `no-credential-or-artifact-in-public-history` | DR-11 |
 | EX-04 | The pod-security properties are enforced over apparatus, not over a serving path | `run-as-non-root` | DR-05 |
+| EX-05 | The rendered network policy's enforcement by the local network plugin is untested | `least-exposure-no-manifest-publishes-a-service` | DR-04 |
 
 ### EX-01 — The transport is not authenticated
 
@@ -350,6 +369,28 @@ deployed, and no admission control exists to constrain one it does not own.
 **Revisit when** a rendering path produces pod specifications, at which point the
 check must move from committed manifests to rendered output and be joined by
 admission control.
+
+The first half of that condition has been met. `V1-S3-004-PR1` moved the check to
+rendered output and widened it, and the exception stands because the second half —
+admission control — does not exist and nothing here creates it.
+
+### EX-05 — The rendered network policy is a declaration, not an enforcement
+
+Accepted in [the workload policy document](workload-policy.md).
+
+**Residual risk.** A policy object the cluster ignores looks exactly like a control,
+and the object is the artifact that travels: it appears in a render, in a diff, and
+in a list of what a release installs, and none of those says whether the plugin read
+it. What actually limits reachability today is the compensating control — both
+Services are `ClusterIP` and no Ingress is declared, so anything outside the cluster
+needs a deliberate port-forward from a machine that already holds the cluster's
+credential. That identifies nobody and limits nothing once something is inside.
+**Between pods in the namespace, nothing is established at all.**
+
+**Revisit when** a release is installed on the cluster this project uses and a
+connection the policy denies is attempted and recorded as refused. That is the
+executed half `DR-04` still carries, and it was not run for the story that added the
+policy.
 
 ## What this register does not do
 

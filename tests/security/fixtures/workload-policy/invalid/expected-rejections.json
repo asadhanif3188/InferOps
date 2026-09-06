@@ -1,0 +1,60 @@
+{
+  "$comment": "Which rules each deliberately broken fixture must produce. The test compares the validator's output against this in BOTH directions, so a fixture that starts failing for a different reason is a failure rather than a pass - which is the whole difference between 'the validator refused something' and 'the validator refused this'. The arrangement is copied from contracts/workload/examples/invalid/expected-rejections.json.",
+  "policyRef": "docs/security/workload-policy.md",
+  "validatorRef": "tools/workload_policy/core.py",
+  "baselineRef": "docs/security/security-baseline.v1alpha1.json",
+  "fixtures": [
+    {
+      "fixture": "default-service-account.yaml",
+      "drops": "a dedicated workload identity",
+      "rules": ["use-a-dedicated-service-account-per-workload"]
+    },
+    {
+      "fixture": "ingress-only-network-policy.yaml",
+      "drops": "the egress half of a default-deny, while still looking like one",
+      "rules": ["network-policy-in-the-release-namespace"]
+    },
+    {
+      "fixture": "moving-image-tag.yaml",
+      "drops": "the digest pin",
+      "rules": ["pin-image-by-digest"]
+    },
+    {
+      "fixture": "no-network-policy.yaml",
+      "drops": "the network policy entirely",
+      "rules": ["network-policy-in-the-release-namespace"]
+    },
+    {
+      "fixture": "no-service-account-named.yaml",
+      "drops": "a dedicated workload identity, by omission rather than by statement",
+      "rules": ["use-a-dedicated-service-account-per-workload"]
+    },
+    {
+      "fixture": "node-port-service.yaml",
+      "drops": "least exposure at the caller boundary",
+      "rules": ["least-exposure-no-manifest-publishes-a-service"]
+    },
+    {
+      "fixture": "root-and-privileged-container.yaml",
+      "drops": "every pod and container security property at once",
+      "rules": [
+        "do-not-mount-a-service-account-token",
+        "drop-all-capabilities",
+        "forbid-privilege-escalation",
+        "read-only-root-filesystem",
+        "run-as-non-root",
+        "seccomp-runtime-default"
+      ]
+    },
+    {
+      "fixture": "secret-value-in-a-manifest.yaml",
+      "drops": "the rule that secret material is referenced and never rendered",
+      "rules": ["no-secret-value-in-a-rendered-manifest"]
+    },
+    {
+      "fixture": "unbounded-resources.yaml",
+      "drops": "the explicit resource envelope",
+      "rules": ["declare-explicit-resource-requests-and-limits"]
+    }
+  ]
+}

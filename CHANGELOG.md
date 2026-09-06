@@ -10,6 +10,45 @@ once versioned releases begin.
 
 ### Added
 
+- **Every workload the chart installs presents an identity of its own, and the
+  release starts from a network denial.** The chart rendered one `ServiceAccount`
+  that both Deployments named; it now renders one per workload. Neither is
+  granted anything — no `Role`, no `ClusterRole`, and no binding of either is
+  rendered anywhere in this chart, and no pod mounts a token — so the split
+  changes no privilege today. It changes what the first grant can reach: a
+  `RoleBinding` written for the API and attached to a shared account is a grant to
+  the serving runtime as well, made by somebody who was not thinking about the
+  serving runtime. Beside them the chart now renders four `NetworkPolicy` objects:
+  a deny of both ingress and egress over every pod the release installs, and one
+  rule each for the API, the runtime, and the `helm test` pod. The API is
+  reachable on its own port from the release's own pods and may resolve DNS and
+  reach the runtime; the runtime is reachable on its own port and may reach
+  nothing, because `llama-server` reads a mounted file and answers a socket. The
+  deny selects the release's own pods rather than the namespace, so a
+  Terraform-owned prerequisite beside it is untouched, and it omits the component
+  label so that a component added later arrives denied rather than uncovered.
+  `security.serviceAccount.name` became `security.serviceAccount.api.name` and
+  `.runtime.name`, and the chart version moved to `0.2.0`; nothing has installed
+  `0.1.0`, so no upgrade path is owed to anyone.
+
+- **A workload policy that reads rendered manifests, and nine fixtures that
+  establish it refuses.** `python -m tools.workload_policy` applies twelve rules to
+  a bundle of Kubernetes manifests — the six pod and container security properties,
+  digest pinning, least exposure, an explicit resource envelope on every container,
+  a dedicated service account, no credential-shaped environment name carrying a
+  literal, and a default-deny selecting every workload. Every rule identifier is a
+  control identifier in [the security baseline](docs/security/security-baseline.v1alpha1.json),
+  and a test compares the two sets in both directions. Two rules apply to a release
+  and not to the one-shot apparatus under `deploy/`, and the scope is read off the
+  `inferops.io/lifecycle` label rather than chosen by whoever runs the check, so no
+  invocation can ask for the lighter policy; a test holds the exemption to exactly
+  two rules. Nine committed fixtures each drop one control and a committed record
+  says which rules each must produce, compared in both directions — because a
+  validator with no failing input can have every rule reading the wrong field and
+  pass on every run, which is the outcome that looks exactly like enforcement.
+  [The policy document](docs/security/workload-policy.md) publishes the rules and
+  states what checking a manifest does not establish.
+
 - **The model cache mount is scoped to the declared revision, and a release can
   no longer read bytes it did not name.** The chart mounted the Terraform-owned
   claim at its root with a free-form `subPath`, so `model.revision` was required,
@@ -137,6 +176,21 @@ once versioned releases begin.
   silently accepted.
 
 ### Changed
+
+- **`network-policy-in-the-release-namespace` moved out of `specified-only`, and
+  what moved is the policy rather than its enforcement.** The control was decided
+  for a chart nobody had written; the chart now renders the policy and a test
+  refuses a render whose workloads are not described as denied in both directions,
+  so it is `enforced-over-manifests`. A `NetworkPolicy` is applied by the cluster's
+  network plugin and not by the object, no cluster has installed this chart, and
+  whether the accepted local cluster's plugin applies one **has never been tested
+  here**. `DR-04` is rewritten to carry exactly that half and still blocks
+  production use; `EX-05` records the exception with its compensating control and
+  its residual risk. The baseline gains four further controls — a dedicated
+  identity per workload, an explicit resource envelope, no secret value in a
+  rendered manifest, and the fixture check itself — taking it from thirty-four
+  controls to thirty-eight and from twenty-four enforced to twenty-nine, with every
+  count each document states recomputed from the data.
 
 - **The chart suite went from 115 checks to 127 and the lifecycle suite from 74
   to 91.** The new chart properties are the model cache ones: that the mount is

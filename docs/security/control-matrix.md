@@ -3,8 +3,8 @@
 Status: **accepted**, in
 [ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). It lists
 every V1 security control, the boundary it acts at, what verifies it, who owns that
-verification, and which record it rests on. Twenty-four of thirty-four controls are
-enforced by something. The other ten are the reason
+verification, and which record it rests on. Twenty-nine of thirty-eight controls are
+enforced by something. The other nine are the reason
 [the deferred-risk register](deferred-risks.md) exists.
 
 The authoritative form is
@@ -82,9 +82,15 @@ none has. A configuration file is not a result.
 
 ## What is enforced over the manifests
 
-Ten controls, over every YAML document under [`deploy/`](../../deploy/). The suite
-parses each one, walks every pod specification and container, and fails on a missing
-or wrong field.
+Fifteen controls, over two sets of files. Ten act over every YAML document under
+[`deploy/`](../../deploy/): the suite parses each one, walks every pod
+specification and container, and fails on a missing or wrong field. The five added
+in V1-S3-004 act over [the chart's committed renders](../../charts/inferops-llm/ci/rendered/),
+through [the workload policy](workload-policy.md), which is
+[`tools/workload_policy/`](../../tools/workload_policy/) applied as a bundle rather
+than a document at a time — because whether a workload is denied by default is a
+property of the policy objects installed beside it and a Deployment read on its own
+cannot answer it.
 
 | Control | Boundary | Verified by | Owner | Evidence |
 |---|---|---|---|---|
@@ -98,6 +104,28 @@ or wrong field.
 | `read-only-root-filesystem` | B4 | `test_every_container_carries_every_required_container_security_field` | security | [security](../proof/security/v1-s0-009-pr1-validation.md) |
 | `drop-all-capabilities` | B4 | `test_every_container_carries_every_required_container_security_field` | security | [security](../proof/security/v1-s0-009-pr1-validation.md) |
 | `least-exposure-no-manifest-publishes-a-service` | B5 | `test_no_manifest_exposes_a_service_outside_the_cluster` | security | [security](../proof/security/v1-s0-009-pr1-validation.md) |
+| `network-policy-in-the-release-namespace` | B3 | `test_every_committed_render_satisfies_the_workload_policy` | platform | [security](../proof/security/v1-s3-004-pr1-validation.md) |
+| `use-a-dedicated-service-account-per-workload` | B4 | `test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records` | platform | [security](../proof/security/v1-s3-004-pr1-validation.md) |
+| `declare-explicit-resource-requests-and-limits` | B4 | `test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records` | platform | [security](../proof/security/v1-s3-004-pr1-validation.md) |
+| `no-secret-value-in-a-rendered-manifest` | B3 | `test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records` | security | [security](../proof/security/v1-s3-004-pr1-validation.md) |
+| `refuse-a-workload-manifest-that-omits-a-required-control` | B6 | `test_the_fixtures_between_them_exercise_every_rule` | security | [security](../proof/security/v1-s3-004-pr1-validation.md) |
+
+The last five arrived with V1-S3-004 and the last of those five is the one that
+makes the other four falsifiable. A validator with no failing input can have every
+rule reading the wrong field and pass on every run, which is the outcome that looks
+exactly like enforcement; nine committed fixtures each drop one control, a committed
+record says which rules each must produce, and the comparison runs in both
+directions so a fixture failing for a *different* reason is a failure rather than a
+pass.
+
+Two of the five apply to a release and not to the apparatus under `deploy/`, which
+is one-shot smoke and trial material with no service to reach and nothing reaching
+it: `use-a-dedicated-service-account-per-workload` and
+`network-policy-in-the-release-namespace`. The scope is read off the
+`inferops.io/lifecycle` label rather than chosen by whoever runs the check, and a
+test holds the exemption to exactly two rules. What it leaves standing is stated
+rather than implied: those manifests name no service account and are covered by no
+policy.
 
 **Every manifest here is smoke or trial apparatus.** That sentence is why this status
 exists as something separate from `enforced-over-documents`, and it is what `EX-04`
@@ -176,19 +204,26 @@ less true one.
 
 ## What is specified for a component that does not exist
 
-Three controls. The rule is decided so that the first component to touch the surface
+Two controls. The rule is decided so that the first component to touch the surface
 inherits it, and nothing enforces it because there is nothing to enforce it on.
 
 | Control | Boundary | Specified for | Owner |
 |---|---|---|---|
 | `a-tenant-is-a-request-not-an-assertion` | B5 | The platform API, which does not exist; the domain carries a declared tenant and checks no entitlement | platform |
-| `network-policy-in-the-release-namespace` | B3 | The Helm chart, which has not been written | platform |
 | `record-what-the-platform-did` | B5 | The platform API, which does not exist | security |
 
-The middle one carries a second gap beyond its own absence: whether the local
-cluster's network plugin would enforce a policy object at all has never been tested.
-`DR-04` records both halves, because a chart that installs a policy the cluster
-ignores is worse than no chart, in that it looks like a control.
+This block held three controls until V1-S3-004. `network-policy-in-the-release-namespace`
+was specified for a chart that had not been written; the chart now renders four
+policy objects and a test refuses a render whose workloads are not described as
+denied in both directions, so the control moved up to the manifest block.
+
+**What moved is the policy, and not its enforcement.** A NetworkPolicy is applied by
+the cluster's network plugin rather than by the object, whether the accepted local
+cluster's plugin applies one has never been tested here, and no cluster has installed
+this chart. `DR-04` is narrowed to exactly that half and still blocks production use;
+`EX-05` records the exception with its compensating control and its residual risk.
+A policy the cluster ignores looks exactly like a control, which is why this is
+written in three places rather than one.
 
 ## What is deferred outright
 

@@ -1,0 +1,91 @@
+# THIS FIXTURE IS DELIBERATELY BROKEN. It is not deployed and not deployable.
+#
+# A Service that publishes a socket on every node. V1 has no authentication at
+# the caller boundary at all -- `DR-01` carries that, and it blocks production
+# use -- so the only thing between an unidentified caller and the inference API
+# is that reaching it takes a deliberate port-forward from a machine already
+# holding the cluster's credential. A node port removes exactly that, and it
+# removes it in one word.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fixture-default-deny
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fixture-api
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fixture
+        app.kubernetes.io/instance: fixture
+    spec:
+      serviceAccountName: fixture-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: localhost/fixture@sha256:e52c1893568a326665fb95480bdaf5279ce85a4b82faa0aa33dc6f2b4dec3744
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fixture-api
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http
+      nodePort: 30090
+      protocol: TCP

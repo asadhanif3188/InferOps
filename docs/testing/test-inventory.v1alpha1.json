@@ -434,6 +434,16 @@
       "note": null
     },
     {
+      "module": "tests/security/test_workload_policy.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The published workload policy against the manifests this project renders and against nine deliberately broken fixtures: that both committed chart renders satisfy every rule and are recognised as releases, that the trial apparatus under deploy/ satisfies every rule that reaches it and the release-only exemption is exactly two rules wide, that each fixture is refused by exactly the rules a committed record says it must produce, that the fixtures between them exercise every rule the validator can cite, that no finding quotes a value read out of a manifest, that every rule is a control the security baseline declares and every control naming this module is a rule the validator cites, and that the command exits non-zero on a refusal so it is usable as a gate.",
+      "claims": [
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+      ],
+      "note": "It reads YAML. It installs nothing, contacts no cluster, and holds no credential, so a passing result establishes that a manifest describes the controls and nothing about a pod. DR-05 carries that gap and this module does not narrow it."
+    },
+    {
       "module": "tests/serving/test_model_acquisition.py",
       "layer": "documentation",
       "marker": "docs",

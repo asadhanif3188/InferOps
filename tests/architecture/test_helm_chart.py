@@ -194,6 +194,17 @@ def _mapping(node: object, dotted: str) -> dict:
     return found if isinstance(found, dict) else {}
 
 
+def _sequence(node: object, dotted: str) -> list:
+    """A nested list, or an empty one. Same reason as `_mapping`: `ABSENT` is an
+    object, so `_dig(...) or []` raises rather than defaulting."""
+    found = _dig(node, dotted)
+    return found if isinstance(found, list) else []
+
+
+def _subject(document: dict) -> str:
+    return f"{document.get('kind')}/{_dig(document, 'metadata.name')}"
+
+
 RENDERED = {
     profile: _documents(RENDERED_DIR / f"{profile}.expected.yaml")
     for profile in ("mock", "real")
@@ -242,6 +253,7 @@ DECLARED_DEFERRED = _annotation_set("inferops.io/deferred-resources")
 # Services are rendered, and the kind alone does not say which row either is.
 ROW_FOR_RENDERED = {
     ("ServiceAccount", "workload-identity"): "workload-service-account",
+    ("NetworkPolicy", "workload-network-policy"): "workload-network-policy",
     ("ConfigMap", "runtime-configuration"): "runtime-configuration",
     ("Deployment", "platform-api"): "platform-api-deployment",
     ("Service", "platform-api"): "platform-api-service",
@@ -303,8 +315,15 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
     assert CHART_YAML.is_file()
     assert VALUES_SCHEMA.is_file()
     assert len(list(TEMPLATES_DIR.glob("*.yaml"))) >= 5
-    assert len(INSTALLED["real"]) == 6, "the real profile installs six objects"
-    assert len(INSTALLED["mock"]) == 4, "the mock profile installs four"
+    assert len(INSTALLED["real"]) == 11, (
+        "the real profile installs eleven objects: two Deployments, two Services, "
+        "a ConfigMap, one ServiceAccount per workload, and four network policies"
+    )
+    assert len(INSTALLED["mock"]) == 7, (
+        "the mock profile installs seven: the API's Deployment, Service, "
+        "ConfigMap and ServiceAccount, and three network policies. It renders no "
+        "runtime policy because it renders no runtime"
+    )
     assert len(HOOKS["real"]) == 1, "one test hook, in both profiles"
     assert len(HOOKS["mock"]) == 1
     assert len(ALL_CONTAINERS) == 6, (
@@ -791,9 +810,17 @@ def test_the_mock_render_carries_no_real_pin_and_no_runtime() -> None:
     indistinguishable, from the outside, from a release that had served from
     one."""
     kinds = sorted(document["kind"] for document in INSTALLED["mock"])
-    assert kinds == ["ConfigMap", "Deployment", "Service", "ServiceAccount"], (
-        "the mock profile installs the API alone; the test hook is not installed "
-        "and is checked separately"
+    assert kinds == [
+        "ConfigMap",
+        "Deployment",
+        "NetworkPolicy",
+        "NetworkPolicy",
+        "NetworkPolicy",
+        "Service",
+        "ServiceAccount",
+    ], (
+        "the mock profile installs the API alone, with its own identity and its "
+        "own policies; the test hook is not installed and is checked separately"
     )
     body = (RENDERED_DIR / "mock.expected.yaml").read_text(encoding="utf-8")
     for forbidden in (
@@ -1698,3 +1725,210 @@ def test_the_committed_render_matches_what_helm_produces(profile: str) -> None:
         f"the committed {profile} render is out of date. Regenerate it with the "
         "command in charts/inferops-llm/ci/rendered/README.md"
     )
+
+
+# --------------------------------------------------------------------------
+# The identities, and the policy that starts from a denial
+# --------------------------------------------------------------------------
+
+
+def test_each_workload_presents_an_identity_of_its_own() -> None:
+    """One service account per workload, and never one shared between two.
+
+    Neither is granted anything today, so this establishes no privilege
+    difference: what it establishes is that a RoleBinding written for one
+    workload cannot reach the other, which is the failure a shared account
+    produces the first time somebody grants anything at all.
+    """
+    for profile, documents in INSTALLED.items():
+        accounts = {
+            _dig(d, "metadata.name") for d in documents if d["kind"] == "ServiceAccount"
+        }
+        named = {_dig(spec, "serviceAccountName") for _, spec in _pod_specs(documents)}
+        assert None not in named and ABSENT not in named, (
+            f"{profile} renders a pod specification naming no service account"
+        )
+        assert "default" not in named, (
+            f"{profile} names the namespace's shared default account"
+        )
+        assert named <= accounts, (
+            f"{profile} names an account this release does not render: "
+            f"{sorted(named - accounts)}"
+        )
+        expected = 2 if profile == "real" else 1
+        assert len(accounts) == expected, (
+            f"{profile} renders {len(accounts)} service accounts, expected {expected}"
+        )
+        workloads = [
+            (label, spec)
+            for label, spec in _pod_specs(documents)
+            if "connection-test" not in label
+        ]
+        chosen = [_dig(spec, "serviceAccountName") for _, spec in workloads]
+        assert len(set(chosen)) == len(chosen), (
+            f"{profile} points two workloads at one identity: {chosen}"
+        )
+
+
+def test_the_chart_grants_its_identities_nothing() -> None:
+    """A least-privilege account is one nothing is bound to, and that is checkable.
+
+    The claim this chart may make about its service accounts is narrow and it is
+    exactly this: no Role, no ClusterRole, and no binding of either is rendered
+    anywhere, and no pod mounts a token. An account with a binding somewhere else
+    is not something a render can see, and this does not claim otherwise.
+    """
+    forbidden = {"Role", "ClusterRole", "RoleBinding", "ClusterRoleBinding"}
+    for profile, documents in RENDERED.items():
+        offenders = [d["kind"] for d in documents if d["kind"] in forbidden]
+        assert not offenders, f"{profile} renders {offenders}, which grants something"
+    for label, spec in ALL_POD_SPECS:
+        assert _dig(spec, "automountServiceAccountToken") is False, (
+            f"{label} mounts a service account token it has no use for"
+        )
+
+
+def _policies(documents: list[dict]) -> list[dict]:
+    return [d for d in documents if d["kind"] == "NetworkPolicy"]
+
+
+@pytest.mark.parametrize("profile", sorted(INSTALLED))
+def test_the_release_denies_both_directions_before_it_opens_anything(
+    profile: str,
+) -> None:
+    """A deny that names only `Ingress` leaves egress wide open.
+
+    That is the mistake this asserts against rather than a hypothetical one: the
+    two halves are separate entries in `policyTypes`, omitting one is a single
+    missing line, and the object still reads as a default-deny in a diff.
+    """
+    denies = [
+        policy
+        for policy in _policies(INSTALLED[profile])
+        if not _sequence(policy, "spec.ingress")
+        and not _sequence(policy, "spec.egress")
+        and set(_sequence(policy, "spec.policyTypes")) == {"Ingress", "Egress"}
+    ]
+    assert len(denies) == 1, (
+        f"{profile} renders {len(denies)} policies that deny both directions and "
+        "open nothing; there should be exactly one"
+    )
+    selector = _mapping(denies[0], "spec.podSelector.matchLabels")
+    assert selector, (
+        "the default-deny selects every pod in the namespace, including "
+        "Terraform-owned prerequisites this chart does not own"
+    )
+    assert "app.kubernetes.io/component" not in selector, (
+        "the default-deny names a component, so it would stop covering the day a "
+        "component is added -- and the uncovered pod would be the new one"
+    )
+    for document in INSTALLED[profile]:
+        if not isinstance(_dig(document, "spec.template.spec"), dict):
+            continue
+        labels = _mapping(document, "spec.template.metadata.labels")
+        for key, value in selector.items():
+            assert labels.get(key) == value, (
+                f"{_subject(document)} is not selected by the default-deny policy, "
+                "so the release installs a pod nothing denies by default"
+            )
+
+
+def test_the_serving_runtime_is_given_no_egress_allowance() -> None:
+    """`llama-server` reads a mounted file and answers a socket.
+
+    It resolves no name and calls no API, so an egress rule it never uses would
+    be a hole with no purpose. The acquisition path that would download is a
+    separate Job, deferred, and it would carry its own policy.
+    """
+    runtime = [
+        policy
+        for policy in _policies(INSTALLED["real"])
+        if _mapping(policy, "spec.podSelector.matchLabels").get(
+            "app.kubernetes.io/component"
+        )
+        == "serving-runtime"
+    ]
+    assert len(runtime) == 1, "one policy names the serving runtime"
+    assert not _sequence(runtime[0], "spec.egress"), (
+        "the runtime policy opens an egress path the runtime does not use"
+    )
+    assert "Egress" not in _sequence(runtime[0], "spec.policyTypes"), (
+        "the runtime policy restates the egress denial the default-deny already "
+        "holds, which reads as a second decision where there is one"
+    )
+
+
+@pytest.mark.parametrize("profile", sorted(INSTALLED))
+def test_every_policy_that_denies_egress_still_permits_name_resolution(
+    profile: str,
+) -> None:
+    """The failure that makes people give up on network policy.
+
+    Everything here is reached by Service name, so an egress denial with no DNS
+    rule denies everything -- and it surfaces as a connection error rather than
+    as a policy error. Both protocols, because a resolver falls back to TCP for
+    a large answer and a UDP-only rule fails intermittently.
+    """
+    openers = [
+        policy
+        for policy in _policies(INSTALLED[profile])
+        if _sequence(policy, "spec.egress")
+    ]
+    assert openers, f"{profile} renders no policy that opens an egress path"
+    for policy in openers:
+        rules = _sequence(policy, "spec.egress")
+        peers = [
+            peer
+            for rule in rules
+            for peer in rule.get("to") or []
+            if "namespaceSelector" in peer and "podSelector" in peer
+        ]
+        assert peers, (
+            f"{_dig(policy, 'metadata.name')} opens egress and names no resolver, "
+            "so every Service name it reaches by would fail to resolve"
+        )
+        for peer in peers:
+            assert _mapping(peer, "namespaceSelector.matchLabels"), (
+                "an empty namespace selector matches every namespace"
+            )
+            assert _mapping(peer, "podSelector.matchLabels"), (
+                "an empty pod selector matches every pod in those namespaces"
+            )
+        dns_rule = next(
+            rule
+            for rule in rules
+            if any("namespaceSelector" in peer for peer in rule.get("to") or [])
+        )
+        protocols = {port["protocol"] for port in dns_rule["ports"]}
+        assert protocols == {"UDP", "TCP"}, (
+            "a resolver falls back to TCP for a large answer, so a UDP-only rule "
+            "fails intermittently and for a reason nobody would look for here"
+        )
+
+
+def test_no_policy_reaches_outside_the_release_or_the_resolver() -> None:
+    """A policy is scoped to this release, and the one exception is named.
+
+    Every peer is either a pod carrying this release's labels or the cluster
+    resolver. An `ipBlock` would reach an address range this chart cannot see the
+    membership of, and a bare `namespaceSelector` would open a whole namespace,
+    so neither is rendered.
+    """
+    for profile, documents in INSTALLED.items():
+        for policy in _policies(documents):
+            for direction in ("ingress", "egress"):
+                for rule in _sequence(policy, f"spec.{direction}"):
+                    for peer in rule.get("to") or rule.get("from") or []:
+                        assert "ipBlock" not in peer, (
+                            f"{profile} opens an address range rather than a pod set"
+                        )
+                        if "namespaceSelector" in peer:
+                            assert "podSelector" in peer, (
+                                f"{profile} opens a whole namespace; the resolver "
+                                "rule names a namespace AND a pod set"
+                            )
+                            continue
+                        selector = _mapping(peer, "podSelector.matchLabels")
+                        assert selector.get("app.kubernetes.io/instance"), (
+                            f"{profile} opens a path to a pod outside this release"
+                        )

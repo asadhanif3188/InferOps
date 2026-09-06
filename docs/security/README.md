@@ -13,19 +13,20 @@ decisions are accepted; two are explicitly not made.
 > neither runs continuously, because no continuous-integration service is
 > selected. No assessment by an outside party has ever been performed.
 >
-> What is enforced is enforced over committed files, over five YAML manifests, and
-> by four shell functions. That is narrow and real. The distance between it and a
-> defended system is [the deferred-risk register](deferred-risks.md), and it is
-> twelve entries long.
+> What is enforced is enforced over committed files, over five YAML manifests and
+> two committed chart renders, and by four shell functions. That is narrow and
+> real. The distance between it and a defended system is
+> [the deferred-risk register](deferred-risks.md), and it is twelve entries long.
 
-## The four documents
+## The documents
 
 | Document | What it answers |
 |---|---|
 | [Threat model](threat-model.md) | What is worth protecting, who it is protected from, where the boundaries are, and what can go wrong at each |
 | [Control matrix](control-matrix.md) | Every control, what verifies it, who owns that verification, and which record it rests on |
 | [Deferred risks and exceptions](deferred-risks.md) | What V1 does not defend, why, what would have to be true, and what may not be claimed while each gap stands |
-| [`security-baseline.v1alpha1.json`](security-baseline.v1alpha1.json) | The authoritative form of all three, validated by [`tests/security/`](../../tests/security/) |
+| [Workload policy](workload-policy.md) | Which rules a rendered Kubernetes manifest is held to, which fixtures establish that they refuse, and the distance between a checked manifest and a constrained workload |
+| [`security-baseline.v1alpha1.json`](security-baseline.v1alpha1.json) | The authoritative form of all of it, validated by [`tests/security/`](../../tests/security/) |
 
 Reporting a problem is [SECURITY.md](../../SECURITY.md), and it currently publishes
 no private channel — which is a gap in its own right, recorded as such.
@@ -51,13 +52,13 @@ paragraph above it.
 | Status | Controls | May be called implemented |
 |---|---|---|
 | `enforced-over-documents` | 10 | yes |
-| `enforced-over-manifests` | 10 | yes |
+| `enforced-over-manifests` | 15 | yes |
 | `enforced-on-the-host` | 4 | yes |
 | `review-enforced` | 3 | no |
-| `specified-only` | 3 | no |
+| `specified-only` | 2 | no |
 | `deferred` | 4 | no |
 
-Twenty-four of thirty-four controls are enforced by something. Ten are not, and the
+Twenty-nine of thirty-eight controls are enforced by something. Nine are not, and the
 register says why for each.
 
 `enforced-over-manifests` is the status that needs its own sentence. Every manifest
@@ -65,6 +66,15 @@ this repository publishes is smoke or trial apparatus; none is a serving path th
 platform deploys. The eight pod-security assertions and the digest pin hold over five
 YAML files, which is a property of a repository and not of a cluster. `EX-04` records
 that, and `DR-05` carries the gap.
+
+Five of those fifteen arrived with V1-S3-004 and act over
+[the chart's committed renders](../../charts/inferops-llm/ci/rendered/) through
+[the workload policy](workload-policy.md). One of them — the network policy — moved
+out of `specified-only`, which is the whole of the movement in the table above, and
+what moved is the policy rather than its enforcement: a NetworkPolicy is applied by
+the cluster's network plugin and not by the object, no cluster has installed this
+chart, and whether the accepted local cluster's plugin applies one has never been
+tested here. `DR-04` is narrowed to that half and `EX-05` records it.
 
 ## What is claimed, and at what level
 

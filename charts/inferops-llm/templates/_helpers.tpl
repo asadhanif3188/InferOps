@@ -130,11 +130,99 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: serving-runtime
 {{- end -}}
 
-{{- define "inferops-llm.serviceAccountName" -}}
+{{/*
+Every pod this release puts in the namespace, hook included.
+
+It is the selector the default-deny policy uses, and it is deliberately the pair
+without a component: a policy that named the components would stop selecting the
+day a component is added, and the pod that stopped being selected would be the
+new one nobody had written a rule for. Naming the release instead means a new
+pod arrives denied and has to be opened deliberately.
+
+The `helm test` pod carries these labels too, which is why it is inside the
+default-deny and has a rule of its own rather than an exemption.
+*/}}
+{{- define "inferops-llm.releaseSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "inferops-llm.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
+
+{{- define "inferops-llm.test.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "inferops-llm.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: release-test
+{{- end -}}
+
+{{/*
+The one egress rule two policies both need, written once.
+
+Every pod here that reaches anything reaches it by Service name, so a policy
+that denies egress and forgets DNS denies everything by producing a resolution
+failure -- which surfaces as a connection error rather than as a policy error,
+and is the failure mode that makes people give up on network policy.
+
+The cluster's resolver is addressed by label rather than by address. The
+namespace selector uses `kubernetes.io/metadata.name`, which the API server sets
+on every namespace itself, so it is not a label somebody has to remember to
+apply. Both are values rather than constants because the resolver's labels are a
+property of the cluster's add-ons and not of this chart, and a cluster whose
+resolver is labelled differently needs to say so rather than to patch a
+template.
+
+Both protocols. UDP is the common path and TCP is what a resolver falls back to
+for a large answer; allowing only UDP produces an intermittent failure that
+looks like anything except a network policy.
+*/}}
+{{- define "inferops-llm.dnsEgressRule" -}}
+- to:
+    - namespaceSelector:
+        matchLabels:
+          {{- toYaml .Values.security.networkPolicy.dns.namespaceSelector | nindent 10 }}
+      podSelector:
+        matchLabels:
+          {{- toYaml .Values.security.networkPolicy.dns.podSelector | nindent 10 }}
+  ports:
+    - port: {{ .Values.security.networkPolicy.dns.port }}
+      protocol: UDP
+    - port: {{ .Values.security.networkPolicy.dns.port }}
+      protocol: TCP
+{{- end -}}
+
+{{/*
+The two workload identities, and why there are two rather than one.
+
+The API and the serving runtime are separate workloads with separate failure
+modes, and until V1-S3-004 they shared one ServiceAccount. Nothing was bound to
+it, so the sharing cost nothing on the day it was written -- which is exactly
+the shape of the problem: **the first RoleBinding somebody adds for one of them
+grants it to the other**, and it grants it to whichever pod the reviewer was not
+thinking about. Splitting the identity now is cheap; splitting it after a
+binding exists means auditing what the binding reached.
+
+What this is **not** is an isolation property. Neither account is granted
+anything -- this chart renders no Role and no RoleBinding, and no pod mounts a
+token -- so today the two names differ and the privilege of each is the same
+nothing. The value is entirely in what a future grant cannot accidentally reach,
+and stating it that way is the point.
+
+`create: false` points both at `default`, which is the namespace's own account
+and not one this release owns. That is a deliberate escape hatch for a cluster
+whose accounts are provisioned elsewhere, and it is the one setting here that
+gives up the separation above.
+*/}}
+{{- define "inferops-llm.api.serviceAccountName" -}}
 {{- if .Values.security.serviceAccount.create -}}
-{{- default (include "inferops-llm.fullname" .) .Values.security.serviceAccount.name -}}
+{{- default (printf "%s-api" (include "inferops-llm.fullname" .)) .Values.security.serviceAccount.api.name -}}
 {{- else -}}
-{{- default "default" .Values.security.serviceAccount.name -}}
+{{- default "default" .Values.security.serviceAccount.api.name -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "inferops-llm.runtime.serviceAccountName" -}}
+{{- if .Values.security.serviceAccount.create -}}
+{{- default (printf "%s-runtime" (include "inferops-llm.fullname" .)) .Values.security.serviceAccount.runtime.name -}}
+{{- else -}}
+{{- default "default" .Values.security.serviceAccount.runtime.name -}}
 {{- end -}}
 {{- end -}}
 

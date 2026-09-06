@@ -369,11 +369,24 @@ can commit to without deciding who does it.
 - **Three trust boundaries the architecture left unowned now have an owner**, and
   `B3`, `B4`, and `B5` point at this record instead of forward at a decision that had
   not been made.
-- **Thirty-four controls exist, and twenty-four of them are enforced by something.**
-  Ten act over committed documents, ten over manifests, four on the host — two
+- **Thirty-eight controls exist, and twenty-nine of them are enforced by something.**
+  Ten act over committed documents, fifteen over manifests, four on the host — two
   through the environment scripts and two through the security scanning scripts —
-  three by review alone, three are specified for components that do not exist, and
+  three by review alone, two are specified for components that do not exist, and
   four are deferred outright. The distribution is the finding.
+- **Five of the manifest controls act over rendered output rather than over a
+  hand-written file, and one of them changed status to get there.** V1-S3-004 gave
+  the chart a network policy, an identity per workload, and
+  [a validator](../../security/workload-policy.md) that refuses a render dropping
+  either, an explicit resource envelope, or a rendered secret.
+  `network-policy-in-the-release-namespace` was `specified-only` — decided for a
+  chart nobody had written — and is now enforced over the committed renders. That is
+  the first half of what `EX-04` said would have to happen when a rendering path
+  appeared; the second half, admission control, still does not exist. **What moved
+  is the policy and not its enforcement:** a NetworkPolicy is applied by the
+  cluster's network plugin rather than by the object, no cluster has installed this
+  chart, and `EX-05` records that gap against `DR-04` rather than letting the
+  presence of the object imply the absence of it.
 - **A habit became a property.** The eight pod-security assertions and the digest pin
   held over every manifest here before this change, by convention. A convention is
   enforced by memory; this is now enforced by a suite.

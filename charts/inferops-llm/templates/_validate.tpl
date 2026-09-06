@@ -340,6 +340,38 @@ HTTP liveness probe on a loading endpoint wearing different clothes.
 {{- end -}}
 {{- end -}}
 
+{{/* -- the network policy, and the two ways it becomes a decoration ------ */}}
+
+{{/*
+Both refusals here exist because the failure they catch is silent.
+
+A `matchLabels` of `{}` selects **every pod**, so a resolver selector somebody
+emptied does not narrow egress to DNS, it opens egress to everything -- and the
+release keeps working, which is what makes it silent. `values.schema.json`
+refuses an empty map for the same reason; this is the second guard, because the
+schema is skipped by `helm template --set` in some Helm versions and the two are
+worth being independent.
+
+A release that installs a policy denying its own health check is the other one.
+The `helm test` pod has to reach both Services, so a policy set is refused if the
+test hook is enabled and the DNS port is not the one the resolver answers on. The
+port is checked rather than assumed because a resolver on a non-standard port
+with the standard rule produces a release whose test fails for a reason nobody
+would look for here.
+*/}}
+
+{{- if .Values.security.networkPolicy.enabled -}}
+{{- if not .Values.security.networkPolicy.dns.namespaceSelector -}}
+{{- fail "security.networkPolicy.dns.namespaceSelector may not be empty. An empty matchLabels selects every namespace, so an emptied selector does not narrow the DNS egress rule, it opens egress to the whole cluster - and the release keeps working, which is why this is refused rather than defaulted." -}}
+{{- end -}}
+{{- if not .Values.security.networkPolicy.dns.podSelector -}}
+{{- fail "security.networkPolicy.dns.podSelector may not be empty. An empty matchLabels selects every pod in the selected namespaces, which is the same silent widening as an empty namespace selector." -}}
+{{- end -}}
+{{- if not (and (gt (int .Values.security.networkPolicy.dns.port) 0) (le (int .Values.security.networkPolicy.dns.port) 65535)) -}}
+{{- fail "security.networkPolicy.dns.port must be a port. Nothing in this release reaches anything except by Service name, so a DNS rule that names the wrong port denies every connection and reports it as a connection failure rather than as a policy one." -}}
+{{- end -}}
+{{- end -}}
+
 {{/* -- telemetry --------------------------------------------------------- */}}
 
 {{- if and .Values.telemetry.scrapeAnnotations (not .Values.telemetry.enabled) -}}

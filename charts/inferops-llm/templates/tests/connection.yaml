@@ -42,7 +42,7 @@ spec:
   {{- /* Never, not OnFailure: a test that retries reports the retry rather than
          the failure, and `helm test` is asking one question. */}}
   restartPolicy: Never
-  serviceAccountName: {{ include "inferops-llm.serviceAccountName" . }}
+  serviceAccountName: {{ include "inferops-llm.api.serviceAccountName" . }}
   automountServiceAccountToken: false
   securityContext:
     {{- include "inferops-llm.podSecurityContext" . | nindent 4 }}

@@ -613,6 +613,20 @@
       "deferralReason": null
     },
     {
+      "claimId": "a-workload-manifest-that-omits-a-required-security-control-is-refused",
+      "statement": "A committed Kubernetes manifest that drops a required workload security control is refused by the published workload policy, with the rule identifiers it drops and no others. Every rule the validator can cite is a control the security baseline declares and every control naming the validator is a rule it can cite; the two committed chart renders satisfy every rule; and nine committed fixtures, each dropping one control, are compared against a committed record of which rules each must produce, in both directions, so a fixture refused for a different reason is a failure. It certifies nothing about a running workload: the validator reads files, holds no credential, contacts no cluster, and no admission control applies any of it to a pod.",
+      "layers": [
+        "documentation"
+      ],
+      "environment": "repository-only",
+      "requiredCertification": "C0",
+      "requiresRealModel": false,
+      "evidenceOwner": "security",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/security/v1-s3-004-pr1-validation.md",
+      "deferralReason": null
+    },
+    {
       "claimId": "the-default-lane-cannot-execute-a-real-model",
       "statement": "The default lane downloads no model, and every marker belonging to a layer outside it is deselected by the committed pytest configuration.",
       "layers": [

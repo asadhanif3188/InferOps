@@ -1,0 +1,188 @@
+{{- include "inferops-llm.validate" . -}}
+{{- if .Values.security.networkPolicy.enabled }}
+{{/*
+`workload-network-policy` in the ownership inventory, and the resource whose
+honest description is longer than its YAML.
+
+**What it is.** Four objects. The first denies every ingress and every egress
+for every pod this release installs. The other three add back exactly the paths
+a working release needs: the API is reachable on its own port from this
+release's own pods, and may resolve DNS and reach the runtime; the runtime is
+reachable on its own port from this release's own pods and may reach nothing at
+all; the `helm test` pod may resolve DNS and reach both ports. A path not named
+here is closed.
+
+**Why the deny selects the release rather than the namespace.** A `podSelector`
+of `{}` would deny for every pod in the namespace, including Terraform-owned
+prerequisites and any other release installed beside this one. This chart owns
+the release layer and nothing else, so it denies for pods carrying this
+release's name and instance, and it says nothing about a pod it did not install.
+The selector deliberately omits the component label: a deny that named the
+components would stop covering the day a component is added, and the pod that
+stopped being covered would be the new one nobody wrote a rule for.
+
+**Why the runtime may reach nothing.** `llama-server` reads a mounted file and
+answers a socket. It resolves no name, calls no API, and downloads nothing --
+the acquisition path that would download is a separate Job, deferred, and it
+would carry its own policy. An egress allowance it does not use is a hole with
+no purpose, so it gets none, and the default-deny above is what holds it.
+
+**What this does NOT establish, and the sentence to carry away.** A NetworkPolicy
+is enforced by the cluster's network plugin, not by the object. The accepted
+local cluster (ADR 0001 D2) is `kind` with its default CNI, and whether that
+plugin enforces a policy object **has never been tested here**. No cluster has
+installed this chart. So this is a rendered declaration whose enforcement is
+unverified, `DR-04` still stands, and `EX-05` records the gap rather than
+letting the presence of the object imply the absence of it. A policy the cluster
+ignores looks exactly like a control, which is the reason to write this down.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}-default-deny
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workload-network-policy
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "inferops-llm.releaseSelectorLabels" . | nindent 6 }}
+  {{- /* Both types with no rule below them: an empty allow-list, which is a
+         denial. Omitting `egress` from policyTypes would leave egress
+         unrestricted rather than denied, which is the single easiest mistake
+         to make in this object and the reason both are written out. */}}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workload-network-policy
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "inferops-llm.api.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    {{- /* This release's own pods, on the API port, and nothing else.
+
+           A `kubectl port-forward` is not covered by this rule and is not meant
+           to be: that traffic arrives from the node rather than from a pod, and
+           whether a plugin permits it is the plugin's answer rather than this
+           object's. It is also the only way anything outside the cluster
+           reaches this API at all, because both Services are ClusterIP and no
+           Ingress exists -- which `least-exposure-no-manifest-publishes-a-service`
+           already carries and this policy does not replace. */}}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "inferops-llm.releaseSelectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.api.containerPort }}
+          protocol: TCP
+  egress:
+    {{- include "inferops-llm.dnsEgressRule" . | nindent 4 }}
+    {{- if eq .Values.profile "real" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "inferops-llm.runtime.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.runtime.containerPort }}
+          protocol: TCP
+    {{- end }}
+{{- if eq .Values.profile "real" }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "inferops-llm.runtimeServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workload-network-policy
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "inferops-llm.runtime.selectorLabels" . | nindent 6 }}
+  {{- /* Ingress only. Egress is denied by the default-deny above and is not
+         restated here: a second empty egress list would read as a second
+         decision, and there is one. */}}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "inferops-llm.releaseSelectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.runtime.containerPort }}
+          protocol: TCP
+{{- end }}
+{{- if .Values.tests.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}-release-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workload-network-policy
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- /* The `helm test` pod carries this release's labels, so the default-deny
+         selects it and it would otherwise reach neither Service. This policy is
+         installed rather than being a hook: the pod it describes exists only
+         while `helm test` runs, and a policy created alongside that pod would
+         be racing the pod's own start. It selects a pod that is usually absent,
+         which costs nothing and is the reason it is written separately rather
+         than folded into the API rule. */}}
+  podSelector:
+    matchLabels:
+      {{- include "inferops-llm.test.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    {{- include "inferops-llm.dnsEgressRule" . | nindent 4 }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "inferops-llm.api.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.api.containerPort }}
+          protocol: TCP
+    {{- if eq .Values.profile "real" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "inferops-llm.runtime.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.runtime.containerPort }}
+          protocol: TCP
+    {{- end }}
+{{- end }}
+{{- end }}

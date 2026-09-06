@@ -1,0 +1,66 @@
+# THIS FIXTURE IS DELIBERATELY BROKEN. It is not deployed and not deployable.
+#
+# The canonical insecure workload: a container that runs as root, may escalate,
+# writes its own root filesystem, keeps every Linux capability, gets no seccomp
+# profile, and mounts a service account token it has no use for. Every one of
+# those is a separate refusal, which is the point. A fixture that failed one rule
+# would establish that the validator can produce a finding; this one establishes
+# that it produces the right ones.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fixture-default-deny
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fixture-api
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fixture
+        app.kubernetes.io/instance: fixture
+    spec:
+      serviceAccountName: fixture-api
+      automountServiceAccountToken: true
+      securityContext: {}
+      containers:
+        - name: api
+          image: localhost/fixture@sha256:e52c1893568a326665fb95480bdaf5279ce85a4b82faa0aa33dc6f2b4dec3744
+          securityContext:
+            allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: false
+            capabilities:
+              add:
+                - NET_ADMIN
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

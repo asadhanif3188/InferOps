@@ -1,0 +1,68 @@
+# THIS FIXTURE IS DELIBERATELY BROKEN. It is not deployed and not deployable.
+#
+# An image named by tag. The tag resolves to whatever the registry points it at
+# on the day the kubelet asks, so two pods from one manifest can run two
+# different builds and nothing in the release records which one. `T-02` is the
+# threat; a digest is what the engine actually resolves.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fixture-default-deny
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fixture-api
+  namespace: inferops-fixture
+  labels:
+    app.kubernetes.io/name: fixture
+    app.kubernetes.io/instance: fixture
+    inferops.io/lifecycle: release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fixture
+      app.kubernetes.io/instance: fixture
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fixture
+        app.kubernetes.io/instance: fixture
+    spec:
+      serviceAccountName: fixture-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: localhost/fixture:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
