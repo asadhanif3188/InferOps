@@ -50,7 +50,7 @@ be one of those. A run whose successful requests all landed on one ready replica
 than a defect, and it is not retried or downgraded.
 
 **Capacity refuses before anything is created.** Two API replicas and one runtime
-replica are 1,210 millicores and 2.25 GiB of requests, peaking at 4.06 GiB of
+replica are 1,210 millicores and 2,320 MiB of requests, peaking at 4,160 MiB of
 memory limits. A host that cannot hold that produces a `Pending` pod and a rollout
 that expires — a readiness failure that is really a laptop. So the descriptor
 declares the figures, the architecture suite computes them from the chart's own
@@ -102,7 +102,8 @@ the record.
 | [`tools/kubernetes_certification/core.py`](../../../tools/kubernetes_certification/core.py) | Evidence-path safety extracted to `ensure_evidence_paths_safe` so both workflows share one guard. No behaviour change |
 | [`scripts/environment/kubernetes-multi-replica-certification.sh`](../../../scripts/environment/kubernetes-multi-replica-certification.sh) | New. Every cluster operation, and the three embedded writers |
 | [`docs/serving/kubernetes-multi-replica-certification.md`](../../serving/kubernetes-multi-replica-certification.md) | New. The published procedure, its stages, its bounds, and what its record will not support |
-| [`tests/architecture/test_kubernetes_multi_replica_certification.py`](../../../tests/architecture/test_kubernetes_multi_replica_certification.py) | New. 132 checks |
+| [`tests/architecture/test_kubernetes_multi_replica_certification.py`](../../../tests/architecture/test_kubernetes_multi_replica_certification.py) | New. 138 checks |
+| [`docs/architecture/resource-ownership.md`](../../architecture/resource-ownership.md) | Three procedures now install the same release rather than two, and the one object this workflow creates that neither Terraform nor the chart owns is accounted for |
 | [`tests/architecture/test_cluster_lifecycle_safety.py`](../../../tests/architecture/test_cluster_lifecycle_safety.py) | The new script inventoried; the deletion-scoping rule widened to the release namespace and to a double-quoted resource name, with the adversarial samples for both |
 | [`tests/testing/test_test_inventory.py`](../../../tests/testing/test_test_inventory.py) | One number word |
 | `docs/testing/test-inventory.*`, `docs/testing/test-strategy.*` | The new module inventoried; the real-runtime lane's commands and notes extended |
@@ -118,8 +119,8 @@ project's own virtual environment.
 | `python -m ruff format --check .` | Passed; every file already formatted |
 | `python -m ruff check .` | Passed; no findings |
 | `python -m mypy` | `Success: no issues found in 161 source files` |
-| `python -m pytest -q` | `6506 passed, 28 skipped, 14 deselected` |
-| `python -m pytest tests/architecture/test_kubernetes_multi_replica_certification.py -q` | `132 passed, 1 skipped` |
+| `python -m pytest -q` | `6513 passed, 28 skipped, 14 deselected` |
+| `python -m pytest tests/architecture/test_kubernetes_multi_replica_certification.py -q` | `138 passed, 1 skipped` |
 | `python -m tools.kubernetes_certification.multi_replica_cli check` | Printed the profile, the assertions, and every limitation; contacted nothing |
 | `bash -n scripts/environment/kubernetes-multi-replica-certification.sh` | Parsed |
 | `git diff --check` | No whitespace findings |
@@ -159,6 +160,59 @@ It establishes **nothing** about whether a release installs with two replicas,
 whether both load the model inside their budgets, whether `kube-proxy`
 distributes anything, or whether a teardown leaves no residue. Those are runtime
 questions and only an authorized run answers them.
+
+## What independent review found, and what changed
+
+The change was reviewed independently before it was pushed. It found no defect in
+the certification's correctness — nothing that would let a run be certified on
+weaker evidence than it claims, and no error in the capacity arithmetic or in the
+four shell-to-Python seams, which is where the previous PR's defects had been. It
+found three things that were wrong anyway, and all three are fixed:
+
+**The driver's completion was waited on with a call that cannot see a failure.**
+`kubectl wait --for=condition=complete job/…` watches one condition becoming
+true and has no notion of "finished either way". The driver is `backoffLimit: 0`
+and `restartPolicy: Never`, so any crash of its shell fails the Job in the first
+second — and that call would have blocked for the full 1,800,000 ms distribution
+budget before reporting it. Half an hour to report a failure that already
+happened is a hang with a timeout on it, not the bounded failure the acceptance
+criteria ask for. It is now a poll for **both** terminal conditions, which also
+covers the Job's own `activeDeadlineSeconds`, and a query that cannot be answered
+fails the run immediately rather than being read as a Job still running.
+
+**A driver Job that would not go could have been misdiagnosed as release
+residue.** The removal swallowed its own status with `|| true` and cleared
+`driver_created` regardless. The Job deliberately carries this release's instance
+label — that is what makes the release's own NetworkPolicy describe it — and that
+is the label the residue check after the uninstall selects on, with `jobs` in its
+resource list. A delete accepted but not finished would have been counted as an
+object of the *release* surviving its own uninstall, failing the run with the
+wrong diagnosis. The removal now returns its status, clears `driver_created` only
+when the object is actually gone, and is refused on the success path; only the
+already-failing trap continues past it, and it warns rather than going quiet.
+
+**Three documents rounded a capacity figure down by a percent.** The descriptor's
+`requestedMemoryBytes` is 2,320 MiB and the prose said "2.25 GiB". The descriptor
+itself was correct — the architecture suite already derives that number from the
+chart — but nothing compared prose to data. The figures are now stated in
+mebibytes and a test derives all three from the descriptor and requires them in
+the procedure document, this record, and the changelog.
+
+Fixing the second of those produced a fourth finding, from the repository's own
+lifecycle safety suite rather than from a person: the first version of the fix
+wrote `remove_driver || inferops::fail "…kubectl delete job…"`, and a line that
+both removes an object and prints the command to remove it is a line that suite
+reads as an unscoped deletion. It is right to. The deletion rules have no message
+exemption — the helm rules do — and widening one to accommodate a message would
+have been weakening a deletion rule for convenience, so the messages were
+reworded to name the object and its namespace without spelling a command, and a
+test holds them there.
+
+Review also prompted one correction found while it ran:
+[the ownership document](../../architecture/resource-ownership.md) still said
+**two** procedures install and uninstall this release, and said nothing about the
+transient `batch/v1` Job this workflow creates. Both are now stated, including
+why that Job is deliberately not a row in any ownership table.
 
 ## Deferred, and depended on
 

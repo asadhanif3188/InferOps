@@ -106,8 +106,9 @@ stopped in.
 
 ## The capacity gate, and why it is a gate
 
-Two API replicas and one runtime replica are roughly 1,210 millicores and 2.25 GiB
-of **requests**, peaking at about 4.06 GiB of **memory limits**. A host that
+Two API replicas and one runtime replica are 1,210 millicores and 2,320 MiB of
+**requests**, peaking at 4,160 MiB of **memory limits** — the descriptor's own
+figures, not a rounding of them. A host that
 cannot hold that does not fail loudly: a pod whose requests do not fit stays
 `Pending` until a rollout deadline expires, and the run then reports a readiness
 failure for what is actually a laptop.

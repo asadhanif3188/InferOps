@@ -1910,6 +1910,117 @@ def test_the_single_replica_workflow_is_untouched_and_still_its_own_command() ->
     assert "multi_replica" not in single
 
 
+def test_a_failed_driver_is_noticed_rather_than_waited_out() -> None:
+    """`kubectl wait --for=condition=complete` cannot see a Job that failed.
+
+    It watches one condition becoming true and has no notion of "finished either
+    way". The driver is `backoffLimit: 0` and `restartPolicy: Never`, so any
+    crash of its shell fails the Job at once -- and that call would have blocked
+    for the whole distribution budget before reporting it. Half an hour to report
+    a failure that happened in the first second is a hang with a timeout on it,
+    not a bounded failure. Independent review found this before the workflow was
+    ever run.
+    """
+    assert '--for=condition=complete "job/' not in SCRIPT_TEXT
+    assert '*"Complete=True"*)' in SCRIPT_TEXT
+    assert '*"Failed=True"*)' in SCRIPT_TEXT
+    assert 'driver_outcome="failed"' in SCRIPT_TEXT
+    # And an unanswered query is not a Job that is still running.
+    assert 'if ! driver_state="$(driver_conditions)"; then' in SCRIPT_TEXT
+
+
+def test_a_driver_that_would_not_go_is_reported_as_itself() -> None:
+    """A leftover driver Job would otherwise be misread as release residue.
+
+    It carries this release's instance label on purpose -- that is what makes the
+    release's own NetworkPolicy describe it -- and that is the label the residue
+    check after the uninstall selects on, with `jobs` in its resource list. A
+    delete that was accepted but had not finished would be counted as an object
+    of the release surviving its own uninstall, and the run would fail blaming
+    the teardown for this workflow's own artifact.
+    """
+    removal = SCRIPT_TEXT[
+        SCRIPT_TEXT.index("remove_driver() {") : SCRIPT_TEXT.index("on_exit() {")
+    ]
+
+    # The delete's status decides the function's, and `driver_created` is cleared
+    # only when the object is actually gone.
+    assert "--ignore-not-found --wait" in removal
+    assert "|| true" not in removal
+    assert "    driver_created=0\n    return 0" in removal
+    assert "  return 1\n}" in removal
+
+    # The success path refuses and the already-failing trap continues, and
+    # both say so rather than going quiet. Both are written as
+    # `if ! remove_driver; then` rather than as `remove_driver || inferops::…`,
+    # because a line that both removes an object and prints about it is a line
+    # the lifecycle safety suite reads as a deletion -- and it is right to.
+    assert SCRIPT_TEXT.count("if ! remove_driver; then") == 2
+    assert 'inferops::fail "the request driver Job' in SCRIPT_TEXT
+    assert 'inferops::warn "the request driver Job' in SCRIPT_TEXT
+
+    # And neither message spells a bare `kubectl delete`. The deletion rules
+    # in tests/architecture/test_cluster_lifecycle_safety.py have no message
+    # exemption, and widening one to fit a message would be weakening a
+    # deletion rule for convenience.
+    printed = [
+        line
+        for line in SCRIPT_TEXT.splitlines()
+        if line.strip().startswith(("inferops::warn", "inferops::fail"))
+    ]
+    assert not [line for line in printed if "kubectl delete" in line]
+
+
+def published_figures() -> tuple[str, str, str]:
+    """The capacity figures as the documents are required to state them.
+
+    Mebibytes rather than gibibytes, and derived from the descriptor rather than
+    written out, because the first published version of these sentences rounded
+    2,320 MiB to "2.25 GiB" -- a percent low, in three files, with nothing
+    comparing prose to data. Independent review found that too.
+    """
+    capacity = loaded().capacity
+    return (
+        f"{capacity.requested_cpu_millis:,} millicores",
+        f"{capacity.requested_memory_bytes // 1024**2:,} MiB",
+        f"{capacity.peak_memory_bytes // 1024**2:,} MiB",
+    )
+
+
+@pytest.mark.parametrize(
+    "relative",
+    (
+        "docs/serving/kubernetes-multi-replica-certification.md",
+        "docs/proof/serving/v1-s3-006-pr2-validation.md",
+        "CHANGELOG.md",
+    ),
+)
+def test_every_published_capacity_figure_is_the_descriptors_own(
+    relative: str,
+) -> None:
+    """A rounded figure in prose is a claim, and it drifted before it was checked."""
+    published = (REPO_ROOT / relative).read_text(encoding="utf-8")
+
+    for figure in published_figures():
+        assert figure in published, (relative, figure)
+
+
+def test_the_ownership_document_accounts_for_the_object_this_workflow_creates() -> None:
+    """One `batch/v1` Job is created by neither Terraform nor the chart.
+
+    It is transient in the same sense the `helm test` hook pod is, so it is not a
+    row in any ownership table -- and a resource in the namespace that no
+    document mentions at all is exactly what that document exists to prevent.
+    """
+    published = (
+        REPO_ROOT / "docs" / "architecture" / "resource-ownership.md"
+    ).read_text(encoding="utf-8")
+
+    assert "kubernetes-multi-replica-certification.sh" in published
+    assert "Three procedures now install and uninstall the same release" in published
+    assert "batch/v1 Job" in published
+
+
 def test_the_procedure_document_states_what_the_record_does_not_support() -> None:
     published = PROCEDURE_PATH.read_text(encoding="utf-8")
 

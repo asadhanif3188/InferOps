@@ -32,8 +32,9 @@ once versioned releases begin.
   are each a failure with a named stage; the last says plainly that it is the
   Service's endpoint choice rather than a defect, and it is not retried or
   downgraded. **Capacity refuses before anything is created**: two API replicas
-  and one runtime replica are 1,210 millicores and 2.25 GiB of requests peaking
-  at 4.06 GiB of limits, the figures are the chart's own resource blocks times
+  and one runtime replica are 1,210 millicores and 2,320 MiB of requests
+  peaking at 4,160 MiB of limits, the figures are the chart's own resource
+  blocks times
   the replica counts and a test fails if the two drift, and a host that cannot
   hold them gets every shortfall at once with a remedy and its own exit code —
   because a host that is too small and a platform that did not certify are
@@ -49,6 +50,17 @@ once versioned releases begin.
   module extracts the evidence-path safety check so that both workflows share one
   guard instead of two copies. **It has not been run, and today it could not
   complete**, for the same reason as PR1: no InferOps API image is published.
+  An independent review before push found no defect in what the certification
+  establishes, and three that were wrong anyway: the driver's completion was
+  waited on with a call that cannot observe a failed Job, so a crash in the first
+  second would have been reported half an hour later; a driver Job whose removal
+  had not finished would have been counted as the release's own residue and
+  failed the run with the wrong diagnosis; and three documents rounded a capacity
+  figure down by a percent. All three are fixed, each with a test, and the
+  repository's own lifecycle safety suite caught a fourth in the first version of
+  the second fix — a line that both removed an object and printed the command to
+  remove it, which it reads as an unscoped deletion, and which was reworded
+  rather than exempted.
   [The procedure](docs/serving/kubernetes-multi-replica-certification.md) states
   why a forward could not answer the question, which tier is certified and why
   only one, what the capacity gate measures, and what the record will not

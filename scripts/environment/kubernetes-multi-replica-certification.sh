@@ -66,6 +66,13 @@ readonly INFEROPS_LOG_TAIL="200"
 # gap between `kubectl apply` and a pod existing.
 readonly INFEROPS_DRIVER_START_SECONDS="120"
 
+# How often the driver Job is asked whether it has finished, and how long its
+# removal may take. Neither is a threshold: the first bounds a poll interval and
+# the second bounds a delete, and the decisions in this workflow are the
+# descriptor's.
+readonly INFEROPS_DRIVER_POLL_SECONDS="5"
+readonly INFEROPS_DRIVER_DELETE_SECONDS="120"
+
 action=""
 values_file=""
 confirmed=0
@@ -302,22 +309,43 @@ collect_diagnostics() {
   inferops::kubectl top pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/top-pods.txt" 2>&1 || true
 }
 
+# Removes the driver Job, and says whether it actually went.
+#
+# The status is returned rather than swallowed, and `driver_created` is cleared
+# only on success, because of what the driver's own labels mean downstream. It
+# deliberately carries this release's instance label so that the release's
+# network policy describes it, and that is the same label the residue check after
+# the uninstall selects on -- with `jobs` in its resource list. A delete that was
+# accepted but had not finished would therefore be counted as an object of the
+# *release* surviving its own uninstall, and the run would fail blaming the
+# teardown for the workflow's own artifact. So a removal that does not complete
+# is reported here, as itself.
 remove_driver() {
   [ "${driver_created}" -eq 1 ] || return 0
   # `--ignore-not-found` so that a second call after a successful removal is not
   # itself a failure, and `--wait` so that the residue assertion below is asked
   # of a namespace the driver has actually left rather than one it is leaving.
-  inferops::kubectl delete job "${driver_name}" \
+  if inferops::kubectl delete job "${driver_name}" \
     -n "${INFEROPS_RELEASE_NAMESPACE}" --ignore-not-found --wait \
-    --timeout=120s >/dev/null 2>&1 || true
-  driver_created=0
+    --timeout="${INFEROPS_DRIVER_DELETE_SECONDS}s" >/dev/null 2>&1; then
+    driver_created=0
+    return 0
+  fi
+  return 1
 }
 
 on_exit() {
   local rc=$?
   if [ "${rc}" -ne 0 ]; then
     collect_diagnostics
-    remove_driver
+    # Swallowed here and nowhere else: this path is already failing, and a
+    # removal that did not complete must not replace the exit code that says
+    # why. The message below names the release; a driver Job that outlived it
+    # is visible in the diagnostics.
+    if ! remove_driver; then
+      inferops::warn "the request driver Job '${driver_name}' could not be removed from '${INFEROPS_RELEASE_NAMESPACE}'. Remove it by hand before the next run: it carries this release's instance label, so a later run's residue check would count it as an object of the release."
+    fi
+
     inferops::warn "the release was left in place for inspection. Remove it with: helm uninstall ${INFEROPS_RELEASE_NAME} --namespace ${INFEROPS_RELEASE_NAMESPACE}"
     inferops::warn "the Terraform prerequisites and the cluster were not touched by this failure."
   fi
@@ -1060,10 +1088,54 @@ inferops::kubectl wait --for=condition=Ready pod \
   -l "app.kubernetes.io/component=${driver_component},app.kubernetes.io/instance=${INFEROPS_RELEASE_NAME}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="${INFEROPS_DRIVER_START_SECONDS}s" >/dev/null 2>&1 || true
 
-if ! inferops::kubectl wait --for=condition=complete "job/${driver_name}" \
-  -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((distribution_budget_ms / 1000))s"; then
-  inferops::fail "the request driver did not complete within $((distribution_budget_ms / 1000)) s. Its output is in .artifacts/kubernetes-multi-replica-certification/, and the release was left in place."
-fi
+# Polled rather than waited on, and the reason is worth stating because the
+# obvious call is wrong here. `kubectl wait --for=condition=complete` watches for
+# one condition becoming true and has no notion of "finished either way", so a
+# Job that fails -- and this one is `backoffLimit: 0`, `restartPolicy: Never`, so
+# any crash of the driver's shell fails it immediately -- is indistinguishable
+# from one still legitimately running, and the call would block for the whole
+# distribution budget. Half an hour to report a failure that happened in the
+# first second is not a bounded failure; it is a hang with a timeout on it.
+#
+# Both terminal conditions are therefore asked for, and `Failed` covers the
+# Job's own `activeDeadlineSeconds` as well as a crash. They are asked for in one
+# query whose own status is kept, because an unanswered query is not a Job that
+# is still running: swallowing an unreachable API server here would spend the
+# whole distribution budget before saying anything, which is the failure this
+# loop exists to avoid.
+driver_conditions() {
+  inferops::kubectl get "job/${driver_name}" -n "${INFEROPS_RELEASE_NAMESPACE}" \
+    -o "jsonpath={range .status.conditions[*]}{.type}={.status} {end}"
+}
+
+driver_deadline=$((SECONDS + distribution_budget_ms / 1000))
+driver_outcome=""
+while [ "${SECONDS}" -lt "${driver_deadline}" ]; do
+  if ! driver_state="$(driver_conditions)"; then
+    inferops::fail "could not ask the request driver whether it had finished. An unanswered query is not a Job that is still running, and the release was left in place."
+  fi
+  case "${driver_state}" in
+    *"Complete=True"*)
+      driver_outcome="complete"
+      break
+      ;;
+    *"Failed=True"*)
+      driver_outcome="failed"
+      break
+      ;;
+  esac
+  sleep "${INFEROPS_DRIVER_POLL_SECONDS}"
+done
+
+case "${driver_outcome}" in
+  complete) ;;
+  failed)
+    inferops::fail "the request driver failed. Its own output and the release's are in .artifacts/kubernetes-multi-replica-certification/, and the release was left in place. A driver that fails before sending anything and one that fails part-way through look different there: driver.log holds one line per request it completed."
+    ;;
+  *)
+    inferops::fail "the request driver neither completed nor failed within $((distribution_budget_ms / 1000)) s. Its output is in .artifacts/kubernetes-multi-replica-certification/, and the release was left in place."
+    ;;
+esac
 
 distribution_ms=$(($(now_ms) - distribution_started))
 ended_at="$(now_rfc3339)"
@@ -1238,7 +1310,12 @@ inferops::section "Certifying the multi-replica path"
 
 inferops::section "Removing the request driver"
 
-remove_driver
+# Not swallowed on this path. A driver Job still in the namespace when the
+# residue check runs would be counted as the release's own residue, and the run
+# would fail blaming the teardown for this workflow's artifact.
+if ! remove_driver; then
+  inferops::fail "the request driver Job '${driver_name}' was not removed from '${INFEROPS_RELEASE_NAMESPACE}' within ${INFEROPS_DRIVER_DELETE_SECONDS} s. It carries this release's instance label, so the residue check after the uninstall would report it as an object of the release surviving its own uninstall -- which would be the wrong diagnosis. Remove the Job by hand and rerun; the release is still installed."
+fi
 driver_removed="true"
 
 inferops::section "Uninstalling the release"
