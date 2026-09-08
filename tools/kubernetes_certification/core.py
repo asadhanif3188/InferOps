@@ -4,9 +4,17 @@ Three things are deliberately separated here.
 
 **Loading** reads committed files and contacts nothing. The descriptor is checked
 against itself and then against the records that already decide the same values
-elsewhere -- the runtime package's startup budget, the composition's response
-budget, the runtime profile's request budget, the selected model's revision. A
-descriptor that disagrees with any of them is refused before a cluster is touched.
+elsewhere. Which record decides which budget is the part that is easy to get
+wrong, and this module got it wrong once: the budget a Kubernetes rollout must be
+held to is the **chart's**, not the adapter's. `startupBudgetMs` in the runtime
+package is how long the adapter waits for a runtime it started itself; the
+kubelet's startup probe budget is nearly twice that, because the chart's own
+measurements (V1-S2-005 recorded a 358,735 ms cold load) do not fit inside the
+smaller number. A descriptor pinned to the adapter's figure would report a normal
+cold load as a failure. So the chart's budgets are the ones this workflow
+carries, the internal relations between them are enforced here, and
+`tests/architecture/test_kubernetes_certification.py` compares each one against
+`charts/inferops-llm/values.yaml`.
 
 **Observing** happens while a release is installed and a bounded forward to its
 Service is open. It reads the identity the API publishes about itself, sends one
@@ -26,6 +34,14 @@ installs the release, waits for readiness, opens the forward, collects the clust
 facts this module reads, and tears the release down. That script's guards decide
 which cluster is acted on, and duplicating them in Python would make two guards
 where the repository has one.
+
+The seam between the two is the facts file, and it is treated as untrusted input
+rather than as a sibling's output: its location is fixed by the descriptor rather
+than accepted as an argument, and every value in it -- the cluster it names, the
+release, the profile, the replica counts, the image pins, the model cache
+mounting -- is compared with what the descriptor says a certified run must be. A
+record carrying this project's evidence label may not describe an environment
+nobody measured.
 """
 
 from __future__ import annotations
@@ -121,9 +137,15 @@ class CertificationError(RuntimeError):
 
 
 class PrerequisiteUnmet(CertificationError):
-    """Authorization, the forward, or the collected facts were not in place."""
+    """Authorization or the forward was not in place."""
 
     stage = STAGE_PREREQUISITES
+
+
+class EvidenceUnwritable(CertificationError):
+    """The record could not be stored, whatever the run itself established."""
+
+    stage = STAGE_EVIDENCE
 
 
 class CertificationFailed(CertificationError):
@@ -135,6 +157,15 @@ class CertificationFailed(CertificationError):
 
 
 @dataclass(frozen=True, slots=True)
+class ClusterTarget:
+    """The one cluster, by name, context, and node image digest."""
+
+    name: str
+    context: str
+    node_image_digest: str
+
+
+@dataclass(frozen=True, slots=True)
 class ReleaseTarget:
     """The one release, in the one namespace, this descriptor may describe."""
 
@@ -143,11 +174,60 @@ class ReleaseTarget:
     profile: str
     api_service_name: str
     api_service_port: int
+    api_deployment_name: str
     runtime_service_name: str
+    runtime_deployment_name: str
+    config_map_name: str
     instance_selector: str
     api_component: str
     runtime_component: str
     replicas: int
+
+
+@dataclass(frozen=True, slots=True)
+class ModelCacheExpectation:
+    """How the certified release must be reading the model weights.
+
+    `prerequisites.requiresVerifiedModelCache` is the declaration; this is what
+    makes it a check. The chart permits `verifyOnStart: sha256 | size | none`
+    under the real profile, so a values file an operator supplies can install a
+    release that never compares the artifact against its published hash -- and
+    the record's provenance would still name that hash. What the run must
+    establish is that the init container ran, that it compared the pinned digest,
+    and that the claim is mounted read-only.
+    """
+
+    claim_name: str
+    verification_init_container: str
+    require_read_only_mount: bool
+    require_artifact_hash_compared: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ReadinessBudgets:
+    """Every bound this workflow applies, and where each one comes from.
+
+    `runtime_startup_budget_ms` and `api_startup_budget_ms` are the kubelet's:
+    a container that exceeds one is killed mid-start. The rollout budgets are the
+    Deployment controller's progress deadlines, which additionally have to cover
+    scheduling, an image pull, and the init container's full hash read of a
+    1.83 GB artifact -- so they are what a `kubectl rollout status` may wait for
+    and what a measured readiness is held to.
+
+    `install_budget_ms` bounds `helm install` alone. This workflow deliberately
+    does not pass `--wait`, so that call returns once the objects are accepted
+    and it contains no model load; a budget sized as though it did would be a
+    number that never binds.
+    """
+
+    install_ms: int
+    runtime_startup_ms: int
+    runtime_rollout_ms: int
+    api_startup_ms: int
+    api_rollout_ms: int
+    release_test_ms: int
+    forward_ms: int
+    uninstall_ms: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,16 +243,15 @@ class Certification:
     chart_ref: str
     certification_ref: str
     procedure_ref: str
+    cluster: ClusterTarget
     release: ReleaseTarget
+    model_cache: ModelCacheExpectation
+    budgets: ReadinessBudgets
     requires_terraform_prerequisites: bool
     requires_target_cluster_assertion: bool
     requires_pinned_runtime_image: bool
     requires_pinned_api_image: bool
     requires_verified_model_cache: bool
-    install_budget_ms: int
-    runtime_budget_ms: int
-    api_budget_ms: int
-    release_test_budget_ms: int
     request_host: str
     request_path: str
     models_path: str
@@ -189,6 +268,7 @@ class Certification:
     require_digest_pinned_images: bool
     require_every_replica_ready: bool
     require_release_test: bool
+    require_pinned_node_image: bool
     evidence_directory: Path
     result_file: str
     diagnostics_file: str
@@ -197,6 +277,16 @@ class Certification:
     uninstalls_release: bool
     removes_prerequisites: bool
     removes_cluster: bool
+
+    def facts_path(self, repo_root: Path = REPO_ROOT) -> Path:
+        """Where the collected facts must be, rather than wherever they are.
+
+        The path is derived rather than accepted, because the entire cluster
+        half of the record is copied out of this file. An argument here would
+        make the base-URL guard decorative: the run could reach a real Service
+        and describe an environment read from somewhere else entirely.
+        """
+        return repo_root.resolve() / self.facts_file
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,6 +304,17 @@ class WorkloadFacts:
         return (
             self.replicas_desired > 0 and self.replicas_ready == self.replicas_desired
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ModelCacheFacts:
+    """How the installed release was actually reading the weights."""
+
+    claim_name: str
+    volume_read_only: bool
+    mount_read_only: bool
+    init_containers: tuple[str, ...]
+    artifact_hash_compared: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,6 +340,7 @@ class ClusterFacts:
     chart_version: str
     profile: str
     workloads: tuple[WorkloadFacts, ...]
+    model_cache: ModelCacheFacts
     prerequisites_ms: int
     install_ms: int
     api_ready_ms: int
@@ -349,6 +451,16 @@ def _require_keys(record: Mapping[str, Any], field: str, expected: set[str]) -> 
         )
 
 
+def _read_cluster(cluster: Mapping[str, Any]) -> ClusterTarget:
+    return ClusterTarget(
+        name=_string(cluster.get("name"), "cluster.name"),
+        context=_string(cluster.get("context"), "cluster.context"),
+        node_image_digest=_string(
+            cluster.get("nodeImageDigest"), "cluster.nodeImageDigest"
+        ),
+    )
+
+
 def _read_release(release: Mapping[str, Any]) -> ReleaseTarget:
     return ReleaseTarget(
         name=_string(release.get("name"), "release.name"),
@@ -360,9 +472,16 @@ def _read_release(release: Mapping[str, Any]) -> ReleaseTarget:
         api_service_port=_integer(
             release.get("apiServicePort"), "release.apiServicePort"
         ),
+        api_deployment_name=_string(
+            release.get("apiDeploymentName"), "release.apiDeploymentName"
+        ),
         runtime_service_name=_string(
             release.get("runtimeServiceName"), "release.runtimeServiceName"
         ),
+        runtime_deployment_name=_string(
+            release.get("runtimeDeploymentName"), "release.runtimeDeploymentName"
+        ),
+        config_map_name=_string(release.get("configMapName"), "release.configMapName"),
         instance_selector=_string(
             release.get("instanceSelector"), "release.instanceSelector"
         ),
@@ -371,6 +490,52 @@ def _read_release(release: Mapping[str, Any]) -> ReleaseTarget:
             release.get("runtimeComponent"), "release.runtimeComponent"
         ),
         replicas=_integer(release.get("replicas"), "release.replicas"),
+    )
+
+
+def _read_model_cache(cache: Mapping[str, Any]) -> ModelCacheExpectation:
+    return ModelCacheExpectation(
+        claim_name=_string(cache.get("claimName"), "modelCache.claimName"),
+        verification_init_container=_string(
+            cache.get("verificationInitContainer"),
+            "modelCache.verificationInitContainer",
+        ),
+        require_read_only_mount=_boolean(
+            cache.get("requireReadOnlyMount"), "modelCache.requireReadOnlyMount"
+        ),
+        require_artifact_hash_compared=_boolean(
+            cache.get("requireArtifactHashCompared"),
+            "modelCache.requireArtifactHashCompared",
+        ),
+    )
+
+
+def _read_budgets(readiness: Mapping[str, Any]) -> ReadinessBudgets:
+    return ReadinessBudgets(
+        install_ms=_integer(
+            readiness.get("installBudgetMs"), "readiness.installBudgetMs"
+        ),
+        runtime_startup_ms=_integer(
+            readiness.get("runtimeStartupBudgetMs"), "readiness.runtimeStartupBudgetMs"
+        ),
+        runtime_rollout_ms=_integer(
+            readiness.get("runtimeRolloutBudgetMs"), "readiness.runtimeRolloutBudgetMs"
+        ),
+        api_startup_ms=_integer(
+            readiness.get("apiStartupBudgetMs"), "readiness.apiStartupBudgetMs"
+        ),
+        api_rollout_ms=_integer(
+            readiness.get("apiRolloutBudgetMs"), "readiness.apiRolloutBudgetMs"
+        ),
+        release_test_ms=_integer(
+            readiness.get("releaseTestBudgetMs"), "readiness.releaseTestBudgetMs"
+        ),
+        forward_ms=_integer(
+            readiness.get("forwardBudgetMs"), "readiness.forwardBudgetMs"
+        ),
+        uninstall_ms=_integer(
+            readiness.get("uninstallBudgetMs"), "readiness.uninstallBudgetMs"
+        ),
     )
 
 
@@ -383,8 +548,10 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
             "the certification descriptor is unreadable"
         ) from error
 
+    cluster = _object(record.get("cluster"), "cluster")
     release = _object(record.get("release"), "release")
     prerequisites = _object(record.get("prerequisites"), "prerequisites")
+    model_cache = _object(record.get("modelCache"), "modelCache")
     readiness = _object(record.get("readiness"), "readiness")
     request = _object(record.get("request"), "request")
     assertions = _object(record.get("assertions"), "assertions")
@@ -403,8 +570,10 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
             "chartRef",
             "certificationRef",
             "procedureRef",
+            "cluster",
             "release",
             "prerequisites",
+            "modelCache",
             "readiness",
             "request",
             "assertions",
@@ -412,6 +581,7 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
             "cleanup",
         },
     )
+    _require_keys(cluster, "cluster", {"name", "context", "nodeImageDigest"})
     _require_keys(
         release,
         "release",
@@ -421,7 +591,10 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
             "profile",
             "apiServiceName",
             "apiServicePort",
+            "apiDeploymentName",
             "runtimeServiceName",
+            "runtimeDeploymentName",
+            "configMapName",
             "instanceSelector",
             "apiComponent",
             "runtimeComponent",
@@ -440,9 +613,28 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
         },
     )
     _require_keys(
+        model_cache,
+        "modelCache",
+        {
+            "claimName",
+            "verificationInitContainer",
+            "requireReadOnlyMount",
+            "requireArtifactHashCompared",
+        },
+    )
+    _require_keys(
         readiness,
         "readiness",
-        {"installBudgetMs", "runtimeBudgetMs", "apiBudgetMs", "releaseTestBudgetMs"},
+        {
+            "installBudgetMs",
+            "runtimeStartupBudgetMs",
+            "runtimeRolloutBudgetMs",
+            "apiStartupBudgetMs",
+            "apiRolloutBudgetMs",
+            "releaseTestBudgetMs",
+            "forwardBudgetMs",
+            "uninstallBudgetMs",
+        },
     )
     _require_keys(
         request,
@@ -470,6 +662,7 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
             "requireDigestPinnedImages",
             "requireEveryReplicaReady",
             "requireReleaseTest",
+            "requirePinnedNodeImage",
         },
     )
     _require_keys(
@@ -501,7 +694,10 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
         chart_ref=_string(record.get("chartRef"), "chartRef"),
         certification_ref=_string(record.get("certificationRef"), "certificationRef"),
         procedure_ref=_string(record.get("procedureRef"), "procedureRef"),
+        cluster=_read_cluster(cluster),
         release=_read_release(release),
+        model_cache=_read_model_cache(model_cache),
+        budgets=_read_budgets(readiness),
         requires_terraform_prerequisites=_boolean(
             prerequisites.get("requiresTerraformPrerequisites"),
             "prerequisites.requiresTerraformPrerequisites",
@@ -521,16 +717,6 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
         requires_verified_model_cache=_boolean(
             prerequisites.get("requiresVerifiedModelCache"),
             "prerequisites.requiresVerifiedModelCache",
-        ),
-        install_budget_ms=_integer(
-            readiness.get("installBudgetMs"), "readiness.installBudgetMs"
-        ),
-        runtime_budget_ms=_integer(
-            readiness.get("runtimeBudgetMs"), "readiness.runtimeBudgetMs"
-        ),
-        api_budget_ms=_integer(readiness.get("apiBudgetMs"), "readiness.apiBudgetMs"),
-        release_test_budget_ms=_integer(
-            readiness.get("releaseTestBudgetMs"), "readiness.releaseTestBudgetMs"
         ),
         request_host=_string(request.get("host"), "request.host"),
         request_path=_string(request.get("path"), "request.path"),
@@ -569,6 +755,10 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
         require_release_test=_boolean(
             assertions.get("requireReleaseTest"), "assertions.requireReleaseTest"
         ),
+        require_pinned_node_image=_boolean(
+            assertions.get("requirePinnedNodeImage"),
+            "assertions.requirePinnedNodeImage",
+        ),
         evidence_directory=Path(
             _string(evidence.get("directory"), "evidence.directory")
         ),
@@ -599,6 +789,7 @@ def _validate(certification: Certification) -> None:
     composition = load_composition()
     package = load_runtime_package()
     profile = load_runtime_profile()
+    budgets = certification.budgets
     if (
         certification.schema_version != EXPECTED_SCHEMA
         or certification.certification_id != EXPECTED_ID
@@ -643,20 +834,27 @@ def _validate(certification: Certification) -> None:
         raise CertificationError(
             "the API Service is not one this release's name could produce"
         )
-    if (
-        certification.runtime_budget_ms != package.startup_budget_ms
-        or certification.api_budget_ms != composition.response_budget_ms
-        or certification.request_timeout_ms != profile.request_budget_ms
-    ):
-        raise CertificationError("the certification budgets disagree with the profile")
-    if certification.install_budget_ms < certification.runtime_budget_ms:
-        # `helm install --wait` contains the model load, so an install budget
-        # under the load budget is a timeout that reports a slow load as a
-        # failure. It is checked here rather than in the operating script
-        # because the script reads both figures from this descriptor.
+    if not certification.cluster.node_image_digest.startswith("sha256:"):
+        raise CertificationError("the pinned node image must be named by digest")
+    # The chart's own rule, restated where this workflow's budgets live: the
+    # kubelet must not give up before the adapter would. A startup budget under
+    # the adapter's makes the adapter's budget unreachable.
+    if budgets.runtime_startup_ms < package.startup_budget_ms:
         raise CertificationError(
-            "the install budget is below the model load budget it has to contain"
+            "the runtime startup budget is below the adapter's own startup budget"
         )
+    # A rollout has to cover scheduling, an image pull, and the init container's
+    # hash read on top of the start itself, so its deadline can never be the
+    # smaller of the two.
+    if (
+        budgets.runtime_rollout_ms < budgets.runtime_startup_ms
+        or budgets.api_rollout_ms < budgets.api_startup_ms
+    ):
+        raise CertificationError(
+            "a rollout budget is below the startup budget it has to contain"
+        )
+    if certification.request_timeout_ms != profile.request_budget_ms:
+        raise CertificationError("the certification budgets disagree with the profile")
     if (
         certification.request_path != CHAT_COMPLETIONS_PATH
         or certification.models_path != MODELS_PATH
@@ -674,8 +872,16 @@ def _validate(certification: Certification) -> None:
         and certification.require_digest_pinned_images
         and certification.require_every_replica_ready
         and certification.require_release_test
+        and certification.require_pinned_node_image
     ):
         raise CertificationError("a certification run may not waive a real assertion")
+    if not (
+        certification.model_cache.require_read_only_mount
+        and certification.model_cache.require_artifact_hash_compared
+    ):
+        raise CertificationError(
+            "a certification run may not waive a model cache assertion"
+        )
     if (
         certification.evidence_directory != EXPECTED_EVIDENCE_DIRECTORY
         or certification.facts_file != EXPECTED_FACTS_FILE
@@ -738,7 +944,24 @@ def _facts_optional_string(value: Any, field: str) -> str:
 
 
 def _facts_integer(value: Any, field: str, *, minimum: int = 0) -> int:
-    if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+    """A whole number, however the tool that produced it chose to spell it.
+
+    A digit string is accepted as well as an integer, because not every tool
+    this workflow reads emits JSON numbers for numbers: `helm list -o json`
+    serialises a release revision as `"1"`. Refusing that would fail a
+    certification at the readiness stage for a reason that has nothing to do
+    with readiness -- which is precisely the failure this reader exists to
+    prevent. What is not accepted is a float, a boolean, or a string that is not
+    a number, because each of those is a collection defect.
+    """
+    if isinstance(value, bool):
+        raise CertificationFailed(
+            f"the cluster facts member '{field}' is a boolean, not a number",
+            STAGE_READINESS,
+        )
+    if isinstance(value, str) and value.strip().isdigit():
+        value = int(value.strip())
+    if not isinstance(value, int) or value < minimum:
         raise CertificationFailed(
             f"the cluster facts member '{field}' is not an integer of at least "
             f"{minimum}",
@@ -747,23 +970,33 @@ def _facts_integer(value: Any, field: str, *, minimum: int = 0) -> int:
     return value
 
 
+def _facts_boolean(value: Any, field: str) -> bool:
+    if not isinstance(value, bool):
+        raise CertificationFailed(
+            f"the cluster facts member '{field}' is not a boolean", STAGE_READINESS
+        )
+    return value
+
+
+def _facts_strings(value: Any, field: str) -> tuple[str, ...]:
+    if not isinstance(value, list) or not value:
+        raise CertificationFailed(
+            f"the cluster facts member '{field}' names nothing", STAGE_READINESS
+        )
+    return tuple(
+        _facts_string(entry, f"{field}[{position}]")
+        for position, entry in enumerate(value)
+    )
+
+
 def _workload(entry: Any, index: int) -> WorkloadFacts:
     record = _facts_object(entry, f"workloads[{index}]")
-    images = record.get("images")
-    if not isinstance(images, list) or not images:
-        raise CertificationFailed(
-            f"the cluster facts member 'workloads[{index}].images' names no image",
-            STAGE_READINESS,
-        )
     return WorkloadFacts(
         name=_facts_string(record.get("name"), f"workloads[{index}].name"),
         component=_facts_string(
             record.get("component"), f"workloads[{index}].component"
         ),
-        images=tuple(
-            _facts_string(image, f"workloads[{index}].images[{position}]")
-            for position, image in enumerate(images)
-        ),
+        images=_facts_strings(record.get("images"), f"workloads[{index}].images"),
         replicas_desired=_facts_integer(
             record.get("replicasDesired"), f"workloads[{index}].replicasDesired"
         ),
@@ -773,14 +1006,35 @@ def _workload(entry: Any, index: int) -> WorkloadFacts:
     )
 
 
-def load_cluster_facts(path: Path, certification: Certification) -> ClusterFacts:
+def _model_cache(record: Mapping[str, Any]) -> ModelCacheFacts:
+    return ModelCacheFacts(
+        claim_name=_facts_string(record.get("claimName"), "modelCache.claimName"),
+        volume_read_only=_facts_boolean(
+            record.get("volumeReadOnly"), "modelCache.volumeReadOnly"
+        ),
+        mount_read_only=_facts_boolean(
+            record.get("mountReadOnly"), "modelCache.mountReadOnly"
+        ),
+        init_containers=_facts_strings(
+            record.get("initContainers"), "modelCache.initContainers"
+        ),
+        artifact_hash_compared=_facts_boolean(
+            record.get("artifactHashCompared"), "modelCache.artifactHashCompared"
+        ),
+    )
+
+
+def load_cluster_facts(
+    certification: Certification, *, repo_root: Path = REPO_ROOT
+) -> ClusterFacts:
     """Read what the operating script measured, and hold it to the descriptor.
 
-    The file is host state written by the script beside this module rather than
-    a committed record, so nothing in it is trusted: the release it names, the
-    namespace, the profile, the replica counts, and the image pins are each
-    compared with what the descriptor says a certified run must be.
+    The location is the descriptor's rather than an argument, and nothing in the
+    file is trusted: the cluster it names, the release, the namespace, the
+    profile, the replica counts, the image pins, and the model cache mounting are
+    each compared with what the descriptor says a certified run must be.
     """
+    path = certification.facts_path(repo_root)
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
@@ -794,6 +1048,7 @@ def load_cluster_facts(path: Path, certification: Certification) -> ClusterFacts
     release = _facts_object(root.get("release"), "release")
     timings = _facts_object(root.get("timings"), "timings")
     configuration = _facts_object(root.get("configuration"), "configuration")
+    model_cache = _facts_object(root.get("modelCache"), "modelCache")
     workloads = root.get("workloads")
     if not isinstance(workloads, list) or not workloads:
         raise CertificationFailed("the cluster facts name no workload", STAGE_READINESS)
@@ -821,6 +1076,7 @@ def load_cluster_facts(path: Path, certification: Certification) -> ClusterFacts
         workloads=tuple(
             _workload(entry, index) for index, entry in enumerate(workloads)
         ),
+        model_cache=_model_cache(model_cache),
         prerequisites_ms=_facts_integer(
             timings.get("prerequisitesMs"), "timings.prerequisitesMs"
         ),
@@ -832,7 +1088,9 @@ def load_cluster_facts(path: Path, certification: Certification) -> ClusterFacts
         release_test_ms=_facts_integer(
             timings.get("releaseTestMs"), "timings.releaseTestMs"
         ),
-        release_test_passed=release.get("testPassed") is True,
+        release_test_passed=_facts_boolean(
+            release.get("testPassed"), "release.testPassed"
+        ),
         service_version=_facts_optional_string(
             configuration.get("serviceVersion"), "configuration.serviceVersion"
         ),
@@ -851,9 +1109,64 @@ def load_cluster_facts(path: Path, certification: Certification) -> ClusterFacts
     return facts
 
 
+def _check_cluster(certification: Certification, facts: ClusterFacts) -> None:
+    target = certification.cluster
+    if facts.cluster_name != target.name or facts.kube_context != target.context:
+        raise CertificationFailed(
+            "the facts describe a cluster this certification does not name",
+            STAGE_PREREQUISITES,
+        )
+    if (
+        certification.require_pinned_node_image
+        and facts.node_image_digest != target.node_image_digest
+    ):
+        # `lib.sh` states the rule this enforces: a pin checked one way at
+        # creation and another way afterwards is two pins. A C2 record may not
+        # name a node image that is not the one the cluster was pinned to.
+        raise CertificationFailed(
+            "the cluster is running a node image that is not the pinned one",
+            STAGE_PREREQUISITES,
+        )
+
+
+def _check_model_cache(certification: Certification, facts: ClusterFacts) -> None:
+    expected = certification.model_cache
+    observed = facts.model_cache
+    if observed.claim_name != expected.claim_name:
+        raise CertificationFailed(
+            f"the release mounts claim '{observed.claim_name}' and this "
+            f"certification describes '{expected.claim_name}'",
+            STAGE_RELEASE,
+        )
+    if expected.require_read_only_mount and not (
+        observed.volume_read_only and observed.mount_read_only
+    ):
+        raise CertificationFailed(
+            "the model cache is not mounted read-only", STAGE_RELEASE
+        )
+    if expected.verification_init_container not in observed.init_containers:
+        raise CertificationFailed(
+            f"the serving runtime runs no '{expected.verification_init_container}' "
+            "init container, so nothing checked the artifact before it was loaded",
+            STAGE_RELEASE,
+        )
+    if expected.require_artifact_hash_compared and not observed.artifact_hash_compared:
+        # The chart permits `verifyOnStart: size` and `none` under the real
+        # profile, and an operator supplies the values file. A run that only
+        # compared a byte count would still write a record whose provenance
+        # names a SHA-256 -- so the comparison has to be observed, not assumed.
+        raise CertificationFailed(
+            "the release did not compare the model artifact against its pinned "
+            "hash before loading it",
+            STAGE_RELEASE,
+        )
+
+
 def _check_facts(certification: Certification, facts: ClusterFacts) -> None:
     manifest = load_manifest()
     target = certification.release
+    budgets = certification.budgets
+    _check_cluster(certification, facts)
     if (
         facts.release_name != target.name
         or facts.release_namespace != target.namespace
@@ -868,10 +1181,14 @@ def _check_facts(certification: Certification, facts: ClusterFacts) -> None:
             f"the release is '{facts.release_status}' rather than deployed",
             STAGE_RELEASE,
         )
-    components = {workload.component for workload in facts.workloads}
-    if components != {target.api_component, target.runtime_component}:
+    observed = {(workload.name, workload.component) for workload in facts.workloads}
+    if observed != {
+        (target.api_deployment_name, target.api_component),
+        (target.runtime_deployment_name, target.runtime_component),
+    }:
         raise CertificationFailed(
-            "the release did not install exactly the API and the serving runtime",
+            "the release did not install exactly the API and the serving runtime "
+            "under the names and component labels this certification describes",
             STAGE_RELEASE,
         )
     for workload in facts.workloads:
@@ -894,6 +1211,7 @@ def _check_facts(certification: Certification, facts: ClusterFacts) -> None:
                         f"'{workload.name}' runs an image that is not digest-pinned",
                         STAGE_RELEASE,
                     )
+    _check_model_cache(certification, facts)
     if certification.require_release_test and not facts.release_test_passed:
         raise CertificationFailed(
             "the release's own in-cluster connection test did not pass",
@@ -908,23 +1226,29 @@ def _check_facts(certification: Certification, facts: ClusterFacts) -> None:
             "one",
             STAGE_RELEASE,
         )
-    if facts.runtime_ready_ms > certification.runtime_budget_ms:
+    if facts.runtime_ready_ms > budgets.runtime_rollout_ms:
         raise CertificationFailed(
             f"the serving runtime took {facts.runtime_ready_ms} ms to become ready, "
-            f"over the {certification.runtime_budget_ms} ms budget",
+            f"over the {budgets.runtime_rollout_ms} ms budget",
             STAGE_READINESS,
         )
-    if facts.api_ready_ms > certification.api_budget_ms:
+    if facts.api_ready_ms > budgets.api_rollout_ms:
         raise CertificationFailed(
             f"the platform API took {facts.api_ready_ms} ms to become ready, over "
-            f"the {certification.api_budget_ms} ms budget",
+            f"the {budgets.api_rollout_ms} ms budget",
             STAGE_READINESS,
         )
-    if facts.install_ms > certification.install_budget_ms:
+    if facts.install_ms > budgets.install_ms:
         raise CertificationFailed(
             f"the install took {facts.install_ms} ms, over the "
-            f"{certification.install_budget_ms} ms budget",
+            f"{budgets.install_ms} ms budget",
             STAGE_RELEASE,
+        )
+    if facts.release_test_ms > budgets.release_test_ms:
+        raise CertificationFailed(
+            f"the in-cluster connection test took {facts.release_test_ms} ms, over "
+            f"the {budgets.release_test_ms} ms budget",
+            STAGE_READINESS,
         )
     _refuse_mock_identity(
         certification,
@@ -1038,6 +1362,30 @@ def _refuse_mock_identity(
                 "mock identity metadata was reported on the certified Kubernetes path",
                 stage,
             )
+
+
+def observe_readiness(
+    certification: Certification, *, base_url: str, get: ApiGet
+) -> None:
+    """Ask the forwarded API for readiness before anything is asserted of it.
+
+    The rollout waits already established that Kubernetes considers the pods
+    ready, and `helm test` already established that the Services answer from
+    inside the cluster. What this adds is that the forward itself reaches a ready
+    API: without it, a forward that opened onto a pod which has since gone
+    not-ready produces a refusal at the identity stage, which names the wrong
+    thing.
+    """
+    response = get(
+        f"{base_url}{certification.readiness_path}",
+        certification.request_timeout_ms / 1000,
+    )
+    if response.status != 200:
+        raise CertificationFailed(
+            f"the forwarded API answered {response.status} on "
+            f"{certification.readiness_path} rather than reporting itself ready",
+            STAGE_READINESS,
+        )
 
 
 def observe_identity(
@@ -1211,7 +1559,7 @@ class EvidenceDirectory:
         self, certification: Certification, *, repo_root: Path = REPO_ROOT
     ) -> None:
         if certification.evidence_directory != EXPECTED_EVIDENCE_DIRECTORY:
-            raise CertificationError("the certification evidence path is unsafe")
+            raise EvidenceUnwritable("the certification evidence path is unsafe")
         self.root = repo_root.resolve()
         self.directory = self.root / certification.evidence_directory
         self.result_path = self.directory / certification.result_file
@@ -1223,12 +1571,12 @@ class EvidenceDirectory:
         for part in EXPECTED_EVIDENCE_DIRECTORY.parts:
             candidate = candidate / part
             if candidate.is_symlink() or os.path.isjunction(candidate):
-                raise CertificationError("the certification evidence path is unsafe")
+                raise EvidenceUnwritable("the certification evidence path is unsafe")
         for target in (self.result_path, self.diagnostics_path):
             if target.is_symlink() or os.path.isjunction(target):
-                raise CertificationError("the certification evidence path is unsafe")
+                raise EvidenceUnwritable("the certification evidence path is unsafe")
             if not target.resolve().is_relative_to(self.root):
-                raise CertificationError("the certification evidence path is unsafe")
+                raise EvidenceUnwritable("the certification evidence path is unsafe")
 
     def write(self, target: Path, document: Mapping[str, object]) -> Path:
         """Write one whole record, refusing an unsafe path before and after mkdir."""
@@ -1242,7 +1590,7 @@ class EvidenceDirectory:
                 newline="\n",
             )
         except OSError as error:
-            raise CertificationError(
+            raise EvidenceUnwritable(
                 "the certification evidence could not be written"
             ) from error
         return target
@@ -1284,6 +1632,13 @@ def _facts_document(facts: ClusterFacts) -> dict[str, object]:
             "testPassed": facts.release_test_passed,
         },
         "workloads": _workloads_document(facts.workloads),
+        "modelCache": {
+            "claimName": facts.model_cache.claim_name,
+            "volumeReadOnly": facts.model_cache.volume_read_only,
+            "mountReadOnly": facts.model_cache.mount_read_only,
+            "initContainers": list(facts.model_cache.init_containers),
+            "artifactHashCompared": facts.model_cache.artifact_hash_compared,
+        },
         "configuration": {
             "serviceVersion": facts.service_version,
             "modelIdentifier": facts.model_identifier,
@@ -1346,8 +1701,14 @@ def diagnostics_document(diagnostics: Diagnostics) -> dict[str, object]:
     }
 
 
-def provenance(certification: Certification) -> dict[str, str]:
-    """The immutable inputs a C2 record must name, and nothing host-specific."""
+def provenance(certification: Certification, facts: ClusterFacts) -> dict[str, str]:
+    """The immutable inputs a C2 record must name, and nothing host-specific.
+
+    `modelSha256` is named only because `_check_model_cache` established that
+    the release compared it before loading the artifact. Without that check this
+    field would be a hash copied out of a committed record into a document
+    describing a run that never computed one.
+    """
     package = load_runtime_package()
     manifest = load_manifest()
     return {
@@ -1357,6 +1718,9 @@ def provenance(certification: Certification) -> dict[str, str]:
         "modelRevision": manifest.revision,
         "modelFile": manifest.file,
         "modelSha256": manifest.sha256,
+        "modelHashComparedInCluster": str(
+            facts.model_cache.artifact_hash_compared
+        ).lower(),
         "apiServiceName": certification.release.api_service_name,
         "runtimeServiceName": certification.release.runtime_service_name,
         "procedureRef": certification.procedure_ref,
@@ -1371,7 +1735,7 @@ def certify(
     *,
     confirmed: bool,
     base_url: str,
-    facts_path: Path,
+    repo_root: Path = REPO_ROOT,
     get: ApiGet = api_get,
     post: ApiPost = api_post,
     clock: Callable[[], float] = time.monotonic,
@@ -1389,7 +1753,8 @@ def certify(
             "Kubernetes real-inference certification requires --confirm-real-kubernetes"
         )
     forwarded = require_forwarded_base_url(base_url, certification)
-    facts = load_cluster_facts(facts_path, certification)
+    facts = load_cluster_facts(certification, repo_root=repo_root)
+    observe_readiness(certification, base_url=forwarded, get=get)
     identity = observe_identity(certification, facts, base_url=forwarded, get=get)
     inference = observe_inference(
         certification, facts, base_url=forwarded, post=post, clock=clock
@@ -1400,7 +1765,7 @@ def certify(
         evidence_class=certification.evidence_class,
         evidence_label=certification.evidence_label,
         facts=facts,
-        provenance=provenance(certification),
+        provenance=provenance(certification, facts),
         identity=identity,
         inference=inference,
     )

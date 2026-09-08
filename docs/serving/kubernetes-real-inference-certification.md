@@ -40,13 +40,13 @@ and is what turns a failure into a place to look.
 
 | Stage | What it establishes | What a failure there means |
 |---|---|---|
-| `load` | The committed descriptor is internally consistent and agrees with the runtime package, the composition, the runtime profile, and the model source record | An edit to one record and not the others. Nothing was contacted |
-| `prerequisites` | The run is authorized, the tools are present, the cluster is this project's, and the forward is loopback | The host or the authorization, not the platform |
-| `release` | The Terraform prerequisites applied and Helm installed one release of the real profile with digest-pinned images | The chart, the values file, or the prerequisite layer |
-| `readiness` | Both Deployments reported every replica ready inside their own budgets, and the release's own in-cluster test passed | Most often the model load, and the runtime's log is the first thing to read |
+| `load` | The committed descriptor is internally consistent and agrees with the runtime package's startup budget, the composition's real-path selection, and the runtime profile's request budget. The chart's budgets and names are compared with it by [the architecture suite](../../tests/architecture/test_kubernetes_certification.py) rather than at load time, and the model source record is compared at `release` and `identity`, where there is something observed to compare it to | An edit to one record and not the others. Nothing was contacted |
+| `prerequisites` | The run is authorized, the tools are present, the cluster is this project's and is running the pinned node image, and the forward is loopback | The host or the authorization, not the platform |
+| `release` | The Terraform prerequisites applied and Helm installed one release of the real profile, with digest-pinned images, the expected replica count, and the model cache mounted read-only from the claim Terraform owns and verified against its pinned hash | The chart, the values file, or the prerequisite layer |
+| `readiness` | Both Deployments reported every replica ready inside their own budgets, the release's own in-cluster test passed, and the forwarded API reported itself ready | Most often the model load, and the runtime's log is the first thing to read |
 | `identity` | The API published the real adapter kind, the selected runtime, the configured model, and the pinned revision, with token counting declared | The wrong profile is installed, or the release is answering with mock metadata |
 | `inference` | One real request returned one non-empty completion with consistent runtime-derived token counts | The model answered, and the answer did not hold |
-| `evidence` | The record was written to the ignored evidence directory | The workspace, not the cluster |
+| `evidence` | The record was written to the ignored evidence directory | The workspace, not the cluster. Everything the run established still happened; only storing it did not |
 
 ## What this proves, and what it does not
 
@@ -83,6 +83,39 @@ procedure certifies a single-replica release and refuses a release running any
 other replica count rather than reporting a stronger result than it measured.
 Multi-replica certification is a separate piece of work.
 
+## The budgets, and which record decides each one
+
+Getting this wrong is the defect most likely to make a correct run look like a
+failure, so the sources are named rather than implied.
+
+| Budget | Value | Decided by |
+|---|---|---|
+| Serving runtime startup | 600,000 ms | `runtime.probes.startup.budgetMs` in the chart |
+| Serving runtime rollout | 900,000 ms | `runtime.lifecycle.progressDeadlineSeconds` in the chart |
+| Platform API startup | 60,000 ms | `api.probes.startup.budgetMs` in the chart |
+| Platform API rollout | 300,000 ms | `api.lifecycle.progressDeadlineSeconds` in the chart |
+| One request | 120,000 ms | `requestBudgetMs` in the runtime profile |
+
+**The runtime budget is the chart's, not the adapter's, and the difference
+matters.** `startupBudgetMs` in the runtime package is 300,000 ms and is how long
+the *adapter* waits for a runtime it started itself. The chart deliberately
+budgets the kubelet's startup probe at twice that, because the loads this project
+has measured do not fit inside the smaller figure: V1-S2-007 recorded 133,515 ms
+to 215,906 ms across six starts and the V1-S2-005 first attempt recorded
+358,735 ms cold. A workflow that timed a rollout at 300,000 ms would report that
+cold load as a failure. The rollout budgets are larger again, because a rollout
+also covers scheduling, the image pull, and the init container's SHA-256 read of a
+1.83 GB artifact.
+
+The descriptor refuses a runtime startup budget below the adapter's — the chart's
+own rule, since a kubelet that gives up first makes the adapter's budget
+unreachable — and refuses a rollout budget below the startup budget it contains.
+
+`helm install` runs **without** `--wait`, so its own budget bounds only the
+acceptance of the objects. `--wait` would fold the install, the model load, and
+the API start into one number, and the model load is the measurement this workflow
+exists to take.
+
 ## Prerequisites
 
 Before an authorized run:
@@ -96,6 +129,23 @@ Before an authorized run:
    revision derives — see [model cache storage](../environment/model-cache-storage.md);
 5. a values file selecting the real profile exists, with an API image reference
    that can actually be pulled or is loaded into the cluster.
+
+Each of these is a declaration in the descriptor, and each one says here whether
+it is really enforced:
+
+| Declaration | Enforced by |
+|---|---|
+| `requiresTerraformPrerequisites` | The script applies the layer before installing, and a test reads the script for the ordering |
+| `requiresTargetClusterAssertion` | `inferops::assert_target_cluster` before any mutating call, and the collected cluster name, context, and node image digest are compared with the descriptor |
+| `requiresPinnedRuntimeImage` / `requiresPinnedApiImage` | Every image on every workload is read from the cluster and refused unless it carries a digest |
+| `requiresVerifiedModelCache` | The claim name, the read-only volume and mount, the presence of the `verify-model` init container, and the pinned SHA-256 appearing in the command it will run are all read from the cluster and compared |
+
+The fourth row is the one worth reading twice. The chart permits
+`verifyOnStart: sha256 | size | none` under the real profile and the operator
+supplies the values file, so a release installed with `none` would load whatever
+bytes the claim held — and the record's provenance names a SHA-256. The
+certification therefore reads the rendered init container's own command and
+refuses a run in which nothing compared the hash.
 
 Point 5 is the blocker today, and it is stated plainly rather than left to be
 discovered at the first image pull. **No InferOps API image is published.**
@@ -141,14 +191,19 @@ workflow somebody runs by accident.
 |---|---|
 | `.cache/inferops/certification/k8s-real-inference.json` | The record of a certified run. Ignored by version control until it is promoted |
 | `.cache/inferops/certification/k8s-real-inference-diagnostics.json` | Why a run did not certify, naming the stage |
-| `.artifacts/kubernetes-certification/cluster-facts.json` | What the script measured. **Host state, not evidence** |
+| `.artifacts/kubernetes-certification/cluster-facts.json` | What the script measured. **Host state, not evidence.** Its location is fixed by the descriptor and the tool accepts no argument naming it: the whole cluster half of the record is copied out of this file, so a path flag would let a run reach a real Service and describe an environment read from somewhere else |
 | `.artifacts/kubernetes-certification/` | Diagnostics collected on failure: release history, object listing, pod descriptions, events, and tail-bounded container logs |
 
 The record names the cluster version and node image digest, the tool versions,
 the release revision and chart version, every workload's digest-pinned images and
-replica readiness, the configured model identifier and revision, the measured
-prerequisite, install, and readiness times, and the observed identity and token
-counts.
+replica readiness, how the model cache was mounted and whether its hash was
+compared in the cluster, the configured model identifier and revision, the
+measured prerequisite, install, and readiness times, and the observed identity and
+token counts. Its provenance names the pinned model SHA-256 **beside the flag
+saying the run compared it**, because
+[the certification levels](../testing/certification.md) require a C2 record to
+name a hash "computed and compared" and a hash copied out of a committed record is
+neither.
 
 It does **not** contain the prompt or the completion. `retainGeneratedText` is
 `false` in the descriptor and a run that set it true is refused, which is the
@@ -163,8 +218,15 @@ ceiling.
 
 ## Cleanup, and what it deliberately leaves
 
-On success the script uninstalls the release, asserts that no object carrying the
-release's instance label survived, and asserts that the namespace did.
+On success the script uninstalls the release and then asks the cluster four
+questions rather than trusting Helm's bookkeeping: that no object carrying the
+release's instance label survived — persistent volume claims included in the
+selector, because a chart that created one would show up there; that Helm itself
+reports no such release; that the namespace survived; and that the claim count is
+the one counted before the install. The last is why the count is taken on both
+sides: the claim is the single object in this namespace that must outlive a
+release, and comparing counts asserts it without this workflow needing to know
+which claim a values file named.
 
 It removes **nothing else**, and the boundary is
 [the ownership inventory](../architecture/resource-ownership.md)'s rather than a
@@ -193,6 +255,8 @@ teardown that ran on failure would delete the evidence of the failure.
 | The identity stage refuses with mock metadata | A values file selecting the mock profile, or a release installed from one |
 | The forward never accepts a connection | `.artifacts/kubernetes-certification-forward.log` |
 | The run refuses before anything happens | The descriptor disagrees with a record that decides one of its values. Run `check`, which names the field |
+| The run stops at `release` saying the artifact hash was not compared | The values file set `verifyOnStart` to `size` or `none`. The certified path requires `sha256` |
+| The run stops at `prerequisites` naming the node image | The cluster is running a node image that is not the pinned one. Recreate it with [`cluster-up.sh`](../../scripts/environment/cluster-up.sh) |
 
 Cluster-level symptoms — scheduling, storage, the claim, the node — are in
 [the local cluster guide](../environment/local-cluster.md) and

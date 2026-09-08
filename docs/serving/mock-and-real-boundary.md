@@ -100,5 +100,11 @@ proves nothing about the provider.
 
 The labels are the ones [CONTRIBUTING](../../CONTRIBUTING.md) already defines:
 `documented/unexecuted`, `mock`, `synthetic`, `estimated`, `local real runtime`,
-`cloud real runtime`, `production experience`. Pick the **weakest** label the
-record actually supports. Where two could apply, the weaker one is correct.
+`local real Kubernetes`, `cloud real runtime`, `production experience`. Pick the
+**weakest** label the record actually supports. Where two could apply, the weaker
+one is correct.
+
+`local real Kubernetes` names a run that reached the model through an installed
+release rather than through two containers on a host. It carries the same evidence
+class as `local real runtime` and therefore the same ceiling; what it records is
+which path was exercised, not a stronger one.

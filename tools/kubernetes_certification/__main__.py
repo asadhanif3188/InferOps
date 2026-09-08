@@ -6,13 +6,17 @@ run would do, which is the only thing that can be established without a cluster.
 by `scripts/environment/kubernetes-certification.sh` rather than by hand -- that
 script owns the cluster, the forward, and the cleanup, and this command refuses a
 base URL that is not the loopback forward the script opened.
+
+There is deliberately no flag naming the collected cluster facts. Their location
+is the descriptor's, because the whole cluster half of the record is copied out
+of that file: a flag there would make the base-URL guard decorative, since a run
+could reach a real Service and describe an environment read from somewhere else.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 from .core import (
     Certification,
@@ -58,11 +62,6 @@ def build_parser() -> argparse.ArgumentParser:
             "API Service, for example http://127.0.0.1:18090"
         ),
     )
-    parser.add_argument(
-        "--cluster-facts",
-        default="",
-        help="the cluster facts file the operating script collected",
-    )
     return parser
 
 
@@ -83,19 +82,32 @@ def _print_check(certification: Certification) -> None:
         f"service       {release.api_service_name}:{release.api_service_port}, "
         f"forwarded to {certification.request_host}"
     )
+    budgets = certification.budgets
     print(
-        f"readiness     install {certification.install_budget_ms} ms; runtime "
-        f"{certification.runtime_budget_ms} ms; api {certification.api_budget_ms} ms; "
-        f"release test {certification.release_test_budget_ms} ms"
+        f"readiness     install {budgets.install_ms} ms; runtime startup "
+        f"{budgets.runtime_startup_ms} ms within a {budgets.runtime_rollout_ms} ms "
+        f"rollout; api startup {budgets.api_startup_ms} ms within a "
+        f"{budgets.api_rollout_ms} ms rollout; release test "
+        f"{budgets.release_test_ms} ms"
     )
     print(
         f"request       POST {certification.request_path}; identity GET "
         f"{certification.models_path}; budget {certification.request_timeout_ms} ms"
     )
     print(
+        f"model cache   claim {certification.model_cache.claim_name}, mounted "
+        f"read-only, verified by the '"
+        f"{certification.model_cache.verification_init_container}' init container"
+    )
+    print(
+        f"cluster       {certification.cluster.name} on the pinned node image "
+        f"{certification.cluster.node_image_digest}"
+    )
+    print(
         "assertions    real adapter kind, pinned model revision, digest-pinned "
-        "images, every replica ready, runtime-derived counts, non-empty content; "
-        "mock identity refused"
+        "images, pinned node image, every replica ready, artifact hash compared "
+        "in cluster, runtime-derived counts, non-empty content; mock identity "
+        "refused"
     )
     print(
         f"evidence      {certification.evidence_directory.as_posix()}/"
@@ -164,7 +176,6 @@ def main(argv: list[str] | None = None) -> int:
             certification,
             confirmed=args.confirm_real_kubernetes,
             base_url=args.base_url,
-            facts_path=Path(args.cluster_facts),
         )
         evidence = EvidenceDirectory(certification)
         written = evidence.write(evidence.result_path, result_document(result))

@@ -26,6 +26,11 @@
 # lib.sh beside every other script here, and a second implementation of it in
 # Python would be a second guard.
 #
+# Every threshold this script applies comes from the descriptor, with two stated
+# exceptions that are host conveniences rather than thresholds: the default
+# loopback port, which moves when something else already holds one, and the
+# tail length on collected container logs.
+#
 # On failure it collects diagnostics into .artifacts/, leaves the release in
 # place for inspection, and says how to remove it. It does not tear down the
 # evidence of its own failure.
@@ -39,14 +44,17 @@
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 # The committed descriptor this workflow reads its own budgets and targets from,
-# relative to the repository root. Nothing below invents a threshold: every one
-# comes from here, and the Python tool refuses the descriptor if any of them
-# disagrees with the runtime package, the composition, or the runtime profile.
+# relative to the repository root. The Python tool refuses the descriptor if any
+# budget disagrees with the chart, the runtime package, or the runtime profile.
 readonly INFEROPS_CERTIFICATION_REL="deploy/serving/certification/k8s-real-inference.v1.json"
 
-# The loopback port the forward is opened on. Overridable because a contributor
-# may already be running the local composition, which holds the API's own port.
+# The loopback port the forward is opened on. Not a threshold: a contributor may
+# already be running the local composition, which holds the API's own port.
 readonly INFEROPS_DEFAULT_FORWARD_PORT="18090"
+
+# How much of each container's log a failure keeps. Also not a threshold: it
+# bounds an artifact, not a decision.
+readonly INFEROPS_LOG_TAIL="200"
 
 action=""
 values_file=""
@@ -143,49 +151,69 @@ for path in sys.argv[2:]:
 # and an empty budget below becomes an arithmetic expression rather than a
 # refusal.
 if ! descriptor_fields="$(read_descriptor \
+  cluster.name cluster.context \
   release.name release.namespace release.apiServiceName release.apiServicePort \
-  release.runtimeServiceName release.apiComponent release.runtimeComponent \
-  readiness.installBudgetMs readiness.runtimeBudgetMs readiness.apiBudgetMs \
-  readiness.releaseTestBudgetMs request.readinessPath evidence.factsFile)"; then
+  release.apiDeploymentName release.runtimeDeploymentName release.configMapName \
+  readiness.installBudgetMs readiness.runtimeRolloutBudgetMs \
+  readiness.apiRolloutBudgetMs readiness.releaseTestBudgetMs \
+  readiness.forwardBudgetMs readiness.uninstallBudgetMs \
+  request.host request.readinessPath evidence.factsFile)"; then
   inferops::fail "the certification descriptor could not be read after it validated. Nothing was installed."
 fi
 
 {
+  read -r descriptor_cluster
+  read -r descriptor_context
   read -r descriptor_release
   read -r descriptor_namespace
   read -r descriptor_api_service
   read -r descriptor_api_port
-  read -r descriptor_runtime_service
-  read -r descriptor_api_component
-  read -r descriptor_runtime_component
+  read -r descriptor_api_deployment
+  read -r descriptor_runtime_deployment
+  read -r descriptor_configmap
   read -r install_budget_ms
-  read -r runtime_budget_ms
-  read -r api_budget_ms
+  read -r runtime_rollout_budget_ms
+  read -r api_rollout_budget_ms
   read -r release_test_budget_ms
+  read -r forward_budget_ms
+  read -r uninstall_budget_ms
+  read -r descriptor_host
   read -r readiness_path
   read -r facts_rel
 } <<<"${descriptor_fields}"
 
-for field in descriptor_release descriptor_namespace descriptor_api_service \
-  descriptor_api_port descriptor_runtime_service descriptor_api_component \
-  descriptor_runtime_component install_budget_ms runtime_budget_ms \
-  api_budget_ms release_test_budget_ms readiness_path facts_rel; do
+for field in descriptor_cluster descriptor_context descriptor_release \
+  descriptor_namespace descriptor_api_service descriptor_api_port \
+  descriptor_api_deployment descriptor_runtime_deployment descriptor_configmap \
+  install_budget_ms runtime_rollout_budget_ms api_rollout_budget_ms \
+  release_test_budget_ms forward_budget_ms uninstall_budget_ms descriptor_host \
+  readiness_path facts_rel; do
   [ -n "${!field}" ] ||
     inferops::fail "the certification descriptor left '${field}' empty. Nothing was installed."
 done
 
-for budget in install_budget_ms runtime_budget_ms api_budget_ms release_test_budget_ms; do
-  case "${!budget}" in
+# Every value that reaches shell arithmetic or a port argument is held to being
+# a number here, at the point of use. The Python validator already refuses a
+# non-integer, but that is a different file: a guard whose correctness depends
+# on the order two programs run in is a guard waiting to be reordered.
+for number in descriptor_api_port install_budget_ms runtime_rollout_budget_ms \
+  api_rollout_budget_ms release_test_budget_ms forward_budget_ms \
+  uninstall_budget_ms; do
+  case "${!number}" in
     '' | *[!0-9]*)
-      inferops::fail "the certification descriptor's '${budget}' is not a number of milliseconds. Nothing was installed."
+      inferops::fail "the certification descriptor's '${number}' is not a number. Nothing was installed."
       ;;
   esac
 done
 
-# Two records name the same release, and they are compared rather than assumed.
+# Three records name one target, and they are compared rather than assumed.
 # lib.sh is what every script here acts through; the descriptor is what the
 # record is written from. A run where they disagree would install one release
-# and certify another.
+# and certify another, or describe a cluster it did not act on.
+[ "${descriptor_cluster}" = "${INFEROPS_CLUSTER_NAME}" ] ||
+  inferops::fail "the descriptor names cluster '${descriptor_cluster}' and these scripts operate '${INFEROPS_CLUSTER_NAME}'."
+[ "${descriptor_context}" = "${INFEROPS_KUBE_CONTEXT}" ] ||
+  inferops::fail "the descriptor names context '${descriptor_context}' and these scripts operate '${INFEROPS_KUBE_CONTEXT}'."
 [ "${descriptor_release}" = "${INFEROPS_RELEASE_NAME}" ] ||
   inferops::fail "the descriptor names release '${descriptor_release}' and these scripts operate '${INFEROPS_RELEASE_NAME}'."
 [ "${descriptor_namespace}" = "${INFEROPS_RELEASE_NAMESPACE}" ] ||
@@ -199,8 +227,8 @@ values_path="$(inferops::native_path "$(cd "$(dirname "${values_file}")" && pwd)
 
 diag_dir="${INFEROPS_ARTIFACT_DIR}/kubernetes-certification"
 facts_file="${INFEROPS_ROOT}/${facts_rel}"
-
-configmap_name="${descriptor_api_service}-configuration"
+forward_log="${diag_dir}/forward.log"
+base_url="http://${descriptor_host}:${forward_port}"
 forward_pid=""
 
 # --- bounded measurement ----------------------------------------------------
@@ -227,7 +255,7 @@ collect_diagnostics() {
   # the API prints its structured records; both are the first place to look and
   # neither carries a prompt or a completion.
   inferops::kubectl logs -n "${INFEROPS_RELEASE_NAMESPACE}" \
-    -l "${INFEROPS_RELEASE_SELECTOR}" --all-containers --tail=200 >"${diag_dir}/release.log" 2>&1 || true
+    -l "${INFEROPS_RELEASE_SELECTOR}" --all-containers --tail="${INFEROPS_LOG_TAIL}" >"${diag_dir}/release.log" 2>&1 || true
   inferops::kubectl top pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/top-pods.txt" 2>&1 || true
 }
 
@@ -250,7 +278,12 @@ on_exit() {
   exit "${rc}"
 }
 
-trap on_exit EXIT
+# INT and TERM as well as EXIT. Bash normally runs an EXIT trap when a signal
+# terminates the shell, but this workflow leaves a background forward and a real
+# release behind, and on Git Bash signal delivery to a native child is less
+# predictable than on Linux. Naming the signals costs nothing and removes the
+# need to rely on that.
+trap on_exit INT TERM EXIT
 
 # --- refuse to certify over an existing release ------------------------------
 
@@ -271,6 +304,28 @@ bash "${INFEROPS_ROOT}/scripts/environment/terraform-prerequisites.sh" apply
 prerequisites_ms=$(($(now_ms) - prerequisites_started))
 inferops::log "prerequisites applied in ${prerequisites_ms} ms."
 
+# The claim is Terraform's and must outlive this release. Counted before the
+# install so that the count after the uninstall means something.
+#
+# Asked through a function that separates "the answer is none" from "the question
+# could not be asked", because a swallowed error would make an unreachable API
+# server indistinguishable from an empty namespace -- and the residue assertion
+# would then certify a clean removal on the strength of a question nobody
+# answered.
+inferops::claim_count() {
+  local output
+  if ! output="$(inferops::kubectl get pvc \
+    -n "${INFEROPS_RELEASE_NAMESPACE}" -o name)"; then
+    return 1
+  fi
+  printf '%s' "${output}" | grep -c . || true
+}
+
+if ! claims_before="$(inferops::claim_count)"; then
+  inferops::fail "could not count the persistent volume claims before installing. An unanswered query is not an empty result, and the assertion that this release left the claim alone depends on the difference."
+fi
+inferops::log "persistent volume claims present before install: ${claims_before}"
+
 # --- install ----------------------------------------------------------------
 
 inferops::section "Installing the release"
@@ -279,7 +334,7 @@ inferops::section "Installing the release"
 # start, and the install into one number, and this workflow's whole point is to
 # measure model readiness separately from everything else. The rollout waits
 # below are the bounded ones, each against the budget the descriptor publishes
-# for that component.
+# for that component -- and those are the chart's budgets, not the adapter's.
 #
 # `--create-namespace` is absent and must stay absent: the namespace is
 # Terraform's, and Helm creating it would make this release's uninstall delete a
@@ -297,19 +352,20 @@ inferops::log "helm accepted the install in ${install_ms} ms."
 inferops::section "Waiting for the serving runtime to load the model"
 
 # The long one, and the only one that contains a model load. The budget is the
-# runtime package's own startup budget, which the descriptor is refused for
-# disagreeing with. A timeout here is a failure with a place to look, not a hang.
+# chart's own progress deadline for this Deployment, which covers scheduling,
+# the image pull, the init container's hash read of a 1.83 GB artifact, and the
+# load itself. A timeout here is a failure with a place to look, not a hang.
 runtime_started="$(now_ms)"
-inferops::kubectl rollout status "deployment/${descriptor_runtime_service}" \
-  -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((runtime_budget_ms / 1000))s"
+inferops::kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
+  -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((runtime_rollout_budget_ms / 1000))s"
 runtime_ready_ms=$(($(now_ms) - runtime_started))
 inferops::log "the serving runtime became ready in ${runtime_ready_ms} ms."
 
 inferops::section "Waiting for the platform API"
 
 api_started="$(now_ms)"
-inferops::kubectl rollout status "deployment/${descriptor_api_service}" \
-  -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((api_budget_ms / 1000))s"
+inferops::kubectl rollout status "deployment/${descriptor_api_deployment}" \
+  -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((api_rollout_budget_ms / 1000))s"
 api_ready_ms=$(($(now_ms) - api_started))
 inferops::log "the platform API became ready in ${api_ready_ms} ms."
 
@@ -360,9 +416,34 @@ deployment_field() {
 }
 
 configmap_field() {
-  inferops::kubectl get "configmap/${configmap_name}" \
+  inferops::kubectl get "configmap/${descriptor_configmap}" \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -o "jsonpath=$1"
 }
+
+# `kubectl version` accepts only `yaml` and `json` for --output; it refuses
+# `jsonpath` outright. The version is therefore taken from the JSON document,
+# which is also the only form that reports both the client and the server in one
+# call.
+kube_versions() {
+  inferops::kubectl version -o json 2>/dev/null | python -c '
+import json, sys
+
+document = json.load(sys.stdin)
+print(document.get("clientVersion", {}).get("gitVersion", ""))
+print(document.get("serverVersion", {}).get("gitVersion", ""))
+'
+}
+
+if ! kube_version_lines="$(kube_versions)"; then
+  inferops::fail "could not establish the kubectl and API server versions. A certification record names the environment it ran in."
+fi
+{
+  read -r kubectl_version
+  read -r server_version
+} <<<"${kube_version_lines}"
+
+[ -n "${kubectl_version}" ] && [ -n "${server_version}" ] ||
+  inferops::fail "the kubectl or API server version came back empty. A certification record names the environment it ran in."
 
 node_image_digest="$(inferops::running_node_digest)"
 [ -n "${node_image_digest}" ] ||
@@ -370,12 +451,10 @@ node_image_digest="$(inferops::running_node_digest)"
 
 INFEROPS_FACT_CLUSTER_NAME="${INFEROPS_CLUSTER_NAME}"
 INFEROPS_FACT_CONTEXT="${INFEROPS_KUBE_CONTEXT}"
-INFEROPS_FACT_SERVER_VERSION="$(require_query "the API server version" \
-  inferops::kubectl version -o 'jsonpath={.serverVersion.gitVersion}')"
+INFEROPS_FACT_SERVER_VERSION="${server_version}"
 INFEROPS_FACT_NODE_DIGEST="${node_image_digest}"
+INFEROPS_FACT_KUBECTL="${kubectl_version}"
 INFEROPS_FACT_HELM="$(require_query "the helm version" inferops::helm version --short)"
-INFEROPS_FACT_KUBECTL="$(require_query "the kubectl version" \
-  inferops::kubectl version --client -o 'jsonpath={.clientVersion.gitVersion}')"
 INFEROPS_FACT_TERRAFORM="$(require_query "the terraform version" \
   terraform version -json)"
 INFEROPS_FACT_RELEASE_NAME="${INFEROPS_RELEASE_NAME}"
@@ -393,23 +472,51 @@ INFEROPS_FACT_MODEL_REVISION="$(require_query "the configured model revision" \
 INFEROPS_FACT_ENVIRONMENT="$(require_query "the deployment environment" \
   configmap_field '{.data.INFEROPS_DEPLOYMENT_ENVIRONMENT}')"
 
-INFEROPS_FACT_API_NAME="${descriptor_api_service}"
-INFEROPS_FACT_API_COMPONENT="${descriptor_api_component}"
+# The component labels are read from the cluster rather than copied from the
+# descriptor. A fact that is the descriptor round-tripped through a file cannot
+# disagree with it, so the check comparing the two could never fail -- and a
+# chart that relabelled a Deployment would go on certifying under the old label.
+INFEROPS_FACT_API_NAME="${descriptor_api_deployment}"
+INFEROPS_FACT_API_COMPONENT="$(require_query "the API component label" \
+  deployment_field "${descriptor_api_deployment}" \
+  '{.metadata.labels.app\.kubernetes\.io/component}')"
 INFEROPS_FACT_API_IMAGES="$(require_query "the API images" deployment_field \
-  "${descriptor_api_service}" \
+  "${descriptor_api_deployment}" \
   '{.spec.template.spec.initContainers[*].image} {.spec.template.spec.containers[*].image}')"
 INFEROPS_FACT_API_DESIRED="$(require_query "the API replica count" deployment_field \
-  "${descriptor_api_service}" '{.spec.replicas}')"
-INFEROPS_FACT_API_READY="$(deployment_field "${descriptor_api_service}" '{.status.readyReplicas}' || true)"
+  "${descriptor_api_deployment}" '{.spec.replicas}')"
+INFEROPS_FACT_API_READY="$(deployment_field "${descriptor_api_deployment}" '{.status.readyReplicas}' || true)"
 
-INFEROPS_FACT_RUNTIME_NAME="${descriptor_runtime_service}"
-INFEROPS_FACT_RUNTIME_COMPONENT="${descriptor_runtime_component}"
+INFEROPS_FACT_RUNTIME_NAME="${descriptor_runtime_deployment}"
+INFEROPS_FACT_RUNTIME_COMPONENT="$(require_query "the runtime component label" \
+  deployment_field "${descriptor_runtime_deployment}" \
+  '{.metadata.labels.app\.kubernetes\.io/component}')"
 INFEROPS_FACT_RUNTIME_IMAGES="$(require_query "the runtime images" deployment_field \
-  "${descriptor_runtime_service}" \
+  "${descriptor_runtime_deployment}" \
   '{.spec.template.spec.initContainers[*].image} {.spec.template.spec.containers[*].image}')"
 INFEROPS_FACT_RUNTIME_DESIRED="$(require_query "the runtime replica count" deployment_field \
-  "${descriptor_runtime_service}" '{.spec.replicas}')"
-INFEROPS_FACT_RUNTIME_READY="$(deployment_field "${descriptor_runtime_service}" '{.status.readyReplicas}' || true)"
+  "${descriptor_runtime_deployment}" '{.spec.replicas}')"
+INFEROPS_FACT_RUNTIME_READY="$(deployment_field "${descriptor_runtime_deployment}" '{.status.readyReplicas}' || true)"
+
+# How the release is actually reading the weights. The chart permits
+# `verifyOnStart: sha256 | size | none` under the real profile and the operator
+# supplies the values file, so a run that only compared a byte count would
+# otherwise still produce a record whose provenance names a SHA-256.
+INFEROPS_FACT_CLAIM_NAME="$(require_query "the mounted model cache claim" \
+  deployment_field "${descriptor_runtime_deployment}" \
+  '{.spec.template.spec.volumes[?(@.name=="model-cache")].persistentVolumeClaim.claimName}')"
+INFEROPS_FACT_VOLUME_READ_ONLY="$(deployment_field "${descriptor_runtime_deployment}" \
+  '{.spec.template.spec.volumes[?(@.name=="model-cache")].persistentVolumeClaim.readOnly}' || true)"
+INFEROPS_FACT_MOUNT_READ_ONLY="$(deployment_field "${descriptor_runtime_deployment}" \
+  '{.spec.template.spec.containers[*].volumeMounts[?(@.name=="model-cache")].readOnly}' || true)"
+INFEROPS_FACT_INIT_CONTAINERS="$(require_query "the runtime init containers" \
+  deployment_field "${descriptor_runtime_deployment}" \
+  '{.spec.template.spec.initContainers[*].name}')"
+# The init container's own command, so that whether it compares a hash is read
+# out of what the cluster will run rather than assumed from the values file.
+INFEROPS_FACT_INIT_COMMAND="$(require_query "the model verification command" \
+  deployment_field "${descriptor_runtime_deployment}" \
+  '{.spec.template.spec.initContainers[*].command}')"
 
 INFEROPS_FACT_PREREQUISITES_MS="${prerequisites_ms}"
 INFEROPS_FACT_INSTALL_MS="${install_ms}"
@@ -417,6 +524,13 @@ INFEROPS_FACT_API_READY_MS="${api_ready_ms}"
 INFEROPS_FACT_RUNTIME_READY_MS="${runtime_ready_ms}"
 INFEROPS_FACT_RELEASE_TEST_MS="${release_test_ms}"
 INFEROPS_FACT_RELEASE_TEST_PASSED="${release_test_passed}"
+INFEROPS_FACT_MODEL_SHA256="$(require_query "the pinned model hash" python -c '
+import sys
+sys.path.insert(0, sys.argv[1])
+from tools.model_acquisition import load_manifest
+
+print(load_manifest().sha256)
+' "$(inferops::native_path "${INFEROPS_ROOT}")")"
 
 export INFEROPS_FACT_CLUSTER_NAME INFEROPS_FACT_CONTEXT INFEROPS_FACT_SERVER_VERSION \
   INFEROPS_FACT_NODE_DIGEST INFEROPS_FACT_HELM INFEROPS_FACT_KUBECTL \
@@ -427,6 +541,9 @@ export INFEROPS_FACT_CLUSTER_NAME INFEROPS_FACT_CONTEXT INFEROPS_FACT_SERVER_VER
   INFEROPS_FACT_API_DESIRED INFEROPS_FACT_API_READY INFEROPS_FACT_RUNTIME_NAME \
   INFEROPS_FACT_RUNTIME_COMPONENT INFEROPS_FACT_RUNTIME_IMAGES \
   INFEROPS_FACT_RUNTIME_DESIRED INFEROPS_FACT_RUNTIME_READY \
+  INFEROPS_FACT_CLAIM_NAME INFEROPS_FACT_VOLUME_READ_ONLY \
+  INFEROPS_FACT_MOUNT_READ_ONLY INFEROPS_FACT_INIT_CONTAINERS \
+  INFEROPS_FACT_INIT_COMMAND INFEROPS_FACT_MODEL_SHA256 \
   INFEROPS_FACT_PREREQUISITES_MS INFEROPS_FACT_INSTALL_MS INFEROPS_FACT_API_READY_MS \
   INFEROPS_FACT_RUNTIME_READY_MS INFEROPS_FACT_RELEASE_TEST_MS \
   INFEROPS_FACT_RELEASE_TEST_PASSED
@@ -438,6 +555,11 @@ mkdir -p "$(dirname "${facts_file}")"
 # reference with a backslash, a version banner spanning lines: each of those
 # produces a malformed document when a shell builds JSON by hand, and a
 # malformed facts file is a certification that stops for the wrong reason.
+#
+# tests/architecture/test_kubernetes_certification.py extracts this program and
+# runs it against a representative environment, then feeds its output to the
+# reader that consumes it -- because a shape agreed by inspection is a shape
+# nobody checked.
 python - "$(inferops::native_path "${facts_file}")" <<'PYTHON'
 import json
 import os
@@ -454,13 +576,28 @@ def number(name: str) -> int:
     return int(value) if value.isdigit() else 0
 
 
-def images(name: str) -> list[str]:
-    return [reference for reference in fact(name).split() if reference]
+def words(name: str) -> list[str]:
+    return [word for word in fact(name).split() if word]
+
+
+def every_true(name: str) -> bool:
+    """A jsonpath over a list yields one word per match, and all must agree.
+
+    An empty result is `False` rather than vacuously true: no match means the
+    volume or the mount this asks about was not found, which is not the same as
+    finding it and seeing it read-only.
+    """
+    values = words(name)
+    return bool(values) and all(value == "true" for value in values)
 
 
 release = json.loads(fact("RELEASE_JSON")) or [{}]
 terraform = json.loads(fact("TERRAFORM")) if fact("TERRAFORM") else {}
 
+# `helm list -o json` serialises a revision as a string. It is passed through as
+# collected rather than coerced here, because the reader that consumes this file
+# is where a value is interpreted, and a shell-side coercion would hide a change
+# in what helm reports.
 document = {
     "cluster": {
         "name": fact("CLUSTER_NAME"),
@@ -486,18 +623,31 @@ document = {
         {
             "name": fact("API_NAME"),
             "component": fact("API_COMPONENT"),
-            "images": images("API_IMAGES"),
+            "images": words("API_IMAGES"),
             "replicasDesired": number("API_DESIRED"),
             "replicasReady": number("API_READY"),
         },
         {
             "name": fact("RUNTIME_NAME"),
             "component": fact("RUNTIME_COMPONENT"),
-            "images": images("RUNTIME_IMAGES"),
+            "images": words("RUNTIME_IMAGES"),
             "replicasDesired": number("RUNTIME_DESIRED"),
             "replicasReady": number("RUNTIME_READY"),
         },
     ],
+    "modelCache": {
+        "claimName": fact("CLAIM_NAME"),
+        "volumeReadOnly": every_true("VOLUME_READ_ONLY"),
+        "mountReadOnly": every_true("MOUNT_READ_ONLY"),
+        "initContainers": words("INIT_CONTAINERS"),
+        # What the cluster will actually run, asked of the rendered command
+        # rather than of the values file: the pinned digest has to appear in it
+        # and something has to compare it.
+        "artifactHashCompared": (
+            fact("MODEL_SHA256").removeprefix("sha256:") in fact("INIT_COMMAND")
+            and "sha256sum" in fact("INIT_COMMAND")
+        ),
+    },
     "configuration": {
         "serviceVersion": fact("SERVICE_VERSION"),
         "modelIdentifier": fact("MODEL_IDENTIFIER"),
@@ -530,29 +680,29 @@ inferops::section "Forwarding the API Service"
 # reaches an endpoint behind it. It does not traverse the Service's virtual IP,
 # and it is not covered by the release's own NetworkPolicy -- which is why the
 # in-cluster connection test above is run as well rather than instead.
+mkdir -p "${diag_dir}"
 inferops::kubectl port-forward "service/${descriptor_api_service}" \
   "${forward_port}:${descriptor_api_port}" \
-  -n "${INFEROPS_RELEASE_NAMESPACE}" --address 127.0.0.1 >"${INFEROPS_ARTIFACT_DIR}/kubernetes-certification-forward.log" 2>&1 &
+  -n "${INFEROPS_RELEASE_NAMESPACE}" --address "${descriptor_host}" >"${forward_log}" 2>&1 &
 forward_pid="$!"
 
-base_url="http://127.0.0.1:${forward_port}"
-
-# Bounded: a forward that never comes up must fail this script rather than leave
-# the request to time out against a closed port and report that as the model's
-# fault.
-forward_deadline=$((SECONDS + 30))
+# Bounded by the descriptor's forward budget: a forward that never comes up must
+# fail this script rather than leave the request to time out against a closed
+# port and report that as the model's fault.
+forward_deadline=$((SECONDS + forward_budget_ms / 1000))
 forward_open=0
 while [ "${SECONDS}" -lt "${forward_deadline}" ]; do
   if ! kill -0 "${forward_pid}" 2>/dev/null; then
-    inferops::fail "the port-forward exited before it accepted a connection. Its output is in .artifacts/kubernetes-certification-forward.log."
+    inferops::fail "the port-forward exited before it accepted a connection. Its output is in .artifacts/kubernetes-certification/forward.log."
   fi
-  if python -c "
+  if python -c '
 import socket, sys
+
 try:
-    socket.create_connection(('127.0.0.1', ${forward_port}), 2).close()
+    socket.create_connection((sys.argv[1], int(sys.argv[2])), 2).close()
 except OSError:
     sys.exit(1)
-" 2>/dev/null; then
+' "${descriptor_host}" "${forward_port}" 2>/dev/null; then
     forward_open=1
     break
   fi
@@ -560,7 +710,7 @@ except OSError:
 done
 
 [ "${forward_open}" -eq 1 ] ||
-  inferops::fail "the forward to '${descriptor_api_service}' did not accept a connection within 30 s."
+  inferops::fail "the forward to '${descriptor_api_service}' did not accept a connection within $((forward_budget_ms / 1000)) s."
 
 inferops::log "forward open on ${base_url} (readiness path ${readiness_path})."
 
@@ -568,8 +718,7 @@ inferops::section "Certifying one real completion"
 
 (cd "${INFEROPS_ROOT}" && python -m tools.kubernetes_certification observe \
   --confirm-real-kubernetes \
-  --base-url "${base_url}" \
-  --cluster-facts "${facts_rel}")
+  --base-url "${base_url}")
 
 close_forward
 
@@ -580,13 +729,17 @@ inferops::section "Uninstalling the release"
 inferops::helm uninstall "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --wait \
-  --timeout 10m
+  --timeout "$((uninstall_budget_ms / 1000))s"
+
+inferops::section "Residue"
 
 # Everything Helm installs carries the release's instance label, so this is the
 # question "did uninstall remove the release" asked of the cluster rather than
-# of Helm's own bookkeeping.
+# of Helm's own bookkeeping. `pvc` is in the list on purpose: a chart that
+# created a claim would show up here, and this chart must neither create one nor
+# delete one.
 if ! remaining="$(inferops::kubectl get \
-  deployments,replicasets,services,configmaps,serviceaccounts,pods,networkpolicies \
+  deployments,replicasets,services,configmaps,serviceaccounts,pods,networkpolicies,pvc \
   -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o name)"; then
   inferops::fail "could not ask what survived the uninstall. An unanswered query is not an empty result."
 fi
@@ -595,8 +748,21 @@ if [ -n "${remaining}" ]; then
   inferops::fail "objects labelled '${INFEROPS_RELEASE_SELECTOR}' survived the uninstall."
 fi
 
+if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
+  --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
+  inferops::fail "helm still reports a release named '${INFEROPS_RELEASE_NAME}' after the uninstall."
+fi
+
 inferops::kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1 ||
   inferops::fail "namespace '${INFEROPS_RELEASE_NAMESPACE}' was removed by an uninstall. It is a Terraform prerequisite and must outlive the release."
+
+if ! claims_after="$(inferops::claim_count)"; then
+  inferops::fail "could not count the persistent volume claims after uninstalling. An unanswered query is not an empty result."
+fi
+[ "${claims_after}" = "${claims_before}" ] ||
+  inferops::fail "the claim count changed across the release: ${claims_before} before, ${claims_after} after. This chart must neither create nor delete a claim, and the model cache is Terraform's."
+
+inferops::log "persistent volume claims: ${claims_after}, unchanged by the release."
 
 inferops::section "Result"
 inferops::log "the release installed, the model loaded, a real completion returned through the API Service, and the release removed cleanly."

@@ -8,13 +8,21 @@
   "chartRef": "charts/inferops-llm",
   "certificationRef": "docs/testing/certification.md",
   "procedureRef": "docs/serving/kubernetes-real-inference-certification.md",
+  "cluster": {
+    "name": "inferops-dev",
+    "context": "kind-inferops-dev",
+    "nodeImageDigest": "sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256"
+  },
   "release": {
     "name": "inferops",
     "namespace": "inferops-release",
     "profile": "real",
     "apiServiceName": "inferops-inferops-llm",
     "apiServicePort": 8090,
+    "apiDeploymentName": "inferops-inferops-llm",
     "runtimeServiceName": "inferops-inferops-llm-runtime",
+    "runtimeDeploymentName": "inferops-inferops-llm-runtime",
+    "configMapName": "inferops-inferops-llm-configuration",
     "instanceSelector": "app.kubernetes.io/instance=inferops",
     "apiComponent": "platform-api",
     "runtimeComponent": "serving-runtime",
@@ -27,11 +35,21 @@
     "requiresPinnedApiImage": true,
     "requiresVerifiedModelCache": true
   },
+  "modelCache": {
+    "claimName": "inferops-model-cache",
+    "verificationInitContainer": "verify-model",
+    "requireReadOnlyMount": true,
+    "requireArtifactHashCompared": true
+  },
   "readiness": {
-    "installBudgetMs": 900000,
-    "runtimeBudgetMs": 300000,
-    "apiBudgetMs": 122000,
-    "releaseTestBudgetMs": 300000
+    "installBudgetMs": 120000,
+    "runtimeStartupBudgetMs": 600000,
+    "runtimeRolloutBudgetMs": 900000,
+    "apiStartupBudgetMs": 60000,
+    "apiRolloutBudgetMs": 300000,
+    "releaseTestBudgetMs": 300000,
+    "forwardBudgetMs": 30000,
+    "uninstallBudgetMs": 600000
   },
   "request": {
     "host": "127.0.0.1",
@@ -51,7 +69,8 @@
     "requirePinnedModelRevision": true,
     "requireDigestPinnedImages": true,
     "requireEveryReplicaReady": true,
-    "requireReleaseTest": true
+    "requireReleaseTest": true,
+    "requirePinnedNodeImage": true
   },
   "evidence": {
     "directory": ".cache/inferops/certification",
