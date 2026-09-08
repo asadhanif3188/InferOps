@@ -950,6 +950,52 @@ never been run**, and it cannot be until an InferOps API image exists: both
 profiles install an API container and no image is published. Do not cite it, or
 anything under `charts/`, as evidence that this chart installs.
 
+### The Terraform prerequisite layer
+
+Changes under [`infra/terraform/`](infra/terraform/) must pass the architecture
+suite, which reads the configuration and the ownership inventory and needs no
+cluster:
+
+```sh
+python -m pytest tests/architecture/test_terraform_prerequisites.py -q
+```
+
+`terraform` is not vendored, for the same reason `helm`, `shellcheck`, and
+`kubeconform` are not. Where it is installed, the format and validation checks in
+that suite stop skipping, and one command runs all three by hand:
+
+```sh
+scripts/environment/terraform-prerequisites.sh check
+```
+
+That is `terraform fmt -check -recursive`, `terraform init -backend=false`, and
+`terraform validate`. It contacts no cluster and reads no state.
+
+A change to the provider pin also regenerates the lock file for every platform
+rather than for the one you are on, because `terraform init` records only its own
+and a single-platform lock is not a pin:
+
+```sh
+terraform -chdir=infra/terraform/environments/local providers lock   -platform=linux_amd64 -platform=linux_arm64   -platform=darwin_amd64 -platform=darwin_arm64 -platform=windows_amd64
+```
+
+**Terraform owns prerequisites and Helm owns the release, and neither owns what
+the other owns.** The suite refuses a configuration that declares a release or
+derived object, a deferred row, a second provider, or anything that creates a
+cluster; it also compares the declared set against the ownership inventory in
+both directions, so a resource added here without a row there is a failing build.
+Never import or adopt an object a release installed: a resource in Terraform
+state and in a chart is reconciled by both, and the loser is whichever ran last.
+
+`plan`, `apply`, and `destroy` reach a cluster and go through the wrapper, which
+establishes cluster identity before Terraform is invoked and hands it the
+kubeconfig and context explicitly. **Nothing has ever applied this**, so do not
+cite anything under `infra/terraform/` as evidence that a namespace or a claim
+exists. `destroy` deletes the namespace, cascades over anything still inside it,
+and is the only operation here that reclaims the model weights; it requires
+`--confirm` and refuses to run while a release is installed. The rest is in
+[the prerequisite document](docs/environment/platform-prerequisites.md).
+
 Then inspect the full diff and search it for credentials, private planning content,
 personal paths, generated files, and unsupported capability claims. Report the exact
 commands you ran, their results, and any check you skipped.

@@ -30,10 +30,14 @@ scripts/environment/helm-lifecycle.sh --values path/to/your-values.yaml
    inheriting one.
 2. **Ensures the namespace, and says whose it is.** `inferops-release` is
    Terraform's under
-   [the ownership boundary](../architecture/resource-ownership.md). `V1-S3-005`
-   writes that Terraform. Until it does, the script creates the namespace itself,
-   labels it `inferops.io/lifecycle=prerequisite`, and prints that it is standing
-   in. It does **not** pass `--create-namespace` — see below.
+   [the ownership boundary](../architecture/resource-ownership.md), and that
+   Terraform now exists in
+   [the prerequisite layer](platform-prerequisites.md) — applying it first is
+   the ordered path. Where it has not been applied the script creates the
+   namespace itself, labels it `inferops.io/lifecycle=prerequisite`, and prints
+   that it is standing in; where the namespace is already there it is reused
+   untouched, so the two never both create one. It does **not** pass
+   `--create-namespace` — see below.
 3. **Counts the persistent volume claims** in the namespace before anything is
    installed, so that the residue check afterwards is a comparison rather than an
    assumption.

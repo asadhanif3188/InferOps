@@ -279,6 +279,16 @@
       "note": null
     },
     {
+      "module": "tests/architecture/test_terraform_prerequisites.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The Terraform prerequisite layer against the ownership inventory: that every resource the configuration declares maps to a Terraform-owned row and every Terraform-owned row in scope is declared, that the declared kinds are exactly the two expected ones so a new kind cannot arrive unnoticed, that no release object, derived object, deferred row, second provider, or cluster-creating resource appears, that the namespace and the claim carry the project label and the prerequisite lifecycle marker a scoped sweep must exclude, that the namespace is the one the release lifecycle installs into and is not the one another script deletes outright, that the claim name is the one the chart mounts and the default size covers two copies of the pinned artifact, that the provider pin is exact and identical in the module, the environment, and a lock file covering five platforms, that the provider names its kubeconfig and context rather than inheriting them and no host path or credential is committed, that an apply cannot hang waiting for a binding that needs a pod, and that state and plans are ignored by version control while the lock file is not.",
+      "claims": [
+        "no-resource-in-the-architecture-has-two-owners"
+      ],
+      "note": "It reads four small Terraform files, a lock file, a wrapper script, and the ownership inventory. It applies nothing and contacts no cluster, so it says nothing about whether this configuration provisions a namespace or a claim; every Terraform row in the inventory is still planned for that reason. The format and validation checks it delegates to the terraform binary skip, loudly, where the binary is absent."
+    },
+    {
       "module": "tests/contracts/test_platform_contract_regression.py",
       "layer": "contract-and-schema",
       "marker": "contract",

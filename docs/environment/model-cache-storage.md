@@ -1,12 +1,13 @@
 # Model cache storage: ownership, revision scoping, integrity, restart, cleanup
 
-Status: **the release half is implemented and rendered; the prerequisite half is
-not written, and nothing in this document has run inside Kubernetes.** The chart
-mounts a claim, scopes the mount to a revision, and verifies the artifact before
-the runtime starts. No cluster has installed it: no InferOps API image is
-published, and `model-cache-volume-claim` is `planned` in
-[the ownership inventory](../architecture/resource-ownership.md) because
-Terraform does not exist yet.
+Status: **both halves are now written and neither has run inside Kubernetes.**
+The chart mounts a claim, scopes the mount to a revision, and verifies the
+artifact before the runtime starts; the claim itself is declared by
+[the Terraform prerequisite layer](platform-prerequisites.md). No cluster has
+installed the chart — no InferOps API image is published — and no cluster has
+applied the Terraform, so `model-cache-volume-claim` is still `planned` in
+[the ownership inventory](../architecture/resource-ownership.md): a configuration
+nobody has applied provisions nothing.
 
 What *has* been measured is the property underneath all of it — that a stopped
 runtime leaves its artifact behind and the next start reads it without a network
@@ -23,7 +24,7 @@ One resource, one owner. The three roles here are deliberately three:
 
 | | Owner | Creates with | Destroys with |
 |---|---|---|---|
-| The claim | `terraform` | `terraform apply` | `terraform destroy` |
+| The claim | `terraform` | `terraform apply`, on [the prerequisite layer](platform-prerequisites.md) | `terraform destroy` |
 | The bytes inside it | `helm`, through `model-acquisition-job` | `helm install` or `helm upgrade` | Not removed by a release; they outlive it |
 | The mount | `helm`, in the serving Deployment | `helm install` | `helm uninstall` |
 
@@ -180,10 +181,14 @@ link pointed elsewhere.
 | `python -m tools.model_lifecycle clean --confirm` | `.cache/inferops/lifecycle`, which now holds both comparisons' results | the model cache, refused first and by name so that the guard is reachable and testable |
 | `python -m tools.model_acquisition clean --confirm` | `.cache/inferops/models` | anything outside it, any path resolving outside the checkout, any symbolic link in or above the tree |
 | `scripts/environment/helm-lifecycle.sh` | one release in one namespace | the claim, which is not a release object; and it never passes `--create-namespace` |
+| `scripts/environment/terraform-prerequisites.sh destroy --confirm` | the platform namespace and the claim inside it, by cascade | the cluster, any other namespace, and anything the project did not create. It refuses to run while a release is still installed |
 
-Nothing in this repository deletes the cluster-side claim. That is
-`terraform destroy`, it is the operation that reclaims the 1.71 GiB, and it is
-owned by a layer that has not been written.
+Nothing in this repository deletes the cluster-side claim except
+`terraform destroy`, which is the operation that reclaims the 1.71 GiB. It is run
+through
+[`scripts/environment/terraform-prerequisites.sh`](../../scripts/environment/terraform-prerequisites.sh),
+which refuses it without `--confirm` and refuses it while a release is still
+installed — and it has never been run.
 
 ## What this does not establish
 

@@ -233,3 +233,22 @@ __marimo__/
 /.cache/inferops/baseline/
 /.cache/inferops/lifecycle/
 *.gguf
+
+# InferOps Terraform prerequisite layer
+#   Provider plugins and module links, re-created by `terraform init`.
+.terraform/
+#   Local state and its backups. It holds the metadata of one Namespace and one
+#   PersistentVolumeClaim -- no credential and no token -- but it is host state
+#   describing one contributor's cluster, and it is not evidence.
+*.tfstate
+*.tfstate.*
+#   Saved plans. A plan embeds the prior state and is written under .artifacts/,
+#   which is already ignored; this covers one written anywhere else by hand.
+*.tfplan
+#   Variable files can carry host paths. The committed defaults are relative and
+#   need none, so a .tfvars file here is a local override by definition.
+*.auto.tfvars
+terraform.tfvars
+#   Terraform writes this beside the configuration when a provider panics.
+crash.log
+crash.*.log

@@ -14,11 +14,14 @@
 # removes a PersistentVolumeClaim; both are prerequisites that outlive a release
 # by design, and asserting that they survived is one of the checks below.
 #
-# The namespace is Terraform's (docs/architecture/resource-ownership.md).
-# V1-S3-005 writes that Terraform. Until it does, this script creates the
-# namespace itself, labels it as the prerequisite it stands in for, and says so
-# in its output — rather than passing `--create-namespace`, which would hand the
-# same resource to Helm and make the release's uninstall delete it.
+# The namespace is Terraform's (docs/architecture/resource-ownership.md), and
+# that Terraform now exists: infra/terraform/environments/local, run by
+# scripts/environment/terraform-prerequisites.sh. Applying it first is the
+# ordered path. This script still creates the namespace when it is absent —
+# labelled as the prerequisite it stands in for, and said so in its output —
+# rather than passing `--create-namespace`, which would hand the same resource to
+# Helm and make the release's uninstall delete it. A namespace Terraform already
+# applied is reused untouched, so the two never both create one.
 #
 # On failure it collects diagnostics into .artifacts/ and leaves the release in
 # place for inspection.
@@ -121,7 +124,7 @@ if inferops::kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>
   inferops::log "namespace '${INFEROPS_RELEASE_NAMESPACE}' already exists; reusing it."
 else
   inferops::log "creating namespace '${INFEROPS_RELEASE_NAMESPACE}'."
-  inferops::log "This stands in for Terraform, which V1-S3-005 has not written yet."
+  inferops::log "This stands in for the Terraform prerequisite layer, which has not been applied here. Apply it first with scripts/environment/terraform-prerequisites.sh apply."
   inferops::kubectl create namespace "${INFEROPS_RELEASE_NAMESPACE}"
   # Labelled as a prerequisite rather than a release, which is the distinction
   # the ownership document's scoped-teardown resolution turns on: a sweep that

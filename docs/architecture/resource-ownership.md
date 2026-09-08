@@ -1,35 +1,43 @@
 # V1 resource ownership
 
 Status: **accepted as the V1 ownership boundary**, in
-[ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md). Half of it is
-now written against: `V1-S3-002-PR1` added the Helm chart at
+[ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md). Both halves
+are now written against: `V1-S3-002-PR1` added the Helm chart at
 [`charts/inferops-llm/`](../../charts/inferops-llm/), `V1-S3-002-PR2` added the
 release lifecycle procedure at
 [`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh),
 `V1-S3-003-PR1` wrote the reference side of the model cache handoff — a
 revision-scoped read-only mount and an integrity check before the runtime starts,
 described in
-[the storage document](../environment/model-cache-storage.md) — and there is
-still no Terraform configuration. **Every row below is still
-`planned` or `deferred`, and that is correct**: a chart renders objects, a
-rendered object is a file, and a procedure nobody has executed changes nothing in
-a cluster. None of the resources in the release table exists in a cluster,
-because nothing here has installed one — and the lifecycle script cannot be run
-until an InferOps API image exists.
+[the storage document](../environment/model-cache-storage.md) — and
+`V1-S3-005-PR1` added the Terraform prerequisite layer at
+[`infra/terraform/`](../../infra/terraform/), described in
+[the prerequisite document](../environment/platform-prerequisites.md).
+**Every row below is still `planned` or `deferred`, and that is correct**: a
+chart renders objects, a rendered object is a file, a Terraform configuration
+nobody has applied creates nothing, and a procedure nobody has executed changes
+nothing in a cluster. None of the resources in the release or prerequisite tables
+exists in a cluster, because nothing here has installed or applied one — and the
+lifecycle script cannot be run until an InferOps API image exists.
 
-The script does record one thing this document had left implicit. Until Terraform
-is written, something has to create the namespace a release installs into, and
-that something must not be Helm. The script creates it, labels it
-`inferops.io/lifecycle=prerequisite`, and says it is standing in for `V1-S3-005`
-— which keeps the prerequisite half of the boundary a stand-in rather than a
-second owner.
+The lifecycle script records one thing this document had left implicit. Something
+has to create the namespace a release installs into, and that something must not
+be Helm. Until the prerequisite layer is applied the script creates it itself,
+labels it `inferops.io/lifecycle=prerequisite`, and says it is standing in —
+which keeps the prerequisite half of the boundary a stand-in rather than a second
+owner. It is now standing in for a configuration that exists rather than for one
+that does not, and it still creates nothing when the namespace is already there.
 
-What did change is that the chart is now checked against this document.
+What did change is that both layers are now checked against this document.
 `tests/architecture/test_helm_chart.py` reads the release table and refuses a
 chart that renders something it does not name, or that renders a Terraform-owned
 object, or that leaves a Helm-owned row neither rendered nor declared deferred.
-The last paragraph of this document used to say that no such check could exist.
-It exists for the release layer; it does not exist for Terraform.
+`tests/architecture/test_terraform_prerequisites.py` does the same for the
+prerequisite table: it refuses a configuration that declares something this
+document does not give Terraform, that declares a release or derived object, that
+implements a deferred row, or that leaves a prerequisite row undeclared. The last
+paragraph of this document used to say that no such check could exist for
+Terraform. It exists now, and what it cannot establish is written there instead.
 
 The authoritative form of this document is data, not prose:
 [`resource-ownership.v1alpha1.json`](resource-ownership.v1alpha1.json). The tables
@@ -211,14 +219,22 @@ the sweep is generalised to match the accepted wording or Terraform is written.
 
 The resolution is a second label. Prerequisites carry a lifecycle marker that a
 scoped sweep must exclude; release objects carry the marker that a sweep may match.
-`namespace-metadata` is where the prerequisite marker is set. **Nothing here
-implements it.** The scripts are unchanged by this document, and the two constraints
-below are recorded as constraints on work that has not started:
+`namespace-metadata` is where the prerequisite marker is set, and
+[the Terraform prerequisite layer](../../infra/terraform/modules/platform-prerequisites/)
+now sets it: `inferops.io/lifecycle: prerequisite` on the namespace and on the
+claim, checked by `tests/architecture/test_terraform_prerequisites.py`. **Half of
+the resolution is therefore implemented and half is not.** Setting a marker is
+not the same as excluding it, and the scripts are still unchanged:
 
 - the environment scripts' scoped teardown must exclude the prerequisite marker
-  before it is ever generalised beyond the smoke namespace;
+  before it is ever generalised beyond the smoke namespace. **This is still not
+  implemented**, and it is still not a live defect for the same reason as before:
+  the implemented teardown is bound to one smoke-test namespace and sweeps
+  nothing else;
 - the platform namespace must be distinct from the smoke-test namespace the
-  environment scripts already own and delete outright.
+  environment scripts already own and delete outright. **This is implemented.**
+  The prerequisite configuration defaults to the release namespace and refuses
+  the smoke namespace by name, in a variable validation and in a test.
 
 ## What a reviewer should check
 
@@ -250,7 +266,22 @@ subdirectory derived from the declared revision rather than at the claim's root 
 and that every rendered object carries the isolation label and the release
 lifecycle marker.
 
-Not checked by anything, because there is nothing to check it against: that the
-inventory describes the **Terraform** that gets written. That check arrives with
-the implementation, and until then the prerequisite half of this file is a
-commitment rather than a verification.
+Checked by `tests/architecture/test_terraform_prerequisites.py`, for the
+prerequisite layer only: that every resource the committed configuration declares
+maps to a Terraform-owned row here and every Terraform-owned row in scope is
+declared, that the declared kinds are exactly the two expected ones — an
+allowlist as well as a denylist, so a new kind cannot arrive unnoticed — that no
+release object, derived object, deferred row, second provider, or
+cluster-creating resource appears, that the namespace and the claim carry the
+project label and the prerequisite lifecycle marker, that the namespace is the
+one a release installs into and is not the one another script deletes outright,
+that the claim name is the one the chart mounts and the claim is large enough for
+the artifact this project pins, that the provider pin is exact and identical in
+every place it is written, and that the provider names its kubeconfig and context
+rather than inheriting them.
+
+**Not checked by anything, because nothing has produced it: that either
+configuration does what it says when it runs.** The chart has never been
+installed and the Terraform has never been applied. Both suites read files. Every
+row in both tables is `planned` for that reason, and the two halves of this
+document remain a commitment about behaviour and a verification about text.
