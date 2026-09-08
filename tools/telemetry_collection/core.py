@@ -43,6 +43,11 @@ Six rules, each named for the failure it prevents:
 ``scrape-timeout-is-not-shorter-than-its-interval``
     A timeout that can outlive its interval lets a second scrape of one target start
     before the first has finished.
+
+``configuration-is-not-readable-yaml``
+    A ConfigMap key holds something that is not YAML. The document is refused rather
+    than skipped: a scrape configuration nothing can parse is not a configuration
+    that passed, and skipping it would make every other rule vacuously satisfied.
 """
 
 from __future__ import annotations
@@ -60,6 +65,7 @@ __all__ = [
     "CONFIG_MAP_COMPONENT",
     "RECORDING_RULES_KEY",
     "RULE_IDS",
+    "SAFE_MESSAGE_CHARACTERS",
     "SCRAPE_CONFIG_KEY",
     "Finding",
     "check_documents",
@@ -90,12 +96,21 @@ SCRAPE_CONFIG_KEY: Final = "scrape-config.yaml"
 RECORDING_RULES_KEY: Final = "recording-rules.yaml"
 
 RULE_IDS: Final[tuple[str, ...]] = (
+    "configuration-is-not-readable-yaml",
     "forbidden-label-is-not-dropped",
     "job-has-no-absence-rule",
     "native-series-was-never-observed",
     "recorded-name-collides-with-an-emitted-metric",
     "scrape-timeout-is-not-shorter-than-its-interval",
     "target-label-the-catalog-bars-from-a-metric",
+)
+
+#: Every character a finding message is allowed to contain. A message names rules,
+#: field paths, and identifiers drawn from closed vocabularies, so this is the set
+#: those need and nothing more -- no control character, no escape sequence, and
+#: nothing that could reposition a terminal cursor or forge a line in a log.
+SAFE_MESSAGE_CHARACTERS: Final = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,:;'\"()[]{}=~/_-+"
 )
 
 #: A Prometheus duration, restricted to the seconds the chart renders. Anything else
@@ -113,9 +128,19 @@ _ABSENT_JOB = re.compile(r'absent\(\s*up\{\s*job\s*=\s*"([^"]+)"\s*\}\s*\)')
 class Finding:
     """One refusal, naming the rule, what it was found on, and what is wrong.
 
-    It never quotes a value read out of the manifest. A finding is written into
-    logs and terminals, and a checker that echoed what it refused would be the one
-    place a forbidden value got published.
+    **What a message may contain, exactly.** A rule identifier, a field path, and an
+    identifier drawn from a closed vocabulary -- a label name that is in the
+    catalog's own barred set, or a series name matched by ``llamacpp:[A-Za-z0-9_]+``.
+    It never repeats a *value*: not a label's value, not a replacement, not a regex
+    read out of the manifest. A finding is written into logs and terminals, and a
+    checker that echoed what it refused would be the one place a forbidden value got
+    published -- and an unconstrained echo is also how an escape sequence reaches a
+    terminal or a forged line reaches a log.
+
+    That is a property rather than a convention:
+    :data:`SAFE_MESSAGE_CHARACTERS` bounds what may appear, and a test drives the
+    checker over deliberately hostile manifests and refuses a message that leaves
+    the set.
     """
 
     rule: str
@@ -364,12 +389,23 @@ def _absent_jobs(groups: Sequence[Mapping[str, Any]]) -> frozenset[str]:
     return frozenset(named)
 
 
-def _parsed(text: object) -> Any:
+def _parsed(text: object) -> tuple[Any, bool]:
+    """The parsed document, and whether the text was readable YAML at all.
+
+    The caller has to be able to tell "this key is absent" from "this key holds
+    something no parser accepts", because the two produce the same object and only
+    one of them is a defect.
+    """
     import yaml
 
+    if text is None:
+        return None, True
     if not isinstance(text, str):
-        return None
-    return yaml.safe_load(text)
+        return None, False
+    try:
+        return yaml.safe_load(text), True
+    except yaml.YAMLError:
+        return None, False
 
 
 def check_documents(documents: Iterable[object]) -> list[Finding]:
@@ -392,14 +428,35 @@ def check_documents(documents: Iterable[object]) -> list[Finding]:
         if not isinstance(data, Mapping):
             continue
 
-        rules_document = _parsed(data.get(RECORDING_RULES_KEY))
+        rules_document, rules_readable = _parsed(data.get(RECORDING_RULES_KEY))
+        scrape_document, scrape_readable = _parsed(data.get(SCRAPE_CONFIG_KEY))
+
+        for key, readable in (
+            (SCRAPE_CONFIG_KEY, scrape_readable),
+            (RECORDING_RULES_KEY, rules_readable),
+        ):
+            if not readable:
+                findings.append(
+                    Finding(
+                        rule="configuration-is-not-readable-yaml",
+                        subject=subject,
+                        field=key,
+                        message=(
+                            "this key does not hold YAML a parser accepts. The "
+                            "document is refused rather than skipped, because a "
+                            "configuration nothing can parse is not one that "
+                            "passed, and every other rule here would be vacuously "
+                            "satisfied by a key nobody could read"
+                        ),
+                    )
+                )
+
         groups: list[Mapping[str, Any]] = []
         if isinstance(rules_document, Mapping):
             raw = rules_document.get("groups")
             if isinstance(raw, list):
                 groups = [g for g in raw if isinstance(g, Mapping)]
 
-        scrape_document = _parsed(data.get(SCRAPE_CONFIG_KEY))
         if isinstance(scrape_document, Mapping):
             raw_jobs = scrape_document.get("scrape_configs")
             if isinstance(raw_jobs, list):

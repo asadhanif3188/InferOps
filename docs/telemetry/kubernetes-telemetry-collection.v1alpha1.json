@@ -15,18 +15,19 @@
   ],
   "runtimeFeasibilityRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
   "evidenceRef": "docs/proof/telemetry/v1-s3-007-pr1-validation.md",
-
   "collectionStatus": {
     "configurationRendered": true,
     "configurationKind": "v1/ConfigMap holding a Prometheus scrape_configs fragment and a recording-rule group set",
-    "configMapKeys": ["scrape-config.yaml", "recording-rules.yaml"],
+    "configMapKeys": [
+      "scrape-config.yaml",
+      "recording-rules.yaml"
+    ],
     "mountedBy": "nothing; neither Deployment references it, because a workload publishes metrics and does not collect them",
     "collector": "not selected. Who owns a collector, store, dashboard, or alerting path is an open question in ADR 0004 that ADR 0006 D8 deliberately does not answer, and this record does not answer it either.",
     "collected": false,
     "everInstalled": false,
     "note": "Nothing reads this configuration and nothing scrapes either endpoint. Every count, bound, and multiplier below is arithmetic over declared values, not a measurement of a store."
   },
-
   "discovery": {
     "mechanism": "prometheus kubernetes_sd_configs, role: pod",
     "scopedTo": "the release namespace, named explicitly rather than own_namespace",
@@ -35,23 +36,33 @@
       "app.kubernetes.io/instance",
       "app.kubernetes.io/component"
     ],
-    "doesNotSelectOn": ["prometheus.io/scrape", "prometheus.io/port", "prometheus.io/path"],
+    "doesNotSelectOn": [
+      "prometheus.io/scrape",
+      "prometheus.io/port",
+      "prometheus.io/path"
+    ],
     "whyNotAnnotations": "The prometheus.io annotations are optional and off by default, so a configuration keyed on them would select nothing in the default installation. The three Kubernetes labels above are set on every pod this chart installs, whatever the values file says.",
     "whyInstanceIsInTheSelector": "A job matching part-of: inferops alone would scrape a second release installed beside this one and attribute its series here.",
     "portIsKeptExplicitly": true,
     "whyPortIsKept": "Pod discovery yields one target per declared container port. A pod with two ports produces two targets, and the second answers nothing on the metrics path -- a permanently failing target that reads as a broken endpoint."
   },
-
   "jobs": [
     {
-      "jobName": "inferops-platform-api",
-      "profiles": ["mock", "real"],
+      "jobName": "<release fullname>-platform-api",
+      "profiles": [
+        "mock",
+        "real"
+      ],
       "emitterId": "inferops-api",
       "componentLabel": "platform-api",
       "portValuePath": "api.containerPort",
       "metricsPathValuePath": "telemetry.metricsPath",
       "honorLabels": false,
-      "attachedTargetLabels": ["k8s_namespace", "k8s_component", "instance"],
+      "attachedTargetLabels": [
+        "k8s_namespace",
+        "k8s_component",
+        "instance"
+      ],
       "deliberatelyNotAttached": [
         "inferops_workload_id",
         "inferops_model_id",
@@ -65,11 +76,15 @@
         "inferops_runtime_id"
       ],
       "whyNotAttached": "The API publishes every one of these itself: the operational ones on its own series, and the identity ones on inferops_build_info, which is one series per process and is the join ADR 0006 D3 designed for. honor_labels is false, so a target label of the same name would win the collision and Prometheus would rename the emitter's to exported_*, silently changing every query written against it.",
-      "authorityForNotAttached": "docs/telemetry/api-instrumentation.md"
+      "authorityForNotAttached": "docs/telemetry/api-instrumentation.md",
+      "jobNameSuffix": "platform-api",
+      "whyJobNameIsReleaseScoped": "Prometheus refuses a configuration holding two scrape_configs entries with the same job_name. This fragment is a document an operator merges into whatever configuration their collector already has, so two releases of this chart installed beside each other -- the case every keep filter here exists to distinguish -- would otherwise render two fragments that cannot be merged at all. The name is the release-qualified name every object in this release carries, so a job in a collector's configuration and an object in kubectl get share a prefix."
     },
     {
-      "jobName": "inferops-serving-runtime",
-      "profiles": ["real"],
+      "jobName": "<release fullname>-serving-runtime",
+      "profiles": [
+        "real"
+      ],
       "emitterId": "serving-runtime",
       "componentLabel": "serving-runtime",
       "portValuePath": "runtime.containerPort",
@@ -93,10 +108,11 @@
         "inferops_adapter_kind"
       ],
       "whyNotAttached": "These are the catalog's identity-only attributes. Putting an immutable version on every series is precisely what the identity metric exists to avoid, and llama-server publishes no identity metric to put them on. Runtime series join to the release's identity through k8s_namespace and inferops_runtime_id, which inferops_build_info also carries.",
-      "whyAttached": "llama-server publishes bare series with no labels at all -- the feasibility record measured exactly that -- so there is nothing to collide with, and the collector is the only thing positioned to supply the operating dimensions. Only the four the catalog permits as metric labels are supplied."
+      "whyAttached": "llama-server publishes bare series with no labels at all -- the feasibility record measured exactly that -- so there is nothing to collide with, and the collector is the only thing positioned to supply the operating dimensions. Only the four the catalog permits as metric labels are supplied.",
+      "jobNameSuffix": "serving-runtime",
+      "whyJobNameIsReleaseScoped": "Prometheus refuses a configuration holding two scrape_configs entries with the same job_name. This fragment is a document an operator merges into whatever configuration their collector already has, so two releases of this chart installed beside each other -- the case every keep filter here exists to distinguish -- would otherwise render two fragments that cannot be merged at all. The name is the release-qualified name every object in this release carries, so a job in a collector's configuration and an object in kubectl get share a prefix."
     }
   ],
-
   "targetLabels": [
     {
       "labelName": "job",
@@ -143,7 +159,9 @@
       "catalogAttributeId": "deployment-environment",
       "cardinality": "bounded-small",
       "maxDistinctValues": 4,
-      "jobs": ["inferops-serving-runtime"],
+      "jobs": [
+        "inferops-serving-runtime"
+      ],
       "reason": "A figure from a laptop must never be read as a figure from somewhere else, and llama-server's series carry no environment of their own."
     },
     {
@@ -153,7 +171,9 @@
       "catalogAttributeId": "workload-id",
       "cardinality": "bounded-deployment",
       "maxDistinctValues": 25,
-      "jobs": ["inferops-serving-runtime"],
+      "jobs": [
+        "inferops-serving-runtime"
+      ],
       "reason": "Which workload is failing. It is deployment configuration rather than a value read off a request, exactly as the catalog requires."
     },
     {
@@ -163,7 +183,9 @@
       "catalogAttributeId": "model-id",
       "cardinality": "bounded-deployment",
       "maxDistinctValues": 5,
-      "jobs": ["inferops-serving-runtime"],
+      "jobs": [
+        "inferops-serving-runtime"
+      ],
       "reason": "Which model these runtime series describe."
     },
     {
@@ -173,11 +195,12 @@
       "catalogAttributeId": "runtime-id",
       "cardinality": "bounded-deployment",
       "maxDistinctValues": 3,
-      "jobs": ["inferops-serving-runtime"],
+      "jobs": [
+        "inferops-serving-runtime"
+      ],
       "reason": "Which serving runtime answered, and the join between the runtime's own series and the identity the API publishes. Derived from the profile rather than configured beside it, for the same reason the capability and the adapter kind are: a value carrying this label would be a way to compose a mock adapter and publish the real runtime's identifier."
     }
   ],
-
   "droppedMetricLabels": {
     "action": "labeldrop, in metric_relabel_configs, on every job",
     "derivation": "every attribute in the telemetry catalog whose declared placements include neither metric-label nor info-label, written in the form a Prometheus exposition spells it",
@@ -204,7 +227,6 @@
       "trace_id"
     ]
   },
-
   "seriesMultiplier": {
     "statement": "Collection does not change what a process emits. It multiplies what a store keeps, by the number of targets whose label sets differ.",
     "perTargetLabelProduct": 1,
@@ -219,7 +241,6 @@
     "runtimeJobCeiling": "not declared. The runtime's series are llama-server's rather than this catalog's, fifteen were observed once, and none carries a label of its own -- so the target labels this configuration attaches are the whole of its label product. A declared bound would be a guess about somebody else's exposition.",
     "note": "Every figure here is arithmetic over declared bounds multiplied by a replica count. The declared bounds are themselves a ceiling for a deployment this project does not run -- one deployment serves one workload and one model, so the label products the budget bounds at twenty-five workloads and five models resolve to one of each. No store has held one of these series."
   },
-
   "runtimeMetricMapping": {
     "source": "docs/telemetry/telemetry-catalog.v1alpha1.json runtimeNativeSeries",
     "measuredOn": "2026-08-24",
@@ -229,21 +250,28 @@
     "rules": [
       {
         "record": "inferops:inference_tokens:runtime_total",
-        "nativeSeries": ["llamacpp:prompt_tokens_total", "llamacpp:tokens_predicted_total"],
+        "nativeSeries": [
+          "llamacpp:prompt_tokens_total",
+          "llamacpp:tokens_predicted_total"
+        ],
         "catalogConcept": "inferops_inference_tokens_total",
         "completeness": "complete",
         "note": "The direction label distinguishes the two, exactly as it does on the metric the API emits. It is added by label_replace rather than by a target label, because it varies per series and a target label cannot."
       },
       {
         "record": "inferops:inference_requests_in_flight:runtime",
-        "nativeSeries": ["llamacpp:requests_processing"],
+        "nativeSeries": [
+          "llamacpp:requests_processing"
+        ],
         "catalogConcept": "inferops_inference_requests_in_flight",
         "completeness": "complete",
         "note": "The runtime's view of in-flight work, beside the API's own gauge of the same concept. The two count different boundaries and are not expected to agree."
       },
       {
         "record": "inferops:inference_requests_deferred:runtime",
-        "nativeSeries": ["llamacpp:requests_deferred"],
+        "nativeSeries": [
+          "llamacpp:requests_deferred"
+        ],
         "catalogConcept": "inferops_inference_queue_duration_seconds",
         "completeness": "partial",
         "note": "It shows that queueing happened and never how long any request waited. The wait is the serving-runtime adapter's measurement, and the adapter is not instrumented. The record is named so that it cannot be read as the histogram."
@@ -265,48 +293,50 @@
     "unmappedAreStillCollected": true,
     "whyUnmappedAreStillCollected": "They are cheap, they are already on the endpoint, and dropping them would make a runtime tuning question unanswerable to save a series count the budget does not need. What they are not is an InferOps concept, and no recording rule pretends otherwise."
   },
-
   "missingSignalVisibility": [
     {
       "record": "inferops:scrape_targets:count",
       "detects": "how many targets each job has",
-      "expression": "count by (job, k8s_namespace, k8s_component) (up{job=~\"inferops-.+\"})",
+      "expression": "count by (job, k8s_namespace, k8s_component) (up{job=~\"<the release's own job names>\"})",
       "readsToday": "nothing; no collector evaluates it"
     },
     {
       "record": "inferops:scrape_targets_up:sum",
       "detects": "how many of them answered",
-      "expression": "sum by (job, k8s_namespace, k8s_component) (up{job=~\"inferops-.+\"})",
+      "expression": "sum by (job, k8s_namespace, k8s_component) (up{job=~\"<the release's own job names>\"})",
       "whySumAndNotCount": "A job whose every target is down must read zero here. A count over a vector filtered by == 1 reads nothing at all, and nothing looks like a healthy quiet system.",
       "readsToday": "nothing; no collector evaluates it"
     },
     {
       "record": "inferops:scrape_job_absent:platform_api",
       "detects": "a job whose discovery matched no pod, which produces no up series to be zero",
-      "expression": "absent(up{job=\"inferops-platform-api\"})",
+      "expression": "absent(up{job=\"<release fullname>-platform-api\"})",
       "readsToday": "nothing; no collector evaluates it"
     },
     {
       "record": "inferops:scrape_job_absent:serving_runtime",
       "detects": "the same, for the runtime job",
-      "expression": "absent(up{job=\"inferops-serving-runtime\"})",
-      "profiles": ["real"],
+      "expression": "absent(up{job=\"<release fullname>-serving-runtime\"})",
+      "profiles": [
+        "real"
+      ],
       "readsToday": "nothing; no collector evaluates it"
     },
     {
       "record": "inferops:build_info_absent:platform_api",
       "detects": "a target that is up and useless: it answered a scrape and published no identity, which up alone cannot tell from one that is up and correct",
-      "expression": "absent(inferops_build_info)",
-      "readsToday": "nothing; no collector evaluates it"
+      "expression": "absent(inferops_build_info{k8s_namespace=\"<release namespace>\", k8s_component=\"platform-api\"})",
+      "readsToday": "nothing; no collector evaluates it",
+      "scoped": "to the release namespace and the API tier. An unscoped absent() over a store holding two releases reads 0 as soon as either one publishes an identity, which is the opposite of what the rule is for."
     },
     {
       "record": "inferops:model_ready_absent:platform_api",
       "detects": "model readiness, which nothing emits",
-      "expression": "absent(inferops_model_ready)",
-      "readsToday": "1, and will until the serving-runtime adapter is instrumented. A rule that averaged a metric nothing produces would publish an empty series, which reads as a healthy system rather than an absent one. This publishes the absence instead."
+      "expression": "absent(inferops_model_ready{k8s_namespace=\"<release namespace>\", k8s_component=\"platform-api\"})",
+      "readsToday": "1, and will until the serving-runtime adapter is instrumented. A rule that averaged a metric nothing produces would publish an empty series, which reads as a healthy system rather than an absent one. This publishes the absence instead.",
+      "scoped": "to the release namespace and the API tier. An unscoped absent() over a store holding two releases reads 0 as soon as either one publishes an identity, which is the opposite of what the rule is for."
     }
   ],
-
   "unavailableSignals": [
     {
       "signal": "inferops_model_ready",
@@ -381,7 +411,6 @@
       "deferredTo": "not scheduled in this PR"
     }
   ],
-
   "networkPath": {
     "statement": "The release's default-deny denies ingress from every pod outside it, so a collector in another namespace is denied by the policy this chart already renders.",
     "allowance": "telemetry.collection.collector, which renders one ingress rule per workload policy naming exactly one namespace and one pod selector",
@@ -392,7 +421,6 @@
     "enforcement": "none here. Whether a NetworkPolicy is applied at all is the cluster network plugin's decision, and the accepted local cluster's plugin was tested and does not enforce one. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md, DR-04 and EX-05.",
     "endpointIsUnauthenticated": "The metrics endpoint carries no authentication (docs/security/deferred-risks.md, DR-01). On a cluster that does not enforce policy, the allowance changes nothing because nothing was denied; on one that does, it is the whole of the access control on the endpoint."
   },
-
   "limitations": [
     {
       "limitationId": "no-collector",
@@ -425,6 +453,10 @@
     {
       "limitationId": "endpoint-is-unauthenticated",
       "statement": "The metrics endpoint carries no authentication. Making it discoverable does not make it safe to expose, and the network policy allowance is the only access control this release has to offer a collector."
+    },
+    {
+      "limitationId": "job-names-are-scoped-and-that-is-all-that-is-scoped",
+      "statement": "Job names are release-qualified so that two releases' fragments can be merged into one collector configuration. Nothing here merges them, no collector has loaded either fragment, and a name that does not collide is not the same thing as a composition that works."
     }
   ]
 }

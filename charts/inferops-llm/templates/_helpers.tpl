@@ -671,6 +671,26 @@ http_response_status_code|inferops_correlation_id|inferops_cost_record_id|infero
 {{- end -}}
 
 {{/*
+The name of one scrape job, scoped to the release.
+
+**Why it is not a constant.** The scrape configuration this chart renders is a
+document an operator merges into whatever configuration their collector already
+has, and Prometheus refuses a configuration holding two `scrape_configs` entries
+with the same `job_name`. Two releases of this chart installed beside each other --
+the case every `keep` filter here is written to distinguish -- would each render a
+fragment named `inferops-platform-api`, and the merged configuration would not load
+at all. A job name that is right only while exactly one release exists is a job name
+that fails at the moment composition starts.
+
+It uses the same release-qualified name every object in this release carries, so a
+job in a collector's configuration and an object in `kubectl get` are traceable to
+each other by their shared prefix.
+*/}}
+{{- define "inferops-llm.telemetryJobName" -}}
+{{ include "inferops-llm.fullname" .context }}-{{ .component }}
+{{- end -}}
+
+{{/*
 The Prometheus scrape configuration for this release.
 
 **What it is, and what it is not.** It is a document. No collector, store,
@@ -687,6 +707,15 @@ that keyed on them would select nothing in the default installation. Discovery i
 also pinned to this release's namespace and instance: a job matching
 `part-of: inferops` alone would scrape a second release installed beside this one
 and attribute its series here.
+
+**The release name is escaped before it reaches the regex, and that is the only
+place in this chart where it needs to be.** Every other use of `.Release.Name` here
+is an exact-match label value. This one is a `keep` filter, Helm permits a release
+name to contain a dot, and a dot in an unescaped RE2 pattern matches any character
+-- so a release called `a.z` would have matched a release called `aXz` installed
+beside it, and would have collected its series under this release's name. That is
+the precise failure the pinning above exists to prevent, so an unescaped name would
+have been a control that read as one and was not.
 
 **The port is kept explicitly.** Pod discovery yields one target per declared
 container port, so a pod with two ports produces two targets and the second answers
@@ -737,7 +766,7 @@ traffic.
 {{- $interval := printf "%ds" (int .Values.telemetry.collection.scrapeIntervalSeconds) -}}
 {{- $timeout := printf "%ds" (int .Values.telemetry.collection.scrapeTimeoutSeconds) -}}
 scrape_configs:
-  - job_name: inferops-platform-api
+  - job_name: {{ include "inferops-llm.telemetryJobName" (dict "context" $ "component" "platform-api") }}
     scheme: http
     metrics_path: {{ .Values.telemetry.metricsPath | quote }}
     scrape_interval: {{ $interval }}
@@ -758,7 +787,7 @@ scrape_configs:
           - __meta_kubernetes_pod_label_app_kubernetes_io_component
         separator: ";"
         action: keep
-        regex: {{ printf "inferops;%s;platform-api" .Release.Name | quote }}
+        regex: {{ printf "inferops;%s;platform-api" (regexQuoteMeta .Release.Name) | quote }}
       - source_labels:
           - __meta_kubernetes_pod_container_port_number
         action: keep
@@ -776,7 +805,7 @@ scrape_configs:
       - action: labeldrop
         regex: {{ printf "(%s)" (include "inferops-llm.forbiddenMetricLabels" .) | quote }}
 {{- if eq .Values.profile "real" }}
-  - job_name: inferops-serving-runtime
+  - job_name: {{ include "inferops-llm.telemetryJobName" (dict "context" $ "component" "serving-runtime") }}
     scheme: http
     metrics_path: {{ .Values.telemetry.collection.runtimeMetricsPath | quote }}
     scrape_interval: {{ $interval }}
@@ -795,7 +824,7 @@ scrape_configs:
           - __meta_kubernetes_pod_label_app_kubernetes_io_component
         separator: ";"
         action: keep
-        regex: {{ printf "inferops;%s;serving-runtime" .Release.Name | quote }}
+        regex: {{ printf "inferops;%s;serving-runtime" (regexQuoteMeta .Release.Name) | quote }}
       - source_labels:
           - __meta_kubernetes_pod_container_port_number
         action: keep
@@ -852,6 +881,16 @@ routing tree, and somebody on the other end, and none of the three is decided.
 */}}
 {{- define "inferops-llm.telemetryRecordingRules" -}}
 {{- $interval := printf "%ds" (int .Values.telemetry.collection.scrapeIntervalSeconds) -}}
+{{- $apiJob := include "inferops-llm.telemetryJobName" (dict "context" . "component" "platform-api") -}}
+{{- $runtimeJob := include "inferops-llm.telemetryJobName" (dict "context" . "component" "serving-runtime") -}}
+{{- $jobs := $apiJob -}}
+{{- if eq .Values.profile "real" -}}
+{{- $jobs = printf "%s|%s" (regexQuoteMeta $apiJob) (regexQuoteMeta $runtimeJob) -}}
+{{- else -}}
+{{- $jobs = regexQuoteMeta $apiJob -}}
+{{- end -}}
+{{- $selector := printf "up{job=~\"%s\"}" $jobs -}}
+{{- $scope := printf "k8s_namespace=\"%s\", k8s_component=\"platform-api\"" .Release.Namespace -}}
 groups:
 {{- if eq .Values.profile "real" }}
   - name: inferops-runtime-metric-mapping
@@ -879,24 +918,28 @@ groups:
     interval: {{ $interval }}
     rules:
       - record: inferops:scrape_targets:count
-        expr: count by (job, k8s_namespace, k8s_component) (up{job=~"inferops-.+"})
+        expr: count by (job, k8s_namespace, k8s_component) ({{ $selector }})
       # sum rather than a count over a filtered vector: a job whose every target is
       # down must read zero here, and a count over an empty vector reads nothing.
       - record: inferops:scrape_targets_up:sum
-        expr: sum by (job, k8s_namespace, k8s_component) (up{job=~"inferops-.+"})
+        expr: sum by (job, k8s_namespace, k8s_component) ({{ $selector }})
       - record: inferops:scrape_job_absent:platform_api
-        expr: absent(up{job="inferops-platform-api"})
+        expr: absent(up{job="{{ $apiJob }}"})
 {{- if eq .Values.profile "real" }}
       - record: inferops:scrape_job_absent:serving_runtime
-        expr: absent(up{job="inferops-serving-runtime"})
+        expr: absent(up{job="{{ $runtimeJob }}"})
 {{- end }}
       # The API answered a scrape and published no identity: a target that is up and
       # useless, which `up` alone cannot tell from one that is up and correct.
+      #
+      # Scoped to this release's namespace and tier for the same reason the jobs are
+      # named for the release: an unscoped absent() over a store holding two releases
+      # reads 0 as soon as either one of them publishes an identity.
       - record: inferops:build_info_absent:platform_api
-        expr: absent(inferops_build_info)
+        expr: absent(inferops_build_info{{ "{" }}{{ $scope }}{{ "}" }})
       # Reads 1 until the adapter the catalog assigns this metric to emits it.
       - record: inferops:model_ready_absent:platform_api
-        expr: absent(inferops_model_ready)
+        expr: absent(inferops_model_ready{{ "{" }}{{ $scope }}{{ "}" }})
 {{- end -}}
 
 {{/*

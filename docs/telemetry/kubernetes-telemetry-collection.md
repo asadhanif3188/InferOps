@@ -39,8 +39,17 @@ signals the catalog specifies have no source at all.
 
 | Job | Profiles | Emitter | Port | Path |
 |---|---|---|---|---|
-| `inferops-platform-api` | `mock`, `real` | the InferOps API | `api.containerPort` | `telemetry.metricsPath` |
-| `inferops-serving-runtime` | `real` | `llama-server` | `runtime.containerPort` | `telemetry.collection.runtimeMetricsPath` |
+| `<release fullname>-platform-api` | `mock`, `real` | the InferOps API | `api.containerPort` | `telemetry.metricsPath` |
+| `<release fullname>-serving-runtime` | `real` | `llama-server` | `runtime.containerPort` | `telemetry.collection.runtimeMetricsPath` |
+
+**The job name is release-qualified, and that is not cosmetic.** Prometheus refuses
+a configuration holding two `scrape_configs` entries with the same `job_name`. This
+fragment is a document an operator merges into whatever configuration their collector
+already has, so two releases of this chart installed beside each other — the case
+every `keep` filter below exists to distinguish — would otherwise render two
+fragments that could not be merged at all. The name is the release-qualified name
+every object in this release carries, so a job in a collector's configuration and an
+object in `kubectl get` share a prefix.
 
 Both use `kubernetes_sd_configs` with `role: pod`, scoped to the release namespace
 by name rather than by `own_namespace` — the collector is not expected to run in the
@@ -48,9 +57,14 @@ release's namespace, and `own_namespace` would silently mean the collector's own
 
 Three details in the selection are load-bearing:
 
-- **The release instance is in the selector.** A job matching `part-of: inferops`
-  alone would scrape a second release installed beside this one and attribute its
-  series here.
+- **The release instance is in the selector, and it is escaped.** A job matching
+  `part-of: inferops` alone would scrape a second release installed beside this one
+  and attribute its series here. The name goes through `regexQuoteMeta` first,
+  because this is the only place in the chart where a release name reaches a regex
+  rather than an exact-match label value, Helm permits a release name to contain a
+  dot, and a dot in an unescaped RE2 pattern matches any character — so a release
+  called `a.z` would have matched one called `aXz`, which is precisely the failure
+  the selector exists to prevent.
 - **The port is kept explicitly.** Pod discovery yields one target per declared
   container port, so a pod with two ports produces two targets and the second
   answers nothing on the metrics path. That is a permanently failing target that
@@ -219,6 +233,12 @@ two failures it misses are the ones that look like health.
 | `inferops:build_info_absent:platform_api` | a target that is up and published no identity |
 | `inferops:model_ready_absent:platform_api` | model readiness, which nothing emits |
 
+Every one of them names this release's own jobs, and the two `absent()` rules over a
+metric rather than over `up` are scoped to this release's namespace and tier. An
+unscoped `absent(inferops_build_info)` evaluated against a store holding two releases
+reads 0 as soon as either one publishes an identity, which is the opposite of what
+the rule is for.
+
 **`sum` rather than a count of a filtered vector.** A job whose every target is down
 must read zero. `count(up == 1)` over an all-down job reads *nothing*, and nothing
 looks like a healthy quiet system.
@@ -297,6 +317,10 @@ control on an endpoint that carries **no authentication at all**
   here would notice.
 - **A recorded absence is not an alert.** The rules in section 6 record values that
   nothing evaluates and nobody is paged for.
+- **A job name that does not collide is not a composition that works.** Job names are
+  release-qualified so that two releases' fragments *can* be merged into one collector
+  configuration. Nothing here merges them, and no collector has loaded either
+  fragment.
 
 ## Running the checks
 

@@ -35,6 +35,7 @@ import yaml
 
 from tools.telemetry_collection import (
     RULE_IDS,
+    SAFE_MESSAGE_CHARACTERS,
     check_documents,
     emitted_metric_names,
     forbidden_metric_labels,
@@ -58,6 +59,18 @@ CATALOG: dict[str, Any] = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 HELPERS = HELPERS_PATH.read_text(encoding="utf-8")
 
 PROFILES = ("mock", "real")
+
+#: The release name and namespace the committed renders are produced with. Both are
+#: part of the rendered output, so they are constants of the fixture rather than
+#: choices this suite makes.
+RELEASE_FULLNAME = "inferops-inferops-llm"
+RELEASE_NAMESPACE = "inferops-platform"
+
+
+def job_name(suffix: str) -> str:
+    """A job name as the committed renders spell it."""
+    return f"{RELEASE_FULLNAME}-{suffix}"
+
 
 RENDERED: dict[str, list[dict[str, Any]]] = {
     profile: [
@@ -158,6 +171,7 @@ def test_the_record_and_the_document_name_the_same_jobs_labels_and_rules() -> No
     """Neither file may publish a name the other has never heard of."""
     for job in RECORD["jobs"]:
         assert job["jobName"] in DOCUMENT
+        assert job["whyJobNameIsReleaseScoped"]
     for label in RECORD["targetLabels"]:
         assert f"`{label['labelName']}`" in DOCUMENT
     for rule in RECORD["runtimeMetricMapping"]["rules"]:
@@ -236,21 +250,16 @@ def test_the_api_job_attaches_no_label_the_api_already_emits() -> None:
     longer there, which is a worse outcome than the missing dimension the duplicate
     was added to supply.
     """
+    attribute_by_id = {row["attributeId"]: row for row in CATALOG["attributes"]}
     emitted_labels = {
-        ATTRIBUTE_BY_PROMETHEUS_NAME[
-            next(
-                key
-                for key, attribute in ATTRIBUTE_BY_PROMETHEUS_NAME.items()
-                if attribute["attributeId"] == label_id
-            )
-        ]["name"].replace(".", "_")
+        attribute_by_id[label_id]["name"].replace(".", "_")
         for metric in CATALOG["metrics"]
         if metric.get("emission") == "emitted"
         for label_id in metric["labels"]
     }
     assert emitted_labels, "the catalog declares no emitted metric label to compare"
     for profile in PROFILES:
-        job = scrape_jobs(profile)["inferops-platform-api"]
+        job = scrape_jobs(profile)[job_name("platform-api")]
         assert job["honor_labels"] is False
         collision = target_labels(job) & emitted_labels
         assert not collision, f"{profile} API job would rename {sorted(collision)}"
@@ -258,8 +267,27 @@ def test_the_api_job_attaches_no_label_the_api_already_emits() -> None:
 
 @pytest.mark.parametrize("profile", PROFILES)
 def test_the_rendered_jobs_are_the_ones_the_record_declares(profile: str) -> None:
-    declared = {job["jobName"] for job in RECORD["jobs"] if profile in job["profiles"]}
+    declared = {
+        job_name(job["jobNameSuffix"])
+        for job in RECORD["jobs"]
+        if profile in job["profiles"]
+    }
     assert set(scrape_jobs(profile)) == declared
+
+
+@pytest.mark.parametrize("profile", PROFILES)
+def test_every_job_name_is_scoped_to_the_release(profile: str) -> None:
+    """Prometheus refuses two scrape_configs entries sharing a job_name.
+
+    This fragment is meant to be merged into a collector's existing
+    configuration, so two releases of this chart installed beside each other --
+    the case every `keep` filter here exists to distinguish -- would render two
+    fragments that could not be merged at all if the names were constants.
+    """
+    rendered = scrape_jobs(profile)
+    for name in rendered:
+        assert name.startswith(f"{RELEASE_FULLNAME}-"), name
+    assert len(set(rendered)) == len(rendered)
 
 
 @pytest.mark.parametrize("profile", PROFILES)
@@ -269,9 +297,8 @@ def test_the_rendered_target_labels_are_the_ones_the_record_declares(
     for job in RECORD["jobs"]:
         if profile not in job["profiles"]:
             continue
-        assert target_labels(scrape_jobs(profile)[job["jobName"]]) == set(
-            job["attachedTargetLabels"]
-        )
+        rendered = scrape_jobs(profile)[job_name(job["jobNameSuffix"])]
+        assert target_labels(rendered) == set(job["attachedTargetLabels"])
 
 
 def test_nothing_the_record_says_is_not_attached_is_attached() -> None:
@@ -279,8 +306,8 @@ def test_nothing_the_record_says_is_not_attached_is_attached() -> None:
         for job in RECORD["jobs"]:
             if profile not in job["profiles"]:
                 continue
-            attached = target_labels(scrape_jobs(profile)[job["jobName"]])
-            assert not attached & set(job["deliberatelyNotAttached"])
+            rendered = scrape_jobs(profile)[job_name(job["jobNameSuffix"])]
+            assert not target_labels(rendered) & set(job["deliberatelyNotAttached"])
 
 
 # --------------------------------------------------------------------------
@@ -443,7 +470,8 @@ def test_the_absence_of_model_readiness_is_published_rather_than_averaged() -> N
         for row in RECORD["missingSignalVisibility"]
         if row["record"] == "inferops:model_ready_absent:platform_api"
     )
-    assert rule["expression"] == "absent(inferops_model_ready)"
+    assert rule["expression"].startswith("absent(inferops_model_ready{")
+    assert 'k8s_component="platform-api"' in rule["expression"]
     assert rule["readsToday"].startswith("1,")
 
 
@@ -480,7 +508,7 @@ def test_the_charts_runtime_identifier_matches_the_adapters() -> None:
     assert LLAMA_SERVER_RUNTIME_ID in body
     assert MOCK_RUNTIME_ID in body
 
-    real_job = scrape_jobs("real")["inferops-serving-runtime"]
+    real_job = scrape_jobs("real")[job_name("serving-runtime")]
     supplied = {
         rule["target_label"]: rule["replacement"]
         for rule in real_job["relabel_configs"]
@@ -499,9 +527,115 @@ def test_the_committed_renders_satisfy_the_collection_policy() -> None:
         assert check_documents(RENDERED[profile]) == []
 
 
-def test_a_bundle_with_no_scrape_configuration_produces_no_findings() -> None:
-    """Switching collection off is a supported installation, not a violation."""
+def test_a_config_map_that_is_not_the_scrape_configuration_is_left_alone() -> None:
+    """The checker reads a bundle and answers for one object in it.
+
+    A release that switched collection off renders no such object at all, which is a
+    supported installation and reaches this same path;
+    `tests/architecture/test_helm_chart.py` drives the switch itself, because that
+    needs a render rather than a fixture.
+    """
     assert check_documents([{"kind": "ConfigMap", "metadata": {"name": "x"}}]) == []
+    assert check_documents([]) == []
+
+
+def _tampered_config_map(scrape: object, rules: object) -> dict[str, Any]:
+    return {
+        "kind": "ConfigMap",
+        "metadata": {
+            "name": "hostile",
+            "labels": {"app.kubernetes.io/component": "telemetry-scrape-configuration"},
+        },
+        "data": {"scrape-config.yaml": scrape, "recording-rules.yaml": rules},
+    }
+
+
+def test_a_key_that_is_not_yaml_is_refused_rather_than_skipped() -> None:
+    """A configuration nothing can parse is not a configuration that passed.
+
+    Skipping it would leave every other rule vacuously satisfied by a key nobody
+    could read, and raising would break the exit status and the JSON report this
+    checker promises.
+    """
+    findings = check_documents([_tampered_config_map("[unclosed", ": : :")])
+    assert {finding.rule for finding in findings} == {
+        "configuration-is-not-readable-yaml"
+    }
+    assert {finding.field for finding in findings} == {
+        "scrape-config.yaml",
+        "recording-rules.yaml",
+    }
+
+
+@pytest.mark.parametrize(
+    "hostile",
+    [
+        "target label",
+        "native series",
+        "job name",
+        "record name",
+    ],
+)
+def test_no_finding_message_can_carry_a_value_out_of_a_manifest(hostile: str) -> None:
+    """The `Finding` docstring is a property, not a promise.
+
+    A message names a rule, a field path, and identifiers drawn from closed
+    vocabularies. An unconstrained echo is how an escape sequence reaches a terminal
+    or a forged line reaches a log, so every message is driven over deliberately
+    hostile input and checked against the character set it declares.
+    """
+    poison = "\x1b[2K\rok      0 file(s)\n\u202e drop table --"
+    scrape = {
+        "scrape_configs": [
+            {
+                "job_name": f"inferops-{poison}" if hostile == "job name" else "j",
+                "scrape_interval": "30s",
+                "scrape_timeout": "60s",
+                "relabel_configs": [
+                    {
+                        "target_label": (
+                            poison if hostile == "target label" else "inferops_owner_id"
+                        )
+                    }
+                ],
+                "metric_relabel_configs": [
+                    {"action": "labeldrop", "regex": f"({poison})"}
+                ],
+            }
+        ]
+    }
+    rules = {
+        "groups": [
+            {
+                "name": poison,
+                "rules": [
+                    {
+                        "record": (
+                            "inferops_build_info"
+                            if hostile == "record name"
+                            else f"inferops:{poison}"
+                        ),
+                        "expr": (
+                            "llamacpp:never_observed_series"
+                            if hostile == "native series"
+                            else poison
+                        ),
+                    }
+                ],
+            }
+        ]
+    }
+    findings = check_documents(
+        [_tampered_config_map(yaml.safe_dump(scrape), yaml.safe_dump(rules))]
+    )
+    assert findings, "the hostile fixture produced no finding to inspect"
+    for finding in findings:
+        outside = set(finding.message) - SAFE_MESSAGE_CHARACTERS
+        assert not outside, (
+            f"{finding.rule} put {sorted(outside)!r} into a message; a finding names "
+            "a rule, a field path, and closed-vocabulary identifiers, and nothing else"
+        )
+        assert poison not in finding.message
 
 
 @pytest.mark.parametrize(
@@ -537,7 +671,9 @@ def test_a_bundle_with_no_scrape_configuration_produces_no_findings() -> None:
             "job-has-no-absence-rule",
             lambda text: text.replace(
                 "- record: inferops:scrape_job_absent:serving_runtime\n"
-                '            expr: absent(up{job="inferops-serving-runtime"})\n',
+                '            expr: absent(up{job="'
+                + RELEASE_FULLNAME
+                + '-serving-runtime"})\n',
                 "",
                 1,
             ),

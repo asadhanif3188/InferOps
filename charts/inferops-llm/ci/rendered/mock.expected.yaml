@@ -216,7 +216,7 @@ metadata:
 data:
   scrape-config.yaml: |
     scrape_configs:
-      - job_name: inferops-platform-api
+      - job_name: inferops-inferops-llm-platform-api
         scheme: http
         metrics_path: "/metrics"
         scrape_interval: 30s
@@ -260,20 +260,24 @@ data:
         interval: 30s
         rules:
           - record: inferops:scrape_targets:count
-            expr: count by (job, k8s_namespace, k8s_component) (up{job=~"inferops-.+"})
+            expr: count by (job, k8s_namespace, k8s_component) (up{job=~"inferops-inferops-llm-platform-api"})
           # sum rather than a count over a filtered vector: a job whose every target is
           # down must read zero here, and a count over an empty vector reads nothing.
           - record: inferops:scrape_targets_up:sum
-            expr: sum by (job, k8s_namespace, k8s_component) (up{job=~"inferops-.+"})
+            expr: sum by (job, k8s_namespace, k8s_component) (up{job=~"inferops-inferops-llm-platform-api"})
           - record: inferops:scrape_job_absent:platform_api
-            expr: absent(up{job="inferops-platform-api"})
+            expr: absent(up{job="inferops-inferops-llm-platform-api"})
           # The API answered a scrape and published no identity: a target that is up and
           # useless, which `up` alone cannot tell from one that is up and correct.
+          #
+          # Scoped to this release's namespace and tier for the same reason the jobs are
+          # named for the release: an unscoped absent() over a store holding two releases
+          # reads 0 as soon as either one of them publishes an identity.
           - record: inferops:build_info_absent:platform_api
-            expr: absent(inferops_build_info)
+            expr: absent(inferops_build_info{k8s_namespace="inferops-platform", k8s_component="platform-api"})
           # Reads 1 until the adapter the catalog assigns this metric to emits it.
           - record: inferops:model_ready_absent:platform_api
-            expr: absent(inferops_model_ready)
+            expr: absent(inferops_model_ready{k8s_namespace="inferops-platform", k8s_component="platform-api"})
 ---
 # Source: inferops-llm/templates/api-service.yaml
 apiVersion: v1

@@ -354,10 +354,17 @@
 
   "$defs": {
     "collectorPodSelector": {
-      "description": "A label set selecting a collector's pods. Empty here is not an empty selector: it means no collector is named, and the template renders no allowance at all. The label set reaches a NetworkPolicy only when it is non-empty, which is what stops `{}` from meaning `every pod in that namespace`.",
+      "description": "A label set selecting a collector's pods. Empty here is not an empty selector: it means no collector is named, and the template renders no allowance at all. The label set reaches a NetworkPolicy only when it is non-empty, which is what stops `{}` from meaning `every pod in that namespace`. Both halves are a closed character class: the key as well as the value, because a selector is a pair and constraining only one of them is constraining neither.",
       "type": "object",
       "maxProperties": 8,
+      "propertyNames": { "$ref": "#/$defs/labelKey" },
       "additionalProperties": { "$ref": "#/$defs/labelValue" }
+    },
+    "labelKey": {
+      "description": "A Kubernetes label key: an optional DNS-subdomain prefix, a slash, and a name. It is the API server's own rule, written out here rather than left to the API server, because a key this chart renders into a selector should be refused at `helm template` rather than at `kubectl apply`.",
+      "type": "string",
+      "maxLength": 316,
+      "pattern": "^([a-z0-9]([a-z0-9.-]*[a-z0-9])?/)?[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$"
     },
     "labelSelectorLabels": {
       "description": "A non-empty label set used as a NetworkPolicy selector. Empty is refused rather than defaulted: an empty `matchLabels` selects everything, so a resolver selector somebody cleared would silently open egress to every pod in the cluster instead of failing.",

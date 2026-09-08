@@ -63,7 +63,25 @@ once versioned releases begin.
   a target label named `job` was declared in the data and published in neither
   document, and a recording-rule comment naming the serving-runtime adapter put the
   string `serving-runtime` into the *mock* render, which the existing suite that
-  proves a mock carries no runtime refused.
+  proves a mock carries no runtime refused. **Prometheus's own `promtool` accepts
+  both profiles' configuration and rules**, which is a one-off check at a stated
+  version rather than a gate — nothing here pins it, and accepting a configuration is
+  not running one. **Independent review before push found six more defects, all
+  fixed**, two of which were controls that read as controls and were not: the release
+  name reached the `keep` filter's regex unescaped, so a release called `a.z` would
+  have kept the pods of one called `aXz` installed beside it — the precise failure
+  that selector exists to prevent — and the scrape jobs were named by a constant, so
+  two releases' fragments could not be merged into one collector configuration at all
+  (`promtool` reports `found multiple scrape configs with job name …`; the
+  release-qualified names merge cleanly, and the two `absent()` rules over a metric
+  are now scoped to the release namespace and tier for the same reason). The others:
+  `values.yaml` still said the resource was deferred and unrendered thirteen lines
+  above the block that renders it; the checker crashed on malformed embedded YAML
+  instead of refusing it, which now has a seventh rule of its own; `Finding` claimed
+  never to quote a manifest value while two rules named one, so the class now declares
+  the character set a message may use and a test drives it over ANSI escapes, a
+  carriage return, and a right-to-left override; and the collector pod selector
+  constrained its label values and not its label keys.
   [The collection document](docs/telemetry/kubernetes-telemetry-collection.md) states
   what a collector would find, what each label would cost, and the eight things this
   does not establish.

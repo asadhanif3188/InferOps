@@ -20,9 +20,9 @@ InferOps API image is published for it to install. The maximum certification a
 
 - That anything collects a metric. The ConfigMap is read by nothing: neither
   Deployment mounts it, and no collector exists to read it from the API server.
-- That the scrape configuration works. It has been rendered and parsed as YAML and
-  compared against the catalog and the runtime feasibility record. It has not been
-  loaded by a Prometheus, and no target has been discovered.
+- That the scrape configuration works. Prometheus's own `promtool` accepts it, and
+  accepting a configuration is not running one: no Prometheus has been started with
+  it, no target has been discovered, and no sample has been scraped.
 - That the relabelling produces the labels described. The reasoning about
   `honor_labels`, `exported_*` renaming, and target-label collision is Prometheus's
   documented behaviour applied to a configuration that has never run.
@@ -44,6 +44,7 @@ InferOps API image is published for it to install. The maximum certification a
 | Python | 3.12, through `uv run --locked` |
 | Helm | v3.19.0 |
 | kubeconform | present on `PATH`; manifests validated against Kubernetes 1.34.0 |
+| promtool | 3.6.0, downloaded for this check and **not** a repository dependency: it is not pinned anywhere here, no gate runs it, and `CONTRIBUTING.md` does not require it. It was run by hand, and what it establishes is recorded below rather than assumed by any suite |
 | Cluster | none. No `kubectl` command was run against anything |
 | Model | none. No weights were read and no runtime was started |
 
@@ -56,8 +57,8 @@ InferOps API image is published for it to install. The maximum certification a
 | [`charts/inferops-llm/templates/telemetry-scrape-config.yaml`](../../../charts/inferops-llm/templates/telemetry-scrape-config.yaml) | The ConfigMap. Rendered under both profiles when `telemetry.collection.enabled` |
 | [`docs/telemetry/kubernetes-telemetry-collection.v1alpha1.json`](../../telemetry/kubernetes-telemetry-collection.v1alpha1.json) | The authoritative record: jobs, target labels and their declared cost, the drop list, the runtime mapping, the missing-signal rules, the signals with no source, the network path, eight limitations |
 | [`docs/telemetry/kubernetes-telemetry-collection.md`](../../telemetry/kubernetes-telemetry-collection.md) | The same in prose, compared against the record in both directions |
-| [`tools/telemetry_collection/`](../../../tools/telemetry_collection/) | The checker: `core.py`, `__main__.py`, `__init__.py`. Six rules, derived from the catalog |
-| [`tests/telemetry/test_kubernetes_telemetry_collection.py`](../../../tests/telemetry/test_kubernetes_telemetry_collection.py) | The suite. 62 tests |
+| [`tools/telemetry_collection/`](../../../tools/telemetry_collection/) | The checker: `core.py`, `__main__.py`, `__init__.py`. Seven rules, derived from the catalog |
+| [`tests/telemetry/test_kubernetes_telemetry_collection.py`](../../../tests/telemetry/test_kubernetes_telemetry_collection.py) | The suite. 69 tests |
 | this record | |
 
 ### Changed
@@ -87,8 +88,8 @@ InferOps API image is published for it to install. The maximum certification a
 | `uv run --locked ruff check .` | All checks passed |
 | `uv run --locked ruff format --check .` | 307 files already formatted |
 | `uv run --locked python -m mypy` | Success: no issues found in 165 source files |
-| `uv run --locked python -m pytest -q` | 6,596 passed, 28 skipped, 14 deselected |
-| `python -m pytest tests/telemetry -q` | 653 passed, of which 62 are this change's |
+| `uv run --locked python -m pytest -q` | 6,603 passed, 28 skipped, 14 deselected |
+| `python -m pytest tests/telemetry -q` | 660 passed, of which 69 are this change's |
 | `python -m pytest tests/architecture/test_helm_chart.py -q` | 164 passed |
 | `python -m pytest tests/testing -q` | 1,107 passed |
 | `helm lint --strict charts/inferops-llm --values charts/inferops-llm/ci/mock-values.yaml` | 1 chart linted, 0 failed |
@@ -98,6 +99,15 @@ InferOps API image is published for it to install. The maximum certification a
 | `python -m tools.workload_policy charts/inferops-llm/ci/rendered` | ok, 2 files satisfy the workload policy |
 | `python -m tools.telemetry_collection charts/inferops-llm/ci/rendered` | ok, 2 files satisfy the collection policy |
 | `git diff --check` | no whitespace error |
+| `promtool check config` on the `scrape-config.yaml` of both renders | SUCCESS, both. Valid Prometheus configuration syntax |
+| `promtool check rules` on the `recording-rules.yaml` of both renders | SUCCESS: 5 rules (mock), 9 rules (real) |
+| `promtool check config` on the concatenated fragments of two releases | SUCCESS. `helm template alpha …` and `helm template beta …` merge into one configuration |
+| the same merge with the job names this change originally rendered | `FAILED … found multiple scrape configs with job name "inferops-llm-platform-api"`, which is the defect the release-scoped job name fixes |
+
+`promtool` is what turns "this is valid Prometheus configuration" from a claim into
+a result. It is a one-off check at a stated version, not a gate: nothing in this
+repository pins it, requires it, or runs it, and a suite that silently skipped a tool
+nobody installed would be worse than a suite that never claimed it.
 
 The default lane deselects `cluster`, `realruntime`, `failure`, and `load`. **No
 cluster test was run and none could have been**: no cluster was created, and the
@@ -136,6 +146,73 @@ has tested.
   refused it — correctly: a mock render that mentions the runtime is exactly what
   that test exists to catch, and the comment was reworded rather than the test
   exempted.
+
+### What independent review found, and what changed
+
+Two independent reviews were run over the first commit before anything was pushed:
+one for correctness and evidence honesty, one for security. Between them they found
+six defects that the suite did not, and every one is fixed with a test or a recorded
+consequence.
+
+**The release name reached a regex unescaped.** `charts/inferops-llm/templates/_helpers.tpl`
+put `.Release.Name` into the `keep` filter's `regex`. Helm permits a release name to
+contain a dot and a dot in an unescaped RE2 pattern matches any character, so a
+release called `a.z` would have kept a release called `aXz` installed beside it and
+attributed its series here — which is exactly the failure that selector exists to
+prevent, making it a control that read as one and was not. Verified by rendering with
+`helm template "a.z"`. Fixed with `regexQuoteMeta`, which leaves an ordinary release
+name unchanged, so the committed renders did not move.
+
+**The job name was a constant, so two releases could not be collected at once.**
+Prometheus refuses a configuration holding two `scrape_configs` entries with the same
+`job_name`, and this fragment is a document an operator merges into a collector's
+existing configuration. Two releases would have rendered two fragments that could not
+be merged at all — in the same chart whose every `keep` filter is written to
+distinguish them. Confirmed with `promtool`: the old names produce
+`found multiple scrape configs with job name "inferops-llm-platform-api"`, the new
+release-qualified ones merge cleanly. The two `absent()` rules over a metric rather
+than over `up` are now scoped to the release namespace and tier for the same reason:
+an unscoped `absent(inferops_build_info)` over a store holding two releases reads 0
+as soon as either one publishes an identity.
+
+**`values.yaml` still said the resource was deferred and unrendered.** The
+`scrapeAnnotations` comment said "no scrape resource is rendered" and
+"`telemetry-scrape-configuration` stays deferred to V1-S3-007" — thirteen lines above
+the block that renders one, on by default. The sibling sentences in
+`values.schema.json` and the chart README had been corrected and this one had not.
+An operator reading the file top to bottom was told the opposite of what it does.
+
+**The checker crashed on malformed embedded YAML.** `check_documents` parsed the
+ConfigMap's inner keys with an unguarded `yaml.safe_load`, so a corrupt
+`scrape-config.yaml` produced a traceback rather than a refusal — defeating both the
+exit status and the `--json` report the command promises, on exactly the kind of
+input it exists to police. There is now a seventh rule,
+`configuration-is-not-readable-yaml`, which refuses the document rather than skipping
+it: a configuration nothing can parse is not one that passed, and skipping it would
+leave every other rule vacuously satisfied.
+
+**`Finding` claimed more than it did.** Its docstring said it never quotes a value
+read out of the manifest; two of the rules name a label and a series read from one.
+Both are drawn from closed sets — the catalog's own barred labels, and matches of
+`llamacpp:[A-Za-z0-9_]+` — so nothing hostile could reach a terminal, but the
+docstring was stronger than the code. The class now states exactly what a message may
+contain, declares the character set as `SAFE_MESSAGE_CHARACTERS`, and a test drives
+the checker over manifests carrying ANSI escapes, a carriage return, and a
+right-to-left override, and refuses any message that leaves the set.
+
+**The collector pod selector constrained its values and not its keys.** The schema
+restricted label values to a closed character class and left the map's keys
+unconstrained, against the repository's own convention. A `labelKey` definition now
+applies the API server's own rule at `helm template` rather than at `kubectl apply`.
+
+Review also raised two test-quality points, both taken: the emitted-label set in
+`test_the_api_job_attaches_no_label_the_api_already_emits` was computed through a
+round trip that was a no-op, and
+`test_a_bundle_with_no_scrape_configuration_produces_no_findings` had a docstring
+describing a path its fixture did not reach. The first is simplified; the second is
+renamed to what it tests, and the switch it claimed to cover is driven by
+`test_switching_collection_off_renders_no_scrape_configuration`, which needs a render
+rather than a fixture.
 
 ## What the suite establishes, and what it cannot
 
