@@ -35,7 +35,15 @@ once versioned releases begin.
   `destroy` has been run against any cluster, and
   [the prerequisite document](docs/environment/platform-prerequisites.md) labels
   its apply and re-apply table as derived from provider semantics rather than
-  observed.
+  observed. An independent review before merge found four defects, and all four
+  are fixed and recorded in
+  [the validation record](docs/proof/environment/v1-s3-005-pr1-validation.md):
+  the ownership patterns were anchored at column 0, so a resource block indented
+  by one space was invisible to every rule including the allowlist called the
+  backstop; a size validation threw a raw function-call diagnostic beside its
+  own message; three documents said the lock covered five platforms where it
+  covers six; and three files elsewhere in the repository still said this
+  Terraform did not exist.
 
 - **Every workload the chart installs presents an identity of its own, and the
   release starts from a network denial.** The chart rendered one `ServiceAccount`

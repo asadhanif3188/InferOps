@@ -66,8 +66,16 @@ variable "model_cache_size" {
     error_message = "The size must be a whole number of gibibytes written as, for example, '4Gi'. Kubernetes memory and storage quantities are binary: 4Gi is four gibibytes and never four gigabytes."
   }
 
+  # The `can()` is not decoration. Terraform evaluates every validation block,
+  # not only the ones before the first failure, so an unguarded `regex()` here
+  # threw a raw "Call to function regex failed" diagnostic alongside the friendly
+  # message from the rule above whenever the value was malformed. A guard that
+  # explains itself and a stack trace beside it is worse than the guard alone.
   validation {
-    condition     = tonumber(regex("^([1-9][0-9]*)Gi$", var.model_cache_size)[0]) >= 2
+    condition = (
+      can(regex("^[1-9][0-9]*Gi$", var.model_cache_size)) &&
+      tonumber(regex("^([1-9][0-9]*)Gi$", var.model_cache_size)[0]) >= 2
+    )
     error_message = "The pinned model artifact is 1,834,426,016 bytes, so a claim below 2Gi cannot hold one copy of it."
   }
 }

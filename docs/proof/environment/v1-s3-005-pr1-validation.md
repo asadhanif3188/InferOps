@@ -63,10 +63,10 @@ wrapper's.
 uv run --locked ruff check .           All checks passed!
 uv run --locked ruff format --check .  291 files already formatted
 uv run --locked python -m mypy         Success: no issues found in 154 source files
-uv run --locked python -m pytest -q    6171 passed, 27 skipped, 14 deselected
+uv run --locked python -m pytest -q    6180 passed, 27 skipped, 14 deselected
 ```
 
-The default lane runs 6,171 on this branch against 6,070 on `main`. The
+The default lane runs 6,180 on this branch against 6,070 on `main`. The
 `main` figure is from a clean worktree checked out at `main` rather than from a
 stash, for the reason the `V1-S3-003` record gives: several suites parametrise
 over committed files, so a stash that leaves new documents in the tree returns a
@@ -75,9 +75,14 @@ baseline that is too high.
 The two suites this change adds to or edits:
 
 ```text
-uv run --locked python -m pytest tests/architecture/test_terraform_prerequisites.py -q   87 passed
+uv run --locked python -m pytest tests/architecture/test_terraform_prerequisites.py -q   96 passed
 uv run --locked python -m pytest tests/architecture/test_cluster_lifecycle_safety.py -q  82 passed
+uv run --locked python -m pytest tests/architecture/test_helm_chart.py -q               154 passed
 ```
+
+The new suite is 96 rather than the 87 it was first written with. The nine
+additions are the adversarial tests described under the review below: they put
+each ownership rule to a violation and require it to fire.
 
 The safety suite went from 72 to 82 because `terraform-prerequisites.sh` was
 added to its entry-point list, which subjects the new script to every rule the
@@ -192,6 +197,69 @@ generated artifacts.
   beyond the story and PR identifiers this repository already publishes, or
   future-project content appears in the diff.
 - **`git diff --check`** reports no whitespace error.
+
+## What an independent review found, and what was done about it
+
+The change was reviewed independently before it was pushed, against this
+repository's own bar rather than a generic one. It found one HIGH and three
+MEDIUM defects. All four were reproduced and all four are fixed; they are
+recorded here rather than quietly corrected, because a review that finds nothing
+and a review nobody reports are indistinguishable afterwards.
+
+**HIGH — the ownership check could be defeated by one leading space.**
+`RESOURCE_BLOCK` and `PROVIDER_BLOCK` were anchored at column 0. A resource block
+indented by a single space — from a bad merge, a pasted example, or an editor —
+was therefore invisible to every ownership rule in the suite, **including the
+allowlist that the module's own docstring called the backstop**. A
+`kubernetes_secret` or a `helm_release` written that way would have passed all 87
+tests. The only check that would have caught it was `terraform fmt`, which skips
+where the binary is absent, so the central acceptance criterion of this PR rested
+on a tool that may not be installed.
+
+Fixed by allowing leading horizontal whitespace in all three block patterns, and
+by adding nine adversarial tests that feed each rule the shapes it exists to
+refuse — a forbidden resource at four indents, a forbidden `provider` block at
+two, and a forbidden `required_providers` entry at two — plus one that requires
+the rules to still accept what the committed configuration legitimately declares,
+so that tightening a pattern until it fires on everything cannot look like a
+pass. Every rule above them passed over the committed files, which is also what a
+rule that reads nothing at all does; these are what separates the two.
+
+**MEDIUM — a malformed size threw a raw Terraform diagnostic beside the friendly
+one.** The second `model_cache_size` validation called `regex()` without `can()`.
+Terraform evaluates every validation block rather than stopping at the first
+failure, so `model_cache_size = "abc"` produced the intended message *and* a
+`Call to function "regex" failed` error. Reproduced with `terraform plan` against
+the extracted variable; fixed by guarding the call, and re-checked: the same
+input now produces the two validation messages and no function-call diagnostic.
+
+**MEDIUM — the lock file covers six platforms and three documents said five.**
+The committed lock carries six `h1:` hashes, the sixth being `windows_386`. This
+record disclosed that; `docs/environment/platform-prerequisites.md` (three
+places), `CONTRIBUTING.md`'s regeneration command, and the test inventory's
+description had not been updated with it, so a contributor following CONTRIBUTING
+literally would have produced a lock the document called complete and this
+repository would not. All four corrected, and `REQUIRED_LOCK_PLATFORMS` raised
+from a floor of five to six so the suite holds the number the documents publish.
+
+**MEDIUM — three live files still said Terraform did not exist.** The change
+updated the ownership document, the storage document, the lifecycle document, and
+the lifecycle script, and missed
+`tests/architecture/test_helm_chart.py`'s label docstring,
+`charts/inferops-llm/templates/_helpers.tpl`, and `charts/inferops-llm/README.md`
+— each of which stated that the prerequisite half is unwritten and that
+`V1-S3-005` owns it. As of this commit that is false. All three now say the layer
+exists, has never been applied, and that the sweep still does not exclude the
+marker.
+
+One review suggestion was **not** taken. It proposed making `terraform fmt` and
+`terraform validate` fail rather than skip where the binary is absent. This
+repository skips loudly for `helm`, `kubeconform`, and `shellcheck` on the same
+reasoning — an absent tool is a fact about a machine — and making Terraform the
+one exception would break the default lane for contributors who have no reason to
+install it. The HIGH finding is closed by making the Python checks correct on
+their own rather than by promoting the tool they were leaning on; the skip
+remains, and it remains stated.
 
 ## Acceptance criteria
 

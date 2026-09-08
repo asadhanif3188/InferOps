@@ -22,7 +22,7 @@ because nothing has produced them.
 |---|---|
 | [`infra/terraform/modules/platform-prerequisites/`](../../infra/terraform/modules/platform-prerequisites/) | The module. Two resources and their metadata |
 | [`infra/terraform/environments/local/`](../../infra/terraform/environments/local/) | The only environment. Pins the provider, names the kubeconfig and context, calls the module |
-| [`infra/terraform/environments/local/.terraform.lock.hcl`](../../infra/terraform/environments/local/.terraform.lock.hcl) | The provider lock, with checksums for five platforms |
+| [`infra/terraform/environments/local/.terraform.lock.hcl`](../../infra/terraform/environments/local/.terraform.lock.hcl) | The provider lock, with checksums for six platforms |
 | [`scripts/environment/terraform-prerequisites.sh`](../../scripts/environment/terraform-prerequisites.sh) | The wrapper. Establishes cluster identity before Terraform reaches a cluster |
 | [`tests/architecture/test_terraform_prerequisites.py`](../../tests/architecture/test_terraform_prerequisites.py) | What holds the configuration to the inventory |
 
@@ -98,7 +98,7 @@ scripts.
 |---|---|---|
 | Terraform | `>= 1.9.0` | A floor rather than a pin. Terraform is a host tool, like `helm` and `kubectl`, and this repository does not vendor it |
 | Provider | `hashicorp/kubernetes` `2.38.0` | Exact. Everywhere else here a pin is exact — the node image and the runtime image by digest, the model by revision and per-file hash — because a range resolves to whatever was published most recently, and "it worked yesterday" becomes a statement about the registry |
-| Lock | Five platforms | `terraform init` records the checksum for the platform it ran on and no other, which makes it a lock on one contributor's machine and an unpinned dependency on everybody else's. The committed lock covers `linux_amd64`, `linux_arm64`, `darwin_amd64`, `darwin_arm64`, and `windows_amd64`, generated with `terraform providers lock -platform=…` |
+| Lock | Six platforms | `terraform init` records the checksum for the platform it ran on and no other, which makes it a lock on one contributor's machine and an unpinned dependency on everybody else's. The committed lock covers `linux_amd64`, `linux_arm64`, `darwin_amd64`, `darwin_arm64`, `windows_amd64`, and `windows_386`, generated with `terraform providers lock -platform=…`. The last is what the reference host's own Terraform build reports, and a lock omitting the platform it was generated on would be a lock for other people and not for the person who wrote it |
 
 The provider line is `2.x` and not `3.x` on purpose. Crossing a provider major
 version changes resource schemas and how state represents them, and that is a
@@ -285,7 +285,7 @@ with no cluster and no network:
 - the size default covers two copies of the pinned artifact, read from the model
   source record rather than typed here;
 - the provider pin is exact and identical in the module, the environment, and the
-  lock file, and the lock covers five platforms;
+  lock file, and the lock covers six platforms;
 - the provider names both the kubeconfig and the context, the kubeconfig default
   is relative, and no host path or credential appears anywhere;
 - state, backups, and plans are ignored by version control and the lock file is

@@ -976,7 +976,7 @@ rather than for the one you are on, because `terraform init` records only its ow
 and a single-platform lock is not a pin:
 
 ```sh
-terraform -chdir=infra/terraform/environments/local providers lock   -platform=linux_amd64 -platform=linux_arm64   -platform=darwin_amd64 -platform=darwin_arm64 -platform=windows_amd64
+terraform -chdir=infra/terraform/environments/local providers lock   -platform=linux_amd64 -platform=linux_arm64   -platform=darwin_amd64 -platform=darwin_arm64   -platform=windows_amd64 -platform=windows_386
 ```
 
 **Terraform owns prerequisites and Helm owns the release, and neither owns what

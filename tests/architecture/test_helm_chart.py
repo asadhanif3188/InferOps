@@ -617,9 +617,11 @@ def test_every_rendered_object_carries_the_isolation_and_lifecycle_labels() -> N
     The ownership document records that a scoped sweep matching
     `app.kubernetes.io/part-of=inferops` across `inferops-` namespaces would
     reach Terraform-owned prerequisites, and that the fix is a second label. This
-    is the release side of it. The prerequisite side does not exist and is not
-    claimed to: Terraform is not written, and the environment scripts' sweep
-    stays bound to the smoke namespace until it is.
+    is the release side of it. The prerequisite side is now written --
+    `infra/terraform/` sets the prerequisite marker, and
+    `test_terraform_prerequisites.py` checks that it does -- but nothing has
+    applied it and the environment scripts' sweep still does not exclude the
+    marker, so that sweep stays bound to the smoke namespace.
     """
     for profile, document in ALL_RENDERED:
         labels = _dig(document, "metadata.labels")
