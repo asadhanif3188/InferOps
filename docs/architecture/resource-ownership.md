@@ -16,17 +16,36 @@ described in
 `V1-S3-006-PR1` added a second release procedure at
 [`scripts/environment/kubernetes-certification.sh`](../../scripts/environment/kubernetes-certification.sh),
 described in
-[the Kubernetes certification procedure](../serving/kubernetes-real-inference-certification.md).
+[the Kubernetes certification procedure](../serving/kubernetes-real-inference-certification.md),
+and `V1-S3-006-PR2` added a third at
+[`scripts/environment/kubernetes-multi-replica-certification.sh`](../../scripts/environment/kubernetes-multi-replica-certification.sh),
+described in
+[the multi-replica certification procedure](../serving/kubernetes-multi-replica-certification.md).
 
-**Two procedures now install and uninstall the same release in the same
+**Three procedures now install and uninstall the same release in the same
 namespace**, and the distinction is what each is for rather than what each
 touches. `helm-lifecycle.sh` answers "does the chart install, upgrade, roll back,
 and uninstall cleanly" and involves no model. `kubernetes-certification.sh`
 answers "does a real model answer through the release's Service" and writes a
-`C2` record. Both refuse to run over an existing release, so they interlock
-rather than collide; both apply the same rule about what a release may own, and
-the certification workflow additionally counts the model cache claim on both
-sides of its own run.
+`C2` record. `kubernetes-multi-replica-certification.sh` answers "do requests
+through that Service reach more than one replica" and writes a second one. All
+three refuse to run over an existing release, so they interlock rather than
+collide; all three apply the same rule about what a release may own, and both
+certification workflows additionally count the model cache claim on both sides of
+their own run.
+
+The multi-replica workflow is the only one that creates an object in the
+namespace which neither Terraform nor the chart owns: one `batch/v1 Job` that
+sends the request set from inside the cluster, because a `kubectl port-forward`
+is served against a single endpoint and cannot exercise a Service's distribution.
+It is not a row in any table below, and deliberately so — it is transient in the
+same sense the `helm test` hook pod is, created and removed inside one run rather
+than installed. It carries the release's own labels so that the release's network
+policy describes it, the workflow deletes it before the uninstall, and the
+residue check that follows the uninstall names `jobs` explicitly, so a driver
+that survived its own run is a failure rather than a leftover nobody looked
+for.
+
 **Every row below is still `planned` or `deferred`, and that is correct**: a
 chart renders objects, a rendered object is a file, a Terraform configuration
 nobody has applied creates nothing, and a procedure nobody has executed changes

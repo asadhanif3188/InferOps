@@ -249,6 +249,23 @@ record. The label is a new one and is registered in the vocabularies
 evidence class is still `local-real-cpu`, because a new class would have raised a
 ceiling by writing a string.
 
+`V1-S3-006-PR2` added a fifth, and the first that answers whether the Kubernetes
+Service in front of the platform API distributes anything:
+[the multi-replica certification workflow](../serving/kubernetes-multi-replica-certification.md).
+It measures host and cluster capacity **before** creating anything and refuses a
+host that cannot hold the profile rather than reducing the replica count to fit,
+installs the chart with at least two platform API replicas, waits for every
+replica individually rather than for a controller's summary count, sends a
+bounded set of real requests through the API Service from a short-lived
+in-cluster Job -- so that `kube-proxy` rather than a port-forward chooses each
+endpoint -- and correlates the successful requests to the replicas that recorded
+them, using the request identifiers and `k8s.pod.name` the API's own structured
+logs already carry. A run whose successful requests reached one replica fails and
+says so. **It has not been run either**, and for the same reason: no InferOps API
+image is published. Only the API tier is multi-replica, because `llama-server`
+publishes no per-request pod-aware record to correlate against, and the record
+carries that limitation rather than leaving it to a reader.
+
 `failure-and-resilience` provokes the failures the architecture names as canonical
 errors — model not ready, runtime unreachable, timeout — against the real runtime
 rather than against an anticipated mock. Full C3 certification is out of V1 scope;
