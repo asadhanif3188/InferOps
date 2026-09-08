@@ -544,6 +544,16 @@
       "note": null
     },
     {
+      "module": "tests/telemetry/test_kubernetes_telemetry_collection.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The rendered Kubernetes scrape configuration: it attaches no label the telemetry catalog bars from a metric, drops every one of them, maps only runtime series that were actually observed, and leaves no scrape job whose absence a query could not see.",
+      "claims": [
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+      ],
+      "note": null
+    },
+    {
       "module": "tests/telemetry/test_telemetry_catalog.py",
       "layer": "documentation",
       "marker": "docs",

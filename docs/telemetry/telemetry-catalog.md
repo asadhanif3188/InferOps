@@ -433,7 +433,10 @@ document should be read:
   an open question in
   [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
   that this record deliberately does not answer. The endpoint answers when something
-  scrapes it, and nothing scrapes it.
+  scrapes it, and nothing scrapes it. The chart renders a scrape configuration for a
+  collector that does not exist —
+  [what it would find, and what it would cost](kubernetes-telemetry-collection.md) —
+  and a configuration is not a collector.
 - **Records go to a stream and no further.** No log store, shipper, retention window,
   or access rule is selected, so the retention this catalog requires to be stated
   before content of any kind is written is still unstated.

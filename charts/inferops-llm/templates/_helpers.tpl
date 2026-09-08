@@ -624,3 +624,353 @@ is rendered into the script from a pinned value.
   volumeMounts:
     {{- include "inferops-llm.model.volumeMount" . | nindent 4 }}
 {{- end -}}
+
+{{/*
+The name of the telemetry scrape ConfigMap.
+*/}}
+{{- define "inferops-llm.telemetryScrapeConfigMapName" -}}
+{{ include "inferops-llm.fullname" . }}-telemetry-scrape
+{{- end -}}
+
+{{/*
+The serving runtime's registered identifier, derived from the profile.
+
+It is derived for the same reason `inferops-llm.capabilityId` is: a value carrying
+this label would be a way to compose a mock adapter and publish the real runtime's
+identifier, or the reverse. The two constants it mirrors are `MOCK_RUNTIME_ID` in
+src/inferops/adapters/mock_serving.py and `LLAMA_SERVER_RUNTIME_ID` in
+src/inferops/adapters/llama_cpp/pins.py, and a test compares this helper against
+both so that one identifier cannot become two.
+*/}}
+{{- define "inferops-llm.runtimeId" -}}
+{{- if eq .Values.profile "real" -}}
+llama-cpp-server
+{{- else -}}
+inferops-mock-serving
+{{- end -}}
+{{- end -}}
+
+{{/*
+Every metric label the collector drops on the way in.
+
+Derived from the accepted telemetry catalog rather than chosen here: it is every
+attribute whose declared placements include neither `metric-label` nor
+`info-label`, written in the form a Prometheus exposition spells it. A test
+recomputes the list from docs/telemetry/telemetry-catalog.v1alpha1.json and fails
+if the two disagree, so a placement decision taken in the catalog reaches the
+collector without anybody remembering to come here.
+
+Nothing in this repository emits any of them as a label -- the registry refuses one
+at construction. This is the second line, for a series that arrives from a component
+this project did not write, or from one it writes later: a correlation identifier, a
+tenant, a pod name, or a duration that reached a label is dropped before it is
+stored, rather than after somebody reads the bill.
+*/}}
+{{- define "inferops-llm.forbiddenMetricLabels" -}}
+http_response_status_code|inferops_correlation_id|inferops_cost_record_id|inferops_duration_ms|inferops_evaluation_decision|inferops_event|inferops_field_path|inferops_finish_reason|inferops_owner_id|inferops_request_id|inferops_retry_count|inferops_tenant_id|inferops_workload_version|k8s_pod_name|level|service_name|span_id|timestamp|trace_id
+{{- end -}}
+
+{{/*
+The name of one scrape job, scoped to the release.
+
+**Why it is not a constant.** The scrape configuration this chart renders is a
+document an operator merges into whatever configuration their collector already
+has, and Prometheus refuses a configuration holding two `scrape_configs` entries
+with the same `job_name`. Two releases of this chart installed beside each other --
+the case every `keep` filter here is written to distinguish -- would each render a
+fragment named `inferops-platform-api`, and the merged configuration would not load
+at all. A job name that is right only while exactly one release exists is a job name
+that fails at the moment composition starts.
+
+It uses the same release-qualified name every object in this release carries, so a
+job in a collector's configuration and an object in `kubectl get` are traceable to
+each other by their shared prefix.
+*/}}
+{{- define "inferops-llm.telemetryJobName" -}}
+{{ include "inferops-llm.fullname" .context }}-{{ .component }}
+{{- end -}}
+
+{{/*
+The Prometheus scrape configuration for this release.
+
+**What it is, and what it is not.** It is a document. No collector, store,
+dashboard, or alerting path is selected -- ADR 0006 D8 leaves that to the open
+question ADR 0004 carries -- so nothing reads this, and nothing scrapes either
+endpoint. What it removes is the step where somebody writes scrape configuration by
+hand against labels they guessed, and gets a job that silently matches nothing.
+
+**Discovery selects on labels, not on annotations.** Every pod this chart installs
+carries `app.kubernetes.io/part-of`, `app.kubernetes.io/instance`, and
+`app.kubernetes.io/component`, always and whatever the values file says. The
+`prometheus.io/*` annotations are optional and off by default, so a configuration
+that keyed on them would select nothing in the default installation. Discovery is
+also pinned to this release's namespace and instance: a job matching
+`part-of: inferops` alone would scrape a second release installed beside this one
+and attribute its series here.
+
+**The release name is escaped before it reaches the regex, and that is the only
+place in this chart where it needs to be.** Every other use of `.Release.Name` here
+is an exact-match label value. This one is a `keep` filter, Helm permits a release
+name to contain a dot, and a dot in an unescaped RE2 pattern matches any character
+-- so a release called `a.z` would have matched a release called `aXz` installed
+beside it, and would have collected its series under this release's name. That is
+the precise failure the pinning above exists to prevent, so an unescaped name would
+have been a control that read as one and was not.
+
+**The port is kept explicitly.** Pod discovery yields one target per declared
+container port, so a pod with two ports produces two targets and the second answers
+nothing on the metrics path. Keeping the port the release publishes is what stops a
+permanently failing target being reported as a broken endpoint.
+
+**What the collector does NOT relabel, and why that is the decision.** The API
+publishes the workload, the model, the outcome, and the identity attributes on its
+own series already. A target label of the same name would win the collision --
+`honor_labels` is false, stated here rather than left to the default -- and
+Prometheus would rename the emitter's to `exported_*`, changing every query written
+against it. So the API job attaches Kubernetes context and nothing else, and the
+workload, model, environment, version, capability, release, model revision, runtime
+image digest, and adapter kind are read where the catalog puts them: on the series
+themselves, and on `inferops_build_info`, which is one series per process and is the
+join ADR 0006 D3 designed for.
+
+The runtime job is the opposite case. `llama-server` publishes bare series with no
+labels at all -- the feasibility record measured exactly that -- so the collector
+supplies the operating dimensions and there is nothing to collide with. It supplies
+only the bounded ones the catalog permits as metric labels. It does not supply the
+identity attributes, because putting an immutable version on every series is
+precisely what the identity metric exists to avoid.
+
+**`instance` carries the pod name, and it is the one unbounded label here.**
+Prometheus requires the targets of one job to differ in their label sets, so with
+two replicas a per-target identity is not optional; the only question is what it
+holds. It holds the pod name rather than the default `<podIP>:<port>`, which is
+equally unbounded, changes on every reschedule, and names nothing a person can look
+up. The cost is stated in docs/telemetry/kubernetes-telemetry-collection.md rather
+than left to be discovered: every series from a job is multiplied by the number of
+distinct pods inside the store's retention window. Collapsing `instance` to a
+constant per component would remove that multiplier and would also make two replicas
+indistinguishable, which is the one question the multi-replica certification exists
+to answer.
+
+The catalog's rule that `k8s.pod.name` is not a metric label is an **emitter** rule
+and is untouched: no InferOps process labels a series with its pod, and the registry
+still refuses one that tries.
+
+**The Kubernetes context labels carry a `k8s_` prefix** so that a label the collector
+attached is never read as an attribute an emitter placed. `k8s_component` is the
+workload tier -- `platform-api` or `serving-runtime` -- and is a different thing from
+`inferops.component`, which is the readiness component the API names when it refuses
+traffic.
+*/}}
+{{- define "inferops-llm.telemetryScrapeConfig" -}}
+{{- $interval := printf "%ds" (int .Values.telemetry.collection.scrapeIntervalSeconds) -}}
+{{- $timeout := printf "%ds" (int .Values.telemetry.collection.scrapeTimeoutSeconds) -}}
+scrape_configs:
+  - job_name: {{ include "inferops-llm.telemetryJobName" (dict "context" $ "component" "platform-api") }}
+    scheme: http
+    metrics_path: {{ .Values.telemetry.metricsPath | quote }}
+    scrape_interval: {{ $interval }}
+    scrape_timeout: {{ $timeout }}
+    # Stated rather than left to the default, because it is the whole reason the
+    # relabelling below adds no label the API already publishes.
+    honor_labels: false
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          own_namespace: false
+          names:
+            - {{ .Release.Namespace }}
+    relabel_configs:
+      - source_labels:
+          - __meta_kubernetes_pod_label_app_kubernetes_io_part_of
+          - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+          - __meta_kubernetes_pod_label_app_kubernetes_io_component
+        separator: ";"
+        action: keep
+        regex: {{ printf "inferops;%s;platform-api" (regexQuoteMeta .Release.Name) | quote }}
+      - source_labels:
+          - __meta_kubernetes_pod_container_port_number
+        action: keep
+        regex: {{ .Values.api.containerPort | quote }}
+      - source_labels:
+          - __meta_kubernetes_namespace
+        target_label: k8s_namespace
+      - source_labels:
+          - __meta_kubernetes_pod_label_app_kubernetes_io_component
+        target_label: k8s_component
+      - source_labels:
+          - __meta_kubernetes_pod_name
+        target_label: instance
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: {{ printf "(%s)" (include "inferops-llm.forbiddenMetricLabels" .) | quote }}
+{{- if eq .Values.profile "real" }}
+  - job_name: {{ include "inferops-llm.telemetryJobName" (dict "context" $ "component" "serving-runtime") }}
+    scheme: http
+    metrics_path: {{ .Values.telemetry.collection.runtimeMetricsPath | quote }}
+    scrape_interval: {{ $interval }}
+    scrape_timeout: {{ $timeout }}
+    honor_labels: false
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          own_namespace: false
+          names:
+            - {{ .Release.Namespace }}
+    relabel_configs:
+      - source_labels:
+          - __meta_kubernetes_pod_label_app_kubernetes_io_part_of
+          - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+          - __meta_kubernetes_pod_label_app_kubernetes_io_component
+        separator: ";"
+        action: keep
+        regex: {{ printf "inferops;%s;serving-runtime" (regexQuoteMeta .Release.Name) | quote }}
+      - source_labels:
+          - __meta_kubernetes_pod_container_port_number
+        action: keep
+        regex: {{ .Values.runtime.containerPort | quote }}
+      - source_labels:
+          - __meta_kubernetes_namespace
+        target_label: k8s_namespace
+      - source_labels:
+          - __meta_kubernetes_pod_label_app_kubernetes_io_component
+        target_label: k8s_component
+      - source_labels:
+          - __meta_kubernetes_pod_name
+        target_label: instance
+      # The runtime publishes bare series. These four are the operating dimensions
+      # the catalog permits as metric labels, and the collector is the only thing
+      # positioned to supply them.
+      - target_label: deployment_environment
+        replacement: {{ .Values.telemetry.deploymentEnvironment | quote }}
+      - target_label: inferops_workload_id
+        replacement: {{ .Values.ownership.workloadId | quote }}
+      - target_label: inferops_model_id
+        replacement: {{ .Values.model.identifier | quote }}
+      - target_label: inferops_runtime_id
+        replacement: {{ include "inferops-llm.runtimeId" . | quote }}
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: {{ printf "(%s)" (include "inferops-llm.forbiddenMetricLabels" .) | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+The recording rules: what a native runtime series means in InferOps terms, and what
+is missing.
+
+**Two groups, and the second is the one that earns its place.** The first names the
+three `llamacpp:` series the accepted catalog maps to an InferOps concept and gives
+each a derived name. Every recorded name is `inferops:` with a colon -- the
+Prometheus recording-rule convention -- and never `inferops_` with an underscore, so
+a derived series can never be confused with, or collide with, one the API emits.
+
+The second makes absence readable. A target that exists and fails is `up == 0` and
+easy; a job whose discovery matched nothing produces no `up` series at all, so a
+query that groups by job returns an empty result, and an empty result looks like a
+healthy quiet system. `absent()` is what separates them, and there is one per job.
+
+`inferops:model_ready_absent:platform_api` reads **1 today, and will until the
+serving-runtime adapter is instrumented**: `inferops_model_ready` is declared in the
+catalog, assigned to the adapter, and marked not emitted. A rule that averaged a
+metric nothing produces would have published an empty series, which reads as a
+healthy system rather than an absent one. This publishes the absence instead.
+
+No alerting rule is written and no dashboard is built. An alert needs a receiver, a
+routing tree, and somebody on the other end, and none of the three is decided.
+*/}}
+{{- define "inferops-llm.telemetryRecordingRules" -}}
+{{- $interval := printf "%ds" (int .Values.telemetry.collection.scrapeIntervalSeconds) -}}
+{{- $apiJob := include "inferops-llm.telemetryJobName" (dict "context" . "component" "platform-api") -}}
+{{- $runtimeJob := include "inferops-llm.telemetryJobName" (dict "context" . "component" "serving-runtime") -}}
+{{- $jobs := $apiJob -}}
+{{- if eq .Values.profile "real" -}}
+{{- $jobs = printf "%s|%s" (regexQuoteMeta $apiJob) (regexQuoteMeta $runtimeJob) -}}
+{{- else -}}
+{{- $jobs = regexQuoteMeta $apiJob -}}
+{{- end -}}
+{{- $selector := printf "up{job=~\"%s\"}" $jobs -}}
+{{- $scope := printf "k8s_namespace=\"%s\", k8s_component=\"platform-api\"" .Release.Namespace -}}
+groups:
+{{- if eq .Values.profile "real" }}
+  - name: inferops-runtime-metric-mapping
+    interval: {{ $interval }}
+    rules:
+      # llamacpp:prompt_tokens_total and llamacpp:tokens_predicted_total are the two
+      # native counters the catalog maps to inferops_inference_tokens_total. The
+      # direction label is what distinguishes them, exactly as it does on the metric
+      # the API emits.
+      - record: inferops:inference_tokens:runtime_total
+        expr: |
+          label_replace(llamacpp:prompt_tokens_total, "inferops_token_direction", "input", "", "")
+          or
+          label_replace(llamacpp:tokens_predicted_total, "inferops_token_direction", "output", "", "")
+      - record: inferops:inference_requests_in_flight:runtime
+        expr: llamacpp:requests_processing
+      # Partial, and named so that it cannot be read as the queue histogram.
+      # llamacpp:requests_deferred shows that queueing happened and never how long
+      # any request waited; the wait is the adapter's measurement, and the adapter is
+      # not instrumented.
+      - record: inferops:inference_requests_deferred:runtime
+        expr: llamacpp:requests_deferred
+{{- end }}
+  - name: inferops-collection-health
+    interval: {{ $interval }}
+    rules:
+      - record: inferops:scrape_targets:count
+        expr: count by (job, k8s_namespace, k8s_component) ({{ $selector }})
+      # sum rather than a count over a filtered vector: a job whose every target is
+      # down must read zero here, and a count over an empty vector reads nothing.
+      - record: inferops:scrape_targets_up:sum
+        expr: sum by (job, k8s_namespace, k8s_component) ({{ $selector }})
+      - record: inferops:scrape_job_absent:platform_api
+        expr: absent(up{job="{{ $apiJob }}"})
+{{- if eq .Values.profile "real" }}
+      - record: inferops:scrape_job_absent:serving_runtime
+        expr: absent(up{job="{{ $runtimeJob }}"})
+{{- end }}
+      # The API answered a scrape and published no identity: a target that is up and
+      # useless, which `up` alone cannot tell from one that is up and correct.
+      #
+      # Scoped to this release's namespace and tier for the same reason the jobs are
+      # named for the release: an unscoped absent() over a store holding two releases
+      # reads 0 as soon as either one of them publishes an identity.
+      - record: inferops:build_info_absent:platform_api
+        expr: absent(inferops_build_info{{ "{" }}{{ $scope }}{{ "}" }})
+      # Reads 1 until the adapter the catalog assigns this metric to emits it.
+      - record: inferops:model_ready_absent:platform_api
+        expr: absent(inferops_model_ready{{ "{" }}{{ $scope }}{{ "}" }})
+{{- end -}}
+
+{{/*
+The collector ingress allowance, written once and used by both workload policies.
+
+It renders only when `telemetry.collection.collector` names both a namespace and a
+pod selector; the template refuses one without the other, because a namespace with
+no pod selector admits every pod in it and reads in the rendered policy exactly
+like the narrow rule it is not.
+
+The namespace and the pod selector are one list item rather than two, which is the
+difference between "a pod in that namespace with those labels" and "any pod in that
+namespace, or any pod anywhere with those labels". The second is the mistake this
+object is most often written with.
+
+`kubernetes.io/metadata.name` is set on every namespace by the API server itself,
+so it is not a label anybody has to remember to apply.
+*/}}
+{{- define "inferops-llm.collectorIngressRule" -}}
+{{- $root := .context -}}
+{{- $collector := $root.Values.telemetry.collection.collector -}}
+{{- if and $collector.namespace $collector.podSelector }}
+- from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: {{ $collector.namespace }}
+      podSelector:
+        matchLabels:
+          {{- toYaml $collector.podSelector | nindent 10 }}
+  ports:
+    - port: {{ .port }}
+      protocol: TCP
+{{- end }}
+{{- end -}}

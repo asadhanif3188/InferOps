@@ -653,6 +653,30 @@ does not publish cannot be written — and
 the API and reads what it actually emitted. No span is produced by anything, and no
 store has held a single series or record.
 
+A third,
+[`tests/telemetry/test_kubernetes_telemetry_collection.py`](tests/telemetry/test_kubernetes_telemetry_collection.py),
+applies the same derivation one layer further out, to the scrape configuration the
+chart renders. The catalog stops an *emitter* putting a tenant identifier, a request
+identifier, a pod name, or a measured duration on a metric label; a *collector* can
+put one there afterwards, from the outside, with the emitter none the wiser. So the
+drop list in the chart is recomputed from the catalog on every run rather than copied
+into it, no scrape job may attach a label the catalog bars, no recorded name may
+collide with a declared metric, every mapped runtime series must appear in the record
+that measured it, and every job must have an `absent()` rule — because a job whose
+discovery matched nothing produces no `up` series to be zero, and an empty result
+reads as a healthy quiet system. The same rules are available as a command for output
+that is not a committed render:
+
+```sh
+python -m tools.telemetry_collection charts/inferops-llm/ci/rendered
+```
+
+That suite checks a configuration and not a collection. **No collector, store,
+dashboard, or alerting path is selected, nothing scrapes either endpoint, and this
+chart has never been installed** —
+[the collection document](docs/telemetry/kubernetes-telemetry-collection.md) is where
+that distance is stated.
+
 A change that adds a signal adds a row with a stated question, a sensitivity class,
 and a cardinality class; a change that adds a metric label adds series to a budget
 the suite counts. A change that would place a field somewhere neither of its classes

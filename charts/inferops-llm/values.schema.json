@@ -224,8 +224,32 @@
           "maxLength": 63
         },
         "scrapeAnnotations": {
-          "description": "Whether every pod carries prometheus.io/scrape, prometheus.io/port, and prometheus.io/path. Nothing collects them: V1-S3-007 decides scrape and discovery, no scrape resource is rendered here, and the annotations are inert until something reads them. Requires `enabled`; the template refuses annotating a port that serves no metrics.",
+          "description": "Whether every pod carries prometheus.io/scrape, prometheus.io/port, and prometheus.io/path. Nothing here collects them, and the scrape configuration `telemetry.collection` renders does not read them: it discovers on the Kubernetes labels this chart always sets, so it does not depend on a switch that is off by default. Requires `enabled`; the template refuses annotating a port that serves no metrics.",
           "type": "boolean"
+        },
+        "collection": {
+          "description": "The `telemetry-scrape-configuration` inventory row: a ConfigMap holding a Prometheus scrape configuration and recording rules for this release. It is a document. No collector, store, dashboard, or alert path is selected (ADR 0006 D8), nothing in this project reads this ConfigMap, and nothing scrapes either endpoint.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "scrapeIntervalSeconds": { "$ref": "#/$defs/probeSeconds" },
+            "scrapeTimeoutSeconds": {
+              "description": "Must be shorter than the interval. A timeout that can outlive its interval produces overlapping scrapes of one target, which is how a slow endpoint becomes a rising number of in-flight requests against the thing that was already slow. The template refuses it.",
+              "$ref": "#/$defs/probeSeconds"
+            },
+            "runtimeMetricsPath": { "$ref": "#/$defs/httpPath" },
+            "collector": {
+              "description": "The collector that would read this configuration, named only so that the release's network policy can let it in. Both members empty renders no ingress allowance and leaves the default-deny whole; both are required together, because a namespace with no pod selector would admit every pod in it.",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "namespace": { "$ref": "#/$defs/dnsSafeOrEmpty" },
+                "podSelector": { "$ref": "#/$defs/collectorPodSelector" }
+              }
+            }
+          }
         }
       }
     },
@@ -298,7 +322,7 @@
               "required": ["namespaceSelector", "podSelector", "port"],
               "properties": {
                 "namespaceSelector": { "$ref": "#/$defs/labelSelectorLabels" },
-                "podSelector": { "$ref": "#/$defs/labelSelectorLabels" },
+                "podSelector": { "$ref": "#/$defs/collectorPodSelector" },
                 "port": { "$ref": "#/$defs/port" }
               }
             }
@@ -329,6 +353,19 @@
   },
 
   "$defs": {
+    "collectorPodSelector": {
+      "description": "A label set selecting a collector's pods. Empty here is not an empty selector: it means no collector is named, and the template renders no allowance at all. The label set reaches a NetworkPolicy only when it is non-empty, which is what stops `{}` from meaning `every pod in that namespace`. Both halves are a closed character class: the key as well as the value, because a selector is a pair and constraining only one of them is constraining neither.",
+      "type": "object",
+      "maxProperties": 8,
+      "propertyNames": { "$ref": "#/$defs/labelKey" },
+      "additionalProperties": { "$ref": "#/$defs/labelValue" }
+    },
+    "labelKey": {
+      "description": "A Kubernetes label key: an optional DNS-subdomain prefix, a slash, and a name. It is the API server's own rule, written out here rather than left to the API server, because a key this chart renders into a selector should be refused at `helm template` rather than at `kubectl apply`.",
+      "type": "string",
+      "maxLength": 316,
+      "pattern": "^([a-z0-9]([a-z0-9.-]*[a-z0-9])?/)?[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$"
+    },
     "labelSelectorLabels": {
       "description": "A non-empty label set used as a NetworkPolicy selector. Empty is refused rather than defaulted: an empty `matchLabels` selects everything, so a resolver selector somebody cleared would silently open egress to every pod in the cluster instead of failing.",
       "type": "object",

@@ -361,19 +361,76 @@ telemetry:
   serviceVersion: ""
   # Whether every pod carries `prometheus.io/scrape`, `prometheus.io/port`, and
   # `prometheus.io/path`. Off by default, and inert either way: nothing in this
-  # project collects anything, no scrape resource is rendered, and
-  # `telemetry-scrape-configuration` stays deferred to V1-S3-007. The
-  # annotations are here because they are the one form of scrape configuration
-  # that is a field on the workload rather than a resource beside it, so a
-  # discovery mechanism that reads them can find these pods without this chart
-  # deciding what that mechanism is. Requires `enabled`: annotating a port that
-  # serves no metrics is refused rather than rendered.
+  # project collects anything. The annotations are here because they are the one
+  # form of scrape configuration that is a field on the workload rather than a
+  # resource beside it, so a cluster-wide collector using that convention can
+  # find these pods without this chart deciding what that collector is.
+  #
+  # The scrape configuration `collection` below renders does NOT read them. It
+  # discovers on the Kubernetes labels this chart always sets, so it does not
+  # depend on a switch that is off by default, and the two are independent.
+  #
+  # Requires `enabled`: annotating a port that serves no metrics is refused
+  # rather than rendered.
   #
   # `inert` describes this environment rather than the annotation. These are the
   # legacy Prometheus auto-discovery keys, so a cluster-wide Prometheus using
   # that convention would start scraping without anything here asking it to, and
   # /metrics is unauthenticated (docs/security/deferred-risks.md, DR-01).
   scrapeAnnotations: false
+
+  # -- collection: the `telemetry-scrape-configuration` inventory row ---------
+  #
+  # A ConfigMap holding a Prometheus scrape configuration and a set of recording
+  # rules for this release. It is a **document**, and reading it is a collector's
+  # decision rather than this chart's: no collector, store, dashboard, or alert
+  # path is selected (ADR 0006 D8, ADR 0004), nothing in this project reads this
+  # ConfigMap, and **nothing scrapes either endpoint**. What it removes is the
+  # step where somebody writes scrape configuration by hand against labels they
+  # guessed.
+  #
+  # It is on by default, unlike `scrapeAnnotations`, and the difference is the
+  # blast radius. An annotation on a pod is read by any cluster-wide collector
+  # using that convention, so switching it on changes what a cluster outside this
+  # release does; a ConfigMap is read by nothing unless somebody mounts it.
+  #
+  # Discovery selects on the Kubernetes labels this chart always sets rather than
+  # on `prometheus.io/*`, so this configuration works whether or not the
+  # annotations above are on, and does not quietly depend on a switch that is off.
+  collection:
+    enabled: true
+
+    # Scrape pacing. The timeout must be shorter than the interval -- a timeout
+    # that can outlive its interval produces overlapping scrapes of one target,
+    # which is how a slow endpoint turns into a rising number of in-flight
+    # requests against the thing that was already slow. The template refuses it.
+    scrapeIntervalSeconds: 30
+    scrapeTimeoutSeconds: 10
+
+    # Where the serving runtime publishes its own series. `llama-server --metrics`
+    # serves them on the same port as its API, at this path; the runtime job is
+    # rendered under the real profile only, because the mock profile installs no
+    # runtime to scrape.
+    runtimeMetricsPath: /metrics
+
+    # The collector that would read the configuration above, named only so that
+    # the release's network policy can let it in.
+    #
+    # Both empty is the default and renders no ingress allowance. That is not an
+    # oversight: the default-deny in `security.networkPolicy` denies ingress from
+    # every pod outside this release, so a collector in another namespace is
+    # denied by the policy this chart already renders -- on a cluster whose
+    # network plugin enforces one, which the accepted local cluster's does not
+    # (docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md). Naming a
+    # collector opens exactly one port to exactly one selector, and naming none
+    # leaves the denial whole.
+    #
+    # `namespace` is matched with `kubernetes.io/metadata.name`, which the API
+    # server sets on every namespace itself. Both members are required together:
+    # a namespace with no pod selector would admit every pod in it.
+    collector:
+      namespace: ""
+      podSelector: {}
 
 # -- the chart's own test ----------------------------------------------------
 #

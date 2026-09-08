@@ -406,7 +406,7 @@
     {
       "resourceId": "telemetry-scrape-configuration",
       "name": "Telemetry scrape configuration for the release",
-      "kind": "release configuration",
+      "kind": "v1/ConfigMap",
       "owner": "helm",
       "lifecycle": "release",
       "v1Status": "planned",
@@ -414,7 +414,7 @@
       "destroyedBy": "helm uninstall",
       "survives": ["pod restart"],
       "referencedBy": [],
-      "handoff": "Describes what exposes metrics and where. It does not create a place to send them: the collector and store are a separate, undecided resource, and this configuration is inert until one exists.",
+      "handoff": "Rendered since V1-S3-007: a ConfigMap holding a Prometheus scrape configuration for the API and, under the real profile, the serving runtime, plus recording rules mapping the native runtime series and publishing the absence of the signals nothing emits. It describes what exposes metrics and where. It does not create a place to send them: the collector and store are a separate, undecided resource (ADR 0004), nothing in this release mounts this ConfigMap, and it is inert until a collector exists. It stays planned for the same reason workload-network-policy does: nothing has installed it, and a rendered object is not an installed one.",
       "evidenceRef": null
     },
     {
