@@ -231,6 +231,19 @@ outside the default lane by construction rather than by marker, because it refus
 to run without explicit confirmation. **It has not been run against a runtime**,
 so it has produced no record and raised nothing.
 
+`V1-S3-006-PR1` added a fourth, and the first that goes through Kubernetes:
+[the Kubernetes certification workflow](../serving/kubernetes-real-inference-certification.md).
+It applies the Terraform prerequisites, installs the chart from an explicit real
+values file, waits separately for measured model readiness and API readiness,
+runs the release's own in-cluster connection test, sends one real request through
+the release's API Service, and writes a record labelled `local real Kubernetes`
+before uninstalling the release. It removes neither the prerequisites nor the
+cluster. **It has not been run either**, and for a reason that is not merely
+scheduling: no InferOps API image is published, so an authorized run stops at the
+`release` stage with a pull failure and a diagnostics record. The label is a new
+one; the evidence class is still `local-real-cpu`, because a new class would have
+raised a ceiling by writing a string.
+
 `failure-and-resilience` provokes the failures the architecture names as canonical
 errors — model not ready, runtime unreachable, timeout — against the real runtime
 rather than against an anticipated mock. Full C3 certification is out of V1 scope;

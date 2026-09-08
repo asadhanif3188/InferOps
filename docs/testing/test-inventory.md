@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are fifteen, and they are listed in their own section rather than
+empty list. There are sixteen, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -161,7 +161,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Fifteen suites protect something no row of the claim matrix names. Each carries its
+Sixteen suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -182,6 +182,7 @@ matrix is complete needs to see them together.
 | [`tests/serving/test_inference_api_surface.py`](../../tests/serving/test_inference_api_surface.py) | The committed API compatibility surface against its document |
 | [`tests/serving/test_inference_api_implementation_agreement.py`](../../tests/serving/test_inference_api_implementation_agreement.py) | Every constant in the API package that repeats a row of that record |
 | [`tests/testing/test_toolchain.py`](../../tests/testing/test_toolchain.py) | The accepted toolchain decision against the configuration implementing it, including the rule that keeps the pytest configuration out of `pyproject.toml` |
+| [`tests/architecture/test_kubernetes_certification.py`](../../tests/architecture/test_kubernetes_certification.py) | The Kubernetes real-inference certification read as committed data and text: the descriptor against the chart and the accepted budgets, the collected cluster facts against the descriptor, the refusal of mock identity and of a forward that is not loopback, and the safety properties of the operating script. The claim that the selected runtime serves a real completion in a cluster belongs to the real-runtime layer, which runs the workflow instead of reading it |
 
 The two API-surface rows are the interesting pair. The matrix's drift claim,
 `the-published-strategy-and-its-data-cannot-drift-apart`, is written about the

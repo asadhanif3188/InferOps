@@ -66,6 +66,7 @@ ENTRY_POINTS = (
     "verify-clean.sh",
     "helm-lifecycle.sh",
     "terraform-prerequisites.sh",
+    "kubernetes-certification.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
@@ -707,3 +708,17 @@ def test_every_script_the_ownership_inventory_names_is_committed() -> None:
     assert referenced, "the inventory names no lifecycle script at all"
     missing = [ref for ref in referenced if not (REPO_ROOT / ref).is_file()]
     assert not missing, missing
+
+
+def test_every_committed_environment_script_is_inventoried() -> None:
+    """A script this suite never lists is a script none of its rules reach.
+
+    Every rule above is parameterised over `ENTRY_POINTS` or reads
+    `all_code_lines()`, which is built from the same tuple. A new script added
+    beside these and left out of it would be unchecked while looking checked,
+    and the omission is invisible: the suite still passes, with one fewer file
+    in it. `lib.sh` is excluded because it is sourced rather than executed and
+    is read separately by the wrapper rules.
+    """
+    committed = {path.name for path in SCRIPT_DIR.glob("*.sh") if path.name != "lib.sh"}
+    assert committed == set(ENTRY_POINTS), committed.symmetric_difference(ENTRY_POINTS)

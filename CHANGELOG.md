@@ -10,6 +10,37 @@ once versioned releases begin.
 
 ### Added
 
+- **The Kubernetes half of real inference is automated, and nothing has run it.**
+  [`scripts/environment/kubernetes-certification.sh`](scripts/environment/kubernetes-certification.sh)
+  applies the Terraform prerequisites, installs the chart from an explicit real
+  values file, waits **separately** for measured model readiness and API
+  readiness against the budgets
+  [the committed descriptor](deploy/serving/certification/k8s-real-inference.v1.json)
+  publishes, runs the release's own in-cluster connection test, opens one bounded
+  loopback forward, and uninstalls the release — asserting both that nothing
+  carrying the release label survived and that the namespace did.
+  [`tools/kubernetes_certification`](tools/kubernetes_certification) performs no
+  cluster operation at all: it validates the descriptor against the runtime
+  package, the composition, the runtime profile, and the model source record,
+  holds the collected cluster facts to it rather than trusting them, refuses a
+  base URL that is not the loopback forward, refuses mock identity or mock
+  capability metadata, and writes a record labelled `local real Kubernetes` that
+  carries no prompt and no completion. The evidence **class** is still
+  `local-real-cpu`; a new class would have raised a ceiling by writing a string.
+  `helm install` deliberately runs without `--wait`, because `--wait` folds the
+  install, the model load, and the API start into one number and the model load
+  is the measurement this story is about. Cleanup removes the release and
+  **nothing else**: the descriptor refuses a policy that would take the
+  prerequisites or the cluster, and a test reads the script to confirm it
+  contains no `terraform destroy`, no `kind delete`, and no namespace deletion.
+  **It has not been run, and today it could not complete**: no InferOps API image
+  is published, so an authorized run stops at the `release` stage with a pull
+  failure and a diagnostics record — which is the workflow behaving correctly.
+  [The procedure](docs/serving/kubernetes-real-inference-certification.md) states
+  the blocker, the stage vocabulary, and the two things a port-forward does not
+  prove; [the validation record](docs/proof/serving/v1-s3-006-pr1-validation.md)
+  holds the commands and what was deliberately not run.
+
 - **The prerequisite half of the ownership boundary is written, and nothing has
   applied it.** [`infra/terraform/`](infra/terraform/) declares the three
   resources the inventory gives Terraform — the platform namespace, its shared

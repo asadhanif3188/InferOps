@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "certificationId": "inferops-c2-kubernetes-real-inference",
+  "certificationLevel": "C2",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "lane": "real-runtime",
+  "chartRef": "charts/inferops-llm",
+  "certificationRef": "docs/testing/certification.md",
+  "procedureRef": "docs/serving/kubernetes-real-inference-certification.md",
+  "release": {
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real",
+    "apiServiceName": "inferops-inferops-llm",
+    "apiServicePort": 8090,
+    "runtimeServiceName": "inferops-inferops-llm-runtime",
+    "instanceSelector": "app.kubernetes.io/instance=inferops",
+    "apiComponent": "platform-api",
+    "runtimeComponent": "serving-runtime",
+    "replicas": 1
+  },
+  "prerequisites": {
+    "requiresTerraformPrerequisites": true,
+    "requiresTargetClusterAssertion": true,
+    "requiresPinnedRuntimeImage": true,
+    "requiresPinnedApiImage": true,
+    "requiresVerifiedModelCache": true
+  },
+  "readiness": {
+    "installBudgetMs": 900000,
+    "runtimeBudgetMs": 300000,
+    "apiBudgetMs": 122000,
+    "releaseTestBudgetMs": 300000
+  },
+  "request": {
+    "host": "127.0.0.1",
+    "path": "/v1/chat/completions",
+    "modelsPath": "/v1/models",
+    "readinessPath": "/health/ready",
+    "prompt": "In one sentence, what is Kubernetes?",
+    "requestId": "v1-s3-006-pr1-k8s-real-inference",
+    "correlationId": "v1-s3-006-pr1-k8s-real-inference",
+    "timeoutMs": 120000
+  },
+  "assertions": {
+    "requiredAdapterKind": "real",
+    "prohibitedIdentitySubstring": "mock",
+    "requireUsageCounts": true,
+    "requireNonEmptyContent": true,
+    "requirePinnedModelRevision": true,
+    "requireDigestPinnedImages": true,
+    "requireEveryReplicaReady": true,
+    "requireReleaseTest": true
+  },
+  "evidence": {
+    "directory": ".cache/inferops/certification",
+    "resultFile": "k8s-real-inference.json",
+    "diagnosticsFile": "k8s-real-inference-diagnostics.json",
+    "factsFile": ".artifacts/kubernetes-certification/cluster-facts.json",
+    "retainGeneratedText": false
+  },
+  "cleanup": {
+    "uninstallsRelease": true,
+    "removesPrerequisites": false,
+    "removesCluster": false
+  }
+}

@@ -402,6 +402,7 @@ NUMBER_WORDS: dict[int, str] = {
     13: "thirteen",
     14: "fourteen",
     15: "fifteen",
+    16: "sixteen",
 }
 
 WORD_NUMBERS: dict[str, int] = {word: value for value, word in NUMBER_WORDS.items()}
