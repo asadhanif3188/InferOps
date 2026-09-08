@@ -67,6 +67,7 @@ ENTRY_POINTS = (
     "helm-lifecycle.sh",
     "terraform-prerequisites.sh",
     "kubernetes-certification.sh",
+    "kubernetes-multi-replica-certification.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
@@ -362,7 +363,17 @@ def test_every_cluster_deletion_names_the_cluster() -> None:
 # and that restriction is the whole point of writing it out: `[\w-]+` accepts
 # `--all`, so the first form of this rule read `delete pod --all` as a named
 # deletion and let the most dangerous shape in the vocabulary through.
-DELETE_NAMES_A_RESOURCE = re.compile(r"delete\s+[\w,]+[/ ]+[A-Za-z0-9][\w.-]*")
+#
+# A double-quoted `"${NAME}"` counts as naming one resource. That is not a hole
+# widened for convenience: the one script that deletes by variable checks the
+# variable against a DNS-1123 label at the point it reads it, before anything is
+# installed, so a value that could be read as a flag is refused there. The
+# alternative -- writing the object's name literally into the delete -- would
+# mean a name that is the descriptor's everywhere except in the line that
+# removes it.
+DELETE_NAMES_A_RESOURCE = re.compile(
+    r'delete\s+[\w,]+[/ ]+(?:[A-Za-z0-9][\w.-]*|"\$\{[A-Za-z_][\w]*\}")'
+)
 
 # `--all` on a delete means every object of that kind. Inside the project's own
 # namespace that is arguably harmless, but it is one mistyped `-n` away from not
@@ -395,7 +406,16 @@ def deletion_is_scoped(line: str) -> bool:
     """
     if 'delete namespace "${INFEROPS_NAMESPACE}"' in line:
         return True
-    scoped = '-n "${INFEROPS_NAMESPACE}"' in line
+    # Two namespaces, because this project owns two: the smoke namespace every
+    # cluster-lifecycle script works in, and the release namespace the
+    # certification workflows install into. Both are Terraform's or these
+    # scripts' own and both carry the `inferops-` prefix ADR 0001 (D5) requires;
+    # what the rule is about is that a deletion names a namespace at all, not
+    # which of this project's two it names.
+    scoped = (
+        '-n "${INFEROPS_NAMESPACE}"' in line
+        or '-n "${INFEROPS_RELEASE_NAMESPACE}"' in line
+    )
     selected = '-l "${INFEROPS_PART_OF_SELECTOR}"' in line or (
         DELETE_NAMES_A_RESOURCE.search(line) is not None
     )
@@ -486,6 +506,10 @@ def rules_reject(line: str) -> bool:
         'inferops::kubectl delete pod --all -n "${INFEROPS_NAMESPACE}"',
         # Namespaced but naming nothing.
         'inferops::kubectl delete pod -n "${INFEROPS_NAMESPACE}"',
+        # The same two shapes in the release namespace, so that widening the
+        # rule to a second namespace did not widen what it accepts in it.
+        'inferops::kubectl delete job --all -n "${INFEROPS_RELEASE_NAMESPACE}"',
+        'inferops::kubectl delete job -n "${INFEROPS_RELEASE_NAMESPACE}"',
         # The shape that got through the first version of the sweep rule,
         # because the flag ended the line and `"-A "` needs a space after it.
         "inferops::kubectl delete pods -A",
@@ -522,6 +546,7 @@ def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:
         # namespaces that has no blast radius and must not be refused.
         'inferops::kubectl delete namespace "${INFEROPS_NAMESPACE}" --ignore-not-found=true',
         'inferops::kubectl delete job hello-world-verify -n "${INFEROPS_NAMESPACE}"',
+        'inferops::kubectl delete job "${driver_name}" -n "${INFEROPS_RELEASE_NAMESPACE}" --ignore-not-found --wait',
         "inferops::kubectl top pods -A",
         "inferops::kubectl get pods -n kube-system -o wide",
         # Every helm call helm-lifecycle.sh actually makes, plus the comment that

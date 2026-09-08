@@ -1552,6 +1552,32 @@ def observe_inference(
 # -- the evidence directory -------------------------------------------------
 
 
+def ensure_evidence_paths_safe(root: Path, targets: Sequence[Path]) -> None:
+    """Refuse the fixed evidence location, or a file in it, that was redirected.
+
+    A function rather than a method because a second workflow writes into the
+    same directory (`multi_replica.py`), and a second copy of this check would
+    be a second guard over one rule -- which is the arrangement this package
+    already refuses for the target-cluster guard.
+
+    Every segment of the ignored directory is checked as well as the files
+    themselves: a symlink or a junction anywhere along the path is what turns
+    "write a record into an ignored directory" into "write wherever that link
+    points", and `os.path.isjunction` is named beside `is_symlink` because a
+    Windows junction is not a symlink and this project is developed on Windows.
+    """
+    candidate = root
+    for part in EXPECTED_EVIDENCE_DIRECTORY.parts:
+        candidate = candidate / part
+        if candidate.is_symlink() or os.path.isjunction(candidate):
+            raise EvidenceUnwritable("the certification evidence path is unsafe")
+    for target in targets:
+        if target.is_symlink() or os.path.isjunction(target):
+            raise EvidenceUnwritable("the certification evidence path is unsafe")
+        if not target.resolve().is_relative_to(root):
+            raise EvidenceUnwritable("the certification evidence path is unsafe")
+
+
 class EvidenceDirectory:
     """Write only this workflow's own records to the fixed ignored location."""
 
@@ -1567,16 +1593,7 @@ class EvidenceDirectory:
         self._ensure_safe()
 
     def _ensure_safe(self) -> None:
-        candidate = self.root
-        for part in EXPECTED_EVIDENCE_DIRECTORY.parts:
-            candidate = candidate / part
-            if candidate.is_symlink() or os.path.isjunction(candidate):
-                raise EvidenceUnwritable("the certification evidence path is unsafe")
-        for target in (self.result_path, self.diagnostics_path):
-            if target.is_symlink() or os.path.isjunction(target):
-                raise EvidenceUnwritable("the certification evidence path is unsafe")
-            if not target.resolve().is_relative_to(self.root):
-                raise EvidenceUnwritable("the certification evidence path is unsafe")
+        ensure_evidence_paths_safe(self.root, (self.result_path, self.diagnostics_path))
 
     def write(self, target: Path, document: Mapping[str, object]) -> Path:
         """Write one whole record, refusing an unsafe path before and after mkdir."""

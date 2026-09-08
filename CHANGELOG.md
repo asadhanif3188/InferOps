@@ -10,6 +10,50 @@ once versioned releases begin.
 
 ### Added
 
+- **Multi-replica Kubernetes inference is certified as a separate profile, and
+  nothing has run it either.** The single-replica certification could not answer
+  whether requests reach more than one replica and said so: its one request goes
+  through a `kubectl port-forward`, which the API server serves against **one
+  selected endpoint** and which therefore traverses no virtual IP.
+  [`scripts/environment/kubernetes-multi-replica-certification.sh`](scripts/environment/kubernetes-multi-replica-certification.sh)
+  answers it instead — it installs the chart with at least two platform API
+  replicas, waits for **every replica individually** rather than for a
+  controller's summary count, and drives a bounded set of real requests through
+  the API Service from a short-lived in-cluster Job, one connection per request,
+  so that `kube-proxy` picks each endpoint.
+  [`tools/kubernetes_certification/multi_replica.py`](tools/kubernetes_certification/multi_replica.py)
+  then joins each successful request to the replica that recorded it, using the
+  `inferops.request.id` and `k8s.pod.name` fields the API's own structured logs
+  already carry — **no response header, body member, or endpoint exposes pod
+  identity**, because a test that made a replica's name part of the API's
+  contract in order to observe it would have changed the product to measure it.
+  A request nobody recorded, a request two replicas both claim, a record from a
+  pod that was never a ready replica, and every record landing on one replica
+  are each a failure with a named stage; the last says plainly that it is the
+  Service's endpoint choice rather than a defect, and it is not retried or
+  downgraded. **Capacity refuses before anything is created**: two API replicas
+  and one runtime replica are 1,210 millicores and 2.25 GiB of requests peaking
+  at 4.06 GiB of limits, the figures are the chart's own resource blocks times
+  the replica counts and a test fails if the two drift, and a host that cannot
+  hold them gets every shortfall at once with a remedy and its own exit code —
+  because a host that is too small and a platform that did not certify are
+  different answers. **The replica count is never reduced to fit**, and it comes
+  from the descriptor with `--set` rather than from the operator's values file,
+  so a file saying `replicaCount: 1` cannot decide this profile. Only the
+  **platform API** tier is multi-replica: `llama-server` publishes no
+  per-request, pod-aware record to correlate against, and inferring the runtime
+  tier's distribution from a desired replica count is exactly what a
+  multi-replica claim may not do — so the record carries that limitation, with
+  four others, rather than leaving them to a reader. The single-replica
+  certification is unchanged and independently runnable; the one edit to its
+  module extracts the evidence-path safety check so that both workflows share one
+  guard instead of two copies. **It has not been run, and today it could not
+  complete**, for the same reason as PR1: no InferOps API image is published.
+  [The procedure](docs/serving/kubernetes-multi-replica-certification.md) states
+  why a forward could not answer the question, which tier is certified and why
+  only one, what the capacity gate measures, and what the record will not
+  support.
+
 - **The Kubernetes half of real inference is automated, and nothing has run it.**
   [`scripts/environment/kubernetes-certification.sh`](scripts/environment/kubernetes-certification.sh)
   applies the Terraform prerequisites, installs the chart from an explicit real

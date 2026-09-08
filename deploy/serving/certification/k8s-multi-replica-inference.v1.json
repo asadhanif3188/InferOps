@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "certificationId": "inferops-c2-kubernetes-multi-replica-inference",
+  "certificationLevel": "C2",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "lane": "real-runtime",
+  "chartRef": "charts/inferops-llm",
+  "certificationRef": "docs/testing/certification.md",
+  "procedureRef": "docs/serving/kubernetes-multi-replica-certification.md",
+  "singleReplicaCertificationRef": "deploy/serving/certification/k8s-real-inference.v1.json",
+  "cluster": {
+    "name": "inferops-dev",
+    "context": "kind-inferops-dev",
+    "nodeImageDigest": "sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256"
+  },
+  "release": {
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real",
+    "apiServiceName": "inferops-inferops-llm",
+    "apiServicePort": 8090,
+    "apiDeploymentName": "inferops-inferops-llm",
+    "runtimeServiceName": "inferops-inferops-llm-runtime",
+    "runtimeDeploymentName": "inferops-inferops-llm-runtime",
+    "configMapName": "inferops-inferops-llm-configuration",
+    "instanceSelector": "app.kubernetes.io/instance=inferops",
+    "apiComponent": "platform-api",
+    "runtimeComponent": "serving-runtime",
+    "apiReplicas": 2,
+    "runtimeReplicas": 1
+  },
+  "prerequisites": {
+    "requiresTerraformPrerequisites": true,
+    "requiresTargetClusterAssertion": true,
+    "requiresPinnedRuntimeImage": true,
+    "requiresPinnedApiImage": true,
+    "requiresVerifiedModelCache": true,
+    "requiresCapacityPreflight": true
+  },
+  "modelCache": {
+    "claimName": "inferops-model-cache",
+    "verificationInitContainer": "verify-model",
+    "requireReadOnlyMount": true,
+    "requireArtifactHashCompared": true
+  },
+  "capacity": {
+    "minimumEngineMemoryBytes": 6442450944,
+    "minimumEngineCpus": 4,
+    "requestedCpuMillis": 1210,
+    "requestedMemoryBytes": 2432696320,
+    "peakMemoryBytes": 4362076160,
+    "headroomCpuMillis": 500,
+    "headroomMemoryBytes": 536870912
+  },
+  "readiness": {
+    "installBudgetMs": 120000,
+    "runtimeStartupBudgetMs": 600000,
+    "runtimeRolloutBudgetMs": 900000,
+    "apiStartupBudgetMs": 60000,
+    "apiRolloutBudgetMs": 300000,
+    "releaseTestBudgetMs": 300000,
+    "distributionBudgetMs": 1800000,
+    "uninstallBudgetMs": 600000
+  },
+  "distribution": {
+    "mechanism": "structured-log-correlation",
+    "driverComponent": "release-test",
+    "driverName": "inferops-multi-replica-driver",
+    "driverImage": "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+    "path": "/v1/chat/completions",
+    "prompt": "In one sentence, what is a Kubernetes Service?",
+    "requestCount": 10,
+    "requestIdPrefix": "v1-s3-006-pr2-request",
+    "correlationId": "v1-s3-006-pr2-k8s-multi-replica-inference",
+    "minimumDistinctReplicas": 2,
+    "requestTimeoutMs": 120000
+  },
+  "assertions": {
+    "requiredAdapterKind": "real",
+    "prohibitedIdentitySubstring": "mock",
+    "requireEveryReplicaReady": true,
+    "requireEveryRequestSuccessful": true,
+    "requireUsageCounts": true,
+    "requirePerReplicaCorrelation": true,
+    "requirePinnedModelRevision": true,
+    "requireDigestPinnedImages": true,
+    "requireReleaseTest": true,
+    "requirePinnedNodeImage": true
+  },
+  "evidence": {
+    "directory": ".cache/inferops/certification",
+    "resultFile": "k8s-multi-replica-inference.json",
+    "diagnosticsFile": "k8s-multi-replica-inference-diagnostics.json",
+    "capacityFile": ".artifacts/kubernetes-multi-replica-certification/capacity-facts.json",
+    "factsFile": ".artifacts/kubernetes-multi-replica-certification/cluster-facts.json",
+    "observationsFile": ".artifacts/kubernetes-multi-replica-certification/observations.json",
+    "cleanupFile": ".artifacts/kubernetes-multi-replica-certification/cleanup-facts.json",
+    "retainGeneratedText": false
+  },
+  "cleanup": {
+    "uninstallsRelease": true,
+    "removesRequestDriver": true,
+    "removesPrerequisites": false,
+    "removesCluster": false
+  },
+  "limitations": [
+    "The evidence is local real Kubernetes on a single-node kind cluster and implies nothing about production high availability.",
+    "Only the platform API tier is multi-replica. The serving runtime stays at one replica, because the correlation mechanism this certification uses is the InferOps API's own structured log and llama-server publishes no equivalent.",
+    "Distribution across replicas is whatever kube-proxy chose during the run. It is observed, never configured, and this workflow certifies no routing, balancing, or affinity behaviour.",
+    "No autoscaling, load generation, performance comparison, or failure experiment is performed, and none may be read into this record.",
+    "One node hosts every replica, so nothing here says anything about scheduling across nodes, zone spreading, or node-failure tolerance."
+  ]
+}
