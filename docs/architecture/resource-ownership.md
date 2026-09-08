@@ -12,13 +12,27 @@ described in
 [the storage document](../environment/model-cache-storage.md) — and
 `V1-S3-005-PR1` added the Terraform prerequisite layer at
 [`infra/terraform/`](../../infra/terraform/), described in
-[the prerequisite document](../environment/platform-prerequisites.md).
+[the prerequisite document](../environment/platform-prerequisites.md), and
+`V1-S3-006-PR1` added a second release procedure at
+[`scripts/environment/kubernetes-certification.sh`](../../scripts/environment/kubernetes-certification.sh),
+described in
+[the Kubernetes certification procedure](../serving/kubernetes-real-inference-certification.md).
+
+**Two procedures now install and uninstall the same release in the same
+namespace**, and the distinction is what each is for rather than what each
+touches. `helm-lifecycle.sh` answers "does the chart install, upgrade, roll back,
+and uninstall cleanly" and involves no model. `kubernetes-certification.sh`
+answers "does a real model answer through the release's Service" and writes a
+`C2` record. Both refuse to run over an existing release, so they interlock
+rather than collide; both apply the same rule about what a release may own, and
+the certification workflow additionally counts the model cache claim on both
+sides of its own run.
 **Every row below is still `planned` or `deferred`, and that is correct**: a
 chart renders objects, a rendered object is a file, a Terraform configuration
 nobody has applied creates nothing, and a procedure nobody has executed changes
 nothing in a cluster. None of the resources in the release or prerequisite tables
-exists in a cluster, because nothing here has installed or applied one — and the
-lifecycle script cannot be run until an InferOps API image exists.
+exists in a cluster, because nothing here has installed or applied one — and
+neither release procedure can be run until an InferOps API image exists.
 
 The lifecycle script records one thing this document had left implicit. Something
 has to create the namespace a release installs into, and that something must not

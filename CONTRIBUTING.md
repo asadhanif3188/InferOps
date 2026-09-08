@@ -1004,9 +1004,18 @@ commands you ran, their results, and any check you skipped.
 
 Record the environment, immutable tool/component versions, commands, results,
 limitations, and failure diagnostics for executed proof. Label evidence accurately:
-documented/unexecuted, mock, synthetic, estimated, local real runtime, cloud real
-runtime, or production experience. A mock or document review cannot certify real
-runtime behavior.
+documented/unexecuted, mock, synthetic, estimated, local real runtime, local real
+Kubernetes, cloud real runtime, or production experience. A mock or document review
+cannot certify real runtime behavior.
+
+`local real Kubernetes` is `local real runtime` reached through a Kubernetes
+release rather than through two containers on a host. It is a separate label
+because the two prove different things — a chart, a scheduler, two Deployments,
+two Services, and a claim sit between the request and the model in one of them and
+not the other — and neither implies the other. It is **not** a separate evidence
+class: both are `local-real-cpu` in
+[the certification levels](docs/testing/certification.md), and inventing a class
+would raise a ceiling by writing a string.
 
 Records are written from the templates in
 [`docs/proof/templates/`](docs/proof/templates/) — an experiment record, an
