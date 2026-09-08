@@ -65,6 +65,7 @@ ENTRY_POINTS = (
     "smoke.sh",
     "verify-clean.sh",
     "helm-lifecycle.sh",
+    "terraform-prerequisites.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is

@@ -18,9 +18,11 @@ The label set carries `inferops.io/lifecycle: release`. The ownership document
 records that a scoped teardown sweeping `app.kubernetes.io/part-of=inferops`
 across `inferops-` namespaces would reach Terraform-owned prerequisites, and
 that the resolution is a second label distinguishing the two. This is the
-release half of it. The prerequisite half is Terraform's and does not exist:
-V1-S3-005 owns it, and until it does the sweep must stay bound to the smoke
-namespace it is bound to today.
+release half of it. The prerequisite half is Terraform's and is now written --
+`infra/terraform/` sets `inferops.io/lifecycle: prerequisite` on the namespace
+and the model cache claim -- but nothing has applied it, and the sweep itself
+still does not exclude that marker, so it must stay bound to the smoke namespace
+it is bound to today.
 */}}
 
 {{- define "inferops-llm.name" -}}

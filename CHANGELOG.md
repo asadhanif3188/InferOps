@@ -10,6 +10,41 @@ once versioned releases begin.
 
 ### Added
 
+- **The prerequisite half of the ownership boundary is written, and nothing has
+  applied it.** [`infra/terraform/`](infra/terraform/) declares the three
+  resources the inventory gives Terraform — the platform namespace, its shared
+  metadata, and the model cache claim — as a module and one local environment,
+  and declares nothing else. The fourth Terraform-owned row is deferred out of V1
+  and a test fails if it appears. `tests/architecture/test_terraform_prerequisites.py`
+  is the comparison [the ownership document](docs/architecture/resource-ownership.md)
+  said could not exist yet: it reads the prerequisite table and refuses a
+  configuration that declares something the document does not give Terraform,
+  that declares a release or derived object, that adds a second provider or a
+  `helm_release`, or that leaves a prerequisite row undeclared — with the
+  declared kinds checked as an allowlist as well as a denylist, so a kind nobody
+  thought to forbid still fails. The lifecycle marker ADR 0004 specified and
+  nothing implemented, `inferops.io/lifecycle: prerequisite`, is now set on both
+  objects; **the scoped sweep that must exclude it is still not written**, and
+  the ownership document now says which half is done. The provider is pinned
+  exactly, with a lock covering six platforms because `terraform init` records
+  only its own. [`scripts/environment/terraform-prerequisites.sh`](scripts/environment/terraform-prerequisites.sh)
+  establishes cluster identity before Terraform reaches a cluster, hands it the
+  kubeconfig and context rather than letting it inherit either, and refuses a
+  destroy without `--confirm` or underneath an installed release. **Every
+  Terraform row in the inventory is still `planned`**: no `plan`, `apply`, or
+  `destroy` has been run against any cluster, and
+  [the prerequisite document](docs/environment/platform-prerequisites.md) labels
+  its apply and re-apply table as derived from provider semantics rather than
+  observed. An independent review before merge found four defects, and all four
+  are fixed and recorded in
+  [the validation record](docs/proof/environment/v1-s3-005-pr1-validation.md):
+  the ownership patterns were anchored at column 0, so a resource block indented
+  by one space was invisible to every rule including the allowlist called the
+  backstop; a size validation threw a raw function-call diagnostic beside its
+  own message; three documents said the lock covered five platforms where it
+  covers six; and three files elsewhere in the repository still said this
+  Terraform did not exist.
+
 - **Every workload the chart installs presents an identity of its own, and the
   release starts from a network denial.** The chart rendered one `ServiceAccount`
   that both Deployments named; it now renders one per workload. Neither is

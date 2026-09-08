@@ -330,9 +330,12 @@ paper:
 
 - **The namespace has to exist first, and `--create-namespace` must never be
   passed.** It is one flag, it is the default suggestion in most documentation,
-  and it silently gives one resource two owners. Terraform owns the namespace;
-  `V1-S3-005` writes that Terraform, and until it does the lifecycle script
-  creates the namespace itself and says so.
+  and it silently gives one resource two owners. Terraform owns the namespace,
+  and that Terraform now exists in
+  [the prerequisite layer](../../docs/environment/platform-prerequisites.md) --
+  applying it first is the ordered path. Nothing has applied it, so where the
+  namespace is absent the lifecycle script still creates it itself and says it is
+  standing in.
 - **`helm uninstall` is the whole of removal.** It removes this release and
   nothing else. The namespace and the model cache claim survive it by design —
   that is what makes them prerequisites — and the lifecycle script asserts both
