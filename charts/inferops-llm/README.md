@@ -31,12 +31,13 @@ release; neither may create what the other owns.
 | `platform-api-service` | `Service`, `ClusterIP` | both |
 | `serving-runtime-deployment` | `Deployment` | real only |
 | `serving-runtime-service` | `Service`, `ClusterIP` | real only |
+| `telemetry-scrape-configuration` | `ConfigMap` | both |
 
-Two Helm-owned rows are deliberately absent, and the chart declares each in its
-own `Chart.yaml` annotations so that the omission is a statement rather than an
-oversight: `model-acquisition-job` and `telemetry-scrape-configuration`
-(`V1-S3-007`). `workload-network-policy` was the third until `V1-S3-004` rendered
-it.
+One Helm-owned row is deliberately absent, and the chart declares it in its own
+`Chart.yaml` annotations so that the omission is a statement rather than an
+oversight: `model-acquisition-job`. `workload-network-policy` was one of three
+until `V1-S3-004` rendered it, and `telemetry-scrape-configuration` was one of two
+until `V1-S3-007` rendered this one.
 
 `model-acquisition-job` is the one to read twice, because `V1-S3-003` implemented
 the rest of the model cache around it and left it where it was. It needs a
@@ -228,15 +229,32 @@ out of exactly that.
 
 `telemetry.scrapeAnnotations` adds `prometheus.io/scrape`, `prometheus.io/port`,
 and `prometheus.io/path` to every pod. It is off by default and inert either
-way: **nothing in this project collects anything.** No scrape resource is
-rendered, `telemetry-scrape-configuration` stays deferred to `V1-S3-007`, and
-the annotations are here only because they are the one form of scrape
-configuration that is a field on the workload rather than a resource beside it —
-so a discovery mechanism that reads them can find these pods without this chart
-deciding what that mechanism is. All three keys are refused in `commonAnnotations`
-and in every per-object map whether or not they are switched on, because a
-hand-written `prometheus.io/port` beside a derived one is the same duplicate-key
-hazard the other guards exist for.
+way: **nothing in this project collects anything.** The annotations are here
+because they are the one form of scrape configuration that is a field on the
+workload rather than a resource beside it, so a cluster-wide collector using that
+convention can find these pods without this chart deciding what that collector is.
+All three keys are refused in `commonAnnotations` and in every per-object map
+whether or not they are switched on, because a hand-written `prometheus.io/port`
+beside a derived one is the same duplicate-key hazard the other guards exist for.
+
+`telemetry.collection` is the `telemetry-scrape-configuration` row, and it is
+**on** by default while the annotations above are off. The difference is the blast
+radius: an annotation on a pod is read by any cluster-wide collector using that
+convention, so switching it on changes what something outside this release does,
+while a ConfigMap is read by nothing unless somebody mounts it. What it holds is a
+Prometheus scrape configuration for the API and, under the real profile, the
+runtime, plus recording rules mapping the native runtime series and publishing the
+absence of the signals nothing emits. **Nothing reads it, no collector is selected,
+and nothing scrapes either endpoint** —
+[the collection document](../../docs/telemetry/kubernetes-telemetry-collection.md)
+states what it would find and what each label would cost. Discovery selects on the
+Kubernetes labels this chart always sets rather than on the annotations above, so
+it does not depend on a switch that is off by default.
+
+`telemetry.collection.collector` names the collector the release's network policy
+would let in: a namespace and a pod selector, required together, rendering one
+ingress rule per workload policy. Both empty is the default and leaves the
+default-deny whole, because there is no collector to name.
 
 One caveat on the word *inert*, because it is a property of this environment and
 not of the annotation. These three keys are the legacy Prometheus

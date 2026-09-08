@@ -257,6 +257,10 @@ ROW_FOR_RENDERED = {
     ("ServiceAccount", "workload-identity"): "workload-service-account",
     ("NetworkPolicy", "workload-network-policy"): "workload-network-policy",
     ("ConfigMap", "runtime-configuration"): "runtime-configuration",
+    (
+        "ConfigMap",
+        "telemetry-scrape-configuration",
+    ): "telemetry-scrape-configuration",
     ("Deployment", "platform-api"): "platform-api-deployment",
     ("Service", "platform-api"): "platform-api-service",
     ("Deployment", "serving-runtime"): "serving-runtime-deployment",
@@ -317,14 +321,16 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
     assert CHART_YAML.is_file()
     assert VALUES_SCHEMA.is_file()
     assert len(list(TEMPLATES_DIR.glob("*.yaml"))) >= 5
-    assert len(INSTALLED["real"]) == 11, (
-        "the real profile installs eleven objects: two Deployments, two Services, "
-        "a ConfigMap, one ServiceAccount per workload, and four network policies"
+    assert len(INSTALLED["real"]) == 12, (
+        "the real profile installs twelve objects: two Deployments, two Services, "
+        "the runtime ConfigMap, the telemetry scrape ConfigMap, one ServiceAccount "
+        "per workload, and four network policies"
     )
-    assert len(INSTALLED["mock"]) == 7, (
-        "the mock profile installs seven: the API's Deployment, Service, "
-        "ConfigMap and ServiceAccount, and three network policies. It renders no "
-        "runtime policy because it renders no runtime"
+    assert len(INSTALLED["mock"]) == 8, (
+        "the mock profile installs eight: the API's Deployment, Service, "
+        "ConfigMap and ServiceAccount, the telemetry scrape ConfigMap, and three "
+        "network policies. It renders no runtime policy because it renders no "
+        "runtime"
     )
     assert len(HOOKS["real"]) == 1, "one test hook, in both profiles"
     assert len(HOOKS["mock"]) == 1
@@ -815,6 +821,7 @@ def test_the_mock_render_carries_no_real_pin_and_no_runtime() -> None:
     one."""
     kinds = sorted(document["kind"] for document in INSTALLED["mock"])
     assert kinds == [
+        "ConfigMap",
         "ConfigMap",
         "Deployment",
         "NetworkPolicy",
@@ -1593,15 +1600,120 @@ def test_the_scrape_annotations_follow_the_switch_that_governs_them() -> None:
     assert seen == 3, "two Deployments under real, one under mock"
 
 
-def test_no_scrape_resource_is_rendered() -> None:
-    """`telemetry-scrape-configuration` is deferred, and stays deferred.
+def test_the_scrape_configuration_is_a_config_map_and_not_an_operator_object() -> None:
+    """`telemetry-scrape-configuration` is rendered, and it is a plain ConfigMap.
 
-    Pod annotations are a field on a workload. A ServiceMonitor, a PodMonitor, or
-    a scrape config is a resource beside it, and choosing one is `V1-S3-007`'s.
+    A ServiceMonitor or a PodMonitor is a custom resource whose CRD belongs to a
+    Prometheus Operator installation. Rendering one would make this chart install
+    only on a cluster carrying an add-on nobody has chosen -- the collector is
+    still the open question `ADR 0004` deliberately leaves open -- and the release
+    would fail on a cluster without it. A ConfigMap installs anywhere and is read
+    by whatever eventually reads it.
     """
-    assert "telemetry-scrape-configuration" in DECLARED_DEFERRED
+    assert "telemetry-scrape-configuration" in DECLARED_OWNED
+    assert "telemetry-scrape-configuration" not in DECLARED_DEFERRED
     for _profile, document in ALL_RENDERED:
         assert document["kind"] not in ("ServiceMonitor", "PodMonitor")
+
+
+@pytest.mark.parametrize("profile", sorted(INSTALLED))
+def test_the_scrape_configuration_is_rendered_once_and_mounted_by_nothing(
+    profile: str,
+) -> None:
+    """A workload publishes metrics. It does not collect them.
+
+    A ConfigMap mounted into the pod it describes would suggest the pod reads its
+    own scrape configuration, which is the wrong mental model to install beside the
+    right file.
+    """
+    configured = [
+        document
+        for document in INSTALLED[profile]
+        if document["kind"] == "ConfigMap"
+        and _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
+        == "telemetry-scrape-configuration"
+    ]
+    assert len(configured) == 1
+    name = configured[0]["metadata"]["name"]
+    assert set(configured[0]["data"]) == {"scrape-config.yaml", "recording-rules.yaml"}
+
+    for _label, spec in _pod_specs(RENDERED[profile]):
+        for volume in spec.get("volumes") or []:
+            source = volume.get("configMap") or {}
+            assert source.get("name") != name
+        for container in spec.get("containers") or []:
+            for source in container.get("envFrom") or []:
+                assert (source.get("configMapRef") or {}).get("name") != name
+
+
+def test_switching_collection_off_renders_no_scrape_configuration() -> None:
+    """The switch is a switch, and the resource it governs is the whole resource."""
+    result = _render("telemetry.collection.enabled=false")
+    assert result.returncode == 0, result.stderr
+    assert "telemetry-scrape-configuration" not in result.stdout
+
+
+def test_the_collector_allowance_is_one_from_item_and_defaults_to_absent() -> None:
+    """Two selectors in one `from` item are ANDed; two items are ORed.
+
+    Written as two items the rule would mean "any pod in that namespace, or any pod
+    anywhere with those labels", which is a materially wider hole and reads
+    identically in a `kubectl get networkpolicy -o yaml`.
+    """
+    assert VALUES["telemetry"]["collection"]["collector"] == {
+        "namespace": "",
+        "podSelector": {},
+    }
+    for _profile, document in ALL_RENDERED:
+        if document["kind"] != "NetworkPolicy":
+            continue
+        for rule in _sequence(document, "spec.ingress"):
+            for source in rule.get("from") or []:
+                assert "namespaceSelector" not in source, (
+                    "no committed render names a collector, because there is none"
+                )
+
+    result = _render(
+        "telemetry.collection.collector.namespace=observability",
+        "telemetry.collection.collector.podSelector.app=prometheus",
+    )
+    assert result.returncode == 0, result.stderr
+    documents = [d for d in yaml.safe_load_all(result.stdout) if d]
+    allowances = [
+        source
+        for document in documents
+        if document["kind"] == "NetworkPolicy"
+        for rule in _sequence(document, "spec.ingress")
+        for source in rule.get("from") or []
+        if "namespaceSelector" in source
+    ]
+    assert len(allowances) == 2, "one allowance per workload policy, API and runtime"
+    for source in allowances:
+        assert set(source) == {"namespaceSelector", "podSelector"}
+        assert source["namespaceSelector"]["matchLabels"] == {
+            "kubernetes.io/metadata.name": "observability"
+        }
+        assert source["podSelector"]["matchLabels"] == {"app": "prometheus"}
+
+
+@pytest.mark.parametrize(
+    "override,expected",
+    [
+        ("telemetry.collection.scrapeTimeoutSeconds=30", "shorter than"),
+        (
+            "telemetry.collection.collector.namespace=observability",
+            "podSelector is required",
+        ),
+    ],
+)
+def test_a_collection_refusal_names_the_value_and_the_failure(
+    override: str, expected: str
+) -> None:
+    """Every rule fails the render. There is none that warns, and none that
+    substitutes a default."""
+    result = _render(override)
+    assert result.returncode != 0, "the render was accepted and should not have been"
+    assert expected in result.stderr
 
 
 # --------------------------------------------------------------------------

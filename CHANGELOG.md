@@ -10,6 +10,81 @@ once versioned releases begin.
 
 ### Added
 
+- **The chart now renders a scrape configuration, and still nothing collects.**
+  `telemetry-scrape-configuration` was the last Helm-owned row deferred to a story
+  rather than to an unpublished image, and
+  [`charts/inferops-llm/templates/telemetry-scrape-config.yaml`](charts/inferops-llm/templates/telemetry-scrape-config.yaml)
+  renders it: a ConfigMap holding a Prometheus scrape configuration — one job for the
+  platform API, and under the real profile a second for the serving runtime — and a
+  set of recording rules. **It is a ConfigMap and not a `ServiceMonitor`**, because a
+  custom resource would make this chart install only on a cluster carrying a
+  Prometheus Operator nobody has chosen, and the collector is still the open question
+  `ADR 0004` deliberately leaves open. **Nothing reads it**: neither Deployment mounts
+  it, no collector, store, dashboard, or alerting path is selected, nothing scrapes
+  either endpoint, and this chart has never been installed. **Discovery selects on
+  Kubernetes labels rather than on `prometheus.io/*` annotations**, which are optional
+  and off by default — a configuration keyed on them would have selected nothing in
+  the default installation — and it is pinned to the release's own namespace and
+  instance, so a second release installed beside this one is not scraped and
+  attributed here. **The collector never attaches a label the emitter already
+  publishes**, and `honor_labels: false` is written out rather than left to the
+  default because it is the whole reason: a duplicate target label wins the collision
+  and renames the emitter's to `exported_*`, so every query written against it starts
+  reading a label that is no longer there. The API job therefore attaches Kubernetes
+  context and nothing else, and workload, model, environment, and the immutable
+  identity are read where `ADR 0006` D3 put them — on the series themselves and on
+  `inferops_build_info`. The runtime job is the opposite case and says so:
+  `llama-server` publishes bare series with no labels at all, so the collector supplies
+  the four operating dimensions the catalog permits as metric labels and none of the
+  identity ones, and `inferops_runtime_id` is **derived from the profile** rather than
+  configured, for the same reason the capability identifier is. **One label here is
+  unbounded and it is argued for rather than glossed**: Prometheus requires the targets
+  of one job to differ in their label sets, so `instance` cannot be removed — it
+  carries the pod name rather than the default `<podIP>:<port>`, its cost is stated as
+  a multiplier over the store's retention window, and the cheap alternative was refused
+  because collapsing it makes two replicas indistinguishable, which is the one question
+  the multi-replica certification exists to answer. The catalog's rule that
+  `k8s.pod.name` is not a metric label is an *emitter* rule and is untouched. **The
+  drop list is derived, not copied**: every job drops every attribute whose catalog
+  placements include neither `metric-label` nor `info-label`, and a test recomputes
+  that list from the catalog on every run, so a placement decision taken there reaches
+  the collector without anybody remembering to edit the chart. **Absence is made
+  readable rather than left to `up == 0`**: a job whose discovery matched nothing
+  produces no `up` series at all, so every query grouping by job returns an empty
+  result that looks like a healthy quiet system — there is one `absent()` rule per job,
+  one for an API that answered a scrape and published no identity, and one for
+  `inferops_model_ready`, which **reads 1 today and will until the adapter that owns it
+  emits**, because a rule that averaged a metric nothing produces would have published
+  an empty series that reads as health. Six catalog signals and four kinds of
+  Kubernetes resource context have **no source at all** and each says what would
+  provide it. `python -m tools.telemetry_collection` applies the same rules to any
+  render, and the new suite caught three defects in the first version of this change:
+  the record widened `inferops.runtime.id` from the catalog's bound of three to five,
+  a target label named `job` was declared in the data and published in neither
+  document, and a recording-rule comment naming the serving-runtime adapter put the
+  string `serving-runtime` into the *mock* render, which the existing suite that
+  proves a mock carries no runtime refused.
+  [The collection document](docs/telemetry/kubernetes-telemetry-collection.md) states
+  what a collector would find, what each label would cost, and the eight things this
+  does not establish.
+
+- **A collector can be let through the release's default-deny, and by default none
+  is.** `telemetry.collection.collector` names a namespace and a pod selector,
+  required together, and renders one ingress rule on the API policy and one on the
+  runtime policy. Both empty is the default and leaves the denial whole, because there
+  is no collector to name and an allowance for an absent one is a hole with no purpose.
+  The namespace selector and the pod selector are **one `from` item**, which means "a
+  pod in that namespace with those labels"; written as two items they would mean "any
+  pod in that namespace, **or** any pod anywhere with those labels", which is a
+  materially wider hole and reads identically in a
+  `kubectl get networkpolicy -o yaml`. A collector named while
+  `security.networkPolicy.enabled` is false is refused rather than silently rendering
+  nothing, because a release stating an allowance it did not render would read as a
+  control it does not have. **None of it is enforced where this project runs**: the
+  accepted local cluster's network plugin was tested and does not apply a
+  NetworkPolicy at all, `DR-04` carries that and `EX-05` records it, and the metrics
+  endpoint is unauthenticated (`DR-01`) whether or not a policy is applied.
+
 - **Multi-replica Kubernetes inference is certified as a separate profile, and
   nothing has run it either.** The single-replica certification could not answer
   whether requests reach more than one replica and said so: its one request goes

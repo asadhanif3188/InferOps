@@ -1,0 +1,430 @@
+{
+  "$id": "https://inferops.io/telemetry/kubernetes-telemetry-collection.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Kubernetes telemetry collection for the InferOps release, v1alpha1",
+  "description": "What a collector would scrape in a Kubernetes installation of the inferops-llm chart, which labels it attaches, what those labels cost, which native runtime series map to an InferOps concept, and which signals have no source at all. It describes configuration this repository renders. It is not a claim that anything collects: no collector, store, dashboard, or alerting path is selected, nothing scrapes either endpoint, and this chart has never been installed.",
+  "decisionRef": "docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md",
+  "documentRef": "docs/telemetry/kubernetes-telemetry-collection.md",
+  "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "ownershipRef": "docs/architecture/resource-ownership.v1alpha1.json",
+  "ownershipRowId": "telemetry-scrape-configuration",
+  "chartRef": "charts/inferops-llm",
+  "renderedRefs": [
+    "charts/inferops-llm/ci/rendered/mock.expected.yaml",
+    "charts/inferops-llm/ci/rendered/real.expected.yaml"
+  ],
+  "runtimeFeasibilityRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+  "evidenceRef": "docs/proof/telemetry/v1-s3-007-pr1-validation.md",
+
+  "collectionStatus": {
+    "configurationRendered": true,
+    "configurationKind": "v1/ConfigMap holding a Prometheus scrape_configs fragment and a recording-rule group set",
+    "configMapKeys": ["scrape-config.yaml", "recording-rules.yaml"],
+    "mountedBy": "nothing; neither Deployment references it, because a workload publishes metrics and does not collect them",
+    "collector": "not selected. Who owns a collector, store, dashboard, or alerting path is an open question in ADR 0004 that ADR 0006 D8 deliberately does not answer, and this record does not answer it either.",
+    "collected": false,
+    "everInstalled": false,
+    "note": "Nothing reads this configuration and nothing scrapes either endpoint. Every count, bound, and multiplier below is arithmetic over declared values, not a measurement of a store."
+  },
+
+  "discovery": {
+    "mechanism": "prometheus kubernetes_sd_configs, role: pod",
+    "scopedTo": "the release namespace, named explicitly rather than own_namespace",
+    "selectsOn": [
+      "app.kubernetes.io/part-of",
+      "app.kubernetes.io/instance",
+      "app.kubernetes.io/component"
+    ],
+    "doesNotSelectOn": ["prometheus.io/scrape", "prometheus.io/port", "prometheus.io/path"],
+    "whyNotAnnotations": "The prometheus.io annotations are optional and off by default, so a configuration keyed on them would select nothing in the default installation. The three Kubernetes labels above are set on every pod this chart installs, whatever the values file says.",
+    "whyInstanceIsInTheSelector": "A job matching part-of: inferops alone would scrape a second release installed beside this one and attribute its series here.",
+    "portIsKeptExplicitly": true,
+    "whyPortIsKept": "Pod discovery yields one target per declared container port. A pod with two ports produces two targets, and the second answers nothing on the metrics path -- a permanently failing target that reads as a broken endpoint."
+  },
+
+  "jobs": [
+    {
+      "jobName": "inferops-platform-api",
+      "profiles": ["mock", "real"],
+      "emitterId": "inferops-api",
+      "componentLabel": "platform-api",
+      "portValuePath": "api.containerPort",
+      "metricsPathValuePath": "telemetry.metricsPath",
+      "honorLabels": false,
+      "attachedTargetLabels": ["k8s_namespace", "k8s_component", "instance"],
+      "deliberatelyNotAttached": [
+        "inferops_workload_id",
+        "inferops_model_id",
+        "deployment_environment",
+        "service_version",
+        "inferops_capability_id",
+        "inferops_release_id",
+        "inferops_model_revision",
+        "inferops_runtime_image_digest",
+        "inferops_adapter_kind",
+        "inferops_runtime_id"
+      ],
+      "whyNotAttached": "The API publishes every one of these itself: the operational ones on its own series, and the identity ones on inferops_build_info, which is one series per process and is the join ADR 0006 D3 designed for. honor_labels is false, so a target label of the same name would win the collision and Prometheus would rename the emitter's to exported_*, silently changing every query written against it.",
+      "authorityForNotAttached": "docs/telemetry/api-instrumentation.md"
+    },
+    {
+      "jobName": "inferops-serving-runtime",
+      "profiles": ["real"],
+      "emitterId": "serving-runtime",
+      "componentLabel": "serving-runtime",
+      "portValuePath": "runtime.containerPort",
+      "metricsPathValuePath": "telemetry.collection.runtimeMetricsPath",
+      "honorLabels": false,
+      "attachedTargetLabels": [
+        "k8s_namespace",
+        "k8s_component",
+        "instance",
+        "deployment_environment",
+        "inferops_workload_id",
+        "inferops_model_id",
+        "inferops_runtime_id"
+      ],
+      "deliberatelyNotAttached": [
+        "service_version",
+        "inferops_capability_id",
+        "inferops_release_id",
+        "inferops_model_revision",
+        "inferops_runtime_image_digest",
+        "inferops_adapter_kind"
+      ],
+      "whyNotAttached": "These are the catalog's identity-only attributes. Putting an immutable version on every series is precisely what the identity metric exists to avoid, and llama-server publishes no identity metric to put them on. Runtime series join to the release's identity through k8s_namespace and inferops_runtime_id, which inferops_build_info also carries.",
+      "whyAttached": "llama-server publishes bare series with no labels at all -- the feasibility record measured exactly that -- so there is nothing to collide with, and the collector is the only thing positioned to supply the operating dimensions. Only the four the catalog permits as metric labels are supplied."
+    }
+  ],
+
+  "targetLabels": [
+    {
+      "labelName": "job",
+      "origin": "prometheus",
+      "source": "the job_name of the scrape configuration",
+      "catalogAttributeId": null,
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 2,
+      "reason": "Which of the two scrape jobs produced this series."
+    },
+    {
+      "labelName": "instance",
+      "origin": "collector",
+      "source": "__meta_kubernetes_pod_name",
+      "catalogAttributeId": null,
+      "cardinality": "unbounded",
+      "maxDistinctValues": null,
+      "reason": "Prometheus requires the targets of one job to differ in their label sets, so a per-target identity is not optional once a job has two replicas. It holds the pod name rather than the default <podIP>:<port>, which is equally unbounded, changes on every reschedule, and names nothing a person can look up.",
+      "cost": "Every series from a job is multiplied by the number of distinct pods inside the store's retention window: by the replica count while nothing restarts, and by the pod churn once anything does.",
+      "rejectedAlternative": "Collapsing instance to a constant per component removes the multiplier and makes two replicas indistinguishable, which is the one question the multi-replica certification exists to answer."
+    },
+    {
+      "labelName": "k8s_namespace",
+      "origin": "collector",
+      "source": "__meta_kubernetes_namespace",
+      "catalogAttributeId": null,
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 128,
+      "reason": "Which release namespace this came from, when more than one is installed on a cluster."
+    },
+    {
+      "labelName": "k8s_component",
+      "origin": "collector",
+      "source": "__meta_kubernetes_pod_label_app_kubernetes_io_component",
+      "catalogAttributeId": null,
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 2,
+      "reason": "Which workload tier answered: platform-api or serving-runtime. It is a different thing from inferops.component, which is the readiness component the API names when it refuses traffic, and the k8s_ prefix is what keeps a label the collector attached from being read as an attribute an emitter placed."
+    },
+    {
+      "labelName": "deployment_environment",
+      "origin": "collector",
+      "source": "telemetry.deploymentEnvironment",
+      "catalogAttributeId": "deployment-environment",
+      "cardinality": "bounded-small",
+      "maxDistinctValues": 4,
+      "jobs": ["inferops-serving-runtime"],
+      "reason": "A figure from a laptop must never be read as a figure from somewhere else, and llama-server's series carry no environment of their own."
+    },
+    {
+      "labelName": "inferops_workload_id",
+      "origin": "collector",
+      "source": "ownership.workloadId",
+      "catalogAttributeId": "workload-id",
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 25,
+      "jobs": ["inferops-serving-runtime"],
+      "reason": "Which workload is failing. It is deployment configuration rather than a value read off a request, exactly as the catalog requires."
+    },
+    {
+      "labelName": "inferops_model_id",
+      "origin": "collector",
+      "source": "model.identifier",
+      "catalogAttributeId": "model-id",
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 5,
+      "jobs": ["inferops-serving-runtime"],
+      "reason": "Which model these runtime series describe."
+    },
+    {
+      "labelName": "inferops_runtime_id",
+      "origin": "collector",
+      "source": "derived from profile, in the chart's inferops-llm.runtimeId helper",
+      "catalogAttributeId": "runtime-id",
+      "cardinality": "bounded-deployment",
+      "maxDistinctValues": 3,
+      "jobs": ["inferops-serving-runtime"],
+      "reason": "Which serving runtime answered, and the join between the runtime's own series and the identity the API publishes. Derived from the profile rather than configured beside it, for the same reason the capability and the adapter kind are: a value carrying this label would be a way to compose a mock adapter and publish the real runtime's identifier."
+    }
+  ],
+
+  "droppedMetricLabels": {
+    "action": "labeldrop, in metric_relabel_configs, on every job",
+    "derivation": "every attribute in the telemetry catalog whose declared placements include neither metric-label nor info-label, written in the form a Prometheus exposition spells it",
+    "whyItExistsAtAll": "Nothing in this repository emits any of them as a label; the metric registry refuses one at construction. This is the second line, for a series that arrives from a component this project did not write, or from one it writes later. A prompt has no name in this list because it has no name anywhere: the forbidden fields have empty placement lists and no metric label could carry one.",
+    "labels": [
+      "http_response_status_code",
+      "inferops_correlation_id",
+      "inferops_cost_record_id",
+      "inferops_duration_ms",
+      "inferops_evaluation_decision",
+      "inferops_event",
+      "inferops_field_path",
+      "inferops_finish_reason",
+      "inferops_owner_id",
+      "inferops_request_id",
+      "inferops_retry_count",
+      "inferops_tenant_id",
+      "inferops_workload_version",
+      "k8s_pod_name",
+      "level",
+      "service_name",
+      "span_id",
+      "timestamp",
+      "trace_id"
+    ]
+  },
+
+  "seriesMultiplier": {
+    "statement": "Collection does not change what a process emits. It multiplies what a store keeps, by the number of targets whose label sets differ.",
+    "perTargetLabelProduct": 1,
+    "whyOne": "Every collector-attached label except instance is constant for a given job in a given release: one namespace, one component per job, one environment, one workload, one model, one runtime. Their product is one, so the only multiplier is the target count.",
+    "targetsPerJob": "the replica count of that job's Deployment, live; the number of distinct pod names inside the store's retention window, retained",
+    "declaredActiveBudget": 5519,
+    "declaredEmittedBudget": 3125,
+    "declaredBudgetRef": "docs/telemetry/telemetry-catalog.v1alpha1.json cardinalityBudget and metrics[].maxSeries",
+    "apiJobCeilingPerTarget": 3125,
+    "apiJobCeilingTwoReplicas": 6250,
+    "whatTheApiCeilingIs": "The sum of maxSeries over the eight metrics the catalog marks emitted, which is what one API process can put on the endpoint. The other five active metrics belong to emitters that emit nothing, so no target produces them and multiplying them by a replica count would inflate a ceiling with series nothing can create.",
+    "runtimeJobCeiling": "not declared. The runtime's series are llama-server's rather than this catalog's, fifteen were observed once, and none carries a label of its own -- so the target labels this configuration attaches are the whole of its label product. A declared bound would be a guess about somebody else's exposition.",
+    "note": "Every figure here is arithmetic over declared bounds multiplied by a replica count. The declared bounds are themselves a ceiling for a deployment this project does not run -- one deployment serves one workload and one model, so the label products the budget bounds at twenty-five workloads and five models resolve to one of each. No store has held one of these series."
+  },
+
+  "runtimeMetricMapping": {
+    "source": "docs/telemetry/telemetry-catalog.v1alpha1.json runtimeNativeSeries",
+    "measuredOn": "2026-08-24",
+    "classification": "local-real-cpu",
+    "recordedNamePrefix": "inferops:",
+    "whyAColon": "The Prometheus recording-rule convention, and never inferops_ with an underscore, so a derived series can neither be confused with nor collide with one the API emits.",
+    "rules": [
+      {
+        "record": "inferops:inference_tokens:runtime_total",
+        "nativeSeries": ["llamacpp:prompt_tokens_total", "llamacpp:tokens_predicted_total"],
+        "catalogConcept": "inferops_inference_tokens_total",
+        "completeness": "complete",
+        "note": "The direction label distinguishes the two, exactly as it does on the metric the API emits. It is added by label_replace rather than by a target label, because it varies per series and a target label cannot."
+      },
+      {
+        "record": "inferops:inference_requests_in_flight:runtime",
+        "nativeSeries": ["llamacpp:requests_processing"],
+        "catalogConcept": "inferops_inference_requests_in_flight",
+        "completeness": "complete",
+        "note": "The runtime's view of in-flight work, beside the API's own gauge of the same concept. The two count different boundaries and are not expected to agree."
+      },
+      {
+        "record": "inferops:inference_requests_deferred:runtime",
+        "nativeSeries": ["llamacpp:requests_deferred"],
+        "catalogConcept": "inferops_inference_queue_duration_seconds",
+        "completeness": "partial",
+        "note": "It shows that queueing happened and never how long any request waited. The wait is the serving-runtime adapter's measurement, and the adapter is not instrumented. The record is named so that it cannot be read as the histogram."
+      }
+    ],
+    "unmappedNativeSeries": [
+      "llamacpp:prompt_tokens_cached_total",
+      "llamacpp:prompt_seconds_total",
+      "llamacpp:tokens_predicted_seconds_total",
+      "llamacpp:n_decode_total",
+      "llamacpp:n_tokens_max",
+      "llamacpp:prompt_tokens_seconds",
+      "llamacpp:predicted_tokens_seconds",
+      "llamacpp:n_busy_slots_per_decode",
+      "llamacpp:spec_decode_num_draft_tokens_total",
+      "llamacpp:spec_decode_num_accepted_tokens_total",
+      "llamacpp:spec_decode_num_drafts_total"
+    ],
+    "unmappedAreStillCollected": true,
+    "whyUnmappedAreStillCollected": "They are cheap, they are already on the endpoint, and dropping them would make a runtime tuning question unanswerable to save a series count the budget does not need. What they are not is an InferOps concept, and no recording rule pretends otherwise."
+  },
+
+  "missingSignalVisibility": [
+    {
+      "record": "inferops:scrape_targets:count",
+      "detects": "how many targets each job has",
+      "expression": "count by (job, k8s_namespace, k8s_component) (up{job=~\"inferops-.+\"})",
+      "readsToday": "nothing; no collector evaluates it"
+    },
+    {
+      "record": "inferops:scrape_targets_up:sum",
+      "detects": "how many of them answered",
+      "expression": "sum by (job, k8s_namespace, k8s_component) (up{job=~\"inferops-.+\"})",
+      "whySumAndNotCount": "A job whose every target is down must read zero here. A count over a vector filtered by == 1 reads nothing at all, and nothing looks like a healthy quiet system.",
+      "readsToday": "nothing; no collector evaluates it"
+    },
+    {
+      "record": "inferops:scrape_job_absent:platform_api",
+      "detects": "a job whose discovery matched no pod, which produces no up series to be zero",
+      "expression": "absent(up{job=\"inferops-platform-api\"})",
+      "readsToday": "nothing; no collector evaluates it"
+    },
+    {
+      "record": "inferops:scrape_job_absent:serving_runtime",
+      "detects": "the same, for the runtime job",
+      "expression": "absent(up{job=\"inferops-serving-runtime\"})",
+      "profiles": ["real"],
+      "readsToday": "nothing; no collector evaluates it"
+    },
+    {
+      "record": "inferops:build_info_absent:platform_api",
+      "detects": "a target that is up and useless: it answered a scrape and published no identity, which up alone cannot tell from one that is up and correct",
+      "expression": "absent(inferops_build_info)",
+      "readsToday": "nothing; no collector evaluates it"
+    },
+    {
+      "record": "inferops:model_ready_absent:platform_api",
+      "detects": "model readiness, which nothing emits",
+      "expression": "absent(inferops_model_ready)",
+      "readsToday": "1, and will until the serving-runtime adapter is instrumented. A rule that averaged a metric nothing produces would publish an empty series, which reads as a healthy system rather than an absent one. This publishes the absence instead."
+    }
+  ],
+
+  "unavailableSignals": [
+    {
+      "signal": "inferops_model_ready",
+      "kind": "catalog metric",
+      "owner": "inferops-adapter",
+      "reason": "The serving-runtime adapter is the only component that sees the boundary this describes, and it emits nothing. The catalog marks it not emitted.",
+      "wouldRequire": "instrumenting the serving-runtime adapter",
+      "deferredTo": "not scheduled in this PR"
+    },
+    {
+      "signal": "inferops_inference_queue_duration_seconds",
+      "kind": "catalog metric",
+      "owner": "inferops-adapter",
+      "reason": "Same emitter, same absence. llamacpp:requests_deferred shows that queueing happened and never how long anything waited.",
+      "wouldRequire": "instrumenting the serving-runtime adapter",
+      "deferredTo": "not scheduled in this PR"
+    },
+    {
+      "signal": "inferops_model_load_duration_seconds",
+      "kind": "catalog metric",
+      "owner": "inferops-adapter",
+      "reason": "Same emitter, same absence. llama-server publishes no load-duration series either; the load durations this project has are stopwatch figures in evidence records.",
+      "wouldRequire": "instrumenting the serving-runtime adapter",
+      "deferredTo": "not scheduled in this PR"
+    },
+    {
+      "signal": "inferops_process_resident_memory_bytes",
+      "kind": "catalog metric",
+      "owner": "inferops-api",
+      "reason": "The only per-process memory figure the standard library exposes is /proc/self/statm, and a module under src/inferops may not read a path -- the property tests/architecture/test_domain_dependency_boundary.py enforces so that the distribution stays usable from a wheel.",
+      "wouldRequire": "a runtime dependency this project does not declare, or a source outside the process",
+      "deferredTo": "not scheduled in this PR"
+    },
+    {
+      "signal": "container and pod CPU and memory use",
+      "kind": "Kubernetes resource context",
+      "owner": "the cluster",
+      "reason": "The accepted local cluster (ADR 0001 D2) is kind with no metrics-server, no kube-state-metrics, and no scrape of the kubelet's cAdvisor endpoint. The one recorded measurement of a pod's memory in this repository was read from its cgroup by hand.",
+      "wouldRequire": "a kubelet cAdvisor scrape job, or metrics-server, or kube-state-metrics -- each of which is a cluster add-on this chart does not own and this configuration does not install",
+      "deferredTo": "not scheduled in this PR"
+    },
+    {
+      "signal": "pod phase, restart count, and container readiness as series",
+      "kind": "Kubernetes resource context",
+      "owner": "the cluster",
+      "reason": "Same absence: these are kube-state-metrics series, and no kube-state-metrics runs. Pod readiness is visible to the kubelet through the probes the chart renders and reaches no metric.",
+      "wouldRequire": "kube-state-metrics",
+      "deferredTo": "not scheduled in this PR"
+    },
+    {
+      "signal": "declared CPU and memory requests and limits as series",
+      "kind": "Kubernetes resource context",
+      "owner": "the cluster",
+      "reason": "Also kube-state-metrics. The declared figures are in the chart's own resource blocks and are read there rather than restated here, because a second copy is a second thing to keep true.",
+      "wouldRequire": "kube-state-metrics",
+      "deferredTo": "not scheduled in this PR"
+    },
+    {
+      "signal": "traces",
+      "kind": "signal family",
+      "owner": "every component",
+      "reason": "No tracer, propagator, exporter, or SDK is selected. traceparent and tracestate are neither read nor written, and trace.id and span.id are specified fields nothing populates.",
+      "wouldRequire": "ADR 0006 D1's implementation half, which is undecided",
+      "deferredTo": "not scheduled in this PR"
+    },
+    {
+      "signal": "log collection",
+      "kind": "signal family",
+      "owner": "the cluster",
+      "reason": "Records are written one JSON object per line to the stream the composition point supplies. No log store, shipper, retention window, or access rule is selected, and this configuration collects metrics only.",
+      "wouldRequire": "a log shipper, and the retention decision the catalog requires before content of any kind is written",
+      "deferredTo": "not scheduled in this PR"
+    }
+  ],
+
+  "networkPath": {
+    "statement": "The release's default-deny denies ingress from every pod outside it, so a collector in another namespace is denied by the policy this chart already renders.",
+    "allowance": "telemetry.collection.collector, which renders one ingress rule per workload policy naming exactly one namespace and one pod selector",
+    "defaultsToNothing": true,
+    "whyDefaultsToNothing": "Naming no collector leaves the denial whole. There is no collector to name.",
+    "namespaceAndSelectorAreOneItem": true,
+    "whyOneItem": "Two selectors in one NetworkPolicy from-item are ANDed. Written as two items they would mean 'any pod in that namespace, OR any pod anywhere with those labels', which is the mistake this object is most often written with.",
+    "enforcement": "none here. Whether a NetworkPolicy is applied at all is the cluster network plugin's decision, and the accepted local cluster's plugin was tested and does not enforce one. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md, DR-04 and EX-05.",
+    "endpointIsUnauthenticated": "The metrics endpoint carries no authentication (docs/security/deferred-risks.md, DR-01). On a cluster that does not enforce policy, the allowance changes nothing because nothing was denied; on one that does, it is the whole of the access control on the endpoint."
+  },
+
+  "limitations": [
+    {
+      "limitationId": "no-collector",
+      "statement": "No collector, store, dashboard, or alerting path is selected. This record describes configuration for one and does not choose one, and nothing scrapes either endpoint."
+    },
+    {
+      "limitationId": "never-installed",
+      "statement": "This chart has never been installed and no InferOps API image is published. Every job, label, and rule here has been rendered, parsed, and checked against committed records; none has been loaded by a Prometheus or pointed at a running pod."
+    },
+    {
+      "limitationId": "multiplier-is-arithmetic",
+      "statement": "The series multiplier is arithmetic over declared bounds multiplied by a replica count. It is not a measurement, and no store has held one of these series."
+    },
+    {
+      "limitationId": "runtime-mapping-was-measured-once",
+      "statement": "The native series this maps were observed in one scrape, on one host, on one day, from one runtime image digest. A different build of llama-server may expose a different set, and nothing here would notice."
+    },
+    {
+      "limitationId": "no-alert",
+      "statement": "The missing-signal rules record values. Nothing reads them, no alerting rule is written, and no receiver, routing tree, or on-call rotation exists. A recorded absence that nobody is paged for is a query, not a control."
+    },
+    {
+      "limitationId": "instance-is-unbounded",
+      "statement": "instance carries the pod name and is unbounded. Prometheus's data model requires a per-target identity, so this is declared with its cost rather than avoided. The catalog's rule that k8s.pod.name is not a metric label is an emitter rule and is untouched: no InferOps process labels a series with its pod."
+    },
+    {
+      "limitationId": "no-resource-use",
+      "statement": "Container, pod, and node resource use has no source in the accepted local cluster. The Kubernetes context this configuration attaches is identity -- namespace, tier, pod -- and never consumption."
+    },
+    {
+      "limitationId": "endpoint-is-unauthenticated",
+      "statement": "The metrics endpoint carries no authentication. Making it discoverable does not make it safe to expose, and the network policy allowance is the only access control this release has to offer a collector."
+    }
+  ]
+}

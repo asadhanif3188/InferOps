@@ -164,7 +164,7 @@ crossed by accident rather than by argument:
 | `runtime-configuration` | `v1/ConfigMap` | Rendered from a validated contract. Holds no secret value |
 | `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive. Still `planned`: `V1-S3-003` implemented the reference side of the handoff and left the writing side, which needs an unpublished image and a 1.71 GiB transfer, to the Kubernetes serving integration |
 | `workload-network-policy` | `networking.k8s.io/v1 NetworkPolicy` | A declaration until a test proves the local cluster's network plugin enforces one |
-| `telemetry-scrape-configuration` | Release configuration | Inert until a collector exists |
+| `telemetry-scrape-configuration` | `v1/ConfigMap` | A scrape configuration and recording rules for this release. Rendered since `V1-S3-007`, mounted by nothing, and inert until a collector exists |
 
 ### Derived, and owned by no tool
 

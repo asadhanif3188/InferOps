@@ -15,12 +15,15 @@ type: application
 # and the model is `model.revision`. Three separate pins, because a single
 # number covering all of them would be the thing that hides a change.
 #
-# 0.2.0 rather than 0.1.1: V1-S3-004 renders resources this chart did not render
-# before and changes the shape of `security.serviceAccount`, and a values file
-# written against 0.1.0 is refused rather than silently reinterpreted. Nothing
-# has installed 0.1.0, so no upgrade path is owed to anyone; the bump is for the
-# reader who compares two renders.
-version: 0.2.0
+# 0.3.0 rather than 0.2.1: V1-S3-007 renders a resource this chart did not render
+# before -- the telemetry scrape ConfigMap -- and adds `telemetry.collection` to
+# the values contract. A values file written against 0.2.0 still installs, because
+# every new member has a default, but the render is not the same one, and the bump
+# is for the reader who compares two renders. (0.2.0 was V1-S3-004's, for the same
+# reason: it rendered resources 0.1.0 did not and changed the shape of
+# `security.serviceAccount`. Nothing has installed any of them, so no upgrade path
+# is owed to anyone.)
+version: 0.3.0
 
 # What this chart installs, when the API image exists to install. No InferOps
 # image is published: `platform-api-container-image` is `planned` in the
@@ -47,6 +50,6 @@ annotations:
   inferops.io/owned-resources: >-
     workload-service-account,workload-network-policy,platform-api-deployment,
     platform-api-service,serving-runtime-deployment,serving-runtime-service,
-    runtime-configuration
+    runtime-configuration,telemetry-scrape-configuration
   inferops.io/deferred-resources: >-
-    model-acquisition-job,telemetry-scrape-configuration
+    model-acquisition-job

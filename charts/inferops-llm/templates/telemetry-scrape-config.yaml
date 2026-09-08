@@ -1,0 +1,48 @@
+{{- include "inferops-llm.validate" . -}}
+{{- if and .Values.telemetry.enabled .Values.telemetry.collection.enabled }}
+{{/*
+`telemetry-scrape-configuration` in the ownership inventory, and the row whose
+honest description is that it is a document.
+
+**What it holds.** Two keys. `scrape-config.yaml` is a Prometheus `scrape_configs`
+fragment: one job for the platform API, and under the real profile a second for
+the serving runtime, discovering pods by the Kubernetes labels this chart always
+sets, scoped to this release's namespace and instance, and dropping on the way in
+every label the accepted telemetry catalog bars from a metric.
+`recording-rules.yaml` maps the native runtime series the catalog says map, and
+publishes the absence of the signals that are missing.
+
+**What it does not do.** It does not create a place to send anything. No
+collector, store, dashboard, or alerting path is selected -- ADR 0006 D8 leaves
+that to the open question ADR 0004 carries -- so **nothing reads this ConfigMap
+and nothing scrapes either endpoint**. It is inert until a collector exists, and
+its presence is not a claim that one does.
+
+**It is mounted by nothing in this release.** Neither Deployment references it,
+and that is deliberate: the workloads publish metrics, they do not collect them,
+and a ConfigMap mounted into the pod it describes would suggest otherwise. A
+collector reads it from the API server, or an operator copies it into whatever
+configuration their collector already has.
+
+Nothing here is evidence that a metric was ever collected. This chart has not
+been installed, no InferOps API image is published, and this configuration has
+never been loaded by a Prometheus.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inferops-llm.telemetryScrapeConfigMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry-scrape-configuration
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  scrape-config.yaml: |
+    {{- include "inferops-llm.telemetryScrapeConfig" . | nindent 4 }}
+  recording-rules.yaml: |
+    {{- include "inferops-llm.telemetryRecordingRules" . | nindent 4 }}
+{{- end }}

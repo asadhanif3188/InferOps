@@ -6,7 +6,7 @@ metadata:
   name: inferops-inferops-llm-default-deny
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.2.0
+    helm.sh/chart: inferops-llm-0.3.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -36,7 +36,7 @@ metadata:
   name: inferops-inferops-llm-api
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.2.0
+    helm.sh/chart: inferops-llm-0.3.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -89,7 +89,7 @@ metadata:
   name: inferops-inferops-llm-release-test
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.2.0
+    helm.sh/chart: inferops-llm-0.3.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -141,7 +141,7 @@ metadata:
   name: inferops-inferops-llm-api
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.2.0
+    helm.sh/chart: inferops-llm-0.3.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -164,7 +164,7 @@ metadata:
   name: inferops-inferops-llm-configuration
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.2.0
+    helm.sh/chart: inferops-llm-0.3.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -192,6 +192,89 @@ data:
   INFEROPS_OWNER_ID: "team-platform-demo"
   INFEROPS_MODEL_IDENTIFIER: "mock-fixed-fixture"
 ---
+# Source: inferops-llm/templates/telemetry-scrape-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inferops-inferops-llm-telemetry-scrape
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: mock
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant-mock
+    app.kubernetes.io/component: telemetry-scrape-configuration
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+data:
+  scrape-config.yaml: |
+    scrape_configs:
+      - job_name: inferops-platform-api
+        scheme: http
+        metrics_path: "/metrics"
+        scrape_interval: 30s
+        scrape_timeout: 10s
+        # Stated rather than left to the default, because it is the whole reason the
+        # relabelling below adds no label the API already publishes.
+        honor_labels: false
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              own_namespace: false
+              names:
+                - inferops-platform
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_label_app_kubernetes_io_part_of
+              - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+              - __meta_kubernetes_pod_label_app_kubernetes_io_component
+            separator: ";"
+            action: keep
+            regex: "inferops;inferops;platform-api"
+          - source_labels:
+              - __meta_kubernetes_pod_container_port_number
+            action: keep
+            regex: "8090"
+          - source_labels:
+              - __meta_kubernetes_namespace
+            target_label: k8s_namespace
+          - source_labels:
+              - __meta_kubernetes_pod_label_app_kubernetes_io_component
+            target_label: k8s_component
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: instance
+        metric_relabel_configs:
+          - action: labeldrop
+            regex: "(http_response_status_code|inferops_correlation_id|inferops_cost_record_id|inferops_duration_ms|inferops_evaluation_decision|inferops_event|inferops_field_path|inferops_finish_reason|inferops_owner_id|inferops_request_id|inferops_retry_count|inferops_tenant_id|inferops_workload_version|k8s_pod_name|level|service_name|span_id|timestamp|trace_id)"
+  recording-rules.yaml: |
+    groups:
+      - name: inferops-collection-health
+        interval: 30s
+        rules:
+          - record: inferops:scrape_targets:count
+            expr: count by (job, k8s_namespace, k8s_component) (up{job=~"inferops-.+"})
+          # sum rather than a count over a filtered vector: a job whose every target is
+          # down must read zero here, and a count over an empty vector reads nothing.
+          - record: inferops:scrape_targets_up:sum
+            expr: sum by (job, k8s_namespace, k8s_component) (up{job=~"inferops-.+"})
+          - record: inferops:scrape_job_absent:platform_api
+            expr: absent(up{job="inferops-platform-api"})
+          # The API answered a scrape and published no identity: a target that is up and
+          # useless, which `up` alone cannot tell from one that is up and correct.
+          - record: inferops:build_info_absent:platform_api
+            expr: absent(inferops_build_info)
+          # Reads 1 until the adapter the catalog assigns this metric to emits it.
+          - record: inferops:model_ready_absent:platform_api
+            expr: absent(inferops_model_ready)
+---
 # Source: inferops-llm/templates/api-service.yaml
 apiVersion: v1
 kind: Service
@@ -199,7 +282,7 @@ metadata:
   name: inferops-inferops-llm
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.2.0
+    helm.sh/chart: inferops-llm-0.3.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -232,7 +315,7 @@ metadata:
   name: inferops-inferops-llm
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.2.0
+    helm.sh/chart: inferops-llm-0.3.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"
@@ -257,7 +340,7 @@ spec:
   template:
     metadata:
       labels:
-        helm.sh/chart: inferops-llm-0.2.0
+        helm.sh/chart: inferops-llm-0.3.0
         app.kubernetes.io/name: inferops-llm
         app.kubernetes.io/instance: inferops
         app.kubernetes.io/version: "0.1.0"
@@ -353,7 +436,7 @@ metadata:
   name: inferops-inferops-llm-connection-test
   namespace: inferops-platform
   labels:
-    helm.sh/chart: inferops-llm-0.2.0
+    helm.sh/chart: inferops-llm-0.3.0
     app.kubernetes.io/name: inferops-llm
     app.kubernetes.io/instance: inferops
     app.kubernetes.io/version: "0.1.0"

@@ -24,6 +24,8 @@ and never a key. None of those is a convention anybody has to remember.
 | [Telemetry catalog](telemetry-catalog.md) | Correlation, resource and request attributes, thirteen active metrics, the cardinality budget, what the selected runtime already emits, and the log record |
 | [Redaction rules](redaction.md) | What is excluded, why each exclusion is tempting, which rules are really enforced, and what would have to exist before content capture could be enabled |
 | [API instrumentation](api-instrumentation.md) | What the API actually emits: the eight metrics, a scrape, a record, the variables a deployment states its identity in, and what is still absent |
+| [Collecting telemetry in Kubernetes](kubernetes-telemetry-collection.md) | What a collector would scrape from an installed release: two jobs, the labels the collector attaches and the ones it deliberately does not, what `instance` costs, the native runtime mapping, and the signals that have no source |
+| [`kubernetes-telemetry-collection.v1alpha1.json`](kubernetes-telemetry-collection.v1alpha1.json) | The authoritative form of that document, compared against the committed chart renders by [`tests/telemetry/`](../../tests/telemetry/) |
 | [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json) | The authoritative form of both, validated by [`tests/telemetry/`](../../tests/telemetry/) |
 | [Evidence records and templates](../proof/README.md) | The four templates a record is written from, and the sections every record carries |
 
@@ -64,6 +66,11 @@ nothing scrapes the endpoint, nothing collects the stream, and no retention wind
 shipper, or access rule is selected. The ownership inventory
 [records that gap](../architecture/resource-ownership.md) rather than assigning it to
 a tool by accident.
+
+The chart now renders a scrape configuration, and that changes none of the sentence
+above. A configuration describing what a collector would find is not a collector,
+and [the collection document](kubernetes-telemetry-collection.md) is explicit that
+nothing reads it.
 
 The one thing here that was measured rather than specified is the list of series the
 selected serving runtime exposes. That came from

@@ -12,6 +12,15 @@ reachable on its own port from this release's own pods and may reach nothing at
 all; the `helm test` pod may resolve DNS and reach both ports. A path not named
 here is closed.
 
+**One optional path, and it defaults to absent.** `telemetry.collection.collector`
+adds an ingress rule to the API and runtime policies for a collector in another
+namespace. Naming none is the default and leaves the denial whole, because there
+is no collector to name and an allowance for an absent one is a hole with no
+purpose. The namespace selector and the pod selector are one `from` item, which
+means "a pod in that namespace with those labels"; written as two items they would
+mean "any pod in that namespace, or any pod anywhere with those labels", which
+reads identically here and is a materially wider hole.
+
 **Why the deny selects the release rather than the namespace.** A `podSelector`
 of `{}` would deny for every pod in the namespace, including Terraform-owned
 prerequisites and any other release installed beside this one. This chart owns
@@ -110,6 +119,13 @@ spec:
       ports:
         - port: {{ .Values.api.containerPort }}
           protocol: TCP
+    {{- /* A collector, if the release names one. It is a separate `from` item
+           rather than another selector inside the one above: two selectors in a
+           single item are ANDed, and a collector is not one of this release's
+           own pods. */}}
+    {{- with (include "inferops-llm.collectorIngressRule" (dict "context" $ "port" .Values.api.containerPort) | trim) }}
+    {{- . | nindent 4 }}
+    {{- end }}
   egress:
     {{- include "inferops-llm.dnsEgressRule" . | nindent 4 }}
     {{- if eq .Values.profile "real" }}
@@ -152,6 +168,9 @@ spec:
       ports:
         - port: {{ .Values.runtime.containerPort }}
           protocol: TCP
+    {{- with (include "inferops-llm.collectorIngressRule" (dict "context" $ "port" .Values.runtime.containerPort) | trim) }}
+    {{- . | nindent 4 }}
+    {{- end }}
 {{- end }}
 {{- if .Values.tests.enabled }}
 ---

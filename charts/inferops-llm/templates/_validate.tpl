@@ -410,6 +410,33 @@ would look for here.
 {{- fail "telemetry.scrapeAnnotations requires telemetry.enabled. Annotating a port as scrapeable when the workload publishes no metrics advertises an endpoint that answers nothing, and a collector that believed it would report the absence as a scrape failure rather than as a decision." -}}
 {{- end -}}
 
+{{- if and .Values.telemetry.collection.enabled (not .Values.telemetry.enabled) -}}
+{{- fail "telemetry.collection.enabled requires telemetry.enabled. A scrape configuration for endpoints the release does not publish is a set of jobs that can only ever fail, and a collector reading it would report a broken platform rather than a decision not to publish." -}}
+{{- end -}}
+
+{{- if .Values.telemetry.collection.enabled -}}
+{{- if ge (int .Values.telemetry.collection.scrapeTimeoutSeconds) (int .Values.telemetry.collection.scrapeIntervalSeconds) -}}
+{{- fail (printf "telemetry.collection.scrapeTimeoutSeconds must be shorter than telemetry.collection.scrapeIntervalSeconds, which is %d seconds for the values given. A timeout that can outlive its interval lets a second scrape of one target start before the first has finished, so a slow endpoint answers a rising number of concurrent requests and the collector becomes part of the load it is measuring." (int .Values.telemetry.collection.scrapeIntervalSeconds)) -}}
+{{- end -}}
+{{- end -}}
+
+{{- $collectorNamespace := .Values.telemetry.collection.collector.namespace -}}
+{{- $collectorSelector := .Values.telemetry.collection.collector.podSelector -}}
+{{- if or $collectorNamespace $collectorSelector -}}
+{{- if not $collectorNamespace -}}
+{{- fail "telemetry.collection.collector.namespace is required whenever telemetry.collection.collector.podSelector is set. A pod selector with no namespace would admit a matching pod from anywhere in the cluster, and a label is not an identity." -}}
+{{- end -}}
+{{- if not $collectorSelector -}}
+{{- fail "telemetry.collection.collector.podSelector is required whenever telemetry.collection.collector.namespace is set. A namespace with no pod selector admits every pod in it, which is a wider hole than the one being opened and reads in the rendered policy exactly like the narrow one." -}}
+{{- end -}}
+{{- if not .Values.telemetry.collection.enabled -}}
+{{- fail "telemetry.collection.collector requires telemetry.collection.enabled. Opening the release to a collector while rendering no configuration for it to read opens a path for a scrape that has not been described." -}}
+{{- end -}}
+{{- if not .Values.security.networkPolicy.enabled -}}
+{{- fail "telemetry.collection.collector names a collector while security.networkPolicy.enabled is false. There is no policy to add the allowance to, so nothing is opened and nothing is denied, and a release that stated a collector allowance it did not render would read as a control it does not have." -}}
+{{- end -}}
+{{- end -}}
+
 {{/* -- the chart's own test ---------------------------------------------- */}}
 
 {{- if .Values.tests.enabled -}}
