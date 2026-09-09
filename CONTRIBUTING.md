@@ -1044,8 +1044,11 @@ establishes cluster identity before Terraform is invoked and hands it the
 kubeconfig and context explicitly. **Nothing has ever applied this**, so do not
 cite anything under `infra/terraform/` as evidence that a namespace or a claim
 exists. `destroy` deletes the namespace, cascades over anything still inside it,
-and is the only operation here that reclaims the model weights; it requires
-`--confirm` and refuses to run while a release is installed. The rest is in
+and is the only operation here that reclaims the model weights without also
+destroying the cluster — deleting the cluster reclaims them too, because the claim
+is backed by storage inside the node container. It requires `--confirm`, requires
+a successful Helm listing establishing that the namespace holds no release, and
+refuses when that listing cannot be made. The rest is in
 [the prerequisite document](docs/environment/platform-prerequisites.md).
 
 Then inspect the full diff and search it for credentials, private planning content,

@@ -289,6 +289,16 @@
       "note": "It reads four small Terraform files, a lock file, a wrapper script, and the ownership inventory. It applies nothing and contacts no cluster, so it says nothing about whether this configuration provisions a namespace or a claim; every Terraform row in the inventory is still planned for that reason. The format and validation checks it delegates to the terraform binary skip, loudly, where the binary is absent."
     },
     {
+      "module": "tests/architecture/test_terraform_destroy_guard.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The prerequisite teardown's release guard, by executing it rather than reading it: that a copy of the committed wrapper, run under bash with terraform, kubectl, docker and helm replaced by recording stubs and no other command on PATH, reaches terraform destroy only when a successful release listing established that the namespace holds none, and refuses -- invoking no destroy at all -- when a release is installed, when another party's release is installed, when helm is absent from PATH, when the listing fails on authorization, transport or an unreadable release record, when the listing returns output that is not a release name, when a release is present in a non-deployed state that only --all reports, when confirmation is missing, and when the reachable cluster is not the one this project created.",
+      "claims": [
+        "no-resource-in-the-architecture-has-two-owners"
+      ],
+      "note": "It runs the committed shell, so unlike its sibling module it can distinguish a refusal that fires from a refusal that is only written down: the guard it covers passed a string-matching test while treating every failed Helm query as proof that no release was installed. Each case asserts the recorded invocation log, and one control case establishes that the sandbox can reach the destroy path at all, so the negative results are not vacuous. It contacts no cluster and runs no Terraform. It skips, loudly, where bash is absent."
+    },
+    {
       "module": "tests/contracts/test_platform_contract_regression.py",
       "layer": "contract-and-schema",
       "marker": "contract",

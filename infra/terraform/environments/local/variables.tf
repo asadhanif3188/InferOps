@@ -46,7 +46,7 @@ variable "model_cache_claim_name" {
 }
 
 variable "model_cache_size" {
-  description = "How large the model cache claim is requested. Reclaimed only by `terraform destroy`."
+  description = "How large the model cache claim is requested. Reclaimed by `terraform destroy`, or by deleting the cluster."
   type        = string
   default     = "4Gi"
 }

@@ -143,7 +143,7 @@ lives in the wrapper script, which is how this configuration is meant to be run.
 |---|---|
 | `namespace` | The namespace a release installs into and must not create |
 | `model_cache_claim_name` | The claim the chart mounts as `model.cache.claimName` and must not create |
-| `model_cache_size` | The figure `terraform destroy` reclaims and nothing else does |
+| `model_cache_size` | The figure `terraform destroy` reclaims without destroying the cluster |
 | `prerequisite_label_selector` | `inferops.io/lifecycle=prerequisite` — the selector a scoped teardown must exclude |
 
 The first two are the handoff, and the handoff is by name. If the claim name here
@@ -248,19 +248,41 @@ takes everything inside it.
                               Neither Terraform nor Helm may do this.
 ```
 
-`terraform destroy` is the only operation in this repository that reclaims the
-model weights — roughly 1.71 GiB — and the next release re-downloads them over a
-transport whose certificate this project does not validate. That is why it is not
-the routine path and why the wrapper asks for `--confirm`.
+`terraform destroy` reclaims the model weights — roughly 1.71 GiB — and the next
+release re-downloads them over a transport whose certificate this project does not
+validate. That is why it is not the routine path and why the wrapper asks for
+`--confirm`.
 
-The wrapper refuses two things outright:
+It is not, however, the *only* way those bytes go. The accepted `kind` node
+declares no `extraMounts` and the claim takes the cluster's default storage class,
+so the weights live inside the node container: deleting the cluster with
+[`cluster-down.sh`](../../scripts/environment/cluster-down.sh) destroys them too.
+The precise claim is that `terraform destroy` is the only operation that reclaims
+them **while leaving the cluster standing**.
+
+The wrapper refuses four things outright:
 
 - **a destroy without `--confirm`**, because the cascade is wider than the
   command reads;
 - **a destroy while a release is still installed**, because the cascade would
   take the release with it and leave Helm's own record claiming it exists.
   The wrapper refuses rather than uninstalling for you: removing somebody's
-  release is not a decision a prerequisite teardown gets to take.
+  release is not a decision a prerequisite teardown gets to take. It refuses for
+  *any* release in the namespace, not only this project's: the cascade does not
+  ask whose a release is.
+- **a destroy it cannot first prove is safe**, because absence has to be
+  established rather than assumed. The wrapper requires `helm` on `PATH` and asks
+  `helm list --all` for the namespace's releases; a query that fails — helm
+  missing, the API server unreachable, RBAC forbidding the read, a release record
+  that will not deserialise — leaves the question unanswered, and an unanswered
+  question is not an answer of "nothing installed". `--all` is what makes a
+  failed, pending or uninstalling release count as present. Output that is not a
+  release name refuses for the same reason.
+- **a destroy against a cluster it cannot identify**, which every script here
+  checks the same way: the nodes the API server reports must be containers `kind`
+  labelled for this project's cluster.
+
+There is no flag that overrides any of the four.
 
 Nothing here deletes a cluster, and nothing here reaches outside the namespace it
 created.

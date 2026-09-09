@@ -19,8 +19,11 @@
 # Creates (apply): one Namespace and one PersistentVolumeClaim.
 # Removes (destroy): the same two, and by cascade anything installed into that
 # namespace. That is not the routine uninstall path -- `helm uninstall` is --
-# and it is the only operation in this repository that reclaims the roughly
-# 1.71 GiB of model weights the claim holds.
+# and it reclaims the roughly 1.71 GiB of model weights the claim holds while
+# leaving the cluster standing. Deleting the cluster reclaims them too: the
+# claim is backed by local-path storage inside the kind node container, and
+# scripts/environment/cluster-down.sh removes that container. Those are the two
+# ways, and neither of them is `helm uninstall`.
 #
 # Usage:
 #   scripts/environment/terraform-prerequisites.sh check
@@ -142,13 +145,63 @@ case "${action}" in
     # ordered path, and this refuses rather than doing it for the operator:
     # removing somebody's release is not a decision a prerequisite teardown gets
     # to take.
-    if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
-      --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
+    #
+    # What that refusal needs is absence, positively established. The earlier
+    # form asked `helm status` and read any nonzero exit as "nothing installed".
+    # A nonzero exit says the question went unanswered, and the reasons it goes
+    # unanswered -- helm absent from PATH, the API server unreachable, RBAC
+    # forbidding the read, a release record that will not deserialise -- are
+    # exactly the conditions under which destroying a namespace is least safe.
+    # An unanswered query is not an empty namespace. Every one of them refuses
+    # here, and the `terraform destroy` below is never reached.
+    inferops::require_cmd helm
+
+    # `list` rather than `status`, because absence is the thing that has to be
+    # shown and `list` shows it: a successful call whose answer does not contain
+    # the release. `--all` so that a failed, pending-install, pending-upgrade,
+    # pending-rollback, uninstalling or superseded release counts as present --
+    # the cascade takes those exactly as it takes a healthy one, and a plain
+    # `helm list` reports only the deployed ones. `--short` prints one release
+    # name per line and nothing else.
+    #
+    # stderr is sent to a file rather than into the capture, so that a routine
+    # Helm warning cannot arrive on the same stream as a release name. The file
+    # is a diagnostic for the refusal message and sits in the ignored artifact
+    # directory.
+    helm_diag="${plan_dir}/helm-list.stderr"
+    releases=""
+    if ! releases="$(inferops::helm list --all \
+      --namespace "${INFEROPS_RELEASE_NAMESPACE}" --short 2>"${helm_diag}")"; then
+      inferops::fail "could not read Helm's releases in '${INFEROPS_RELEASE_NAMESPACE}', so whether destroying it would take one with it is unknown. Helm said: $(tr -d '\r' <"${helm_diag}" | tr '\n' ' ' | cut -c 1-300). Refusing: an unanswered query is not an empty namespace. This refusal is by design and there is no flag that overrides it."
+    fi
+
+    # A release name is a Kubernetes name. Anything else on that stream is output
+    # this script does not understand, and output it does not understand cannot
+    # be read as evidence that the namespace holds nothing.
+    installed=""
+    while IFS= read -r release_line; do
+      release_line="${release_line%$'\r'}"
+      [ -n "${release_line}" ] || continue
+      case "${release_line}" in
+        *[!a-z0-9.-]* | -* | .* | *- | *.)
+          inferops::fail "'helm list --short' returned a line that is not a release name: '${release_line}'. Refusing: output this script cannot parse is not evidence that '${INFEROPS_RELEASE_NAMESPACE}' holds no release."
+          ;;
+      esac
+      installed="${installed}${release_line} "
+    done <<<"${releases}"
+
+    if printf '%s\n' ${installed} | grep -Fxq "${INFEROPS_RELEASE_NAME}"; then
       inferops::fail "release '${INFEROPS_RELEASE_NAME}' is still installed in '${INFEROPS_RELEASE_NAMESPACE}'. Destroying the namespace would take it with it and leave Helm's own record claiming it exists. Uninstall it first, then run this again."
     fi
 
+    # Not only this project's release: the cascade is indifferent to whose
+    # release it takes, so anything Helm tracks here stops the teardown.
+    if [ -n "${installed}" ]; then
+      inferops::fail "Helm still tracks release(s) in '${INFEROPS_RELEASE_NAMESPACE}': ${installed}. Destroying the namespace would take them with it and leave Helm's own records claiming they exist. Uninstall them first, then run this again."
+    fi
+
     inferops::warn "terraform destroy removes the namespace '${INFEROPS_RELEASE_NAMESPACE}' and the model cache claim. Deleting a namespace cascades: anything still inside it goes too."
-    inferops::warn "This is the only operation in this repository that reclaims the model weights -- roughly 1.71 GiB -- and the next release will re-download them over a transport whose certificate this project does not validate."
+    inferops::warn "This reclaims the model weights -- roughly 1.71 GiB -- and so does deleting the cluster, because the claim is backed by local-path storage inside the kind node container. The next release re-downloads them over a transport whose certificate this project does not validate."
 
     [ "${confirmed}" -eq 1 ] ||
       inferops::fail "destroy needs --confirm. Usage: terraform-prerequisites.sh destroy --confirm"

@@ -56,7 +56,8 @@ variable "model_cache_size" {
     keyed by revision, so a second pinned revision lands beside the first rather
     than replacing it. The default holds two of them with room to spare.
 
-    This is the figure `terraform destroy` reclaims and nothing else does.
+    This is the figure `terraform destroy` reclaims without destroying the
+    cluster; deleting the cluster reclaims it too.
   EOT
   type        = string
   default     = "4Gi"
