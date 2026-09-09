@@ -18,104 +18,237 @@
     "profile": {
       "description": "Which serving path this release installs. The empty string is the shipped default and is refused by the template: it is not `mock`, and a chart whose omission selected a mock would violate rule 5 of the mock and real boundary once per install.",
       "type": "string",
-      "enum": ["", "mock", "real"]
+      "enum": [
+        "",
+        "mock",
+        "real"
+      ]
     },
-    "nameOverride": { "type": "string", "maxLength": 63 },
-    "fullnameOverride": { "type": "string", "maxLength": 63 },
-    "namespacePrefixCheck": { "type": "boolean" },
+    "nameOverride": {
+      "type": "string",
+      "maxLength": 63
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "maxLength": 63
+    },
+    "namespacePrefixCheck": {
+      "type": "boolean"
+    },
     "commonLabels": {
       "type": "object",
-      "additionalProperties": { "$ref": "#/$defs/labelValue" }
+      "additionalProperties": {
+        "$ref": "#/$defs/labelValue"
+      }
     },
     "commonAnnotations": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
-
     "api": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["replicaCount", "image", "containerPort", "service", "resources"],
+      "required": [
+        "replicaCount",
+        "image",
+        "containerPort",
+        "service",
+        "resources"
+      ],
       "properties": {
-        "replicaCount": { "type": "integer", "minimum": 1, "maximum": 16 },
-        "image": { "$ref": "#/$defs/image" },
-        "containerPort": { "$ref": "#/$defs/port" },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "image": {
+          "$ref": "#/$defs/image"
+        },
+        "containerPort": {
+          "$ref": "#/$defs/port"
+        },
         "service": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["port"],
+          "required": [
+            "port"
+          ],
           "properties": {
-            "port": { "$ref": "#/$defs/port" },
+            "port": {
+              "$ref": "#/$defs/port"
+            },
             "annotations": {
               "type": "object",
-              "additionalProperties": { "type": "string" }
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           }
         },
-        "readinessPath": { "$ref": "#/$defs/httpPath" },
-        "livenessPath": { "$ref": "#/$defs/httpPath" },
-        "probes": { "$ref": "#/$defs/probes" },
-        "requestTimeoutMs": { "$ref": "#/$defs/positiveMilliseconds" },
-        "maxOutputTokens": { "type": "integer", "minimum": 1, "maximum": 32768 },
-        "drainTimeoutMs": { "$ref": "#/$defs/positiveMilliseconds" },
-        "lifecycle": { "$ref": "#/$defs/shutdown" },
-        "resources": { "$ref": "#/$defs/resources" },
+        "readinessPath": {
+          "$ref": "#/$defs/httpPath"
+        },
+        "livenessPath": {
+          "$ref": "#/$defs/httpPath"
+        },
+        "probes": {
+          "$ref": "#/$defs/probes"
+        },
+        "requestTimeoutMs": {
+          "$ref": "#/$defs/positiveMilliseconds"
+        },
+        "maxOutputTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32768
+        },
+        "drainTimeoutMs": {
+          "$ref": "#/$defs/positiveMilliseconds"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/shutdown"
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        },
         "nodeSelector": {
           "type": "object",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "extraEnv": { "$ref": "#/$defs/extraEnv" }
+        "tolerations": {
+          "$ref": "#/$defs/tolerations"
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "extraEnv": {
+          "$ref": "#/$defs/extraEnv"
+        }
       }
     },
-
     "runtime": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["replicaCount", "image", "command", "containerPort", "service", "resources"],
+      "required": [
+        "replicaCount",
+        "image",
+        "command",
+        "containerPort",
+        "service",
+        "resources"
+      ],
       "properties": {
-        "replicaCount": { "type": "integer", "minimum": 1, "maximum": 16 },
-        "image": { "$ref": "#/$defs/image" },
-        "command": { "type": "string", "minLength": 1, "pattern": "^/" },
-        "containerPort": { "$ref": "#/$defs/port" },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "image": {
+          "$ref": "#/$defs/image"
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^/"
+        },
+        "containerPort": {
+          "$ref": "#/$defs/port"
+        },
         "service": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["port"],
+          "required": [
+            "port"
+          ],
           "properties": {
-            "port": { "$ref": "#/$defs/port" },
+            "port": {
+              "$ref": "#/$defs/port"
+            },
             "annotations": {
               "type": "object",
-              "additionalProperties": { "type": "string" }
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           }
         },
-        "contextSizeTokens": { "type": "integer", "minimum": 1, "maximum": 1048576 },
-        "threads": { "type": "integer", "minimum": 1, "maximum": 256 },
-        "parallelSlots": { "type": "integer", "minimum": 1, "maximum": 256 },
-        "defaultMaxOutputTokens": { "type": "integer", "minimum": 1, "maximum": 32768 },
-        "defaultTemperature": { "type": "number", "minimum": 0, "maximum": 2 },
-        "startupBudgetMs": { "$ref": "#/$defs/positiveMilliseconds" },
-        "healthPath": { "$ref": "#/$defs/httpPath" },
-        "probes": { "$ref": "#/$defs/probes" },
-        "lifecycle": { "$ref": "#/$defs/shutdown" },
-        "resources": { "$ref": "#/$defs/resources" },
-        "temporaryFilesystemSizeMi": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "contextSizeTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "threads": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "parallelSlots": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "defaultMaxOutputTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32768
+        },
+        "defaultTemperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "startupBudgetMs": {
+          "$ref": "#/$defs/positiveMilliseconds"
+        },
+        "healthPath": {
+          "$ref": "#/$defs/httpPath"
+        },
+        "probes": {
+          "$ref": "#/$defs/probes"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/shutdown"
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        },
+        "temporaryFilesystemSizeMi": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
         "nodeSelector": {
           "type": "object",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         },
-        "tolerations": { "$ref": "#/$defs/tolerations" },
-        "affinity": { "$ref": "#/$defs/affinity" },
-        "extraEnv": { "$ref": "#/$defs/extraEnv" }
+        "tolerations": {
+          "$ref": "#/$defs/tolerations"
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "extraEnv": {
+          "$ref": "#/$defs/extraEnv"
+        }
       }
     },
-
     "model": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["identifier", "revision", "artifact", "cache", "integrity"],
+      "required": [
+        "identifier",
+        "revision",
+        "artifact",
+        "cache",
+        "integrity",
+        "acquisition"
+      ],
       "properties": {
         "identifier": {
           "description": "The platform model identifier. Required under the real profile and refused under the mock profile; the template decides which, because a JSON Schema cannot see `profile` from here without duplicating the whole object.",
@@ -128,12 +261,20 @@
           "type": "string",
           "pattern": "^$|^[0-9a-f]{40}$"
         },
-        "alias": { "type": "string", "maxLength": 253 },
+        "alias": {
+          "type": "string",
+          "maxLength": 253
+        },
         "artifact": {
           "description": "The upstream artifact, pinned the way docs/serving/model-source.v1.json pins it. repository and the model revision are what the in-claim location is derived from, so a release cannot be handed the bytes of a revision it did not name; sizeBytes and sha256 are what the pod checks before the runtime starts.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["repository", "fileName", "sizeBytes", "sha256"],
+          "required": [
+            "repository",
+            "fileName",
+            "sizeBytes",
+            "sha256"
+          ],
           "properties": {
             "repository": {
               "description": "The upstream repository, as owner/name.",
@@ -147,11 +288,20 @@
               "maxLength": 253,
               "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9._-]*$"
             },
-            "sizeBytes": { "type": "integer", "minimum": 0 },
+            "sizeBytes": {
+              "type": "integer",
+              "minimum": 0
+            },
             "sha256": {
               "description": "sha256 and sixty-four hexadecimal characters, as the model source record publishes it.",
               "type": "string",
               "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "sourceUrl": {
+              "description": "Where the acquisition job fetches the artifact from under acquisition.source: download. https only, because the hash is the whole of the defence over a transport this project does not certificate-validate. The character class is closed and is deliberately NARROWER than RFC 3986 allows: this value is interpolated into a single-quoted shell argument in the acquisition script, so an apostrophe would close that quote and the rest of the URL would be read as commands -- inside the very script whose SHA-256 comparison is the only thing standing between this job and a substituted file. Apostrophe, semicolon, backtick, dollar, ampersand, pipe, parentheses, angle brackets and whitespace are all excluded for that reason. This is the same failure independent review found in cache.mountPath and it is the same fix.",
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^$|^https://[A-Za-z0-9._~:/?#@!*+,=%-]+$"
             }
           }
         },
@@ -159,7 +309,10 @@
           "description": "Where the artifact comes from and where it appears. There is deliberately no subPath: the in-claim directory is derived from the pinned repository and revision, because a free-form one is how a release comes to read a revision it did not declare.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["claimName", "mountPath"],
+          "required": [
+            "claimName",
+            "mountPath"
+          ],
           "properties": {
             "claimName": {
               "description": "An existing PersistentVolumeClaim, owned by Terraform. This chart mounts it and never creates it.",
@@ -173,50 +326,195 @@
               "maxLength": 253,
               "pattern": "^(/[A-Za-z0-9][A-Za-z0-9._-]*)+$"
             },
-            "readOnly": { "type": "boolean" }
+            "readOnly": {
+              "type": "boolean"
+            }
           }
         },
         "integrity": {
           "description": "What is read inside the pod before the runtime starts, on every start and therefore on every restart. sha256 reads the artifact end to end; size compares the byte count only; none reads nothing. Revision scoping holds under all three because it is the mount rather than a check.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["verifyOnStart", "image"],
+          "required": [
+            "verifyOnStart",
+            "image"
+          ],
           "properties": {
-            "verifyOnStart": { "type": "string", "enum": ["sha256", "size", "none"] },
-            "image": { "$ref": "#/$defs/image" },
-            "resources": { "$ref": "#/$defs/resources" }
+            "verifyOnStart": {
+              "type": "string",
+              "enum": [
+                "sha256",
+                "size",
+                "none"
+              ]
+            },
+            "image": {
+              "$ref": "#/$defs/image"
+            },
+            "resources": {
+              "$ref": "#/$defs/resources"
+            }
+          }
+        },
+        "license": {
+          "description": "The licence the artifact is published under, carried onto the object that writes it into the claim so that provenance can be asked of a cluster and not only of a document.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "spdx",
+            "reference"
+          ],
+          "properties": {
+            "spdx": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^$|^[A-Za-z0-9.+-]+$"
+            },
+            "reference": {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^$|^https://[A-Za-z0-9._~:/?#@!*+,=%-]+$",
+              "description": "A URL for the artifact's licence, carried as an annotation. Held to the same closed class as sourceUrl: it does not reach a shell today, and a value that differed only in what it permitted would be the one somebody later moved into one."
+            }
+          }
+        },
+        "acquisition": {
+          "description": "How the model cache claim gets filled. Terraform creates it empty and the runtime mounts it read only, so this job is the single sanctioned handoff between the two.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "source"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "source": {
+              "description": "download fetches over https and verifies before use; seed-image reads the artifact out of an image built on the host and loaded into the node, which needs no network and still leaves the job the only writer of the claim.",
+              "type": "string",
+              "enum": [
+                "download",
+                "seed-image"
+              ]
+            },
+            "seedImage": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "repository",
+                "digest",
+                "pullPolicy",
+                "artifactPath"
+              ],
+              "properties": {
+                "repository": {
+                  "type": "string",
+                  "maxLength": 253,
+                  "pattern": "^$|^[a-z0-9]([a-z0-9._/-]*[a-z0-9])?$"
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^$|^sha256:[0-9a-f]{64}$"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "Always",
+                    "IfNotPresent",
+                    "Never"
+                  ]
+                },
+                "artifactPath": {
+                  "description": "Where the artifact sits inside the seed image. It reaches a shell, so the character class is closed for the same reason cache.mountPath's is.",
+                  "type": "string",
+                  "maxLength": 253,
+                  "pattern": "^(/[A-Za-z0-9][A-Za-z0-9._-]*)+$"
+                }
+              }
+            },
+            "download": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "maxAttempts",
+                "retryPauseSeconds"
+              ],
+              "properties": {
+                "maxAttempts": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                },
+                "retryPauseSeconds": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3600
+                }
+              }
+            },
+            "activeDeadlineSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "resources": {
+              "$ref": "#/$defs/resources"
+            }
           }
         }
       }
     },
-
     "ownership": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["owner", "workloadId"],
+      "required": [
+        "owner",
+        "workloadId"
+      ],
       "properties": {
-        "owner": { "$ref": "#/$defs/dnsSafeOrEmpty" },
-        "workloadId": { "$ref": "#/$defs/dnsSafeOrEmpty" },
+        "owner": {
+          "$ref": "#/$defs/dnsSafeOrEmpty"
+        },
+        "workloadId": {
+          "$ref": "#/$defs/dnsSafeOrEmpty"
+        },
         "workloadVersion": {
           "type": "string",
           "pattern": "^$|^[0-9]+\\.[0-9]+\\.[0-9]+$"
         },
-        "tenant": { "type": "string", "maxLength": 63 },
-        "costCenter": { "type": "string", "maxLength": 63 }
+        "tenant": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "costCenter": {
+          "type": "string",
+          "maxLength": 63
+        }
       }
     },
-
     "telemetry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "deploymentEnvironment"],
+      "required": [
+        "enabled",
+        "deploymentEnvironment"
+      ],
       "properties": {
-        "enabled": { "type": "boolean" },
-        "metricsPath": { "$ref": "#/$defs/httpPath" },
+        "enabled": {
+          "type": "boolean"
+        },
+        "metricsPath": {
+          "$ref": "#/$defs/httpPath"
+        },
         "deploymentEnvironment": {
           "description": "The catalog bounds this attribute at four distinct values and V1 has one. `dev` is the conservative default: a figure from a laptop that defaulted to `dev` is never read as a figure from somewhere else.",
           "type": "string",
-          "enum": ["dev", "ci", "local", "test"]
+          "enum": [
+            "dev",
+            "ci",
+            "local",
+            "test"
+          ]
         },
         "serviceVersion": {
           "description": "Empty rather than `unknown`. A `service.version` of `unknown` sorts, groups, and reads like a release somebody shipped.",
@@ -231,42 +529,64 @@
           "description": "The `telemetry-scrape-configuration` inventory row: a ConfigMap holding a Prometheus scrape configuration and recording rules for this release. It is a document. No collector, store, dashboard, or alert path is selected (ADR 0006 D8), nothing in this project reads this ConfigMap, and nothing scrapes either endpoint.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["enabled"],
+          "required": [
+            "enabled"
+          ],
           "properties": {
-            "enabled": { "type": "boolean" },
-            "scrapeIntervalSeconds": { "$ref": "#/$defs/probeSeconds" },
+            "enabled": {
+              "type": "boolean"
+            },
+            "scrapeIntervalSeconds": {
+              "$ref": "#/$defs/probeSeconds"
+            },
             "scrapeTimeoutSeconds": {
               "description": "Must be shorter than the interval. A timeout that can outlive its interval produces overlapping scrapes of one target, which is how a slow endpoint becomes a rising number of in-flight requests against the thing that was already slow. The template refuses it.",
               "$ref": "#/$defs/probeSeconds"
             },
-            "runtimeMetricsPath": { "$ref": "#/$defs/httpPath" },
+            "runtimeMetricsPath": {
+              "$ref": "#/$defs/httpPath"
+            },
             "collector": {
               "description": "The collector that would read this configuration, named only so that the release's network policy can let it in. Both members empty renders no ingress allowance and leaves the default-deny whole; both are required together, because a namespace with no pod selector would admit every pod in it.",
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "namespace": { "$ref": "#/$defs/dnsSafeOrEmpty" },
-                "podSelector": { "$ref": "#/$defs/collectorPodSelector" }
+                "namespace": {
+                  "$ref": "#/$defs/dnsSafeOrEmpty"
+                },
+                "podSelector": {
+                  "$ref": "#/$defs/collectorPodSelector"
+                }
               }
             }
           }
         }
       }
     },
-
     "tests": {
       "description": "The `helm test` hook. It is not part of the installed release: Helm creates it when a test is run and deletes it when the test succeeds.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled"],
+      "required": [
+        "enabled"
+      ],
       "properties": {
-        "enabled": { "type": "boolean" },
-        "image": { "$ref": "#/$defs/image" },
-        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 600 },
-        "resources": { "$ref": "#/$defs/resources" }
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "$ref": "#/$defs/image"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        }
       }
     },
-
     "security": {
       "type": "object",
       "additionalProperties": false,
@@ -278,33 +598,49 @@
         "secretRefs"
       ],
       "properties": {
-        "runAsUser": { "$ref": "#/$defs/nonRootId" },
-        "runAsGroup": { "$ref": "#/$defs/nonRootId" },
-        "fsGroup": { "$ref": "#/$defs/nonRootId" },
+        "runAsUser": {
+          "$ref": "#/$defs/nonRootId"
+        },
+        "runAsGroup": {
+          "$ref": "#/$defs/nonRootId"
+        },
+        "fsGroup": {
+          "$ref": "#/$defs/nonRootId"
+        },
         "serviceAccount": {
           "description": "One identity per workload. `name` was a single member before V1-S3-004 and is now one per component, because a shared account is a grant nobody scoped: the first RoleBinding written for one workload reaches the other. Neither account is granted anything today, and this chart renders no Role and no RoleBinding.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["create"],
+          "required": [
+            "create"
+          ],
           "properties": {
-            "create": { "type": "boolean" },
+            "create": {
+              "type": "boolean"
+            },
             "api": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "name": { "$ref": "#/$defs/dnsSafeOrEmpty" }
+                "name": {
+                  "$ref": "#/$defs/dnsSafeOrEmpty"
+                }
               }
             },
             "runtime": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "name": { "$ref": "#/$defs/dnsSafeOrEmpty" }
+                "name": {
+                  "$ref": "#/$defs/dnsSafeOrEmpty"
+                }
               }
             },
             "annotations": {
               "type": "object",
-              "additionalProperties": { "type": "string" }
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           }
         },
@@ -312,18 +648,32 @@
           "description": "The release's own network policy: a default-deny over every pod this release installs, plus the named paths a working release needs. A policy object is not enforcement, and on the accepted local cluster it is not enforced: an executed experiment established that kindnetd applies no policy, so what this renders is a correct policy that nothing applies. DR-04 carries it and EX-05 records it.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["enabled"],
+          "required": [
+            "enabled"
+          ],
           "properties": {
-            "enabled": { "type": "boolean" },
+            "enabled": {
+              "type": "boolean"
+            },
             "dns": {
               "description": "The cluster's resolver, by label rather than by address. Every pod here reaches everything by Service name, so an egress denial that forgets DNS denies everything and reports it as a connection error. These are values because the resolver's labels belong to the cluster's add-ons rather than to this chart.",
               "type": "object",
               "additionalProperties": false,
-              "required": ["namespaceSelector", "podSelector", "port"],
+              "required": [
+                "namespaceSelector",
+                "podSelector",
+                "port"
+              ],
               "properties": {
-                "namespaceSelector": { "$ref": "#/$defs/labelSelectorLabels" },
-                "podSelector": { "$ref": "#/$defs/collectorPodSelector" },
-                "port": { "$ref": "#/$defs/port" }
+                "namespaceSelector": {
+                  "$ref": "#/$defs/labelSelectorLabels"
+                },
+                "podSelector": {
+                  "$ref": "#/$defs/collectorPodSelector"
+                },
+                "port": {
+                  "$ref": "#/$defs/port"
+                }
               }
             }
           }
@@ -335,7 +685,11 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "secretName", "key"],
+            "required": [
+              "name",
+              "secretName",
+              "key"
+            ],
             "properties": {
               "name": {
                 "description": "The environment variable the value is bound to.",
@@ -343,22 +697,31 @@
                 "pattern": "^[A-Z][A-Z0-9_]*$",
                 "maxLength": 63
               },
-              "secretName": { "$ref": "#/$defs/dnsSafe" },
-              "key": { "type": "string", "minLength": 1, "maxLength": 253 }
+              "secretName": {
+                "$ref": "#/$defs/dnsSafe"
+              },
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 253
+              }
             }
           }
         }
       }
     }
   },
-
   "$defs": {
     "collectorPodSelector": {
       "description": "A label set selecting a collector's pods. Empty here is not an empty selector: it means no collector is named, and the template renders no allowance at all. The label set reaches a NetworkPolicy only when it is non-empty, which is what stops `{}` from meaning `every pod in that namespace`. Both halves are a closed character class: the key as well as the value, because a selector is a pair and constraining only one of them is constraining neither.",
       "type": "object",
       "maxProperties": 8,
-      "propertyNames": { "$ref": "#/$defs/labelKey" },
-      "additionalProperties": { "$ref": "#/$defs/labelValue" }
+      "propertyNames": {
+        "$ref": "#/$defs/labelKey"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/labelValue"
+      }
     },
     "labelKey": {
       "description": "A Kubernetes label key: an optional DNS-subdomain prefix, a slash, and a name. It is the API server's own rule, written out here rather than left to the API server, because a key this chart renders into a selector should be refused at `helm template` rather than at `kubectl apply`.",
@@ -371,9 +734,10 @@
       "type": "object",
       "minProperties": 1,
       "maxProperties": 8,
-      "additionalProperties": { "$ref": "#/$defs/labelValue" }
+      "additionalProperties": {
+        "$ref": "#/$defs/labelValue"
+      }
     },
-
     "probes": {
       "description": "How the kubelet asks a container whether it started, whether it is ready, and whether it is alive. The paths and the kinds are not settings here: they come from the accepted health mappings in docs/serving/, and the chart writes them. What a values file may change is the timing.",
       "type": "object",
@@ -383,50 +747,84 @@
           "description": "Off renders no probe at all, on any container of this workload. It exists for the one case that is worse without it - inspecting a container that crashloops before anything can be read out of it - and it is on by default because a workload with no liveness probe is a workload nothing restarts.",
           "type": "boolean"
         },
-        "startup": { "$ref": "#/$defs/startupProbe" },
-        "readiness": { "$ref": "#/$defs/steadyProbe" },
-        "liveness": { "$ref": "#/$defs/steadyProbe" }
+        "startup": {
+          "$ref": "#/$defs/startupProbe"
+        },
+        "readiness": {
+          "$ref": "#/$defs/steadyProbe"
+        },
+        "liveness": {
+          "$ref": "#/$defs/steadyProbe"
+        }
       }
     },
-
     "startupProbe": {
       "description": "Stated as a budget rather than as a failure count. failureThreshold is derived from budgetMs and periodSeconds by the template, so a budget cannot be raised without the count following it. Until this probe passes the kubelet runs neither of the other two, which is what stops a slow start being read as a failure.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "budgetMs": { "$ref": "#/$defs/positiveMilliseconds" },
-        "periodSeconds": { "$ref": "#/$defs/probeSeconds" },
-        "timeoutSeconds": { "$ref": "#/$defs/probeSeconds" }
+        "budgetMs": {
+          "$ref": "#/$defs/positiveMilliseconds"
+        },
+        "periodSeconds": {
+          "$ref": "#/$defs/probeSeconds"
+        },
+        "timeoutSeconds": {
+          "$ref": "#/$defs/probeSeconds"
+        }
       }
     },
-
     "steadyProbe": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "periodSeconds": { "$ref": "#/$defs/probeSeconds" },
-        "timeoutSeconds": { "$ref": "#/$defs/probeSeconds" },
-        "failureThreshold": { "type": "integer", "minimum": 1, "maximum": 100 }
+        "periodSeconds": {
+          "$ref": "#/$defs/probeSeconds"
+        },
+        "timeoutSeconds": {
+          "$ref": "#/$defs/probeSeconds"
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
       }
     },
-
     "shutdown": {
       "description": "What happens between SIGTERM and SIGKILL. The pause is a preStop sleep action rather than an exec, because an exec needs a shell inside the image and no InferOps image exists yet to be asked whether it has one. The template refuses a grace period that does not cover the pause and the drain together.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "preStopSleepSeconds": { "type": "integer", "minimum": 0, "maximum": 300 },
-        "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
-        "progressDeadlineSeconds": { "type": "integer", "minimum": 1, "maximum": 7200 }
+        "preStopSleepSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "progressDeadlineSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7200
+        }
       }
     },
-
-    "probeSeconds": { "type": "integer", "minimum": 1, "maximum": 300 },
-
+    "probeSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300
+    },
     "image": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repository", "digest"],
+      "required": [
+        "repository",
+        "digest"
+      ],
       "properties": {
         "repository": {
           "description": "A registry path with no tag and no digest attached; the digest is a separate field so that neither can be written without the other being visible.",
@@ -441,24 +839,38 @@
         },
         "pullPolicy": {
           "type": "string",
-          "enum": ["Always", "IfNotPresent", "Never"]
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
         }
       }
     },
     "resources": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["requests", "limits"],
+      "required": [
+        "requests",
+        "limits"
+      ],
       "description": "Both halves are required. A workload with no request is scheduled anywhere and a workload with no limit is bounded by nothing, and neither is a state this chart lets a values file reach by omission.",
       "properties": {
-        "requests": { "$ref": "#/$defs/resourceQuantities" },
-        "limits": { "$ref": "#/$defs/resourceQuantities" }
+        "requests": {
+          "$ref": "#/$defs/resourceQuantities"
+        },
+        "limits": {
+          "$ref": "#/$defs/resourceQuantities"
+        }
       }
     },
     "resourceQuantities": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cpu", "memory"],
+      "required": [
+        "cpu",
+        "memory"
+      ],
       "properties": {
         "cpu": {
           "type": "string",
@@ -477,14 +889,20 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "value"],
+        "required": [
+          "name",
+          "value"
+        ],
         "properties": {
           "name": {
             "type": "string",
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
             "maxLength": 63
           },
-          "value": { "type": "string", "maxLength": 1024 }
+          "value": {
+            "type": "string",
+            "maxLength": 1024
+          }
         }
       }
     },
@@ -492,16 +910,30 @@
       "description": "Passed through to the pod specification unchanged. The members are Kubernetes' own and are validated by the API server, so this schema states the policy rather than restating the upstream shape - an object here that declared neither would accept a typo silently.",
       "type": "array",
       "maxItems": 16,
-      "items": { "type": "object", "additionalProperties": true }
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
     },
     "affinity": {
       "description": "Passed through unchanged, for the same reason as tolerations.",
       "type": "object",
       "additionalProperties": true
     },
-    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
-    "httpPath": { "type": "string", "pattern": "^/[A-Za-z0-9._~/-]*$" },
-    "positiveMilliseconds": { "type": "integer", "minimum": 1, "maximum": 3600000 },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "httpPath": {
+      "type": "string",
+      "pattern": "^/[A-Za-z0-9._~/-]*$"
+    },
+    "positiveMilliseconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3600000
+    },
     "nonRootId": {
       "description": "Non-zero. Root is not a uid this chart lets a values file select.",
       "type": "integer",

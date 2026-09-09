@@ -307,6 +307,14 @@
       "note": "It reads a Dockerfile, an ignore file and a shell script, and it runs the container entrypoint out of process to read its exit status. It builds no image, starts no container and contacts no cluster, so it says nothing about whether the image runs -- that was observed separately by building it and exercising it under the chart's security settings, and the `platform-api-container-image` row stays planned until a release installs it. It names no published claim because the claims this protects are about a build path rather than about the product's behaviour."
     },
     {
+      "module": "tests/architecture/test_model_acquisition_job.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The writing side of the model cache handoff, executed rather than read: that the job writes the revision-scoped directory the runtime mounts and creates it beneath the claim root, that it carries the licence and revision the model source record publishes, that it alone mounts the claim writable while the runtime's mount stays read only, that an empty claim is populated and verified, that a verified artifact is reused without any transfer at all, that an artifact of the right length and the wrong content is discarded rather than treated as a cache hit, that another revision's directory is never touched, and that bytes which do not verify are refused leaving neither the artifact nor its temporary file behind.",
+      "claims": [],
+      "note": "It takes the script out of the committed render and runs it under bash against a real directory with wget stubbed, so it establishes control flow and filesystem outcome rather than wording. It repoints the claim root, which a test cannot mount, and asserts that the substitution touched only that one token. It installs nothing and contacts no cluster, so it says nothing about whether the job schedules or whether the transfer works against the real publisher; the row stays planned for that reason. It skips, loudly, where bash is absent."
+    },
+    {
       "module": "tests/contracts/test_platform_contract_regression.py",
       "layer": "contract-and-schema",
       "marker": "contract",

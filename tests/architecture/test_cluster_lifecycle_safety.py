@@ -58,6 +58,7 @@ OWNERSHIP_PATH = (
 # terms of; it is checked separately.
 ENTRY_POINTS = (
     "api-image.sh",
+    "model-seed-image.sh",
     "cluster-up.sh",
     "cluster-verify.sh",
     "cluster-down.sh",

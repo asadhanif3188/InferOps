@@ -356,7 +356,7 @@ spec:
         inferops.io/workload: support-assistant-mock
         app.kubernetes.io/component: platform-api
       annotations:
-        inferops.io/configuration-checksum: 1698497a11d47235aed1b76f114b21fcbeb3eb3b9eaa5c9465159e1a4eaeab6f
+        inferops.io/configuration-checksum: 8a490a13fc5ad44fdb83f7309921f40cb1b94172337e3e284dcfcca60e6ad26d
         inferops.io/cost-center: demo-cost-center
         inferops.io/tenant: demo
     spec:

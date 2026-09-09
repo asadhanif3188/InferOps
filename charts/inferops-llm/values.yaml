@@ -261,6 +261,21 @@ model:
     sizeBytes: 0
     sha256: ""
 
+    # Where the acquisition job fetches it from, under `acquisition.source:
+    # download`. Copied from docs/serving/model-source.v1.json, which a test
+    # compares this against, so the chart and the accepted source record cannot
+    # name different bytes. Unused -- and required to be empty -- under
+    # `seed-image`, because a URL nothing reads is a URL nobody maintains.
+    sourceUrl: ""
+
+  # The licence the artifact is published under, carried as an annotation on the
+  # job that puts it into the claim. Copied from docs/serving/model-source.v1.json
+  # and compared against it by a test. Provenance that lives only in a document
+  # is provenance a cluster cannot be asked about.
+  license:
+    spdx: ""
+    reference: ""
+
   cache:
     # The name of an existing PersistentVolumeClaim. Terraform owns the claim
     # (`model-cache-volume-claim`); this chart mounts it read only and never
@@ -283,6 +298,85 @@ model:
     # container actually read. It now decides the mount, so cache reuse cannot
     # bypass the revision it claims to be reusing.
     readOnly: true
+
+  # How the claim gets filled.
+  #
+  # Terraform creates the claim empty and never writes to it. The runtime mounts
+  # it read only and refuses to start on an artifact that is absent or does not
+  # verify. Between those two facts sits this: `model-acquisition-job`, the one
+  # place in the design where a release writes into a prerequisite it does not
+  # own. It ran as `planned` for two sprints and its absence is why the real
+  # profile could be installed only against a claim somebody had filled by hand.
+  #
+  # It is a `pre-install,pre-upgrade` hook, so it completes before the runtime's
+  # own verification runs. It writes through a temporary file and renames only
+  # after the bytes verify, so a transfer that dies leaves nothing that looks
+  # finished. It is a no-op against a claim that already holds a verified
+  # artifact, and it refuses -- rather than reusing -- one that does not.
+  acquisition:
+    # Turning this off is legitimate for a claim filled out of band, and it is a
+    # statement rather than a default: the release then depends on somebody
+    # else's word that the bytes are there, and the runtime's own check is what
+    # catches it if they are not.
+    enabled: true
+
+    # Where the bytes come from.
+    #
+    # `download`    a resumable HTTPS transfer from `artifact.sourceUrl`. This
+    #               is the accepted design the ownership inventory describes,
+    #               and the one a fresh checkout can run: everything it needs is
+    #               pinned in docs/serving/model-source.v1.json and public. The
+    #               transport is not certificate-validated -- BusyBox `wget`
+    #               reports as much, and docs/security/security-baseline names
+    #               it -- so the content hash is the only thing standing between
+    #               this job and a substituted file. It is checked before the
+    #               bytes are used and again before the rename.
+    #
+    # `seed-image`  read the artifact out of an image built on the contributor's
+    #               host and loaded into the node. No network, and no second
+    #               writer: the job is still the only thing that writes the
+    #               claim. For a host that already holds the verified artifact
+    #               this is the difference between a 1.71 GiB transfer and a
+    #               local copy. The image is host state, so its digest is not
+    #               committed -- scripts/environment/model-seed-image.sh prints
+    #               a values overlay, the same way the API image does.
+    source: download
+
+    seedImage:
+      repository: ""
+      digest: ""
+      # `Never`, because a locally loaded image exists in no registry and a pull
+      # attempt would fail with a message about the registry rather than about
+      # the load that did not happen.
+      pullPolicy: Never
+      # Where the artifact sits inside that image. A closed character class in
+      # the schema, for the same reason `cache.mountPath` is one: it reaches a
+      # shell.
+      artifactPath: /seed
+
+    download:
+      # How many resumed attempts before giving up. A single streamed transfer
+      # of this artifact was measured not to survive, which is why the job
+      # resumes rather than restarts, and why this is a count rather than a
+      # boolean.
+      maxAttempts: 60
+      # How long to wait between them. `wget` fails in milliseconds on a refused
+      # connection or a name that will not resolve, so a budget of sixty attempts
+      # with no pause is spent inside a second -- which reports a transient
+      # outage, the only kind worth resuming through, as a permanent one.
+      retryPauseSeconds: 5
+
+    # A transfer is bounded, not open-ended: this is the job's own deadline, and
+    # it is what stops a stalled acquisition holding an install open forever.
+    activeDeadlineSeconds: 5400
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 32Mi
+      limits:
+        cpu: "2"
+        memory: 128Mi
 
   # What is checked inside the pod, before `llama-server` is started, on every
   # start and therefore on every restart.

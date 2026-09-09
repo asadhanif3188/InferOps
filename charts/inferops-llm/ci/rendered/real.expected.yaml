@@ -191,6 +191,60 @@ spec:
         - port: 8080
           protocol: TCP
 ---
+# Source: inferops-llm/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inferops-inferops-llm-model-acquisition
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: workload-network-policy
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+      app.kubernetes.io/component: model-acquisition
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+      ports:
+        - port: 443
+          protocol: TCP
+---
 # Source: inferops-llm/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -547,7 +601,7 @@ spec:
         inferops.io/workload: support-assistant
         app.kubernetes.io/component: platform-api
       annotations:
-        inferops.io/configuration-checksum: 9e5b5c320271d6896044b3bae8d771c24d5c891c2ecdf188845bb03b4051fb47
+        inferops.io/configuration-checksum: 8d854584f630232bf0cf2c37904b9223a2a7ce51017b4898e0432bcc18860072
         prometheus.io/scrape: "true"
         prometheus.io/port: "8090"
         prometheus.io/path: "/metrics"
@@ -671,7 +725,7 @@ spec:
         inferops.io/workload: support-assistant
         app.kubernetes.io/component: serving-runtime
       annotations:
-        inferops.io/configuration-checksum: 9e5b5c320271d6896044b3bae8d771c24d5c891c2ecdf188845bb03b4051fb47
+        inferops.io/configuration-checksum: 8d854584f630232bf0cf2c37904b9223a2a7ce51017b4898e0432bcc18860072
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
@@ -876,3 +930,145 @@ spec:
         requests:
           cpu: 10m
           memory: 16Mi
+---
+# Source: inferops-llm/templates/model-acquisition-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: inferops-inferops-llm-model-acquisition
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: model-acquisition
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    # The provenance of the bytes this job puts into the claim, carried on the
+    # object that puts them there. docs/serving/model-source.v1.json is the
+    # record these are copied from, and a test compares the two.
+    inferops.io/model-license: "Apache-2.0"
+    inferops.io/model-license-reference: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/blob/90862c4b9d2787eaed51d12237eafdfe7c5f6077/LICENSE"
+    inferops.io/model-revision: "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+spec:
+  # One attempt. A failed acquisition is a fact to read, not something to retry
+  # blindly: the two ways it fails are a transfer that could not complete inside
+  # its own attempt budget, and bytes that did not match the pin. Neither is
+  # improved by running the whole job again automatically, and the second one
+  # actively should not be.
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  activeDeadlineSeconds: 5400
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: inferops-llm-0.3.0
+        app.kubernetes.io/name: inferops-llm
+        app.kubernetes.io/instance: inferops
+        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: inferops
+        inferops.io/lifecycle: release
+        inferops.io/profile: real
+        inferops.io/owner: team-platform-demo
+        inferops.io/workload: support-assistant
+        app.kubernetes.io/component: model-acquisition
+    spec:
+      restartPolicy: Never
+      serviceAccountName: inferops-inferops-llm-runtime
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: acquire-model
+          image: "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              dir='/claim/Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077'
+              artifact="$dir/Qwen3-1.7B-Q8_0.gguf"
+              want_bytes='1834426016'
+              want_sha='061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a'
+              #
+              verify() {
+                [ -f "$1" ] || return 1
+                [ "$(stat -c %s "$1")" = "$want_bytes" ] || return 1
+                echo "$want_sha  $1" | sha256sum -c - >/dev/null 2>&1 || return 1
+                return 0
+              }
+              #
+              mkdir -p "$dir"
+              #
+              if verify "$artifact"; then
+                echo "model artifact already present and verified; nothing to acquire"
+                exit 0
+              fi
+              #
+              if [ -e "$artifact" ]; then
+                echo "the claim holds an artifact that does not match the pinned byte count and hash; discarding it" >&2
+                rm -f "$artifact"
+              fi
+              attempt=1
+              until wget -c -q -O "$artifact.part" 'https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true'; do
+                attempt=$((attempt + 1))
+                if [ "$attempt" -gt 60 ]; then
+                  echo "REFUSED: the transfer did not complete within its attempt budget" >&2
+                  rm -f "$artifact.part"
+                  exit 1
+                fi
+                echo "transfer interrupted; resuming (attempt $attempt)"
+                # A pause, because the failures worth resuming through are the ones that
+                # resolve on their own. `wget` fails in milliseconds on a refused connection or
+                # an unresolvable name, so a loop without this spends a sixty-attempt budget
+                # inside a second and reports a transient outage as a permanent one.
+                sleep 5
+              done
+              #
+              if ! verify "$artifact.part"; then
+                echo "REFUSED: the acquired bytes do not match the pinned byte count and SHA-256" >&2
+                rm -f "$artifact.part"
+                exit 1
+              fi
+              #
+              mv "$artifact.part" "$artifact"
+              echo "model artifact acquired and verified: byte count and SHA-256"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "2"
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 32Mi
+          volumeMounts:
+            - name: model-cache
+              mountPath: "/claim"
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: "inferops-model-cache"

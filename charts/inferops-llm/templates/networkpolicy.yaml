@@ -218,4 +218,58 @@ spec:
           protocol: TCP
     {{- end }}
 {{- end }}
+{{- if and (eq .Values.profile "real") .Values.model.acquisition.enabled (eq .Values.model.acquisition.source "download") }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}-model-acquisition
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workload-network-policy
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- /* Installed rather than being a hook, for the same reason the release-test
+         policy is: a policy created alongside the pod it selects would be racing
+         that pod's own start. The acquisition job is a `pre-install,pre-upgrade`
+         hook, and the asymmetry is worth stating. On `pre-install` no release
+         object exists yet, so there is no default-deny and the job has egress
+         whether or not this policy is there. On `pre-upgrade` the default-deny
+         from the previous install *is* there and selects this pod like every
+         other pod carrying the release labels -- and so is this policy, from the
+         same install. Which is the case that matters: the upgrade that changes
+         the model revision is the one where the job has real work to do.
+
+         It selects a pod that exists only while an install or upgrade is
+         running. That costs nothing, and it is why this is written separately
+         rather than folded into another rule. */}}
+  podSelector:
+    matchLabels:
+      {{- include "inferops-llm.acquisition.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    {{- include "inferops-llm.dnsEgressRule" . | nindent 4 }}
+    {{- /* The publisher, over a transport this project does not
+           certificate-validate. The content hash is the whole of the defence
+           and it is compared before the bytes are used; this rule bounds where
+           the job may reach, not what it may believe. 443 only, and every
+           private range excepted: an acquisition job has no business reaching
+           the API server, the node, or another pod. */}}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+      ports:
+        - port: 443
+          protocol: TCP
+{{- end }}
 {{- end }}

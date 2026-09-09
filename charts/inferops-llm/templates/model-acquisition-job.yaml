@@ -1,0 +1,119 @@
+{{- include "inferops-llm.validate" . -}}
+{{- if and (eq .Values.profile "real") .Values.model.acquisition.enabled }}
+{{/*
+`model-acquisition-job` in the ownership inventory, and the single sanctioned
+handoff in the whole design: the one object a release is allowed to write into a
+prerequisite it does not own.
+
+**Why it exists.** Terraform creates the model cache claim and never writes to
+it. The serving runtime mounts that claim read only, at a revision-scoped
+subdirectory, and its init container refuses to start on an artifact that is
+absent or does not verify. Between an empty claim and a runtime that will not
+start on an empty claim there was nothing at all -- the row sat `planned` for two
+sprints, and the practical consequence was that the real profile could be
+installed only against a claim somebody had filled by hand, which is the
+reproducibility gap the Sprint 3 review named.
+
+**Why a hook.** `pre-install,pre-upgrade` with a negative weight, so it runs and
+completes before the runtime Deployment is created. A Job created as an ordinary
+release object would race the Deployment it exists to serve, and the race would
+be won by whichever the API server got to first; the runtime would then crash-
+loop on a missing artifact while the job that was about to supply it ran beside
+it. `hook-delete-policy` is `before-hook-creation,hook-succeeded`, and both halves
+matter. `hook-succeeded` is what stops this being residue: Helm does not remove
+hook objects on `helm uninstall` -- there is no delete policy that means "when
+the release goes" -- so a hook that only cleaned up before its *next* run would
+outlive the release that created it and be found, correctly, by the residue
+check. `before-hook-creation` covers the other case: a run that failed is kept,
+because a failed acquisition is the thing an operator most needs the logs of, and
+it is replaced rather than accumulated when the next attempt starts. A failed job
+that is then uninstalled around does leave one object behind; that is the one
+case, it is deliberate, and `kubectl delete job -l app.kubernetes.io/component=model-acquisition`
+is the scoped removal for it.
+
+**Why it writes the claim at its root.** The serving mount uses `subPath` to
+select the revision directory, which is what stops one release seeing another
+revision's bytes. `subPath` resolves at mount time, so it cannot create a
+directory that does not exist yet -- and on a freshly provisioned claim, none
+does. This job therefore mounts the claim at `/claim` and derives the same
+revision path from the same helper the serving mount uses. Writing content is not
+owning the container: the claim is still Terraform's, and this job still creates
+nothing durable.
+
+**What it is not.** It is not a general model manager. It acquires exactly the
+artifact this release was rendered with, verifies it against pins rendered into
+its own script, and does nothing else. It removes nothing but its own temporary
+file and an artifact that failed verification, and it never touches another
+revision's directory.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}-model-acquisition
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: model-acquisition
+  annotations:
+    {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    # The provenance of the bytes this job puts into the claim, carried on the
+    # object that puts them there. docs/serving/model-source.v1.json is the
+    # record these are copied from, and a test compares the two.
+    inferops.io/model-license: {{ .Values.model.license.spdx | quote }}
+    inferops.io/model-license-reference: {{ .Values.model.license.reference | quote }}
+    inferops.io/model-revision: {{ .Values.model.revision | quote }}
+spec:
+  # One attempt. A failed acquisition is a fact to read, not something to retry
+  # blindly: the two ways it fails are a transfer that could not complete inside
+  # its own attempt budget, and bytes that did not match the pin. Neither is
+  # improved by running the whole job again automatically, and the second one
+  # actively should not be.
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  activeDeadlineSeconds: {{ int .Values.model.acquisition.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "inferops-llm.labels" . | nindent 8 }}
+        app.kubernetes.io/component: model-acquisition
+    spec:
+      restartPolicy: Never
+      {{- /* The runtime's account rather than one of its own, and the token is
+             not mounted. The chart splits the API and runtime identities so that
+             a RoleBinding added for one is not silently granted to the other;
+             this is a third workload and by that argument deserves a third
+             account. It does not have one because it needs no Kubernetes API
+             access at all -- it writes a volume and, under `download`, opens one
+             outbound connection -- so the account it names is never used for
+             anything. If this job ever needs an API permission, it needs its own
+             account first, and this comment is where that decision starts. */}}
+      serviceAccountName: {{ include "inferops-llm.runtime.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "inferops-llm.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: acquire-model
+          image: {{ include "inferops-llm.model.acquisitionImage" . | quote }}
+          imagePullPolicy: {{ if eq .Values.model.acquisition.source "seed-image" }}{{ .Values.model.acquisition.seedImage.pullPolicy }}{{ else }}{{ .Values.model.integrity.image.pullPolicy }}{{ end }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              {{- include "inferops-llm.model.acquisitionScript" . | nindent 14 }}
+          securityContext:
+            {{- include "inferops-llm.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.model.acquisition.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "inferops-llm.model.acquisitionVolumeMount" . | nindent 12 }}
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: {{ .Values.model.cache.claimName | quote }}
+{{- end }}

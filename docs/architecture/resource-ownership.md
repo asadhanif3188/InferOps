@@ -162,7 +162,7 @@ crossed by accident rather than by argument:
 | `serving-runtime-deployment` | `apps/v1 Deployment` | Separate from the API for the reasons in [the system architecture](system-architecture.md) |
 | `serving-runtime-service` | `v1/Service` | Internal to the release; not a public surface |
 | `runtime-configuration` | `v1/ConfigMap` | Rendered from a validated contract. Holds no secret value |
-| `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive. Still `planned`: `V1-S3-003` implemented the reference side of the handoff and left the writing side, which needs an unpublished image and a 1.71 GiB transfer, to the Kubernetes serving integration |
+| `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive. Rendered since the Sprint 3 remediation as a `pre-install,pre-upgrade` hook, so it completes before the runtime's own integrity check runs. It writes through a temporary file and renames only after verification, so a failed acquisition leaves nothing that looks finished, and it discards rather than reuses an artifact that does not verify. Still `planned`, because no release has installed it |
 | `workload-network-policy` | `networking.k8s.io/v1 NetworkPolicy` | A declaration until a test proves the local cluster's network plugin enforces one |
 | `telemetry-scrape-configuration` | `v1/ConfigMap` | A scrape configuration and recording rules for this release. Rendered since `V1-S3-007`, mounted by nothing, and inert until a collector exists |
 

@@ -407,6 +407,11 @@ NUMBER_WORDS: dict[int, str] = {
     18: "eighteen",
     19: "nineteen",
     20: "twenty",
+    21: "twenty-one",
+    22: "twenty-two",
+    23: "twenty-three",
+    24: "twenty-four",
+    25: "twenty-five",
 }
 
 WORD_NUMBERS: dict[str, int] = {word: value for value, word in NUMBER_WORDS.items()}

@@ -54,6 +54,23 @@ model:
     fileName: Qwen3-1.7B-Q8_0.gguf
     sizeBytes: 1834426016
     sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a
+    sourceUrl: https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true
+
+  license:
+    spdx: Apache-2.0
+    reference: https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/blob/90862c4b9d2787eaed51d12237eafdfe7c5f6077/LICENSE
+
+  # `download` and not `seed-image`, because this file is the one a fresh
+  # checkout renders and everything it needs is public and pinned: the URL, the
+  # byte count and the hash all come from docs/serving/model-source.v1.json.
+  #
+  # A seed image is faster on a host that already holds the artifact -- and this
+  # host does -- but its digest describes one machine's build rather than this
+  # repository, so it belongs in an overlay rather than here, exactly like the
+  # API image digest. scripts/environment/model-seed-image.sh prints one.
+  acquisition:
+    enabled: true
+    source: download
   cache:
     claimName: inferops-model-cache
     mountPath: /models
