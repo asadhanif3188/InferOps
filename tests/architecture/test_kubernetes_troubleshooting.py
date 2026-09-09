@@ -811,7 +811,7 @@ def test_every_destructive_sample_is_labelled_as_one() -> None:
 
 REQUIRED_STATEMENTS = (
     "has never been run by anybody, on any cluster",
-    "no Dockerfile is committed anywhere in this repository",
+    "still carry a placeholder digest for it",
     "Nothing on this page may be cited as evidence that the release installs",
     "The namespace, its metadata, and the model cache survive",
     "This is not the routine uninstall path.",

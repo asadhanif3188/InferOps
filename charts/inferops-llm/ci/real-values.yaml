@@ -7,12 +7,18 @@
 #
 #   `api.image.digest` is a PLACEHOLDER. It is the SHA-256 of the ASCII string
 #   `inferops-api-image-not-yet-published`, which anyone can recompute, and no
-#   image with that digest exists in any registry. No InferOps API image is
-#   published: `platform-api-container-image` is `planned` in the ownership
-#   inventory and no Dockerfile is committed anywhere in this repository. The
-#   value is here because the chart refuses an unpinned image, and a fixture
-#   that satisfied the refusal with a movable tag would have taught the render
-#   check to accept one.
+#   image with that digest exists in any registry. The value is here because the
+#   chart refuses an unpinned image, and a fixture that satisfied the refusal
+#   with a movable tag would have taught the render check to accept one.
+#
+#   An image can now be built: `deploy/api/Dockerfile` is committed and
+#   `scripts/environment/api-image.sh` builds it, loads it into the node and
+#   verifies the reference resolves there. It stays a placeholder because that
+#   image is published to no registry, so its manifest digest describes one
+#   contributor's build rather than this repository. `api-image.sh values`
+#   writes the real one into an overlay under `.artifacts/`, which version
+#   control ignores. Deploy with both files:
+#     helm install ... -f charts/inferops-llm/ci/real-values.yaml #                      -f .artifacts/api-image-values.yaml
 #
 # Every other pinned value is real and is copied from the accepted records: the
 # runtime digest from ADR 0002 and deploy/serving/runtime/container-package.v1.json,

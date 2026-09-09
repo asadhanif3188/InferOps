@@ -41,9 +41,11 @@ api:
 
   image:
     # No InferOps image is published. `platform-api-container-image` is
-    # `planned` in the ownership inventory, no Dockerfile is committed, and this
-    # value therefore has no default that would resolve. State the repository
-    # and the digest of an image you built and loaded into the cluster.
+    # `planned` in the ownership inventory, and an image built from
+    # `deploy/api/Dockerfile` is loaded into a node rather than pushed, so this
+    # value has no default that would resolve. State the repository and the
+    # digest of an image you built and loaded into the cluster --
+    # `scripts/environment/api-image.sh values` prints both.
     repository: ""
     # Digest only. A tag is a label that can be moved; a digest is what the
     # engine resolves. The schema refuses anything that is not `sha256:` and

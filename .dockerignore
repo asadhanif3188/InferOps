@@ -1,0 +1,74 @@
+# What the API image build must not be handed.
+#
+# The build context is the repository root, because the image copies the
+# application from `src/` and its carrier from `tools/`. Without this file that
+# context is roughly 1.9 GiB, nearly all of it the model cache -- 1.71 GiB of
+# weights streamed to the daemon on every build, to be used by nothing. The
+# `COPY` lines in deploy/api/Dockerfile would still copy only what they name, so
+# the resulting image is the same either way; the cost is paid transferring the
+# context, which is why an ignore file rather than a narrower Dockerfile is the
+# fix.
+#
+# It is also a boundary. Model weights, virtual environments, kubeconfigs and
+# Terraform state have no business being readable by a build, and the surest way
+# for one to end up in an image is for it to be in the context when somebody adds
+# a broader COPY later.
+
+# Version control and its metadata.
+.git/
+.gitattributes
+.gitignore
+
+# The model cache: 1.71 GiB of weights the API image never reads. The runtime
+# reads them from a PersistentVolumeClaim, not from an image layer.
+.cache/
+
+# Host state and generated output.
+.artifacts/
+.venv/
+.kube/
+**/__pycache__/
+**/*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Terraform state and plans describe one contributor's cluster.
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+
+# Nothing below is application code, and none of it belongs in a serving image.
+tests/
+docs/
+charts/
+infra/
+deploy/
+scripts/
+contracts/
+uv.lock
+CHANGELOG.md
+CONTRIBUTING.md
+README.md
+
+# The host tooling the image deliberately does not ship. `tools/api_carrier` and
+# `tools/api_container` are the two exceptions and are re-included, because a
+# serving container needs its carrier and its entrypoint and nothing else --
+# not a model downloader, a container packager, or a certification driver.
+tools/*
+!tools/__init__.py
+!tools/api_carrier/
+!tools/api_container/
+
+# Re-exclude bytecode under the two re-included directories. Docker applies these
+# rules in order and the last match wins, so the directory re-includes above
+# override the `**/__pycache__/` rule for anything inside them -- which would
+# ship whatever bytecode the building machine happened to have generated, and
+# make the image content, and therefore its digest, differ between two people
+# building the same commit. That digest is the thing this whole build path exists
+# to make trustworthy, so the exclusion is restated here where it wins.
+tools/api_carrier/**/__pycache__/
+tools/api_container/**/__pycache__/
+tools/api_carrier/**/*.pyc
+tools/api_container/**/*.pyc

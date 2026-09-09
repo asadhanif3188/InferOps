@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are nineteen, and they are listed in their own section rather than
+empty list. There are twenty, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -172,7 +172,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Nineteen suites protect something no row of the claim matrix names. Each carries its
+Twenty suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -197,6 +197,7 @@ matrix is complete needs to see them together.
 | [`tests/architecture/test_kubernetes_multi_replica_certification.py`](../../tests/architecture/test_kubernetes_multi_replica_certification.py) | The multi-replica Kubernetes certification read as committed data and text: the descriptor against the chart, the accepted budgets, and the single-replica descriptor it may not disagree with; the capacity gate that refuses before anything is installed; the per-pod readiness and per-replica correlation refusals that stop a multi-replica claim being made on a controller's summary count or on requests nobody recorded; and the safety properties of the operating script and its request driver. The claim that requests reach two replicas in a cluster belongs to the real-runtime layer, which runs the workflow instead of reading it |
 | [`tests/architecture/test_helm_upgrade_rollback.py`](../../tests/architecture/test_helm_upgrade_rollback.py) | The Helm upgrade and rollback experiment read as committed data and text: the descriptor against the chart, the model source record, and the Kubernetes certification it may not disagree with; the refusals that stop a rollback being claimed on Helm's own bookkeeping, a deadline being read as a detection of health, a candidate that never scheduled being read as a detected fault, and a mock answering after the rollback; and the safety properties of the operating script. The claim that a release upgrades and rolls back safely belongs to the real-runtime layer, which runs the workflow instead of reading it -- and which cannot, because no InferOps API image exists |
 | [`tests/architecture/test_kubernetes_troubleshooting.py`](../../tests/architecture/test_kubernetes_troubleshooting.py) | The published Kubernetes troubleshooting and cleanup guide against the repository it describes: every command it prints against the module, subcommand, script, or path it names; every target against `lib.sh`; every port, probe, budget, deadline, resource figure, claim name and size, byte count, and in-claim path against the committed render, the values file, the Terraform variables, or the model source record; the exit vocabulary against both Kubernetes tools; every quoted measurement against the proof record it is attributed to; and the rules that keep its samples scoped, credential-free, and labelled where they are destructive. It establishes that the guide has not drifted, never that following one of its recoveries repairs a fault — no cluster has installed the release |
+| [`tests/architecture/test_api_container_image.py`](../../tests/architecture/test_api_container_image.py) | The API container build path the chart depended on and did not have: the committed Dockerfile and its digest-pinned base, the unprivileged user and bytecode-free filesystem the chart's security context requires, the exec-form entrypoint that lets PID 1 receive SIGTERM, the copy list and ignore file that keep the host's model downloader and container packager out of a serving image, the carrier import that pulls none of them, the entrypoint's refusal of an unstated or impossible bind address, and the rule that no unverified digest replaces the labelled placeholder in the committed values. That the image runs belongs to a layer that starts one; this module builds nothing |
 
 The two API-surface rows are the interesting pair. The matrix's drift claim,
 `the-published-strategy-and-its-data-cannot-drift-apart`, is written about the

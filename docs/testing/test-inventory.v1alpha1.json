@@ -299,6 +299,14 @@
       "note": "It runs the committed shell, so unlike its sibling module it can distinguish a refusal that fires from a refusal that is only written down: the guard it covers passed a string-matching test while treating every failed Helm query as proof that no release was installed. Each case asserts the recorded invocation log, and one control case establishes that the sandbox can reach the destroy path at all, so the negative results are not vacuous. It contacts no cluster and runs no Terraform. It skips, loudly, where bash is absent."
     },
     {
+      "module": "tests/architecture/test_api_container_image.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The API container build path the chart depended on and did not have: that a Dockerfile is committed, that its base image is pinned by digest, that it runs as the uid the chart's pod security context declares and writes no bytecode into a read-only root filesystem, that its entrypoint is exec form so PID 1 receives SIGTERM, that the port it declares is the one the chart's Service routes to, that it copies the application and its HTTP carrier and none of the host tooling beside them, that the build context excludes the model cache and every other piece of host state, that the carrier is importable without dragging in the model downloader and container packager, that the entrypoint refuses an unstated, privileged or malformed bind address without printing the value it refused, and that no unverified digest was pasted into the committed values in place of the labelled placeholder.",
+      "claims": [],
+      "note": "It reads a Dockerfile, an ignore file and a shell script, and it runs the container entrypoint out of process to read its exit status. It builds no image, starts no container and contacts no cluster, so it says nothing about whether the image runs -- that was observed separately by building it and exercising it under the chart's security settings, and the `platform-api-container-image` row stays planned until a release installs it. It names no published claim because the claims this protects are about a build path rather than about the product's behaviour."
+    },
+    {
       "module": "tests/contracts/test_platform_contract_regression.py",
       "layer": "contract-and-schema",
       "marker": "contract",

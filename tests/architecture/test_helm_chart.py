@@ -1089,11 +1089,28 @@ def test_the_real_fixture_pins_the_artifact_the_source_record_pins() -> None:
 def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() -> None:
     """The fixtures say the API digest is a placeholder. This recomputes it.
 
-    No InferOps image is published: `platform-api-container-image` is `planned`
-    in the inventory and no Dockerfile is committed. The fixtures still have to
-    satisfy the chart's digest refusal, so they carry the SHA-256 of a stated
-    string rather than a plausible-looking digest — which is the difference
-    between a placeholder a reader can verify and one they have to trust.
+    The fixtures have to satisfy the chart's digest refusal, so they carry the
+    SHA-256 of a stated string rather than a plausible-looking digest -- which is
+    the difference between a placeholder a reader can verify and one they have to
+    trust.
+
+    **The reason for the placeholder changed, and this test changed with it.**
+    Until the Sprint 3 remediation there was no Dockerfile at all, and this
+    asserted that -- if an image could not be built, no digest could be real. An
+    image can now be built: `deploy/api/Dockerfile` is committed and
+    `scripts/environment/api-image.sh` builds it, loads it into the node and
+    verifies the reference resolves there. The placeholder stays for a different
+    and narrower reason. The image is published to no registry, so its manifest
+    digest is a fact about one contributor's build rather than about this
+    repository, and `api-image.sh values` writes it into an overlay under
+    `.artifacts/` that version control ignores.
+
+    So the assertion inverted rather than relaxed. It used to require that no
+    build path existed; it now requires that one does, that the workflow derives
+    its digest instead of declaring one, and that nothing committed carries a
+    digest for an image nobody else can verify. `platform-api-container-image`
+    stays `planned` because no release has installed it -- a built image is not
+    an installed one.
     """
     expected = (
         "sha256:"
@@ -1116,12 +1133,25 @@ def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() ->
         check=False,
     )
     # Tracked files only. A repository-wide glob would also walk `.venv/`, where a
-    # `Dockerfile` belonging to somebody else's package would fail this for a
-    # reason that has nothing to do with whether InferOps publishes an image.
+    # `Dockerfile` belonging to somebody else's package would be counted as this
+    # project's build path.
     assert tracked.returncode == 0, tracked.stderr
-    assert not tracked.stdout.strip(), (
-        "a Dockerfile is committed, so the reason the API image is a placeholder "
-        "no longer holds"
+    committed = tracked.stdout.split()
+    assert committed == ["deploy/api/Dockerfile"], (
+        "the API image is built from exactly one committed Dockerfile; "
+        f"found {committed}"
+    )
+
+    # The digest is derived from a built image, never written down. A literal in
+    # the build workflow would be somebody's host state committed as though it
+    # were this repository's, and it is the one thing the review named outright:
+    # do not replace the fake digest with another unverified digest.
+    workflow = (REPO_ROOT / "scripts" / "environment" / "api-image.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "RepoDigests" in workflow, "the workflow does not derive a digest"
+    assert not re.search(r"sha256:[0-9a-f]{64}", workflow), (
+        "the build workflow commits a digest literal"
     )
 
 

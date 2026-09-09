@@ -13,9 +13,9 @@ observed.
 
 **The blocker is one line, and it is the same one three other documents open
 with.** `platform-api-container-image` is `planned` in
-[the ownership inventory](../architecture/resource-ownership.md), no `Dockerfile`
-is committed anywhere in this repository, and a release whose API image does not
-resolve never becomes ready — so `helm install --wait` reaches its timeout before
+[the ownership inventory](../architecture/resource-ownership.md), the committed
+real values still carry a placeholder digest for it, and a release whose API
+image does not resolve never becomes ready — so `helm install --wait` reaches its timeout before
 any of the release symptoms below can occur. **Which failure the kubelet reports
 depends on the pull policy**, and the two are different words: see
 [the scheduling table](#scheduling-resources-and-out-of-memory).
