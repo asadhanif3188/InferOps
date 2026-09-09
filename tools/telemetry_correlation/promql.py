@@ -34,6 +34,7 @@ __all__ = [
     "AGGREGATIONS",
     "BINARY_OPERATORS",
     "FUNCTIONS",
+    "MAX_NESTING_DEPTH",
     "Aggregation",
     "Binary",
     "Call",
@@ -249,11 +250,32 @@ Expr = Selector | NumberLiteral | StringLiteral | Call | Aggregation | Binary
 
 _TOP = len(BINARY_OPERATORS) - 1
 
+#: How deeply a parenthesis or a unary sign may nest before the expression is
+#: refused. The parser is recursive descent, so nesting maps onto the interpreter's
+#: call stack, and a deep enough expression would raise ``RecursionError`` -- which
+#: is not :class:`PromQLError`, so a caller that had carefully handled "outside the
+#: subset" would crash instead. Independent review found exactly that. The bound is
+#: far above anything a readable query reaches and far below the interpreter's limit,
+#: and passing it is refused like any other unreadable form.
+MAX_NESTING_DEPTH: Final = 100
+
 
 class _Parser:
     def __init__(self, tokens: list[_Token]) -> None:
         self._tokens = tokens
         self._index = 0
+        self._depth = 0
+
+    def _descend(self) -> None:
+        self._depth += 1
+        if self._depth > MAX_NESTING_DEPTH:
+            raise PromQLError(
+                f"the expression nests more than {MAX_NESTING_DEPTH} levels deep, "
+                "which is outside the accepted subset"
+            )
+
+    def _ascend(self) -> None:
+        self._depth -= 1
 
     def _peek(self, offset: int = 0) -> _Token | None:
         position = self._index + offset
@@ -354,10 +376,13 @@ class _Parser:
             card = token.text
             if self._kind() == "(":
                 include = self._label_list()
-        if card is not None and on is None and ignoring is None:
+        if card is not None and on is None:
             raise PromQLError(
-                "a group_left or group_right without an on or ignoring clause is "
-                "outside the accepted subset: the join key has to be written down"
+                "a group_left or group_right is accepted only with an explicit on "
+                "clause. The join key has to be written down, because the rule that "
+                "refuses a join on a key one side cannot carry reads it -- and an "
+                "ignoring clause names what the key is not, which that rule could "
+                "only check by guessing what the key is"
             )
         return VectorMatch(on=on, ignoring=ignoring, card=card, include=include)
 
@@ -381,9 +406,17 @@ class _Parser:
 
     def _unary(self) -> Expr:
         if self._accept("-") is not None:
-            return Binary("-", NumberLiteral(0.0), self._unary())
+            self._descend()
+            try:
+                return Binary("-", NumberLiteral(0.0), self._unary())
+            finally:
+                self._ascend()
         if self._accept("+") is not None:
-            return self._unary()
+            self._descend()
+            try:
+                return self._unary()
+            finally:
+                self._ascend()
         return self._primary()
 
     def _primary(self) -> Expr:
@@ -398,7 +431,11 @@ class _Parser:
             return StringLiteral(token.text)
         if token.kind == "(":
             self._index += 1
-            inner = self._binary(_TOP)
+            self._descend()
+            try:
+                inner = self._binary(_TOP)
+            finally:
+                self._ascend()
             self._expect(")")
             return inner
         if token.kind == "{":

@@ -2,7 +2,7 @@
 
 Status: verified against fixtures. **Nothing has been collected.** No collector,
 store, dashboard, or alerting path is selected — [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
-D8 leaves that to the open question [ADR 0004](../architecture/decisions/ADR-0004-repository-and-tooling-structure.md)
+D8 leaves that to the open question [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 carries — nothing scrapes either InferOps endpoint, this chart has never been
 installed, and **no Prometheus has parsed, loaded, or evaluated any expression on this
 page**.
@@ -29,7 +29,7 @@ drops on the way in, and from a join whose key one side does not carry. Six caus
 one appearance. An operator who writes a query by hand meets all six and can
 distinguish none of them.
 
-So every query here carries the reason its result would be empty, three of them are
+So every query here carries the reason its result would be empty, four of them are
 published *because* they are always empty, and two are published with no expression
 at all because there is no series to select.
 
@@ -85,12 +85,17 @@ and **an expression outside it is refused rather than published unchecked**.
 | Aggregations | `sum`, `count`, `avg`, `min`, `max` |
 | Functions | `absent`, `rate`, `increase`, `histogram_quantile`, `label_replace` |
 | Operators | arithmetic, comparison, `and`, `or`, `unless`, and explicit `on` / `ignoring` matching with `group_left` / `group_right` |
-| Excluded | subqueries, `@`, `offset`, `topk`, `bottomk`, `quantile`, `count_values`, and every function not listed |
+| Excluded | subqueries, `@`, `offset`, `topk`, `bottomk`, `quantile`, `count_values`, every function not listed, a `group_left`/`group_right` written with `ignoring` rather than `on`, a matcher regex using a group or a quantifier other than `.*`, and an expression nesting more than 100 levels deep |
 
 `topk`, `bottomk`, and `quantile` select rather than summarise, so their answers
 depend on tie-breaking the fixture evaluator does not model. `count_values` writes a
 label out of a *value*, which is the one move the telemetry catalog exists to prevent.
-The rest are absent because no query here needs them.
+A group modifier written with `ignoring` is refused because the rule that checks a
+join key reads the `on` set, and a rule enforced for half a syntax reads as enforced
+and is not. A regular expression that can backtrack into itself is refused because it
+hangs whatever evaluates it, and the nesting bound is what makes a deep expression a
+refusal rather than a `RecursionError` no caller was handling. The rest are absent
+because no query here needs them.
 
 **The evaluator is not Prometheus**, and the differences are declared rather than left
 to be discovered:
@@ -99,9 +104,20 @@ to be discovered:
   divided by the interval between them, with counter resets added back. Prometheus
   extrapolates to the window edges. Every fixture places its samples on the
   boundaries, where the two agree.
-- An instant selector takes the newest sample within a 300-second lookback.
-  Prometheus's stale markers do not exist here, because nothing writes one into a
+- An instant selector takes the newest sample in the **half-open** window
+  `(T - 300s, T]`: a sample exactly 300 seconds old is outside it. Which side
+  Prometheus falls on at exactly that boundary has not been checked against the
+  engine, so it is declared as an unverified difference rather than as agreement. No
+  fixture sits on the boundary and a test pins the behaviour.
+- Prometheus's stale markers do not exist here, because nothing writes one into a
   fixture.
+- A matcher or `label_replace` regular expression must be inside a declared safe
+  subset: a literal run, an escaped character, `|`, and at most four `.` or `.*`
+  wildcards. Prometheus uses RE2, which accepts more and is linear; this accepts less
+  and says so.
+- A comparison without `bool` filters rather than computing, so it keeps the
+  left-hand element unchanged, metric name included — the engine's rule, and one an
+  earlier version of this evaluator got wrong for every operator.
 - There is one evaluation instant per run, so nothing here is evaluated over a range.
 
 ## The workflow
@@ -287,7 +303,12 @@ Four gaps, and each says what would close it.
   read from the committed render and evaluated by this repository at each fixture
   instant, in render order. No collector evaluates them and no group interval is
   honoured.
-- `an-empty-result-is-the-common-answer`. Three queries return nothing however long
+- `an-empty-result-is-the-common-answer`. Four queries return nothing however long
   anybody waits and two have no expression at all. That is the honest state of the
   collection, published rather than omitted: a question missing from a query catalogue
   is a question somebody writes badly.
+- `the-evaluator-was-corrected-by-review-not-by-an-engine`. Independent review before
+  push found seven defects here — three in the evaluator's semantics or its refusal
+  contract, one rule that was not enforced for half the syntax it claimed to cover,
+  and three miscounts in published prose. Every one was found by reading. A
+  cross-check against `promtool` remains the first follow-up and remains not done.

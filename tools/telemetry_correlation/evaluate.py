@@ -24,12 +24,30 @@ counter resets are corrected, decreases are not otherwise interpreted
     back, which is the engine's rule.
 
 staleness is a lookback and nothing more
-    An instant selector takes the newest sample at or before the evaluation instant
-    and no older than :data:`LOOKBACK_SECONDS`. Prometheus's stale markers do not
-    exist here, because nothing writes one into a fixture.
+    An instant selector takes the newest sample in the **half-open** window
+    ``(T - LOOKBACK_SECONDS, T]``: a sample exactly :data:`LOOKBACK_SECONDS` old is
+    outside it. That boundary is stated exactly rather than as "no older than",
+    which independent review read -- reasonably -- as inclusive. Which side
+    Prometheus falls on at exactly the boundary has not been checked against the
+    engine here, so it is declared as a difference this repository has not verified
+    rather than as agreement it has. No fixture places a sample on the boundary, and
+    a test pins the behaviour so a change to it cannot be silent. Prometheus's stale
+    markers do not exist here either, because nothing writes one into a fixture.
+
+a matcher's regular expression must be inside a declared safe subset
+    A literal run, an escaped character, ``|``, and at most
+    :data:`MAX_PATTERN_WILDCARDS` ``.`` or ``.*`` wildcards. A group, a character
+    class, and every other quantifier are refused, so a pattern cannot backtrack
+    into itself and hang the process evaluating it. Prometheus uses RE2, which
+    accepts more and is linear; this accepts less and says so.
 
 ``absent`` reproduces only the labels of equality matchers
     Which is the engine's rule, and the only part of it these queries depend on.
+
+a comparison without ``bool`` filters, and keeps the left element unchanged
+    Including its metric name. Only the arithmetic operators drop the name, which is
+    the engine's rule; an earlier version of this module dropped it for every
+    operator and independent review caught it.
 
 ``histogram_quantile`` interpolates linearly inside the chosen bucket
     The engine's rule, including its treatment of a quantile at or below the lowest
@@ -64,6 +82,7 @@ from .promql import (
 __all__ = [
     "EXTRAPOLATION",
     "LOOKBACK_SECONDS",
+    "MAX_PATTERN_WILDCARDS",
     "EvaluationError",
     "Sample",
     "Series",
@@ -150,14 +169,57 @@ def _without_name(mapping: Mapping[str, str]) -> dict[str, str]:
     return {key: value for key, value in mapping.items() if key != NAME_LABEL}
 
 
+#: Every pattern this evaluator will compile: a literal run, an escaped character as
+#: ``regexQuoteMeta`` writes one, the ``.*`` wildcard, a bare ``.``, and ``|`` to
+#: alternate between them. A group is the thing deliberately missing -- no ``(``,
+#: ``)``, ``[``, ``]``, ``{`` or ``}``, and no ``+``, ``?`` or ``*`` except in ``.*``
+#: -- which is what makes catastrophic backtracking impossible rather than unlikely:
+#: there is no repeated group for a pattern to backtrack into.
+#:
+#: It admits everything this repository writes: the chart's own filters are an
+#: alternation of ``regexQuoteMeta`` names, and ``label_replace`` is used with the
+#: empty pattern. Anything else is refused, for the reason
+#: :mod:`tools.telemetry_collection` gives for reading a labeldrop regex rather than
+#: running it -- a checker that ran an arbitrary regex out of the input it is checking
+#: is deciding the answer by running the question. Independent review found
+#: ``(a+)+$`` hanging this module on a thirty-five character label value.
+_SAFE_PATTERN = re.compile(r"^(?:[A-Za-z0-9_:/@ ,=|-]|\\.|\.\*|\.)*$")
+
+#: An escaped character, which is one literal and contributes no wildcard.
+_ESCAPED = re.compile(r"\\.")
+
+#: How many wildcards one pattern may use. Without a group there is no catastrophic
+#: backtracking, but a pattern of many ``.*`` runs against a long non-matching string
+#: still costs a power of its length, and a bound is cheaper than an argument about
+#: how long a label value can be.
+MAX_PATTERN_WILDCARDS: Final = 4
+
+
+def _compiled(pattern: str, where: str) -> re.Pattern[str]:
+    """A matcher pattern, refused unless it is inside the declared safe subset."""
+    if _SAFE_PATTERN.fullmatch(pattern) is None:
+        raise EvaluationError(
+            f"the {where} pattern uses a regular-expression form outside the "
+            "accepted subset. A group, a character class, and every quantifier but "
+            "the .* wildcard are refused, because a pattern that can backtrack into "
+            "itself can hang whatever evaluates it"
+        )
+    if _ESCAPED.sub("", pattern).count(".") > MAX_PATTERN_WILDCARDS:
+        raise EvaluationError(
+            f"the {where} pattern uses more than {MAX_PATTERN_WILDCARDS} wildcards. "
+            "There is no group for it to backtrack into, and matching it against a "
+            "long value still costs a power of that value's length"
+        )
+    return re.compile(f"^(?:{pattern})$")
+
+
 def _matches(mapping: Mapping[str, str], matcher: Matcher) -> bool:
     value = mapping.get(matcher.label, "")
     if matcher.operator == "=":
         return value == matcher.value
     if matcher.operator == "!=":
         return value != matcher.value
-    pattern = re.compile(f"^(?:{matcher.value})$")
-    found = pattern.match(value) is not None
+    found = _compiled(matcher.value, "matcher").match(value) is not None
     return found if matcher.operator == "=~" else not found
 
 
@@ -311,7 +373,7 @@ def _expand(replacement: str, match: re.Match[str]) -> str:
 def _label_replace(
     inner: Vector, destination: str, replacement: str, source: str, pattern: str
 ) -> Vector:
-    compiled = re.compile(f"^(?:{pattern})$")
+    compiled = _compiled(pattern, "label_replace")
     samples: Vector = []
     for sample in inner:
         mapping = sample.mapping
@@ -443,9 +505,16 @@ def _binary_vectors(node: Binary, left: Vector, right: Vector) -> Vector:
         if operator in _COMPARISON:
             keep = _COMPARISON[operator](left_value, right_value)
             if node.bool_modifier:
+                # `bool` computes, so the result is a new series and loses the name.
                 samples.append(Sample(_labels(mapping), 1.0 if keep else 0.0))
             elif keep:
-                samples.append(Sample(_labels(mapping), left_value))
+                # A comparison without `bool` *filters*: Prometheus returns the
+                # left-hand element unchanged, metric name included, because nothing
+                # was computed. Only the arithmetic operators drop the name.
+                # Independent review found this returning the join key instead.
+                samples.append(
+                    sample if matching.card != "group_right" else counterpart
+                )
             continue
         samples.append(
             Sample(_labels(mapping), _ARITHMETIC[operator](left_value, right_value))

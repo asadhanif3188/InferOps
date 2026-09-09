@@ -61,10 +61,23 @@ once versioned releases begin.
   came from this repository's own evaluator, whose differences from the engine —
   chiefly that `rate()` does not extrapolate — are declared rather than left to be
   discovered, and a cross-check against `promtool` is recorded as the first follow-up
-  and was **not** done.
+  and was **not** done. **Independent review before push found ten defects, all
+  fixed**, and three of them were claims this change made about itself that were not
+  true: the rule that refuses a join on a key one side cannot carry read only the `on`
+  set, so a `group_left` written with `ignoring` was *not checked at all* — the parser
+  now refuses that combination outright, because a rule enforced for half a syntax
+  reads as enforced and is not; a deeply nested expression raised `RecursionError`
+  rather than the refusal the module promises, which is now a declared nesting bound;
+  and `SAFE_MESSAGE_CHARACTERS` was enforced on a finding's message and not on its
+  subject, which is a `queryId` and reached stdout unfiltered. A matcher regex was
+  compiled straight from input and `(a+)+$` hung the process, so patterns are now held
+  to a declared safe subset with no group to backtrack into. A comparison without
+  `bool` dropped the metric name, which only the arithmetic operators do. And three
+  were miscounts in published prose — nineteen barred labels written as twenty, and
+  four always-empty queries written as three in two places.
   [The query document](docs/telemetry/telemetry-correlation-queries.md) states the
   workflow, the expected empty and error states, the four things that cannot be
-  correlated, and the six this does not establish.
+  correlated, and the seven this does not establish.
 
 - **The chart now renders a scrape configuration, and still nothing collects.**
   `telemetry-scrape-configuration` was the last Helm-owned row deferred to a story

@@ -41,6 +41,10 @@ import pytest
 from tools.telemetry_correlation import (
     AGGREGATIONS,
     FUNCTIONS,
+    IDENTIFIER,
+    LOOKBACK_SECONDS,
+    MAX_NESTING_DEPTH,
+    MAX_PATTERN_WILDCARDS,
     RULE_IDS,
     SAFE_MESSAGE_CHARACTERS,
     EvaluationError,
@@ -67,6 +71,8 @@ from tools.telemetry_correlation import (
     with_recording_rules,
 )
 from tools.telemetry_correlation.__main__ import _evidence
+from tools.telemetry_correlation.core import _base_name
+from tools.telemetry_correlation.promql import Binary
 
 pytestmark = pytest.mark.docs
 
@@ -415,7 +421,8 @@ def test_a_query_with_no_expression_produces_no_finding() -> None:
         "up and on (job) up",
         "up unless up",
         "up * on (job) group_left (a) up",
-        "up / ignoring (instance) group_right up",
+        "up / on (job) group_right (a) up",
+        "up / ignoring (instance) up",
         "-up",
         "(up + up) * 2",
         "up > bool 1",
@@ -438,6 +445,8 @@ def test_the_subset_reads_the_forms_the_queries_are_written_in(
         "sum(up, up)",
         "not_a_function(up)",
         "up * group_left up",
+        "up * ignoring (job) group_left up",
+        "up / ignoring (instance) group_right up",
         "up[1.5m]",
         "{}",
         "up{",
@@ -939,3 +948,204 @@ def test_the_command_line_evaluates_every_scenario() -> None:
     assert result.returncode == 0, result.stderr
     for scenario_id in SCENARIO_IDS:
         assert scenario_id in result.stdout
+
+
+# --------------------------------------------------------------------------
+# What independent review found, kept as tests so it cannot come back
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "(" * (MAX_NESTING_DEPTH + 1) + "up" + ")" * (MAX_NESTING_DEPTH + 1),
+        "-" * (MAX_NESTING_DEPTH + 1) + "up",
+    ],
+    ids=["parentheses", "unary-signs"],
+)
+def test_a_deeply_nested_expression_is_refused_rather_than_crashing(
+    expression: str,
+) -> None:
+    """It raised RecursionError, which is not the error a caller handles.
+
+    The parser is recursive descent, so nesting maps onto the interpreter's call
+    stack. A caller that had carefully handled "outside the subset" would have
+    crashed instead, which makes the module's own refusal contract untrue.
+    """
+    with pytest.raises(PromQLError):
+        parse(expression)
+
+
+def test_a_nesting_depth_just_inside_the_bound_still_parses() -> None:
+    """The bound has to be a bound, not a ceiling that nothing reaches."""
+    depth = MAX_NESTING_DEPTH - 1
+    assert parse("(" * depth + "up" + ")" * depth) is not None
+
+
+def test_a_group_modifier_with_ignoring_is_refused() -> None:
+    """The join rule reads the on set, so ignoring would slip past it unchecked.
+
+    A rule enforced for half a syntax reads as enforced and is not. The parser
+    refuses the combination rather than the checker silently skipping it.
+    """
+    with pytest.raises(PromQLError):
+        parse("inferops_build_info * ignoring (le) group_left inferops_build_info")
+
+
+def test_the_join_rule_cannot_be_bypassed_by_any_form_the_subset_accepts() -> None:
+    """Every group modifier the subset accepts carries an on set the rule reads."""
+    tree = parse("up * on (job) group_left (a) up")
+    assert isinstance(tree, Binary)
+    assert tree.matching.card == "group_left"
+    assert tree.matching.on is not None
+
+
+@pytest.mark.parametrize(
+    "pattern",
+    ["(a+)+$", "[abc]", "a{2,3}", "a+", "a?", ".*.*.*.*.*x"],
+)
+def test_a_matcher_regex_that_could_backtrack_into_itself_is_refused(
+    pattern: str,
+) -> None:
+    """A nested-quantifier matcher hung the process for minutes on 35 characters.
+
+    There is no group in the accepted subset for a pattern to backtrack into, and no
+    more than MAX_PATTERN_WILDCARDS wildcards for it to multiply out.
+    """
+    store = _store(("up", {"job": "a" * 35 + "!"}, [(600.0, 1.0)]))
+    with pytest.raises(EvaluationError):
+        evaluate(store, parse('up{job=~"' + pattern + '"}'))
+
+
+@pytest.mark.parametrize(
+    ("pattern", "value", "matched"),
+    [
+        ("x|y", "x", True),
+        ("x|y", "z", False),
+        ("pre.*", "prefix", True),
+        ("inferops-a|inferops-b", "inferops-b", True),
+    ],
+)
+def test_the_matcher_forms_this_repository_actually_writes_still_work(
+    pattern: str, value: str, matched: bool
+) -> None:
+    """The safe subset has to admit the chart's own filters, or it admits nothing."""
+    store = _store(("up", {"job": value}, [(600.0, 1.0)]))
+    rows = evaluate(store, parse('up{job=~"' + pattern + '"}'))
+    assert bool(rows) is matched
+
+
+def test_the_wildcard_bound_is_stated_and_enforced() -> None:
+    assert MAX_PATTERN_WILDCARDS == 4
+    store = _store(("up", {"job": "a"}, [(600.0, 1.0)]))
+    assert evaluate(store, parse('up{job=~".*.*.*.*"}')) is not None
+    with pytest.raises(EvaluationError):
+        evaluate(store, parse('up{job=~".*.*.*.*.*"}'))
+
+
+def test_a_comparison_without_bool_keeps_the_left_element_unchanged() -> None:
+    """It filters rather than computing, so Prometheus keeps the metric name.
+
+    An earlier version dropped the name for every operator, comparisons included,
+    and reduced the result to the join key. Only the arithmetic operators drop it.
+    """
+    store = _store(
+        ("a", {"job": "j", "extra": "e"}, [(600.0, 5.0)]),
+        ("b", {"job": "j"}, [(600.0, 1.0)]),
+    )
+    rows = format_vector(evaluate(store, parse("a > ignoring (extra) b")))
+    assert rows == ['{__name__="a", extra="e", job="j"} 5']
+
+
+def test_a_comparison_with_bool_computes_and_therefore_drops_the_name() -> None:
+    store = _store(
+        ("a", {"job": "j"}, [(600.0, 5.0)]),
+        ("b", {"job": "j"}, [(600.0, 1.0)]),
+    )
+    assert format_vector(evaluate(store, parse("a > bool b"))) == ['{job="j"} 1']
+
+
+def test_an_arithmetic_operator_still_drops_the_name() -> None:
+    store = _store(
+        ("a", {"job": "j"}, [(600.0, 5.0)]),
+        ("b", {"job": "j"}, [(600.0, 1.0)]),
+    )
+    assert format_vector(evaluate(store, parse("a - b"))) == ['{job="j"} 4']
+
+
+def test_group_right_matches_the_other_way_round() -> None:
+    """group_right had no evaluator test at all, only a parser one.
+
+    The many side is the right operand and the one side is the left, and the result
+    carries the many side's labels plus whatever the modifier names.
+    """
+    store = _store(
+        ("one", {"job": "j", "v": "1"}, [(600.0, 3.0)]),
+        ("many", {"job": "j", "instance": "a"}, [(600.0, 2.0)]),
+        ("many", {"job": "j", "instance": "b"}, [(600.0, 4.0)]),
+    )
+    rows = format_vector(evaluate(store, parse("one * on (job) group_right (v) many")))
+    assert rows == [
+        '{instance="a", job="j", v="1"} 6',
+        '{instance="b", job="j", v="1"} 12',
+    ]
+
+
+def test_the_instant_lookback_window_is_half_open_and_pinned() -> None:
+    """A sample exactly LOOKBACK_SECONDS old is outside the window.
+
+    Stated exactly rather than as "no older than", which review read as inclusive.
+    No fixture sits on the boundary; this pins the behaviour so a change to it
+    cannot be silent.
+    """
+    boundary = _store(("m", {"a": "1"}, [(600.0 - LOOKBACK_SECONDS, 5.0)]))
+    assert evaluate(boundary, parse("m")) == []
+    inside = _store(("m", {"a": "1"}, [(600.0 - LOOKBACK_SECONDS + 1, 5.0)]))
+    assert format_vector(evaluate(inside, parse("m"))) == ['{__name__="m", a="1"} 5']
+
+
+def test_a_metric_whose_own_name_ends_in_a_histogram_suffix_is_not_mis_mapped() -> None:
+    """_base_name stripped unconditionally, which is a trap for a future metric."""
+    for name in declared_metric_names():
+        assert _base_name(name) == name, name
+    assert (
+        _base_name("inferops_inference_request_duration_seconds_bucket")
+        == "inferops_inference_request_duration_seconds"
+    )
+    assert _base_name("something_nothing_declares_count") == (
+        "something_nothing_declares_count"
+    )
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    QUERY_IDS
+    + [row["refusedId"] for row in REFUSED]
+    + SCENARIO_IDS
+    + [gap["gapId"] for gap in RECORD["gaps"]]
+    + [row["limitationId"] for row in RECORD["limitations"]]
+    + list(RULE_IDS),
+)
+def test_every_identifier_in_the_record_is_safe_to_print(identifier: str) -> None:
+    """An identifier reaches a terminal, a log line, a heading, and a test id."""
+    assert IDENTIFIER.fullmatch(identifier), identifier
+
+
+def test_a_hostile_query_identifier_cannot_reach_a_terminal() -> None:
+    """The safe-character promise covers subject, not only message.
+
+    It did not at first: subject is the record's own queryId and was interpolated
+    unfiltered into Finding.__str__, and from there into stdout.
+    """
+    hostile = "evil\x1b[31mID\r\nSEVERITY=ok‮"
+    findings = check_query(
+        {
+            "queryId": hostile,
+            "expr": "not_a_metric_anything_declares",
+            "profiles": ["real"],
+        }
+    )
+    assert findings
+    for finding in findings:
+        for character in str(finding):
+            assert character in SAFE_MESSAGE_CHARACTERS, (finding.rule, character)

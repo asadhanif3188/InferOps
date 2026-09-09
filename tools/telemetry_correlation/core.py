@@ -45,11 +45,17 @@ Six rules, each named for the failure it prevents:
     A ``group_left`` or ``group_right`` whose ``on`` set names a label a metric on the
     one side does not have. This is the defect a static reading of a query record
     would miss and an operator would meet as an empty result.
+
+    The rule reads the ``on`` set, so a group modifier written with ``ignoring``
+    instead would have slipped past it unchecked. Independent review found exactly
+    that, and the parser now refuses that combination outright: a rule that is
+    enforced for half a syntax is a rule that reads as enforced and is not.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -83,9 +89,11 @@ __all__ = [
     "CATALOG_PATH",
     "COLLECTION_RECORD_PATH",
     "FIXTURE_DIR",
+    "IDENTIFIER",
     "QUERY_RECORD_PATH",
     "RULE_IDS",
     "SAFE_MESSAGE_CHARACTERS",
+    "SUBSTITUTE",
     "Finding",
     "apply_metric_relabel",
     "carriable_labels",
@@ -131,8 +139,13 @@ RULE_IDS: Final[tuple[str, ...]] = (
 #: value got published -- and an unconstrained echo is also how an escape sequence
 #: reaches a terminal or a forged line reaches a log.
 SAFE_MESSAGE_CHARACTERS: Final = frozenset(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,:;'\"()[]{}=~/_-+"
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,:;'\"()[]{}=~/_-+?"
 )
+
+#: What :func:`_safe` puts where a character outside the set was. It is in the set,
+#: it is printable, and it is not a character any identifier here uses -- so a
+#: substitution is visible rather than disguised as part of a name.
+SUBSTITUTE: Final = "?"
 
 #: The suffixes a Prometheus histogram publishes beside its declared name.
 HISTOGRAM_SUFFIXES: Final[tuple[str, ...]] = ("_bucket", "_count", "_sum")
@@ -151,6 +164,12 @@ class Finding:
     and never repeats a matcher's *value* or an expression read out of the record.
     :data:`SAFE_MESSAGE_CHARACTERS` bounds what may appear and a test drives the
     checker over deliberately hostile records to prove it.
+
+    That bound covers **every** field, ``subject`` included. It did not at first:
+    ``subject`` is the record's own ``queryId``, it was interpolated unfiltered, and
+    independent review pointed out that a hostile one would have reached a terminal
+    through :meth:`__str__`. :func:`_safe` is what closes it, and the suite now
+    drives a hostile identifier as well as a hostile expression.
     """
 
     rule: str
@@ -168,6 +187,30 @@ class Finding:
 
     def __str__(self) -> str:
         return f"{self.rule}  {self.subject}  {self.field}  {self.message}"
+
+
+#: The shape a query, refusal, or scenario identifier must have. Kebab-case ASCII
+#: and nothing else, so that an identifier can be written into a terminal, a log
+#: line, a markdown heading, and a test id without any of them having to escape it.
+IDENTIFIER = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+def _safe(text: str) -> str:
+    """``text`` with every character outside the declared set replaced.
+
+    :class:`Finding` promises its *message* never carries a value out of the record.
+    Independent review found the promise did not extend to its *subject*, which is
+    the record's own ``queryId`` and was interpolated unfiltered into
+    :meth:`Finding.__str__` and from there into stdout -- so a hostile identifier
+    could have carried an escape sequence to a terminal or forged a line in a log.
+    Every identifier in the committed record is already kebab-case, and
+    :data:`IDENTIFIER` is asserted over all of them by the suite; this is the second
+    line, for a caller passing a query of its own.
+    """
+    return "".join(
+        character if character in SAFE_MESSAGE_CHARACTERS else SUBSTITUTE
+        for character in text
+    )
 
 
 def _load(path: Path) -> Any:
@@ -276,9 +319,17 @@ def _base_name(series_name: str) -> str:
     ``inferops_inference_request_duration_seconds_bucket`` is the histogram's bucket
     series and ``inferops_inference_request_duration_seconds`` is the row that
     declares it. The catalog names the instrument; a query reads the exposition.
+
+    A suffix is stripped only when what is left is a metric the catalog actually
+    declares. Stripping unconditionally would silently mis-map a future metric whose
+    own name ended in ``_count`` or ``_sum`` onto a base that does not exist -- a
+    trap independent review pointed out, and one that costs a set lookup to close.
     """
+    declared = declared_metric_names()
+    if series_name in declared:
+        return series_name
     for suffix in HISTOGRAM_SUFFIXES:
-        if series_name.endswith(suffix):
+        if series_name.endswith(suffix) and series_name[: -len(suffix)] in declared:
             return series_name[: -len(suffix)]
     return series_name
 
@@ -437,6 +488,12 @@ def _static_labels(node: Expr, profile: str) -> frozenset[str] | None:
         left = _static_labels(node.left, profile)
         right = _static_labels(node.right, profile)
         if node.operator == "or":
+            # An element of an `or` carries one side's labels or the other's, never
+            # their union, so this is an upper bound rather than an exact set. It is
+            # only ever read to decide whether a join key is carriable, where an
+            # upper bound can miss a refusal and can never invent one. The one rule
+            # this is used on today -- the runtime token mapping -- has identical
+            # label sets on both branches, so the bound is exact there.
             return None if left is None or right is None else left | right
         if node.operator in {"and", "unless"}:
             return left
@@ -471,7 +528,7 @@ def _check_query(
     not_emitted: frozenset[str],
     profile: str,
 ) -> Iterator[Finding]:
-    subject = str(query.get("queryId", "<unnamed query>"))
+    subject = _safe(str(query.get("queryId", "<unnamed query>")))
     expression = query.get("expr")
     if not isinstance(expression, str):
         return
