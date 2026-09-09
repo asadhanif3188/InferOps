@@ -479,11 +479,12 @@ telemetry:
   #
   # A ConfigMap holding a Prometheus scrape configuration and a set of recording
   # rules for this release. It is a **document**, and reading it is a collector's
-  # decision rather than this chart's: no collector, store, dashboard, or alert
-  # path is selected (ADR 0006 D8, ADR 0004), nothing in this project reads this
-  # ConfigMap, and **nothing scrapes either endpoint**. What it removes is the
-  # step where somebody writes scrape configuration by hand against labels they
-  # guessed.
+  # decision rather than this chart's: no store, dashboard, or alert path is
+  # selected (ADR 0006 D8, ADR 0004). A *collector* is, since ADR 0004 D7 was
+  # amended -- see `collector.deploy` below, which is off by default. With it off
+  # nothing reads this ConfigMap and nothing scrapes either endpoint. What this
+  # removes either way is the step where somebody writes scrape configuration by
+  # hand against labels they guessed.
   #
   # It is on by default, unlike `scrapeAnnotations`, and the difference is the
   # blast radius. An annotation on a pod is read by any cluster-wide collector
@@ -525,8 +526,83 @@ telemetry:
     # server sets on every namespace itself. Both members are required together:
     # a namespace with no pod selector would admit every pod in it.
     collector:
+      # Whether this release installs a collector of its own.
+      #
+      # `ADR 0004` `D7` left collector ownership undecided for two sprints, and
+      # the consequence was a chart that rendered a scrape configuration nothing
+      # read. The Sprint 3 remediation resolved it: the collector is Helm-owned
+      # and release-scoped, which is the smallest answer that makes the
+      # configuration above do something. It is off by default because a release
+      # that quietly started a second workload would be deciding for its
+      # operator; the real profile turns it on.
+      #
+      # It is not a monitoring stack. There is no dashboard, no alert receiver
+      # and no routing tree -- `ADR 0006` `D8` still leaves those open, and an
+      # alert needs somebody on the other end of it. It scrapes what this
+      # release publishes, evaluates the recording rules beside it, and can be
+      # queried.
+      deploy: false
+
+      # Where the collector runs, for the release's network policy to admit it.
+      #
+      # Left empty when `deploy` is true: the chart fills both in from the
+      # collector it just rendered, so an operator cannot install a collector
+      # here and forget to open a path to it. Set them only for a collector
+      # somebody else runs. Both are required together, because a namespace with
+      # no pod selector would admit every pod in it.
       namespace: ""
       podSelector: {}
+
+      image:
+        # Prometheus, pinned by digest like everything else this chart runs.
+        # `ADR 0006` `D8` selected no toolchain, and this does not select one for
+        # anything but collection: it is chosen because the configuration the
+        # chart already renders is a Prometheus scrape configuration and a set of
+        # Prometheus recording rules, so it is the engine those were written
+        # against rather than a new decision.
+        repository: prom/prometheus
+        digest: sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996
+        pullPolicy: IfNotPresent
+
+      port: 9090
+
+      # Storage is an `emptyDir`, and that is the decision rather than an
+      # oversight. A PersistentVolumeClaim would be a second durable thing in a
+      # design that has exactly one, and it would have to be owned by Terraform
+      # to outlive a release -- which is a larger decision than "make the
+      # scrape configuration do something". So the series live in the pod, a
+      # restart loses them, and the retention below is bounded to match.
+      #
+      # This is what makes the collector unsuitable for anything that has to
+      # survive: it answers questions about the release that is running now.
+      retention:
+        time: 2h
+        size: 512MB
+      storageSizeMi: 1024
+
+      # The Kubernetes API server, for target discovery, as a CIDR and a port.
+      #
+      # Empty by default and rendered as nothing, because this chart cannot
+      # compute it: the API server's address is a property of the cluster, not of
+      # the release, and a guess here would be a rule that silently matched
+      # nothing. On the accepted local cluster it does not matter -- the network
+      # plugin enforces no NetworkPolicy at all, which `DR-04`/`EX-05` record --
+      # so the collector discovers targets regardless. On a cluster that *does*
+      # enforce, this is the one path the collector needs that the release cannot
+      # name for itself, and leaving it empty there means discovery fails.
+      #
+      # Set it and the collector's egress policy opens exactly that.
+      apiServerEgress:
+        cidr: ""
+        port: 6443
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: "1"
+          memory: 512Mi
 
 # -- the chart's own test ----------------------------------------------------
 #
@@ -605,6 +681,12 @@ security:
       # this chart.
       name: ""
     runtime:
+      name: ""
+    collector:
+      # Only rendered when the collector is deployed. With `create: false` the
+      # cluster provisions the account *and* the permission it needs: this chart
+      # renders no Role or RoleBinding in that case either, because binding a
+      # Role to an identity somebody else owns is granting on their behalf.
       name: ""
     annotations: {}
 

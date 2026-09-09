@@ -1,0 +1,282 @@
+{{- include "inferops-llm.validate" . -}}
+{{- if and .Values.telemetry.enabled .Values.telemetry.collection.enabled .Values.telemetry.collection.collector.deploy }}
+{{/*
+`telemetry-collector` in the ownership inventory: the thing that reads the
+configuration this chart has been rendering into a ConfigMap nobody consumed.
+
+**What changed, and where it is recorded.** `ADR 0004` `D7` left collector
+ownership undecided and the inventory carried an `undecided` owner, which a test
+requires to be deferred out of V1. The result was honest and useless: a scrape
+configuration, a set of recording rules, a policy checker for both, and no
+process anywhere that read any of it. The Sprint 3 remediation resolved D7 for
+the collector alone -- Helm-owned, release-scoped -- and this is that decision
+rendered. Ingress and load balancing stay undecided, and so do dashboards and
+alert routing.
+
+**Why it is release-scoped rather than a prerequisite.** A prerequisite outlives
+the release and would have to be Terraform's, which means a second durable thing
+in a design that deliberately has one, plus a claim to hold its series. This
+collector answers questions about the release that is running now. It is created
+with the release, removed with it, and its data goes when its pod does.
+
+**Why the token is projected rather than automounted.** Prometheus discovers its
+targets through the Kubernetes API and needs credentials to do it. Every pod in
+this chart sets `automountServiceAccountToken: false`, and the workload policy
+requires it, so this pod does the same and mounts a *bounded* token instead: a
+projected `serviceAccountToken` with an expiry, the API server's CA, and the
+namespace, at the path the in-cluster client already looks in. Prometheus needs
+no configuration for it, the token rotates, and the difference from automounting
+is that the pod says out loud what it is being given.
+
+**What it may see.** A Role and a RoleBinding, not a ClusterRole: `get`, `list`
+and `watch` on pods in this namespace and nothing else. The scrape configuration
+discovers pods in this release's namespace, so namespace-scoped is not a
+restriction it has to work around -- it is the whole of what it needs.
+*/}}
+{{- if .Values.security.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "inferops-llm.collector.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry-collector
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "inferops-llm.collector.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry-collector
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "inferops-llm.collector.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry-collector
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "inferops-llm.collector.serviceAccountName" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "inferops-llm.collector.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inferops-llm.collector.configMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry-collector
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{- /* The collector's own file, and it is deliberately three lines of
+         plumbing. The scrape jobs and the recording rules are *not* copied here:
+         they are read from `telemetry-scrape-configuration`, which is the
+         ConfigMap this chart already rendered and which said in its own comment
+         that a collector would read it from the API server. `scrape_config_files`
+         takes a file whose top-level key is `scrape_configs`, which is exactly
+         the shape that ConfigMap already holds -- verified with the pinned
+         image's own `promtool check config` against the committed render.
+
+         Copying them would have produced two scrape configurations for one
+         release, and the one that drifted would be whichever nobody read. */}}
+  prometheus.yaml: |
+    global:
+      scrape_interval: {{ .Values.telemetry.collection.scrapeIntervalSeconds }}s
+      scrape_timeout: {{ .Values.telemetry.collection.scrapeTimeoutSeconds }}s
+    {{- /* No `external_labels`. They are not written onto stored series -- they
+           surface only through federation, remote write, and alert notifications,
+           none of which exists here -- so they would buy nothing today. What they
+           would buy is a collision: the serving-runtime job already attaches
+           `deployment_environment` per series, and an external label of the same
+           name is silently outranked by it, while the platform-api job attaches
+           none and so would be labelled inconsistently with the runtime beside
+           it. The first person to answer ADR 0006 D8's remote-write question
+           would inherit that. */}}
+    rule_files:
+      - /etc/inferops/telemetry/recording-rules.yaml
+    scrape_config_files:
+      - /etc/inferops/telemetry/scrape-config.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inferops-llm.collector.serviceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry-collector
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "inferops-llm.collector.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.telemetry.collection.collector.port }}
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inferops-llm.collector.serviceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: telemetry-collector
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- /* One. Two collectors scraping one release would double every counter a
+         reader summed across instances, and there is nothing to fail over to:
+         the series are in the pod. */}}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "inferops-llm.collector.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "inferops-llm.labels" . | nindent 8 }}
+        app.kubernetes.io/component: telemetry-collector
+      annotations:
+        inferops.io/configuration-checksum: {{ include "inferops-llm.telemetryScrapeConfig" . | sha256sum }}
+        {{- with (include "inferops-llm.scrapeAnnotations" (dict "context" $ "port" .Values.telemetry.collection.collector.port) | trim) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "inferops-llm.collector.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- include "inferops-llm.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: collector
+          image: {{ include "inferops-llm.collector.image" . | quote }}
+          imagePullPolicy: {{ .Values.telemetry.collection.collector.image.pullPolicy }}
+          args:
+            - --config.file=/etc/inferops/collector/prometheus.yaml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ .Values.telemetry.collection.collector.retention.time }}
+            - --storage.tsdb.retention.size={{ .Values.telemetry.collection.collector.retention.size }}
+            - --web.listen-address=0.0.0.0:{{ .Values.telemetry.collection.collector.port }}
+            {{- /* No admin API and no lifecycle endpoint. Both accept unauthenticated
+                   requests that delete series or reload configuration, and neither is
+                   needed to read what this release publishes. */}}
+            - --web.enable-lifecycle=false
+          ports:
+            - name: http
+              containerPort: {{ .Values.telemetry.collection.collector.port }}
+              protocol: TCP
+          {{- /* A budget rather than a fixed threshold, the way every other
+                 container here states one. Prometheus replays its write-ahead
+                 log before it reports ready, and on a restart with series in the
+                 volume that is not instant -- so a liveness probe alone would
+                 restart it for being slow to come back, forever. */}}
+          startupProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            {{- include "inferops-llm.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.telemetry.collection.collector.resources | nindent 12 }}
+          volumeMounts:
+            - name: collector-configuration
+              mountPath: /etc/inferops/collector
+              readOnly: true
+            - name: telemetry-configuration
+              mountPath: /etc/inferops/telemetry
+              readOnly: true
+            - name: series
+              mountPath: /prometheus
+            - name: kube-api-access
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+      volumes:
+        - name: collector-configuration
+          configMap:
+            name: {{ include "inferops-llm.collector.configMapName" . }}
+        - name: telemetry-configuration
+          configMap:
+            name: {{ include "inferops-llm.telemetryScrapeConfigMapName" . }}
+        - name: series
+          emptyDir:
+            sizeLimit: {{ .Values.telemetry.collection.collector.storageSizeMi }}Mi
+        {{- /* What `automountServiceAccountToken: true` would have produced, written
+               out: a token that expires, the API server's CA, and the namespace, at
+               the path the in-cluster client reads. Declaring it is the difference
+               between a pod that is handed credentials and a pod that asks for
+               them. */}}
+        - name: kube-api-access
+          projected:
+            defaultMode: 420
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3607
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - key: ca.crt
+                      path: ca.crt
+              - downwardAPI:
+                  items:
+                    - path: namespace
+                      fieldRef:
+                        fieldPath: metadata.namespace
+{{- end }}

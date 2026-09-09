@@ -153,9 +153,19 @@ def test_the_record_states_that_nothing_collects() -> None:
     assert status["collected"] is False
     assert status["everInstalled"] is False
     assert status["configurationRendered"] is True
-    assert "not selected" in status["collector"]
-    assert "nothing scrapes" in status["note"].lower()
-    assert "**Nothing reads this ConfigMap, nothing scrapes either endpoint" in DOCUMENT
+    assert "nothing has scraped" in status["note"].lower()
+    assert "none has run" in status["note"].lower()
+    assert "**Nothing has been collected" in DOCUMENT
+
+    # A collector is selected now, which is the one thing that changed. The two
+    # booleans above are what this test exists for and they are unchanged:
+    # selecting a collector and running one are different things, and a record
+    # describing the first in the present tense is how the second gets assumed.
+    assert "selected." in status["collector"]
+    assert "deferred" in status["collector"], (
+        "the collector is decided; dashboards and alert routing are not, and the "
+        "record has to keep saying which is which"
+    )
 
 
 def test_every_reference_the_record_makes_resolves() -> None:
@@ -680,7 +690,14 @@ def test_no_finding_message_can_carry_a_value_out_of_a_manifest(hostile: str) ->
         ),
         (
             "scrape-timeout-is-not-shorter-than-its-interval",
-            lambda text: text.replace("scrape_timeout: 10s", "scrape_timeout: 30s", 1),
+            # Eight spaces: the timeout inside a scrape job, which this rule is
+            # about. The collector's own `global` block carries the same setting
+            # at six spaces and appears earlier in the render, and a mutation
+            # that hit that one would change a file the checker does not police
+            # and then report the rule as never firing.
+            lambda text: text.replace(
+                "        scrape_timeout: 10s", "        scrape_timeout: 30s", 1
+            ),
         ),
     ],
 )

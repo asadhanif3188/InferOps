@@ -540,6 +540,22 @@
       "evidenceRef": null
     },
     {
+      "resourceId": "telemetry-collector",
+      "name": "The telemetry collector for a release",
+      "kind": "platform service (Deployment, Service, ConfigMap, ServiceAccount, Role, RoleBinding)",
+      "owner": "helm",
+      "lifecycle": "release",
+      "v1Status": "planned",
+      "createdBy": "helm install or helm upgrade",
+      "destroyedBy": "helm uninstall",
+      "survives": [
+        "pod restart"
+      ],
+      "referencedBy": [],
+      "handoff": "The reader for telemetry-scrape-configuration, which was rendered for two sprints with nothing consuming it. ADR 0004 D7 left collector ownership undecided; the Sprint 3 remediation resolved it for the collector alone, as Helm-owned and release-scoped, and left ingress, load balancing, dashboards and alert routing undecided. It reads the scrape jobs and recording rules out of that ConfigMap rather than carrying its own copy, so one release cannot have two scrape configurations. Its series live in an emptyDir and go with the pod: it answers questions about the release running now, and is not a store anything may depend on outliving a restart. It stays planned because no release has installed it.",
+      "evidenceRef": null
+    },
+    {
       "resourceId": "replica-sets",
       "name": "Replica sets",
       "kind": "apps/v1 ReplicaSet",
@@ -607,7 +623,7 @@
     },
     {
       "resourceId": "telemetry-backend",
-      "name": "A metrics collector, store, and dashboards",
+      "name": "Dashboards and an alert routing path",
       "kind": "platform service",
       "owner": "undecided",
       "lifecycle": "undecided",
@@ -616,7 +632,7 @@
       "destroyedBy": "nothing; no owner has been chosen",
       "survives": [],
       "referencedBy": [],
-      "handoff": "Components expose metrics; nothing collects them. Whether a collector is a prerequisite or part of a release is unresolved, and this row exists so that the question is answered deliberately rather than by whoever adds the first scrape target.",
+      "handoff": "Narrowed by the Sprint 3 remediation. It used to cover the collector too, and the collector is now decided and owned: see telemetry-collector. What is left is genuinely undecided. A dashboard needs somebody to read it and an alert needs a receiver, a routing tree and somebody on the other end, and none of the three has been chosen. This row exists so that the question is answered deliberately rather than by whoever builds the first panel.",
       "evidenceRef": null
     },
     {

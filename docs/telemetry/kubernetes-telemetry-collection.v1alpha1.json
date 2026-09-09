@@ -23,11 +23,11 @@
       "scrape-config.yaml",
       "recording-rules.yaml"
     ],
-    "mountedBy": "nothing; neither Deployment references it, because a workload publishes metrics and does not collect them",
-    "collector": "not selected. Who owns a collector, store, dashboard, or alerting path is an open question in ADR 0004 that ADR 0006 D8 deliberately does not answer, and this record does not answer it either.",
+    "mountedBy": "the telemetry collector this release installs, and nothing else. No workload Deployment references it: a workload publishes metrics and does not collect them, and a ConfigMap mounted into the pod it describes would install the wrong mental model beside the right file.",
+    "collector": "selected. ADR 0004 D7, amended 2026-09-09, makes the collector Helm-owned and release-scoped; telemetry-collector in the ownership inventory carries it. Prometheus, pinned by digest, reading this ConfigMap rather than a copy of it. Dashboards and an alert routing path remain unowned and deferred, and ADR 0006 D8 still selects no SDK, exporter or tracer.",
     "collected": false,
     "everInstalled": false,
-    "note": "Nothing reads this configuration and nothing scrapes either endpoint. Every count, bound, and multiplier below is arithmetic over declared values, not a measurement of a store."
+    "note": "A collector is selected and rendered; none has run. No release has installed this chart, nothing has scraped either endpoint, and every count, bound and multiplier below is arithmetic over declared values rather than a measurement of a store. The configuration has been checked by the pinned collector's own promtool, which establishes that it loads and not that anything was collected."
   },
   "discovery": {
     "mechanism": "prometheus kubernetes_sd_configs, role: pod",

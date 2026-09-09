@@ -68,6 +68,18 @@ spec:
       ports:
         - port: 8090
           protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: inferops-platform
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: telemetry-collector
+              app.kubernetes.io/instance: inferops
+              app.kubernetes.io/name: inferops-llm
+      ports:
+        - port: 8090
+          protocol: TCP
   egress:
     - to:
         - namespaceSelector:
@@ -126,6 +138,18 @@ spec:
             matchLabels:
               app.kubernetes.io/name: inferops-llm
               app.kubernetes.io/instance: inferops
+      ports:
+        - port: 8080
+          protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: inferops-platform
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: telemetry-collector
+              app.kubernetes.io/instance: inferops
+              app.kubernetes.io/name: inferops-llm
       ports:
         - port: 8080
           protocol: TCP
@@ -190,6 +214,15 @@ spec:
       ports:
         - port: 8080
           protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inferops-llm
+              app.kubernetes.io/instance: inferops
+              app.kubernetes.io/component: telemetry-collector
+      ports:
+        - port: 9090
+          protocol: TCP
 ---
 # Source: inferops-llm/templates/networkpolicy.yaml
 apiVersion: networking.k8s.io/v1
@@ -245,6 +278,67 @@ spec:
         - port: 443
           protocol: TCP
 ---
+# Source: inferops-llm/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inferops-inferops-llm-collector
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: workload-network-policy
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+      app.kubernetes.io/component: telemetry-collector
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inferops-llm
+              app.kubernetes.io/instance: inferops
+              app.kubernetes.io/component: platform-api
+      ports:
+        - port: 8090
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: inferops-llm
+              app.kubernetes.io/instance: inferops
+              app.kubernetes.io/component: serving-runtime
+      ports:
+        - port: 8080
+          protocol: TCP
+---
 # Source: inferops-llm/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -286,6 +380,29 @@ metadata:
     inferops.io/owner: team-platform-demo
     inferops.io/workload: support-assistant
     app.kubernetes.io/component: workload-identity
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+automountServiceAccountToken: false
+---
+# Source: inferops-llm/templates/telemetry-collector.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inferops-inferops-llm-collector
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: telemetry-collector
   annotations:
     inferops.io/cost-center: demo-cost-center
     inferops.io/tenant: demo
@@ -334,6 +451,37 @@ data:
   INFEROPS_LLAMA_SERVER_THREADS: "6"
   INFEROPS_LLAMA_SERVER_STARTUP_BUDGET_MS: "300000"
   INFEROPS_LLAMA_SERVER_METRICS_ENABLED: "true"
+---
+# Source: inferops-llm/templates/telemetry-collector.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inferops-inferops-llm-collector-configuration
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: telemetry-collector
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+data:
+  prometheus.yaml: |
+    global:
+      scrape_interval: 30s
+      scrape_timeout: 10s
+    rule_files:
+      - /etc/inferops/telemetry/recording-rules.yaml
+    scrape_config_files:
+      - /etc/inferops/telemetry/scrape-config.yaml
 ---
 # Source: inferops-llm/templates/telemetry-scrape-config.yaml
 apiVersion: v1
@@ -491,6 +639,62 @@ data:
           - record: inferops:model_ready_absent:platform_api
             expr: absent(inferops_model_ready{k8s_namespace="inferops-platform", k8s_component="platform-api"})
 ---
+# Source: inferops-llm/templates/telemetry-collector.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: inferops-inferops-llm-collector
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: telemetry-collector
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+# Source: inferops-llm/templates/telemetry-collector.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: inferops-inferops-llm-collector
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: telemetry-collector
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: inferops-inferops-llm-collector
+subjects:
+  - kind: ServiceAccount
+    name: inferops-inferops-llm-collector
+    namespace: inferops-platform
+---
 # Source: inferops-llm/templates/api-service.yaml
 apiVersion: v1
 kind: Service
@@ -554,6 +758,39 @@ spec:
   ports:
     - name: http
       port: 8080
+      targetPort: http
+      protocol: TCP
+---
+# Source: inferops-llm/templates/telemetry-collector.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: inferops-inferops-llm-collector
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: telemetry-collector
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/component: telemetry-collector
+  ports:
+    - name: http
+      port: 9090
       targetPort: http
       protocol: TCP
 ---
@@ -865,6 +1102,153 @@ spec:
             medium: Memory
             sizeLimit: 64Mi
 ---
+# Source: inferops-llm/templates/telemetry-collector.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inferops-inferops-llm-collector
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: telemetry-collector
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+      app.kubernetes.io/instance: inferops
+      app.kubernetes.io/component: telemetry-collector
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: inferops-llm-0.3.0
+        app.kubernetes.io/name: inferops-llm
+        app.kubernetes.io/instance: inferops
+        app.kubernetes.io/version: "0.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: inferops
+        inferops.io/lifecycle: release
+        inferops.io/profile: real
+        inferops.io/owner: team-platform-demo
+        inferops.io/workload: support-assistant
+        app.kubernetes.io/component: telemetry-collector
+      annotations:
+        inferops.io/configuration-checksum: 603e247121e7c1700e608307c0e288fcfc64893d416f2743150caa7161bd28f5
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: inferops-inferops-llm-collector
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: collector
+          image: "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/inferops/collector/prometheus.yaml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=2h
+            - --storage.tsdb.retention.size=512MB
+            - --web.listen-address=0.0.0.0:9090
+            - --web.enable-lifecycle=false
+          ports:
+            - name: http
+              containerPort: 9090
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: collector-configuration
+              mountPath: /etc/inferops/collector
+              readOnly: true
+            - name: telemetry-configuration
+              mountPath: /etc/inferops/telemetry
+              readOnly: true
+            - name: series
+              mountPath: /prometheus
+            - name: kube-api-access
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+      volumes:
+        - name: collector-configuration
+          configMap:
+            name: inferops-inferops-llm-collector-configuration
+        - name: telemetry-configuration
+          configMap:
+            name: inferops-inferops-llm-telemetry-scrape
+        - name: series
+          emptyDir:
+            sizeLimit: 1024Mi
+        - name: kube-api-access
+          projected:
+            defaultMode: 420
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3607
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - key: ca.crt
+                      path: ca.crt
+              - downwardAPI:
+                  items:
+                    - path: namespace
+                      fieldRef:
+                        fieldPath: metadata.namespace
+---
 # Source: inferops-llm/templates/tests/connection.yaml
 apiVersion: v1
 kind: Pod
@@ -916,6 +1300,9 @@ spec:
           echo "asking the serving runtime for health"
           wget -q -T 10 -O - \
             "http://inferops-inferops-llm-runtime:8080/health"
+          echo
+          echo "asking the telemetry collector for readiness"
+          wget -q -T 10 -O -             "http://inferops-inferops-llm-collector:9090/-/ready"
           echo
       securityContext:
         allowPrivilegeEscalation: false

@@ -386,7 +386,7 @@ both certification workflows send a real request rather than reading a status.
 | `port-forward` binds but the response never comes | The forward is served against **one selected endpoint** and never traverses the Service's virtual IP, so it cannot tell you anything about distribution — that is what [the multi-replica workflow](../serving/kubernetes-multi-replica-certification.md) exists for |
 | The default loopback port `18090` is taken | Something else holds it, commonly the host-local composition on `8090`. The certification script moves to another loopback port rather than failing |
 
-**Do not spend time on the NetworkPolicy on this cluster.** The chart renders five
+**Do not spend time on the NetworkPolicy on this cluster.** The chart renders six
 policy objects, starting from a default deny on both ingress and egress, and on
 `kindnetd` — the network plugin a `kind` cluster ships — **none of them was
 enforced in the build tested**. Re-confirm that before relying on it if the node

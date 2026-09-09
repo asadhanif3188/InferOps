@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are twenty-one, and they are listed in their own section rather than
+empty list. There are twenty-two, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -172,7 +172,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Twenty-one suites protect something no row of the claim matrix names. Each carries its
+Twenty-two suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -200,6 +200,8 @@ matrix is complete needs to see them together.
 | [`tests/architecture/test_api_container_image.py`](../../tests/architecture/test_api_container_image.py) | The API container build path the chart depended on and did not have: the committed Dockerfile and its digest-pinned base, the unprivileged user and bytecode-free filesystem the chart's security context requires, the exec-form entrypoint that lets PID 1 receive SIGTERM, the copy list and ignore file that keep the host's model downloader and container packager out of a serving image, the carrier import that pulls none of them, the entrypoint's refusal of an unstated or impossible bind address, and the rule that no unverified digest replaces the labelled placeholder in the committed values. That the image runs belongs to a layer that starts one; this module builds nothing |
 
 | [`tests/architecture/test_model_acquisition_job.py`](../../tests/architecture/test_model_acquisition_job.py) | The writing side of the model cache handoff, run rather than read: an empty claim populated and verified, a verified artifact reused with no transfer at all, an artifact of the right length and the wrong content discarded rather than reused, another revision's directory left alone, and a failed acquisition leaving neither the artifact nor its temporary file behind. Whether the job schedules in a cluster belongs to a layer that installs one |
+
+| [`tests/architecture/test_telemetry_collector.py`](../../tests/architecture/test_telemetry_collector.py) | The collector `ADR 0004` `D7` was amended to allow: owned but still `planned`, off by default, reading the scrape ConfigMap rather than a second copy of it, projecting an expiring token instead of automounting one, and storing series in a bounded `emptyDir`. Its one executable check runs the pinned collector's own `promtool` over the committed render, which establishes that the configuration loads and nothing about whether anything was collected |
 
 The two API-surface rows are the interesting pair. The matrix's drift claim,
 `the-published-strategy-and-its-data-cannot-drift-apart`, is written about the

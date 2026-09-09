@@ -217,6 +217,20 @@ spec:
         - port: {{ .Values.runtime.containerPort }}
           protocol: TCP
     {{- end }}
+    {{- /* The collector, because `helm test` asks it for readiness too. It is
+           here and not on a workload's policy: the workloads do not call the
+           collector, the collector scrapes them, and that direction is opened by
+           `collectorIngressRule` on their own rules. An egress allowance a pod
+           does not use is a hole with no purpose. */}}
+    {{- if and .Values.telemetry.enabled .Values.telemetry.collection.enabled .Values.telemetry.collection.collector.deploy }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "inferops-llm.collector.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.telemetry.collection.collector.port }}
+          protocol: TCP
+    {{- end }}
 {{- end }}
 {{- if and (eq .Values.profile "real") .Values.model.acquisition.enabled (eq .Values.model.acquisition.source "download") }}
 ---
@@ -271,5 +285,59 @@ spec:
       ports:
         - port: 443
           protocol: TCP
+{{- end }}
+{{- if and .Values.telemetry.enabled .Values.telemetry.collection.enabled .Values.telemetry.collection.collector.deploy }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "inferops-llm.fullname" . }}-collector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workload-network-policy
+  {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- /* The collector reaches out; the workloads' own policies decide whether it
+         gets in. Ingress for it is not written here -- `collectorIngressRule` is
+         already part of the API and runtime rules, and it now resolves this
+         collector, so a collector installed by this release cannot be locked out
+         by this release's default-deny. */}}
+  podSelector:
+    matchLabels:
+      {{- include "inferops-llm.collector.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    {{- include "inferops-llm.dnsEgressRule" . | nindent 4 }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "inferops-llm.api.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.api.containerPort }}
+          protocol: TCP
+    {{- if eq .Values.profile "real" }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "inferops-llm.runtime.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: {{ .Values.runtime.containerPort }}
+          protocol: TCP
+    {{- end }}
+    {{- with .Values.telemetry.collection.collector.apiServerEgress }}
+    {{- if .cidr }}
+    - to:
+        - ipBlock:
+            cidr: {{ .cidr }}
+      ports:
+        - port: {{ .port }}
+          protocol: TCP
+    {{- end }}
+    {{- end }}
 {{- end }}
 {{- end }}

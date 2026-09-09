@@ -94,3 +94,9 @@ telemetry:
   # appear in a committed render rather than only the one the default takes.
   # They are inert: nothing in this project scrapes anything.
   scrapeAnnotations: true
+  collection:
+    collector:
+      # The collector this release installs, which is what makes the scrape
+      # configuration beside it do something. ADR 0004 D7 was resolved for this
+      # and nothing else: no dashboard, no alert receiver, no routing tree.
+      deploy: true

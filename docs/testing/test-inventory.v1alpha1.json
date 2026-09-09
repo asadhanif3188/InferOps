@@ -315,6 +315,14 @@
       "note": "It takes the script out of the committed render and runs it under bash against a real directory with wget stubbed, so it establishes control flow and filesystem outcome rather than wording. It repoints the claim root, which a test cannot mount, and asserts that the substitution touched only that one token. It installs nothing and contacts no cluster, so it says nothing about whether the job schedules or whether the transfer works against the real publisher; the row stays planned for that reason. It skips, loudly, where bash is absent."
     },
     {
+      "module": "tests/architecture/test_telemetry_collector.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The collector ADR 0004 D7 was amended to allow: that its inventory row is Helm-owned and still planned while dashboards and alert routing stay undecided, that the shipped default installs none, that it reads the scrape ConfigMap the chart already renders rather than a second copy of the jobs and rules, that it projects an expiring token at the in-cluster path instead of automounting one, that its storage is an emptyDir with both a time and a size bound and neither the admin API nor the lifecycle endpoint is enabled, and that the configuration the chart writes is one the pinned collector's own promtool will load.",
+      "claims": [],
+      "note": "The promtool check runs the binary out of the image the chart pins, against the committed render, so it establishes that the configuration loads and the rule files resolve. It is not a scrape and not a query result: nothing here starts a collector, installs a release or reaches a cluster, and telemetry-collector stays planned for that reason. That check skips, loudly, where the image is not present locally."
+    },
+    {
       "module": "tests/contracts/test_platform_contract_regression.py",
       "layer": "contract-and-schema",
       "marker": "contract",

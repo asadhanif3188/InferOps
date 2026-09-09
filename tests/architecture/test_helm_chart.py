@@ -265,6 +265,17 @@ ROW_FOR_RENDERED = {
     ("Service", "platform-api"): "platform-api-service",
     ("Deployment", "serving-runtime"): "serving-runtime-deployment",
     ("Service", "serving-runtime"): "serving-runtime-service",
+    # One row, six kinds. `telemetry-collector` is a platform service rather than
+    # a single object -- it needs an identity, a permission, a binding, a
+    # configuration, a Service and a Deployment to be one thing -- and the
+    # inventory row says so in its `kind`. Mapping each kind separately is what
+    # keeps a stray object from arriving under the same label unnoticed.
+    ("ServiceAccount", "telemetry-collector"): "telemetry-collector",
+    ("Role", "telemetry-collector"): "telemetry-collector",
+    ("RoleBinding", "telemetry-collector"): "telemetry-collector",
+    ("ConfigMap", "telemetry-collector"): "telemetry-collector",
+    ("Service", "telemetry-collector"): "telemetry-collector",
+    ("Deployment", "telemetry-collector"): "telemetry-collector",
 }
 
 
@@ -321,12 +332,12 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
     assert CHART_YAML.is_file()
     assert VALUES_SCHEMA.is_file()
     assert len(list(TEMPLATES_DIR.glob("*.yaml"))) >= 5
-    assert len(INSTALLED["real"]) == 13, (
-        "the real profile installs thirteen objects: two Deployments, two "
-        "Services, the runtime ConfigMap, the telemetry scrape ConfigMap, one "
-        "ServiceAccount per workload, and five network policies -- the fifth "
-        "being the acquisition job's egress, which is installed rather than "
-        "hooked so that it is already there on the upgrade path"
+    assert len(INSTALLED["real"]) == 20, (
+        "the real profile installs nineteen objects: three Deployments, three "
+        "Services, the runtime ConfigMap, the telemetry scrape ConfigMap, the "
+        "collector's own ConfigMap, three ServiceAccounts, the collector's Role "
+        "and RoleBinding, and six network policies -- the acquisition job's "
+        "egress and the collector's, both installed rather than hooked"
     )
     assert len(INSTALLED["mock"]) == 8, (
         "the mock profile installs eight: the API's Deployment, Service, "
@@ -339,9 +350,10 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
         "fills the claim before the runtime is created to read it"
     )
     assert len(HOOKS["mock"]) == 1, "a mock fills no claim, so it has only its test"
-    assert len(ALL_CONTAINERS) == 7, (
+    assert len(ALL_CONTAINERS) == 8, (
         "five workload and hook containers, the model integrity init container "
-        "the real profile runs before its runtime, and the acquisition job's own"
+        "the real profile runs before its runtime, the acquisition job's own, and "
+        "the collector"
     )
 
 
@@ -1173,9 +1185,9 @@ def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() ->
     # `Dockerfile` belonging to somebody else's package would be counted as this
     # project's build path.
     assert tracked.returncode == 0, tracked.stderr
-    committed = tracked.stdout.split()
-    assert committed == ["deploy/api/Dockerfile"], (
-        "the API image is built from exactly one committed Dockerfile; "
+    committed = sorted(tracked.stdout.split())
+    assert committed == ["deploy/api/Dockerfile", "deploy/model-seed/Dockerfile"], (
+        "the images this repository builds are the API's and the model seed's; "
         f"found {committed}"
     )
 
@@ -1633,7 +1645,10 @@ def test_a_selector_is_drawn_only_from_things_a_rollback_cannot_change() -> None
         for _profile, document in ALL_INSTALLED
         if document["kind"] == "Deployment"
     ]
-    assert len(selectors) == 3, "two Deployments under real, one under mock"
+    assert len(selectors) == 4, (
+        "three Deployments under real -- API, runtime and collector -- and one "
+        "under mock"
+    )
     for selector in selectors:
         assert set(selector) == allowed, selector
         assert "inferops.io/profile" not in selector
@@ -1702,7 +1717,10 @@ def test_the_scrape_annotations_follow_the_switch_that_governs_them() -> None:
             assert (
                 annotations["prometheus.io/path"] == VALUES["telemetry"]["metricsPath"]
             )
-    assert seen == 3, "two Deployments under real, one under mock"
+    assert seen == 4, (
+        "three Deployments under real -- API, runtime and collector -- and one "
+        "under mock"
+    )
 
 
 def test_the_scrape_configuration_is_a_config_map_and_not_an_operator_object() -> None:
@@ -1727,9 +1745,14 @@ def test_the_scrape_configuration_is_rendered_once_and_mounted_by_nothing(
 ) -> None:
     """A workload publishes metrics. It does not collect them.
 
-    A ConfigMap mounted into the pod it describes would suggest the pod reads its
-    own scrape configuration, which is the wrong mental model to install beside the
-    right file.
+    This used to require that nothing mounted the scrape configuration, and that
+    was the honest reading while nothing consumed it -- a ConfigMap mounted into
+    the pod it describes would suggest the pod reads its own scrape configuration.
+    The collector reads it now, which is the whole of what the Sprint 3
+    remediation changed, so the rule became the sharper one it was standing in
+    for: **no workload pod mounts it, and the only pod that does is the
+    collector**. A release with two copies of its scrape configuration would be a
+    release where the one that drifted is whichever nobody read.
     """
     configured = [
         document
@@ -1742,10 +1765,33 @@ def test_the_scrape_configuration_is_rendered_once_and_mounted_by_nothing(
     name = configured[0]["metadata"]["name"]
     assert set(configured[0]["data"]) == {"scrape-config.yaml", "recording-rules.yaml"}
 
-    for _label, spec in _pod_specs(RENDERED[profile]):
+    readers = []
+    # Identified by the component label rather than by a name suffix: a future
+    # workload whose fullname happened to end in `-collector` would satisfy a
+    # suffix test without being the collector.
+    collector_objects = {
+        f"{document['kind']}/{_dig(document, 'metadata.name')}"
+        for document in RENDERED[profile]
+        if _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
+        == "telemetry-collector"
+    }
+
+    for label, spec in _pod_specs(RENDERED[profile]):
+        component = label in collector_objects
         for volume in spec.get("volumes") or []:
             source = volume.get("configMap") or {}
-            assert source.get("name") != name
+            if source.get("name") != name:
+                continue
+            readers.append(label)
+            assert component, (
+                f"{label} mounts the scrape configuration, and it is not the "
+                "collector; a workload publishes metrics and does not collect them"
+            )
+    if profile == "real":
+        assert len(readers) == 1, readers
+    else:
+        assert not readers, "a mock renders no collector and nothing reads it"
+    for _label, spec in _pod_specs(RENDERED[profile]):
         for container in spec.get("containers") or []:
             for source in container.get("envFrom") or []:
                 assert (source.get("configMapRef") or {}).get("name") != name
@@ -1765,20 +1811,40 @@ def test_the_collector_allowance_is_one_from_item_and_defaults_to_absent() -> No
     anywhere with those labels", which is a materially wider hole and reads
     identically in a `kubectl get networkpolicy -o yaml`.
     """
-    assert VALUES["telemetry"]["collection"]["collector"] == {
-        "namespace": "",
-        "podSelector": {},
-    }
+    collector = VALUES["telemetry"]["collection"]["collector"]
+    assert collector["namespace"] == ""
+    assert collector["podSelector"] == {}
+    assert collector["deploy"] is False, (
+        "the shipped default installs no collector: a release that quietly "
+        "started a second workload would be deciding for its operator"
+    )
+
+    # With the defaults, no allowance is rendered at all. The real profile turns
+    # the collector on, and then the allowance names the collector this release
+    # itself installs -- which is the case the two-selector rule below is about,
+    # because that one really is a `namespaceSelector` beside a `podSelector`.
     for _profile, document in ALL_RENDERED:
         if document["kind"] != "NetworkPolicy":
             continue
         for rule in _sequence(document, "spec.ingress"):
             for source in rule.get("from") or []:
-                assert "namespaceSelector" not in source, (
-                    "no committed render names a collector, because there is none"
+                if "namespaceSelector" not in source:
+                    continue
+                assert "podSelector" in source, (
+                    "a namespace is opened without naming which pods in it"
                 )
+                assert (
+                    source["podSelector"]["matchLabels"].get(
+                        "app.kubernetes.io/component"
+                    )
+                    == "telemetry-collector"
+                ), source
 
+    # `deploy=false` as well, because the two are alternatives: a release that
+    # installs its own collector names that one, and an override pointing
+    # somewhere else would be a rule for a collector that is not the one running.
     result = _render(
+        "telemetry.collection.collector.deploy=false",
         "telemetry.collection.collector.namespace=observability",
         "telemetry.collection.collector.podSelector.app=prometheus",
     )
@@ -1976,7 +2042,8 @@ def test_each_workload_presents_an_identity_of_its_own() -> None:
             f"{profile} names an account this release does not render: "
             f"{sorted(named - accounts)}"
         )
-        expected = 2 if profile == "real" else 1
+        # API, runtime, and the collector the real profile installs.
+        expected = 3 if profile == "real" else 1
         assert len(accounts) == expected, (
             f"{profile} renders {len(accounts)} service accounts, expected {expected}"
         )
@@ -1991,18 +2058,54 @@ def test_each_workload_presents_an_identity_of_its_own() -> None:
         )
 
 
-def test_the_chart_grants_its_identities_nothing() -> None:
-    """A least-privilege account is one nothing is bound to, and that is checkable.
+def test_the_chart_grants_exactly_one_identity_exactly_one_permission() -> None:
+    """This used to assert that the chart granted nothing at all. It grants one thing.
 
-    The claim this chart may make about its service accounts is narrow and it is
-    exactly this: no Role, no ClusterRole, and no binding of either is rendered
-    anywhere, and no pod mounts a token. An account with a binding somewhere else
-    is not something a render can see, and this does not claim otherwise.
+    The collector discovers its targets through the Kubernetes API, so it needs a
+    permission, and a chart that granted nothing could not have one. What replaces
+    "nothing" is not "something": it is this exact list, checked. A `ClusterRole`
+    or a `ClusterRoleBinding` is still refused outright -- namespace-scoped is not
+    a restriction the collector works around, it is the whole of what it needs --
+    and every other identity this chart renders is still bound to nothing.
+
+    The verbs matter as much as the resources. `get`, `list` and `watch` on pods
+    is what service discovery reads; anything that could create, patch or delete
+    would be a collector that could change the release it observes.
     """
-    forbidden = {"Role", "ClusterRole", "RoleBinding", "ClusterRoleBinding"}
     for profile, documents in RENDERED.items():
-        offenders = [d["kind"] for d in documents if d["kind"] in forbidden]
-        assert not offenders, f"{profile} renders {offenders}, which grants something"
+        cluster_scoped = [
+            d["kind"]
+            for d in documents
+            if d["kind"] in {"ClusterRole", "ClusterRoleBinding"}
+        ]
+        assert not cluster_scoped, (
+            f"{profile} renders {cluster_scoped}, which grants something outside "
+            "this namespace"
+        )
+
+        roles = [d for d in documents if d["kind"] == "Role"]
+        bindings = [d for d in documents if d["kind"] == "RoleBinding"]
+        if profile == "mock":
+            assert not roles and not bindings, (
+                "a mock collects nothing and needs nothing"
+            )
+            continue
+
+        assert len(roles) == 1 and len(bindings) == 1, (roles, bindings)
+        assert _sequence(roles[0], "rules") == [
+            {
+                "apiGroups": [""],
+                "resources": ["pods"],
+                "verbs": ["get", "list", "watch"],
+            }
+        ], "the collector's permission is not the one this test permits"
+
+        # And it is bound to the collector's account and to nothing else.
+        collector_account = f"{_dig(roles[0], 'metadata.name')}"
+        subjects = _sequence(bindings[0], "subjects")
+        assert [s["name"] for s in subjects] == [collector_account], subjects
+        assert _dig(bindings[0], "roleRef.kind") == "Role"
+
     for label, spec in ALL_POD_SPECS:
         assert _dig(spec, "automountServiceAccountToken") is False, (
             f"{label} mounts a service account token it has no use for"
@@ -2231,6 +2334,7 @@ def test_externally_provisioned_accounts_still_render_and_still_pass() -> None:
     validator the story ships.
     """
     result = _render(
+        "security.serviceAccount.collector.name=external-collector",
         "security.serviceAccount.create=false",
         "security.serviceAccount.api.name=external-api",
         "security.serviceAccount.runtime.name=external-runtime",
@@ -2242,7 +2346,7 @@ def test_externally_provisioned_accounts_still_render_and_still_pass() -> None:
         if isinstance(document, dict)
     ]
     named = {_dig(spec, "serviceAccountName") for _, spec in _pod_specs(documents)}
-    assert named == {"external-api", "external-runtime"}, named
+    assert named == {"external-api", "external-runtime", "external-collector"}, named
     assert not [d for d in documents if d["kind"] == "ServiceAccount"], (
         "create=false must render no account; the cluster provisions them"
     )

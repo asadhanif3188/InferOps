@@ -1090,17 +1090,60 @@ object is most often written with.
 `kubernetes.io/metadata.name` is set on every namespace by the API server itself,
 so it is not a label anybody has to remember to apply.
 */}}
+{{- define "inferops-llm.collector.serviceAccountName" -}}
+{{- if .Values.security.serviceAccount.create -}}
+{{- default (printf "%s-collector" (include "inferops-llm.fullname" .)) .Values.security.serviceAccount.collector.name -}}
+{{- else -}}
+{{- default "default" .Values.security.serviceAccount.collector.name -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "inferops-llm.collector.serviceName" -}}
+{{- printf "%s-collector" (include "inferops-llm.fullname" .) -}}
+{{- end -}}
+
+{{- define "inferops-llm.collector.configMapName" -}}
+{{- printf "%s-collector-configuration" (include "inferops-llm.fullname" .) -}}
+{{- end -}}
+
+{{- define "inferops-llm.collector.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "inferops-llm.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: telemetry-collector
+{{- end -}}
+
+{{- define "inferops-llm.collector.image" -}}
+{{- printf "%s@%s" .Values.telemetry.collection.collector.image.repository .Values.telemetry.collection.collector.image.digest -}}
+{{- end -}}
+
+{{/*
+Who may scrape a workload's metrics endpoint.
+
+Two cases, and the second is why this reads a computed value rather than a
+configured one. A collector somebody else runs is named by `collector.namespace`
+and `collector.podSelector`, and both are required together because a namespace
+with no pod selector admits every pod in it. A collector this release installs is
+in this namespace carrying labels this chart chose -- so the chart fills them in
+rather than asking an operator to restate them, because the failure mode of
+asking is a release that installs a collector and then denies it.
+*/}}
 {{- define "inferops-llm.collectorIngressRule" -}}
 {{- $root := .context -}}
 {{- $collector := $root.Values.telemetry.collection.collector -}}
-{{- if and $collector.namespace $collector.podSelector }}
+{{- $namespace := $collector.namespace -}}
+{{- $selector := $collector.podSelector -}}
+{{- if $collector.deploy -}}
+{{- $namespace = $root.Release.Namespace -}}
+{{- $selector = (include "inferops-llm.collector.selectorLabels" $root | fromYaml) -}}
+{{- end -}}
+{{- if and $namespace $selector }}
 - from:
     - namespaceSelector:
         matchLabels:
-          kubernetes.io/metadata.name: {{ $collector.namespace }}
+          kubernetes.io/metadata.name: {{ $namespace }}
       podSelector:
         matchLabels:
-          {{- toYaml $collector.podSelector | nindent 10 }}
+          {{- toYaml $selector | nindent 10 }}
   ports:
     - port: {{ .port }}
       protocol: TCP
