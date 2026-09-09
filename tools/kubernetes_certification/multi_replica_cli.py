@@ -216,8 +216,20 @@ def _print_certified(result: MultiReplicaResult, record: str) -> None:
             f"ready after {replica.ready_after_ms} ms"
         )
     print(
-        f"distribution  {len(result.distribution)} distinct replicas, at least "
-        f"{certification.distribution.minimum_distinct_replicas} required"
+        f"distribution  {len(result.distribution)} distinct API replicas, at "
+        f"least {certification.distribution.minimum_distinct_replicas} required"
+    )
+    serving_plan = certification.runtime_distribution
+    for entry in result.serving:
+        print(
+            f"  runtime     {entry.pod_name}: decoded {entry.decode_delta} "
+            f"token(s), predicted {entry.predicted_token_delta}"
+        )
+    print(
+        f"serving       {sum(1 for e in result.serving if e.decode_delta > 0)} "
+        f"serving replicas ran the model, at least "
+        f"{serving_plan.minimum_serving_replicas} required; per replica over the "
+        "window, never per request"
     )
     if result.cleanup is not None:
         print(
@@ -281,6 +293,8 @@ def _run(args: argparse.Namespace, certification: MultiReplicaCertification) -> 
             facts=result.facts,
             observations=result.observations,
             distribution=result.distribution,
+            counters=result.counters,
+            serving=result.serving,
             cleanup=load_cleanup_facts(certification, repo_root=_root()),
         )
     evidence = MultiReplicaEvidence(certification, repo_root=_root())

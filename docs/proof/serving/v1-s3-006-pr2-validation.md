@@ -260,3 +260,45 @@ why that Job is deliberately not a row in any ownership table.
 records — does not exist.** Both workflows are committed, validated, and
 unexecuted, and both are blocked on the same unpublished API image. No claim in
 the matrix moves.
+
+## Amendment — Sprint 3 completion remediation
+
+Everything above records what this PR validated at the time, and it is left
+standing. This section records what a later review found wrong with it, because
+correcting the figures in place would erase the finding.
+
+**The certification was for the wrong tier.** The two rows above that read
+"Implemented as a check, for the API tier" were the whole of the gap. The
+descriptor asked for two platform API replicas and **one** `llama-server`, the
+correlation established distribution across the stateless tier, and the record it
+wrote was called `multi-replica-inference`. The story's criterion is that the
+profile "supports at least two real **serving** replicas", and two front ends
+sharing one model server does not.
+
+**What changed.** The descriptor now requests two serving runtime replicas, and
+both the Python validator and the operating script refuse one. A second kind of
+evidence was added for that tier, because the API tier's kind is unavailable one
+layer down: no request can be attributed to a runtime replica from the API's side,
+since the API dials the runtime's ClusterIP and the socket keeps that address
+rather than the endpoint `kube-proxy` translated it to, and `llama-server` puts no
+per-instance identity in a completion. So each `llama-server`'s own
+`llamacpp:n_decode_total` is read from that pod, before and after the request set,
+and a run in which any ready serving replica decoded nothing fails. It is a
+per-replica claim over a bounded window rather than a per-request join, and it is
+labelled as one in the descriptor's `limitations`, in the record's own
+`requestAttributedToServingReplica: false`, and in the procedure.
+
+**The capacity figures above are superseded.** A second model server is a second
+copy of the model in memory, not a second process sharing one. The profile also
+gained the telemetry collector the Sprint 3 remediation gave the chart, which the
+committed real values install and which the old arithmetic did not count -- a pod
+the scheduler has to fit either way. The profile is now 2,310 millicores and
+4,496 MiB of requests, peaking at 7,744 MiB of memory limits, and the descriptor's
+engine-memory floor rose with it. That floor is no longer
+equal to the ADR 0001 D7 minimum tier and D7 is unamended: the tier states what a
+contributor's environment must meet, this figure states what this profile needs,
+and a test now holds the second to being at least the first and at least what the
+profile goes on to ask of the cluster.
+
+**Still unexecuted.** Nothing here has been run. The rows above that say
+"Unexecuted" still say it, and this amendment moves no claim in the matrix.

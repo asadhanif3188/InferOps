@@ -296,20 +296,29 @@ once versioned releases begin.
   are each a failure with a named stage; the last says plainly that it is the
   Service's endpoint choice rather than a defect, and it is not retried or
   downgraded. **Capacity refuses before anything is created**: two API replicas
-  and one runtime replica are 1,210 millicores and 2,320 MiB of requests
-  peaking at 4,160 MiB of limits, the figures are the chart's own resource
+  and two runtime replicas are 2,310 millicores and 4,496 MiB of requests
+  peaking at 7,744 MiB of limits, the figures are the chart's own resource
   blocks times
   the replica counts and a test fails if the two drift, and a host that cannot
   hold them gets every shortfall at once with a remedy and its own exit code —
   because a host that is too small and a platform that did not certify are
   different answers. **The replica count is never reduced to fit**, and it comes
   from the descriptor with `--set` rather than from the operator's values file,
-  so a file saying `replicaCount: 1` cannot decide this profile. Only the
-  **platform API** tier is multi-replica: `llama-server` publishes no
-  per-request, pod-aware record to correlate against, and inferring the runtime
-  tier's distribution from a desired replica count is exactly what a
-  multi-replica claim may not do — so the record carries that limitation, with
-  four others, rather than leaving them to a reader. The single-replica
+  so a file saying `replicaCount: 1` cannot decide this profile. **Both tiers
+  are multi-replica, by two different kinds of evidence** — the second added by
+  the Sprint 3 completion remediation, which found that this workflow had been
+  certifying two front ends in front of **one** model server under a title that
+  names model-serving replicas. The API tier is certified per request. The
+  serving tier is certified per replica over a window: each `llama-server`'s own
+  `llamacpp:n_decode_total` is read from that pod before and after the request
+  set, and a run in which any ready serving replica decoded nothing fails. It
+  cannot be a per-request join, and the reason is a property of Kubernetes rather
+  than a gap: the API dials the runtime's ClusterIP and the socket keeps that
+  address rather than the endpoint `kube-proxy` translated it to, so no request
+  can be attributed to a runtime pod from the API's side — and `llama-server`
+  puts no per-instance identity in a completion either. The record says so in a
+  field of its own, `requestAttributedToServingReplica: false`, so that a reader
+  who sees only the record cannot mistake one claim for the other. The single-replica
   certification is unchanged and independently runnable; the one edit to its
   module extracts the evidence-path safety check so that both workflows share one
   guard instead of two copies. **It has not been run, and today it could not

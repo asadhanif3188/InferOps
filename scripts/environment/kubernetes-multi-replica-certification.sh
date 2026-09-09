@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Certifies the multi-replica Kubernetes serving path: a capacity preflight that
 # refuses before anything is created, a release with two or more platform API
-# replicas, measured per-replica readiness, a bounded set of real inference
-# requests sent through the release's API Service from inside the cluster, a
-# per-replica correlation drawn from the API's own structured logs, a
-# machine-readable record, and a scoped teardown.
+# replicas **and two or more serving runtime replicas**, measured per-replica
+# readiness, a bounded set of real inference requests sent through the release's
+# API Service from inside the cluster, a per-replica correlation drawn from the
+# API's own structured logs, a per-replica counter delta read from each
+# `llama-server`, a machine-readable record, and a scoped teardown.
 #
 # This is the answer to "do requests through the Service actually reach more than
 # one replica". `kubernetes-certification.sh` does not answer it and says so: its
@@ -13,6 +14,15 @@
 # IP and could not distribute anything if it wanted to. That is why the request
 # set here is driven by a short-lived pod in the namespace, one connection per
 # request, and why `kube-proxy` rather than this script picks each endpoint.
+#
+# **The two tiers are measured differently, and a forward is the right tool for
+# exactly one of them.** No request can be attributed to a serving replica from
+# the API's side: the API dials the runtime's ClusterIP and the socket keeps that
+# address rather than the endpoint kube-proxy translated it to, and llama-server
+# puts no per-instance identity in a completion. So each runtime pod is asked for
+# its own /metrics, before and after the request set, through a forward -- and
+# here selecting one endpoint is the point, because the question is what *this*
+# replica did. The tool refuses a run in which any of them decoded nothing.
 #
 # What it operates, and what it does not. It applies the Terraform prerequisite
 # layer through scripts/environment/terraform-prerequisites.sh, installs one Helm
@@ -26,7 +36,8 @@
 # tools/kubernetes_certification/multi_replica.py, which reads the committed
 # descriptor, refuses a capacity shortfall before anything is installed, refuses
 # a run whose successful requests do not correlate to at least two distinct ready
-# replicas, and writes the labelled record. The split is the one
+# API replicas, refuses a run in which any ready serving replica decoded nothing,
+# and writes the labelled record. The split is the one
 # `kubernetes-certification.sh` already makes and for the same reason: the guard
 # that establishes which cluster is being acted on lives in lib.sh, and a second
 # implementation of it in Python would be a second guard.
@@ -72,6 +83,124 @@ readonly INFEROPS_DRIVER_START_SECONDS="120"
 # descriptor's.
 readonly INFEROPS_DRIVER_POLL_SECONDS="5"
 readonly INFEROPS_DRIVER_DELETE_SECONDS="120"
+
+# Where the per-replica counter forward listens. Loopback, because nothing off
+# this host has any business reading a serving replica's counters, and one port
+# because the replicas are forwarded one at a time and each forward is closed
+# before the next opens. Neither is a threshold; the budget that bounds a forward
+# is the descriptor's.
+readonly INFEROPS_COUNTER_FORWARD_HOST="127.0.0.1"
+readonly INFEROPS_COUNTER_FORWARD_PORT="18099"
+
+# Whether something is already listening on the counter forward's port. Asked
+# before each forward is opened, because the script otherwise establishes only
+# that *a* listener answers -- not that it is the one this run started. A
+# squatter normally makes `kubectl port-forward` fail to bind and the liveness
+# check catches it, but "normally" is not the standard the rest of this workflow
+# holds itself to, and a run that read another process's answers would produce
+# evidence rather than an error.
+port_in_use() {
+  python -c '
+import socket, sys
+
+try:
+    socket.create_connection((sys.argv[1], int(sys.argv[2])), 2).close()
+except OSError:
+    sys.exit(1)
+' "$1" "$2" 2>/dev/null
+}
+
+# Reading one serving replica's counters. It is written once and run twice per
+# replica -- before and after the request set -- rather than inlined at both
+# call sites, because two copies of a parser are two things to keep agreeing.
+#
+# `http.client` rather than a client library: this is the standard library's own
+# HTTP and ADR 0004's dependency rule leaves nothing else. The body is bounded
+# before it is parsed for the same reason the adapter's transport bounds one.
+#
+# A counter the runtime did not publish is a failure here rather than a zero.
+# Absent and zero are different facts and only one of them means the replica
+# served nothing; defaulting would turn a scrape that failed into a replica that
+# idled, and then into a certification that failed for a reason nobody can act
+# on. A labelled series lands in the same place: `llamacpp:n_decode_total{...}`
+# does not match the bare name, so it is reported missing rather than misread.
+readonly INFEROPS_COUNTER_PROGRAM='
+import http.client
+import json
+import os
+import sys
+
+names = os.environ["INFEROPS_COUNTER_NAMES"].split()
+connection = http.client.HTTPConnection(
+    os.environ["INFEROPS_COUNTER_HOST"],
+    int(os.environ["INFEROPS_COUNTER_PORT"]),
+    timeout=30,
+)
+try:
+    connection.request("GET", os.environ["INFEROPS_COUNTER_PATH"])
+    response = connection.getresponse()
+    status = response.status
+    body = response.read(1048576).decode("utf-8", "replace")
+finally:
+    connection.close()
+
+if status != 200:
+    print(f"the runtime answered {status} for its counters", file=sys.stderr)
+    raise SystemExit(1)
+
+counters = {}
+labelled = []
+for line in body.splitlines():
+    line = line.strip()
+    if not line or line.startswith("#"):
+        continue
+    # Split on whitespace rather than on the first space. The exposition format
+    # permits `name value timestamp`, and reading the value as everything after
+    # the first space would turn a legal sample into an unparseable one -- which
+    # then reads as a counter the runtime did not publish, and fails a correct
+    # run with the wrong reason.
+    fields = line.split()
+    if len(fields) < 2:
+        continue
+    name = fields[0]
+    if name not in names:
+        # A labelled series does not match a bare name, and it must not be
+        # reported as an absence either: "the runtime published none of these"
+        # would send a reader looking for a missing feature rather than for a
+        # renamed one. The three this reads are unlabelled in the recorded
+        # sample from the pinned image; if that ever changes, say so.
+        if name.partition("{")[0] in names:
+            labelled.append(name)
+        continue
+    try:
+        number = float(fields[1])
+    except ValueError:
+        continue
+    # All three are counts of things. A fractional value would mean the series
+    # read is not the series named, and it is carried through as a float so that
+    # the reader refuses it rather than this program rounding it away.
+    counters[name] = int(number) if number.is_integer() else number
+
+if labelled:
+    print(
+        f"the runtime publishes {sorted(set(labelled))} as labelled series, and "
+        "this certification reads them unlabelled",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+missing = [name for name in names if name not in counters]
+if missing:
+    print(f"the runtime published none of {missing}", file=sys.stderr)
+    raise SystemExit(1)
+
+print(
+    json.dumps(
+        {"podName": os.environ["INFEROPS_COUNTER_POD"], "counters": counters},
+        sort_keys=True,
+    )
+)
+'
 
 action=""
 values_file=""
@@ -171,8 +300,13 @@ if ! descriptor_fields="$(read_descriptor \
   distribution.path distribution.prompt distribution.requestCount \
   distribution.requestIdPrefix distribution.correlationId \
   distribution.requestTimeoutMs \
+  runtimeDistribution.metricsPath runtimeDistribution.decodeCounter \
+  runtimeDistribution.predictedTokenCounter \
+  runtimeDistribution.promptTokenCounter \
+  runtimeDistribution.minimumServingReplicas \
+  runtimeDistribution.forwardBudgetMs \
   evidence.capacityFile evidence.factsFile evidence.observationsFile \
-  evidence.cleanupFile)"; then
+  evidence.runtimeCountersFile evidence.cleanupFile)"; then
   inferops::fail "the certification descriptor could not be read after it validated. Nothing was installed."
 fi
 
@@ -205,9 +339,16 @@ fi
   read -r request_id_prefix
   read -r request_correlation_id
   read -r request_timeout_ms
+  read -r metrics_path
+  read -r decode_counter
+  read -r predicted_counter
+  read -r prompt_counter
+  read -r minimum_serving_replicas
+  read -r counter_forward_budget_ms
   read -r capacity_rel
   read -r facts_rel
   read -r observations_rel
+  read -r counters_rel
   read -r cleanup_rel
 } <<<"${descriptor_fields}"
 
@@ -219,8 +360,10 @@ for field in descriptor_cluster descriptor_context descriptor_release \
   runtime_rollout_budget_ms api_rollout_budget_ms release_test_budget_ms \
   distribution_budget_ms uninstall_budget_ms driver_name driver_image \
   driver_component request_path request_prompt request_count \
-  request_id_prefix request_correlation_id request_timeout_ms capacity_rel \
-  facts_rel observations_rel cleanup_rel; do
+  request_id_prefix request_correlation_id request_timeout_ms metrics_path \
+  decode_counter predicted_counter prompt_counter minimum_serving_replicas \
+  counter_forward_budget_ms capacity_rel \
+  facts_rel observations_rel counters_rel cleanup_rel; do
   [ -n "${!field}" ] ||
     inferops::fail "the certification descriptor left '${field}' empty. Nothing was installed."
 done
@@ -232,7 +375,8 @@ done
 for number in descriptor_api_port api_replicas runtime_replicas \
   install_budget_ms runtime_rollout_budget_ms api_rollout_budget_ms \
   release_test_budget_ms distribution_budget_ms uninstall_budget_ms \
-  request_count request_timeout_ms; do
+  request_count request_timeout_ms minimum_serving_replicas \
+  counter_forward_budget_ms; do
   case "${!number}" in
     '' | *[!0-9]*)
       inferops::fail "the certification descriptor's '${number}' is not a number. Nothing was installed."
@@ -260,6 +404,14 @@ esac
 [ "${api_replicas}" -ge 2 ] ||
   inferops::fail "the descriptor requests ${api_replicas} platform API replica(s). A multi-replica certification requests at least two, and this script does not reduce the count to fit a host. Nothing was installed."
 
+# And the same refusal for the tier this certification is named after. Two API
+# replicas in front of one model server is a single-replica serving path with a
+# load balancer on it, and it was what this workflow certified until the Sprint 3
+# remediation. The count is checked here because this is where it is handed to
+# Helm.
+[ "${runtime_replicas}" -ge 2 ] ||
+  inferops::fail "the descriptor requests ${runtime_replicas} serving runtime replica(s). Multi-replica *inference* requests at least two model servers, and this script does not reduce the count to fit a host. Nothing was installed."
+
 # Three records name one target, and they are compared rather than assumed.
 [ "${descriptor_cluster}" = "${INFEROPS_CLUSTER_NAME}" ] ||
   inferops::fail "the descriptor names cluster '${descriptor_cluster}' and these scripts operate '${INFEROPS_CLUSTER_NAME}'."
@@ -280,8 +432,11 @@ diag_dir="${INFEROPS_ARTIFACT_DIR}/kubernetes-multi-replica-certification"
 capacity_file="${INFEROPS_ROOT}/${capacity_rel}"
 facts_file="${INFEROPS_ROOT}/${facts_rel}"
 observations_file="${INFEROPS_ROOT}/${observations_rel}"
+counters_file="${INFEROPS_ROOT}/${counters_rel}"
 cleanup_file="${INFEROPS_ROOT}/${cleanup_rel}"
 driver_created=0
+forward_pid=""
+
 
 # --- bounded measurement ----------------------------------------------------
 
@@ -320,6 +475,17 @@ collect_diagnostics() {
 # *release* surviving its own uninstall, and the run would fail blaming the
 # teardown for the workflow's own artifact. So a removal that does not complete
 # is reported here, as itself.
+# A forward is a background process this script owns, so every path out of the
+# script closes it -- including the signal paths, which is why `on_exit` is
+# trapped on INT and TERM as well as EXIT.
+close_forward() {
+  if [ -n "${forward_pid}" ] && kill -0 "${forward_pid}" 2>/dev/null; then
+    kill "${forward_pid}" 2>/dev/null || true
+    wait "${forward_pid}" 2>/dev/null || true
+  fi
+  forward_pid=""
+}
+
 remove_driver() {
   [ "${driver_created}" -eq 1 ] || return 0
   # `--ignore-not-found` so that a second call after a successful removal is not
@@ -336,6 +502,7 @@ remove_driver() {
 
 on_exit() {
   local rc=$?
+  close_forward
   if [ "${rc}" -ne 0 ]; then
     collect_diagnostics
     # Swallowed here and nowhere else: this path is already failing, and a
@@ -366,11 +533,12 @@ fi
 inferops::section "Capacity preflight"
 
 # This is the one measurement that has to happen with the namespace still empty.
-# Two replicas of the API and one of the runtime is roughly two and a quarter
-# gibibytes of requests and four of limits; a host that cannot hold it produces
-# a Pending pod and a rollout that fails for a reason a record would describe as
-# readiness. So it is asked here, and a shortfall is reported in full rather than
-# one item at a time.
+# Two replicas of each tier is roughly four and a quarter gibibytes of requests
+# and seven of limits, because a second model server is a second copy of the
+# model in memory rather than a second process sharing one. A host that cannot
+# hold it produces a Pending pod and a rollout that fails for a reason a record
+# would describe as readiness. So it is asked here, and a shortfall is reported
+# in full rather than one item at a time.
 mkdir -p "$(dirname "${capacity_file}")"
 
 if ! engine_cpus="$(docker info --format '{{.NCPU}}' 2>/dev/null)" ||
@@ -910,6 +1078,121 @@ unset INFEROPS_FACT_PODS_JSON
 
 inferops::log "cluster facts written to ${facts_rel}. They are host state, not evidence, and .artifacts/ is ignored by version control."
 
+# --- each serving replica's own counters, before the request set -------------
+
+# One snapshot of every ready serving replica's counters, read from that pod and
+# from no other.
+#
+# The pod list comes out of the cluster facts this run already wrote rather than
+# from a second query. The tool requires a snapshot to name exactly the ready
+# serving replicas that document lists, and deriving it from the same file is
+# what makes that true by construction instead of by two queries happening to
+# agree.
+runtime_counter_snapshot() {
+  local label="$1"
+  local pods pod port opened deadline release_deadline reading entries=""
+
+  if ! pods="$(INFEROPS_FACTS_FILE="$(inferops::native_path "${facts_file}")" \
+    INFEROPS_RUNTIME_COMPONENT="${descriptor_runtime_component}" python -c '
+import json, os
+from pathlib import Path
+
+document = json.loads(
+    Path(os.environ["INFEROPS_FACTS_FILE"]).read_text(encoding="utf-8")
+)
+component = os.environ["INFEROPS_RUNTIME_COMPONENT"]
+for replica in document.get("replicas", []):
+    if replica.get("component") == component and replica.get("ready"):
+        print(replica.get("podName", ""))
+')"; then
+    inferops::fail "the serving replicas whose counters this certification reads could not be listed from ${facts_rel}."
+  fi
+
+  [ -n "${pods}" ] ||
+    inferops::fail "no ready serving replica was listed in ${facts_rel}, so there is nothing to read counters from."
+
+  while read -r pod; do
+    [ -n "${pod}" ] || continue
+
+    # The port the pod publishes, asked of the pod. A port named in this script
+    # would be a second place the chart's container port is written down.
+    if ! port="$(inferops::kubectl get "pod/${pod}" \
+      -n "${INFEROPS_RELEASE_NAMESPACE}" \
+      -o "jsonpath={.spec.containers[?(@.name=='runtime')].ports[0].containerPort}")"; then
+      inferops::fail "could not read the port serving replica '${pod}' publishes its counters on."
+    fi
+    case "${port}" in
+      '' | *[!0-9]*)
+        inferops::fail "serving replica '${pod}' reports '${port}' as its container port, which is not a number."
+        ;;
+    esac
+
+    if port_in_use "${INFEROPS_COUNTER_FORWARD_HOST}" "${INFEROPS_COUNTER_FORWARD_PORT}"; then
+      inferops::fail "something is already listening on ${INFEROPS_COUNTER_FORWARD_HOST}:${INFEROPS_COUNTER_FORWARD_PORT}, which is the port this run reads each serving replica's counters through. This script will not read counters from a listener it did not start. Free the port, or set a different one, and run again."
+    fi
+
+    inferops::kubectl port-forward "pod/${pod}" \
+      "${INFEROPS_COUNTER_FORWARD_PORT}:${port}" \
+      -n "${INFEROPS_RELEASE_NAMESPACE}" \
+      --address "${INFEROPS_COUNTER_FORWARD_HOST}" \
+      >>"${diag_dir}/counter-forward.log" 2>&1 &
+    forward_pid="$!"
+
+    opened=0
+    deadline=$((SECONDS + counter_forward_budget_ms / 1000))
+    while [ "${SECONDS}" -lt "${deadline}" ]; do
+      if ! kill -0 "${forward_pid}" 2>/dev/null; then
+        forward_pid=""
+        inferops::fail "the forward to serving replica '${pod}' exited before it accepted a connection. Its output is in .artifacts/kubernetes-multi-replica-certification/counter-forward.log."
+      fi
+      if port_in_use "${INFEROPS_COUNTER_FORWARD_HOST}" "${INFEROPS_COUNTER_FORWARD_PORT}"; then
+        opened=1
+        break
+      fi
+      sleep 1
+    done
+    if [ "${opened}" -ne 1 ]; then
+      close_forward
+      inferops::fail "the forward to serving replica '${pod}' did not accept a connection within $((counter_forward_budget_ms / 1000)) s."
+    fi
+
+    if ! reading="$(INFEROPS_COUNTER_POD="${pod}" \
+      INFEROPS_COUNTER_HOST="${INFEROPS_COUNTER_FORWARD_HOST}" \
+      INFEROPS_COUNTER_PORT="${INFEROPS_COUNTER_FORWARD_PORT}" \
+      INFEROPS_COUNTER_PATH="${metrics_path}" \
+      INFEROPS_COUNTER_NAMES="${decode_counter} ${predicted_counter} ${prompt_counter}" \
+      python -c "${INFEROPS_COUNTER_PROGRAM}")"; then
+      close_forward
+      inferops::fail "serving replica '${pod}' did not answer for its counters at ${metrics_path}. The runtime publishes them under --metrics, which the chart passes whenever telemetry is enabled."
+    fi
+    close_forward
+
+    # The next replica binds the same port, and `wait` returns when the process
+    # is gone rather than when the kernel has released its listening socket. The
+    # gap is normally imperceptible; waiting for the port to actually go quiet
+    # turns a rare "address already in use" between two replicas into no event
+    # at all, and it is bounded by the same budget as the forward itself.
+    release_deadline=$((SECONDS + counter_forward_budget_ms / 1000))
+    while [ "${SECONDS}" -lt "${release_deadline}" ]; do
+      port_in_use "${INFEROPS_COUNTER_FORWARD_HOST}" "${INFEROPS_COUNTER_FORWARD_PORT}" ||
+        break
+      sleep 1
+    done
+
+    entries="${entries}${reading}
+"
+  done <<<"${pods}"
+
+  printf '%s' "${entries}" >"${diag_dir}/runtime-counters-${label}.json"
+}
+
+inferops::section "Reading each serving replica's counters before the request set"
+
+mkdir -p "${diag_dir}"
+counters_before_at="$(now_rfc3339)"
+runtime_counter_snapshot before
+inferops::log "counters read from every ready serving replica at ${counters_before_at}."
+
 # --- the request set, sent from inside the cluster ---------------------------
 
 inferops::section "Sending ${request_count} requests through the API Service"
@@ -1148,6 +1431,67 @@ if ! driver_log="$(inferops::kubectl logs "job/${driver_name}" \
   inferops::fail "could not read the request driver's own results. An unanswered query is not an empty request set."
 fi
 printf '%s\n' "${driver_log}" >"${diag_dir}/driver.log"
+
+inferops::section "Reading each serving replica's counters after the request set"
+
+counters_after_at="$(now_rfc3339)"
+runtime_counter_snapshot after
+inferops::log "counters read again at ${counters_after_at}; the window they bound is the one every serving-tier claim is made over."
+
+mkdir -p "$(dirname "${counters_file}")"
+
+INFEROPS_COUNTERS_BEFORE="$(cat "${diag_dir}/runtime-counters-before.json")"
+INFEROPS_COUNTERS_AFTER="$(cat "${diag_dir}/runtime-counters-after.json")"
+INFEROPS_COUNTERS_PATH="${metrics_path}"
+INFEROPS_COUNTERS_BEFORE_AT="${counters_before_at}"
+INFEROPS_COUNTERS_AFTER_AT="${counters_after_at}"
+export INFEROPS_COUNTERS_BEFORE INFEROPS_COUNTERS_AFTER INFEROPS_COUNTERS_PATH \
+  INFEROPS_COUNTERS_BEFORE_AT INFEROPS_COUNTERS_AFTER_AT
+
+python - "$(inferops::native_path "${counters_file}")" <<'COUNTERS_DOCUMENT'
+import json
+import os
+import sys
+from pathlib import Path
+
+
+def snapshot(text: str) -> list[dict]:
+    """One JSON object per line, as the reader wrote them. Nothing is invented.
+
+    A line that is not an object is a defect in the reader above rather than
+    something to skip quietly, so it fails here instead of producing a snapshot
+    that is short by one replica.
+    """
+    entries = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        entry = json.loads(line)
+        if not isinstance(entry, dict):
+            raise SystemExit(f"a counter reading is not an object: {line[:60]}")
+        entries.append(entry)
+    return entries
+
+
+document = {
+    "metricsPath": os.environ.get("INFEROPS_COUNTERS_PATH", ""),
+    "readBeforeAt": os.environ.get("INFEROPS_COUNTERS_BEFORE_AT", ""),
+    "readAfterAt": os.environ.get("INFEROPS_COUNTERS_AFTER_AT", ""),
+    "before": snapshot(os.environ.get("INFEROPS_COUNTERS_BEFORE", "")),
+    "after": snapshot(os.environ.get("INFEROPS_COUNTERS_AFTER", "")),
+}
+
+Path(sys.argv[1]).write_text(
+    json.dumps(document, indent=2, sort_keys=True) + "\n",
+    encoding="utf-8",
+    newline="\n",
+)
+COUNTERS_DOCUMENT
+
+unset INFEROPS_COUNTERS_BEFORE INFEROPS_COUNTERS_AFTER
+
+inferops::log "serving runtime counters written to ${counters_rel}."
 
 # The replicas' own records. Every InferOps API record is one JSON line on
 # stderr carrying `k8s.pod.name` and `inferops.request.id`, so the pod is asked
@@ -1412,6 +1756,7 @@ inferops::section "Recording the cleanup outcome"
   --confirm-real-kubernetes)
 
 inferops::section "Result"
-inferops::log "the release installed with ${api_replicas} API replicas, every replica became model-ready, ${request_count} real requests succeeded through the API Service, and the successful ones correlate to more than one serving replica."
+inferops::log "the release installed with ${api_replicas} API replicas and ${runtime_replicas} serving runtime replicas, every replica became model-ready, and ${request_count} real requests succeeded through the API Service."
+inferops::log "the successful requests correlate to more than one platform API replica, and every serving runtime replica's own decode counter advanced while they ran. No request is attributed to a serving replica; the serving claim is per replica over the window the two counter reads bound."
 inferops::log "record        .cache/inferops/certification/k8s-multi-replica-inference.json (labelled local real Kubernetes)"
 inferops::log "the namespace and the model cache claim survived. Reclaiming them is scripts/environment/terraform-prerequisites.sh destroy --confirm, and nothing here does it for you."

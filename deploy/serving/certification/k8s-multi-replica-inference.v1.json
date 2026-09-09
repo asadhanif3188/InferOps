@@ -28,7 +28,7 @@
     "apiComponent": "platform-api",
     "runtimeComponent": "serving-runtime",
     "apiReplicas": 2,
-    "runtimeReplicas": 1
+    "runtimeReplicas": 2
   },
   "prerequisites": {
     "requiresTerraformPrerequisites": true,
@@ -45,11 +45,11 @@
     "requireArtifactHashCompared": true
   },
   "capacity": {
-    "minimumEngineMemoryBytes": 6442450944,
+    "minimumEngineMemoryBytes": 9126805504,
     "minimumEngineCpus": 4,
-    "requestedCpuMillis": 1210,
-    "requestedMemoryBytes": 2432696320,
-    "peakMemoryBytes": 4362076160,
+    "requestedCpuMillis": 2310,
+    "requestedMemoryBytes": 4714397696,
+    "peakMemoryBytes": 8120172544,
     "headroomCpuMillis": 500,
     "headroomMemoryBytes": 536870912
   },
@@ -76,6 +76,15 @@
     "minimumDistinctReplicas": 2,
     "requestTimeoutMs": 120000
   },
+  "runtimeDistribution": {
+    "mechanism": "runtime-counter-delta",
+    "metricsPath": "/metrics",
+    "decodeCounter": "llamacpp:n_decode_total",
+    "predictedTokenCounter": "llamacpp:tokens_predicted_total",
+    "promptTokenCounter": "llamacpp:prompt_tokens_total",
+    "minimumServingReplicas": 2,
+    "forwardBudgetMs": 60000
+  },
   "assertions": {
     "requiredAdapterKind": "real",
     "prohibitedIdentitySubstring": "mock",
@@ -83,6 +92,7 @@
     "requireEveryRequestSuccessful": true,
     "requireUsageCounts": true,
     "requirePerReplicaCorrelation": true,
+    "requireEveryServingReplicaServed": true,
     "requirePinnedModelRevision": true,
     "requireDigestPinnedImages": true,
     "requireReleaseTest": true,
@@ -95,6 +105,7 @@
     "capacityFile": ".artifacts/kubernetes-multi-replica-certification/capacity-facts.json",
     "factsFile": ".artifacts/kubernetes-multi-replica-certification/cluster-facts.json",
     "observationsFile": ".artifacts/kubernetes-multi-replica-certification/observations.json",
+    "runtimeCountersFile": ".artifacts/kubernetes-multi-replica-certification/runtime-counters.json",
     "cleanupFile": ".artifacts/kubernetes-multi-replica-certification/cleanup-facts.json",
     "retainGeneratedText": false
   },
@@ -106,8 +117,10 @@
   },
   "limitations": [
     "The evidence is local real Kubernetes on a single-node kind cluster and implies nothing about production high availability.",
-    "Only the platform API tier is multi-replica. The serving runtime stays at one replica, because the correlation mechanism this certification uses is the InferOps API's own structured log and llama-server publishes no equivalent.",
-    "Distribution across replicas is whatever kube-proxy chose during the run. It is observed, never configured, and this workflow certifies no routing, balancing, or affinity behaviour.",
+    "The two tiers are certified by different evidence and the claims are not interchangeable. The platform API tier is certified per request: each successful request is joined to the replica that logged it. The serving runtime tier is certified per replica over a window: each serving replica's own decode counter is read before and after the request set, and every one of them must have advanced.",
+    "No request is attributed to a serving runtime replica, and this record must not be read as though one were. The API reaches the runtime through a ClusterIP Service, and a client socket keeps the address it connected to rather than the endpoint kube-proxy translated it to, so the API cannot observe which runtime pod answered any individual request. llama-server publishes no per-instance identity in a completion either.",
+    "The runtime counter window is bounded by the two reads around the request set, and an advance inside it is attributed to this request set by an argument from what else was running rather than by a per-request measurement. Two things carry that argument and they do not have the same standing. Established: the namespace holds only what this workflow installed, because it refuses to run over an existing release. Assumed: that llama-server's /health, which the probes ask, produces no token and so cannot advance the decode counter. That is an assumption about the pinned image rather than something this project has measured, and the first real run is where it is checked.",
+    "Distribution across replicas is whatever kube-proxy chose during the run, at both tiers. It is observed, never configured, and this workflow certifies no routing, balancing, or affinity behaviour.",
     "No autoscaling, load generation, performance comparison, or failure experiment is performed, and none may be read into this record.",
     "One node hosts every replica, so nothing here says anything about scheduling across nodes, zone spreading, or node-failure tolerance."
   ]
