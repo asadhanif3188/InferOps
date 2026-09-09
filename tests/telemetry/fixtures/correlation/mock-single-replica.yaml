@@ -1,0 +1,47 @@
+# The mock profile: one job, one replica, no serving runtime.
+#
+# The mock render installs one scrape job and one absence rule per job, so there is
+# no serving-runtime job to be absent from. Every runtime query is missing from this
+# scenario's results rather than empty in them, which is a different answer and is
+# recorded as one.
+#
+# The identity still carries `inferops_adapter_kind: mock`, which is how a scrape of
+# a mock deployment is a scrape that says so.
+#
+# Synthetic. Nothing was scraped and no value here was measured.
+scenarioId: mock-single-replica
+profile: mock
+evaluationInstant: 600
+applyCollectorRelabel: true
+description: >-
+  One API replica under the mock profile. No runtime job exists, and the identity
+  says the deployment is a mock.
+
+labelSets:
+  apiA: &apiA
+    job: inferops-inferops-llm-platform-api
+    k8s_namespace: inferops-platform
+    k8s_component: platform-api
+    instance: inferops-inferops-llm-api-7c9b4-tm4qd
+  identity: &identity
+    service_version: 0.1.0
+    inferops_capability_id: inferops-mock-serving
+    inferops_release_id: inferops
+    deployment_environment: ci
+    inferops_adapter_kind: mock
+    inferops_model_id: mock-fixed-fixture
+    inferops_model_revision: mock-fixed-fixture
+    inferops_runtime_id: inferops-mock-serving
+    inferops_runtime_image_digest: none
+  work: &work
+    inferops_workload_id: support-assistant-mock
+    inferops_model_id: mock-fixed-fixture
+
+series:
+  - {name: up, labels: {<<: *apiA}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: inferops_build_info, labels: {<<: [*apiA, *identity]}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: inferops_inference_requests_total, labels: {<<: [*apiA, *work], inferops_outcome: success}, points: [[0, 0], [300, 150], [600, 450]]}
+  - {name: inferops_inference_requests_in_flight, labels: {<<: [*apiA, *work]}, points: [[0, 0], [300, 1], [600, 1]]}
+  - {name: inferops_inference_tokens_total, labels: {<<: [*apiA, *work], inferops_token_direction: input}, points: [[0, 0], [300, 300], [600, 900]]}
+  - {name: inferops_inference_tokens_total, labels: {<<: [*apiA, *work], inferops_token_direction: output}, points: [[0, 0], [300, 150], [600, 450]]}
+  - {name: inferops_process_cpu_seconds_total, labels: {<<: *apiA}, points: [[0, 0], [300, 3], [600, 9]]}

@@ -133,16 +133,22 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Seventeen modules. Committed machine-readable data checked against the documents
+Nineteen modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
 descriptor, registered serving baseline, model lifecycle state model, and the
 local runtime troubleshooting guide — and,
 since the API began emitting, the catalog checked against what the distribution
-declares rather than only against its own prose.
+declares rather than only against its own prose. The two most recent are the
+Kubernetes telemetry collection record against the chart renders, and the
+correlation queries against both of those and against synthetic stores.
 
-The seventeenth is the odd one in this layer: `tests/security/test_workload_policy.py`
+The count said seventeen until this story and had been wrong since `V1-S3-007-PR1`
+added the eighteenth. It is not machine-checked, which is why it drifted — the same
+way `architecture-inventory`'s did, and it is recorded here for the same reason.
+
+One is the odd one in this layer: `tests/security/test_workload_policy.py`
 reads manifests rather than a record, applying
 [the workload policy](../security/workload-policy.md) to the chart's two committed
 renders, to the manifests under `deploy/`, and to nine deliberately broken fixtures

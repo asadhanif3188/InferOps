@@ -1,0 +1,62 @@
+# A target publishing series labelled with things nothing here is allowed to label a
+# series with.
+#
+# Nothing in this repository emits any of these: the metric registry refuses one at
+# construction, and a test proves it. This fixture is the second line -- the case
+# where a series arrives from a component this project did not write, or from one it
+# writes later, carrying a request identifier, a tenant, a pod name, an HTTP status,
+# and a correlation identifier. The collector's `labeldrop` removes every one of them
+# before any query can see it, which is what this scenario shows.
+#
+# `applyCollectorRelabel` is what makes that a demonstration rather than an
+# assumption: the drop list is read from the committed render, not written here.
+#
+# Only one series carries each name, because dropping a label from two series that
+# then match would leave two series sharing one label set -- a duplicate no store can
+# hold, which the evaluator refuses rather than silently collapsing.
+#
+# Synthetic. Nothing was scraped and no value here was measured.
+scenarioId: forbidden-labels-on-the-exposition
+profile: real
+evaluationInstant: 600
+applyCollectorRelabel: true
+description: >-
+  Series arriving with barred labels on them. The rendered labeldrop removes every
+  one before a query sees it.
+
+labelSets:
+  apiA: &apiA
+    job: inferops-inferops-llm-platform-api
+    k8s_namespace: inferops-platform
+    k8s_component: platform-api
+    instance: inferops-inferops-llm-api-6d4f8-2xkqp
+  identity: &identity
+    service_version: 0.1.0
+    inferops_capability_id: inferops-native-serving
+    inferops_release_id: inferops
+    deployment_environment: dev
+    inferops_adapter_kind: real
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_model_revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+    inferops_runtime_id: llama-cpp-server
+    inferops_runtime_image_digest: sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  work: &work
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+  # Five of the twenty labels the catalog bars from a metric, chosen because each is
+  # a different reason for the bar: unbounded per request, unbounded per tenant,
+  # unbounded per reschedule, a value that belongs in a log, and an identifier that
+  # is a log field by rule.
+  barred: &barred
+    inferops_request_id: 0f4b1a2c-7d3e-4a5b-9c8d-1e2f3a4b5c6d
+    inferops_tenant_id: a-tenant
+    k8s_pod_name: inferops-inferops-llm-api-6d4f8-2xkqp
+    http_response_status_code: "503"
+    inferops_correlation_id: 8c7b6a5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d
+
+series:
+  - {name: up, labels: {<<: *apiA}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: inferops_build_info, labels: {<<: [*apiA, *identity]}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: inferops_inference_requests_total, labels: {<<: [*apiA, *work, *barred], inferops_outcome: success}, points: [[0, 0], [300, 300], [600, 900]]}
+  - {name: inferops_inference_errors_total, labels: {<<: [*apiA, *barred], inferops_workload_id: support-assistant, inferops_error_code: model-not-ready}, points: [[0, 0], [300, 10], [600, 40]]}
+  - {name: inferops_inference_requests_in_flight, labels: {<<: [*apiA, *work, *barred]}, points: [[0, 0], [300, 4], [600, 3]]}

@@ -1,0 +1,623 @@
+{
+  "$id": "https://inferops.io/telemetry/telemetry-correlation-queries.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Correlated platform telemetry queries for the InferOps release, v1alpha1",
+  "description": "The questions an operator would ask of a store holding what the inferops-llm chart's scrape configuration would collect, the PromQL each one is asked in, whether it can be answered at all, and what it returns when it cannot. Every expression here is parsed by the declared PromQL subset in tools/telemetry_correlation, checked against the telemetry catalog and the collection record for the labels and series it depends on, and evaluated against synthetic fixture stores. None of it has been run against a Prometheus, a collector, or a cluster.",
+  "decisionRef": "docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md",
+  "documentRef": "docs/telemetry/telemetry-correlation-queries.md",
+  "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "collectionRef": "docs/telemetry/kubernetes-telemetry-collection.v1alpha1.json",
+  "instrumentationRef": "docs/telemetry/api-instrumentation.md",
+  "chartRef": "charts/inferops-llm",
+  "fixtureDir": "tests/telemetry/fixtures/correlation",
+  "evidenceRef": "docs/proof/telemetry/v1-s3-007-pr2-validation.md",
+  "queryEvidenceRef": "docs/proof/telemetry/v1-s3-007-pr2-query-evaluation.md",
+  "verificationStatus": {
+    "collected": false,
+    "everInstalled": false,
+    "collector": "not selected. ADR 0004 carries the open question and ADR 0006 D8 leaves it there. Nothing scrapes either InferOps endpoint.",
+    "engine": "none. Every result recorded here was produced by the declared PromQL subset evaluator in tools/telemetry_correlation/evaluate.py, over fixture stores written by hand. No Prometheus has parsed, loaded, or evaluated any expression in this record.",
+    "evidenceClass": "local-static",
+    "note": "A query this record calls verified is a query whose expression parses, whose every label is one the catalog permits and the collection record says something attaches, whose every series is one this release would produce, whose joins match on keys both sides carry, and which returns the declared result over the declared fixture. It is not a query that has ever returned a measurement."
+  },
+  "subset": {
+    "statement": "The queries are written in a declared subset of PromQL, and an expression outside it is refused rather than published unchecked.",
+    "aggregations": [
+      "sum",
+      "count",
+      "avg",
+      "min",
+      "max"
+    ],
+    "functions": [
+      "absent",
+      "rate",
+      "increase",
+      "histogram_quantile",
+      "label_replace"
+    ],
+    "excluded": [
+      "subqueries",
+      "the @ modifier",
+      "offset",
+      "topk, bottomk, quantile, count_values",
+      "a group_left or group_right written with ignoring rather than on",
+      "a matcher or label_replace regular expression using a group, a character class, or any quantifier but the .* wildcard",
+      "an expression nesting more than 100 levels deep",
+      "every function not listed above"
+    ],
+    "whyExcluded": "topk, bottomk, and quantile select rather than summarise, which makes a result depend on tie-breaking the fixture evaluator does not model. count_values writes a label out of a value, which is the one move the telemetry catalog exists to prevent. A group modifier written with ignoring is refused because the rule that checks a join key reads the on set, and a rule enforced for half a syntax reads as enforced and is not -- independent review found it silently skipping every ignoring join. A regular expression that can backtrack into itself is refused because it hangs whatever evaluates it, and a nesting bound is what makes a deep expression a refusal rather than a RecursionError the caller never handled. The rest are absent because no query here needs them, and a subset that grew to cover what nobody asked would stop being a subset anybody could check.",
+    "evaluatorDifferences": [
+      "rate() and increase() take the plain delta over the samples inside the window divided by the interval between them, with counter resets added back. Prometheus extrapolates to the window edges. The fixtures place samples on the boundaries, where the two agree.",
+      "An instant selector takes the newest sample in the half-open window (T - 300s, T]: a sample exactly 300 seconds old is outside it. Which side Prometheus falls on at exactly that boundary has not been checked against the engine, so it is declared as an unverified difference rather than as agreement. No fixture places a sample on the boundary and a test pins the behaviour.",
+      "Prometheus's stale markers do not exist here, because nothing writes one into a fixture.",
+      "A matcher or label_replace regular expression must be inside a declared safe subset: a literal run, an escaped character, |, and at most four . or .* wildcards. Prometheus uses RE2, which accepts more and is linear; this accepts less and says so.",
+      "There is one evaluation instant per run, so nothing here is evaluated over a range."
+    ]
+  },
+  "queryScoping": {
+    "statement": "No published query names a job. Job names are release-qualified, so a query naming one would be a query that works in exactly one installation.",
+    "howReleasesAreDistinguished": "k8s_namespace and k8s_component, which the collector attaches to every series from both jobs, and which are the same two labels in every installation.",
+    "exception": "The recording rules the chart renders do name their own release's jobs, because a rule is rendered per release and an absent() over an unscoped job name would read 0 as soon as any release published one. A query reads the recorded name and never the job name.",
+    "recordedNamesAreReadNotDefined": "A query that reads inferops:something is reading a series a collector evaluating the chart's recording rules would have written. Where no collector exists, the series does not exist either, and the query returns nothing."
+  },
+  "answerabilityClasses": [
+    {
+      "classId": "answerable-once-collected",
+      "meaning": "Every series it reads is emitted today by a component that publishes it. It returns nothing now because nothing scrapes the endpoint, and it would return an answer the day a collector did."
+    },
+    {
+      "classId": "not-answerable-nothing-emits",
+      "meaning": "It reads a catalog metric marked not emitted. A collector would change nothing: the endpoint carries no such series, so the result is empty however long anybody waits."
+    },
+    {
+      "classId": "no-source",
+      "meaning": "There is no series to write a query against at all. The signal has no emitter and no collector add-on in the accepted local cluster, so no expression is published for it."
+    }
+  ],
+  "queries": [
+    {
+      "queryId": "build-identity-per-replica",
+      "question": "Which build, capability, release, model revision, runtime, and image digest is each replica running, and in which environment?",
+      "families": [
+        "identity"
+      ],
+      "expr": "inferops_build_info",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "No API target published an identity. That is either a job that discovered nothing, which inferops:scrape_job_absent:platform_api separates, or a target that answered a scrape and published no identity, which inferops:build_info_absent:platform_api separates.",
+      "note": "One series per process, always 1. This is the join every other identity question is answered through, and the reason none of the operational metrics carries an immutable version."
+    },
+    {
+      "queryId": "request-throughput-by-workload-model-and-outcome",
+      "question": "How much work is each workload doing on each model, and how much of it is succeeding?",
+      "families": [
+        "throughput",
+        "errors"
+      ],
+      "expr": "sum by (inferops_workload_id, inferops_model_id, inferops_outcome) (rate(inferops_inference_requests_total[5m]))",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "No API target is being scraped, or no request has been served since the process started.",
+      "note": "Summed across replicas on purpose: the question is about a workload, not about a pod. in-flight-requests-by-replica is the per-replica form."
+    },
+    {
+      "queryId": "error-rate-by-workload-and-code",
+      "question": "Which canonical error is each workload producing, and how often?",
+      "families": [
+        "errors"
+      ],
+      "expr": "sum by (inferops_workload_id, inferops_error_code) (rate(inferops_inference_errors_total[5m]))",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "No error has been counted. It does not mean the system is healthy: a target that is not scraped at all produces the same empty result, which is what the collection-health queries exist to separate.",
+      "note": "inferops_error_code is the canonical error code the platform contract publishes, not an HTTP status. http.response.status_code has no permitted metric placement and the collector drops it."
+    },
+    {
+      "queryId": "request-latency-p95-by-workload-and-model",
+      "question": "How long does a request take at the tail, for each workload and model?",
+      "families": [
+        "latency"
+      ],
+      "expr": "histogram_quantile(0.95, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_request_duration_seconds_bucket[5m])))",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "No observation in the window. A quantile over a histogram with no +Inf bucket is NaN rather than empty, and a fixture proves that case separately.",
+      "note": "le is aggregated over deliberately: summing the bucket counters across replicas before taking the quantile is what makes the answer the workload's rather than one pod's."
+    },
+    {
+      "queryId": "in-flight-requests-by-replica",
+      "question": "How much work is in flight on each replica right now?",
+      "families": [
+        "throughput"
+      ],
+      "expr": "sum by (k8s_namespace, k8s_component, instance, inferops_workload_id, inferops_model_id) (inferops_inference_requests_in_flight)",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "No API target is being scraped. A replica with nothing in flight reads 0 and is present.",
+      "note": "instance carries the pod name and is the one unbounded label in this collection. This is the query it exists for: with it collapsed, two replicas are indistinguishable."
+    },
+    {
+      "queryId": "throughput-joined-to-build-identity",
+      "question": "Which build produced this throughput, on which replica, in which environment, against which model revision and runtime image?",
+      "families": [
+        "throughput",
+        "identity"
+      ],
+      "expr": "sum by (job, instance, inferops_workload_id, inferops_model_id, inferops_outcome) (rate(inferops_inference_requests_total[5m])) * on (job, instance) group_left (service_version, deployment_environment, inferops_release_id, inferops_capability_id, inferops_adapter_kind, inferops_model_revision, inferops_runtime_id, inferops_runtime_image_digest) inferops_build_info",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "Either no request has been served, or a target answered a scrape and published no identity: the join finds no counterpart and drops every element rather than returning a partial answer. inferops:build_info_absent:platform_api is what tells the two apart.",
+      "note": "This is the correlation the whole design turns on. job and instance are the join key because inferops_build_info is one series per process, and a process is what both sides share. group_left is the direction: many operational series to one identity series. Nothing is joined on a workload or a model, because inferops_build_info carries no workload label and joining on one would match nothing."
+    },
+    {
+      "queryId": "tokens-by-direction-from-the-api",
+      "question": "How many tokens is each model consuming and producing, as the API counts them?",
+      "families": [
+        "tokens"
+      ],
+      "expr": "sum by (inferops_model_id, inferops_token_direction) (rate(inferops_inference_tokens_total[5m]))",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "No completion has been counted since the process started.",
+      "note": "The API's count, at the API's boundary. The runtime counts its own, and the two are not the same measurement."
+    },
+    {
+      "queryId": "tokens-by-direction-from-the-runtime",
+      "question": "How many tokens is the serving runtime reporting, in the same shape as the API's counter?",
+      "families": [
+        "tokens"
+      ],
+      "expr": "sum by (inferops_model_id, inferops_token_direction) (rate(inferops:inference_tokens:runtime_total[5m]))",
+      "profiles": [
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "Either the runtime job discovered nothing, or no collector is evaluating the chart's recording rules, in which case the recorded series does not exist at all.",
+      "note": "Reads the recorded series the chart's inferops-runtime-metric-mapping group publishes, which is where llamacpp:prompt_tokens_total and llamacpp:tokens_predicted_total acquire the direction label. inferops_model_id is on it because the runtime job's relabelling attaches it; llama-server's own series carry no labels."
+    },
+    {
+      "queryId": "api-and-runtime-in-flight-side-by-side",
+      "question": "How far apart are the API's view of in-flight work and the runtime's?",
+      "families": [
+        "throughput"
+      ],
+      "expr": "sum by (inferops_workload_id, inferops_model_id) (inferops_inference_requests_in_flight) - on (inferops_workload_id, inferops_model_id) sum by (inferops_workload_id, inferops_model_id) (inferops:inference_requests_in_flight:runtime)",
+      "profiles": [
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "One of the two sides is missing. A one-to-one match drops every element with no counterpart, so a runtime job that discovered nothing makes this empty rather than equal to the API's figure.",
+      "note": "A non-zero result is expected and is not a defect. The two count different boundaries -- the API's is requests it has accepted and not yet answered, the runtime's is slots it is processing -- and the collection record already says they are not expected to agree. The query exists so that the gap is visible rather than assumed."
+    },
+    {
+      "queryId": "scrape-target-health-by-job",
+      "question": "For each job, how many of its targets answered the last scrape?",
+      "families": [
+        "availability"
+      ],
+      "expr": "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "The job discovered no pod at all, so there is no up series to count and no row for it here. That case is invisible in this query by construction, which is why the two absence queries exist beside it.",
+      "note": "Reads 1 when every target answered, 0 when none did, and a fraction in between. The numerator is a sum rather than a count over a filtered vector, because a job whose every target is down must read zero and a count over an empty vector reads nothing."
+    },
+    {
+      "queryId": "platform-api-scrape-job-absent",
+      "question": "Did the platform-api job discover no pod at all?",
+      "families": [
+        "availability"
+      ],
+      "expr": "inferops:scrape_job_absent:platform_api",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "The job has at least one target. Absence of this series is the healthy state, and presence of it reading 1 is the failure.",
+      "note": "This is the query the whole absence design exists for: a job whose label selector matched nothing produces no up series, so every query grouping by job returns an empty result and an empty result reads as a healthy quiet system."
+    },
+    {
+      "queryId": "serving-runtime-scrape-job-absent",
+      "question": "Did the serving-runtime job discover no pod at all?",
+      "families": [
+        "availability"
+      ],
+      "expr": "inferops:scrape_job_absent:serving_runtime",
+      "profiles": [
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "The job has at least one target.",
+      "note": "Rendered only under the real profile, because the mock profile installs no serving-runtime workload and a job that does not exist has no absence to report."
+    },
+    {
+      "queryId": "identity-absent-on-a-target-that-answered",
+      "question": "Is there an API target that is up and publishing no identity?",
+      "families": [
+        "identity",
+        "availability"
+      ],
+      "expr": "inferops:build_info_absent:platform_api",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "At least one API target in this release's namespace published an identity.",
+      "note": "up alone cannot tell a target that is up and correct from one that is up and useless. This is the separation, and it is scoped to the release namespace and the API tier so that a store holding two releases does not read 0 as soon as either one publishes."
+    },
+    {
+      "queryId": "model-readiness-absent",
+      "question": "Is model readiness missing?",
+      "families": [
+        "model-load",
+        "availability"
+      ],
+      "expr": "inferops:model_ready_absent:platform_api",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "inferops_model_ready is being published, which nothing does today.",
+      "note": "Reads 1 today and will until the serving-runtime adapter that owns inferops_model_ready is instrumented. A rule that averaged a metric nothing produces would publish an empty series, which reads as a healthy system rather than an absent one; this publishes the absence instead."
+    },
+    {
+      "queryId": "model-readiness-by-workload",
+      "question": "Is each workload's model ready to serve?",
+      "families": [
+        "model-load"
+      ],
+      "expr": "inferops_model_ready",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "not-answerable-nothing-emits",
+      "emptyMeans": "Always empty. The catalog assigns inferops_model_ready to the serving-runtime adapter and marks it not emitted; nothing puts the series on any endpoint, so a collector would change nothing.",
+      "note": "Published as an empty query on purpose. An operator who does not find it here writes it themselves, gets an empty panel, and reads it as health. model-readiness-absent is the answerable form of the same question."
+    },
+    {
+      "queryId": "model-load-duration-p95",
+      "question": "How long does loading a model take, at the tail?",
+      "families": [
+        "model-load"
+      ],
+      "expr": "histogram_quantile(0.95, sum by (inferops_model_id, inferops_runtime_id, le) (rate(inferops_model_load_duration_seconds_bucket[5m])))",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "not-answerable-nothing-emits",
+      "emptyMeans": "Always empty. Same emitter, same absence: the adapter is not instrumented, and llama-server publishes no load-duration series either.",
+      "note": "The load durations this project has are stopwatch figures in evidence records under docs/proof/serving/, not series in a store."
+    },
+    {
+      "queryId": "queue-wait-p95",
+      "question": "How long does a request wait before the runtime starts on it?",
+      "families": [
+        "latency"
+      ],
+      "expr": "histogram_quantile(0.95, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_queue_duration_seconds_bucket[5m])))",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "not-answerable-nothing-emits",
+      "emptyMeans": "Always empty. The wait is the serving-runtime adapter's measurement and the adapter is not instrumented.",
+      "note": "runtime-deferred-requests is the partial substitute: it shows that queueing happened and never how long anything waited."
+    },
+    {
+      "queryId": "runtime-deferred-requests",
+      "question": "Is the serving runtime deferring work?",
+      "families": [
+        "latency",
+        "throughput"
+      ],
+      "expr": "sum by (inferops_workload_id, inferops_model_id) (inferops:inference_requests_deferred:runtime)",
+      "profiles": [
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "The runtime job discovered nothing, or no collector is evaluating the recording rules.",
+      "note": "Partial, and named so that it cannot be read as the queue histogram. A non-zero value says queueing happened; nothing here says how long any request waited."
+    },
+    {
+      "queryId": "api-process-cpu-by-replica",
+      "question": "How much CPU is each API replica's process using?",
+      "families": [
+        "resource-use"
+      ],
+      "expr": "sum by (k8s_namespace, k8s_component, instance) (rate(inferops_process_cpu_seconds_total[5m]))",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "No API target is being scraped.",
+      "note": "The only resource figure in this collection with a source. It is the process's own CPU counter, read from the standard library, and it is not the container's: a cgroup limit, a throttling figure, and a working-set size are all elsewhere and none of them has a source here."
+    },
+    {
+      "queryId": "api-process-memory-by-replica",
+      "question": "How much memory is each API replica's process using?",
+      "families": [
+        "resource-use"
+      ],
+      "expr": "sum by (k8s_namespace, k8s_component, instance) (inferops_process_resident_memory_bytes)",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "not-answerable-nothing-emits",
+      "emptyMeans": "Always empty. The only per-process memory figure the standard library exposes is /proc/self/statm, and a module under src/inferops may not read a path -- the dependency-boundary property enforces it so that the distribution stays usable from a wheel.",
+      "note": "The catalog declares it, assigns it to the API, and marks it not emitted with that reason. Publishing the query and its emptiness is what stops somebody writing it and reading the empty panel as a well-behaved process."
+    },
+    {
+      "queryId": "readiness-check-failures-by-component",
+      "question": "Which readiness component is refusing traffic, and how often?",
+      "families": [
+        "availability"
+      ],
+      "expr": "sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m]))",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "emptyMeans": "No readiness check has failed since the process started, or no API target is being scraped.",
+      "note": "inferops_component here is the readiness component the API names when it refuses traffic -- api or serving-adapter. It is a different thing from k8s_component, which is the workload tier the collector attaches, and the k8s_ prefix is what keeps the two apart."
+    },
+    {
+      "queryId": "container-and-pod-resource-use",
+      "question": "How much CPU and memory is each container using against its declared request and limit?",
+      "families": [
+        "resource-use"
+      ],
+      "expr": null,
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "no-source",
+      "emptyMeans": "There is no query to write. No series exists to select.",
+      "wouldRequire": "a kubelet cAdvisor scrape job, or metrics-server, or kube-state-metrics -- each of which is a cluster add-on this chart does not own and this configuration does not install",
+      "note": "The accepted local cluster is kind with none of the three. The one recorded measurement of a pod's memory in this repository was read from its cgroup by hand. The Kubernetes context this collection attaches is identity -- namespace, tier, pod -- and never consumption."
+    },
+    {
+      "queryId": "pod-phase-restarts-and-container-readiness",
+      "question": "Which pods are restarting, and which containers are not ready?",
+      "families": [
+        "availability"
+      ],
+      "expr": null,
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "no-source",
+      "emptyMeans": "There is no query to write. No series exists to select.",
+      "wouldRequire": "kube-state-metrics",
+      "note": "Pod readiness is visible to the kubelet through the probes the chart renders and reaches no metric. inferops:scrape_targets_up:sum is the nearest available answer and is a different question: it says a target stopped answering, not why."
+    }
+  ],
+  "notPublishedAsQueries": [
+    {
+      "metric": "inferops_workload_document_rejections_total",
+      "reason": "Its emitter is the contract validator, which is a library and a command invoked by a person or a test rather than a running service. There is no process to scrape, so there is no endpoint a scrape job could discover and no query that could read it."
+    },
+    {
+      "metric": "inferops_inference_time_to_first_token_seconds",
+      "reason": "Deferred out of V1 by the catalog. V1 has no streaming path, so this is the same measurement as request duration; a query publishing it as a second signal would be publishing a fabrication."
+    },
+    {
+      "metric": "inferops_inference_retries_total",
+      "reason": "Deferred out of V1 by the catalog. There is no retry or fallback path, so the counter can only ever read zero, and a flat line reads as a healthy system rather than an absent feature."
+    },
+    {
+      "metric": "inferops_cost_records_total",
+      "reason": "Deferred out of V1 by the catalog. No component computes or emits a cost record, so a query over it would describe an absent capability as a quiet one."
+    }
+  ],
+  "refusedQueries": [
+    {
+      "refusedId": "group-by-request-id",
+      "question": "What would a per-request breakdown look like?",
+      "expr": "sum by (inferops_request_id) (rate(inferops_inference_requests_total[5m]))",
+      "refusedByRule": "query-names-a-label-the-catalog-bars-from-a-metric",
+      "why": "inferops.request.id is a log field. It is unbounded, the emitter is refused it at construction, and the collector drops it on the way in, so this query would return nothing forever while reading as a question somebody could answer."
+    },
+    {
+      "refusedId": "filter-by-tenant",
+      "question": "How much is one tenant using?",
+      "expr": "inferops_inference_requests_total{inferops_tenant_id=\"a-tenant\"}",
+      "refusedByRule": "query-names-a-label-the-catalog-bars-from-a-metric",
+      "why": "inferops.tenant.id has no permitted metric placement. A per-tenant metric breakdown is the single most effective way to multiply a series count by a number nobody controls."
+    },
+    {
+      "refusedId": "group-by-pod-name-attribute",
+      "question": "Which pod served this?",
+      "expr": "sum by (k8s_pod_name) (rate(inferops_inference_requests_total[5m]))",
+      "refusedByRule": "query-names-a-label-the-catalog-bars-from-a-metric",
+      "why": "k8s.pod.name is barred from a metric as an emitter rule, and it stays barred here. The pod is available as instance, which the collector attaches from __meta_kubernetes_pod_name and which the collection record declares with its cost. Two names for one thing is how a barred attribute comes back."
+    },
+    {
+      "refusedId": "group-by-http-status",
+      "question": "Which HTTP status codes is the API returning?",
+      "expr": "sum by (http_response_status_code) (rate(inferops_inference_errors_total[5m]))",
+      "refusedByRule": "query-names-a-label-the-catalog-bars-from-a-metric",
+      "why": "http.response.status_code is a log field and not a metric label. The canonical error code is, and error-rate-by-workload-and-code asks the same question in the vocabulary the platform contract publishes."
+    },
+    {
+      "refusedId": "read-a-metric-nothing-declares",
+      "question": "What is the accelerator doing?",
+      "expr": "sum by (instance) (inferops_gpu_utilisation)",
+      "refusedByRule": "query-reads-a-series-nothing-in-this-release-produces",
+      "why": "No such metric is in the catalog, no runtime series maps to one, and no recording rule publishes one. A query against a name nothing produces is indistinguishable, in a dashboard, from a query against a healthy quiet system."
+    },
+    {
+      "refusedId": "group-by-a-label-nothing-carries",
+      "question": "How much is each customer tier using?",
+      "expr": "sum by (inferops_customer_tier) (rate(inferops_inference_requests_total[5m]))",
+      "refusedByRule": "query-names-a-label-nothing-in-this-release-carries",
+      "why": "The label is not a catalog attribute at all and not a target label the collector attaches. Grouping by a label no series carries collapses every series into one row keyed on nothing, which looks like an answer."
+    },
+    {
+      "refusedId": "claim-queue-latency-is-answerable",
+      "question": "How long do requests wait in the queue?",
+      "expr": "histogram_quantile(0.95, sum by (inferops_workload_id, le) (rate(inferops_inference_queue_duration_seconds_bucket[5m])))",
+      "answerability": "answerable-once-collected",
+      "refusedByRule": "query-claims-an-answer-a-signal-nothing-emits-cannot-give",
+      "why": "The expression is well formed and the metric is in the catalog. What is wrong is the claim beside it: the catalog marks inferops_inference_queue_duration_seconds not emitted, so a collector would not make this answerable. queue-wait-p95 publishes the same expression with the honest class."
+    },
+    {
+      "refusedId": "join-on-a-key-build-info-cannot-carry",
+      "question": "Which build produced this workload's throughput?",
+      "expr": "sum by (inferops_workload_id) (rate(inferops_inference_requests_total[5m])) * on (inferops_workload_id) group_left (service_version) inferops_build_info",
+      "refusedByRule": "join-matches-on-a-key-one-side-cannot-carry",
+      "why": "inferops_build_info carries no workload label -- its labels are identity, and the workload is not one of them. Prometheus finds no counterpart for any element and the whole query returns nothing. throughput-joined-to-build-identity joins on job and instance instead, which is the process both sides share."
+    },
+    {
+      "refusedId": "subquery-outside-the-subset",
+      "question": "What was the peak request rate over the last hour?",
+      "expr": "max_over_time(rate(inferops_inference_requests_total[5m])[1h:5m])",
+      "refusedByRule": "query-expression-is-outside-the-verified-subset",
+      "why": "A subquery is not in the declared subset, so nothing here can read it and nothing here may claim it was checked. It is refused rather than published unchecked."
+    },
+    {
+      "refusedId": "topk-outside-the-subset",
+      "question": "Which five workloads are busiest?",
+      "expr": "topk(5, sum by (inferops_workload_id) (rate(inferops_inference_requests_total[5m])))",
+      "refusedByRule": "query-expression-is-outside-the-verified-subset",
+      "why": "topk selects rather than summarises, so its result depends on tie-breaking the fixture evaluator does not model. A query whose answer this repository cannot reproduce is not one it can publish as verified."
+    }
+  ],
+  "scenarios": [
+    {
+      "scenarioId": "healthy-real-two-replicas",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/correlation/healthy-real-two-replicas.yaml",
+      "whatItShows": "Two API replicas and two runtime replicas, every target answering, every emitted metric present and every identity published. Every answerable query returns the row it claims to, and the identity join carries the build labels onto the throughput of both replicas.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "serving-runtime-not-discovered",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/correlation/serving-runtime-not-discovered.yaml",
+      "whatItShows": "The runtime job's selector matched no pod, so there is no up series for it at all. The API side is unchanged and healthy. This is the failure that reads as a healthy quiet system in every query that groups by job, and the scenario is what proves the absence rule separates it.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "api-target-up-without-identity",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/correlation/api-target-up-without-identity.yaml",
+      "whatItShows": "An API target that answers a scrape and publishes no inferops_build_info. up reads 1 and the target is useless: the identity join returns nothing, and the identity-absence rule is what says why.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "every-target-down",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/correlation/every-target-down.yaml",
+      "whatItShows": "Both jobs have targets and none of them answered. The target count stays at its full value and the up sum reads zero, which is the distinction a count over a filtered vector would have lost.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "mock-single-replica",
+      "profile": "mock",
+      "fixtureRef": "tests/telemetry/fixtures/correlation/mock-single-replica.yaml",
+      "whatItShows": "The mock profile installs one job and no serving runtime. Every runtime query is absent from the result rather than empty in it, and the identity join still carries the adapter kind that says this is a mock.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "forbidden-labels-on-the-exposition",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/correlation/forbidden-labels-on-the-exposition.yaml",
+      "whatItShows": "A target publishing series labelled with a request identifier, a tenant, a pod name, and an HTTP status -- none of which anything in this repository emits, and all of which a component this project did not write could. The collector's labeldrop removes every one of them before any query sees it.",
+      "classification": "synthetic"
+    }
+  ],
+  "gaps": [
+    {
+      "gapId": "no-cross-tier-identity-join",
+      "statement": "A serving-runtime series cannot be joined to the API's identity series. inferops_build_info is one series per API process, and the labels a runtime series shares with it -- k8s_namespace and inferops_model_id -- are the same for every API replica, so the match is many-to-many as soon as there is more than one. Prometheus refuses it and so does this evaluator.",
+      "whatIsAvailableInstead": "The runtime job attaches inferops_runtime_id, inferops_model_id, inferops_workload_id, and deployment_environment directly, which is the operating identity. The immutable identity -- version, release, revision, image digest -- stays on the API's build_info and is not reachable from a runtime series.",
+      "wouldRequire": "an identity series the serving runtime itself published, which would mean instrumenting the serving-runtime adapter",
+      "demonstratedBy": "tests/telemetry/test_telemetry_correlation.py"
+    },
+    {
+      "gapId": "no-resource-correlation",
+      "statement": "Latency and throughput cannot be correlated with resource use. The only resource series with a source is the API process's own CPU counter; container and pod CPU and memory, declared requests and limits, restarts, and pod phase have no source in the accepted local cluster.",
+      "whatIsAvailableInstead": "api-process-cpu-by-replica, and nothing else.",
+      "wouldRequire": "a kubelet cAdvisor scrape job, metrics-server, or kube-state-metrics",
+      "demonstratedBy": "the two no-source queries in this record"
+    },
+    {
+      "gapId": "no-readiness-or-model-load-signal",
+      "statement": "Model readiness, model load duration, and queue wait are specified, assigned to the serving-runtime adapter, and emitted by nothing. Three of the queries in this record read them and are published with the class that says so.",
+      "whatIsAvailableInstead": "inferops:model_ready_absent:platform_api, which reads 1, and inferops:inference_requests_deferred:runtime, which shows that queueing happened and never how long.",
+      "wouldRequire": "instrumenting the serving-runtime adapter",
+      "demonstratedBy": "the not-answerable-nothing-emits queries in this record"
+    },
+    {
+      "gapId": "no-trace-correlation",
+      "statement": "No query here joins a metric to a trace or a log record. No tracer, propagator, or exporter is selected, and the correlation identifier is a log field that may never be a metric label -- so the join from a slow request to the record of that request does not exist and is not being approximated.",
+      "whatIsAvailableInstead": "nothing. The correlation identifier the API echoes reaches its own log records and no metric.",
+      "wouldRequire": "ADR 0006 D1's implementation half, and a log store",
+      "demonstratedBy": "the refused per-request query in this record"
+    }
+  ],
+  "limitations": [
+    {
+      "limitationId": "no-engine-has-run-these",
+      "statement": "No Prometheus has parsed, loaded, or evaluated any expression in this record. Every result was produced by the declared PromQL subset evaluator in this repository, over fixture stores written by hand."
+    },
+    {
+      "limitationId": "fixtures-are-synthetic",
+      "statement": "Every series in every scenario was written by hand to have the label set the chart's rendered relabelling would attach. Nothing was scraped, no endpoint was contacted, and no value here was measured."
+    },
+    {
+      "limitationId": "the-subset-is-a-subset",
+      "statement": "The evaluator implements a declared subset of PromQL with declared differences from the engine, chiefly that rate() and increase() do not extrapolate. A query outside the subset is refused rather than evaluated, so nothing here is checked by an approximation of a form it does not support."
+    },
+    {
+      "limitationId": "relabelling-is-modelled-not-executed",
+      "statement": "The collector step a fixture goes through is labeldrop alone, read as the alternation the chart writes rather than executed as a regex. Discovery, keep filters, port selection, and target-label assignment are not simulated: a fixture states the labels a target would have, and that statement is checked against the collection record rather than derived from a discovery that happened."
+    },
+    {
+      "limitationId": "recording-rules-are-evaluated-here-and-nowhere-else",
+      "statement": "The chart's recording rules are read from the committed render and evaluated by this repository's evaluator at each fixture instant, in render order. No collector evaluates them, no group interval is honoured, and a rule's staleness behaviour between evaluations is not modelled."
+    },
+    {
+      "limitationId": "an-empty-result-is-the-common-answer",
+      "statement": "Four of the queries here return nothing however long anybody waits, and two have no expression at all. That is the honest state of the collection and is published rather than omitted: a question missing from a query catalogue is a question somebody writes badly."
+    },
+    {
+      "limitationId": "the-evaluator-was-corrected-by-review-not-by-an-engine",
+      "statement": "Independent review before push found seven defects here, and every one was found by reading rather than by running the queries against Prometheus. Three were in the evaluator's semantics or its refusal contract, one was a rule that was not enforced for half the syntax it claimed to cover, and three were miscounts in published prose. A cross-check against promtool remains the first follow-up and remains not done."
+    }
+  ]
+}

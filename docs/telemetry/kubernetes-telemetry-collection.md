@@ -322,6 +322,18 @@ control on an endpoint that carries **no authentication at all**
   configuration. Nothing here merges them, and no collector has loaded either
   fragment.
 
+## What could then be asked
+
+This document stops at what a collector would find. What an operator could then ask of
+it — the vocabulary a query may use, the join that attaches a build identity to a
+throughput figure, the ten deliberately wrong queries and the rule that refuses each,
+and the six questions that have no answer — is in
+[the correlated query document](telemetry-correlation-queries.md) and its record.
+
+Nothing there changes anything here: the queries have been parsed, checked against the
+catalog's placement rules, and evaluated against synthetic fixtures by this
+repository's own evaluator, and **no Prometheus has parsed, loaded, or evaluated one**.
+
 ## Running the checks
 
 ```sh

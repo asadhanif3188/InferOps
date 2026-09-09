@@ -1,0 +1,152 @@
+# Two API replicas and two serving-runtime replicas, every target answering.
+#
+# Every series below was written by hand. Nothing was scraped, no endpoint was
+# contacted, and no value here was measured. What each label set is copied from is
+# the relabelling the real profile's committed render performs, so a query that works
+# against this fixture is a query written against the labels that configuration would
+# attach -- and against nothing that has ever existed.
+#
+# Counters carry three points, at 0s, 300s, and 600s. The evaluation instant is 600s
+# and every rate() in the query record reads a 5-minute window, so the two samples a
+# rate is taken between are the ones at 300s and 600s. They sit on the window
+# boundaries deliberately: that is where this repository's non-extrapolating rate()
+# and Prometheus's extrapolating one agree.
+scenarioId: healthy-real-two-replicas
+profile: real
+evaluationInstant: 600
+applyCollectorRelabel: true
+description: >-
+  Two API replicas and two runtime replicas, every target up, every emitted metric
+  present and every identity published.
+
+# Anchors only. The loader reads `series` and ignores this key; it exists so that a
+# reader can see at a glance that every series from one target carries exactly the
+# labels that target's job attaches, and no series acquires one by a typo.
+labelSets:
+  apiA: &apiA
+    job: inferops-inferops-llm-platform-api
+    k8s_namespace: inferops-platform
+    k8s_component: platform-api
+    instance: inferops-inferops-llm-api-6d4f8-2xkqp
+  apiB: &apiB
+    job: inferops-inferops-llm-platform-api
+    k8s_namespace: inferops-platform
+    k8s_component: platform-api
+    instance: inferops-inferops-llm-api-6d4f8-9wbnt
+  runtimeC: &runtimeC
+    job: inferops-inferops-llm-serving-runtime
+    k8s_namespace: inferops-platform
+    k8s_component: serving-runtime
+    instance: inferops-inferops-llm-runtime-0
+    deployment_environment: dev
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_runtime_id: llama-cpp-server
+  runtimeD: &runtimeD
+    job: inferops-inferops-llm-serving-runtime
+    k8s_namespace: inferops-platform
+    k8s_component: serving-runtime
+    instance: inferops-inferops-llm-runtime-1
+    deployment_environment: dev
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_runtime_id: llama-cpp-server
+  # The identity the API publishes on one series per process. service_version is a
+  # value a deployment supplies; the chart's default leaves it empty, and an empty
+  # label value is indistinguishable from an absent one in Prometheus, so this
+  # fixture models a release that set it.
+  identity: &identity
+    service_version: 0.1.0
+    inferops_capability_id: inferops-native-serving
+    inferops_release_id: inferops
+    deployment_environment: dev
+    inferops_adapter_kind: real
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_model_revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+    inferops_runtime_id: llama-cpp-server
+    inferops_runtime_image_digest: sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  work: &work
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+
+series:
+  # -- what Prometheus synthesises for every target it scrapes -----------------
+  - {name: up, labels: {<<: *apiA}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: up, labels: {<<: *apiB}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: up, labels: {<<: *runtimeC}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: up, labels: {<<: *runtimeD}, points: [[0, 1], [300, 1], [600, 1]]}
+
+  # -- identity: one series per API process, always 1 --------------------------
+  - {name: inferops_build_info, labels: {<<: [*apiA, *identity]}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: inferops_build_info, labels: {<<: [*apiB, *identity]}, points: [[0, 1], [300, 1], [600, 1]]}
+
+  # -- throughput and outcome --------------------------------------------------
+  # A: 300 -> 900 over 300s is 2/s. B: 300 -> 600 is 1/s. Summed: 3/s.
+  - {name: inferops_inference_requests_total, labels: {<<: [*apiA, *work], inferops_outcome: success}, points: [[0, 0], [300, 300], [600, 900]]}
+  - {name: inferops_inference_requests_total, labels: {<<: [*apiB, *work], inferops_outcome: success}, points: [[0, 0], [300, 300], [600, 600]]}
+  - {name: inferops_inference_requests_total, labels: {<<: [*apiA, *work], inferops_outcome: server-error}, points: [[0, 0], [300, 10], [600, 40]]}
+  - {name: inferops_inference_requests_total, labels: {<<: [*apiB, *work], inferops_outcome: server-error}, points: [[0, 0], [300, 10], [600, 25]]}
+
+  # -- errors, by the canonical code the platform contract publishes -----------
+  - {name: inferops_inference_errors_total, labels: {<<: *apiA, inferops_workload_id: support-assistant, inferops_error_code: model-not-ready}, points: [[0, 0], [300, 10], [600, 40]]}
+  - {name: inferops_inference_errors_total, labels: {<<: *apiB, inferops_workload_id: support-assistant, inferops_error_code: model-not-ready}, points: [[0, 0], [300, 10], [600, 25]]}
+
+  # -- latency: the twelve buckets the API's histogram declares ----------------
+  # Both replicas observe the same distribution, so the summed p95 is checkable by
+  # hand: the 95th percentile of 200 observations falls in the (45, 60] bucket, at
+  # 45 + 15 * (0.6333 - 0.6) / (0.64 - 0.6) = 57.5 seconds.
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "0.5"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "1"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "2.5"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "5"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "10"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "20"}, points: [[300, 0], [600, 30]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "30"}, points: [[300, 0], [600, 60]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "45"}, points: [[300, 0], [600, 90]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "60"}, points: [[300, 0], [600, 96]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "120"}, points: [[300, 0], [600, 99]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "300"}, points: [[300, 0], [600, 100]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiA, *work], le: "+Inf"}, points: [[300, 0], [600, 100]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "0.5"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "1"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "2.5"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "5"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "10"}, points: [[300, 0], [600, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "20"}, points: [[300, 0], [600, 30]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "30"}, points: [[300, 0], [600, 60]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "45"}, points: [[300, 0], [600, 90]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "60"}, points: [[300, 0], [600, 96]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "120"}, points: [[300, 0], [600, 99]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "300"}, points: [[300, 0], [600, 100]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: [*apiB, *work], le: "+Inf"}, points: [[300, 0], [600, 100]]}
+
+  # -- in flight, per replica --------------------------------------------------
+  - {name: inferops_inference_requests_in_flight, labels: {<<: [*apiA, *work]}, points: [[0, 0], [300, 4], [600, 3]]}
+  - {name: inferops_inference_requests_in_flight, labels: {<<: [*apiB, *work]}, points: [[0, 0], [300, 1], [600, 2]]}
+
+  # -- tokens, as the API counts them -----------------------------------------
+  - {name: inferops_inference_tokens_total, labels: {<<: [*apiA, *work], inferops_token_direction: input}, points: [[0, 0], [300, 1000], [600, 4000]]}
+  - {name: inferops_inference_tokens_total, labels: {<<: [*apiA, *work], inferops_token_direction: output}, points: [[0, 0], [300, 500], [600, 2000]]}
+  - {name: inferops_inference_tokens_total, labels: {<<: [*apiB, *work], inferops_token_direction: input}, points: [[0, 0], [300, 1000], [600, 2500]]}
+  - {name: inferops_inference_tokens_total, labels: {<<: [*apiB, *work], inferops_token_direction: output}, points: [[0, 0], [300, 500], [600, 1250]]}
+
+  # -- the one resource series with a source ----------------------------------
+  - {name: inferops_process_cpu_seconds_total, labels: {<<: *apiA}, points: [[0, 0], [300, 10], [600, 40]]}
+  - {name: inferops_process_cpu_seconds_total, labels: {<<: *apiB}, points: [[0, 0], [300, 10], [600, 25]]}
+
+  # -- readiness refusals, by the component that refused ----------------------
+  - {name: inferops_readiness_check_failures_total, labels: {<<: *apiA, inferops_workload_id: support-assistant, inferops_component: serving-adapter}, points: [[0, 0], [300, 0], [600, 3]]}
+  - {name: inferops_readiness_check_failures_total, labels: {<<: *apiB, inferops_workload_id: support-assistant, inferops_component: serving-adapter}, points: [[0, 0], [300, 0], [600, 0]]}
+
+  # -- what llama-server publishes: bare series, every label attached by the
+  #    collector. The runtime's figures deliberately do not agree with the API's:
+  #    the two count different boundaries, and a fixture where they matched would
+  #    be a fixture asserting something the collection record denies.
+  - {name: "llamacpp:prompt_tokens_total", labels: {<<: *runtimeC}, points: [[0, 500], [300, 2000], [600, 5000]]}
+  - {name: "llamacpp:prompt_tokens_total", labels: {<<: *runtimeD}, points: [[0, 500], [300, 2000], [600, 3200]]}
+  - {name: "llamacpp:tokens_predicted_total", labels: {<<: *runtimeC}, points: [[0, 250], [300, 1000], [600, 2800]]}
+  - {name: "llamacpp:tokens_predicted_total", labels: {<<: *runtimeD}, points: [[0, 250], [300, 1000], [600, 2200]]}
+  - {name: "llamacpp:requests_processing", labels: {<<: *runtimeC}, points: [[0, 0], [300, 1], [600, 2]]}
+  - {name: "llamacpp:requests_processing", labels: {<<: *runtimeD}, points: [[0, 0], [300, 2], [600, 1]]}
+  - {name: "llamacpp:requests_deferred", labels: {<<: *runtimeC}, points: [[0, 0], [300, 2], [600, 4]]}
+  - {name: "llamacpp:requests_deferred", labels: {<<: *runtimeD}, points: [[0, 0], [300, 0], [600, 0]]}

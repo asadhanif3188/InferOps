@@ -10,6 +10,75 @@ once versioned releases begin.
 
 ### Added
 
+- **The queries that would be asked of all that telemetry are now published, checked,
+  and run — and still nothing has answered one.** A scrape configuration can attach
+  every right label and a query can still return nothing, because it groups by a label
+  the collector drops, joins on a key one side does not carry, reads a metric nothing
+  emits, or uses a name nothing publishes. In a console all four look exactly like a
+  healthy quiet system, which is the failure
+  [the new query record](docs/telemetry/telemetry-correlation-queries.v1alpha1.json)
+  exists to make impossible to write by accident: twenty-three questions, each with the
+  PromQL it is asked in, the class that says whether it can be answered at all, and
+  **the reason its result would be empty**. **Nothing about a query is declared beside
+  it** — `tools/telemetry_correlation` parses every expression with a **declared subset
+  of PromQL** and derives the metrics it reads and the labels it depends on from the
+  expression itself, because a list maintained by hand beside an expression is a second
+  copy and the first edit that forgets it leaves a record describing a query nobody
+  runs. **An expression outside the subset is refused rather than published unchecked**,
+  which is the whole safety argument for reading a query here instead of in Prometheus:
+  a form this cannot represent cannot be quietly mis-evaluated. `topk`, `bottomk`, and
+  `quantile` are out because they select rather than summarise; `count_values` is out
+  because it writes a label out of a *value*, which is the one move the telemetry
+  catalog exists to prevent. **The vocabulary a query may use is recomputed from the
+  catalog on every run** — every attribute the catalog permits on a series, every
+  target label the collection record declares, and `le` — and a test asserts it is the
+  complement of the chart's rendered drop list, so a query can never ask for a label
+  the collector removes. Six rules refuse the six ways a query lies, and **ten
+  deliberately wrong queries are committed beside the good ones**, each naming the rule
+  that refuses it: a per-request breakdown, a per-tenant filter, a group by
+  `k8s_pod_name` (which is available as `instance` and by no other name), a group by
+  HTTP status, a metric nothing declares, a label nothing carries, an honest expression
+  with a dishonest answerability claim on it, a join on a key `inferops_build_info`
+  cannot carry, a subquery, and a `topk`. **Then the queries are run**, against six
+  synthetic stores whose series carry the label sets the committed renders would attach,
+  through the `labeldrop` the chart actually renders and the recording rules read out of
+  the render — and running them found three things reading could not have: the identity
+  join **returns nothing rather than a partial answer** when a target is up and
+  publishes no identity, so `inferops:build_info_absent:platform_api` is the query that
+  explains it; **a cross-tier identity join is impossible** with more than one API
+  replica, because `inferops_build_info` is one series per process and every replica
+  shares the runtime's only join key, which is now published as a gap and driven into
+  its many-to-many error by a test; and the chart's default leaves `service_version`
+  **empty**, which Prometheus cannot tell from absent, so `group_left` copies nothing
+  rather than a blank. **Four questions have an answer that is always empty and two have
+  no expression at all** — container and pod resource use, and pod phase and restarts,
+  have no source in the accepted local cluster — and each says what would provide it,
+  because a question missing from a query catalogue is a question somebody writes badly.
+  Every one of the eight metrics the catalog marks emitted is read by a published query,
+  and the four catalog metrics no query reads each say why. **No Prometheus has parsed,
+  loaded, or evaluated a single expression in this change**: every result in
+  [the query evaluation record](docs/proof/telemetry/v1-s3-007-pr2-query-evaluation.md)
+  came from this repository's own evaluator, whose differences from the engine —
+  chiefly that `rate()` does not extrapolate — are declared rather than left to be
+  discovered, and a cross-check against `promtool` is recorded as the first follow-up
+  and was **not** done. **Independent review before push found ten defects, all
+  fixed**, and three of them were claims this change made about itself that were not
+  true: the rule that refuses a join on a key one side cannot carry read only the `on`
+  set, so a `group_left` written with `ignoring` was *not checked at all* — the parser
+  now refuses that combination outright, because a rule enforced for half a syntax
+  reads as enforced and is not; a deeply nested expression raised `RecursionError`
+  rather than the refusal the module promises, which is now a declared nesting bound;
+  and `SAFE_MESSAGE_CHARACTERS` was enforced on a finding's message and not on its
+  subject, which is a `queryId` and reached stdout unfiltered. A matcher regex was
+  compiled straight from input and `(a+)+$` hung the process, so patterns are now held
+  to a declared safe subset with no group to backtrack into. A comparison without
+  `bool` dropped the metric name, which only the arithmetic operators do. And three
+  were miscounts in published prose — nineteen barred labels written as twenty, and
+  four always-empty queries written as three in two places.
+  [The query document](docs/telemetry/telemetry-correlation-queries.md) states the
+  workflow, the expected empty and error states, the four things that cannot be
+  correlated, and the seven this does not establish.
+
 - **The chart now renders a scrape configuration, and still nothing collects.**
   `telemetry-scrape-configuration` was the last Helm-owned row deferred to a story
   rather than to an unpublished image, and

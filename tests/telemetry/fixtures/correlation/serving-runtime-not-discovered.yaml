@@ -1,0 +1,42 @@
+# The serving-runtime job's selector matched no pod.
+#
+# This is the failure the absence rules exist for. There is no `up` series for the
+# runtime job at all -- not one reading zero, none -- so every query that groups by
+# job simply has no row for it, and a reader sees a shorter list rather than a
+# problem. The API side is untouched and healthy, which is what makes the omission
+# easy to miss.
+#
+# Synthetic. Nothing was scraped and no value here was measured.
+scenarioId: serving-runtime-not-discovered
+profile: real
+evaluationInstant: 600
+applyCollectorRelabel: true
+description: >-
+  The runtime job discovered nothing. No up series exists for it, so its absence is
+  visible only through the rule that asks for it by name.
+
+labelSets:
+  apiA: &apiA
+    job: inferops-inferops-llm-platform-api
+    k8s_namespace: inferops-platform
+    k8s_component: platform-api
+    instance: inferops-inferops-llm-api-6d4f8-2xkqp
+  identity: &identity
+    service_version: 0.1.0
+    inferops_capability_id: inferops-native-serving
+    inferops_release_id: inferops
+    deployment_environment: dev
+    inferops_adapter_kind: real
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_model_revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+    inferops_runtime_id: llama-cpp-server
+    inferops_runtime_image_digest: sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  work: &work
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+
+series:
+  - {name: up, labels: {<<: *apiA}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: inferops_build_info, labels: {<<: [*apiA, *identity]}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: inferops_inference_requests_total, labels: {<<: [*apiA, *work], inferops_outcome: success}, points: [[0, 0], [300, 300], [600, 900]]}
+  - {name: inferops_inference_requests_in_flight, labels: {<<: [*apiA, *work]}, points: [[0, 0], [300, 4], [600, 3]]}

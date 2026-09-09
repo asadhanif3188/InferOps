@@ -677,6 +677,34 @@ chart has never been installed** —
 [the collection document](docs/telemetry/kubernetes-telemetry-collection.md) is where
 that distance is stated.
 
+A fourth,
+[`tests/telemetry/test_telemetry_correlation.py`](tests/telemetry/test_telemetry_correlation.py),
+takes the last step: the queries somebody would actually write against all of it. A
+scrape configuration can attach every right label and a query can still answer
+nothing — it groups by a label the collector drops, joins on a key one side does not
+carry, or reads a metric nothing emits — and in a console all three look exactly like
+a healthy quiet system. So every published query is parsed with a **declared subset of
+PromQL**, its labels are checked against the same catalog derivation the drop list
+comes from, its series against what this release produces, its joins against what each
+side can carry, and its answerability against what the catalog says is emitted. Then it
+is *run*, against synthetic stores whose series carry the label sets the render would
+produce, and what it returned is committed as
+[a query evaluation record](docs/proof/telemetry/v1-s3-007-pr2-query-evaluation.md)
+the suite regenerates and compares. Ten deliberately wrong queries are committed
+beside the good ones, each naming the rule that refuses it.
+
+```sh
+python -m tools.telemetry_correlation
+python -m tools.telemetry_correlation --evaluate
+```
+
+A query using a PromQL form the subset does not accept is **refused rather than
+published unchecked**, because an expression nothing here can parse is one every other
+rule would be vacuously satisfied by. And nothing in that suite is a Prometheus: **no
+engine has parsed, loaded, or evaluated a single expression**, and
+[the query document](docs/telemetry/telemetry-correlation-queries.md) states what that
+leaves unestablished.
+
 A change that adds a signal adds a row with a stated question, a sensitivity class,
 and a cardinality class; a change that adds a metric label adds series to a budget
 the suite counts. A change that would place a field somewhere neither of its classes
