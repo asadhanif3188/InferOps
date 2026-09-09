@@ -47,10 +47,22 @@ once versioned releases begin.
   refused probe recorded rather than hidden and a window nobody sampled refused — and so
   is the recovery: whether the runtime had to reload the model at all is written down as
   `runtimeReloaded`, which is the difference between a recovery of seconds and one of
-  minutes. Thirty-two ways of weakening the descriptor and twenty ways of making a run
-  look better than it was are each provoked by
+  minutes. Thirty-two ways of weakening the descriptor and thirty-nine ways of making
+  a run look better than it was are each provoked by
   [the suite](tests/architecture/test_helm_upgrade_rollback.py) and each has to stop it.
-  **Nothing has been installed, upgraded, broken, or rolled back**: every fact the
+  **Two independent reviews before push raised one HIGH, two MEDIUM and four LOW
+  findings and all seven are fixed**, the HIGH being the one that mattered: the
+  deliberately-failing `helm upgrade` is backgrounded so that the detection is not a
+  timeout, and its pid was not in the cleanup path — a run interrupted during the
+  detection loop would have left a `helm upgrade` running detached against a real
+  release, still writing its history, while the script printed the `helm uninstall`
+  that would race it. All three backgrounded pids are now declared together and reaped
+  together, and a test derives that set from the script so a fourth cannot be added
+  without joining it. The exit trap also named only `EXIT` where both sibling scripts
+  name `INT TERM EXIT` for a reason one of them writes down, and `record_stage` turned
+  an unanswered `kubectl` query into an empty value — which for the service version is
+  precisely the difference between "the upgrade did not reach the workload" and
+  "nobody asked". **Nothing has been installed, upgraded, broken, or rolled back**: every fact the
   module read in this change is a document the suite wrote, every answer the "restored"
   release gave is a dictionary it constructed, and the workflow **cannot** be run — no
   InferOps API image is published, which is the same one-line blocker that already stops

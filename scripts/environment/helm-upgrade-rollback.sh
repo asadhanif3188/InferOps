@@ -88,6 +88,14 @@ while [ "$#" -gt 0 ]; do
       case "$2" in
         '' | *[!0-9]*) inferops::fail "--port must be a number, not '$2'." ;;
       esac
+      # A range as well as a shape. Zero is the one value that would be accepted
+      # by every check below and still be wrong: `kubectl port-forward` reads it
+      # as "pick an ephemeral port", this script never parses the port it
+      # actually bound, and the run would fail later as an unopened forward
+      # rather than here as a bad argument.
+      if [ "$2" -lt 1 ] || [ "$2" -gt 65535 ]; then
+        inferops::fail "--port must be between 1 and 65535, not '$2'."
+      fi
       forward_port="$2"
       shift 2
       ;;
@@ -241,6 +249,31 @@ for number in fault_size_bytes detection_poll_ms probe_interval_ms \
   esac
 done
 
+# A floor as well as a shape, for the one value that reaches `sleep` after an
+# integer division. Below a thousand milliseconds that division is zero and the
+# detection loop becomes a busy poll against the API server. The Python validator
+# already refuses it, and the comment above says why that is not enough on its
+# own: this is the magnitude half of the same argument.
+[ "${detection_poll_ms}" -ge 1000 ] ||
+  inferops::fail "the experiment descriptor polls for the failure every ${detection_poll_ms} ms. Below 1000 ms the wait between polls truncates to zero and this loop would spin against the API server. Nothing was installed."
+
+# The two component names and the verification container name reach a label
+# selector and a jsonpath filter, so they are held to the shape of a Kubernetes
+# name here, where they are about to be used. The descriptor is a committed file
+# and the Python validator already refuses an empty one, which makes this defence
+# in depth rather than input validation -- but the same was true of the candidate
+# value below, and a rule applied to one interpolation and not the next is a rule
+# a later edit will read as optional.
+for name in fault_container descriptor_api_component descriptor_runtime_component; do
+  case "${!name}" in
+    [a-z0-9]*[a-z0-9] | [a-z0-9]) ;;
+    *) inferops::fail "the descriptor's '${name}' is '${!name}', which is not a DNS-1123 label. Nothing was installed." ;;
+  esac
+  case "${!name}" in
+    *[!a-z0-9-]*) inferops::fail "the descriptor's '${name}' is '${!name}', which contains a character a DNS-1123 label may not. Nothing was installed." ;;
+  esac
+done
+
 # The candidate value reaches a `--set` argument and the record. A value that
 # could be read as a flag or that carries shell metacharacters is refused here,
 # where it is about to be used, rather than trusted for having come out of a
@@ -293,8 +326,15 @@ impact_file="${INFEROPS_ROOT}/${impact_rel}"
 cleanup_file="${INFEROPS_ROOT}/${cleanup_rel}"
 forward_log="${diag_dir}/forward.log"
 probe_flag="${diag_dir}/probing"
+
+# Every process this script backgrounds, declared here rather than where each one
+# is started. Two reasons, and the second is the load-bearing one: under `nounset`
+# a cleanup function referring to a pid that has not been assigned yet is itself
+# an error, and `stop_background` runs from the exit trap at points before all
+# three exist.
 forward_pid=""
 prober_pid=""
+fault_upgrade_pid=""
 
 # --- bounded measurement ----------------------------------------------------
 
@@ -321,10 +361,23 @@ collect_diagnostics() {
     -l "${INFEROPS_RELEASE_SELECTOR}" --all-containers --tail="${INFEROPS_LOG_TAIL}" >"${diag_dir}/release.log" 2>&1 || true
 }
 
+# Every backgrounded process, stopped in the order that leaves the least behind:
+# the prober first because it only reads, then the failing upgrade, then the
+# forward it was reading through.
+#
+# The upgrade is the one that matters and the one that is easy to forget. It is a
+# `helm upgrade` against a real release, and a run that ended between backgrounding
+# it and waiting for it -- an interrupt during the detection loop, or a refusal
+# inside it -- would leave it running detached, still writing to that release's
+# history, while this script printed the `helm uninstall` that would race it.
 stop_background() {
   rm -f "${probe_flag}" 2>/dev/null || true
   if [ -n "${prober_pid}" ] && kill -0 "${prober_pid}" 2>/dev/null; then
     wait "${prober_pid}" 2>/dev/null || true
+  fi
+  if [ -n "${fault_upgrade_pid}" ] && kill -0 "${fault_upgrade_pid}" 2>/dev/null; then
+    kill "${fault_upgrade_pid}" 2>/dev/null || true
+    wait "${fault_upgrade_pid}" 2>/dev/null || true
   fi
   if [ -n "${forward_pid}" ] && kill -0 "${forward_pid}" 2>/dev/null; then
     kill "${forward_pid}" 2>/dev/null || true
@@ -343,7 +396,13 @@ on_exit() {
   exit "${rc}"
 }
 
-trap on_exit EXIT
+# INT and TERM as well as EXIT, which is the convention both Kubernetes
+# certification scripts already follow. Bash normally runs an EXIT trap when a
+# signal terminates the shell, but this workflow leaves a background forward, a
+# background prober, a background upgrade, and a real release behind, and on Git
+# Bash signal delivery to a native child is less predictable than on Linux.
+# Naming the signals costs nothing and removes the need to rely on that.
+trap on_exit INT TERM EXIT
 
 mkdir -p "${stage_dir}"
 rm -f "${stage_dir}"/*.json 2>/dev/null || true
@@ -426,12 +485,32 @@ record_stage() {
   release_json="$(require_query "the release's own status" \
     inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
     --filter "^${INFEROPS_RELEASE_NAME}\$" -o json)"
-  service_version="$(inferops::kubectl get configmap \
+
+  # Each of these four may legitimately come back empty and none of them may
+  # legitimately go unasked, so the status is checked and the value is not.
+  #
+  # `${candidate_config_key}` is empty in the known-good release and carries the
+  # candidate value afterwards, which is the whole of the assertion that the
+  # upgrade reached the workload; a query the API server refused would be
+  # recorded as that empty string and the run would then report that the change
+  # never arrived, which names the wrong thing entirely. The two pod names are
+  # empty whenever no pod of that component is ready -- which is the expected
+  # state during the unhealthy stage -- and that is a different fact from a
+  # query nobody answered.
+  if ! service_version="$(inferops::kubectl get configmap \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" \
-    -o "jsonpath={.items[*].data.${candidate_config_key}}")" || service_version=""
-  verify_command="$(runtime_verify_command)" || verify_command=""
-  runtime_pod="$(ready_pod_of "${descriptor_runtime_component}")" || runtime_pod=""
-  api_pod="$(ready_pod_of "${descriptor_api_component}")" || api_pod=""
+    -o "jsonpath={.items[*].data.${candidate_config_key}}")"; then
+    inferops::fail "could not read ${candidate_config_key} from the release's rendered configuration at the '${stage}' stage. An unanswered query is not an empty value, and whether the upgrade reached the workload is decided by the difference."
+  fi
+  if ! verify_command="$(runtime_verify_command)"; then
+    inferops::fail "could not read the '${fault_container}' init container's command at the '${stage}' stage. An unanswered query is not an empty command, and the byte count this experiment injects and rolls back is read out of it."
+  fi
+  if ! runtime_pod="$(ready_pod_of "${descriptor_runtime_component}")"; then
+    inferops::fail "could not ask which ${descriptor_runtime_component} pod is ready at the '${stage}' stage. An unanswered query is not an absent pod, and whether a rollout replaced the serving pod is decided by the difference."
+  fi
+  if ! api_pod="$(ready_pod_of "${descriptor_api_component}")"; then
+    inferops::fail "could not ask which ${descriptor_api_component} pod is ready at the '${stage}' stage. An unanswered query is not an absent pod."
+  fi
 
   INFEROPS_STAGE="${stage}" \
     INFEROPS_OUTCOME="${outcome}" \
@@ -549,10 +628,20 @@ inferops::helm test "${INFEROPS_RELEASE_NAME}" \
 candidate_ms=$(($(now_ms) - candidate_started))
 record_stage candidate healthy "${candidate_ms}" "${candidate_ready_ms}" true
 
-candidate_revision="$(require_query "the known-good revision to roll back to" \
+# Captured first and parsed second, rather than piped straight into python. A
+# pipeline aborts correctly either way -- `pipefail` carries the failure through
+# the assignment -- but with the pipe, a `helm list` that did not answer still
+# runs python against empty input, and the operator sees a JSON traceback stacked
+# on top of the refusal that explains it. Two failures for one cause reads as two
+# causes.
+candidate_release_json="$(require_query "the known-good revision to roll back to" \
   inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
-  --filter "^${INFEROPS_RELEASE_NAME}\$" -o json |
-  python -c 'import json,sys; print(json.load(sys.stdin)[0]["revision"])')"
+  --filter "^${INFEROPS_RELEASE_NAME}\$" -o json)"
+candidate_revision="$(INFEROPS_RELEASE_JSON="${candidate_release_json}" python -c '
+import json, os
+
+print(json.loads(os.environ["INFEROPS_RELEASE_JSON"])[0]["revision"])
+')"
 case "${candidate_revision}" in
   '' | *[!0-9]*) inferops::fail "the known-good revision is not a number, so there is nothing this run could safely roll back to." ;;
 esac
@@ -818,19 +907,27 @@ DETECT_PYTHON
   )" || finding=""
   if [ -n "${finding}" ]; then
     detected_at_ms=$(($(now_ms) - fault_started))
+    # Read into a variable first and check the status. Every other query in this
+    # file does that; this one did not, and it is the one running while a
+    # backgrounded `helm upgrade` is still writing to the release -- so a failure
+    # here that aborted the script mid-loop is exactly the case the cleanup path
+    # has to survive.
+    if ! finding_fields="$(INFEROPS_FINDING="${finding}" python -c '
+import json, os
+
+finding = json.loads(os.environ["INFEROPS_FINDING"])
+for member in ("signal", "exitCode", "reason", "pod", "serving"):
+    print(finding.get(member, ""))
+')"; then
+      inferops::fail "a failure signal was found and could not be read. The release is left in place and diagnostics are in .artifacts/helm-upgrade-rollback/."
+    fi
     {
       read -r detection_signal
       read -r detection_exit_code
       read -r detection_reason
       read -r detection_pod
       read -r serving_pod
-    } <<<"$(INFEROPS_FINDING="${finding}" python -c '
-import json, os
-
-finding = json.loads(os.environ["INFEROPS_FINDING"])
-for member in ("signal", "exitCode", "reason", "pod", "serving"):
-    print(finding.get(member, ""))
-')"
+    } <<<"${finding_fields}"
     break
   fi
   sleep "$((detection_poll_ms / 1000))"
@@ -839,7 +936,11 @@ done
 # The failing upgrade is still running; it is waited on rather than left behind,
 # and its non-zero status is expected. `helm upgrade` is what created the
 # candidate, so abandoning the process would leave a release lock behind.
+#
+# The pid is cleared afterwards so that the exit trap does not reach for a job
+# that has already been reaped, the same way the prober's is cleared below.
 wait "${fault_upgrade_pid}" 2>/dev/null || true
+fault_upgrade_pid=""
 
 rm -f "${probe_flag}"
 wait "${prober_pid}" 2>/dev/null || true
@@ -888,14 +989,22 @@ inferops::helm history "${INFEROPS_RELEASE_NAME}" \
 
 inferops::section "Collecting lifecycle facts"
 
-server_version="$(require_query "the API server's version" \
-  inferops::kubectl version -o json |
-  python -c 'import json,sys; print(json.load(sys.stdin)["serverVersion"]["gitVersion"])')"
+server_version_json="$(require_query "the API server's version" \
+  inferops::kubectl version -o json)"
+server_version="$(INFEROPS_VERSION_JSON="${server_version_json}" python -c '
+import json, os
+
+print(json.loads(os.environ["INFEROPS_VERSION_JSON"])["serverVersion"]["gitVersion"])
+')"
 helm_version="$(require_query "the helm version" \
   inferops::helm version --short)"
-kubectl_version="$(require_query "the kubectl version" \
-  inferops::kubectl version --client -o json |
-  python -c 'import json,sys; print(json.load(sys.stdin)["clientVersion"]["gitVersion"])')"
+kubectl_version_json="$(require_query "the kubectl version" \
+  inferops::kubectl version --client -o json)"
+kubectl_version="$(INFEROPS_VERSION_JSON="${kubectl_version_json}" python -c '
+import json, os
+
+print(json.loads(os.environ["INFEROPS_VERSION_JSON"])["clientVersion"]["gitVersion"])
+')"
 node_digest="$(inferops::running_node_digest)"
 configured="$(require_query "the release's rendered configuration" \
   inferops::kubectl get configmap -n "${INFEROPS_RELEASE_NAMESPACE}" \

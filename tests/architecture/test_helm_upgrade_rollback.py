@@ -284,6 +284,50 @@ def test_the_fault_is_compared_by_the_container_the_descriptor_names() -> None:
     assert f"- name: {EXPERIMENT.fault.fails_in_container}" in helpers
 
 
+def test_the_fault_reaches_only_the_serving_runtime() -> None:
+    """The claim that the platform API is not rolled by the fault, checked.
+
+    It is what makes the impact measurement mean anything: if the fault rolled
+    the API too, every readiness probe during the failure window would be asking
+    a tier that was itself being replaced, and "no caller saw a failure" would be
+    a statement about two rollouts rather than one.
+
+    The chart is the proof. `model.artifact.sizeBytes` appears in exactly one
+    template outside the validation helper — the verification script — which only
+    the serving runtime's Deployment includes; and it is absent from
+    `inferops-llm.derivedEnv`, so the ConfigMap every pod template is checksummed
+    against does not change either.
+    """
+    helpers = HELPERS_PATH.read_text(encoding="utf-8")
+    templates = sorted(
+        path
+        for path in (REPO_ROOT / "charts" / "inferops-llm" / "templates").rglob("*")
+        if path.is_file() and path.name != "_validate.tpl"
+    )
+    naming = [
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in templates
+        if "model.artifact.sizeBytes" in path.read_text(encoding="utf-8")
+    ]
+    assert naming == ["charts/inferops-llm/templates/_helpers.tpl"], naming
+
+    derived = helpers[helpers.index('define "inferops-llm.derivedEnv"') :]
+    derived = derived[: derived.index("{{- end -}}")]
+    assert "sizeBytes" not in derived
+
+    verify = helpers[helpers.index('define "inferops-llm.model.verifyInitContainer"') :]
+    verify = verify[: verify.index("{{- end -}}")]
+    runtime = (
+        REPO_ROOT / "charts/inferops-llm/templates/runtime-deployment.yaml"
+    ).read_text(encoding="utf-8")
+    api = (REPO_ROOT / "charts/inferops-llm/templates/api-deployment.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "inferops-llm.model.verifyInitContainer" in runtime
+    assert "inferops-llm.model.verifyInitContainer" not in api
+    assert "initContainers" not in api
+
+
 def test_the_fault_touches_no_image_and_no_cluster_scoped_object() -> None:
     fault = EXPERIMENT.fault
     assert fault.scope == "release"
@@ -376,7 +420,15 @@ def test_a_fault_injecting_the_real_byte_count_is_refused(tmp_path: Path) -> Non
 def test_a_fault_the_chart_refuses_before_installing_is_refused(
     tmp_path: Path,
 ) -> None:
-    """Zero is the one byte count `_validate.tpl` rejects outright."""
+    """Zero is refused here, because the chart would refuse it there.
+
+    This is the module's own floor, not the chart's: nothing is rendered in this
+    suite. The floor exists so that the descriptor cannot name the one byte count
+    `_validate.tpl` rejects outright — a fault Helm refuses is a run that never
+    installed its own fault, and it would then report a detection it did not
+    make. The test above reads the validation template to establish that the
+    chart really does refuse it.
+    """
     document = mutated(faultInjection={"injectedSizeBytes": 0})
     assert "not an integer of at least 1" in refused(document, tmp_path)
 
@@ -1069,6 +1121,130 @@ def test_a_refused_probe_is_recorded_rather_than_refusing_the_run(
     assert record_of(result)["impact"]["firstFailureAtMs"] == 5_000
 
 
+def test_collected_stages_that_are_not_the_four_stop_the_run(tmp_path: Path) -> None:
+    facts = lifecycle_document(
+        stages=[
+            stage_document("baseline"),
+            stage_document("candidate"),
+            stage_document("rollback"),
+        ]
+    )
+    assert "rather than" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_a_baseline_slower_than_a_healthy_rollout_stops_the_run(
+    tmp_path: Path,
+) -> None:
+    facts = lifecycle_document(
+        stages=[
+            stage_document(
+                "baseline", readyMs=EXPERIMENT.budgets.runtime_rollout_ms + 1
+            ),
+            stage_document("candidate"),
+            stage_document("unhealthy-candidate"),
+            stage_document("rollback"),
+        ]
+    )
+    assert "over the" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_a_controlled_upgrade_over_budget_stops_the_run(tmp_path: Path) -> None:
+    facts = lifecycle_document(
+        stages=[
+            stage_document("baseline"),
+            stage_document("candidate", elapsedMs=EXPERIMENT.budgets.upgrade_ms + 1),
+            stage_document("unhealthy-candidate"),
+            stage_document("rollback"),
+        ]
+    )
+    assert "over the" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_a_release_test_passing_against_a_failed_candidate_stops_the_run(
+    tmp_path: Path,
+) -> None:
+    """Two observations of one candidate, and they cannot both be right."""
+    facts = lifecycle_document(
+        stages=[
+            stage_document("baseline"),
+            stage_document("candidate"),
+            stage_document("unhealthy-candidate", releaseTestPassed=True),
+            stage_document("rollback"),
+        ]
+    )
+    assert "One of the two observations is wrong" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_an_unhealthy_stage_shorter_than_its_own_detection_stops_the_run(
+    tmp_path: Path,
+) -> None:
+    facts = lifecycle_document(
+        stages=[
+            stage_document("baseline"),
+            stage_document("candidate"),
+            stage_document("unhealthy-candidate", elapsedMs=1_000),
+            stage_document("rollback"),
+        ]
+    )
+    assert "the two clocks disagree" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_a_rollback_over_budget_stops_the_run(tmp_path: Path) -> None:
+    facts = lifecycle_document(
+        stages=[
+            stage_document("baseline"),
+            stage_document("candidate"),
+            stage_document("unhealthy-candidate"),
+            stage_document("rollback", elapsedMs=EXPERIMENT.budgets.rollback_ms + 1),
+        ]
+    )
+    assert "over the" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_a_rollback_to_a_third_byte_count_stops_the_run(tmp_path: Path) -> None:
+    """Neither the injected value nor the pin is not a rollback of the fault."""
+    facts = lifecycle_document(
+        stages=[
+            stage_document("baseline"),
+            stage_document("candidate"),
+            stage_document("unhealthy-candidate"),
+            stage_document("rollback", artifactSizeBytes=12_345),
+        ]
+    )
+    assert "neither the injected one nor the pinned one" in stopped(
+        tmp_path, lifecycle=facts
+    )
+
+
+def test_a_run_that_recorded_no_recovery_stops(tmp_path: Path) -> None:
+    """The one figure this experiment exists to produce may not be absent."""
+    facts = lifecycle_document(
+        detection={"detectedAfterMs": 0},
+        recovery={
+            "injectedAtMs": 0,
+            "detectedAtMs": 0,
+            "rollbackStartedAtMs": 0,
+            "rollbackFinishedAtMs": 0,
+            "verifiedAtMs": 0,
+        },
+    )
+    assert "measured nothing it was run to measure" in stopped(
+        tmp_path, lifecycle=facts
+    )
+
+
+def test_an_impact_window_that_does_not_run_forwards_stops_the_run(
+    tmp_path: Path,
+) -> None:
+    observations = impact_document(
+        window={"startedMs": 30_000, "endedMs": 10_000},
+        probes=[
+            {"atMs": at, "status": 200, "ok": True} for at in (30_000, 31_000, 32_000)
+        ],
+    )
+    assert "does not run forwards" in stopped(tmp_path, impact=observations)
+
+
 # -- what the restored release answered --------------------------------------
 
 
@@ -1330,10 +1506,77 @@ def test_the_script_leaves_a_failed_run_in_place() -> None:
     assert "collect_diagnostics" in SCRIPT_TEXT
 
 
-def test_the_script_stops_its_background_processes() -> None:
-    """A prober and a forward outliving the run would keep touching a cluster."""
-    assert "stop_background" in SCRIPT_TEXT
-    assert "trap on_exit EXIT" in SCRIPT_TEXT
+def test_every_backgrounded_process_is_in_the_cleanup_path() -> None:
+    """A process outliving the run would keep touching a real release.
+
+    Derived from the script rather than listed here: every `x_pid="$!"` capture
+    is found, and each name has to appear inside `stop_background`. The one this
+    caught was the deliberately-failing `helm upgrade` — a run that ended between
+    backgrounding it and waiting for it would have left it writing to the
+    release's history while the script printed the `helm uninstall` that would
+    race it.
+    """
+    captured = set(re.findall(r'(\w+_pid)="\$!"', SCRIPT_TEXT))
+    assert captured == {"forward_pid", "prober_pid", "fault_upgrade_pid"}, captured
+    body = SCRIPT_TEXT[
+        SCRIPT_TEXT.index("stop_background() {") : SCRIPT_TEXT.index("on_exit() {")
+    ]
+    for name in captured:
+        assert name in body, name
+        # Initialised before the trap can reach it: under `nounset` a cleanup
+        # function naming an unassigned variable is itself an error, and that
+        # error would fire instead of the cleanup.
+        assert f'{name}=""' in SCRIPT_TEXT, name
+
+
+def test_the_exit_trap_names_the_signals_the_siblings_name() -> None:
+    """Bash usually runs an EXIT trap on a signal; on Git Bash, usually is not
+    a guarantee, and this script leaves more behind than either sibling."""
+    assert "trap on_exit INT TERM EXIT" in SCRIPT_TEXT
+    for sibling in (
+        "kubernetes-certification.sh",
+        "kubernetes-multi-replica-certification.sh",
+    ):
+        text = (REPO_ROOT / "scripts" / "environment" / sibling).read_text(
+            encoding="utf-8"
+        )
+        assert "trap on_exit INT TERM EXIT" in text, sibling
+
+
+def test_no_query_is_piped_straight_into_a_parser() -> None:
+    """A parser reading a query that failed prints a traceback over the refusal.
+
+    Both still abort the run, so this is about what the operator is shown: two
+    failures for one cause reads as two causes.
+    """
+    offenders = [
+        line
+        for line in SCRIPT_LINES
+        if "require_query" in line and "| python" in line.replace("|\n", "|")
+    ]
+    assert not offenders, offenders
+
+
+def test_no_collected_value_falls_back_to_empty_on_an_unanswered_query() -> None:
+    """An unanswered query is not an empty value.
+
+    `record_stage` used to write `|| value=""` for four fields. Three of them may
+    legitimately be empty — the service version before the upgrade, and either
+    pod name while nothing of that component is ready — so an API server that
+    refused the query was indistinguishable from the release genuinely having
+    nothing to report, and the run would then have reported that the upgrade
+    never reached the workload.
+    """
+    body = SCRIPT_TEXT[
+        SCRIPT_TEXT.index("record_stage() {") : SCRIPT_TEXT.index(
+            "# --- the known-good release"
+        )
+    ]
+    assert '|| service_version=""' not in body
+    assert '|| verify_command=""' not in body
+    assert '|| runtime_pod=""' not in body
+    assert '|| api_pod=""' not in body
+    assert body.count("An unanswered query is not") >= 3
 
 
 def test_the_script_reads_the_byte_count_off_the_workload() -> None:

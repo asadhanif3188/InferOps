@@ -136,7 +136,8 @@ New:
 - `tools/helm_upgrade_rollback/__init__.py`, `core.py`, `__main__.py` — the
   reader, the assertions, the two observations, the record, and the CLI.
 - `scripts/environment/helm-upgrade-rollback.sh` — the operating script.
-- `tests/architecture/test_helm_upgrade_rollback.py` — 129 checks.
+- `tests/architecture/test_helm_upgrade_rollback.py` — 143 checks, one of which
+  skips where the host does not permit creating a symlink.
 - `docs/environment/helm-upgrade-rollback.md` — the procedure.
 - `docs/proof/environment/v1-s3-008-pr1-validation.md` — this record.
 
@@ -160,14 +161,14 @@ every one of them reads files.
 
 | Command | Result |
 |---|---|
-| `python -m pytest tests/architecture/test_helm_upgrade_rollback.py -q` | 129 passed, 1 skipped |
-| `python -m pytest -q` | the default lane, green |
+| `python -m pytest tests/architecture/test_helm_upgrade_rollback.py -q` | 142 passed, 1 skipped |
+| `python -m pytest -q` | 7,090 passed, 29 skipped, 14 deselected |
 | `python -m ruff check .` | clean |
 | `python -m ruff format --check .` | clean |
-| `python -m mypy` | clean |
+| `python -m mypy` | 28 pre-existing errors in 25 files, none in this change |
 | `python -m tools.helm_upgrade_rollback check` | descriptor accepted; `execution not started` |
 | `bash -n scripts/environment/helm-upgrade-rollback.sh` | parses |
-| `shellcheck scripts/environment/helm-upgrade-rollback.sh` | see below |
+| `shellcheck scripts/environment/helm-upgrade-rollback.sh` | **not run**: shellcheck is not installed on this host |
 | `git diff --check` | no whitespace errors |
 
 The one skip is the symlink test: creating a directory symlink needs a privilege
@@ -179,18 +180,18 @@ check it could not perform.
 It establishes that the descriptor agrees with the certification, the chart, the
 chart's schema, the chart's validation template, `lib.sh`, and the model source
 record; that thirty-two ways of weakening the descriptor are each refused with a
-message naming what was weakened; that every way of making a run look better than
-it was — a baseline that was never healthy, a candidate the cluster never
-applied, a candidate served by the pod that was already serving, a healthy
-"unhealthy" candidate, a deadline read as health, a decisive signal with a zero
-exit code, a failure read off another workload, a candidate that never scheduled,
-a failing pod that was the serving pod, a rollback that left the fault in place, a
-rollback to the wrong revision, a rollback recorded as the revision it restored, a
-clock that runs backwards, two clocks that disagree, a window nobody sampled, a
-mock answering afterwards, a mock adapter kind, an absent token-usage
-declaration, an empty completion, and token counts that do not add up — stops the
-run; and that the operating script has the safety properties this project
-requires of anything that operates a cluster.
+message naming what was weakened; that **thirty-nine** ways of making a run look
+better than it was each stop it, among them a baseline that was never healthy, a
+candidate the cluster never applied, a candidate served by the pod that was
+already serving, a healthy "unhealthy" candidate, a deadline read as health, a
+decisive signal with a zero exit code, a failure read off another workload, a
+candidate that never scheduled, a failing pod that was the serving pod, a
+rollback that left the fault in place, a rollback to the wrong revision, a
+rollback recorded as the revision it restored, a clock that runs backwards, two
+clocks that disagree, a window nobody sampled, a mock answering afterwards, a
+mock adapter kind, an absent token-usage declaration, an empty completion, and
+token counts that do not add up; and that the operating script has the safety
+properties this project requires of anything that operates a cluster.
 
 It establishes **nothing** about what happens when it is run. Every fact it reads
 is a document this suite wrote. Every answer the restored release gives is a
@@ -202,13 +203,115 @@ neither is a synthetic answer for a model's.
 The `local real Kubernetes` label the module writes is truthful only for an
 authorized run against the real release. Nothing in this change produces it.
 
+## What was checked against the chart itself, offline
+
+`helm template` renders locally and contacts no cluster, so three claims this
+change makes about the chart were checked rather than asserted. Every command
+below was run from the repository root against
+`charts/inferops-llm/ci/real-values.yaml`, which is a render fixture and is not
+installable.
+
+| Question | Command | Result |
+|---|---|---|
+| Does the chart **accept** the injected fault? | `helm template inferops charts/inferops-llm --namespace inferops-release --values charts/inferops-llm/ci/real-values.yaml --set model.artifact.sizeBytes=1` | Renders. The verification script becomes `if [ "$present" != "1" ]`, which the pinned 1,834,426,016-byte artifact cannot satisfy |
+| Does the controlled change **roll** the workload? | the same, with `--set telemetry.serviceVersion=v1-s3-008-candidate` | Both Deployments' `inferops.io/configuration-checksum` values change against the unmodified render |
+| Does the fault **spare** the platform API? | diff of the two rendered pod templates | The platform API's pod template is **byte-identical** across the fault; the serving runtime's differs |
+
+The third is the one that matters, and it was an assertion in the descriptor
+before it was a measurement. It is what makes the impact record mean anything: if
+the fault rolled the API as well, every readiness probe during the failure window
+would be asking a tier that was itself being replaced, and "no caller saw a
+failure" would be a statement about two rollouts rather than one. The chart
+itself is now the proof — `model.artifact.sizeBytes` appears in exactly one
+template outside the validation helper, the verification script that only the
+runtime's Deployment includes, and it is absent from `inferops-llm.derivedEnv` —
+and a test asserts that structure so the property survives an edit to the chart.
+
+These renders were **not** installed, applied, or sent anywhere. `helm template`
+is local text substitution.
+
+## What independent review found, and what changed
+
+Two independent reviews ran before the push: one over the whole change, one over
+the operating script alone. Between them they raised one HIGH, two MEDIUM, and
+four LOW findings. Every one is fixed.
+
+**HIGH — the deliberately-failing `helm upgrade` was not in the cleanup path.**
+It is backgrounded so that the detection is not a timeout, and its pid was
+captured where it was started rather than declared with the other two. A run that
+ended between backgrounding it and waiting for it — an interrupt during the
+detection loop, or a refusal inside it — would have left a `helm upgrade` running
+detached against a real release, still writing that release's history, while the
+script printed the `helm uninstall` that would race it. All three pids are now
+declared together and `stop_background` kills and reaps each one. A test derives
+the set of backgrounded pids from the script and fails if any of them is missing
+from the cleanup function, so this cannot be reintroduced by adding a fourth.
+
+**MEDIUM — the exit trap named only `EXIT`.** Both sibling certification scripts
+use `trap on_exit INT TERM EXIT`, and one of them carries the reason in a
+comment: Bash normally runs an EXIT trap when a signal terminates the shell, but
+on Git Bash signal delivery to a native child is less predictable. This script
+backgrounds *more* than either sibling and had dropped the convention. It now
+names the signals, and a test asserts that all three scripts do.
+
+**MEDIUM — three queries were piped straight into a parser.** `require_query ...
+| python -c ...` aborts correctly when the query fails, but python still runs
+against empty input first and prints a JSON traceback on top of the refusal that
+explains it. Two failures for one cause reads as two causes. All three now
+capture and then parse, which is what the rest of the file already did, and a
+test refuses the pipe shape.
+
+**LOW — `--port` accepted `0` and values above 65535.** `kubectl port-forward`
+reads `0` as "pick an ephemeral port", this script never parses back the port
+that was bound, and the run would have failed later as an unopened forward rather
+than immediately as a bad argument. It is now range-checked.
+
+**LOW — three descriptor fields reached a label selector and a jsonpath filter
+unchecked.** The candidate value was held to a plain-identifier shape at the
+point of use and the two component names and the verification container name were
+not. They are committed, validated values, so this was never exploitable — but a
+rule applied to one interpolation and not the next is a rule a later edit reads as
+optional. All three are now held to a DNS-1123 label.
+
+**LOW — the detection poll interval had no floor in the shell.** Below 1,000 ms
+the millisecond-to-second division truncates to zero and the loop becomes a busy
+poll against the API server. The Python validator refuses it, and the script
+already carries a comment explaining why a guard that depends on the order two
+programs run in is not enough; the magnitude half of that argument is now
+enforced beside the numeric half.
+
+**LOW — a docstring described the chart's refusal when it was testing this
+module's own floor.** Reworded; the test that actually reads `_validate.tpl` is
+named beside it.
+
+Two further defects were found by the author's own pass and are fixed here:
+
+**`record_stage` turned an unanswered query into an empty value.** Four fields
+used `|| value=""`. Three of them may legitimately be empty — the service version
+before the upgrade, and either pod name while nothing of that component is ready
+— so an API server that refused the query was indistinguishable from the release
+genuinely having nothing to report, and the run would then have reported that the
+upgrade never reached the workload, which names the wrong thing entirely. This is
+the same reading `helm-lifecycle.sh` already refuses for claim counts. The status
+is now checked and the value is not, and a test refuses the fallback shape.
+
+**Nine assertions had no test behind them.** A check nobody has seen fail is a
+check nobody has seen. Each now has one: stage names that are not the four, a
+baseline slower than a healthy rollout, a controlled upgrade over budget, a
+release test passing against a stage recorded as failed, an unhealthy stage
+shorter than the detection inside it, a rollback over budget, a rollback to a
+byte count that is neither the injected one nor the pin, a run that recorded no
+recovery at all, and an impact window that does not run forwards.
+
 ## Deferred, and depended on
 
 - **The run itself.** It needs an InferOps API image, which does not exist. When
   one does, the run is `scripts/environment/helm-upgrade-rollback.sh run --values
   ... --confirm-real-kubernetes` and its record goes beside this one.
-- **`shellcheck`.** If it is not installed on the reviewing host, that row above
-  says so plainly rather than claiming a clean scan.
+- **`shellcheck`.** It is not installed on this host, so it was not run. The
+  script parses under `bash -n`, and every rule
+  `tests/architecture/test_cluster_lifecycle_safety.py` states for a script that
+  operates a cluster is applied to it, but neither of those is a shellcheck scan.
 - **A second injected fault.** One is injected. A runtime that starts and answers
   wrongly is a different experiment and is not this PR's.
 - **Load.** No request load is generated anywhere in V1, so nothing here says
