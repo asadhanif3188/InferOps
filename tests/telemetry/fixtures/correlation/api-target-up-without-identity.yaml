@@ -1,0 +1,41 @@
+# An API target that answers a scrape and publishes no identity.
+#
+# `up` reads 1, the throughput counter moves, and every availability query says the
+# release is healthy. What is missing is `inferops_build_info`, so nothing can say
+# which build produced any of it -- and the identity join returns nothing at all
+# rather than returning the throughput without its labels.
+#
+# Synthetic. Nothing was scraped and no value here was measured.
+scenarioId: api-target-up-without-identity
+profile: real
+evaluationInstant: 600
+applyCollectorRelabel: true
+description: >-
+  A target that is up and useless. up alone cannot tell it from one that is up and
+  correct; the identity-absence rule is what can.
+
+labelSets:
+  apiA: &apiA
+    job: inferops-inferops-llm-platform-api
+    k8s_namespace: inferops-platform
+    k8s_component: platform-api
+    instance: inferops-inferops-llm-api-6d4f8-2xkqp
+  runtimeC: &runtimeC
+    job: inferops-inferops-llm-serving-runtime
+    k8s_namespace: inferops-platform
+    k8s_component: serving-runtime
+    instance: inferops-inferops-llm-runtime-0
+    deployment_environment: dev
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_runtime_id: llama-cpp-server
+  work: &work
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+
+series:
+  - {name: up, labels: {<<: *apiA}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: up, labels: {<<: *runtimeC}, points: [[0, 1], [300, 1], [600, 1]]}
+  - {name: inferops_inference_requests_total, labels: {<<: [*apiA, *work], inferops_outcome: success}, points: [[0, 0], [300, 300], [600, 900]]}
+  - {name: inferops_inference_requests_in_flight, labels: {<<: [*apiA, *work]}, points: [[0, 0], [300, 4], [600, 3]]}
+  - {name: "llamacpp:requests_processing", labels: {<<: *runtimeC}, points: [[0, 0], [300, 1], [600, 2]]}

@@ -554,6 +554,16 @@
       "note": null
     },
     {
+      "module": "tests/telemetry/test_telemetry_correlation.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The published correlation queries: every label one names is an attribute the catalog permits on a series or a target label the collection record says the collector attaches, every series one reads is one this release produces, every join matches on a key both sides carry, a query claiming an answer a signal nothing emits cannot give is refused, and every query returns the declared result over the committed synthetic fixtures.",
+      "claims": [
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+      ],
+      "note": null
+    },
+    {
       "module": "tests/telemetry/test_telemetry_catalog.py",
       "layer": "documentation",
       "marker": "docs",

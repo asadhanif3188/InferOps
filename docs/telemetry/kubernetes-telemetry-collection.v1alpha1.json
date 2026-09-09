@@ -15,6 +15,7 @@
   ],
   "runtimeFeasibilityRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
   "evidenceRef": "docs/proof/telemetry/v1-s3-007-pr1-validation.md",
+  "correlationRef": "docs/telemetry/telemetry-correlation-queries.v1alpha1.json",
   "collectionStatus": {
     "configurationRendered": true,
     "configurationKind": "v1/ConfigMap holding a Prometheus scrape_configs fragment and a recording-rule group set",

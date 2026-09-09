@@ -26,6 +26,8 @@ and never a key. None of those is a convention anybody has to remember.
 | [API instrumentation](api-instrumentation.md) | What the API actually emits: the eight metrics, a scrape, a record, the variables a deployment states its identity in, and what is still absent |
 | [Collecting telemetry in Kubernetes](kubernetes-telemetry-collection.md) | What a collector would scrape from an installed release: two jobs, the labels the collector attaches and the ones it deliberately does not, what `instance` costs, the native runtime mapping, and the signals that have no source |
 | [`kubernetes-telemetry-collection.v1alpha1.json`](kubernetes-telemetry-collection.v1alpha1.json) | The authoritative form of that document, compared against the committed chart renders by [`tests/telemetry/`](../../tests/telemetry/) |
+| [Correlated telemetry queries](telemetry-correlation-queries.md) | What an operator could ask of a store holding it: twenty-three questions, the vocabulary a query may use, the identity join, ten deliberately wrong queries and the rule that refuses each, and the six questions with no answer |
+| [`telemetry-correlation-queries.v1alpha1.json`](telemetry-correlation-queries.v1alpha1.json) | The authoritative form of that document, checked against the catalog and the collection record and evaluated against fixtures by [`tests/telemetry/`](../../tests/telemetry/) |
 | [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json) | The authoritative form of both, validated by [`tests/telemetry/`](../../tests/telemetry/) |
 | [Evidence records and templates](../proof/README.md) | The four templates a record is written from, and the sections every record carries |
 
@@ -71,6 +73,13 @@ The chart now renders a scrape configuration, and that changes none of the sente
 above. A configuration describing what a collector would find is not a collector,
 and [the collection document](kubernetes-telemetry-collection.md) is explicit that
 nothing reads it.
+
+There are now queries as well, and they change none of it either. Every one of them
+has been parsed, checked against the catalog's placement rules, and evaluated against
+synthetic fixtures by this repository's own evaluator; **no Prometheus has parsed,
+loaded, or evaluated a single one**. [The query document](telemetry-correlation-queries.md)
+publishes what each would return, what an empty result would mean, and the four things
+that cannot be correlated at all.
 
 The one thing here that was measured rather than specified is the list of series the
 selected serving runtime exposes. That came from
