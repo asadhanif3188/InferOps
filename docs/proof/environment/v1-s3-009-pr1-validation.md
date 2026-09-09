@@ -136,7 +136,7 @@ holds the page to the files that own what it quotes, in nine groups:
 New:
 
 - `docs/environment/kubernetes-troubleshooting.md` — the guide.
-- `tests/architecture/test_kubernetes_troubleshooting.py` — 104 checks.
+- `tests/architecture/test_kubernetes_troubleshooting.py` — 112 checks.
 - `docs/proof/environment/v1-s3-009-pr1-validation.md` — this record.
 
 Changed:
@@ -158,10 +158,10 @@ Every command below was run from the repository root on the reference host on
 
 | Command | Result |
 |---|---|
-| `uv run --locked python -m pytest tests/architecture/test_kubernetes_troubleshooting.py -q` | 104 passed |
-| `uv run --locked python -m pytest -q` | 7,205 passed, 29 skipped, 14 deselected |
+| `uv run --locked python -m pytest tests/architecture/test_kubernetes_troubleshooting.py -q` | 112 passed |
+| `uv run --locked python -m pytest -q` | 7,213 passed, 29 skipped, 14 deselected |
 | `uv run --locked python -m ruff check .` | `All checks passed!` |
-| `uv run --locked python -m ruff format --check .` | `325 files already formatted` |
+| `uv run --locked python -m ruff format --check .` | `326 files already formatted` |
 | `uv run --locked python -m mypy` | `Success: no issues found in 176 source files` |
 | `uv run --locked python -m tools.workload_policy charts/inferops-llm/ci/rendered` | `ok 2 file(s) satisfy the workload policy`, exit `0` |
 | `uv run --locked python -m tools.telemetry_collection charts/inferops-llm/ci/rendered` | `ok 2 file(s) satisfy the collection policy`, exit `0` |
@@ -169,18 +169,26 @@ Every command below was run from the repository root on the reference host on
 | `scripts/environment/terraform-prerequisites.sh check` | `format and validation passed. Nothing was contacted and no state was read.`, exit `0` |
 | `helm lint charts/inferops-llm --values charts/inferops-llm/ci/real-values.yaml` | `1 chart(s) linted, 0 chart(s) failed`, exit `0` |
 | `helm template inferops charts/inferops-llm --namespace inferops-platform --values charts/inferops-llm/ci/real-values.yaml` | rendered, and identical to the committed `real.expected.yaml` |
+| `docker version --format "{{.Server.Version}}"` | `29.7.2` |
+| `docker info --format "{{.NCPU}} CPUs; {{.MemTotal}} bytes"` | `12 CPUs; 10432536576 bytes` |
+| `uv run --locked python -m tools.model_acquisition clean` (dry run) | `cleanup retained; 1834426016 bytes found` / `dry run; pass --confirm to remove this cache`, exit `0`. **Nothing was removed** |
 | `git diff --check` | no whitespace errors |
 
-The two remaining documented commands could not be executed on this host, and
+The last three were added after independent review pointed out that the PR's own
+"verify non-destructive examples where possible" applies to them and they had
+been skipped. The `clean` dry run is the page's own recommended first form and
+changes nothing; `--confirm` was **not** passed.
+
+The two remaining documented **scripts** could not be executed on this host, and
 that is reported rather than glossed:
 
-| Command | Why not |
+| Script | What happened |
 |---|---|
-| `scripts/environment/cluster-verify.sh` | refused with `'kind' is not on PATH`. `kind` is not installed here |
-| `scripts/environment/verify-clean.sh` | the same refusal, for the same reason |
+| `scripts/environment/cluster-verify.sh` | `[inferops] FAILED: 'kind' is not on PATH. See docs/environment/local-cluster.md.`, exit 1 |
+| `scripts/environment/verify-clean.sh` | the same message, for the same reason |
 
-Both refusals are the guard the scripts are supposed to apply, and both name the
-document that says how to install the missing tool. Neither was overridden.
+Both are the prerequisite guard the scripts are supposed to apply, and both name
+the document that says how to install the missing tool. Neither was overridden.
 `preflight.sh`, `cluster-up.sh`, `smoke.sh`, `cluster-down.sh`, `proof.sh`,
 `helm-lifecycle.sh`, `kubernetes-certification.sh`,
 `kubernetes-multi-replica-certification.sh`, and `helm-upgrade-rollback.sh` were
@@ -196,14 +204,32 @@ is the committed one; that the Terraform configuration the page describes
 formats, initialises, and validates; and that the two cluster-dependent read-only
 scripts refuse cleanly rather than misbehaving when their tool is absent.
 
-**Not verified**: that any of the recoveries recovers. Every `helm install`,
-`helm upgrade`, `helm rollback`, `helm uninstall`, `terraform apply`,
-`terraform destroy`, `kubectl port-forward`, `kubectl logs` against a real pod,
-probe, scrape, and completion the page describes is unexecuted — by this change
-and by anybody. A described recovery and an executed one are different kinds of
+**Not verified**: that any of the recoveries recovers, and that any
+cluster-dependent read returns what the page says it returns. Every
+`helm install`, `helm upgrade`, `helm rollback`, `helm uninstall`,
+`terraform apply`, `terraform destroy`, `kubectl port-forward`, and — because
+there is no cluster to read — every `kubectl get`, `kubectl describe`,
+`kubectl get events`, and `kubectl logs` the page prints, along with every probe,
+scrape, and completion it describes, is unexecuted — by this change and by
+anybody. A described recovery and an executed one are different kinds of
 statement, and
 [the certification levels](../../testing/certification.md) are where that
 distinction is defined.
+
+## One finding this PR did not fix
+
+Independent review established that
+[the prerequisite document](../../environment/platform-prerequisites.md) says
+`terraform destroy` "is the only operation in this repository that reclaims the
+model weights". That is not quite true: the accepted `kind` node declares no
+`extraMounts` and the claim takes the cluster's default storage class, so the
+bytes live inside the node container and `cluster-down.sh` reclaims them too.
+
+This page was corrected to say "without destroying the cluster". **The
+prerequisite document was not**, because it is outside this PR's boundary, and
+correcting another document's accepted wording is a change that should be made
+deliberately rather than in passing. It is recorded here so the next change to
+that document has it in front of them.
 
 ## Limitations
 
@@ -226,6 +252,45 @@ distinction is defined.
 - **The suite cannot read prose.** A symptom row whose description has drifted
   from the behaviour it describes will not fail a check, in the same way the
   ownership document's own tests cannot read its handoff text.
+
+## What two independent reviews found
+
+Both ran before this record was finished, and both are reflected above rather
+than summarised and set aside.
+
+The first re-derived every number, name, path, message string, exit code, port,
+probe setting, resource figure, byte count, digest, and script behaviour from its
+stated source and found **no discrepancy and no overclaim**. It raised two LOW
+notes, one of which was actionable: `cluster-down.sh` already runs
+`verify-clean.sh` itself, so listing the residue check beside it invited a
+reader to run it twice.
+
+The second found **two HIGH, six MEDIUM, and six LOW**, and every one of them is
+fixed:
+
+| | Finding | Fix |
+|---|---|---|
+| HIGH | The blocker's own symptom was the wrong string. `real-values.yaml` sets `api.image.pullPolicy: Never`, so the kubelet reports `ErrImageNeverPull` and never attempts a pull — the page named only `ErrImagePull`, so its single most likely lookup would not have matched | Both rows now exist, each tied to the policy that produces it, and the opening paragraph no longer says the install "fails on the image pull" |
+| HIGH | Two of "the three that do need a cluster" do not. `preflight.sh` is the *pre-cluster* check and `verify-clean.sh` asserts absence — so a reader with no working cluster skipped the one check that would have told them why | Regrouped as needing the cluster *tooling*, with only `cluster-verify.sh` needing a cluster, and `preflight.sh` called out as the one to run first |
+| MEDIUM | "The only operation in this repository that reclaims the model weights" is false: the node declares no `extraMounts`, so the cluster teardown reclaims them too | Qualified to "without destroying the cluster", in this page and in the changelog, with the reason stated |
+| MEDIUM | `kind load docker-image` printed without `--name` targets kind's default `kind` cluster — the exact accident the page's own rule 2 exists to prevent, and it escaped the scoping check by sitting in a table cell | Scoped to `--name inferops-dev`, and the suite now reads `kind` commands out of the whole document rather than only out of fenced blocks |
+| MEDIUM | The record claimed "the two remaining documented commands" could not run. Three more were runnable and had been skipped | All three run and recorded above; the sentence now says "scripts", and the cluster-dependent `kubectl` reads are named in the not-verified list |
+| MEDIUM | `ruff format --check` was published as 325 and reproduces as 326 — the figure was captured before this record existed, so it did not count itself | Corrected |
+| MEDIUM | Cleanup step 4 carried no cost warning and did not mention that a Terraform state file survives the cluster it described | Both stated |
+| MEDIUM | "None of them is enforced" dropped the "in the build tested" qualifier its own source record carries, at the one point where the page tells an operator to stop investigating | Qualifier restored inline, and asserted |
+| LOW | No command stated its working directory, though every path is repository-relative | A fifth rule, first in the list |
+| LOW | The page said the scripts print `WARNING:`; a missing prerequisite prints `FAILED:` and exits — which is what a reader without `kind` actually sees | Both prefixes explained, and the difference between them |
+| LOW | "Nothing in this tooling has a force flag" is true of `tools/` and not of `cluster-up.sh --recreate` | Scoped to the tools, with the one bypass named |
+| LOW | The absent-artifact refusal is a *different* message from the byte-count one, and is the likelier of the two given the acquisition job is deferred | Split into two rows, and the suite now reads both messages out of the render |
+| LOW | The logs section was the only one of the twelve with no symptom table | It has one |
+| LOW | "Not a sequence" is in slight tension with step 2 refusing while a release is installed | Stated as the one ordering constraint, and named as a refusal rather than a sequence |
+
+**Eight of the fifteen findings across both reviews are now machine-checked
+rather than fixed and trusted**, which is the difference between correcting a
+document and stopping it from regressing: the pull-policy pair, the `kind`
+scoping, the two verification refusals, the cluster teardown's effect on the
+weights, the residue-check redundancy, the enforcement qualifier, the rule count,
+and which checks need a cluster. The suite grew from 104 checks to 112.
 
 ## Acceptance criteria
 

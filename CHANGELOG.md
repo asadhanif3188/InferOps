@@ -20,8 +20,9 @@ once versioned releases begin.
   **The cleanup is four operations with four blast radii and they are not a sequence**:
   `helm uninstall` leaves the namespace, its metadata, and the 1.71 GiB model cache
   standing, `terraform-prerequisites.sh destroy --confirm` cascades over the namespace
-  and is the only thing in this repository that reclaims the weights, `cluster-down.sh`
-  takes the cluster, and there is deliberately **no separate in-cluster cache deletion**
+  and is the only thing that reclaims the weights **without destroying the cluster** —
+  the node declares no `extraMounts`, so `cluster-down.sh` takes them along with the
+  cluster — and there is deliberately **no separate in-cluster cache deletion**
   because the weights live inside the Terraform-owned claim and a third command would be
   a second owner for one resource. **One section tells the reader to stop investigating**:
   the chart renders four `NetworkPolicy` objects starting from a default deny and

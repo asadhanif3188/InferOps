@@ -169,6 +169,19 @@ def _rendered(kind: str, name: str) -> dict[str, Any]:
     raise AssertionError(f"{kind}/{name} is not in the committed real render")
 
 
+def _container_by_kind_and_name(kind: str, name: str) -> str:
+    """Every init-container command line in one rendered workload, as text.
+
+    The refusals this page quotes are echoed by a shell script Helm renders into
+    the pod template, so they are read out of the render rather than retyped.
+    """
+    spec = _rendered(kind, name)["spec"]["template"]["spec"]
+    joined: list[str] = []
+    for container in spec.get("initContainers", []):
+        joined.extend(str(part) for part in container.get("command", []))
+    return "\n".join(joined)
+
+
 def _container(deployment: dict[str, Any], name: str) -> dict[str, Any]:
     spec = deployment["spec"]["template"]["spec"]
     for container in spec["containers"]:
@@ -595,20 +608,27 @@ def test_every_quoted_measurement_is_in_the_record_it_is_attributed_to(
 
 
 def test_the_network_policy_answer_is_the_one_the_experiment_recorded() -> None:
-    """The page tells the reader not to investigate the policy. That has to be why."""
+    """The page tells the reader not to investigate the policy. That has to be why.
+
+    And it has to carry the qualifier the record carries. The experiment answered
+    for one plugin build; independent review found the page stating the
+    conclusion flatly at the point where it tells an operator to stop looking,
+    which is the one place a missing caveat costs something.
+    """
     record = (
         DOCS_DIR / "proof" / "security" / "v1-s3-004-pr1-network-policy-enforcement.md"
     ).read_text(encoding="utf-8")
     assert "The answer is no." in record
+    assert "in the build tested" in record
     assert "kindnetd" in record
-    assert "none of them is\nenforced" in DOCUMENT or "none of them is" in FLOWED
+    assert "none of them was enforced in the build tested" in FLOWED
     assert "2026-09-06" in DOCUMENT and "2026-09-06" in record
 
 
 def test_the_chart_still_renders_the_policies_the_page_calls_inert() -> None:
     policies = [d for d in RENDERED_REAL if d.get("kind") == "NetworkPolicy"]
     assert len(policies) == 4, [d["metadata"]["name"] for d in policies]
-    assert "renders four\npolicy objects" in DOCUMENT or "renders four" in FLOWED
+    assert "The chart renders four policy objects" in FLOWED
 
 
 # --------------------------------------------------------------------------
@@ -684,6 +704,84 @@ def test_every_kubectl_and_helm_sample_names_its_kubeconfig_and_context() -> Non
         assert "--context" in command or "--kube-context" in command, command
 
 
+def test_every_kind_command_names_the_cluster_it_acts_on() -> None:
+    """``kind`` defaults to a cluster called ``kind``, which is not this one.
+
+    Independent review found ``kind load docker-image`` printed without
+    ``--name``: run verbatim it targets kind's own default cluster, so it either
+    errors or loads an image into somebody else's cluster. That is the accident
+    rule 2 exists to prevent, and it escaped the scoping check below because it
+    sits in a table cell rather than in a fenced block -- so this one reads the
+    whole document.
+    """
+    cluster = _lib_constant("INFEROPS_CLUSTER_NAME")
+    for match in re.finditer(r"`kind (?P<rest>[^`]+)`", DOCUMENT):
+        rest = match.group("rest")
+        if rest.split()[0] in {"get", "version", "delete"}:
+            continue
+        assert f"--name {cluster}" in rest, match.group(0)
+
+
+def test_the_expected_image_failure_matches_the_committed_values_file() -> None:
+    """The blocker's symptom is a different word under each pull policy.
+
+    ``real-values.yaml`` sets ``Never``, so the kubelet never attempts a pull and
+    reports ``ErrImageNeverPull``; the chart's own default is ``IfNotPresent``,
+    which reports ``ErrImagePull``. A page naming only the second sends the
+    reader looking for a string the committed fixture cannot produce.
+    """
+    fixture = yaml.safe_load(
+        (CHART_DIR / "ci" / "real-values.yaml").read_text(encoding="utf-8")
+    )
+    assert fixture["api"]["image"]["pullPolicy"] == "Never"
+    assert VALUES["api"]["image"]["pullPolicy"] == "IfNotPresent"
+    assert "ErrImageNeverPull" in DOCUMENT
+    assert "ErrImagePull" in DOCUMENT
+    assert "ImagePullBackOff" in DOCUMENT
+
+
+def test_both_model_verification_refusals_are_quoted() -> None:
+    """The init container has two messages, and the absent one is the likeliest.
+
+    The acquisition job is deferred and the claim is filled out of band, so an
+    empty claim is the ordinary state. Quoting only the byte-count refusal sends
+    that reader to the wrong row.
+    """
+    script = _container_by_kind_and_name("Deployment", "inferops-inferops-llm-runtime")
+    refusals = re.findall(r"REFUSED: [^\"\n]+", script)
+    assert len(refusals) == 2, refusals
+    for refusal in refusals:
+        assert refusal in DOCUMENT, refusal
+
+
+def test_the_cluster_teardown_is_not_described_as_sparing_the_weights() -> None:
+    """The accepted node declares no extraMounts, so a teardown takes them too.
+
+    An earlier draft called the Terraform destroy "the only operation in this
+    repository that reclaims the model weights". It is not: with the claim on the
+    cluster's default storage class and no host mount, the bytes live inside the
+    node container and ``cluster-down.sh`` reclaims them as well.
+    """
+    kind_config = yaml.safe_load(
+        (REPO_ROOT / "deploy" / "kind" / "inferops-dev.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    for node in kind_config["nodes"]:
+        assert "extraMounts" not in node, node
+    assert "without destroying the cluster" in DOCUMENT
+    assert "the only operation in this repository that reclaims" not in FLOWED
+
+
+def test_the_teardown_does_not_tell_the_reader_to_re_run_the_residue_check() -> None:
+    """``cluster-down.sh`` runs ``verify-clean.sh`` itself at the end of every run."""
+    teardown = (REPO_ROOT / "scripts" / "environment" / "cluster-down.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "verify-clean.sh" in teardown
+    assert "runs `verify-clean.sh` itself" in DOCUMENT
+
+
 def test_no_sample_deletes_a_namespace_or_prunes_the_engine_by_hand() -> None:
     """Both are the exact accidents the scoped scripts exist to prevent."""
     for forbidden in (
@@ -727,6 +825,36 @@ def test_the_page_keeps_the_statement_it_is_not_entitled_to_drop(
     statement: str,
 ) -> None:
     assert " ".join(statement.split()) in FLOWED, statement
+
+
+def test_the_rule_count_matches_the_rules() -> None:
+    """A numbered list whose headline count drifted is the cheapest kind of wrong."""
+    numbers = {"Four": 4, "Five": 5, "Six": 6, "Seven": 7}
+    match = re.search(r"^(?P<word>[A-Z][a-z]+) rules\.", PROSE, re.MULTILINE)
+    assert match is not None, "the rules section lost its headline count"
+    stated = numbers[match.group("word")]
+    listed = len(re.findall(r"^\d+\. \*\*", PROSE, re.MULTILINE))
+    assert stated == listed, {"headline says": stated, "list holds": listed}
+
+
+def test_the_page_says_which_checks_need_a_cluster_and_which_need_the_tooling() -> None:
+    """Only one of the three script checks needs a cluster to exist.
+
+    ``preflight.sh`` is the pre-cluster check and ``verify-clean.sh`` asserts
+    absence; grouping all three as "need a cluster" sends the reader with no
+    working cluster past the one check that would have told them why.
+    """
+    preflight = (REPO_ROOT / "scripts" / "environment" / "preflight.sh").read_text(
+        encoding="utf-8"
+    )
+    residue = (REPO_ROOT / "scripts" / "environment" / "verify-clean.sh").read_text(
+        encoding="utf-8"
+    )
+    # Neither asserts the target cluster; both tolerate its absence.
+    assert "inferops::assert_target_cluster" not in preflight
+    assert "inferops::assert_target_cluster" not in residue
+    assert "Run `preflight.sh` first when you have no working cluster" in DOCUMENT
+    assert "Only the middle one needs a cluster to exist" in DOCUMENT
 
 
 def test_the_cleanup_section_separates_all_four_radii() -> None:

@@ -15,9 +15,12 @@ observed.
 with.** `platform-api-container-image` is `planned` in
 [the ownership inventory](../architecture/resource-ownership.md), no `Dockerfile`
 is committed anywhere in this repository, and a release whose API image does not
-resolve never becomes ready — so `helm install --wait` fails on the image pull
-before any of the release symptoms below can occur. That is a blocker and not a
-caveat. Nothing on this page may be cited as evidence that the release installs,
+resolve never becomes ready — so `helm install --wait` reaches its timeout before
+any of the release symptoms below can occur. **Which failure the kubelet reports
+depends on the pull policy**, and the two are different words: see
+[the scheduling table](#scheduling-resources-and-out-of-memory).
+
+That is a blocker and not a caveat. Nothing on this page may be cited as evidence that the release installs,
 serves, fails, recovers, or uninstalls.
 
 This page is organised by **what you observed**, because the observation is the
@@ -30,10 +33,13 @@ layer usually only tells you *which pod* the host-local page is about.
 
 ## Before anything else
 
-Four rules. Each one is the difference between a diagnosis and a second
+Five rules. Each one is the difference between a diagnosis and a second
 incident.
 
-1. **Never let `kubectl` or `helm` pick a context.** Both read an ambient
+1. **Run everything from the repository root.** Every path on this page is
+   repository-relative — the kubeconfig, the scripts, the rendered manifests — and
+   a command run from elsewhere reads a different file or none at all.
+2. **Never let `kubectl` or `helm` pick a context.** Both read an ambient
    `KUBECONFIG` and both act on whatever the current context names. Every
    invocation in this repository goes through `inferops::kubectl` or
    `inferops::helm` in
@@ -42,16 +48,16 @@ incident.
    [`tests/architecture/test_cluster_lifecycle_safety.py`](../../tests/architecture/test_cluster_lifecycle_safety.py)
    fails the build if one stops doing so. When you run a command by hand, name
    them yourself — see [the two exports](#cluster-and-context) below.
-2. **A diagnostic must not change anything.** Every command in a `diagnose`
+3. **A diagnostic must not change anything.** Every command in a `diagnose`
    block on this page is read-only. The ones that install, delete, or reclaim are
    marked **destructive** and are each a separate deliberate decision.
-3. **Never paste a prompt, a completion, a runtime response body, or a request
+4. **Never paste a prompt, a completion, a runtime response body, or a request
    log line into an issue.** [The redaction rules](../telemetry/redaction.md)
    forbid content capture and a troubleshooting report is not an exemption.
    Object states, phases, reasons, exit codes, revision numbers, byte counts, and
    durations are sufficient for everything below, and they are what the tooling
    prints.
-4. **Read the exit code before the message.** A refusal and a failure are
+5. **Read the exit code before the message.** A refusal and a failure are
    different events here, and the number tells you which one you have before you
    read a word.
 
@@ -79,13 +85,19 @@ scripts/environment/terraform-prerequisites.sh check
 | `helm_upgrade_rollback check` | Is the upgrade/rollback descriptor internally consistent and consistent with the certification it shares targets with | a checkout |
 | `terraform-prerequisites.sh check` | Is the prerequisite configuration formatted, initialisable, and valid | `terraform` on `PATH` |
 
-Then the three that do need one:
+Then the three that need the cluster **tooling** — `kind`, `kubectl`, and a
+running engine. Only the middle one needs a cluster to exist:
 
 ```text
-scripts/environment/preflight.sh        # host capacity and tool skew; changes nothing
+scripts/environment/preflight.sh        # can this host hold a cluster; changes nothing
 scripts/environment/cluster-verify.sh   # is the cluster present, ours, pinned, healthy
 scripts/environment/verify-clean.sh     # is anything left behind; deletes nothing
 ```
+
+**Run `preflight.sh` first when you have no working cluster**, not last. It is the
+pre-cluster check — host capacity, tool presence, version skew — and it reports a
+cluster's existence only in passing. `verify-clean.sh` is its mirror: it asserts
+that *nothing* is there, so it needs the engine rather than a cluster.
 
 `cluster-verify.sh` answers five questions and runs all five before reporting, so
 a cluster that is wrong in three ways tells you all three at once. It is
@@ -106,16 +118,22 @@ The workflows here share one vocabulary, and both Python tools use it.
 **A refusal is not a bug.** Every `3` is a guard doing its job: an unowned
 cluster, a descriptor that disagrees with the record that decides it, a forward
 that is not loopback, a destroy without `--confirm`. The recovery is to satisfy
-the precondition, never to bypass the guard, and nothing in this tooling has a
-force flag.
+the precondition, never to bypass the guard, and **no tool under `tools/` has a
+force flag**. The scripts have exactly one bypass — `cluster-up.sh --recreate` —
+and it is destructive, named on this page where it applies, and not a way past
+any of the refusals above.
 
 `5` is the one worth reading carefully. A candidate pod the host could not
 schedule never ran the fault it was supposed to run, so the upgrade/rollback
 workflow reports `INCONCLUSIVE` rather than claiming a detection it did not make.
 The remedy for a `5` is capacity, not a retry.
 
-The shell scripts exit non-zero on any failure and print `[inferops] WARNING:`
-lines for each problem found. They do not use the numeric vocabulary above.
+The shell scripts do not use that vocabulary. They exit non-zero on any failure
+and print one of two prefixes, and the difference is worth knowing before you
+read one: `[inferops] WARNING:` accumulates a problem and keeps checking, so a
+cluster wrong in three ways reports all three; `[inferops] FAILED:` is a
+precondition that stopped the run, and it exits immediately. A missing `kind` or
+`kubectl` produces the second.
 
 ## Cluster and context
 
@@ -182,8 +200,9 @@ kubectl --kubeconfig .kube/inferops-dev.config --context kind-inferops-dev \
 | `Pending`, event `Insufficient cpu` or `Insufficient memory` | The single kind node cannot satisfy the request. This is capacity, not configuration |
 | `Pending` with no scheduling event at all | Usually an unbound volume rather than capacity — see [storage](#model-cache-and-storage) |
 | `ContainerCreating` for minutes | An image pull, or a volume mount that has not completed. `describe` names which |
-| `ErrImagePull` / `ImagePullBackOff` on the API container | **The expected state today.** No InferOps API image is published. Nothing in this repository can fix it |
-| `ErrImagePull` on the runtime or `verify-model` | The digest-pinned image is not in the node. `kind load docker-image` puts one there; nothing here pulls implicitly |
+| `ErrImageNeverPull` on the API container | **The expected state today**, for the committed [`real-values.yaml`](../../charts/inferops-llm/ci/real-values.yaml): it sets `api.image.pullPolicy: Never`, so the kubelet never attempts a pull and says the image is not present. No InferOps API image is published, and nothing in this repository can fix it |
+| `ErrImagePull` / `ImagePullBackOff` on the API container | The same absent image, seen through the chart's shipped `IfNotPresent` default instead. Same cause, same non-fix |
+| `ErrImagePull` on the runtime or `verify-model` | The digest-pinned image is not in the node. `kind load docker-image <image> --name inferops-dev` puts one there — **name the cluster**, or kind loads into its own default `kind` cluster instead. Nothing here pulls implicitly |
 | `OOMKilled` on `runtime` | The `3Gi` limit was reached, or the engine's own ceiling was. The two are different and the recovery differs |
 | Container killed partway through the model load | Almost always the engine's memory ceiling rather than the pod's limit |
 
@@ -227,7 +246,8 @@ kubectl --kubeconfig .kube/inferops-dev.config --context kind-inferops-dev \
 |---|---|
 | The claim is `Pending` and nothing mounts it | **Correct, not a fault.** The local provisioner binds on first consumer, which is why `wait_until_bound` defaults to `false`; a Terraform apply that waited would time out on a healthy prerequisite |
 | The claim is `Pending` and a pod is `Pending` on it | Now it matters. Read the claim's events: no storage class, or no capacity |
-| `verify-model` exits 1 with `REFUSED: the mounted model artifact does not match the pinned byte count` | The mounted file is truncated, absent under the expected path, or a different revision. The check compares the count **before** the SHA-256 read, so it fails fast |
+| `verify-model` exits 1 with `REFUSED: the mounted model cache holds no artifact for the declared revision` | **The likeliest one**, because the acquisition job is deferred and the claim is filled out of band. There is no file at the revision-scoped path: either nothing filled the claim, or `model.revision` and `model.artifact.repository` do not match the bytes that are in it |
+| `verify-model` exits 1 with `REFUSED: the mounted model artifact does not match the pinned byte count` | A file is there and is the wrong size — truncated, or a different artifact. The check compares the count **before** the SHA-256 read, so it fails fast and says why |
 | `verify-model` fails inside `sha256sum -c -` | The bytes are the right length and the wrong content |
 | `verify-model` reports `model artifact present; content not verified` | `model.integrity.verifyOnStart` is `none`. The file-exists check still ran; nothing else did |
 | The pod mounts the claim but finds nothing | The claim is empty. It is filled out of band today — the acquisition job is deferred — and an empty claim is refused rather than served from |
@@ -368,8 +388,10 @@ both certification workflows send a real request rather than reading a status.
 
 **Do not spend time on the NetworkPolicy on this cluster.** The chart renders four
 policy objects, starting from a default deny on both ingress and egress, and on
-`kindnetd` — the network plugin a `kind` cluster ships — **none of them is
-enforced**. That was measured on 2026-09-06 against the same plugin
+`kindnetd` — the network plugin a `kind` cluster ships — **none of them was
+enforced in the build tested**. Re-confirm that before relying on it if the node
+image pin moves, because the answer is a property of the plugin build rather than
+of the policy. That was measured on 2026-09-06 against the same plugin
 implementation and is recorded in
 [the enforcement result](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md):
 a policy denying all ingress and all egress was applied, and pod-to-pod traffic,
@@ -399,6 +421,14 @@ kubectl --kubeconfig .kube/inferops-dev.config --context kind-inferops-dev \
 an integrity refusal is printed, and it is not in the runtime's log. A pod that
 never started its main container has said everything it is going to say in
 `verify-model`.
+
+| Symptom | Reading |
+|---|---|
+| `logs` returns nothing at all | The container has not started. Its reason is in `describe pod`, not in a log that does not exist yet |
+| `Error from server (BadRequest): container "runtime" in pod ... is waiting to start` | The same thing, said explicitly. Read the init container instead |
+| The log ends mid-load with no error | The container was killed rather than exiting. `--previous` is the only copy that survives, and `describe pod` carries the reason |
+| A restarted pod's log looks healthy | You are reading the new container. `--previous` is the one that failed |
+| A `helm test` pod's log is the only failing one | The release installed and a Service did not answer. That is the hook doing its job |
 
 Every script here collects the same set into `.artifacts/` on failure and leaves
 the release in place for inspection rather than tearing down the evidence of its
@@ -525,6 +555,10 @@ situation calls for.
 Four operations, four different blast radii. **They are not a sequence and none
 of them implies the next.** Pick the smallest one that reaches your problem.
 
+One ordering constraint exists, and it is a refusal rather than a sequence: step 2
+will not run while a release is still installed, so reaching it means doing step 1
+first. Nothing else here requires anything else here.
+
 ### 1. Uninstall the workload
 
 ```text
@@ -558,8 +592,12 @@ scripts/environment/terraform-prerequisites.sh destroy --confirm
 ```
 
 **This is not the routine uninstall path.** Deleting the namespace cascades, so
-anything still installed dies with it, and this is the **only** operation in this
-repository that reclaims the model weights — which the next release re-downloads.
+anything still installed dies with it, and this is the only operation that
+reclaims the model weights **without destroying the cluster** — which the next
+release re-downloads. The cluster teardown in step 4 reclaims them as well, and
+for a reason worth knowing: the accepted `kind` node declares no `extraMounts`
+and the claim takes the cluster's default storage class, so the weights live
+inside the node container rather than on the host.
 
 The wrapper refuses two things outright, and both refusals are the point:
 
@@ -594,12 +632,24 @@ localised**: a miss costs a 1.71 GiB transfer.
 # destructive, whole-cluster
 scripts/environment/cluster-down.sh                     # cluster, kubeconfig, context
 scripts/environment/cluster-down.sh --purge-node-image  # and the ~1 GB cached node image
-scripts/environment/verify-clean.sh                     # read-only; asserts what is left
 ```
 
 Neither Terraform nor Helm may delete a cluster; the contributor's host owns it.
 `cluster-down.sh` deletes the kind cluster named `inferops-dev`, the project
-kubeconfig, and the context inside it, then runs the residue check itself.
+kubeconfig, and the context inside it, then **runs `verify-clean.sh` itself** —
+so there is no need to run it again afterwards, and its output at the end of a
+teardown is that check rather than a second one.
+
+Two consequences this step does not announce and you should read before running
+it:
+
+- **It reclaims the model weights too**, for the reason in step 2 — they are
+  inside the node container. Recreating the cluster costs the same 1.71 GiB the
+  Terraform destroy costs.
+- **A Terraform state file survives the cluster it described.** It will still
+  claim a namespace and a claim exist, in a cluster that does not. That is the
+  inverse of the "state file is gone" row above, and the recovery is the same
+  kind of thing: the state is a record, not the resource.
 
 Two things survive a full teardown by design, and they are stated in ADR 0001
 (D6) rather than being oversights: the shared `kind` container network, because
