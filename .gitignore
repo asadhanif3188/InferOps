@@ -230,6 +230,7 @@ __marimo__/
 /.cache/inferops/models/
 /.cache/inferops/composition/
 /.cache/inferops/certification/
+/.cache/inferops/experiments/
 /.cache/inferops/baseline/
 /.cache/inferops/lifecycle/
 *.gguf

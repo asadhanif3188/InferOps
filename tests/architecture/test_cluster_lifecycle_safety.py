@@ -68,6 +68,7 @@ ENTRY_POINTS = (
     "terraform-prerequisites.sh",
     "kubernetes-certification.sh",
     "kubernetes-multi-replica-certification.sh",
+    "helm-upgrade-rollback.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
