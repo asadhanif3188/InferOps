@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "experimentId": "inferops-helm-upgrade-rollback",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "certificationCeiling": "C2",
+  "lane": "real-runtime",
+  "chartRef": "charts/inferops-llm",
+  "certificationRef": "docs/testing/certification.md",
+  "procedureRef": "docs/environment/helm-upgrade-rollback.md",
+  "baselineCertificationRef": "deploy/serving/certification/k8s-real-inference.v1.json",
+  "cluster": {
+    "name": "inferops-dev",
+    "context": "kind-inferops-dev",
+    "nodeImageDigest": "sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256"
+  },
+  "release": {
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real",
+    "apiServiceName": "inferops-inferops-llm",
+    "apiServicePort": 8090,
+    "apiDeploymentName": "inferops-inferops-llm",
+    "runtimeServiceName": "inferops-inferops-llm-runtime",
+    "runtimeDeploymentName": "inferops-inferops-llm-runtime",
+    "configMapName": "inferops-inferops-llm-configuration",
+    "instanceSelector": "app.kubernetes.io/instance=inferops",
+    "apiComponent": "platform-api",
+    "runtimeComponent": "serving-runtime",
+    "replicas": 1
+  },
+  "prerequisites": {
+    "requiresTerraformPrerequisites": true,
+    "requiresTargetClusterAssertion": true,
+    "requiresHealthyBaseline": true,
+    "requiresVerifiedModelCache": true
+  },
+  "stages": [
+    "baseline",
+    "candidate",
+    "unhealthy-candidate",
+    "rollback",
+    "cleanup"
+  ],
+  "candidate": {
+    "description": "A controlled, safe configuration change that must reach the running workload.",
+    "valuesPath": "telemetry.serviceVersion",
+    "candidateValue": "v1-s3-008-candidate",
+    "configMapKey": "INFEROPS_SERVICE_VERSION",
+    "reachesPodTemplate": true,
+    "requireRolloutObserved": true,
+    "requireReleaseTest": true,
+    "requireRealInference": true
+  },
+  "faultInjection": {
+    "description": "A candidate that the chart accepts and the cluster cannot run, injected by value and removed by a rollback.",
+    "mechanism": "model-artifact-byte-count-mismatch",
+    "valuesPath": "model.artifact.sizeBytes",
+    "injectedSizeBytes": 1,
+    "failsInContainer": "verify-model",
+    "failsInWorkload": "serving-runtime",
+    "scope": "release",
+    "reversibleBy": "helm-rollback",
+    "acceptedByChartSchema": true,
+    "reachesPodTemplate": true,
+    "createsNoObjectOutsideRelease": true,
+    "pullsNoImage": true,
+    "changesNoImageReference": true,
+    "changesNoClusterScopedObject": true,
+    "changesNoPersistentVolumeClaim": true
+  },
+  "detection": {
+    "decisiveSignals": [
+      "init-container-nonzero-exit",
+      "init-container-crash-loop"
+    ],
+    "deadlineSignal": "progress-deadline-exceeded",
+    "inconclusiveSignals": [
+      "candidate-pod-unschedulable"
+    ],
+    "pollIntervalMs": 5000,
+    "requireDecisiveSignal": true,
+    "requireInjectedWorkload": true
+  },
+  "rollback": {
+    "target": "last-known-good-revision",
+    "requireConfigurationRestored": true,
+    "requireFaultRemoved": true,
+    "requireReleaseTest": true,
+    "requireRealInference": true,
+    "requireRevisionRecorded": true
+  },
+  "impact": {
+    "description": "What a caller saw while the unhealthy candidate was rolling out.",
+    "probePath": "/health/ready",
+    "probeIntervalMs": 5000,
+    "probeTimeoutMs": 5000,
+    "minimumProbes": 3,
+    "requireProbeRecord": true
+  },
+  "request": {
+    "host": "127.0.0.1",
+    "path": "/v1/chat/completions",
+    "modelsPath": "/v1/models",
+    "readinessPath": "/health/ready",
+    "prompt": "In one sentence, what does a Helm rollback restore?",
+    "requestIdPrefix": "v1-s3-008-pr1-request",
+    "correlationId": "v1-s3-008-pr1-helm-upgrade-rollback",
+    "timeoutMs": 120000
+  },
+  "assertions": {
+    "requiredAdapterKind": "real",
+    "prohibitedIdentitySubstring": "mock",
+    "requireUsageCounts": true,
+    "requireNonEmptyContent": true,
+    "requirePinnedModelRevision": true,
+    "requireStrictlyIncreasingRevisions": true,
+    "requireDistinctCandidateRevision": true,
+    "requireEveryReplicaReady": true,
+    "requirePinnedNodeImage": true,
+    "requireRecoveryRecorded": true
+  },
+  "readiness": {
+    "installBudgetMs": 120000,
+    "runtimeStartupBudgetMs": 600000,
+    "runtimeRolloutBudgetMs": 900000,
+    "apiStartupBudgetMs": 60000,
+    "apiRolloutBudgetMs": 300000,
+    "releaseTestBudgetMs": 300000,
+    "forwardBudgetMs": 30000,
+    "upgradeBudgetMs": 900000,
+    "failureDetectionBudgetMs": 900000,
+    "rollbackBudgetMs": 900000,
+    "recoveryBudgetMs": 1500000,
+    "uninstallBudgetMs": 600000
+  },
+  "evidence": {
+    "directory": ".cache/inferops/experiments",
+    "resultFile": "helm-upgrade-rollback.json",
+    "diagnosticsFile": "helm-upgrade-rollback-diagnostics.json",
+    "lifecycleFile": ".artifacts/helm-upgrade-rollback/lifecycle-facts.json",
+    "impactFile": ".artifacts/helm-upgrade-rollback/impact-observations.json",
+    "cleanupFile": ".artifacts/helm-upgrade-rollback/cleanup-facts.json",
+    "retainGeneratedText": false
+  },
+  "cleanup": {
+    "uninstallsRelease": true,
+    "removesPrerequisites": false,
+    "removesCluster": false,
+    "removesModelCacheClaim": false
+  },
+  "limitations": [
+    "The evidence is local real Kubernetes on a single-node kind cluster and implies nothing about a production upgrade, a multi-node rollout, or a release under load.",
+    "The unhealthy candidate is one injected fault - a byte count the mounted artifact cannot match - and detecting it says nothing about faults this experiment does not inject, including a runtime that starts and answers wrongly.",
+    "The recovery time is measured from the moment the failure was detected to the moment a real completion was served again. It is not a time-to-detect for an operator who was not already watching, and it is not an outage duration.",
+    "No request load is generated. The impact record is a readiness probe at a fixed interval through one forward, so it bounds what a single caller saw and measures no throughput, no latency distribution, and no in-flight request.",
+    "The rollback restores a revision this experiment created minutes earlier on the same cluster. Nothing here says anything about rolling back across a chart version, a schema change, or a persisted-state migration.",
+    "No GitOps controller, no progressive delivery, and no automated rollback trigger exists. Detection and rollback are both performed by the operating script, which a human started."
+  ]
+}

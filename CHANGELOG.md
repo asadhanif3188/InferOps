@@ -10,6 +10,67 @@ once versioned releases begin.
 
 ### Added
 
+- **A release can now be broken on purpose and got back — on paper, because nothing
+  has installed it.** `helm rollback` returning zero says a revision was recorded, and
+  a Deployment that never rolled, a Service selecting a pod that loaded nothing, and a
+  healthy release are indistinguishable from outside until something asks for a
+  completion. So
+  [the new experiment](deploy/serving/experiments/helm-upgrade-rollback.v1.json) asks
+  four separate questions across four revisions: a known-good install, a **controlled**
+  upgrade, a candidate the cluster cannot run, and a rollback — and it holds each one
+  to the cluster rather than to Helm's own bookkeeping. **The controlled change is
+  fixed in code rather than left to the descriptor**: `telemetry.serviceVersion` is
+  inside `inferops-llm.derivedEnv`, whose rendering is hashed into every pod template's
+  checksum, so setting it produces a real rollout; a value outside that block would
+  make a revision Helm records and Kubernetes never acts on, and rolling *that* back
+  would prove nothing. It is asserted twice over — the value reached the rendered
+  ConfigMap **and** the serving pod is a different pod. **The injected fault is a byte
+  count the mounted artifact cannot match**, which the chart compares in the
+  `verify-model` init container *before* the SHA-256 read, so it fails fast and says
+  why; six safety properties are declared beside it and each is refused if false — it
+  changes no image reference, pulls nothing, creates no object outside the release,
+  touches no cluster-scoped object and no claim, and is removed by the rollback rather
+  than by a second edit. One of those is checked against the chart rather than taken on
+  trust: the fault has to be a value the schema and `_validate.tpl` **accept**, because
+  a fault Helm rejected is a run that never installed its own fault and would then
+  report a detection it did not make. **Detection is evidence, never a clock.** The
+  failing upgrade is deliberately not waited on, an init container that ran and exited
+  non-zero is required, and `progress-deadline-exceeded` is recorded as the deadline it
+  is and refused as a statement about health — the descriptor cannot even set a
+  detection budget shorter than a healthy rollout, because this project has measured
+  model loads from 133,515 ms to 358,735 ms and a timeout cannot tell one of those from
+  a broken container. A candidate pod the host could not schedule is a **third** answer,
+  `INCONCLUSIVE`, with a remedy: it never ran the fault, so the run observed its own
+  capacity. Only pods that are *not* ready are inspected, because the pod still serving
+  has a succeeded init container of the same name. **User impact is measured, not
+  assumed** — a readiness probe every five seconds across the failure window, with a
+  refused probe recorded rather than hidden and a window nobody sampled refused — and so
+  is the recovery: whether the runtime had to reload the model at all is written down as
+  `runtimeReloaded`, which is the difference between a recovery of seconds and one of
+  minutes. Thirty-two ways of weakening the descriptor and thirty-nine ways of making
+  a run look better than it was are each provoked by
+  [the suite](tests/architecture/test_helm_upgrade_rollback.py) and each has to stop it.
+  **Two independent reviews before push raised one HIGH, two MEDIUM and four LOW
+  findings and all seven are fixed**, the HIGH being the one that mattered: the
+  deliberately-failing `helm upgrade` is backgrounded so that the detection is not a
+  timeout, and its pid was not in the cleanup path — a run interrupted during the
+  detection loop would have left a `helm upgrade` running detached against a real
+  release, still writing its history, while the script printed the `helm uninstall`
+  that would race it. All three backgrounded pids are now declared together and reaped
+  together, and a test derives that set from the script so a fourth cannot be added
+  without joining it. The exit trap also named only `EXIT` where both sibling scripts
+  name `INT TERM EXIT` for a reason one of them writes down, and `record_stage` turned
+  an unanswered `kubectl` query into an empty value — which for the service version is
+  precisely the difference between "the upgrade did not reach the workload" and
+  "nobody asked". **Nothing has been installed, upgraded, broken, or rolled back**: every fact the
+  module read in this change is a document the suite wrote, every answer the "restored"
+  release gave is a dictionary it constructed, and the workflow **cannot** be run — no
+  InferOps API image is published, which is the same one-line blocker that already stops
+  the lifecycle procedure and both Kubernetes certifications.
+  [The record](docs/proof/environment/v1-s3-008-pr1-validation.md) says so, and
+  [the procedure](docs/environment/helm-upgrade-rollback.md) says so in its first
+  paragraph.
+
 - **The queries that would be asked of all that telemetry are now published, checked,
   and run — and still nothing has answered one.** A scrape configuration can attach
   every right label and a query can still return nothing, because it groups by a label

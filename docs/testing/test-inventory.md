@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are seventeen, and they are listed in their own section rather than
+empty list. There are eighteen, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -103,18 +103,23 @@ read a WorkloadContract.
 
 ### `architecture-inventory` — [`tests/architecture/`](../../tests/architecture/)
 
-Four modules. The committed ownership inventory against the documents describing
+Eight modules. The committed ownership inventory against the documents describing
 it; every module under `src/inferops/` read for the imports the dependency rule
 forbids; the cluster and release lifecycle scripts read for the safety rules
-ADR 0001 and ADR 0004 state for them; and the Helm chart read against the release
+ADR 0001 and ADR 0004 state for them; the Terraform prerequisite layer against
+the ownership boundary it implements; the Helm chart read against the release
 half of the ownership inventory, its accepted pins, the mock and real boundary,
 the accepted health records that decide what its probes may be, and the model
 cache mount -- that it is scoped to the declared revision, that no values path
 reaches that scoping, and that the file the init container verifies is the file
-the runtime is given.
+the runtime is given; and the three Kubernetes workflows -- the single-replica
+certification, the multi-replica one, and the upgrade-and-rollback experiment --
+each read as a descriptor, a script, and the documents a run would have written.
 
-The count said two until this story and had been wrong since `V1-S3-001-PR1`
-added the third. It is not machine-checked, which is why it drifted.
+The count said two until `V1-S3-001-PR1`, then four, and it was wrong both times
+and again before this story: seven modules existed while the sentence said four.
+It is not machine-checked, which is why it keeps drifting, and it is recorded
+here rather than quietly corrected.
 
 ### `adapter` — [`tests/adapters/`](../../tests/adapters/)
 
@@ -167,7 +172,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Seventeen suites protect something no row of the claim matrix names. Each carries its
+Eighteen suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -190,6 +195,7 @@ matrix is complete needs to see them together.
 | [`tests/testing/test_toolchain.py`](../../tests/testing/test_toolchain.py) | The accepted toolchain decision against the configuration implementing it, including the rule that keeps the pytest configuration out of `pyproject.toml` |
 | [`tests/architecture/test_kubernetes_certification.py`](../../tests/architecture/test_kubernetes_certification.py) | The Kubernetes real-inference certification read as committed data and text: the descriptor against the chart and the accepted budgets, the collected cluster facts against the descriptor, the refusal of mock identity and of a forward that is not loopback, and the safety properties of the operating script. The claim that the selected runtime serves a real completion in a cluster belongs to the real-runtime layer, which runs the workflow instead of reading it |
 | [`tests/architecture/test_kubernetes_multi_replica_certification.py`](../../tests/architecture/test_kubernetes_multi_replica_certification.py) | The multi-replica Kubernetes certification read as committed data and text: the descriptor against the chart, the accepted budgets, and the single-replica descriptor it may not disagree with; the capacity gate that refuses before anything is installed; the per-pod readiness and per-replica correlation refusals that stop a multi-replica claim being made on a controller's summary count or on requests nobody recorded; and the safety properties of the operating script and its request driver. The claim that requests reach two replicas in a cluster belongs to the real-runtime layer, which runs the workflow instead of reading it |
+| [`tests/architecture/test_helm_upgrade_rollback.py`](../../tests/architecture/test_helm_upgrade_rollback.py) | The Helm upgrade and rollback experiment read as committed data and text: the descriptor against the chart, the model source record, and the Kubernetes certification it may not disagree with; the refusals that stop a rollback being claimed on Helm's own bookkeeping, a deadline being read as a detection of health, a candidate that never scheduled being read as a detected fault, and a mock answering after the rollback; and the safety properties of the operating script. The claim that a release upgrades and rolls back safely belongs to the real-runtime layer, which runs the workflow instead of reading it -- and which cannot, because no InferOps API image exists |
 
 The two API-surface rows are the interesting pair. The matrix's drift claim,
 `the-published-strategy-and-its-data-cannot-drift-apart`, is written about the

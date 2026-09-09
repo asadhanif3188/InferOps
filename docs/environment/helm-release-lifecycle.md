@@ -118,6 +118,10 @@ the API image and the mock profile has none beyond it.
   The timeouts above are derived from model-load measurements taken outside
   Kubernetes and are budgets rather than expectations.
 - **Upgrade and rollback *safety*.** This script proves a rollback is mechanically
-  possible. Whether an upgrade is safe under load, what it does to in-flight
-  requests, and what a rollback costs are `V1-S3-008`'s.
+  possible. What a failed candidate looks like, how it is detected, what a
+  rollback restores, and what recovery costs are
+  [the upgrade and rollback experiment](helm-upgrade-rollback.md)'s, which is
+  written and blocked on the same missing API image as this one. What an upgrade
+  does under load and to in-flight requests is still nobody's: no load is
+  generated anywhere in V1.
 - **Anything about a second host, a GPU, or a cluster larger than one node.**
