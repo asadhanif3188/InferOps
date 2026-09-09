@@ -10,6 +10,46 @@ once versioned releases begin.
 
 ### Added
 
+- **A troubleshooting page for the Kubernetes path, organised by what you saw rather
+  than by which component owns the fault** — and honest about the fact that half of what
+  it describes has never been installed. The
+  [new guide](docs/environment/kubernetes-troubleshooting.md) covers cluster and context,
+  scheduling and out-of-memory, the model cache claim, slow and failed model loads,
+  probes, Service and network, the API's and the runtime's logs, the telemetry scrape,
+  the Helm release, Terraform state and ownership, upgrade and rollback, and cleanup.
+  **The cleanup is four operations with four blast radii and they are not a sequence**:
+  `helm uninstall` leaves the namespace, its metadata, and the 1.71 GiB model cache
+  standing, `terraform-prerequisites.sh destroy --confirm` cascades over the namespace
+  and is the only thing in this repository that reclaims the weights, `cluster-down.sh`
+  takes the cluster, and there is deliberately **no separate in-cluster cache deletion**
+  because the weights live inside the Terraform-owned claim and a third command would be
+  a second owner for one resource. **One section tells the reader to stop investigating**:
+  the chart renders four `NetworkPolicy` objects starting from a default deny and
+  `kindnetd` enforces none of them, which was measured rather than assumed
+  ([the record](docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md)), so a
+  refused connection here is a Service, a selector, a probe, or a port. **The status is
+  stated before the content and it is two different statuses**: the cluster half was
+  executed and evidenced on one Windows host, and the release half has never been run by
+  anybody, on any cluster, because `platform-api-container-image` is still `planned` and
+  no `Dockerfile` is committed — so every release symptom is derived from the chart, the
+  committed render, the descriptors and the scripts, and says so. It also refuses to blur
+  the distinction both certifications are built on: `helm rollback` returning zero says a
+  revision was recorded, and `progress deadline exceeded` is a deadline rather than a
+  statement about health, because a timeout cannot tell a broken container from a model
+  load this project has measured between 133,515 ms and 358,735 ms.
+  [The suite](tests/architecture/test_kubernetes_troubleshooting.py) holds all of it to
+  the repository in nine groups — every command against the module, subcommand, script or
+  path it names, every target against `lib.sh`, every port, probe, budget, deadline,
+  resource figure, claim size, byte count and forward port against the render, the values
+  file, the Terraform variables or the model source record, the exit vocabulary against
+  both Kubernetes tools, every quoted measurement against the proof record it is
+  attributed to, every relative link, and the rules that keep every fenced `kubectl` and
+  `helm` sample explicitly scoped to this project's kubeconfig and context, free of any
+  credential-shaped flag, incapable of deleting a namespace by hand or pruning the
+  engine, and labelled destructive wherever it deletes something. **Documentation only**:
+  nothing under `charts/`, `deploy/`, `infra/`, `scripts/`, `src/`, or `tools/` is
+  touched.
+
 - **A release can now be broken on purpose and got back — on paper, because nothing
   has installed it.** `helm rollback` returning zero says a revision was recorded, and
   a Deployment that never rolled, a Service selecting a pod that loaded nothing, and a

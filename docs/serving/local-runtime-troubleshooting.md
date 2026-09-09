@@ -17,12 +17,15 @@ Everything here is the host-local path: the
 [standalone runtime package](local-runtime-package.md), the
 [local real composition](local-real-composition.md), and the
 [lifecycle](model-lifecycle.md) that spans them. **Kubernetes is deliberately out
-of scope.** A chart exists — [`charts/inferops-llm/`](../../charts/inferops-llm/),
-added by `V1-S3-002-PR1` — and no documented workflow installs it: it has no
-probes, no lifecycle test, and no published API image to run. Nothing in this
-repository deploys a manifest, so a troubleshooting section for a deployment path
-nobody can follow would still be advice rather than documentation. It arrives
-when the path does.
+of scope.** It has its own page now —
+[Kubernetes troubleshooting and cleanup](../environment/kubernetes-troubleshooting.md),
+added by `V1-S3-009-PR1` — covering the cluster, scheduling, the model cache
+claim, probes, the Service, the Helm release, Terraform, and four separated
+cleanup radii. Read it for anything inside a cluster and this one for anything
+outside it; when a pod will not load a model, the Kubernetes page usually only
+tells you which pod this page is about. That split is the boundary rather than a
+gap: the release it describes still has no published API image and has never been
+installed, so the two pages carry different evidence and must not be read as one.
 
 ## Before anything else
 
