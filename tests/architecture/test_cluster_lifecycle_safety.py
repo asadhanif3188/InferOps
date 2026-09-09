@@ -57,6 +57,8 @@ OWNERSHIP_PATH = (
 # than executed and holds the wrapper definitions the rules below are stated in
 # terms of; it is checked separately.
 ENTRY_POINTS = (
+    "api-image.sh",
+    "model-seed-image.sh",
     "cluster-up.sh",
     "cluster-verify.sh",
     "cluster-down.sh",

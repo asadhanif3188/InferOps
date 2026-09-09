@@ -40,7 +40,7 @@
 | D4 | The model cache is a prerequisite, not a release resource | **Accepted** | The teardown finding in the feasibility record: a cache inside the release's own scope was destroyed and cost a full re-download |
 | D5 | The trust boundary map | **Accepted as a map only** | Every control it names is unimplemented. It records where controls would go and who owns deciding them |
 | D6 | Two serving capabilities, and no gateway or deep-serving work | **Accepted** as a scope rule | Review only |
-| D7 | Who owns a telemetry collector, and an ingress or load-balancer implementation | **Not decided** | Nothing. Both are recorded as unowned and deferred |
+| D7 | Who owns a telemetry collector, and an ingress or load-balancer implementation | **Amended 2026-09-09.** The collector is Helm-owned and release-scoped; ingress and load balancing remain not decided | The Sprint 3 review: a scrape configuration was rendered for two sprints and nothing read it, so the sprint's own collection requirement could not be met |
 
 ## Context
 
@@ -236,18 +236,50 @@ stops.
 
 ## D7 — Telemetry collection and ingress ownership
 
-**Not decided.** Two resources are recorded with no owner and deferred out of V1:
+**Amended 2026-09-09. The collector is decided; the rest is not.**
 
-- a metrics collector, store, and dashboards — components will expose metrics and
-  nothing will collect them;
+As originally written this deferred three things together — a collector, a store
+and dashboards — and an ingress controller alongside them. Deferring the
+collector had a consequence the original wording did not anticipate: `V1-S3-007`
+rendered a Prometheus scrape configuration and a set of recording rules into a
+ConfigMap, `V1-S3-007-PR2` wrote and checked twenty-three queries against it, and
+**no process anywhere read any of it**. The Sprint 3 completion review recorded
+that as a blocking finding, and it is the right reading. A sprint that requires
+collection cannot be satisfied by a configuration that nothing consumes, and the
+sentence "recording the gap is what stops it being closed by whoever adds the
+first scrape target" had by then stopped protecting anything: the scrape targets
+were added and the gap stayed open.
+
+**Decided.** The collector is **Helm-owned and release-scoped**. It is installed
+with a release, removed with it, and it reads the scrape configuration that
+release already renders. `telemetry-collector` in the inventory carries that
+ownership.
+
+Why release-scoped rather than a prerequisite. A prerequisite outlives the
+release and would be Terraform's, which means a second durable thing in a design
+that deliberately has exactly one, plus a claim to hold its series and a decision
+about what happens to them when the release changes shape. The collector this
+resolves is a smaller thing than that: it answers questions about the release
+running now, its series live in the pod, and a restart loses them. That is a real
+limitation and it is stated rather than designed around.
+
+**Still not decided**, and narrowed to what is actually open:
+
+- dashboards and an alert routing path — a dashboard needs somebody to read it,
+  and an alert needs a receiver, a routing tree, and somebody on the other end;
+  none of the three is chosen, and `telemetry-backend` carries that;
 - an ingress controller and a load-balancer implementation — the accepted local
   cluster ships neither, and installing them was recorded as an open cost.
 
-Both appear in the inventory carrying an explicit `undecided` owner, and a test
-requires that any resource with that owner is deferred. That is deliberate: an
-unowned resource inside V1 scope is exactly the ambiguity criterion 1 rejects, so the
-inventory refuses to represent one. Recording the gap is what stops it being closed
-by whoever adds the first scrape target.
+Both still appear in the inventory carrying an explicit `undecided` owner, and a
+test still requires that any resource with that owner is deferred. That mechanism
+is unchanged; what changed is that one of the three things it was holding has an
+owner now.
+
+**What this does not decide.** It selects no telemetry SDK, exporter, tracer or
+log pipeline — `ADR 0006` `D8` still leaves those open. It makes no claim that
+the platform is observable: a collector that has never run collects nothing, and
+`telemetry-collector` stays `planned` until a release installs it.
 
 ## Consequences
 
@@ -344,7 +376,7 @@ and the day an implementation exists this suite will not be sufficient.
 | R2 | The scoped teardown could delete a Terraform-owned prerequisite if it is generalised to match the accepted cleanup wording | Open | Two destroyers for one resource. Mitigated only by a lifecycle label that is specified here and implemented nowhere |
 | R3 | The adapter interface has one real implementation | Open | It will encode that runtime's assumptions, and the cost surfaces when a second runtime is attempted rather than now |
 | R4 | `helm uninstall` leaves roughly 1.7 GiB occupied | Open | On a host with about 23 GB free, and where teardown was measured not to return disk space, this accumulates. The reclamation path must be documented before anyone runs a second workload |
-| R5 | No collector exists for the metrics these components will expose | Open, and deliberately unowned | Telemetry is emitted into nothing. Any claim that the platform is observable is unsupported until an owner is chosen |
+| R5 | No collector exists for the metrics these components will expose | **Closed in design, open in evidence** (D7, amended 2026-09-09) | An owner is chosen and a collector is rendered, so telemetry is no longer emitted into nothing by construction. It has not run: `telemetry-collector` is `planned`, and a claim that the platform is observable stays unsupported until a release installs one and something is actually scraped |
 | R6 | Every service is ClusterIP, because the accepted cluster ships no ingress or load balancer | Open | External access is a port-forward. The contracts InferOps most needs to exercise remain unexercised |
 | R7 | The network policy planned for the release may not be enforced by the local cluster's network plugin | Open | A policy that is not enforced is a comment. It must be tested before it is described as a control |
 | R8 | No public maintainer roster exists | Open | This record has no named decision owner and cannot be formally approved by one |

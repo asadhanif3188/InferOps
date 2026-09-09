@@ -7,12 +7,18 @@
 #
 #   `api.image.digest` is a PLACEHOLDER. It is the SHA-256 of the ASCII string
 #   `inferops-api-image-not-yet-published`, which anyone can recompute, and no
-#   image with that digest exists in any registry. No InferOps API image is
-#   published: `platform-api-container-image` is `planned` in the ownership
-#   inventory and no Dockerfile is committed anywhere in this repository. The
-#   value is here because the chart refuses an unpinned image, and a fixture
-#   that satisfied the refusal with a movable tag would have taught the render
-#   check to accept one.
+#   image with that digest exists in any registry. The value is here because the
+#   chart refuses an unpinned image, and a fixture that satisfied the refusal
+#   with a movable tag would have taught the render check to accept one.
+#
+#   An image can now be built: `deploy/api/Dockerfile` is committed and
+#   `scripts/environment/api-image.sh` builds it, loads it into the node and
+#   verifies the reference resolves there. It stays a placeholder because that
+#   image is published to no registry, so its manifest digest describes one
+#   contributor's build rather than this repository. `api-image.sh values`
+#   writes the real one into an overlay under `.artifacts/`, which version
+#   control ignores. Deploy with both files:
+#     helm install ... -f charts/inferops-llm/ci/real-values.yaml #                      -f .artifacts/api-image-values.yaml
 #
 # Every other pinned value is real and is copied from the accepted records: the
 # runtime digest from ADR 0002 and deploy/serving/runtime/container-package.v1.json,
@@ -48,6 +54,23 @@ model:
     fileName: Qwen3-1.7B-Q8_0.gguf
     sizeBytes: 1834426016
     sha256: sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a
+    sourceUrl: https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true
+
+  license:
+    spdx: Apache-2.0
+    reference: https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/blob/90862c4b9d2787eaed51d12237eafdfe7c5f6077/LICENSE
+
+  # `download` and not `seed-image`, because this file is the one a fresh
+  # checkout renders and everything it needs is public and pinned: the URL, the
+  # byte count and the hash all come from docs/serving/model-source.v1.json.
+  #
+  # A seed image is faster on a host that already holds the artifact -- and this
+  # host does -- but its digest describes one machine's build rather than this
+  # repository, so it belongs in an overlay rather than here, exactly like the
+  # API image digest. scripts/environment/model-seed-image.sh prints one.
+  acquisition:
+    enabled: true
+    source: download
   cache:
     claimName: inferops-model-cache
     mountPath: /models
@@ -71,3 +94,9 @@ telemetry:
   # appear in a committed render rather than only the one the default takes.
   # They are inert: nothing in this project scrapes anything.
   scrapeAnnotations: true
+  collection:
+    collector:
+      # The collector this release installs, which is what makes the scrape
+      # configuration beside it do something. ADR 0004 D7 was resolved for this
+      # and nothing else: no dashboard, no alert receiver, no routing tree.
+      deploy: true

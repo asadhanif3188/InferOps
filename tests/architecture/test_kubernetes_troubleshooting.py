@@ -627,8 +627,8 @@ def test_the_network_policy_answer_is_the_one_the_experiment_recorded() -> None:
 
 def test_the_chart_still_renders_the_policies_the_page_calls_inert() -> None:
     policies = [d for d in RENDERED_REAL if d.get("kind") == "NetworkPolicy"]
-    assert len(policies) == 4, [d["metadata"]["name"] for d in policies]
-    assert "The chart renders four policy objects" in FLOWED
+    assert len(policies) == 6, [d["metadata"]["name"] for d in policies]
+    assert "The chart renders six policy objects" in FLOWED
 
 
 # --------------------------------------------------------------------------
@@ -811,7 +811,7 @@ def test_every_destructive_sample_is_labelled_as_one() -> None:
 
 REQUIRED_STATEMENTS = (
     "has never been run by anybody, on any cluster",
-    "no Dockerfile is committed anywhere in this repository",
+    "still carry a placeholder digest for it",
     "Nothing on this page may be cited as evidence that the release installs",
     "The namespace, its metadata, and the model cache survive",
     "This is not the routine uninstall path.",

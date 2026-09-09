@@ -34,6 +34,11 @@ model:
   integrity:
     verifyOnStart: none
 
+# A mock fills no claim: there is nothing to acquire and nothing that would read
+# it. Stated rather than left at the shipped default, which is the strong one.
+  acquisition:
+    enabled: false
+
 ownership:
   owner: team-platform-demo
   workloadId: support-assistant-mock

@@ -84,7 +84,7 @@ resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
       # The one operating cost worth putting where an operator will find it: the
       # weights survive `helm uninstall` on purpose, and only `terraform destroy`
       # gives the space back.
-      "inferops.io/retention" = "Holds model weights across helm uninstall. Reclaimed only by terraform destroy."
+      "inferops.io/retention" = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
     }
   }
 

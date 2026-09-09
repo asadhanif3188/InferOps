@@ -234,9 +234,10 @@ preference:
 
 - the **namespace** and the **model cache claim** are Terraform's. Reclaiming
   them is `scripts/environment/terraform-prerequisites.sh destroy --confirm`, and
-  that is the only operation in this repository that frees the model weights —
-  which the next run re-downloads over a transport whose certificate this project
-  does not validate.
+  that is the only operation in this repository that frees the model weights
+  while leaving the cluster standing — which the next run re-downloads over a
+  transport whose certificate this project does not validate. Deleting the cluster
+  frees them as well: the claim is backed by storage inside the node container.
 - the **cluster** is the contributor's host.
   [`cluster-down.sh`](../../scripts/environment/cluster-down.sh) removes it and
   neither Helm nor Terraform nor this workflow may.

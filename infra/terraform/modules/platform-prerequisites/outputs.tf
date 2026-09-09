@@ -14,7 +14,7 @@ output "model_cache_claim_name" {
 }
 
 output "model_cache_size" {
-  description = "The requested size of the model cache claim. Reclaimed only by `terraform destroy`."
+  description = "The requested size of the model cache claim. Reclaimed by `terraform destroy`, or by deleting the cluster."
   value       = var.model_cache_size
 }
 

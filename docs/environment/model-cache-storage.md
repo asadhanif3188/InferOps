@@ -37,12 +37,46 @@ it is named in the claim's own inventory row rather than left implicit.
 `model.cache.readOnly: false` at render time. A serving replica able to write the
 cache would be a second writer nobody decided on.
 
-`model-acquisition-job` is **still deferred**, and the chart's `Chart.yaml`
-declares it so. It needs an image nobody has published and a 1.71 GiB transfer
-over a link this repository has not exercised from inside a cluster; it arrives
-with the Kubernetes serving integration rather than here. Until then the claim is
-filled out of band, and a pod that finds it empty is refused by the check below
-rather than served from.
+`model-acquisition-job` is now rendered, and the chart's `Chart.yaml` declares
+it owned rather than deferred. It is a `pre-install,pre-upgrade` hook, so it
+completes before the runtime Deployment exists to read what it wrote. It is
+**not** evidence that the claim has ever been filled in a cluster: the row stays
+`planned` because no release has installed it, and a pod that finds the claim
+empty is still refused by the check below rather than served from.
+
+It takes its bytes from one of two places, and the choice is stated in values
+rather than inferred:
+
+- `download` resumes an HTTPS transfer of the pinned artifact. This is what a
+  fresh checkout runs, because the URL, the byte count and the hash are all
+  public and all come from [the model source record](../serving/model-source.v1.json).
+  The transport is not certificate-validated, so the content hash is the whole of
+  the defence, and it is compared before the bytes are used and again before the
+  rename.
+- `seed-image` reads the artifact out of an image built on the contributor's host
+  and loaded into the node by
+  [`model-seed-image.sh`](../../scripts/environment/model-seed-image.sh). A host
+  that already holds the verified artifact has no reason to fetch 1.71 GiB again.
+  It changes where the job reads, not who writes: the job is still the only thing
+  that writes the claim, which is what keeps the single sanctioned handoff
+  single.
+
+Either way the job is a no-op against a claim that already holds a verified
+artifact, and either way an artifact that does not verify is discarded rather
+than reused. A file of the right length and the wrong content is corruption that
+survived, not a cache hit.
+
+**One assumption the job rests on, stated because it is not universal.** It runs
+as uid 65534 with `fsGroup: 65534`, and it has to create the revision directory
+inside a claim Terraform has just provisioned empty. That works when the volume
+plugin either honours `fsGroup` on first write or provisions the directory
+writably. The accepted cluster's plugin -- `rancher.io/local-path`, which `kind`
+ships and which this claim takes by naming no storage class -- creates the host
+directory world-writable, so it does. A driver that provisioned `root:root 0750`
+and did not apply `fsGroup` would leave the job unable to write, and the symptom
+would be a permission error from `mkdir` rather than anything about the model.
+Nothing in this repository has observed that case, because nothing has run this
+against another storage class.
 
 ## The layout inside the claim, and why the revision is in the path
 

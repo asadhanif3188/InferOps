@@ -14,6 +14,17 @@ reporting a stronger result than it measured. This one is the other half, and it
 is a separate descriptor, a separate script, and a separate record because the two
 answers are separate.
 
+It answers that question about **both tiers**, and it did not always. The first
+published version of this procedure installed two platform API replicas and
+**one** `llama-server`, certified distribution across the stateless tier, and
+called the record `multi-replica-inference`. Two front ends sharing one model
+server is a single-replica serving path with a load balancer on it. The Sprint 3
+completion remediation raised the serving tier to two replicas and added a second
+kind of evidence for it — described under
+[Which tier is multi-replica](#which-tier-is-multi-replica-and-how-each-is-shown)
+— and both the descriptor's validator and the operating script now refuse a
+descriptor that asks for one model server.
+
 ## Why a port-forward could not answer this
 
 The single-replica certification sends its request through
@@ -27,6 +38,13 @@ addresses the API Service by name, opens one connection per request, and
 `kube-proxy` picks the endpoint each time. That is the path a real caller inside
 the cluster takes, and it is the only path in this environment on which the
 question means anything.
+
+**A forward is still used, for the other question.** The serving tier's counters
+are read through one forward per runtime pod, and there selecting a single
+endpoint is exactly what is wanted: the question is what *this* replica did, not
+where a Service sent something. The same property that makes a forward useless
+for the paragraph above makes it the right tool one section down. Neither reading
+sends an inference request.
 
 **The consequence is that distribution is observed, never arranged.** Nothing here
 configures balancing, affinity, or routing, and this workflow does not certify
@@ -60,32 +78,83 @@ whichever file they happened to open. The shared cluster, release, model-cache,
 budget, and real-path values must be identical, and the two record file names must
 differ, or the descriptor is refused.
 
-## Which tier is multi-replica, and why only one
+## Which tier is multi-replica, and how each is shown
 
-**The platform API runs two replicas. The serving runtime runs one.** That is a
-scope, stated here rather than discovered in the record.
+**Both tiers run two replicas, and the two are certified by different evidence.**
+The difference is not a preference and the claims are not interchangeable, so it
+is stated here rather than discovered in the record.
 
-The correlation this certification rests on is the InferOps API's **own
-structured log**: every `request.completed` record carries `inferops.request.id`
-and `k8s.pod.name`, the catalog places the pod name on records and deliberately
-keeps it off every metric, and the chart already supplies `INFEROPS_POD_NAME`
-through the downward API. `llama-server` publishes no equivalent — it has no
-InferOps request identifier and no pod-aware record — so a run could not prove
-which runtime replica answered anything without inventing a mechanism for it.
+### The platform API tier: per request
 
-The two ways to invent one were both refused. Exposing pod identity in a response
+The correlation this half rests on is the InferOps API's **own structured log**:
+every `request.completed` record carries `inferops.request.id` and
+`k8s.pod.name`, the catalog places the pod name on records and deliberately keeps
+it off every metric, and the chart already supplies `INFEROPS_POD_NAME` through
+the downward API. So each successful request is joined to the replica that
+recorded serving it, and the join is the evidence.
+
+The certified statement is bounded: **successful real requests through the
+Kubernetes Service reached at least two distinct ready platform API replicas, each
+of which served a real completion from the loaded model.** Every API replica's
+readiness is model readiness — `/health/ready` is false whenever either the API or
+its adapter is unable — so a ready replica is one that could reach the runtime and
+the model was loaded.
+
+### The serving runtime tier: per replica, over a window
+
+**No request can be attributed to a runtime replica, and this procedure does not
+pretend otherwise.** The API reaches the runtime through a ClusterIP Service.
+`kube-proxy` translates the destination after the socket has already recorded
+what it connected to, so the API's own `getpeername` answers with the Service's
+virtual address for every request regardless of which pod served it — the same
+reason a pod's connection to the Kubernetes API shows as the cluster IP in `ss`
+rather than as an apiserver endpoint. `llama-server` publishes no per-instance
+identity in a completion either: `system_fingerprint` is a build string every
+replica shares, and `id_slot` counts from zero inside each process, so two
+replicas both have a slot `0`.
+
+Two ways to invent a mechanism were refused. Exposing pod identity in a response
 header or body member would make a replica's name part of the API's contract in
 order to test it. Inferring the runtime tier's distribution from the API's would
 be inferring distribution from a desired replica count, which is exactly what a
 multi-replica claim may not do.
 
-So the certified statement is bounded: **successful real requests through the
-Kubernetes Service reached at least two distinct ready platform API replicas, each
-of which served a real completion from the loaded model.** Every API replica's
-readiness is model readiness — `/health/ready` is false whenever either the API or
-its adapter is unable — so a ready replica is one that could reach the runtime and
-the model was loaded. Runtime-tier distribution is not claimed, and the record's
-`limitations` say so.
+So the serving tier is certified from **each replica's own counters**.
+`llama-server` publishes them under `--metrics`, which the chart passes whenever
+telemetry is enabled, and the run reads them from each pod directly — one
+`kubectl port-forward` per pod, closed before the next opens — immediately before
+and immediately after the request set:
+
+| Counter | What it is read for |
+|---|---|
+| `llamacpp:n_decode_total` | The assertion. It advances only when the model produced a token, so a replica whose figure moved ran the model |
+| `llamacpp:tokens_predicted_total` | Compared against the completion tokens the driver was told about, as an inequality: every token a caller was told about had to be predicted by some replica in this window |
+| `llamacpp:prompt_tokens_total` | Recorded and never compared. A prompt served from cache advances `llamacpp:prompt_tokens_cached_total` instead, so an equality here would fail a correct run |
+
+A forward is the right tool here and the wrong one for the tier above, for the
+same reason in both cases: it selects one endpoint. That destroys a distribution
+question and answers a per-replica one exactly.
+
+The certified statement is bounded differently from the API tier's: **every ready
+serving replica's own decode counter advanced while the request set ran, and at
+least the declared minimum number of them did.** A run in which one model server
+did all the work **fails**, with a message saying that this is the Service's
+endpoint choice rather than a defect. What it is not is a per-request join, and
+the record carries `requestAttributedToServingReplica: false` so that a reader
+who sees only the record cannot mistake one claim for the other.
+
+The window is bounded by the two reads, and attributing an advance inside it to
+this request set is an argument from what else was running rather than a
+measurement. **Two things carry that argument and they do not have the same
+standing.** Established: the namespace holds only what this workflow installed,
+because it refuses to run over an existing release. Assumed: that
+`llama-server`'s `/health`, which the readiness and startup probes ask, produces
+no token and therefore cannot advance the decode counter. Nobody here has
+measured the second against the pinned image, so it is written down as an
+assumption — here, in the record's `limitations`, and in the module — and **the
+first real run is where it gets checked**. If it turns out to be false, a replica
+that served no request could still show a decode delta, and the honest response is
+to narrow the window or to stop the probes rather than to keep the claim.
 
 ## The stages
 
@@ -101,14 +170,20 @@ stopped in.
 | `readiness` | Both Deployments reported every replica ready inside their budgets, **each individual pod** reported ready inside its own, and the release's in-cluster test passed | Most often the model load, or a host that fit the requests and not the reality |
 | `distribution` | Exactly the planned request set was sent, every request answered 200, and every answer carried the real adapter kind and consistent runtime-derived token counts | The platform, and the release is left standing |
 | `correlation` | Every successful request is recorded exactly once, by a pod that was one of the ready API replicas, as a real completion — and those pods number at least the declared minimum | Either the platform or the Service's own endpoint choice, and the message says which |
+| `serving` | Both counter snapshots name exactly the ready serving replicas, no counter fell, every one of those replicas decoded something, and the runtimes together report predicting at least what the driver was told about | Either the platform or the Service's own endpoint choice, and the message says which |
 | `cleanup` | The driver was removed, the release uninstalled, no labelled object survived, the namespace survived, and the claim count is unchanged | The teardown, after the record was already written |
 | `evidence` | The record was written to the ignored evidence directory | The workspace, not the cluster |
 
 ## The capacity gate, and why it is a gate
 
-Two API replicas and one runtime replica are 1,210 millicores and 2,320 MiB of
-**requests**, peaking at 4,160 MiB of **memory limits** — the descriptor's own
-figures, not a rounding of them. A host that
+Two API replicas and two runtime replicas are 2,310 millicores and 4,496 MiB of
+**requests**, peaking at 7,744 MiB of **memory limits** — the descriptor's own
+figures, not a rounding of them. A second `llama-server` is a second copy of the
+model in memory rather than a second process sharing one, which is most of the
+difference from the earlier one-runtime profile; the rest is the telemetry
+collector, which the committed real values install and which a profile that
+counted only the two tiers would have left the scheduler to find room for. A host
+that
 cannot hold that does not fail loudly: a pod whose requests do not fit stays
 `Pending` until a rollout deadline expires, and the run then reports a readiness
 failure for what is actually a laptop.
@@ -120,7 +195,7 @@ anything in it**:
 
 | Check | Compared against |
 |---|---|
-| Container engine memory and processors | The ADR 0001 D7 minimum tier, as `lib.sh` already states it |
+| Container engine memory and processors | This profile's own floor, which a test holds to being **at least** the ADR 0001 D7 minimum tier and **at least** what the profile then asks of the cluster. The two were equal while one `llama-server` fit inside the tier; the tier is unchanged and unamended, and this descriptor asks for more than it |
 | Uncommitted cluster processor | This profile's requests plus headroom |
 | Uncommitted cluster memory | This profile's **peak**, plus headroom, because the container loading a 1.83 GB model is the one that would use its whole limit |
 
@@ -281,10 +356,20 @@ reader of the record does not have to find this page:
 
 - it is **local real Kubernetes** on a single-node `kind` cluster, and implies
   nothing about production **high availability**;
-- only the platform API tier is multi-replica; the serving runtime runs one
-  replica, for the correlation reason above;
-- distribution is whatever `kube-proxy` chose during the run — observed, never
-  configured, and no routing, balancing, or affinity behaviour is certified;
+- the two tiers are certified by different evidence and the claims are not
+  interchangeable — the API tier per request, the serving tier per replica over
+  the window the two counter reads bound;
+- **no request is attributed to a serving runtime replica**, because a client
+  socket keeps the ClusterIP it dialled rather than the endpoint `kube-proxy`
+  translated it to, and `llama-server` publishes no per-instance identity in a
+  completion;
+- the serving tier's window is bounded by the two reads, and an advance inside it
+  is attributed to this request set by an argument from what else was running:
+  that nothing else in the namespace sends completions is established, and that
+  `/health` produces no token is **assumed** of the pinned image and unverified;
+- distribution is whatever `kube-proxy` chose during the run, at both tiers —
+  observed, never configured, and no routing, balancing, or affinity behaviour is
+  certified;
 - no autoscaling, load generation, performance comparison, or failure experiment
   is performed, and none may be read into the record;
 - one node hosts every replica, so nothing here says anything about scheduling

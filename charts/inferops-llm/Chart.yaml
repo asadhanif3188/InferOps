@@ -27,7 +27,8 @@ version: 0.3.0
 
 # What this chart installs, when the API image exists to install. No InferOps
 # image is published: `platform-api-container-image` is `planned` in the
-# ownership inventory and no Dockerfile is committed, so `appVersion` names the
+# ownership inventory, and although `deploy/api/Dockerfile` now builds one, it is
+# loaded into a node rather than pushed anywhere. So `appVersion` names the
 # repository revision the templates were written against rather than a release
 # nobody can pull.
 appVersion: "0.1.0"
@@ -50,6 +51,6 @@ annotations:
   inferops.io/owned-resources: >-
     workload-service-account,workload-network-policy,platform-api-deployment,
     platform-api-service,serving-runtime-deployment,serving-runtime-service,
-    runtime-configuration,telemetry-scrape-configuration
-  inferops.io/deferred-resources: >-
-    model-acquisition-job
+    runtime-configuration,telemetry-scrape-configuration,model-acquisition-job,
+    telemetry-collector
+  inferops.io/deferred-resources: ""

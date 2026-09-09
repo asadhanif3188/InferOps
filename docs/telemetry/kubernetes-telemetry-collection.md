@@ -1,15 +1,25 @@
 # Collecting telemetry in Kubernetes
 
-Status: **configuration rendered, nothing collected.** The `inferops-llm` chart now
-renders the `telemetry-scrape-configuration` row of
+Status: **collector selected and rendered, nothing collected.** The `inferops-llm`
+chart renders the `telemetry-scrape-configuration` row of
 [the ownership inventory](../architecture/resource-ownership.md) as a ConfigMap
-holding a Prometheus scrape configuration and a set of recording rules. No
-collector, store, dashboard, or alerting path is selected — that is an open question
-in [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
-that [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
-D8 deliberately does not answer, and this document does not answer it either.
-**Nothing reads this ConfigMap, nothing scrapes either endpoint, and this chart has
-never been installed.**
+holding a Prometheus scrape configuration and a set of recording rules, and — since
+the Sprint 3 remediation — a collector that reads it.
+
+That is the part that changed.
+[ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
+`D7` left collector ownership undecided, and for two sprints the consequence was a
+scrape configuration nothing consumed. The amendment makes the collector Helm-owned
+and release-scoped: `telemetry-collector` in the inventory. **Dashboards and an
+alert routing path are still unowned and still deferred**, and
+[ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md) `D8`
+still selects no SDK, exporter or tracer.
+
+**Nothing has been collected.** No release has installed this chart, no collector
+has run, and nothing has scraped either endpoint. The configuration has been
+checked by the pinned collector's own `promtool` — which establishes that it loads,
+and nothing about whether a series was ever written. Every count, bound and
+multiplier in this document is arithmetic over declared values.
 
 The authoritative form is
 [`kubernetes-telemetry-collection.v1alpha1.json`](kubernetes-telemetry-collection.v1alpha1.json).

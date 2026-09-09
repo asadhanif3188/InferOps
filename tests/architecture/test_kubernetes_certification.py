@@ -450,10 +450,17 @@ def test_the_descriptor_names_the_components_the_chart_labels() -> None:
         if document["kind"] == "Deployment"
     }
 
-    assert {
+    named = {
         certification.release.api_component,
         certification.release.runtime_component,
-    } == labelled
+    }
+    assert named <= labelled, (
+        f"the descriptor names a component the chart does not label: {named - labelled}"
+    )
+    # The chart renders one Deployment this certification is deliberately not
+    # about. The collector observes the release; certifying it as part of the
+    # serving path would be certifying the instrument along with the measurement.
+    assert labelled - named == {"telemetry-collector"}, labelled - named
 
 
 def test_the_descriptor_names_the_replica_count_the_chart_defaults_to() -> None:

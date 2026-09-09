@@ -149,6 +149,12 @@ app.kubernetes.io/name: {{ include "inferops-llm.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
+{{- define "inferops-llm.acquisition.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "inferops-llm.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: model-acquisition
+{{- end -}}
+
 {{- define "inferops-llm.test.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "inferops-llm.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
@@ -626,6 +632,132 @@ is rendered into the script from a pinned value.
 {{- end -}}
 
 {{/*
+The claim, mounted writable at its root, for the one object allowed to write it.
+
+Deliberately not `inferops-llm.model.volumeMount`. That one is `readOnly: true`
+with a `subPath` selecting the revision directory, and both properties are load
+bearing for a serving replica: it may not write, and it may not see another
+revision's bytes. The acquisition job is the opposite case on both counts. It has
+to write, and it has to be able to create the revision directory -- which a
+`subPath` mount cannot do, because `subPath` resolves at mount time and a
+directory that does not exist yet is not a directory the kubelet will mount.
+
+So the job mounts the claim at its root and derives the same revision path the
+serving mount selects, from the same helper. One expression, two mounts: a job
+that wrote one directory while the runtime read another would be an acquisition
+that filled a cache nobody served from.
+*/}}
+{{- define "inferops-llm.model.acquisitionVolumeMount" -}}
+- name: model-cache
+  mountPath: "/claim"
+{{- end -}}
+
+{{- define "inferops-llm.model.acquisitionImage" -}}
+{{- if eq .Values.model.acquisition.source "seed-image" -}}
+{{- printf "%s@%s" .Values.model.acquisition.seedImage.repository .Values.model.acquisition.seedImage.digest -}}
+{{- else -}}
+{{- include "inferops-llm.model.integrityImage" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+What the acquisition job runs.
+
+Four properties, and each one is a way an acquisition can look finished and not
+be.
+
+**A cache hit is a verified cache hit.** The job exits early only after the
+artifact has been read and its byte count and SHA-256 compared. A file of the
+right name and the wrong content is not reuse, it is corruption that survived --
+so it is removed and acquired again rather than trusted. This is what makes the
+job safe to run before every install and upgrade.
+
+**Nothing incomplete is ever named like something complete.** The transfer writes
+`<file>.part` and renames only after verification passes. A pod evicted halfway
+through leaves a `.part` the next run resumes or discards; it can never leave a
+short file under the real name, which the runtime would then mount, hash, and
+refuse -- correctly, but only after an install had reported success.
+
+**The hash is checked before the bytes are used, not after they are trusted.**
+The download transport is not certificate-validated: BusyBox `wget` says so
+itself and docs/security/security-baseline.v1alpha1.json records it. The content
+hash is therefore the whole of the defence, and it is compared against the pin
+this release was rendered with rather than against anything the transfer
+supplied.
+
+**Resumption is a count, not a retry loop.** A single streamed transfer of this
+artifact was measured not to survive, which is the finding that made the Sprint 0
+downloader resumable. `wget -c` continues an existing `.part`, and the attempt
+budget bounds it.
+
+`$(...)` appears below and the shell evaluates it: Kubernetes substitutes only
+`$(VAR)` references it recognises and leaves the rest exactly as written. Every
+interpolated value reaches that shell, which is why `artifact.repository`,
+`artifact.fileName`, `revision`, `sha256` and `seedImage.artifactPath` are all
+closed character classes in values.schema.json.
+*/}}
+{{- define "inferops-llm.model.acquisitionScript" -}}
+{{- $dir := printf "/claim/%s" (include "inferops-llm.model.cacheSubPath" .) -}}
+set -eu
+dir='{{ $dir }}'
+artifact="$dir/{{ .Values.model.artifact.fileName }}"
+want_bytes='{{ printf "%d" (int64 .Values.model.artifact.sizeBytes) }}'
+want_sha='{{ trimPrefix "sha256:" .Values.model.artifact.sha256 }}'
+#
+verify() {
+  [ -f "$1" ] || return 1
+  [ "$(stat -c %s "$1")" = "$want_bytes" ] || return 1
+  echo "$want_sha  $1" | sha256sum -c - >/dev/null 2>&1 || return 1
+  return 0
+}
+#
+mkdir -p "$dir"
+#
+if verify "$artifact"; then
+  echo "model artifact already present and verified; nothing to acquire"
+  exit 0
+fi
+#
+if [ -e "$artifact" ]; then
+  echo "the claim holds an artifact that does not match the pinned byte count and hash; discarding it" >&2
+  rm -f "$artifact"
+fi
+{{- if eq .Values.model.acquisition.source "seed-image" }}
+seed='{{ .Values.model.acquisition.seedImage.artifactPath }}/{{ .Values.model.artifact.fileName }}'
+if [ ! -f "$seed" ]; then
+  echo "REFUSED: the seed image carries no artifact at $seed" >&2
+  exit 1
+fi
+cp "$seed" "$artifact.part"
+{{- else }}
+attempt=1
+until wget -c -q -O "$artifact.part" '{{ .Values.model.artifact.sourceUrl }}'; do
+  attempt=$((attempt + 1))
+  if [ "$attempt" -gt {{ int .Values.model.acquisition.download.maxAttempts }} ]; then
+    echo "REFUSED: the transfer did not complete within its attempt budget" >&2
+    rm -f "$artifact.part"
+    exit 1
+  fi
+  echo "transfer interrupted; resuming (attempt $attempt)"
+  # A pause, because the failures worth resuming through are the ones that
+  # resolve on their own. `wget` fails in milliseconds on a refused connection or
+  # an unresolvable name, so a loop without this spends a sixty-attempt budget
+  # inside a second and reports a transient outage as a permanent one.
+  sleep {{ int .Values.model.acquisition.download.retryPauseSeconds }}
+done
+{{- end }}
+#
+if ! verify "$artifact.part"; then
+  echo "REFUSED: the acquired bytes do not match the pinned byte count and SHA-256" >&2
+  rm -f "$artifact.part"
+  exit 1
+fi
+#
+mv "$artifact.part" "$artifact"
+echo "model artifact acquired and verified: byte count and SHA-256"
+{{- end -}}
+
+{{/*
 The name of the telemetry scrape ConfigMap.
 */}}
 {{- define "inferops-llm.telemetryScrapeConfigMapName" -}}
@@ -958,17 +1090,60 @@ object is most often written with.
 `kubernetes.io/metadata.name` is set on every namespace by the API server itself,
 so it is not a label anybody has to remember to apply.
 */}}
+{{- define "inferops-llm.collector.serviceAccountName" -}}
+{{- if .Values.security.serviceAccount.create -}}
+{{- default (printf "%s-collector" (include "inferops-llm.fullname" .)) .Values.security.serviceAccount.collector.name -}}
+{{- else -}}
+{{- default "default" .Values.security.serviceAccount.collector.name -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "inferops-llm.collector.serviceName" -}}
+{{- printf "%s-collector" (include "inferops-llm.fullname" .) -}}
+{{- end -}}
+
+{{- define "inferops-llm.collector.configMapName" -}}
+{{- printf "%s-collector-configuration" (include "inferops-llm.fullname" .) -}}
+{{- end -}}
+
+{{- define "inferops-llm.collector.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "inferops-llm.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: telemetry-collector
+{{- end -}}
+
+{{- define "inferops-llm.collector.image" -}}
+{{- printf "%s@%s" .Values.telemetry.collection.collector.image.repository .Values.telemetry.collection.collector.image.digest -}}
+{{- end -}}
+
+{{/*
+Who may scrape a workload's metrics endpoint.
+
+Two cases, and the second is why this reads a computed value rather than a
+configured one. A collector somebody else runs is named by `collector.namespace`
+and `collector.podSelector`, and both are required together because a namespace
+with no pod selector admits every pod in it. A collector this release installs is
+in this namespace carrying labels this chart chose -- so the chart fills them in
+rather than asking an operator to restate them, because the failure mode of
+asking is a release that installs a collector and then denies it.
+*/}}
 {{- define "inferops-llm.collectorIngressRule" -}}
 {{- $root := .context -}}
 {{- $collector := $root.Values.telemetry.collection.collector -}}
-{{- if and $collector.namespace $collector.podSelector }}
+{{- $namespace := $collector.namespace -}}
+{{- $selector := $collector.podSelector -}}
+{{- if $collector.deploy -}}
+{{- $namespace = $root.Release.Namespace -}}
+{{- $selector = (include "inferops-llm.collector.selectorLabels" $root | fromYaml) -}}
+{{- end -}}
+{{- if and $namespace $selector }}
 - from:
     - namespaceSelector:
         matchLabels:
-          kubernetes.io/metadata.name: {{ $collector.namespace }}
+          kubernetes.io/metadata.name: {{ $namespace }}
       podSelector:
         matchLabels:
-          {{- toYaml $collector.podSelector | nindent 10 }}
+          {{- toYaml $selector | nindent 10 }}
   ports:
     - port: {{ .port }}
       protocol: TCP

@@ -2,11 +2,24 @@
 
 This is the second half of `V1-S3-006`. `core.py` certifies that a real model
 answers one request through the release's API Service on a single-replica
-release; this module certifies that **two or more ready API replicas each
-received successful real requests through that Service**, and it refuses to say
-so on any weaker evidence than a per-replica correlation.
+release; this module certifies **two tiers of a multi-replica release**, by two
+different kinds of evidence, and it refuses to say either on weaker evidence
+than the one named for it:
 
-Three things about it are worth reading before the code.
+- the **platform API** tier, per request -- two or more ready API replicas each
+  received successful real requests through the Service, joined request by
+  request to the replica that logged serving it;
+- the **serving runtime** tier, per replica over a window -- two or more ready
+  `llama-server` replicas each advanced their own decode counter while the
+  request set ran.
+
+The second was added in the Sprint 3 remediation, and the reason it exists is
+worth stating plainly: this workflow previously installed **one** runtime replica
+and certified distribution across the stateless tier in front of it, under a
+title that names model-serving replicas. Two API replicas sharing one model
+server is not multi-replica inference. It is one model server.
+
+Four things about it are worth reading before the code.
 
 **The request set is sent from inside the cluster, and that is the whole point.**
 `core.py` sends its one request through a `kubectl port-forward`, and the
@@ -30,6 +43,26 @@ No response header, body member, or endpoint exposes pod identity: a test that
 made a replica's name part of the API's contract would have changed the product
 to observe it.
 
+**The serving tier is certified by a different mechanism, and the difference is
+not a preference.** No request can be attributed to a runtime replica from the
+API's side: the API reaches the runtime through a ClusterIP Service, and a
+client socket keeps the address it dialled rather than the endpoint `kube-proxy`
+translated it to. :data:`EXPECTED_RUNTIME_MECHANISM` carries the full argument.
+So each runtime pod is asked for its own `/metrics` before and after the request
+set, one pod at a time, and every one of them must have decoded something in
+between. That is a per-replica claim over a bounded window rather than a
+per-request join, it is labelled as one in the descriptor's `limitations` and in
+every record, and it rests on there being nothing else in the namespace that
+sends completions.
+
+That last part is established for everything this workflow controls -- it refuses
+to run over an existing release and installs the only things in the namespace --
+and **assumed** for one thing it does not: that `llama-server`'s `/health`, which
+the probes ask, produces no token. That is an assumption about the pinned build
+rather than something this project has measured, and it is written down as one
+here, in the descriptor's `limitations`, and in the procedure, so that the first
+real run is where it gets checked rather than where it gets discovered.
+
 **Desired replicas prove nothing and are never treated as though they did.**
 `spec.replicas: 2` is a request to a controller. What this module requires is
 that each expected replica reported itself ready, that the requests actually
@@ -40,8 +73,9 @@ footnote -- and the procedure states the arithmetic that makes that outcome
 unlikely rather than pretending it is impossible.
 
 What this does **not** establish is stated in the descriptor's own `limitations`
-member and copied into every record: one node, one runtime replica, no
-autoscaling, no routing policy, no load, and no production high availability.
+member and copied into every record: one node, no per-request attribution of a
+runtime replica, no autoscaling, no routing policy, no load, and no production
+high availability.
 """
 
 from __future__ import annotations
@@ -111,12 +145,70 @@ EXPECTED_OBSERVATIONS_FILE = (
 EXPECTED_CLEANUP_FILE = (
     ".artifacts/kubernetes-multi-replica-certification/cleanup-facts.json"
 )
+EXPECTED_RUNTIME_COUNTERS_FILE = (
+    ".artifacts/kubernetes-multi-replica-certification/runtime-counters.json"
+)
 
 #: The one mechanism this certification accepts. It names the surface the
 #: evidence is read from, so a descriptor that quietly changed to a weaker one --
 #: a response header, a body member, an inferred count -- is refused at load
 #: rather than at review.
 EXPECTED_MECHANISM = "structured-log-correlation"
+
+#: The one mechanism the **serving runtime** tier is certified by, and it is a
+#: different one on purpose.
+#:
+#: The API tier is certified per request: a request identifier is joined to the
+#: replica that logged serving it. That join is impossible one layer down, and
+#: the reason is a property of Kubernetes rather than a gap in this workflow. The
+#: API reaches the runtime through a ClusterIP Service; ``kube-proxy`` translates
+#: the destination in the ``OUTPUT`` chain **after** the socket has recorded what
+#: it connected to, so ``getpeername`` on the API's own socket answers with the
+#: Service's virtual address for every request no matter which pod served it.
+#: (This is why a pod's connection to the Kubernetes API shows as the cluster IP
+#: in ``ss`` rather than as an apiserver endpoint.) ``llama-server`` publishes no
+#: per-instance identity in a completion either: ``system_fingerprint`` is a build
+#: string every replica shares, and ``id_slot`` counts from zero inside each
+#: process, so two replicas both have a slot ``0``.
+#:
+#: So the runtime tier is certified from **each replica's own counters**, read
+#: directly from that pod before and after the request set. A replica whose
+#: decode counter advanced ran the model. That is a weaker statement than a
+#: per-request join and it is labelled as one everywhere it appears -- but it is
+#: a real measurement of the serving layer, which one replica plus a hopeful
+#: title was not.
+EXPECTED_RUNTIME_MECHANISM = "runtime-counter-delta"
+
+#: The endpoint the counters are read from, and the prefix every counter on it
+#: carries. Both are `llama-server`'s, published under ``--metrics`` -- which the
+#: chart passes whenever telemetry is enabled -- and both are recorded against
+#: the pinned image in
+#: `docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md`.
+RUNTIME_METRICS_PATH = "/metrics"
+RUNTIME_COUNTER_PREFIX = "llamacpp:"
+
+#: The three series themselves, pinned rather than merely pattern-checked.
+#:
+#: An earlier version of this file required only that the descriptor's three
+#: counters were distinct and carried the runtime's prefix, and independent
+#: review found the hole: `llamacpp:` has other members, and a descriptor that
+#: pointed `decodeCounter` at one of them -- `llamacpp:kv_cache_tokens`, say, or
+#: `llamacpp:prompt_tokens_cached_total` -- would still validate, still pass
+#: every assertion, and still write a record claiming
+#: `requireEveryServingReplicaServed` was honoured. It would be asserting that
+#: something moved, not that a token was produced. The whole certification rests
+#: on the decode counter meaning what it says, so the name is pinned the way the
+#: mechanism and the evidence paths already are.
+RUNTIME_DECODE_COUNTER = "llamacpp:n_decode_total"
+RUNTIME_PREDICTED_TOKEN_COUNTER = "llamacpp:tokens_predicted_total"
+RUNTIME_PROMPT_TOKEN_COUNTER = "llamacpp:prompt_tokens_total"
+
+#: The smallest forward budget that can be honoured. The operating script turns
+#: this into whole seconds by integer division, so anything under a second
+#: becomes a deadline that has already passed and a forward reported as failed
+#: without ever being polled. Independent review found it as a latent trap: the
+#: committed value is 60,000 ms, and nothing stopped a later edit from setting 1.
+MINIMUM_FORWARD_BUDGET_MS = 1000
 
 #: The smallest multi-replica certification there is. A descriptor asking for one
 #: replica is not a smaller version of this workflow; it is `core.py`, and
@@ -134,6 +226,7 @@ STAGE_RELEASE = "release"
 STAGE_READINESS = "readiness"
 STAGE_DISTRIBUTION = "distribution"
 STAGE_CORRELATION = "correlation"
+STAGE_SERVING = "serving"
 STAGE_CLEANUP = "cleanup"
 STAGE_EVIDENCE = "evidence"
 
@@ -145,6 +238,7 @@ STAGES: tuple[str, ...] = (
     STAGE_READINESS,
     STAGE_DISTRIBUTION,
     STAGE_CORRELATION,
+    STAGE_SERVING,
     STAGE_CLEANUP,
     STAGE_EVIDENCE,
 )
@@ -246,6 +340,43 @@ class DistributionPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class RuntimeDistributionPlan:
+    """How the serving tier is measured, and what the measurement has to show.
+
+    Three counters rather than one. The decode counter is the assertion --
+    ``llamacpp:n_decode_total`` advances only when the model produced a token, so
+    a replica whose figure moved ran the model and a replica whose figure did not
+    served nothing. The two token counters are recorded beside it because they are
+    what a reader compares against the driver's own usage counts, and the
+    predicted one is compared automatically.
+
+    The prompt counter is **not** compared, and the reason belongs here rather
+    than in a comment nobody finds: ``llama-server`` publishes
+    ``llamacpp:prompt_tokens_cached_total`` separately, so a prompt served from
+    cache advances the cached counter and not this one. An equality assertion on
+    the prompt side would fail on a correct run the moment two requests shared a
+    prefix -- which, with one committed prompt sent ten times, is every run.
+    """
+
+    mechanism: str
+    metrics_path: str
+    decode_counter: str
+    predicted_token_counter: str
+    prompt_token_counter: str
+    minimum_serving_replicas: int
+    forward_budget_ms: int
+
+    @property
+    def counters(self) -> tuple[str, str, str]:
+        """Every counter read, in the order the collected document lists them."""
+        return (
+            self.decode_counter,
+            self.predicted_token_counter,
+            self.prompt_token_counter,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class MultiReplicaBudgets:
     """Every bound this workflow applies, and where each one comes from.
 
@@ -288,6 +419,7 @@ class MultiReplicaCertification:
     capacity: CapacityRequirement
     budgets: MultiReplicaBudgets
     distribution: DistributionPlan
+    runtime_distribution: RuntimeDistributionPlan
     requires_terraform_prerequisites: bool
     requires_target_cluster_assertion: bool
     requires_pinned_runtime_image: bool
@@ -300,6 +432,7 @@ class MultiReplicaCertification:
     require_every_request_successful: bool
     require_usage_counts: bool
     require_per_replica_correlation: bool
+    require_every_serving_replica_served: bool
     require_pinned_model_revision: bool
     require_digest_pinned_images: bool
     require_release_test: bool
@@ -310,6 +443,7 @@ class MultiReplicaCertification:
     capacity_file: str
     facts_file: str
     observations_file: str
+    runtime_counters_file: str
     cleanup_file: str
     retain_generated_text: bool
     uninstalls_release: bool
@@ -429,6 +563,37 @@ def _read_distribution(plan: Mapping[str, Any]) -> DistributionPlan:
     )
 
 
+def _read_runtime_distribution(
+    plan: Mapping[str, Any],
+) -> RuntimeDistributionPlan:
+    return RuntimeDistributionPlan(
+        mechanism=_string(plan.get("mechanism"), "runtimeDistribution.mechanism"),
+        metrics_path=_string(
+            plan.get("metricsPath"), "runtimeDistribution.metricsPath"
+        ),
+        decode_counter=_string(
+            plan.get("decodeCounter"), "runtimeDistribution.decodeCounter"
+        ),
+        predicted_token_counter=_string(
+            plan.get("predictedTokenCounter"),
+            "runtimeDistribution.predictedTokenCounter",
+        ),
+        prompt_token_counter=_string(
+            plan.get("promptTokenCounter"), "runtimeDistribution.promptTokenCounter"
+        ),
+        minimum_serving_replicas=_integer(
+            plan.get("minimumServingReplicas"),
+            "runtimeDistribution.minimumServingReplicas",
+            minimum=MINIMUM_REPLICAS,
+        ),
+        forward_budget_ms=_integer(
+            plan.get("forwardBudgetMs"),
+            "runtimeDistribution.forwardBudgetMs",
+            minimum=MINIMUM_FORWARD_BUDGET_MS,
+        ),
+    )
+
+
 def _read_budgets(readiness: Mapping[str, Any]) -> MultiReplicaBudgets:
     return MultiReplicaBudgets(
         install_ms=_integer(
@@ -476,6 +641,9 @@ def load_multi_replica_certification(
     capacity = _object(record.get("capacity"), "capacity")
     readiness = _object(record.get("readiness"), "readiness")
     distribution = _object(record.get("distribution"), "distribution")
+    runtime_distribution = _object(
+        record.get("runtimeDistribution"), "runtimeDistribution"
+    )
     assertions = _object(record.get("assertions"), "assertions")
     evidence = _object(record.get("evidence"), "evidence")
     cleanup = _object(record.get("cleanup"), "cleanup")
@@ -500,6 +668,7 @@ def load_multi_replica_certification(
             "capacity",
             "readiness",
             "distribution",
+            "runtimeDistribution",
             "assertions",
             "evidence",
             "cleanup",
@@ -594,6 +763,19 @@ def load_multi_replica_certification(
         },
     )
     _require_keys(
+        runtime_distribution,
+        "runtimeDistribution",
+        {
+            "mechanism",
+            "metricsPath",
+            "decodeCounter",
+            "predictedTokenCounter",
+            "promptTokenCounter",
+            "minimumServingReplicas",
+            "forwardBudgetMs",
+        },
+    )
+    _require_keys(
         assertions,
         "assertions",
         {
@@ -603,6 +785,7 @@ def load_multi_replica_certification(
             "requireEveryRequestSuccessful",
             "requireUsageCounts",
             "requirePerReplicaCorrelation",
+            "requireEveryServingReplicaServed",
             "requirePinnedModelRevision",
             "requireDigestPinnedImages",
             "requireReleaseTest",
@@ -619,6 +802,7 @@ def load_multi_replica_certification(
             "capacityFile",
             "factsFile",
             "observationsFile",
+            "runtimeCountersFile",
             "cleanupFile",
             "retainGeneratedText",
         },
@@ -674,6 +858,7 @@ def load_multi_replica_certification(
         capacity=_read_capacity(capacity),
         budgets=_read_budgets(readiness),
         distribution=_read_distribution(distribution),
+        runtime_distribution=_read_runtime_distribution(runtime_distribution),
         requires_terraform_prerequisites=_boolean(
             prerequisites.get("requiresTerraformPrerequisites"),
             "prerequisites.requiresTerraformPrerequisites",
@@ -720,6 +905,10 @@ def load_multi_replica_certification(
             assertions.get("requirePerReplicaCorrelation"),
             "assertions.requirePerReplicaCorrelation",
         ),
+        require_every_serving_replica_served=_boolean(
+            assertions.get("requireEveryServingReplicaServed"),
+            "assertions.requireEveryServingReplicaServed",
+        ),
         require_pinned_model_revision=_boolean(
             assertions.get("requirePinnedModelRevision"),
             "assertions.requirePinnedModelRevision",
@@ -746,6 +935,9 @@ def load_multi_replica_certification(
         facts_file=_string(evidence.get("factsFile"), "evidence.factsFile"),
         observations_file=_string(
             evidence.get("observationsFile"), "evidence.observationsFile"
+        ),
+        runtime_counters_file=_string(
+            evidence.get("runtimeCountersFile"), "evidence.runtimeCountersFile"
         ),
         cleanup_file=_string(evidence.get("cleanupFile"), "evidence.cleanupFile"),
         retain_generated_text=_boolean(
@@ -860,6 +1052,7 @@ def _validate(certification: MultiReplicaCertification, single: Certification) -
     release = certification.release
     capacity = certification.capacity
     plan = certification.distribution
+    serving = certification.runtime_distribution
     budgets = certification.budgets
     _validate_identity(certification)
     _validate_against_single_replica(certification, single)
@@ -894,9 +1087,26 @@ def _validate(certification: MultiReplicaCertification, single: Certification) -
             f"a multi-replica certification requests at least {MINIMUM_REPLICAS} "
             f"API replicas and this descriptor requests {release.api_replicas}"
         )
+    if release.runtime_replicas < MINIMUM_REPLICAS:
+        # The refusal B3 exists for, and the one this descriptor did not have.
+        # A release with one `llama-server` behind two API replicas is a
+        # single-replica serving path with a load balancer in front of it, and a
+        # record titled `multi-replica-inference` written about it says the
+        # opposite of what ran.
+        raise CertificationError(
+            f"a multi-replica inference certification requests at least "
+            f"{MINIMUM_REPLICAS} serving runtime replicas and this descriptor "
+            f"requests {release.runtime_replicas}; two API replicas in front of "
+            "one model server is not multi-replica inference"
+        )
     if plan.minimum_distinct_replicas > release.api_replicas:
         raise CertificationError(
             "the descriptor requires distribution across more replicas than it requests"
+        )
+    if serving.minimum_serving_replicas > release.runtime_replicas:
+        raise CertificationError(
+            "the descriptor requires more serving replicas to have worked than it "
+            "requests"
         )
     if plan.request_count < plan.minimum_distinct_replicas:
         raise CertificationError(
@@ -905,6 +1115,29 @@ def _validate(certification: MultiReplicaCertification, single: Certification) -
     if plan.mechanism != EXPECTED_MECHANISM:
         raise CertificationError(
             "the correlation mechanism is not the one this certification accepts"
+        )
+    if serving.mechanism != EXPECTED_RUNTIME_MECHANISM:
+        raise CertificationError(
+            "the serving-tier mechanism is not the one this certification accepts"
+        )
+    if serving.metrics_path != RUNTIME_METRICS_PATH:
+        raise CertificationError(
+            "the serving-tier counters are read from a path this runtime does not "
+            "publish"
+        )
+    if serving.counters != (
+        RUNTIME_DECODE_COUNTER,
+        RUNTIME_PREDICTED_TOKEN_COUNTER,
+        RUNTIME_PROMPT_TOKEN_COUNTER,
+    ):
+        # Pinned, not pattern-matched. `RUNTIME_DECODE_COUNTER` carries why: the
+        # runtime publishes other `llamacpp:` series, several of them advance
+        # for reasons that are not a token being produced, and a descriptor that
+        # named one of those would keep every assertion's shape while emptying
+        # the one that matters.
+        raise CertificationError(
+            "the serving-tier counters are not the three series this "
+            "certification reads"
         )
     if plan.path != CHAT_COMPLETIONS_PATH:
         raise CertificationError("the certification request path is not a served route")
@@ -937,6 +1170,7 @@ def _validate(certification: MultiReplicaCertification, single: Certification) -
         and certification.require_every_request_successful
         and certification.require_usage_counts
         and certification.require_per_replica_correlation
+        and certification.require_every_serving_replica_served
         and certification.require_pinned_model_revision
         and certification.require_digest_pinned_images
         and certification.require_release_test
@@ -954,11 +1188,25 @@ def _validate(certification: MultiReplicaCertification, single: Certification) -
         raise CertificationError(
             "the declared peak memory is below the memory the same pods request"
         )
+    if capacity.minimum_engine_memory_bytes < (
+        capacity.peak_memory_bytes + capacity.headroom_memory_bytes
+    ):
+        # The engine minimum is a pre-check that exists to refuse early with a
+        # better message than a `Pending` pod. A minimum below what the profile
+        # then demands of the cluster is a pre-check that passes hosts the very
+        # next check refuses, which is worse than not having one: it tells a
+        # contributor their machine is adequate and then spends an install
+        # saying otherwise.
+        raise CertificationError(
+            "the declared engine memory minimum is below the memory this profile "
+            "goes on to require of the cluster"
+        )
     if (
         certification.evidence_directory != EXPECTED_EVIDENCE_DIRECTORY
         or certification.capacity_file != EXPECTED_CAPACITY_FILE
         or certification.facts_file != EXPECTED_FACTS_FILE
         or certification.observations_file != EXPECTED_OBSERVATIONS_FILE
+        or certification.runtime_counters_file != EXPECTED_RUNTIME_COUNTERS_FILE
         or certification.cleanup_file != EXPECTED_CLEANUP_FILE
         or certification.retain_generated_text
         or Path(certification.result_file).name != certification.result_file
@@ -1879,6 +2127,227 @@ def correlate(
     return distribution
 
 
+# -- the serving tier --------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeCounterReading:
+    """One serving replica's own counters, at one moment.
+
+    Keyed by the descriptor's counter names rather than by fields of this class,
+    so that the series read and the series asserted over cannot drift apart: the
+    collecting script writes what the descriptor named, and this reads back the
+    same names.
+    """
+
+    pod_name: str
+    counters: Mapping[str, int]
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeCounterFacts:
+    """Both reads around the request set, as the operating script took them."""
+
+    metrics_path: str
+    read_before_at: str
+    read_after_at: str
+    before: tuple[RuntimeCounterReading, ...]
+    after: tuple[RuntimeCounterReading, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ServingReplicaWork:
+    """What one serving replica's own counters say it did during the window."""
+
+    pod_name: str
+    decode_delta: int
+    predicted_token_delta: int
+    prompt_token_delta: int
+
+
+def load_runtime_counters(
+    certification: MultiReplicaCertification, *, repo_root: Path = REPO_ROOT
+) -> RuntimeCounterFacts:
+    """Read both counter snapshots, untrusted, at the descriptor's location."""
+    reader = _Facts(STAGE_SERVING)
+    document = reader.document(
+        certification.artifact_path(certification.runtime_counters_file, repo_root),
+        "serving runtime counters",
+    )
+    plan = certification.runtime_distribution
+    metrics_path = reader.string(document.get("metricsPath"), "metricsPath")
+    if metrics_path != plan.metrics_path:
+        raise CertificationFailed(
+            f"the counters were read from '{metrics_path}' and this certification "
+            f"reads them from '{plan.metrics_path}'",
+            STAGE_SERVING,
+        )
+    return RuntimeCounterFacts(
+        metrics_path=metrics_path,
+        read_before_at=reader.string(document.get("readBeforeAt"), "readBeforeAt"),
+        read_after_at=reader.string(document.get("readAfterAt"), "readAfterAt"),
+        before=_readings(reader, plan, document.get("before"), "before"),
+        after=_readings(reader, plan, document.get("after"), "after"),
+    )
+
+
+def _readings(
+    reader: _Facts,
+    plan: RuntimeDistributionPlan,
+    value: Any,
+    field: str,
+) -> tuple[RuntimeCounterReading, ...]:
+    """One snapshot: every pod that answered, with every counter this run reads.
+
+    A counter the runtime did not publish is refused rather than defaulted to
+    zero. An absent series and a series sitting at zero are different facts, and
+    only one of them means the replica served nothing -- reading the other as
+    zero would turn a scrape that failed into a replica that idled, and then into
+    a certification that failed for a reason nobody could act on.
+    """
+    entries = reader.entries(value, field)
+    readings = []
+    for index, entry in enumerate(entries):
+        record = reader.object(entry, f"{field}[{index}]")
+        raw = reader.object(record.get("counters"), f"{field}[{index}].counters")
+        readings.append(
+            RuntimeCounterReading(
+                pod_name=reader.string(
+                    record.get("podName"), f"{field}[{index}].podName"
+                ),
+                counters={
+                    counter: reader.integer(
+                        raw.get(counter), f"{field}[{index}].counters[{counter}]"
+                    )
+                    for counter in plan.counters
+                },
+            )
+        )
+    return tuple(readings)
+
+
+def correlate_serving(
+    certification: MultiReplicaCertification,
+    facts: MultiReplicaClusterFacts,
+    observations: DistributionObservations,
+    counters: RuntimeCounterFacts,
+) -> tuple[ServingReplicaWork, ...]:
+    """Establish that every serving replica ran the model, or refuse to.
+
+    This is the assertion the serving half of this certification exists for. What
+    it will not accept: a snapshot that does not name exactly the ready serving
+    replicas, a counter that went backwards, a replica whose decode counter did
+    not move, fewer such replicas than the descriptor requires, and a
+    predicted-token total below the one the driver was told about.
+
+    The last one is the only cross-tier check in this workflow, and it is stated
+    as an inequality rather than an equality on purpose. Every completion token
+    the driver was told about had to be predicted by some replica inside the
+    window, so the runtime's own total cannot be lower -- but it may legitimately
+    be higher, because the window is bounded by two reads rather than by the
+    request set itself. Asserting equality would fail a correct run over the
+    milliseconds at either end.
+    """
+    plan = certification.runtime_distribution
+    target = certification.release
+    ready = set(facts.ready_pods(target.runtime_component))
+    before = _snapshot(counters.before, "before", ready)
+    after = _snapshot(counters.after, "after", ready)
+
+    work: list[ServingReplicaWork] = []
+    for pod_name in sorted(ready):
+        deltas = {}
+        for counter in plan.counters:
+            start = before[pod_name][counter]
+            end = after[pod_name][counter]
+            if end < start:
+                # `llama-server` starts its counters at zero, so a fall means the
+                # process restarted between the reads. A delta measured across a
+                # restart is the difference between two unrelated runs, and the
+                # honest answer is that this window cannot be measured -- not a
+                # smaller number.
+                raise CertificationFailed(
+                    f"replica '{pod_name}' reported '{counter}' falling from "
+                    f"{start} to {end}; the runtime restarted between the two "
+                    "reads and the window it bounds cannot be measured",
+                    STAGE_SERVING,
+                )
+            deltas[counter] = end - start
+        work.append(
+            ServingReplicaWork(
+                pod_name=pod_name,
+                decode_delta=deltas[plan.decode_counter],
+                predicted_token_delta=deltas[plan.predicted_token_counter],
+                prompt_token_delta=deltas[plan.prompt_token_counter],
+            )
+        )
+
+    idle = [entry.pod_name for entry in work if entry.decode_delta == 0]
+    if certification.require_every_serving_replica_served and idle:
+        raise CertificationFailed(
+            f"serving replica(s) {idle} decoded nothing while the request set "
+            "ran. Every request was answered, so the work went to the other "
+            "replica(s): this is a release that had two model servers and used "
+            "one, and it is not a multi-replica inference certification",
+            STAGE_SERVING,
+        )
+    served = [entry for entry in work if entry.decode_delta > 0]
+    if len(served) < plan.minimum_serving_replicas:
+        raise CertificationFailed(
+            f"{len(served)} serving replica(s) decoded anything and this "
+            f"certification requires {plan.minimum_serving_replicas}. The "
+            "requests were distributed by the Service rather than by this "
+            "workflow, so this is an outcome rather than a defect -- and it is "
+            "not a multi-replica inference certification",
+            STAGE_SERVING,
+        )
+
+    predicted = sum(entry.predicted_token_delta for entry in work)
+    reported = sum(
+        request.completion_tokens
+        for request in observations.requests
+        if request.succeeded
+    )
+    if predicted < reported:
+        raise CertificationFailed(
+            f"the serving replicas together report predicting {predicted} tokens "
+            f"and the driver was told about {reported}. Every token a caller was "
+            "told about had to be predicted by a replica in this window, so the "
+            "two sides are describing different work",
+            STAGE_SERVING,
+        )
+    return tuple(work)
+
+
+def _snapshot(
+    readings: Sequence[RuntimeCounterReading],
+    field: str,
+    ready: set[str],
+) -> dict[str, Mapping[str, int]]:
+    """One snapshot as a lookup, after establishing it is the expected set.
+
+    Exactly the ready serving replicas, each once. A snapshot missing a pod would
+    silently exclude the replica most likely to be the interesting one, and an
+    extra pod would let a reading from something outside this release count
+    towards the certification.
+    """
+    named = [reading.pod_name for reading in readings]
+    if len(named) != len(set(named)):
+        raise CertificationFailed(
+            f"the '{field}' counter snapshot names one pod more than once",
+            STAGE_SERVING,
+        )
+    if set(named) != ready:
+        missing = sorted(ready - set(named))
+        extra = sorted(set(named) - ready)
+        raise CertificationFailed(
+            f"the '{field}' counter snapshot does not name the ready serving "
+            f"replicas; missing {missing}, unexpected {extra}",
+            STAGE_SERVING,
+        )
+    return {reading.pod_name: reading.counters for reading in readings}
+
+
 # -- cleanup -----------------------------------------------------------------
 
 
@@ -2016,6 +2485,8 @@ class MultiReplicaResult:
     facts: MultiReplicaClusterFacts
     observations: DistributionObservations
     distribution: tuple[ReplicaDistribution, ...]
+    counters: RuntimeCounterFacts
+    serving: tuple[ServingReplicaWork, ...]
     cleanup: CleanupFacts | None
 
 
@@ -2100,11 +2571,27 @@ def _distribution_document(
     ]
 
 
+def _serving_document(
+    serving: Sequence[ServingReplicaWork],
+    plan: RuntimeDistributionPlan,
+) -> list[dict[str, object]]:
+    return [
+        {
+            "podName": entry.pod_name,
+            plan.decode_counter: entry.decode_delta,
+            plan.predicted_token_counter: entry.predicted_token_delta,
+            plan.prompt_token_counter: entry.prompt_token_delta,
+        }
+        for entry in serving
+    ]
+
+
 def result_document(result: MultiReplicaResult) -> dict[str, object]:
     """The machine-readable multi-replica C2 record, carrying no generated text."""
     certification = result.certification
     facts = result.facts
     plan = certification.distribution
+    serving_plan = certification.runtime_distribution
     observations = result.observations
     package = load_runtime_package()
     manifest = load_manifest()
@@ -2137,6 +2624,31 @@ def result_document(result: MultiReplicaResult) -> dict[str, object]:
             "elapsedMs": observations.elapsed_ms,
             "perReplica": _distribution_document(result.distribution),
             "generatedTextRetained": False,
+        },
+        "serving": {
+            # A separate member from `distribution`, and not folded into it,
+            # because the two are different claims about different tiers and a
+            # reader who conflates them has read this record as saying something
+            # it does not say. `distribution` is per request. This is per replica
+            # over the window the two reads bound.
+            "mechanism": serving_plan.mechanism,
+            "metricsPath": result.counters.metrics_path,
+            "readBeforeAt": result.counters.read_before_at,
+            "readAfterAt": result.counters.read_after_at,
+            "minimumServingReplicas": serving_plan.minimum_serving_replicas,
+            "servingReplicasThatDecoded": sum(
+                1 for entry in result.serving if entry.decode_delta > 0
+            ),
+            "perReplicaDelta": _serving_document(result.serving, serving_plan),
+            "predictedTokensReportedByRuntimes": sum(
+                entry.predicted_token_delta for entry in result.serving
+            ),
+            "completionTokensReportedToDriver": sum(
+                request.completion_tokens
+                for request in observations.requests
+                if request.succeeded
+            ),
+            "requestAttributedToServingReplica": False,
         },
         "kubernetes": {
             "cluster": {
@@ -2265,12 +2777,16 @@ def certify_multi_replica(
     facts = load_cluster_facts(certification, repo_root=repo_root)
     observations = load_observations(certification, repo_root=repo_root)
     distribution = correlate(certification, facts, observations)
+    counters = load_runtime_counters(certification, repo_root=repo_root)
+    serving = correlate_serving(certification, facts, observations, counters)
     return MultiReplicaResult(
         certification=certification,
         capacity=capacity,
         facts=facts,
         observations=observations,
         distribution=distribution,
+        counters=counters,
+        serving=serving,
         cleanup=None,
     )
 

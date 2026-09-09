@@ -265,6 +265,17 @@ ROW_FOR_RENDERED = {
     ("Service", "platform-api"): "platform-api-service",
     ("Deployment", "serving-runtime"): "serving-runtime-deployment",
     ("Service", "serving-runtime"): "serving-runtime-service",
+    # One row, six kinds. `telemetry-collector` is a platform service rather than
+    # a single object -- it needs an identity, a permission, a binding, a
+    # configuration, a Service and a Deployment to be one thing -- and the
+    # inventory row says so in its `kind`. Mapping each kind separately is what
+    # keeps a stray object from arriving under the same label unnoticed.
+    ("ServiceAccount", "telemetry-collector"): "telemetry-collector",
+    ("Role", "telemetry-collector"): "telemetry-collector",
+    ("RoleBinding", "telemetry-collector"): "telemetry-collector",
+    ("ConfigMap", "telemetry-collector"): "telemetry-collector",
+    ("Service", "telemetry-collector"): "telemetry-collector",
+    ("Deployment", "telemetry-collector"): "telemetry-collector",
 }
 
 
@@ -321,10 +332,12 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
     assert CHART_YAML.is_file()
     assert VALUES_SCHEMA.is_file()
     assert len(list(TEMPLATES_DIR.glob("*.yaml"))) >= 5
-    assert len(INSTALLED["real"]) == 12, (
-        "the real profile installs twelve objects: two Deployments, two Services, "
-        "the runtime ConfigMap, the telemetry scrape ConfigMap, one ServiceAccount "
-        "per workload, and four network policies"
+    assert len(INSTALLED["real"]) == 20, (
+        "the real profile installs nineteen objects: three Deployments, three "
+        "Services, the runtime ConfigMap, the telemetry scrape ConfigMap, the "
+        "collector's own ConfigMap, three ServiceAccounts, the collector's Role "
+        "and RoleBinding, and six network policies -- the acquisition job's "
+        "egress and the collector's, both installed rather than hooked"
     )
     assert len(INSTALLED["mock"]) == 8, (
         "the mock profile installs eight: the API's Deployment, Service, "
@@ -332,11 +345,15 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
         "network policies. It renders no runtime policy because it renders no "
         "runtime"
     )
-    assert len(HOOKS["real"]) == 1, "one test hook, in both profiles"
-    assert len(HOOKS["mock"]) == 1
-    assert len(ALL_CONTAINERS) == 6, (
-        "five workload and hook containers, plus the model integrity init "
-        "container the real profile runs before its runtime"
+    assert len(HOOKS["real"]) == 2, (
+        "two hooks under real: the release test, and the acquisition job that "
+        "fills the claim before the runtime is created to read it"
+    )
+    assert len(HOOKS["mock"]) == 1, "a mock fills no claim, so it has only its test"
+    assert len(ALL_CONTAINERS) == 8, (
+        "five workload and hook containers, the model integrity init container "
+        "the real profile runs before its runtime, the acquisition job's own, and "
+        "the collector"
     )
 
 
@@ -402,41 +419,73 @@ def test_the_chart_renders_nothing_terraform_owns(profile: str, document: dict) 
 
 
 def test_the_model_cache_is_referenced_and_never_created() -> None:
-    """Referencing is not owning, and this is the one place it is easy to blur."""
-    volumes = [
-        volume
-        for _, spec in _pod_specs(RENDERED["real"])
-        for volume in spec.get("volumes") or []
-    ]
-    claims = [v for v in volumes if "persistentVolumeClaim" in v]
-    assert len(claims) == 1, "the real profile mounts exactly one claim"
-    claim = claims[0]["persistentVolumeClaim"]
-    assert claim["claimName"] == FIXTURES["real"]["model"]["cache"]["claimName"]
-    assert claim["readOnly"] is True, (
-        "a serving replica that could write the model cache is a second writer "
-        "nobody decided on; the acquisition job is the one sanctioned writer"
+    """Referencing is not owning, and this is the one place it is easy to blur.
+
+    Two pods reference the claim and exactly one may write it. The serving
+    runtime mounts it read only at a revision-scoped subdirectory; the
+    acquisition job mounts it writable at its root, because `subPath` resolves at
+    mount time and cannot create the revision directory on a claim Terraform has
+    just provisioned empty.
+
+    So the assertion is not "one reference" -- it is that every reference names
+    the Terraform claim, that the chart creates none, and that the *only*
+    writable one belongs to the job the ownership inventory names as the single
+    sanctioned writer. A second writable mount appearing anywhere else is the
+    failure this exists to catch.
+    """
+    assert not [d for d in RENDERED["real"] if d["kind"] == "PersistentVolumeClaim"], (
+        "the chart creates a claim it is only allowed to reference"
+    )
+
+    writable = []
+    for label, spec in _pod_specs(RENDERED["real"]):
+        for volume in spec.get("volumes") or []:
+            claim = volume.get("persistentVolumeClaim")
+            if claim is None:
+                continue
+            assert claim["claimName"] == FIXTURES["real"]["model"]["cache"]["claimName"]
+            if claim.get("readOnly") is not True:
+                writable.append(label)
+
+    assert len(writable) == 1, (
+        f"exactly one pod may write the model cache; these can: {writable}"
+    )
+    assert "model-acquisition" in writable[0].lower(), (
+        f"the writable mount belongs to {writable[0]}, not to the acquisition job"
     )
 
 
-def test_the_acquisition_job_is_declared_deferred_rather_than_forgotten() -> None:
-    """The one Helm-owned row this story left where it was, said out loud.
+def test_the_acquisition_job_is_rendered_rather_than_deferred() -> None:
+    """The writing side of the model cache handoff, which used to be absent.
 
-    V1-S3-003 implemented the reference side of the model cache handoff -- the
-    revision-scoped mount and the integrity check -- and not the writing side,
-    which needs an image nobody has published. A row that is neither rendered
-    nor declared deferred is owned on paper by a tool that has never heard of
-    it, so this asserts the declaration rather than the omission.
+    V1-S3-003 implemented the reference side -- the revision-scoped mount and the
+    integrity check -- and left the writing side deferred. The consequence was a
+    real profile installable only against a claim somebody had filled by hand,
+    which is what the Sprint 3 review called a reproducibility gap.
+
+    This asserts the pair rather than either half. A row declared owned and not
+    rendered is owned on paper by a tool that has never heard of it; a row
+    rendered while still declared deferred is the same problem inverted.
     """
-    assert "model-acquisition-job" in DECLARED_DEFERRED
+    assert "model-acquisition-job" in DECLARED_OWNED
+    assert "model-acquisition-job" not in DECLARED_DEFERRED
     assert any(
         resource["resourceId"] == "model-acquisition-job"
         and resource["owner"] == "helm"
         and resource["v1Status"] == "planned"
         for resource in INVENTORY["resources"]
-    )
+    ), "the row stays planned until a release has actually installed it"
+
+    # It is a hook, so it is not in INSTALLED. The real profile renders exactly
+    # one; the mock renders none, because a mock fills no claim and a mock that
+    # ran an acquisition would put real weights into a cluster on behalf of a
+    # release that serves none of them.
+    assert len([d for d in HOOKS["real"] if d["kind"] == "Job"]) == 1
+    assert not [d for d in HOOKS["mock"] if d["kind"] == "Job"]
     for profile, documents in INSTALLED.items():
         assert not [d for d in documents if d["kind"] == "Job"], (
-            f"{profile} renders a Job while the acquisition row is deferred"
+            f"{profile} renders the acquisition job as an ordinary release "
+            "object, where it would race the Deployment it exists to serve"
         )
 
 
@@ -1089,11 +1138,28 @@ def test_the_real_fixture_pins_the_artifact_the_source_record_pins() -> None:
 def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() -> None:
     """The fixtures say the API digest is a placeholder. This recomputes it.
 
-    No InferOps image is published: `platform-api-container-image` is `planned`
-    in the inventory and no Dockerfile is committed. The fixtures still have to
-    satisfy the chart's digest refusal, so they carry the SHA-256 of a stated
-    string rather than a plausible-looking digest — which is the difference
-    between a placeholder a reader can verify and one they have to trust.
+    The fixtures have to satisfy the chart's digest refusal, so they carry the
+    SHA-256 of a stated string rather than a plausible-looking digest -- which is
+    the difference between a placeholder a reader can verify and one they have to
+    trust.
+
+    **The reason for the placeholder changed, and this test changed with it.**
+    Until the Sprint 3 remediation there was no Dockerfile at all, and this
+    asserted that -- if an image could not be built, no digest could be real. An
+    image can now be built: `deploy/api/Dockerfile` is committed and
+    `scripts/environment/api-image.sh` builds it, loads it into the node and
+    verifies the reference resolves there. The placeholder stays for a different
+    and narrower reason. The image is published to no registry, so its manifest
+    digest is a fact about one contributor's build rather than about this
+    repository, and `api-image.sh values` writes it into an overlay under
+    `.artifacts/` that version control ignores.
+
+    So the assertion inverted rather than relaxed. It used to require that no
+    build path existed; it now requires that one does, that the workflow derives
+    its digest instead of declaring one, and that nothing committed carries a
+    digest for an image nobody else can verify. `platform-api-container-image`
+    stays `planned` because no release has installed it -- a built image is not
+    an installed one.
     """
     expected = (
         "sha256:"
@@ -1116,12 +1182,25 @@ def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() ->
         check=False,
     )
     # Tracked files only. A repository-wide glob would also walk `.venv/`, where a
-    # `Dockerfile` belonging to somebody else's package would fail this for a
-    # reason that has nothing to do with whether InferOps publishes an image.
+    # `Dockerfile` belonging to somebody else's package would be counted as this
+    # project's build path.
     assert tracked.returncode == 0, tracked.stderr
-    assert not tracked.stdout.strip(), (
-        "a Dockerfile is committed, so the reason the API image is a placeholder "
-        "no longer holds"
+    committed = sorted(tracked.stdout.split())
+    assert committed == ["deploy/api/Dockerfile", "deploy/model-seed/Dockerfile"], (
+        "the images this repository builds are the API's and the model seed's; "
+        f"found {committed}"
+    )
+
+    # The digest is derived from a built image, never written down. A literal in
+    # the build workflow would be somebody's host state committed as though it
+    # were this repository's, and it is the one thing the review named outright:
+    # do not replace the fake digest with another unverified digest.
+    workflow = (REPO_ROOT / "scripts" / "environment" / "api-image.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "RepoDigests" in workflow, "the workflow does not derive a digest"
+    assert not re.search(r"sha256:[0-9a-f]{64}", workflow), (
+        "the build workflow commits a digest literal"
     )
 
 
@@ -1452,21 +1531,46 @@ def test_the_rollout_deadline_is_outside_the_startup_budget(name: str) -> None:
 
 
 @pytest.mark.parametrize("profile", sorted(HOOKS))
-def test_the_only_hook_is_a_test_and_it_deletes_itself(profile: str) -> None:
-    """A hook that outlived its operation would be residue an uninstall misses."""
+def test_every_hook_deletes_itself_and_does_not_retry(profile: str) -> None:
+    """A hook that outlived its operation would be residue an uninstall misses.
+
+    That is not a stylistic preference. Helm removes no hook object on
+    `helm uninstall` -- there is no delete policy meaning "when the release goes"
+    -- so `hook-succeeded` is the only thing standing between a hook and an
+    object that outlives the release which created it.
+
+    Two hooks now, where there was one. The test Pod asks the release whether it
+    works; the acquisition Job fills the claim the runtime reads, before the
+    runtime exists to read it. Neither retries: a test that retried would report
+    the retry rather than the failure, and an acquisition that retried would
+    repeat either a transfer that ran out of budget or a hash that did not match,
+    and the second must not be repeated at all.
+    """
+    events = {}
     for document in HOOKS[profile]:
         annotations = _dig(document, "metadata.annotations")
-        assert annotations[HOOK_ANNOTATION] == "test", (
-            "the only hook this chart renders is a test. An install or upgrade "
-            "hook would run against a cluster as part of a release, and nothing "
-            "here has established what that should do"
-        )
+        event = annotations[HOOK_ANNOTATION]
+        assert event in ("test", "pre-install,pre-upgrade"), event
         policy = annotations["helm.sh/hook-delete-policy"]
-        assert "hook-succeeded" in policy
+        assert "hook-succeeded" in policy, (
+            f"{document['kind']} would outlive the release that created it"
+        )
         assert "before-hook-creation" in policy
-        assert document["kind"] == "Pod"
-        assert _dig(document, "spec.restartPolicy") == "Never", (
-            "a test that retries reports the retry rather than the failure"
+        restart = _dig(document, "spec.restartPolicy")
+        if restart is ABSENT:
+            restart = _dig(document, "spec.template.spec.restartPolicy")
+        assert restart == "Never", document["kind"]
+        events[document["kind"]] = event
+
+    assert events.get("Pod") == "test", "the release test is not a test hook"
+    if profile == "real":
+        assert events.get("Job") == "pre-install,pre-upgrade", (
+            "the acquisition job must complete before the runtime is created"
+        )
+        job = next(d for d in HOOKS[profile] if d["kind"] == "Job")
+        assert _dig(job, "spec.backoffLimit") == 0
+        assert _dig(job, "spec.activeDeadlineSeconds") > 0, (
+            "an unbounded acquisition holds an install open indefinitely"
         )
 
 
@@ -1477,8 +1581,13 @@ def test_the_hook_is_not_counted_as_something_the_release_owns() -> None:
             component = _mapping(document, "metadata.labels").get(
                 "app.kubernetes.io/component"
             )
-            assert component == "release-test"
-            assert (document["kind"], component) not in ROW_FOR_RENDERED
+            assert component in ("release-test", "model-acquisition"), component
+            if component == "release-test":
+                # The test pod is nobody's inventory row: it exists for the
+                # duration of `helm test` and owns nothing. The acquisition job
+                # is a row -- it is a hook because of when it has to run, not
+                # because it is unowned.
+                assert (document["kind"], component) not in ROW_FOR_RENDERED
     for profile in sorted(INSTALLED):
         for document in INSTALLED[profile]:
             assert not _is_hook(document)
@@ -1493,9 +1602,17 @@ def test_the_test_pod_asks_every_service_the_profile_renders() -> None:
             if document["kind"] == "Service"
         ]
         assert services, profile
+        # The release-test pod specifically. The acquisition job is a hook too,
+        # and it asks no Service anything -- it writes a claim.
+        test_pods = [
+            document
+            for document in HOOKS[profile]
+            if _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
+            == "release-test"
+        ]
         body = " ".join(
             argument
-            for _, container in _containers(HOOKS[profile])
+            for _, container in _containers(test_pods)
             for argument in container["args"]
         )
         for service in services:
@@ -1528,7 +1645,10 @@ def test_a_selector_is_drawn_only_from_things_a_rollback_cannot_change() -> None
         for _profile, document in ALL_INSTALLED
         if document["kind"] == "Deployment"
     ]
-    assert len(selectors) == 3, "two Deployments under real, one under mock"
+    assert len(selectors) == 4, (
+        "three Deployments under real -- API, runtime and collector -- and one "
+        "under mock"
+    )
     for selector in selectors:
         assert set(selector) == allowed, selector
         assert "inferops.io/profile" not in selector
@@ -1597,7 +1717,10 @@ def test_the_scrape_annotations_follow_the_switch_that_governs_them() -> None:
             assert (
                 annotations["prometheus.io/path"] == VALUES["telemetry"]["metricsPath"]
             )
-    assert seen == 3, "two Deployments under real, one under mock"
+    assert seen == 4, (
+        "three Deployments under real -- API, runtime and collector -- and one "
+        "under mock"
+    )
 
 
 def test_the_scrape_configuration_is_a_config_map_and_not_an_operator_object() -> None:
@@ -1622,9 +1745,14 @@ def test_the_scrape_configuration_is_rendered_once_and_mounted_by_nothing(
 ) -> None:
     """A workload publishes metrics. It does not collect them.
 
-    A ConfigMap mounted into the pod it describes would suggest the pod reads its
-    own scrape configuration, which is the wrong mental model to install beside the
-    right file.
+    This used to require that nothing mounted the scrape configuration, and that
+    was the honest reading while nothing consumed it -- a ConfigMap mounted into
+    the pod it describes would suggest the pod reads its own scrape configuration.
+    The collector reads it now, which is the whole of what the Sprint 3
+    remediation changed, so the rule became the sharper one it was standing in
+    for: **no workload pod mounts it, and the only pod that does is the
+    collector**. A release with two copies of its scrape configuration would be a
+    release where the one that drifted is whichever nobody read.
     """
     configured = [
         document
@@ -1637,10 +1765,33 @@ def test_the_scrape_configuration_is_rendered_once_and_mounted_by_nothing(
     name = configured[0]["metadata"]["name"]
     assert set(configured[0]["data"]) == {"scrape-config.yaml", "recording-rules.yaml"}
 
-    for _label, spec in _pod_specs(RENDERED[profile]):
+    readers = []
+    # Identified by the component label rather than by a name suffix: a future
+    # workload whose fullname happened to end in `-collector` would satisfy a
+    # suffix test without being the collector.
+    collector_objects = {
+        f"{document['kind']}/{_dig(document, 'metadata.name')}"
+        for document in RENDERED[profile]
+        if _mapping(document, "metadata.labels").get("app.kubernetes.io/component")
+        == "telemetry-collector"
+    }
+
+    for label, spec in _pod_specs(RENDERED[profile]):
+        component = label in collector_objects
         for volume in spec.get("volumes") or []:
             source = volume.get("configMap") or {}
-            assert source.get("name") != name
+            if source.get("name") != name:
+                continue
+            readers.append(label)
+            assert component, (
+                f"{label} mounts the scrape configuration, and it is not the "
+                "collector; a workload publishes metrics and does not collect them"
+            )
+    if profile == "real":
+        assert len(readers) == 1, readers
+    else:
+        assert not readers, "a mock renders no collector and nothing reads it"
+    for _label, spec in _pod_specs(RENDERED[profile]):
         for container in spec.get("containers") or []:
             for source in container.get("envFrom") or []:
                 assert (source.get("configMapRef") or {}).get("name") != name
@@ -1660,20 +1811,40 @@ def test_the_collector_allowance_is_one_from_item_and_defaults_to_absent() -> No
     anywhere with those labels", which is a materially wider hole and reads
     identically in a `kubectl get networkpolicy -o yaml`.
     """
-    assert VALUES["telemetry"]["collection"]["collector"] == {
-        "namespace": "",
-        "podSelector": {},
-    }
+    collector = VALUES["telemetry"]["collection"]["collector"]
+    assert collector["namespace"] == ""
+    assert collector["podSelector"] == {}
+    assert collector["deploy"] is False, (
+        "the shipped default installs no collector: a release that quietly "
+        "started a second workload would be deciding for its operator"
+    )
+
+    # With the defaults, no allowance is rendered at all. The real profile turns
+    # the collector on, and then the allowance names the collector this release
+    # itself installs -- which is the case the two-selector rule below is about,
+    # because that one really is a `namespaceSelector` beside a `podSelector`.
     for _profile, document in ALL_RENDERED:
         if document["kind"] != "NetworkPolicy":
             continue
         for rule in _sequence(document, "spec.ingress"):
             for source in rule.get("from") or []:
-                assert "namespaceSelector" not in source, (
-                    "no committed render names a collector, because there is none"
+                if "namespaceSelector" not in source:
+                    continue
+                assert "podSelector" in source, (
+                    "a namespace is opened without naming which pods in it"
                 )
+                assert (
+                    source["podSelector"]["matchLabels"].get(
+                        "app.kubernetes.io/component"
+                    )
+                    == "telemetry-collector"
+                ), source
 
+    # `deploy=false` as well, because the two are alternatives: a release that
+    # installs its own collector names that one, and an override pointing
+    # somewhere else would be a rule for a collector that is not the one running.
     result = _render(
+        "telemetry.collection.collector.deploy=false",
         "telemetry.collection.collector.namespace=observability",
         "telemetry.collection.collector.podSelector.app=prometheus",
     )
@@ -1871,7 +2042,8 @@ def test_each_workload_presents_an_identity_of_its_own() -> None:
             f"{profile} names an account this release does not render: "
             f"{sorted(named - accounts)}"
         )
-        expected = 2 if profile == "real" else 1
+        # API, runtime, and the collector the real profile installs.
+        expected = 3 if profile == "real" else 1
         assert len(accounts) == expected, (
             f"{profile} renders {len(accounts)} service accounts, expected {expected}"
         )
@@ -1886,18 +2058,54 @@ def test_each_workload_presents_an_identity_of_its_own() -> None:
         )
 
 
-def test_the_chart_grants_its_identities_nothing() -> None:
-    """A least-privilege account is one nothing is bound to, and that is checkable.
+def test_the_chart_grants_exactly_one_identity_exactly_one_permission() -> None:
+    """This used to assert that the chart granted nothing at all. It grants one thing.
 
-    The claim this chart may make about its service accounts is narrow and it is
-    exactly this: no Role, no ClusterRole, and no binding of either is rendered
-    anywhere, and no pod mounts a token. An account with a binding somewhere else
-    is not something a render can see, and this does not claim otherwise.
+    The collector discovers its targets through the Kubernetes API, so it needs a
+    permission, and a chart that granted nothing could not have one. What replaces
+    "nothing" is not "something": it is this exact list, checked. A `ClusterRole`
+    or a `ClusterRoleBinding` is still refused outright -- namespace-scoped is not
+    a restriction the collector works around, it is the whole of what it needs --
+    and every other identity this chart renders is still bound to nothing.
+
+    The verbs matter as much as the resources. `get`, `list` and `watch` on pods
+    is what service discovery reads; anything that could create, patch or delete
+    would be a collector that could change the release it observes.
     """
-    forbidden = {"Role", "ClusterRole", "RoleBinding", "ClusterRoleBinding"}
     for profile, documents in RENDERED.items():
-        offenders = [d["kind"] for d in documents if d["kind"] in forbidden]
-        assert not offenders, f"{profile} renders {offenders}, which grants something"
+        cluster_scoped = [
+            d["kind"]
+            for d in documents
+            if d["kind"] in {"ClusterRole", "ClusterRoleBinding"}
+        ]
+        assert not cluster_scoped, (
+            f"{profile} renders {cluster_scoped}, which grants something outside "
+            "this namespace"
+        )
+
+        roles = [d for d in documents if d["kind"] == "Role"]
+        bindings = [d for d in documents if d["kind"] == "RoleBinding"]
+        if profile == "mock":
+            assert not roles and not bindings, (
+                "a mock collects nothing and needs nothing"
+            )
+            continue
+
+        assert len(roles) == 1 and len(bindings) == 1, (roles, bindings)
+        assert _sequence(roles[0], "rules") == [
+            {
+                "apiGroups": [""],
+                "resources": ["pods"],
+                "verbs": ["get", "list", "watch"],
+            }
+        ], "the collector's permission is not the one this test permits"
+
+        # And it is bound to the collector's account and to nothing else.
+        collector_account = f"{_dig(roles[0], 'metadata.name')}"
+        subjects = _sequence(bindings[0], "subjects")
+        assert [s["name"] for s in subjects] == [collector_account], subjects
+        assert _dig(bindings[0], "roleRef.kind") == "Role"
+
     for label, spec in ALL_POD_SPECS:
         assert _dig(spec, "automountServiceAccountToken") is False, (
             f"{label} mounts a service account token it has no use for"
@@ -2023,21 +2231,31 @@ def test_every_policy_that_denies_egress_still_permits_name_resolution(
 
 
 def test_no_policy_reaches_outside_the_release_or_the_resolver() -> None:
-    """A policy is scoped to this release, and the one exception is named.
+    """A policy is scoped to this release, and the exceptions are named.
 
     Every peer is either a pod carrying this release's labels or the cluster
-    resolver. An `ipBlock` would reach an address range this chart cannot see the
-    membership of, and a bare `namespaceSelector` would open a whole namespace,
-    so neither is rendered.
+    resolver. An `ipBlock` reaches an address range this chart cannot see the
+    membership of, and a bare `namespaceSelector` opens a whole namespace.
+
+    **One policy is allowed an `ipBlock`, and only one.** The acquisition job's
+    whole purpose is to fetch an artifact from outside the cluster, so a rule
+    confining it to release pods would confine it to failing. That exception is
+    bounded rather than granted: it is checked separately, below, for the exact
+    port and the exact excluded ranges. Every other policy is held to the
+    original rule, and a second policy acquiring an `ipBlock` fails here.
     """
     for profile, documents in INSTALLED.items():
         for policy in _policies(documents):
+            reaches_out = policy["metadata"]["name"].endswith("-model-acquisition")
             for direction in ("ingress", "egress"):
                 for rule in _sequence(policy, f"spec.{direction}"):
                     for peer in rule.get("to") or rule.get("from") or []:
-                        assert "ipBlock" not in peer, (
-                            f"{profile} opens an address range rather than a pod set"
-                        )
+                        if "ipBlock" in peer:
+                            assert reaches_out, (
+                                f"{profile}/{policy['metadata']['name']} opens an "
+                                "address range rather than a pod set"
+                            )
+                            continue
                         if "namespaceSelector" in peer:
                             assert "podSelector" in peer, (
                                 f"{profile} opens a whole namespace; the resolver "
@@ -2116,6 +2334,7 @@ def test_externally_provisioned_accounts_still_render_and_still_pass() -> None:
     validator the story ships.
     """
     result = _render(
+        "security.serviceAccount.collector.name=external-collector",
         "security.serviceAccount.create=false",
         "security.serviceAccount.api.name=external-api",
         "security.serviceAccount.runtime.name=external-runtime",
@@ -2127,7 +2346,7 @@ def test_externally_provisioned_accounts_still_render_and_still_pass() -> None:
         if isinstance(document, dict)
     ]
     named = {_dig(spec, "serviceAccountName") for _, spec in _pod_specs(documents)}
-    assert named == {"external-api", "external-runtime"}, named
+    assert named == {"external-api", "external-runtime", "external-collector"}, named
     assert not [d for d in documents if d["kind"] == "ServiceAccount"], (
         "create=false must render no account; the cluster provisions them"
     )
@@ -2159,3 +2378,119 @@ def test_switching_the_network_policy_off_is_a_trade_the_gate_reports() -> None:
     assert {finding.rule for finding in findings} == {
         "network-policy-in-the-release-namespace"
     }, "switching the policy off should cost exactly the policy control"
+
+
+def test_the_one_policy_that_reaches_outside_is_bounded_to_what_it_fetches() -> None:
+    """The acquisition job's exception, checked rather than trusted.
+
+    It may reach the publisher and the resolver, and nothing else. Every private
+    range is excepted, so the rule cannot be a path to the API server, to the
+    node, or to a pod in another namespace -- which is what an unqualified
+    `0.0.0.0/0` would be. The port is 443 alone: the transport is not
+    certificate-validated, the content hash is the whole of the defence, and this
+    rule bounds where the job may reach rather than what it may believe.
+    """
+    policies = [
+        policy
+        for policy in _policies(INSTALLED["real"])
+        if policy["metadata"]["name"].endswith("-model-acquisition")
+    ]
+    assert len(policies) == 1, "the real profile renders one acquisition policy"
+    policy = policies[0]
+
+    # The exemption above is keyed on the policy's name, so the name has to be
+    # bound to the pods it actually selects. Without this, a second policy
+    # renamed to end in `-model-acquisition` would inherit the right to open an
+    # address range, and this one could be widened to select every pod in the
+    # release while keeping its name.
+    job = next(d for d in HOOKS["real"] if d["kind"] == "Job")
+    job_labels = _mapping(job, "spec.template.metadata.labels")
+    selector = _mapping(policy, "spec.podSelector.matchLabels")
+    assert selector, "the acquisition policy selects every pod in the namespace"
+    assert selector.items() <= job_labels.items(), {
+        "policy selects": selector,
+        "the job's pods carry": job_labels,
+    }
+    assert selector.get("app.kubernetes.io/component") == "model-acquisition", selector
+
+    assert _sequence(policy, "spec.policyTypes") == ["Egress"], (
+        "an acquisition job accepts no connections"
+    )
+
+    blocks = [
+        peer["ipBlock"]
+        for rule in _sequence(policy, "spec.egress")
+        for peer in rule.get("to") or []
+        if "ipBlock" in peer
+    ]
+    assert len(blocks) == 1, blocks
+    assert set(blocks[0]["except"]) == {
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "169.254.0.0/16",
+    }, "a private range is reachable from the acquisition job"
+
+    ports = {
+        (port.get("port"), port.get("protocol"))
+        for rule in _sequence(policy, "spec.egress")
+        for peer in rule.get("to") or []
+        if "ipBlock" in peer
+        for port in rule.get("ports") or []
+    }
+    assert ports == {(443, "TCP")}, ports
+
+    assert not [
+        policy
+        for policy in _policies(INSTALLED["mock"])
+        if policy["metadata"]["name"].endswith("-model-acquisition")
+    ], "a mock acquires nothing and needs no path out of the cluster"
+
+
+@pytest.mark.parametrize(
+    "hostile",
+    (
+        pytest.param("https://h/x';id;'", id="apostrophe-closes-the-shell-quote"),
+        pytest.param("https://h/x;id", id="semicolon"),
+        pytest.param("https://h/x$(id)", id="command-substitution"),
+        pytest.param("https://h/x`id`", id="backtick"),
+        pytest.param("https://h/x&id", id="ampersand"),
+        pytest.param("https://h/x|id", id="pipe"),
+        pytest.param("http://h/x", id="plaintext-transport"),
+    ),
+)
+def test_a_source_url_that_could_reach_a_shell_is_refused(hostile: str) -> None:
+    """`sourceUrl` is interpolated into a single-quoted argument in the job's script.
+
+    Independent review found the pattern copied from RFC 3986's legal-URI
+    alphabet, which includes the apostrophe. That closes the quote, and the rest
+    of the URL is read as commands -- inside the very script whose SHA-256
+    comparison is the only thing standing between the job and a substituted file.
+    Shell access there does not merely bypass the check; it can write the bytes
+    the check was protecting.
+
+    The chart's own history records the identical bug in `cache.mountPath`, found
+    by review, fixed by closing the character class. This is that fix applied
+    where it was missed, and these are the characters it was missed for.
+    """
+    result = _render(f"model.artifact.sourceUrl={hostile}")
+    assert result.returncode != 0, (
+        f"the chart rendered a sourceUrl that reaches a shell: {hostile!r}"
+    )
+
+
+def test_the_committed_source_url_is_the_one_the_record_publishes() -> None:
+    """A chart and a source record naming different bytes is two pinned artifacts."""
+    import json
+
+    record = json.loads(
+        (REPO_ROOT / "docs" / "serving" / "model-source.v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert FIXTURES["real"]["model"]["artifact"]["sourceUrl"] == record["sourceUrl"]
+    assert FIXTURES["real"]["model"]["license"]["spdx"] == record["license"]["spdx"]
+    assert (
+        FIXTURES["real"]["model"]["license"]["reference"]
+        == record["license"]["reference"]
+    )

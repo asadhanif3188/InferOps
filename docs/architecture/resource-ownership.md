@@ -162,9 +162,10 @@ crossed by accident rather than by argument:
 | `serving-runtime-deployment` | `apps/v1 Deployment` | Separate from the API for the reasons in [the system architecture](system-architecture.md) |
 | `serving-runtime-service` | `v1/Service` | Internal to the release; not a public surface |
 | `runtime-configuration` | `v1/ConfigMap` | Rendered from a validated contract. Holds no secret value |
-| `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive. Still `planned`: `V1-S3-003` implemented the reference side of the handoff and left the writing side, which needs an unpublished image and a 1.71 GiB transfer, to the Kubernetes serving integration |
+| `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive. Rendered since the Sprint 3 remediation as a `pre-install,pre-upgrade` hook, so it completes before the runtime's own integrity check runs. It writes through a temporary file and renames only after verification, so a failed acquisition leaves nothing that looks finished, and it discards rather than reuses an artifact that does not verify. Still `planned`, because no release has installed it |
 | `workload-network-policy` | `networking.k8s.io/v1 NetworkPolicy` | A declaration until a test proves the local cluster's network plugin enforces one |
-| `telemetry-scrape-configuration` | `v1/ConfigMap` | A scrape configuration and recording rules for this release. Rendered since `V1-S3-007`, mounted by nothing, and inert until a collector exists |
+| `telemetry-scrape-configuration` | `v1/ConfigMap` | A scrape configuration and recording rules for this release. Rendered since `V1-S3-007`; read since the Sprint 3 remediation by the collector below, which mounts it rather than carrying a second copy |
+| `telemetry-collector` | `platform service` | A Deployment, Service, ConfigMap, ServiceAccount, Role and RoleBinding. Reads the row above. `ADR 0004` `D7` left this undecided for two sprints and the consequence was a configuration nothing consumed; the amendment made it Helm-owned and release-scoped. Its series are in an `emptyDir` and go with the pod, so it answers questions about the release running now and is not a store anything may depend on. Still `planned`: no release has installed it |
 
 ### Derived, and owned by no tool
 
@@ -204,7 +205,7 @@ inside one.
 
 | `resourceId` | Why it has no owner |
 |---|---|
-| `telemetry-backend` | Components will expose metrics; nothing collects them. Whether a collector is a prerequisite or part of a release is unresolved, and this row exists so that the question is answered deliberately rather than by whoever adds the first scrape target |
+| `telemetry-backend` | Dashboards and an alert routing path. Narrowed by the Sprint 3 remediation: this row used to cover the collector as well, and the collector is now decided and owned. What is left is genuinely open -- a dashboard needs somebody to read it, and an alert needs a receiver, a routing tree and somebody on the other end |
 | `ingress-and-load-balancing` | The accepted local Kubernetes distribution ships neither, and installing them was recorded as an open cost. Until one is chosen, every service is ClusterIP |
 
 ## Teardown, and why the order is not a preference

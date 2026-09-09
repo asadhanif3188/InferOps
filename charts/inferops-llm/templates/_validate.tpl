@@ -120,6 +120,36 @@ fail against.
 {{- fail "model.integrity.image.digest is required under the real profile." -}}
 {{- end -}}
 
+{{- if not .Values.model.license.spdx -}}
+{{- fail "model.license.spdx is required under the real profile. The acquisition job carries it onto the object that writes the weights into the claim, so that provenance can be asked of the cluster and not only of a document." -}}
+{{- end -}}
+{{- if not .Values.model.license.reference -}}
+{{- fail "model.license.reference is required under the real profile." -}}
+{{- end -}}
+
+{{- if .Values.model.acquisition.enabled -}}
+{{- if eq .Values.model.acquisition.source "download" -}}
+{{- if not .Values.model.artifact.sourceUrl -}}
+{{- fail "model.artifact.sourceUrl is required when model.acquisition.source is 'download'. Without it the job has nowhere to fetch from, and a job that acquired nothing would still report success." -}}
+{{- end -}}
+{{- if or .Values.model.acquisition.seedImage.repository .Values.model.acquisition.seedImage.digest -}}
+{{- fail "model.acquisition.seedImage is set while model.acquisition.source is 'download'. One of the two describes where the bytes come from; a values file naming both leaves a reader to guess which one ran." -}}
+{{- end -}}
+{{- end -}}
+{{- if eq .Values.model.acquisition.source "seed-image" -}}
+{{- if not .Values.model.acquisition.seedImage.repository -}}
+{{- fail "model.acquisition.seedImage.repository is required when model.acquisition.source is 'seed-image'. Build and load one with scripts/environment/model-seed-image.sh, which prints the values overlay to pass alongside the committed file." -}}
+{{- end -}}
+{{- if not .Values.model.acquisition.seedImage.digest -}}
+{{- fail "model.acquisition.seedImage.digest is required when model.acquisition.source is 'seed-image'. A tag is a label somebody can move, and the bytes this names are the model weights." -}}
+{{- end -}}
+{{- if .Values.model.artifact.sourceUrl -}}
+{{- fail "model.artifact.sourceUrl is set while model.acquisition.source is 'seed-image'. Nothing reads it, and a URL nothing reads is a URL nobody maintains." -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+
 {{- end -}}
 
 {{- if eq .Values.profile "mock" -}}
@@ -148,6 +178,12 @@ fail against.
 {{- end -}}
 {{- if .Values.security.secretRefs -}}
 {{- fail "security.secretRefs must be empty under the mock profile. A mock never holds real data and never requires real credentials, which is the rule the committed mock-llm contract example already obeys." -}}
+{{- end -}}
+{{- if .Values.model.acquisition.enabled -}}
+{{- fail "model.acquisition.enabled must be false under the mock profile. There is no claim to fill and no artifact to acquire, and a mock release that ran an acquisition job would put real model weights into a cluster on behalf of a release that serves none of them." -}}
+{{- end -}}
+{{- if or .Values.model.license.spdx .Values.model.license.reference -}}
+{{- fail "model.license must be empty under the mock profile: a mock loads no artifact, so it publishes no artifact's licence." -}}
 {{- end -}}
 
 {{- end -}}
@@ -405,6 +441,15 @@ would look for here.
 {{- end -}}
 
 {{/* -- telemetry --------------------------------------------------------- */}}
+
+{{- if and .Values.telemetry.enabled .Values.telemetry.collection.enabled .Values.telemetry.collection.collector.deploy (not .Values.security.serviceAccount.create) -}}
+{{- if not .Values.security.serviceAccount.collector.name -}}
+{{- fail "security.serviceAccount.collector.name is required when the collector is deployed and serviceAccount.create is false. With create false this chart renders neither the account nor the Role that lets the collector discover its targets - binding a Role to an identity somebody else owns would be granting on their behalf - so the name and the permission both have to come from the cluster." -}}
+{{- end -}}
+{{- if eq .Values.security.serviceAccount.collector.name "default" -}}
+{{- fail "security.serviceAccount.collector.name may not be 'default'. The namespace's shared account is the one every other workload in it also presents." -}}
+{{- end -}}
+{{- end -}}
 
 {{- if and .Values.telemetry.scrapeAnnotations (not .Values.telemetry.enabled) -}}
 {{- fail "telemetry.scrapeAnnotations requires telemetry.enabled. Annotating a port as scrapeable when the workload publishes no metrics advertises an endpoint that answers nothing, and a collector that believed it would report the absence as a scrape failure rather than as a decision." -}}

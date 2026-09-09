@@ -13,9 +13,9 @@ observed.
 
 **The blocker is one line, and it is the same one three other documents open
 with.** `platform-api-container-image` is `planned` in
-[the ownership inventory](../architecture/resource-ownership.md), no `Dockerfile`
-is committed anywhere in this repository, and a release whose API image does not
-resolve never becomes ready — so `helm install --wait` reaches its timeout before
+[the ownership inventory](../architecture/resource-ownership.md), the committed
+real values still carry a placeholder digest for it, and a release whose API
+image does not resolve never becomes ready — so `helm install --wait` reaches its timeout before
 any of the release symptoms below can occur. **Which failure the kubelet reports
 depends on the pull policy**, and the two are different words: see
 [the scheduling table](#scheduling-resources-and-out-of-memory).
@@ -386,7 +386,7 @@ both certification workflows send a real request rather than reading a status.
 | `port-forward` binds but the response never comes | The forward is served against **one selected endpoint** and never traverses the Service's virtual IP, so it cannot tell you anything about distribution — that is what [the multi-replica workflow](../serving/kubernetes-multi-replica-certification.md) exists for |
 | The default loopback port `18090` is taken | Something else holds it, commonly the host-local composition on `8090`. The certification script moves to another loopback port rather than failing |
 
-**Do not spend time on the NetworkPolicy on this cluster.** The chart renders four
+**Do not spend time on the NetworkPolicy on this cluster.** The chart renders six
 policy objects, starting from a default deny on both ingress and egress, and on
 `kindnetd` — the network plugin a `kind` cluster ships — **none of them was
 enforced in the build tested**. Re-confirm that before relying on it if the node

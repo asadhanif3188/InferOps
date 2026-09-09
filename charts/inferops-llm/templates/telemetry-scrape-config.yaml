@@ -12,21 +12,24 @@ every label the accepted telemetry catalog bars from a metric.
 `recording-rules.yaml` maps the native runtime series the catalog says map, and
 publishes the absence of the signals that are missing.
 
-**What it does not do.** It does not create a place to send anything. No
-collector, store, dashboard, or alerting path is selected -- ADR 0006 D8 leaves
-that to the open question ADR 0004 carries -- so **nothing reads this ConfigMap
-and nothing scrapes either endpoint**. It is inert until a collector exists, and
-its presence is not a claim that one does.
+**What it does not do.** It does not create a store, a dashboard, or an alerting
+path. ADR 0006 D8 selects none of those and ADR 0004 still carries dashboards and
+alert routing as unowned. What it no longer lacks is a reader: ADR 0004 D7 was
+amended so that a collector is Helm-owned and release-scoped, and
+`telemetry-collector.yaml` renders one that mounts this ConfigMap when
+`telemetry.collection.collector.deploy` is set. With that off -- which is the
+shipped default -- this is still inert.
 
-**It is mounted by nothing in this release.** Neither Deployment references it,
-and that is deliberate: the workloads publish metrics, they do not collect them,
-and a ConfigMap mounted into the pod it describes would suggest otherwise. A
-collector reads it from the API server, or an operator copies it into whatever
-configuration their collector already has.
+**No workload mounts it.** Neither the API nor the runtime Deployment references
+it, and that is deliberate: the workloads publish metrics, they do not collect
+them, and a ConfigMap mounted into the pod it describes would suggest otherwise.
+The collector reads it, and it reads *this* one rather than carrying a copy, so
+a release cannot end up with two scrape configurations.
 
 Nothing here is evidence that a metric was ever collected. This chart has not
-been installed, no InferOps API image is published, and this configuration has
-never been loaded by a Prometheus.
+been installed and this configuration has never been loaded by a running
+Prometheus -- only checked by one, with `promtool`, which establishes that it
+loads.
 */}}
 apiVersion: v1
 kind: ConfigMap
