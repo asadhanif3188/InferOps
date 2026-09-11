@@ -1410,8 +1410,10 @@ def test_the_script_validates_before_it_installs() -> None:
 
 
 def test_the_script_asserts_the_target_cluster_before_it_acts() -> None:
-    assert "inferops::assert_target_cluster" in SCRIPT_TEXT
-    assert SCRIPT_TEXT.index("inferops::assert_target_cluster") < SCRIPT_TEXT.index(
+    """V1-S3-010-PR2: the provider-aware inferops::resolve_target replaces the
+    kind-pinned inferops::assert_target_cluster here."""
+    assert "inferops::resolve_target" in SCRIPT_TEXT
+    assert SCRIPT_TEXT.index("inferops::resolve_target") < SCRIPT_TEXT.index(
         "inferops::helm install"
     )
 

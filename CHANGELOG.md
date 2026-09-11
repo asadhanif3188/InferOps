@@ -10,6 +10,41 @@ once versioned releases begin.
 
 ### Added
 
+- **Provider-aware cluster verification is implemented, for both `kind` and Docker
+  Desktop.** V1-S3-010-PR2 builds the mechanism
+  [ADR 0011](docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
+  specified. Every platform workflow now takes an explicit `INFEROPS_PROVIDER` — `kind`
+  or `docker-desktop`, with no default — and, for `kind`, an explicit
+  `INFEROPS_KIND_CLUSTER_NAME`, and re-verifies that selection itself, every time,
+  through one new entry point in `lib.sh`: `inferops::resolve_target`. It writes a fresh
+  project-scoped kubeconfig from whichever context the operator's own kubeconfig names,
+  never trusts one written by an earlier run, and refuses before any mutation on eight of
+  the nine documented cases — the ninth, `unexpected-context`, is made impossible by
+  construction rather than caught after the fact, because the kubeconfig it writes is
+  never read back and compared. Docker Desktop gets a real, if narrower, identity guard:
+  a context literally named `docker-desktop` and a node set matching the one shape this
+  project has observed, `desktop-control-plane` running `kindest/kindnetd` — and
+  deliberately nothing that binds those nodes to this machine's engine the way `kind`'s
+  containers are bound, because whether that is even possible has not been established.
+  `api-image.sh` and `model-seed-image.sh` refuse to load an image into a target whose
+  `imagePreparation` capability is not `kind-load` rather than trying and failing inside
+  the node; the Terraform environment root's `kube_context` validation accepts either
+  provider's context instead of pinning `kind-inferops-dev`; and a new read-only
+  `target-detect.sh` reports which providers a host can see without ever selecting one.
+  **Three workflows are deliberately not ported**: `kubernetes-certification.sh`,
+  `kubernetes-multi-replica-certification.sh`, and `helm-upgrade-rollback.sh` now require
+  and re-verify an explicit target the same as everything else, and then refuse anything
+  but the one kind cluster their committed descriptors still describe — a Docker Desktop
+  target passes verification and is refused immediately after, by name, rather than
+  certified against a descriptor that was never written for it. Porting those three, and
+  making the evidence they write name the provider it ran on, is V1-S3-011.
+  [A new behavioural suite](tests/architecture/test_target_verification.py) sources the
+  real `lib.sh` against fake `kubectl`/`kind`/`docker` executables and exercises every
+  refusal, for both providers, alongside a positive verified case for each — the
+  companion to the existing static-reading suite, which cannot tell a refusal that fires
+  from one that is merely written down. **No cluster was contacted; the kind helper
+  scripts, their fixed `inferops-dev` cluster, and their own evidence are unchanged.**
+
 - **The Kubernetes cluster is no longer InferOps's.**
   [ADR 0011](docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
   moves cluster lifecycle out of the project: the operator provides an existing cluster

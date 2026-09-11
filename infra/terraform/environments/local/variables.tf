@@ -16,11 +16,12 @@ variable "kube_context" {
     The kubeconfig context to act through.
 
     The validation below is a name check and nothing more: it refuses a context
-    that is not one of this project's kind clusters, which stops the common
-    accident of an apply following a context left selected from other work. It
-    cannot establish that the cluster on the other end is really this project's
-    -- a context can be named anything. That check reads the node containers'
-    kind labels and lives in
+    that does not match one of the two providers ADR 0011 supports, which stops
+    the common accident of an apply following a context left selected from other
+    work. It cannot establish that the cluster on the other end is really the
+    selected provider's -- a context can be named anything. That check is the
+    provider-aware target verification in `scripts/environment/lib.sh`
+    (`inferops::resolve_target`), run by
     `scripts/environment/terraform-prerequisites.sh`, which is how this
     configuration is meant to be run.
   EOT
@@ -28,8 +29,8 @@ variable "kube_context" {
   default     = "kind-inferops-dev"
 
   validation {
-    condition     = can(regex("^kind-inferops-", var.kube_context))
-    error_message = "The context must be one of this project's kind clusters ('kind-inferops-...'). ADR 0001 selected kind for local development, and every script in this repository names the project context explicitly rather than inheriting one."
+    condition     = can(regex("^kind-.+$", var.kube_context)) || var.kube_context == "docker-desktop"
+    error_message = "The context must be a kind cluster's context ('kind-<name>') or exactly 'docker-desktop'. ADR 0011 supports exactly these two local Kubernetes providers, and every script in this repository names the project context explicitly rather than inheriting one."
   }
 }
 

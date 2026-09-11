@@ -59,6 +59,27 @@ RELEASE_NAMESPACE = "inferops-release"
 KUBE_CONTEXT = "kind-inferops-dev"
 CONTROL_PLANE = "inferops-dev-control-plane"
 
+# `inferops::resolve_target` (docs/environment/local-cluster-provider-contract.md)
+# now runs ahead of the destroy guard this module exists to test, and it selects
+# `kind`/`inferops-dev` with no default -- exactly the target KUBE_CONTEXT and
+# CONTROL_PLANE above already describe.
+TARGET_PROVIDER = "kind"
+TARGET_CLUSTER_NAME = "inferops-dev"
+
+_VERSION_JSON = """{
+  "clientVersion": {
+    "major": "1",
+    "minor": "34",
+    "gitVersion": "v1.34.1"
+  },
+  "serverVersion": {
+    "major": "1",
+    "minor": "34",
+    "gitVersion": "v1.34.8"
+  }
+}
+"""
+
 
 # --------------------------------------------------------------------------
 # The stubs
@@ -76,11 +97,30 @@ exit 0
 _KUBECTL_STUB = """#!/usr/bin/env bash
 printf 'kubectl %s\\n' "$*" >>"${INFEROPS_STUB_LOG}"
 case "$*" in
+  *"config get-contexts"*)
+    printf '%s\\n' "${STUB_CONTEXT}"
+    ;;
+  *"config view --minify"*)
+    printf 'kind: Config\\ncurrent-context: %s\\n' "${STUB_CONTEXT}"
+    ;;
   *"config current-context"*)
     printf '%s\\n' "${STUB_CONTEXT}"
     ;;
   *"get nodes"*)
     printf 'node/%s\\n' "${STUB_NODE}"
+    ;;
+  *"version"*)
+    printf '%s' "${STUB_VERSION_JSON}"
+    ;;
+esac
+exit 0
+"""
+
+_KIND_STUB = """#!/usr/bin/env bash
+printf 'kind %s\\n' "$*" >>"${INFEROPS_STUB_LOG}"
+case "$*" in
+  "get clusters")
+    printf '%s\\n' "${STUB_KIND_CLUSTERS:-inferops-dev}"
     ;;
 esac
 exit 0
@@ -161,6 +201,7 @@ exit 0
 _STUBS = {
     "terraform": _TERRAFORM_STUB,
     "kubectl": _KUBECTL_STUB,
+    "kind": _KIND_STUB,
     "docker": _DOCKER_STUB,
     "helm": _HELM_STUB,
 }
@@ -267,6 +308,16 @@ def run_wrapper(
     env["STUB_CONTEXT"] = context
     env["STUB_NODE"] = api_node
     env["STUB_KIND_NODE"] = kind_node
+    env["STUB_VERSION_JSON"] = _VERSION_JSON
+    # The provider-aware target every mutating workflow now requires explicitly
+    # (docs/environment/local-cluster-provider-contract.md), and the
+    # project-scoped kubeconfig it writes, redirected into the sandbox rather
+    # than this checkout's real .kube/ directory.
+    env["INFEROPS_PROVIDER"] = TARGET_PROVIDER
+    env["INFEROPS_KIND_CLUSTER_NAME"] = TARGET_CLUSTER_NAME
+    env["INFEROPS_TARGET_KUBECONFIG_POSIX_PATH"] = (
+        sandbox / ".kube" / "inferops-target.config"
+    ).as_posix()
 
     # A relative script path with a working directory, rather than an absolute
     # one: `dirname` inside the script is POSIX and a Windows path reaching it
@@ -536,5 +587,5 @@ def test_the_guard_asks_for_releases_rather_than_one_releases_status() -> None:
     delete a test that says so.
     """
     body = (REPO_ROOT / SCRIPT_REL).read_text(encoding="utf-8")
-    assert "inferops::helm list --all" in body
+    assert "inferops::target_helm list --all" in body
     assert "inferops::helm status" not in body

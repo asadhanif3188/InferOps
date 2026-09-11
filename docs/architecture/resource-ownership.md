@@ -208,8 +208,8 @@ inside one.
 | `model-artifact-upstream` | `external-publisher` | Pinned by revision and per-file hash, verified before use |
 | `container-engine` | `contributor-host` | No step changes host-wide engine settings |
 | `kind-cluster` | `cluster-operator` | An existing `kind` cluster. Terraform and Helm act inside it and neither may create or delete it; since ADR 0011 nothing on the platform path may either. `implemented`, on `kind` evidence only |
-| `docker-desktop-cluster` | `cluster-operator` | Docker Desktop's cluster. `planned`: no guard can identify it yet, so every script refuses it |
-| `project-kubeconfig` | `contributor-host` | Holds a client certificate and key; ignored by version control; removed on teardown. Written today by the `kind` helper; ADR 0011 moves it to target verification |
+| `docker-desktop-cluster` | `cluster-operator` | Docker Desktop's cluster. `planned`: an identity guard now exists, but no InferOps release has been installed through it under the provider contract, and the guard does not confirm its nodes are bound to this machine's engine |
+| `project-kubeconfig` | `contributor-host` | Holds a client certificate and key; ignored by version control; removed on teardown. The `kind` helper writes its own fixed copy; `inferops::resolve_target` writes a second, provider-selected one fresh on every mutating workflow's run |
 | `node-image-cache` | `cluster-operator` | `kind` only. Retained across teardown by design; reclaimed by an opt-in step |
 | `platform-api-container-image` | `contributor-host` | Built locally and made visible to the cluster by the provider's own image path rather than pushed to a shared registry. For Docker Desktop that path is not established |
 

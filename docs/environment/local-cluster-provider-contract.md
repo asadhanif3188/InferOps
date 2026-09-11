@@ -2,19 +2,27 @@
 
 Status: **accepted** as the V1 environment contract, in
 [ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md),
-and **implemented on one side only**. The authoritative form is data:
+and **implemented for target selection and identification on both providers**,
+by every mutating workflow except three. The authoritative form is data:
 [`local-cluster-provider-contract.v1alpha1.json`](local-cluster-provider-contract.v1alpha1.json).
 This page explains it, and
 [`tests/architecture/test_local_cluster_provider_contract.py`](../../tests/architecture/test_local_cluster_provider_contract.py)
 holds the two to each other and to the repository.
 
-Read the status before the content. The only guard that exists is the `kind` one
-in [`scripts/environment/lib.sh`](../../scripts/environment/lib.sh), and it
-accepts one cluster name, `inferops-dev`. **Nothing can identify a Docker Desktop
-cluster yet**, so every environment script refuses one — which is the right
-failure until a positive check exists, and is not support. There is no provider
-selection input anywhere in the scripts; they assume `kind`. Every row below that
-nothing enforces says so, and says who owes it.
+Read the status before the content. Every platform workflow now takes an
+explicit `INFEROPS_PROVIDER` -- `kind` or `docker-desktop`, with no default --
+and, for `kind`, an explicit `INFEROPS_KIND_CLUSTER_NAME`, and re-verifies that
+selection itself before its first mutation through
+[`inferops::resolve_target`](../../scripts/environment/lib.sh). Both providers
+now have a positive identity check. Docker Desktop's is narrower than kind's: it
+confirms a context named `docker-desktop` exists and that its nodes match the one
+shape this project has observed, and it does not confirm those nodes are bound to
+this machine's engine the way kind's containers are, because whether that is even
+observable has not been established. `kubernetes-certification.sh`,
+`kubernetes-multi-replica-certification.sh`, and `helm-upgrade-rollback.sh` re-verify
+the same way and then refuse anything but the pinned kind target their descriptors
+still describe -- porting those three to a provider-neutral target is V1-S3-011.
+Every row below that nothing enforces says so, and says who owes it.
 
 ## What InferOps does and does not do to a cluster
 
@@ -62,6 +70,17 @@ cluster name is required because several `kind` clusters can share one engine;
 Docker Desktop takes no name because its cluster is a singleton, and a name input
 would be a second way to be wrong.
 
+**How this is invoked.** `provider` is the environment variable
+`INFEROPS_PROVIDER`; for `kind`, `clusterName` is `INFEROPS_KIND_CLUSTER_NAME`.
+Neither is exported by anything in this repository, so an operator sets both
+explicitly, for example
+`INFEROPS_PROVIDER=docker-desktop scripts/environment/helm-lifecycle.sh --values PATH`
+or
+`INFEROPS_PROVIDER=kind INFEROPS_KIND_CLUSTER_NAME=inferops-dev scripts/environment/terraform-prerequisites.sh apply`.
+`scripts/environment/target-detect.sh` reports which providers this host can
+currently see, to help choose a value for `INFEROPS_PROVIDER` -- it never sets
+one itself.
+
 **Detection may report, never select.** A workflow may say which providers it can
 see. It never picks one.
 
@@ -94,9 +113,11 @@ naming it.
 **Terraform and Helm receive an address and never a provider.** A module that
 knows which provider it is on starts accreting provider-specific lifecycle logic,
 which is exactly what this contract moved out of InferOps. The prerequisite
-module already names no provider. Its environment root does not yet comply: its
-`kube_context` validation accepts only `kind-inferops-` contexts, and a test pins
-that gap so that closing it has to update this page.
+module names no provider, and its environment root's `kube_context` validation
+now accepts a kind context of any selected cluster name or `docker-desktop`,
+rather than only `kind-inferops-dev` -- a name check, same as before, that stops
+an apply following a context left selected from other work without claiming to
+establish identity itself.
 
 **The kubeconfig is a credential.** For `kind` it holds the client certificate and
 key the helper wrote; for `docker-desktop` it would hold a copy of Docker Desktop's.
@@ -112,11 +133,11 @@ whether anything performs it.
 
 | Check | Provider | Status | Enforced by |
 |---|---|---|---|
-| `the-project-kubeconfig-names-the-kind-context` | `kind` | Implemented, for `inferops-dev` only | `inferops::target_cluster_problem` |
-| `every-node-is-a-container-kind-labelled-for-the-cluster` | `kind` | Implemented, for `inferops-dev` only | `inferops::target_cluster_problem` |
-| `kind-reports-the-selected-cluster` | `kind` | Implemented; called by the helper and `cluster-verify.sh`, not by platform workflows | `inferops::cluster_exists` |
-| `the-docker-desktop-context-exists` | `docker-desktop` | Specified; nothing implements it | — |
-| `every-node-has-an-observed-docker-desktop-shape` | `docker-desktop` | Specified; nothing implements it | — |
+| `the-project-kubeconfig-names-the-kind-context` | `kind` | Implemented, for the selected cluster name | `inferops::_kind_target_problem` |
+| `every-node-is-a-container-kind-labelled-for-the-cluster` | `kind` | Implemented, for the selected cluster name | `inferops::_kind_target_problem` |
+| `kind-reports-the-selected-cluster` | `kind` | Implemented; called by `inferops::resolve_target`, the helper, and `cluster-verify.sh` | `inferops::_kind_cluster_matches` |
+| `the-docker-desktop-context-exists` | `docker-desktop` | Implemented | `inferops::_docker_desktop_target_problem` |
+| `every-node-has-an-observed-docker-desktop-shape` | `docker-desktop` | Implemented, for the one shape observed | `inferops::_docker_desktop_target_problem` |
 | `the-nodes-are-bound-to-the-local-engine` | `docker-desktop` | **Undecided** | — |
 
 The `kind` check is the one [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md)
@@ -129,10 +150,12 @@ The Docker Desktop checks are deliberately narrow. The node shape accepted is th
 one this project has observed — a single node, `desktop-control-plane`, running
 `kindest/kindnetd` — and any other shape is refused until somebody observes and
 records it. Whether Docker Desktop's nodes can be bound to the local engine the
-way `kind`'s can has not been established. If they cannot, the Docker Desktop
-guard is a name-and-shape check, weaker than `kind`'s, and that becomes a
-recorded security exception beside `EX-02` rather than a difference nobody
-mentions.
+way `kind`'s can has not been established, and this implementation does not
+attempt it. **The Docker Desktop guard is therefore a name-and-shape check,
+weaker than `kind`'s.** `docs/security/deferred-risks.md` does not yet carry an
+accepted exception recording that difference; until it does, this page and the
+contract data are where the gap is written down, not a claim that the two guards
+are equivalent.
 
 ## When a workflow must refuse
 
@@ -141,27 +164,35 @@ any image is loaded.
 
 | Refusal | When | Implemented for |
 |---|---|---|
-| `no-provider-selected` | A mutating workflow gets no provider | Nothing |
-| `unsupported-provider` | The provider is neither `kind` nor `docker-desktop` | Nothing |
-| `ambiguous-target` | The selection is not exactly one cluster: `kind` with no name, a name `kind` does not list exactly once, or a kubeconfig holding more than one context | Nothing |
-| `target-missing` | No project kubeconfig, no such `kind` cluster, or no `docker-desktop` context | `kind` |
-| `target-unreachable` | The API server does not answer, or reports no nodes | `kind` |
-| `unexpected-context` | The project kubeconfig's context is not the verified one | `kind` |
-| `provider-mismatch` | The reachable cluster fails the selected provider's checks, including when it is the other provider's cluster | `kind` |
-| `capability-unknown-or-insufficient` | The workflow needs a capability the target lacks, or one recorded below as unknown | Nothing |
-| `client-outside-skew` | kubectl is more than one minor version from the server the target reports | Nothing |
+| `no-provider-selected` | A mutating workflow gets no provider | `kind`, `docker-desktop` |
+| `unsupported-provider` | The provider is neither `kind` nor `docker-desktop` | `kind`, `docker-desktop` |
+| `ambiguous-target` | The selection is not exactly one cluster: `kind` with no name, a name `kind` does not list exactly once, or a kubeconfig holding more than one context | `kind`, `docker-desktop` |
+| `target-missing` | No project kubeconfig, no such `kind` cluster, or no `docker-desktop` context | `kind`, `docker-desktop` |
+| `target-unreachable` | The API server does not answer, or reports no nodes | `kind`, `docker-desktop` |
+| `unexpected-context` | The project kubeconfig's context is not the verified one | Nothing (see below) |
+| `provider-mismatch` | The reachable cluster fails the selected provider's checks, including when it is the other provider's cluster | `kind`, `docker-desktop` |
+| `capability-unknown-or-insufficient` | The workflow needs a capability the target lacks, or one recorded below as unknown | `kind`, `docker-desktop` |
+| `client-outside-skew` | kubectl is more than one minor version from the server the target reports | `kind`, `docker-desktop` |
 
-The four `kind` rows are all performed by one function,
-`inferops::target_cluster_problem`, and only for the pinned name. `provider-mismatch`
-is implemented in one direction: a Docker Desktop cluster reached where `kind` is
-expected is refused, because its node carries no `kind` label. The other
-direction needs a Docker Desktop check, which does not exist.
+Six of the nine are performed by one dispatcher, `inferops::_target_problem`,
+which validates the provider itself and then hands off to
+`inferops::_kind_target_problem` or `inferops::_docker_desktop_target_problem`.
+`capability-unknown-or-insufficient` is `inferops::require_target_capability`,
+called by a workflow that depends on a specific capability -- today,
+`api-image.sh load` and `model-seed-image.sh load` refusing on Docker Desktop's
+`imagePreparation`, which this contract records as `not-established`.
+`client-outside-skew` is checked inside `inferops::resolve_target` itself,
+against the version the *selected* cluster's server actually reports rather than
+against a pin: `preflight.sh`'s own skew check, unaffected by this contract,
+still compares the client to the minor version the kind helper's pinned node
+image should produce.
 
-`client-outside-skew` is listed as unimplemented on purpose. `preflight.sh`
-checks the client against the minor version the pinned node image should
-produce, not against the version the selected cluster's server reports. For a
-cluster the helper created from the pin those are the same; for Docker Desktop,
-whose version the operator's Docker Desktop release decides, they need not be.
+`unexpected-context` is not implemented as a runtime check because
+`inferops::resolve_target` makes its condition impossible by construction: it
+rewrites the project-scoped kubeconfig from the operator's kubeconfig on every
+call, naming the expected context explicitly, rather than writing it once and
+comparing a later read against an expectation. There is no separately
+long-lived file whose context could have drifted.
 
 ## Where the providers differ
 
@@ -213,21 +244,25 @@ either, and neither column certifies the other.
 | `the-platform-path-never-changes-a-cluster-lifecycle` | A test reading every platform workflow for a cluster create, delete, or helper invocation |
 | `the-cluster-belongs-to-its-operator` | A test reading the ownership inventory |
 | `exactly-two-providers-are-supported` | A test |
-| `selection-is-explicit` | **Nothing yet** |
-| `detection-never-selects` | **Nothing yet** |
-| `verification-precedes-every-mutation` | `inferops::assert_target_cluster`, for `kind` only |
-| `a-context-name-is-never-identity` | `inferops::target_cluster_problem`, for `kind` only |
-| `access-never-inherits-an-ambient-context` | `inferops::kubectl` and `inferops::helm`, for the `kind` kubeconfig only |
-| `terraform-and-helm-receive-an-address-never-a-provider` | A test on the module; the environment root is the recorded gap above |
+| `selection-is-explicit` | `inferops::_target_problem`, for both providers |
+| `detection-never-selects` | A test reading `target-detect.sh` for a mutating command |
+| `verification-precedes-every-mutation` | `inferops::resolve_target`, for both providers |
+| `a-context-name-is-never-identity` | `inferops::_target_problem`, for both providers |
+| `access-never-inherits-an-ambient-context` | `inferops::target_kubectl` and `inferops::target_helm`, for both providers |
+| `terraform-and-helm-receive-an-address-never-a-provider` | A test on the module, and the environment root's own validation |
 | `terraform-and-helm-ownership-stays-disjoint` | The ownership inventory's own test |
 | `a-provider-difference-is-recorded-not-averaged` | A test on the capability table |
 | `evidence-names-its-provider` | **Nothing yet** |
 | `no-provider-certifies-another` | Review alone |
 | `the-reference-provider-is-a-choice-of-host-not-a-ranking` | Review alone |
 
-Fourteen rules: five enforced by a test, three by a shell guard for `kind` only,
-three by nothing, one by another suite's test, and two by review alone. The data
-records who owes each unimplemented one.
+Fourteen rules: six enforced by a test, four by a shell guard, one by nothing,
+one by another suite's test, and two by review alone. The data records who owes
+the one still unimplemented: `kubernetes-certification.sh`,
+`kubernetes-multi-replica-certification.sh`, and `helm-upgrade-rollback.sh` still
+write `cluster.name`/`cluster.context` into their evidence from the kind-pinned
+constants rather than from the verified target, which is V1-S3-011's to fix
+alongside porting those three workflows to a provider-neutral target.
 
 **The reference provider is `docker-desktop`.** The current re-certification runs
 there because the reference host has it and does not have the `kind` CLI, and
@@ -235,15 +270,23 @@ because two of the four real-cluster records above already ran there. That is a
 choice of host. It is not a claim that Docker Desktop is better, closer to
 production, or equivalent to `kind`.
 
-## What this contract does not do
+## What this implementation does not do
 
-- **It implements nothing on the Docker Desktop side.** Every `docker-desktop`
-  check is specified or undecided, and every refusal is implemented for `kind` or
-  for nothing.
-- **It changes no script.** The guard, the wrappers, the Terraform variables, and
-  the certification descriptors are byte-for-byte what they were.
-- **It contacted no cluster.** Every Docker Desktop fact above is quoted from a
-  record made earlier, with the date of that record rather than today's.
+- **It does not bind Docker Desktop's nodes to the local engine.** That check
+  remains undecided, and the Docker Desktop guard is a name-and-shape check
+  rather than kind's stronger one until it exists.
+- **It does not port the certification and experiment scripts.**
+  `kubernetes-certification.sh`, `kubernetes-multi-replica-certification.sh`, and
+  `helm-upgrade-rollback.sh` now require an explicit provider and re-verify it,
+  but their descriptors and evidence tooling are still specific to the kind
+  cluster this repository pins; a Docker Desktop target passes the target
+  verification above and is refused immediately afterward, by name, rather than
+  silently certified against a descriptor that does not describe it. Porting
+  them is V1-S3-011.
+- **It contacted no cluster.** Every Docker Desktop capability answer above is
+  still quoted from a record made earlier, with the date of that record rather
+  than today's: this PR verifies identity, not the capability questions
+  themselves.
 - **It cannot read prose.** The suite checks identifiers, statuses, sources, and
   the files a row names. A row whose description has drifted from the behaviour it
   describes will not fail a check.

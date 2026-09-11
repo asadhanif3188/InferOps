@@ -1725,7 +1725,9 @@ def test_the_script_requires_explicit_authorization_before_certifying() -> None:
 
 
 def test_the_script_asserts_the_target_cluster_before_installing() -> None:
-    asserted = SCRIPT_TEXT.index("inferops::assert_target_cluster")
+    """V1-S3-010-PR2: the provider-aware inferops::resolve_target replaces the
+    kind-pinned inferops::assert_target_cluster here."""
+    asserted = SCRIPT_TEXT.index("inferops::resolve_target")
     installed = SCRIPT_TEXT.index("inferops::helm install")
 
     assert asserted < installed
