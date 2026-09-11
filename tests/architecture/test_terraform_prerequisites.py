@@ -567,8 +567,14 @@ def test_the_context_default_is_a_project_cluster() -> None:
 
 
 def test_the_context_variable_refuses_a_foreign_context() -> None:
-    """A name check, and the configuration says so rather than implying more."""
-    assert 'can(regex("^kind-inferops-' in ENVIRONMENT_TEXT
+    """A name check, and the configuration says so rather than implying more.
+
+    V1-S3-010-PR2 generalised this from one pinned kind cluster to either
+    supported provider: a kind context of any selected cluster name, or
+    exactly `docker-desktop`.
+    """
+    assert 'can(regex("^kind-.+$"' in ENVIRONMENT_TEXT
+    assert 'var.kube_context == "docker-desktop"' in ENVIRONMENT_TEXT
 
 
 def test_the_kubeconfig_default_is_relative_to_the_configuration() -> None:
@@ -639,16 +645,20 @@ def test_the_claim_names_no_storage_class() -> None:
 
 
 def test_the_wrapper_establishes_cluster_identity_before_it_reaches_one() -> None:
-    """Terraform can check a context's name; it cannot check which cluster it is."""
-    assert "inferops::assert_target_cluster" in read(WRAPPER_PATH)
+    """Terraform can check a context's name; it cannot check which cluster it is.
+
+    V1-S3-010-PR2: the provider-aware inferops::resolve_target replaces the
+    kind-pinned inferops::assert_target_cluster here.
+    """
+    assert "inferops::resolve_target" in read(WRAPPER_PATH)
 
 
 def test_the_wrapper_hands_terraform_the_target_rather_than_letting_it_find_one() -> (
     None
 ):
     body = read(WRAPPER_PATH)
-    assert 'TF_VAR_kubeconfig_path="${INFEROPS_KUBECONFIG}"' in body
-    assert 'TF_VAR_kube_context="${INFEROPS_KUBE_CONTEXT}"' in body
+    assert 'TF_VAR_kubeconfig_path="${INFEROPS_TARGET_KUBECONFIG}"' in body
+    assert 'TF_VAR_kube_context="${INFEROPS_TARGET_CONTEXT}"' in body
 
 
 def test_the_wrapper_refuses_to_destroy_without_confirmation() -> None:

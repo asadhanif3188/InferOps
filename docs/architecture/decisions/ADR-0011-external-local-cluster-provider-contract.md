@@ -119,7 +119,10 @@ guard exists: see D5.
 
 ## D3 — Selection is explicit; detection is advisory; every mutation re-verifies
 
-**Accepted as a rule. Nothing implements selection.**
+**Accepted, and implemented by V1-S3-010-PR2**: `INFEROPS_PROVIDER` and, for
+`kind`, `INFEROPS_KIND_CLUSTER_NAME`, with no default, and
+`scripts/environment/target-detect.sh` as the advisory report that never
+selects one.
 
 Every mutating workflow is given the provider, and for `kind` the cluster name, by
 the operator. **No input has a default**: a default is a selection somebody else
@@ -128,8 +131,9 @@ made. A workflow may report which providers it can see and never picks one.
 Every mutating workflow re-runs the selected provider's identity checks
 immediately before its first mutation. A target recorded by an earlier run is
 compared against and never trusted, because the cluster a context points at can
-change between two commands. That half exists for `kind` today: every mutating
-script calls `inferops::assert_target_cluster` before it changes anything.
+change between two commands. V1-S3-010-PR2 implemented this for both providers:
+every platform workflow calls `inferops::resolve_target` before it changes
+anything.
 
 ## D4 — Normalised target facts, and an address rather than a provider
 
@@ -141,10 +145,12 @@ context, and nothing else.** A module that knows which provider it is on starts
 accreting provider-specific lifecycle logic, which is the ownership D1 removes.
 
 The prerequisite module already complies and a test keeps it that way. The
-environment root does not: `infra/terraform/environments/local/variables.tf`
-validates `kube_context` against `^kind-inferops-`. That is recorded as a gap
-rather than fixed here, because fixing it is the provider-aware implementation,
-and a test pins it so that whoever closes it has to update the contract too.
+environment root now does too: V1-S3-010-PR2 generalised
+`infra/terraform/environments/local/variables.tf`'s `kube_context` validation
+from `^kind-inferops-` to a kind context of any selected cluster name or
+exactly `docker-desktop` -- a name check, same as before, that stops an apply
+following a context left selected from other work without claiming to
+establish identity itself.
 
 The kubeconfig path never enters a record. Neither do the API server's address,
 any credential, the operator's own kubeconfig, or any context but the verified
@@ -158,8 +164,8 @@ engine-binding mechanism is not decided.**
 For `kind` the check is the one ADR 0001 D5 describes: every node the API server
 reports must be a container on the local engine that `kind` labelled for the
 selected cluster. It was attacked with a real foreign cluster wearing this
-project's context name and refused it. Its limit is unchanged: it accepts one
-name, `inferops-dev`, and accepting a selected name is implementation work.
+project's context name and refused it. V1-S3-010-PR2 generalised it to accept
+any explicitly selected cluster name rather than the one `inferops-dev` pin.
 
 For `docker-desktop` three checks are required:
 
@@ -172,13 +178,16 @@ For `docker-desktop` three checks are required:
 3. the nodes are bound to this machine's Docker Desktop virtual machine, the way
    `kind`'s check binds nodes to labelled containers.
 
-**The third is the part that is not decided**, because whether Docker Desktop's
-nodes are observable from the local engine has not been established. If no
-mechanism can be established, the Docker Desktop guard is a name-and-shape check,
-weaker than `kind`'s, and it must be recorded as a security exception beside
-`EX-02` rather than presented as equal. This is why the record is accepted in part
-rather than accepted: the check that would make the two providers' guards
-comparable is a runtime question, and no runtime has answered it.
+V1-S3-010-PR2 implemented the first two. **The third is the part that is not
+decided**, because whether Docker Desktop's nodes are observable from the local
+engine has not been established. If no mechanism can be established, the Docker
+Desktop guard is a name-and-shape check, weaker than `kind`'s. It is not yet
+recorded as an accepted security exception in `docs/security/deferred-risks.md`
+-- until it is, this ADR and the contract data are where the gap is written
+down, not a claim that the two guards are equal. This is why the record is
+accepted in part rather than accepted: the check that would make the two
+providers' guards comparable is a runtime question, and no runtime has answered
+it.
 
 ## D6 — Refusals
 
@@ -190,13 +199,16 @@ image is loaded: `no-provider-selected`, `unsupported-provider`,
 `provider-mismatch`, `capability-unknown-or-insufficient`, and
 `client-outside-skew`.
 
-Four are implemented, for `kind` only, by `inferops::target_cluster_problem`.
-`provider-mismatch` holds in one direction: a Docker Desktop cluster reached where
-`kind` is expected is refused, because its node carries no `kind` label.
-`client-outside-skew` is not implemented even for `kind`, in the sense this
-contract means: `preflight.sh` compares the client with the minor version the
-pinned node image should produce, not with the version the selected cluster's
-server reports.
+V1-S3-010-PR2 implemented eight of the nine, for both `kind` and `docker-desktop`,
+through `inferops::resolve_target` in `lib.sh`. `unexpected-context` is the
+exception: that implementation rewrites the project-scoped kubeconfig from the
+operator's own on every call rather than writing it once and comparing a later
+read against an expectation, which makes the case this refusal names impossible
+to reach rather than one a guard has to catch. `client-outside-skew` is
+implemented against the version the *selected* cluster's server actually
+reports; `preflight.sh`'s own, unrelated skew check still compares the client
+against the minor version the kind helper's pinned node image should produce,
+which is a different question answered for a different, optional script.
 
 ## D7 — Project-scoped access
 

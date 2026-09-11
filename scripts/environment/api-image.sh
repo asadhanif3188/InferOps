@@ -83,11 +83,14 @@ case "${action}" in
     ;;
 
   load)
-    inferops::require_cmd kind
     inferops::require_engine
-    # The same identity check every other script here applies. `kind load` names
-    # a cluster and would happily name somebody else's.
-    inferops::assert_target_cluster
+    # The provider-aware target this project consumes rather than creates
+    # (docs/environment/local-cluster-provider-contract.md). `kind load` names a
+    # cluster and would happily name somebody else's, so this re-verifies the
+    # explicitly selected target before touching it.
+    inferops::resolve_target
+    inferops::require_target_capability imagePreparation kind-load \
+      "${INFEROPS_TARGET_IMAGE_PREPARATION}"
 
     inferops::api_image_digest >/dev/null ||
       inferops::fail "no image at ${INFEROPS_API_IMAGE_REF}. Build it first: scripts/environment/api-image.sh build"
@@ -97,7 +100,7 @@ case "${action}" in
 
     inferops::section "kind load docker-image"
     kind load docker-image "${INFEROPS_API_IMAGE_REF}" \
-      --name "${INFEROPS_CLUSTER_NAME}"
+      --name "${INFEROPS_TARGET_CLUSTER_NAME}"
 
     # The load is not the claim. What the chart asks containerd for is
     # `repository@digest`, so that exact reference is resolved inside the node
@@ -105,12 +108,12 @@ case "${action}" in
     # reference that does not resolve is the failure this catches, and catching
     # it here costs one command instead of a rollout that never schedules.
     inferops::section "verify the reference the chart will use"
-    if ! docker exec "${INFEROPS_CLUSTER_NAME}-control-plane" \
+    if ! docker exec "${INFEROPS_TARGET_CLUSTER_NAME}-control-plane" \
       crictl inspecti "${INFEROPS_API_IMAGE_REPOSITORY}@${digest}" >/dev/null 2>&1; then
       inferops::fail "the image loaded and '${INFEROPS_API_IMAGE_REPOSITORY}@${digest}' does not resolve inside the node. Deploying it would fail as ErrImageNeverPull. Do not write this digest into any values file."
     fi
 
-    inferops::log "loaded into '${INFEROPS_CLUSTER_NAME}'; the digest reference resolves inside the node. The real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched."
+    inferops::log "loaded into '${INFEROPS_TARGET_CLUSTER_NAME}'; the digest reference resolves inside the node. The real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched."
     ;;
 
   digest)

@@ -98,18 +98,21 @@ fi
 
 inferops::require_cmd kubectl
 inferops::require_engine
-inferops::assert_target_cluster
+# The provider-aware target this project consumes rather than creates
+# (docs/environment/local-cluster-provider-contract.md): an explicit
+# INFEROPS_PROVIDER, and for kind an explicit INFEROPS_KIND_CLUSTER_NAME, with
+# no default, re-verified now rather than trusted from an earlier run.
+inferops::resolve_target
 
-[ -f "${INFEROPS_KUBECONFIG_POSIX}" ] ||
-  inferops::fail "no project kubeconfig at ${INFEROPS_KUBECONFIG_REL}. Bring the cluster up first: scripts/environment/cluster-up.sh"
-
-# Terraform is given the target rather than allowed to find one. These are
-# passed as TF_VAR_ environment variables instead of `-var` because a Windows
-# kubeconfig path contains backslashes and `-var` values are HCL: `\8` in
-# `D:\8...` is an invalid escape sequence there, and a check that failed on one
-# contributor's directory layout would be worse than no check.
-export TF_VAR_kubeconfig_path="${INFEROPS_KUBECONFIG}"
-export TF_VAR_kube_context="${INFEROPS_KUBE_CONTEXT}"
+# Terraform is given the target rather than allowed to find one, and given an
+# address -- the kubeconfig and context -- and nothing about which provider
+# supplied it: `terraform-and-helm-receive-an-address-never-a-provider`. These
+# are passed as TF_VAR_ environment variables instead of `-var` because a
+# Windows kubeconfig path contains backslashes and `-var` values are HCL: `\8`
+# in `D:\8...` is an invalid escape sequence there, and a check that failed on
+# one contributor's directory layout would be worse than no check.
+export TF_VAR_kubeconfig_path="${INFEROPS_TARGET_KUBECONFIG}"
+export TF_VAR_kube_context="${INFEROPS_TARGET_CONTEXT}"
 export TF_VAR_namespace="${INFEROPS_RELEASE_NAMESPACE}"
 
 inferops::section "terraform init"
@@ -170,7 +173,7 @@ case "${action}" in
     # directory.
     helm_diag="${plan_dir}/helm-list.stderr"
     releases=""
-    if ! releases="$(inferops::helm list --all \
+    if ! releases="$(inferops::target_helm list --all \
       --namespace "${INFEROPS_RELEASE_NAMESPACE}" --short 2>"${helm_diag}")"; then
       inferops::fail "could not read Helm's releases in '${INFEROPS_RELEASE_NAMESPACE}', so whether destroying it would take one with it is unknown. Helm said: $(tr -d '\r' <"${helm_diag}" | tr '\n' ' ' | cut -c 1-300). Refusing: an unanswered query is not an empty namespace. This refusal is by design and there is no flag that overrides it."
     fi

@@ -62,7 +62,11 @@ done
 inferops::require_cmd helm
 inferops::require_cmd kubectl
 inferops::require_engine
-inferops::assert_target_cluster
+# The provider-aware target this project consumes rather than creates
+# (docs/environment/local-cluster-provider-contract.md): an explicit
+# INFEROPS_PROVIDER, and for kind an explicit INFEROPS_KIND_CLUSTER_NAME, with
+# no default, re-verified now rather than trusted from an earlier run.
+inferops::resolve_target
 
 # Not input validation: the namespace is a readonly constant in lib.sh and
 # nothing here can change it, so this branch cannot be taken today. It is here
@@ -93,15 +97,15 @@ readonly UPGRADE_MARKER="lifecycle-upgrade-probe"
 collect_diagnostics() {
   mkdir -p "${diag_dir}"
   inferops::warn "collecting diagnostics into .artifacts/helm-lifecycle/"
-  inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/releases.txt" 2>&1 || true
-  inferops::helm history "${INFEROPS_RELEASE_NAME}" \
+  inferops::target_helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/releases.txt" 2>&1 || true
+  inferops::target_helm history "${INFEROPS_RELEASE_NAME}" \
     --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/history.txt" 2>&1 || true
-  inferops::kubectl get all,configmap,serviceaccount,pvc \
+  inferops::target_kubectl get all,configmap,serviceaccount,pvc \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -o wide >"${diag_dir}/get-all.txt" 2>&1 || true
-  inferops::kubectl describe pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/describe-pods.txt" 2>&1 || true
-  inferops::kubectl get events -n "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_kubectl describe pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/describe-pods.txt" 2>&1 || true
+  inferops::target_kubectl get events -n "${INFEROPS_RELEASE_NAMESPACE}" \
     --sort-by=.lastTimestamp >"${diag_dir}/events.txt" 2>&1 || true
-  inferops::kubectl logs -n "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_kubectl logs -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -l "${INFEROPS_RELEASE_SELECTOR}" --all-containers --tail=200 >"${diag_dir}/release.log" 2>&1 || true
 }
 
@@ -120,16 +124,16 @@ trap on_exit EXIT
 
 inferops::section "Prerequisites"
 
-if inferops::kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
+if inferops::target_kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   inferops::log "namespace '${INFEROPS_RELEASE_NAMESPACE}' already exists; reusing it."
 else
   inferops::log "creating namespace '${INFEROPS_RELEASE_NAMESPACE}'."
   inferops::log "This stands in for the Terraform prerequisite layer, which has not been applied here. Apply it first with scripts/environment/terraform-prerequisites.sh apply."
-  inferops::kubectl create namespace "${INFEROPS_RELEASE_NAMESPACE}"
+  inferops::target_kubectl create namespace "${INFEROPS_RELEASE_NAMESPACE}"
   # Labelled as a prerequisite rather than a release, which is the distinction
   # the ownership document's scoped-teardown resolution turns on: a sweep that
   # matched only `part-of` would reach this namespace as if a release owned it.
-  inferops::kubectl label namespace "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_kubectl label namespace "${INFEROPS_RELEASE_NAMESPACE}" \
     "app.kubernetes.io/part-of=inferops" \
     "inferops.io/lifecycle=prerequisite"
 fi
@@ -155,7 +159,7 @@ fi
 inferops::release_objects() {
   local kinds="$1"
   local output
-  if ! output="$(inferops::kubectl get "${kinds}" \
+  if ! output="$(inferops::target_kubectl get "${kinds}" \
     -n "${INFEROPS_RELEASE_NAMESPACE}" "${@:2}" -o name)"; then
     inferops::warn "the query for ${kinds} in '${INFEROPS_RELEASE_NAMESPACE}' did not answer."
     return 1
@@ -179,7 +183,7 @@ fi
 claims_before="$(inferops::count_lines "${claims_before_raw}")"
 inferops::log "persistent volume claims present before install: ${claims_before}"
 
-if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
+if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   # Silently upgrading an existing release would make this script's result mean
   # something different from what it says: it reports on an install.
@@ -198,20 +202,20 @@ inferops::section "Installing"
 # --create-namespace is deliberately absent and must stay absent. It would make
 # Helm an owner of the namespace above, and this release's uninstall would then
 # delete a prerequisite.
-inferops::helm install "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
+inferops::target_helm install "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --values "${values_path}" \
   --wait \
   --timeout 15m
 
-inferops::kubectl get deployments,services,configmaps,serviceaccounts,pods \
+inferops::target_kubectl get deployments,services,configmaps,serviceaccounts,pods \
   -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o wide
 
 # --- does it answer ---------------------------------------------------------
 
 inferops::section "Testing the installed release"
 
-inferops::helm test "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --logs \
   --timeout 5m
@@ -220,19 +224,19 @@ inferops::helm test "${INFEROPS_RELEASE_NAME}" \
 
 inferops::section "Upgrading"
 
-inferops::helm upgrade "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
+inferops::target_helm upgrade "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --values "${values_path}" \
   --set "telemetry.serviceVersion=${UPGRADE_MARKER}" \
   --wait \
   --timeout 15m
 
-inferops::helm test "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --logs \
   --timeout 5m
 
-configured="$(inferops::kubectl get configmap \
+configured="$(inferops::target_kubectl get configmap \
   -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" \
   -o jsonpath='{.items[*].data.INFEROPS_SERVICE_VERSION}')"
 [ "${configured}" = "${UPGRADE_MARKER}" ] ||
@@ -246,30 +250,30 @@ inferops::section "Rolling back to revision 1"
 # Deployment's selector is immutable after creation, so a chart whose selector
 # varied with anything a values file can change would make revision 2 a new
 # object rather than an update, and revision 1 unreachable.
-inferops::helm rollback "${INFEROPS_RELEASE_NAME}" 1 \
+inferops::target_helm rollback "${INFEROPS_RELEASE_NAME}" 1 \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --wait \
   --timeout 15m
 
-inferops::helm test "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --logs \
   --timeout 5m
 
-configured="$(inferops::kubectl get configmap \
+configured="$(inferops::target_kubectl get configmap \
   -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" \
   -o jsonpath='{.items[*].data.INFEROPS_SERVICE_VERSION}')"
 [ "${configured}" != "${UPGRADE_MARKER}" ] ||
   inferops::fail "the rollback left the upgrade's configuration in place: INFEROPS_SERVICE_VERSION is still '${UPGRADE_MARKER}'."
 
-inferops::helm history "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm history "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}"
 
 # --- uninstall --------------------------------------------------------------
 
 inferops::section "Uninstalling"
 
-inferops::helm uninstall "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm uninstall "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --wait \
   --timeout 10m
@@ -299,7 +303,7 @@ else
   inferops::log "no object carrying the release label remains."
 fi
 
-if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
+if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   report_residue "helm still reports a release named '${INFEROPS_RELEASE_NAME}'."
 else
@@ -309,7 +313,7 @@ fi
 # The other half, and the one a teardown script is more likely to get wrong: the
 # prerequisites have to be *there*. An uninstall that removed them would be a
 # release that owned what it only referenced.
-if inferops::kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
+if inferops::target_kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   inferops::log "namespace '${INFEROPS_RELEASE_NAMESPACE}' survived, as a prerequisite must."
 else
   report_residue "namespace '${INFEROPS_RELEASE_NAMESPACE}' was removed by an uninstall. It is a prerequisite and must outlive the release."

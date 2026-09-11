@@ -122,24 +122,27 @@ case "${action}" in
     ;;
 
   load)
-    inferops::require_cmd kind
     inferops::require_engine
-    inferops::assert_target_cluster
+    # The provider-aware target this project consumes rather than creates
+    # (docs/environment/local-cluster-provider-contract.md).
+    inferops::resolve_target
+    inferops::require_target_capability imagePreparation kind-load \
+      "${INFEROPS_TARGET_IMAGE_PREPARATION}"
 
     digest="$(inferops::seed_image_digest)" ||
       inferops::fail "no image at ${INFEROPS_SEED_IMAGE_REF}. Build it first: scripts/environment/model-seed-image.sh build"
 
     inferops::section "kind load docker-image"
     kind load docker-image "${INFEROPS_SEED_IMAGE_REF}" \
-      --name "${INFEROPS_CLUSTER_NAME}"
+      --name "${INFEROPS_TARGET_CLUSTER_NAME}"
 
     inferops::section "verify the reference the chart will use"
-    if ! docker exec "${INFEROPS_CLUSTER_NAME}-control-plane" \
+    if ! docker exec "${INFEROPS_TARGET_CLUSTER_NAME}-control-plane" \
       crictl inspecti "${INFEROPS_SEED_IMAGE_REPOSITORY}@${digest}" >/dev/null 2>&1; then
       inferops::fail "the image loaded and '${INFEROPS_SEED_IMAGE_REPOSITORY}@${digest}' does not resolve inside the node. Deploying it would fail as ErrImageNeverPull."
     fi
 
-    inferops::log "loaded into '${INFEROPS_CLUSTER_NAME}'; the digest reference resolves inside the node."
+    inferops::log "loaded into '${INFEROPS_TARGET_CLUSTER_NAME}'; the digest reference resolves inside the node."
     inferops::warn "this image carries ${model_bytes} bytes of model weights and now occupies that much inside the node as well as the claim it fills. Deleting the cluster reclaims both."
     ;;
 

@@ -99,6 +99,22 @@ PLATFORM_WORKFLOWS = (
     "helm-upgrade-rollback.sh",
     "api-image.sh",
     "model-seed-image.sh",
+    "target-detect.sh",
+)
+
+# The seven platform workflows that mutate a target, as distinct from
+# target-detect.sh, which only ever reports. Every one of these must call the
+# provider-aware guard before its first mutation, and every certification or
+# experiment script relies on the front-door check even though its own descriptor
+# and evidence tooling remain kind-pinned (V1-S3-011 ports them).
+MUTATING_PLATFORM_WORKFLOWS = (
+    "terraform-prerequisites.sh",
+    "helm-lifecycle.sh",
+    "kubernetes-certification.sh",
+    "kubernetes-multi-replica-certification.sh",
+    "helm-upgrade-rollback.sh",
+    "api-image.sh",
+    "model-seed-image.sh",
 )
 KIND_HELPER = (
     "preflight.sh",
@@ -435,20 +451,23 @@ def test_no_provider_is_identified_by_a_context_name_alone() -> None:
         assert other, provider["providerId"]
 
 
-def test_nothing_identifies_a_docker_desktop_cluster_yet() -> None:
-    """A pinned gap. The change that implements a check has to update this.
+def test_docker_desktop_has_two_implemented_checks_and_one_undecided() -> None:
+    """V1-S3-010-PR2 closed two of the three Docker Desktop identity checks.
 
-    Every environment script refuses a Docker Desktop cluster today, because the
-    only guard requires kind-labelled node containers. That is the correct
-    failure, and the contract describes it as such rather than as support.
+    The third, binding the reachable nodes to this machine's engine, stays
+    undecided on purpose: whether that is even observable has not been
+    established, and the other two are implemented without pretending to answer
+    it. A guard that is a name-and-shape check is weaker than kind's, and this
+    pins that it is described as such rather than as complete.
     """
     statuses = {
         check["checkId"]: check["status"]
         for check in PROVIDER_BY_ID["docker-desktop"]["identityChecks"]
     }
-    assert "implemented" not in statuses.values(), statuses
+    assert statuses["the-docker-desktop-context-exists"] == "implemented"
+    assert statuses["every-node-has-an-observed-docker-desktop-shape"] == "implemented"
     assert statuses["the-nodes-are-bound-to-the-local-engine"] == "undecided"
-    assert "docker-desktop" not in LIB_PATH.read_text(encoding="utf-8")
+    assert "docker-desktop" in LIB_PATH.read_text(encoding="utf-8")
 
 
 # --------------------------------------------------------------------------
@@ -478,10 +497,21 @@ def test_a_refusal_claims_a_provider_only_with_a_guard_behind_it(refusal: dict) 
         assert refusal["owedBy"], refusal["refusalId"]
 
 
-def test_no_refusal_is_implemented_for_docker_desktop_yet() -> None:
-    """A pinned gap, for the same reason as the identity check above."""
+def test_every_refusal_but_one_is_implemented_for_both_providers() -> None:
+    """V1-S3-010-PR2: eight of the nine refusals now guard both providers.
+
+    `unexpected-context` is the exception, and its own row says why: the
+    provider-aware target verification rewrites the project-scoped kubeconfig
+    from the operator's kubeconfig on every call, so there is no separately
+    long-lived file whose context could have drifted for either provider.
+    """
     for refusal in REFUSALS:
-        assert "docker-desktop" not in refusal["implementedFor"], refusal["refusalId"]
+        if refusal["refusalId"] == "unexpected-context":
+            assert refusal["implementedFor"] == [], refusal["refusalId"]
+            continue
+        assert set(refusal["implementedFor"]) == set(SUPPORTED_PROVIDERS), refusal[
+            "refusalId"
+        ]
 
 
 # --------------------------------------------------------------------------
@@ -611,7 +641,7 @@ def test_the_document_counts_the_rules_correctly(document: str) -> None:
     expected = (
         f"{NUMBER_WORDS[len(RULES)].capitalize()} rules: "
         f"{NUMBER_WORDS[count('test', here=True)]} enforced by a test, "
-        f"{NUMBER_WORDS[count('script')]} by a shell guard for `kind` only, "
+        f"{NUMBER_WORDS[count('script')]} by a shell guard, "
         f"{NUMBER_WORDS[count('unimplemented')]} by nothing, "
         f"{NUMBER_WORDS[count('test', here=False)]} by another suite's test, and "
         f"{NUMBER_WORDS[count('review')]} by review alone."
@@ -619,11 +649,18 @@ def test_the_document_counts_the_rules_correctly(document: str) -> None:
     assert expected in " ".join(document.split()), expected
 
 
-def test_every_script_rule_is_owed_for_the_provider_it_does_not_cover() -> None:
-    """Every shell guard that exists is the kind one, so none of them is complete."""
+def test_every_script_rule_now_covers_both_providers() -> None:
+    """V1-S3-010-PR2: every shell guard now dispatches on the selected provider.
+
+    Before this PR every shell guard was the kind one, pinned to one cluster
+    name, and none of them was complete for Docker Desktop. That gap is why the
+    predecessor of this test asserted the opposite of what it asserts now, and
+    it is pinned here the same way: the change that regresses a `script` rule
+    back to a single provider has to update this test to say so again.
+    """
     for rule in RULES:
         if rule["enforcement"] == "script":
-            assert rule["owedBy"], rule["ruleId"]
+            assert not rule["owedBy"], rule["ruleId"]
 
 
 # --------------------------------------------------------------------------
@@ -733,6 +770,82 @@ def test_the_lifecycle_pattern_ignores_what_changes_no_lifecycle(line: str) -> N
     assert not CLUSTER_LIFECYCLE_COMMAND.search(line), line
 
 
+def test_the_detection_script_never_selects_or_mutates() -> None:
+    """`detection-never-selects` (ADR 0011): a report, never a decision.
+
+    target-detect.sh may read the operator's own kubeconfig and ask kind and
+    docker what they see, but it may not resolve a target, write the
+    project-scoped kubeconfig, or run anything that mutates a cluster.
+    """
+    lines = code_lines("target-detect.sh")
+    forbidden = (
+        "inferops::resolve_target",
+        "inferops::target_kubectl",
+        "inferops::target_helm",
+        "inferops::kubectl",
+        "inferops::helm",
+        "terraform",
+        "kind create",
+        "kind delete",
+        "kind load",
+    )
+    for line in lines:
+        for phrase in forbidden:
+            assert phrase not in line, (phrase, line)
+
+
+MUTATING_TARGET_CALL = re.compile(
+    r"inferops::target_kubectl|inferops::target_helm|kind load docker-image"
+    r"|\bterraform\b.*\b(apply|destroy)\b"
+)
+
+# A line that only prints -- usage text, a diagnostic, a recovery instruction --
+# runs no tool. `terraform-prerequisites.sh`'s own usage string names
+# `apply|destroy` as argument choices, which is exactly the kind of line
+# MUTATING_TARGET_CALL must not mistake for one that runs either.
+PRINTS_ONLY = re.compile(r"^inferops::(log|warn|fail)\s")
+
+
+def prints_rather_than_runs(line: str) -> bool:
+    return PRINTS_ONLY.match(line.strip()) is not None and "$(" not in line
+
+
+@pytest.mark.parametrize("script", MUTATING_PLATFORM_WORKFLOWS)
+def test_every_mutating_workflow_resolves_a_target_first(script: str) -> None:
+    """`selection-is-explicit` and `verification-precedes-every-mutation`.
+
+    Every platform workflow that can act on a cluster calls
+    inferops::resolve_target -- which fails closed on no-provider-selected,
+    unsupported-provider, ambiguous-target, target-missing,
+    target-unreachable, and provider-mismatch -- and nothing in the script
+    reaches the target-scoped kubectl/helm wrappers, a kind image load, or a
+    Terraform apply/destroy before that call has returned successfully.
+    """
+    lines = code_lines(script)
+    resolved_at = next(
+        (i for i, line in enumerate(lines) if "inferops::resolve_target" in line),
+        None,
+    )
+    assert resolved_at is not None, f"{script} never calls inferops::resolve_target"
+
+    first_mutating = next(
+        (
+            i
+            for i, line in enumerate(lines)
+            if MUTATING_TARGET_CALL.search(line) and not prints_rather_than_runs(line)
+        ),
+        None,
+    )
+    if first_mutating is not None:
+        assert resolved_at < first_mutating, (
+            script,
+            "resolved at line-index",
+            resolved_at,
+            "but acted at",
+            first_mutating,
+        )
+
+
 def test_the_terraform_module_names_no_provider() -> None:
     """ADR 0011 D4: the module is given an address and never learns the provider."""
     sources = sorted(TERRAFORM_MODULE_DIR.glob("*.tf"))
@@ -743,20 +856,23 @@ def test_the_terraform_module_names_no_provider() -> None:
         assert not provider_word.search(text), source.name
 
 
-def test_the_terraform_environment_root_still_pins_the_kind_context() -> None:
-    """A pinned gap. The environment root accepts only kind contexts.
+def test_the_terraform_environment_root_accepts_either_providers_context() -> None:
+    """V1-S3-010-PR2 closed this gap: the environment root no longer pins kind.
 
-    Fixing it belongs to the provider-aware implementation. When that lands this
-    fails, and the rule that records the gap has to be updated with it.
+    The validation is still a name check and nothing more -- it cannot establish
+    that the cluster on the other end is really the selected provider's, which is
+    scripts/environment/lib.sh's job -- but it no longer refuses a
+    correctly-verified docker-desktop target by name alone.
     """
     text = TERRAFORM_ENVIRONMENT_VARIABLES.read_text(encoding="utf-8")
-    assert "^kind-inferops-" in text
+    assert "^kind-inferops-" not in text
+    assert "docker-desktop" in text
     rule = next(
         rule
         for rule in RULES
         if rule["ruleId"] == "terraform-and-helm-receive-an-address-never-a-provider"
     )
-    assert rule["owedBy"], "the gap is still open, so somebody still owes it"
+    assert not rule["owedBy"], "the gap is closed; nobody should still owe it"
 
 
 def test_the_inventory_gives_every_cluster_to_its_operator() -> None:

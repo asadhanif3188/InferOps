@@ -330,3 +330,341 @@ inferops::assert_target_cluster() {
     inferops::fail "refusing to act: ${problem}"
   fi
 }
+
+# --- Provider-aware target verification (ADR 0011) --------------------------
+#
+# The functions above are the kind helper's own: fixed to the one cluster name
+# this repository pins, `inferops-dev`, and used only by cluster-up.sh,
+# cluster-down.sh, cluster-verify.sh, and proof.sh. They are unchanged by
+# everything below.
+#
+# What follows is the mechanism docs/environment/local-cluster-provider-contract.md
+# describes: every platform workflow (terraform-prerequisites.sh,
+# helm-lifecycle.sh, api-image.sh, model-seed-image.sh, and the certification and
+# experiment scripts) is given an explicit provider through INFEROPS_PROVIDER --
+# `kind` or `docker-desktop`, with no default -- and for `kind`, an explicit
+# INFEROPS_KIND_CLUSTER_NAME. Neither variable is read anywhere above this
+# point, so the kind helper's own fixed cluster is never affected by either one
+# being set, unset, or wrong.
+#
+# `inferops::resolve_target` is the one entry point. It re-runs the selected
+# provider's identity checks against the operator's own kubeconfig every time it
+# is called, writes a fresh project-scoped kubeconfig holding exactly the one
+# context it just verified, and sets the INFEROPS_TARGET_* variables every
+# platform workflow acts through afterwards. A target resolved by an earlier
+# call, or recorded in a file, is never trusted: `verification-precedes-every-mutation`.
+
+readonly INFEROPS_SUPPORTED_PROVIDERS="kind docker-desktop"
+
+# Distinct from INFEROPS_KUBECONFIG_REL above on purpose. That one belongs to the
+# kind helper's own fixed cluster; this one belongs to whichever target the
+# operator explicitly selected, kind or Docker Desktop, and is rewritten by every
+# call to inferops::resolve_target.
+readonly INFEROPS_TARGET_KUBECONFIG_REL=".kube/inferops-target.config"
+
+# Overridable for the same reason INFEROPS_DISK_VOLUME above is: a test exercising
+# inferops::resolve_target against fake kubectl/kind/docker executables must not
+# write into this checkout's real .kube/ directory, which a concurrent real
+# workflow run in the same checkout could be reading at the same time.
+readonly INFEROPS_TARGET_KUBECONFIG_POSIX_PATH="${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH:-${INFEROPS_ROOT}/${INFEROPS_TARGET_KUBECONFIG_REL}}"
+
+inferops::_provider_supported() {
+  case " ${INFEROPS_SUPPORTED_PROVIDERS} " in
+    *" $1 "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# The operator's own kubeconfig context names, or nothing if none can be read.
+# This is the one place anything here reads the ambient kubeconfig instead of the
+# project-scoped one it is about to write, and it only ever reads: nothing here
+# acts through what it finds. `access-never-inherits-an-ambient-context` is a
+# rule about acting, and naming a context to decide whether the selected target
+# exists at all is not that.
+inferops::_operator_contexts() {
+  kubectl config get-contexts -o name 2>/dev/null || true
+}
+
+# How many kind clusters are named exactly $1. Kind cluster names are unique by
+# construction, so this is normally 0 or 1; it is counted rather than tested as a
+# boolean so that `ambiguous-target` stays a distinct refusal from `target-missing`.
+inferops::_kind_cluster_matches() {
+  kind get clusters 2>/dev/null | grep -Fxc "$1" || true
+}
+
+# Writes the project-scoped, single-context kubeconfig every platform workflow
+# acts through, from the one context named $1 in the operator's own kubeconfig.
+# `--minify` with `--context` reads that context without switching the
+# operator's own current one, so this never mutates the file it reads from.
+inferops::_write_target_kubeconfig() {
+  local context="$1"
+  mkdir -p "$(dirname "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}")"
+  kubectl --context "${context}" config view --minify --flatten \
+    >"${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}.tmp" 2>/dev/null || return 1
+  [ -s "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}.tmp" ] || {
+    rm -f "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}.tmp"
+    return 1
+  }
+  mv "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}.tmp" "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}"
+}
+
+# `kind`'s three identity checks, generalised to the selected cluster name rather
+# than the pinned one above: the project kubeconfig names the kind context, every
+# node the reachable API server reports is a container kind labelled for that
+# cluster, and a context name alone never passes either question. Prints why not
+# and returns 1 when the target cannot be established; prints nothing and
+# returns 0 when it can.
+inferops::_kind_target_problem() {
+  if [ -z "${INFEROPS_KIND_CLUSTER_NAME:-}" ]; then
+    printf 'ambiguous-target: provider "kind" was selected with no INFEROPS_KIND_CLUSTER_NAME. Several kind clusters can exist on one engine, and choosing among them is exactly the decision that must not be made on the operators behalf.'
+    return 1
+  fi
+
+  inferops::require_cmd kind
+
+  local matches
+  matches="$(inferops::_kind_cluster_matches "${INFEROPS_KIND_CLUSTER_NAME}")"
+  case "${matches}" in
+    0)
+      printf "target-missing: kind does not list a cluster named '%s'." "${INFEROPS_KIND_CLUSTER_NAME}"
+      return 1
+      ;;
+    1) ;;
+    *)
+      printf "ambiguous-target: kind lists '%s' %s times, not exactly once." \
+        "${INFEROPS_KIND_CLUSTER_NAME}" "${matches}"
+      return 1
+      ;;
+  esac
+
+  local expected_context="kind-${INFEROPS_KIND_CLUSTER_NAME}"
+  if ! inferops::_operator_contexts | grep -Fxq "${expected_context}"; then
+    printf "target-missing: no context named '%s' in the operator's kubeconfig." "${expected_context}"
+    return 1
+  fi
+
+  if ! inferops::_write_target_kubeconfig "${expected_context}"; then
+    printf "target-missing: could not read context '%s' from the operator's kubeconfig." "${expected_context}"
+    return 1
+  fi
+
+  local current
+  current="$(kubectl --kubeconfig "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}" config current-context 2>/dev/null || true)"
+  if [ "${current}" != "${expected_context}" ]; then
+    printf "unexpected-context: expected '%s', the project-scoped kubeconfig holds '%s'." \
+      "${expected_context}" "${current:-none}"
+    return 1
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    printf 'target-unreachable: the container engine CLI is needed to confirm the cluster identity.'
+    return 1
+  fi
+
+  local api_nodes kind_nodes unmatched
+  api_nodes="$(kubectl --kubeconfig "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}" --context "${expected_context}" \
+    get nodes -o name 2>/dev/null | sed 's|^node/||' | sort || true)"
+  if [ -z "${api_nodes}" ]; then
+    printf 'target-unreachable: the API server reported no nodes, or could not be reached.'
+    return 1
+  fi
+
+  kind_nodes="$(docker ps \
+    --filter "label=io.x-k8s.kind.cluster=${INFEROPS_KIND_CLUSTER_NAME}" \
+    --format '{{.Names}}' 2>/dev/null | sort || true)"
+
+  unmatched="$(comm -23 <(printf '%s\n' "${api_nodes}") <(printf '%s\n' "${kind_nodes}"))"
+  if [ -n "${unmatched}" ]; then
+    printf "provider-mismatch: the reachable cluster reports node(s) outside '%s': %s" \
+      "${INFEROPS_KIND_CLUSTER_NAME}" "$(printf '%s' "${unmatched}" | tr '\n' ' ')"
+    return 1
+  fi
+
+  return 0
+}
+
+# Docker Desktop's two implemented identity checks: the operator's kubeconfig
+# holds a context literally named `docker-desktop`, and every node the reachable
+# API server reports matches the one shape this project has observed and
+# recorded -- a single node named `desktop-control-plane`. A node set of any
+# other shape is refused until it has been observed and recorded, rather than
+# accepted because it might be legitimate.
+#
+# What this does not check: whether those nodes are actually bound to this
+# machine's Docker Desktop virtual machine, the way the kind check above binds
+# nodes to containers kind itself labelled. Whether that is even observable has
+# not been established (docs/environment/local-cluster-provider-contract.md,
+# `the-nodes-are-bound-to-the-local-engine`), so this guard is a name-and-shape
+# check rather than kind's stronger one, and is recorded as a security exception
+# rather than presented as equal to it.
+inferops::_docker_desktop_target_problem() {
+  local expected_context="docker-desktop"
+
+  local matches
+  matches="$(inferops::_operator_contexts | grep -Fxc "${expected_context}" || true)"
+  case "${matches}" in
+    0)
+      printf "target-missing: no context named '%s' in the operator's kubeconfig." "${expected_context}"
+      return 1
+      ;;
+    1) ;;
+    *)
+      printf "ambiguous-target: the operator's kubeconfig holds '%s' %s times, not exactly once." \
+        "${expected_context}" "${matches}"
+      return 1
+      ;;
+  esac
+
+  if ! inferops::_write_target_kubeconfig "${expected_context}"; then
+    printf "target-missing: could not read context '%s' from the operator's kubeconfig." "${expected_context}"
+    return 1
+  fi
+
+  local api_nodes node_count
+  api_nodes="$(kubectl --kubeconfig "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}" --context "${expected_context}" \
+    get nodes -o name 2>/dev/null | sed 's|^node/||' | sort || true)"
+  if [ -z "${api_nodes}" ]; then
+    printf 'target-unreachable: the API server reported no nodes, or could not be reached.'
+    return 1
+  fi
+
+  node_count="$(printf '%s\n' "${api_nodes}" | grep -c . || true)"
+  if [ "${node_count}" -ne 1 ] || [ "${api_nodes}" != "desktop-control-plane" ]; then
+    printf "provider-mismatch: this project has only observed a single 'desktop-control-plane' node as Docker Desktop's shape; the reachable cluster reports: %s" \
+      "$(printf '%s' "${api_nodes}" | tr '\n' ' ')"
+    return 1
+  fi
+
+  return 0
+}
+
+# The dispatcher every refusal that does not name a provider goes through first:
+# `no-provider-selected` and `unsupported-provider` apply before either
+# provider's own checks could even run.
+inferops::_target_problem() {
+  if [ -z "${INFEROPS_PROVIDER:-}" ]; then
+    printf 'no-provider-selected: no INFEROPS_PROVIDER was given. Set it to "kind" or "docker-desktop"; there is no default.'
+    return 1
+  fi
+
+  if ! inferops::_provider_supported "${INFEROPS_PROVIDER}"; then
+    printf "unsupported-provider: '%s' is neither 'kind' nor 'docker-desktop'." "${INFEROPS_PROVIDER}"
+    return 1
+  fi
+
+  inferops::require_cmd kubectl
+
+  case "${INFEROPS_PROVIDER}" in
+    kind) inferops::_kind_target_problem ;;
+    docker-desktop) inferops::_docker_desktop_target_problem ;;
+  esac
+}
+
+# Every kubectl and helm call a platform workflow makes after resolving a target
+# goes through these two, so neither an ambient KUBECONFIG nor the operator's own
+# current context can redirect it -- the same property inferops::kubectl and
+# inferops::helm give the kind helper, applied to whichever target was selected.
+inferops::target_kubectl() {
+  kubectl --kubeconfig "${INFEROPS_TARGET_KUBECONFIG}" --context "${INFEROPS_TARGET_CONTEXT}" "$@"
+}
+
+inferops::target_helm() {
+  helm --kubeconfig "${INFEROPS_TARGET_KUBECONFIG}" --kube-context "${INFEROPS_TARGET_CONTEXT}" "$@"
+}
+
+# Refuses before any mutation when the target cannot supply a capability a
+# workflow depends on -- including a capability this contract records as
+# `unknown` for the selected provider, which is refused rather than assumed.
+inferops::require_target_capability() {
+  local capability="$1" required="$2" actual="$3"
+  [ "${actual}" = "${required}" ] ||
+    inferops::fail "refusing: capability-unknown-or-insufficient: this workflow needs '${capability}' to be '${required}'; provider '${INFEROPS_TARGET_PROVIDER}' reports '${actual}'. See docs/environment/local-cluster-provider-contract.md."
+}
+
+# The one entry point every platform workflow calls before its first mutation.
+# Re-runs the selected provider's identity checks against the operator's own
+# kubeconfig, writes a fresh project-scoped kubeconfig holding exactly the
+# context just verified, and sets every INFEROPS_TARGET_* variable a consumer in
+# docs/environment/local-cluster-provider-contract.md reads. Nothing here is
+# cached from an earlier call: verification-precedes-every-mutation.
+inferops::resolve_target() {
+  local problem
+  if ! problem="$(inferops::_target_problem)"; then
+    inferops::fail "refusing to select a target: ${problem}"
+  fi
+
+  case "${INFEROPS_PROVIDER}" in
+    kind)
+      INFEROPS_TARGET_PROVIDER="kind"
+      INFEROPS_TARGET_CLUSTER_NAME="${INFEROPS_KIND_CLUSTER_NAME}"
+      INFEROPS_TARGET_CONTEXT="kind-${INFEROPS_KIND_CLUSTER_NAME}"
+      INFEROPS_TARGET_IMAGE_PREPARATION="kind-load"
+      ;;
+    docker-desktop)
+      INFEROPS_TARGET_PROVIDER="docker-desktop"
+      INFEROPS_TARGET_CLUSTER_NAME="docker-desktop"
+      INFEROPS_TARGET_CONTEXT="docker-desktop"
+      # Not established (docs/environment/local-cluster-provider-contract.md):
+      # whether a locally built image is visible to this cluster without a load
+      # step has not been observed, and `kind load` is not assumed to apply.
+      INFEROPS_TARGET_IMAGE_PREPARATION="not-established"
+      ;;
+  esac
+  readonly INFEROPS_TARGET_PROVIDER INFEROPS_TARGET_CLUSTER_NAME \
+    INFEROPS_TARGET_CONTEXT INFEROPS_TARGET_IMAGE_PREPARATION
+
+  INFEROPS_TARGET_KUBECONFIG_POSIX="${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}"
+  INFEROPS_TARGET_KUBECONFIG="$(inferops::native_path "${INFEROPS_TARGET_KUBECONFIG_POSIX}")"
+  readonly INFEROPS_TARGET_KUBECONFIG_POSIX INFEROPS_TARGET_KUBECONFIG
+
+  # client-outside-skew. Read from the target's own reported server version
+  # rather than from the node-image pin the kind helper checks: the selected
+  # cluster's server version is whatever the operator's provider gives it.
+  local version_json server_minor client_minor
+  version_json="$(inferops::target_kubectl version -o json 2>/dev/null || true)"
+  INFEROPS_TARGET_SERVER_VERSION="$(printf '%s' "${version_json}" |
+    awk -F'"' '/"serverVersion"/ { server = 1 } server && /"gitVersion"/ { print $4; exit }')"
+  readonly INFEROPS_TARGET_SERVER_VERSION
+  server_minor="$(printf '%s' "${version_json}" |
+    awk -F'"' '/"serverVersion"/ { server = 1 } server && /"minor"/ { print $4; exit }' | tr -cd '0-9')"
+  client_minor="$(kubectl version --client=true -o json 2>/dev/null |
+    awk -F'"' '/"minor"/ { print $4; exit }' | tr -cd '0-9')"
+  if [ -n "${server_minor}" ] && [ -n "${client_minor}" ]; then
+    local skew=$((client_minor - server_minor))
+    [ "${skew}" -lt 0 ] && skew=$((-skew))
+    if [ "${skew}" -gt "${INFEROPS_MAX_SKEW}" ]; then
+      inferops::fail "refusing: client-outside-skew: kubectl minor ${client_minor} is ${skew} minor version(s) from the target's ${server_minor}; the supported skew is ${INFEROPS_MAX_SKEW}."
+    fi
+  fi
+
+  INFEROPS_TARGET_NODE_NAMES="$(inferops::target_kubectl get nodes -o name 2>/dev/null |
+    sed 's|^node/||' | sort || true)"
+  INFEROPS_TARGET_CONTAINER_RUNTIME="$(inferops::target_kubectl get nodes \
+    -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}' 2>/dev/null || true)"
+  INFEROPS_TARGET_NETWORK_PLUGIN="$(inferops::target_kubectl get pods -n kube-system \
+    -o jsonpath='{range .items[*]}{.spec.containers[0].image}{"\n"}{end}' 2>/dev/null |
+    grep -m1 -i 'kindnetd' || true)"
+  # Both supported providers' network plugin is not enforced
+  # (docs/environment/local-cluster-provider-contract.md, `networkPolicyEnforcement`):
+  # an inference for kind, an observation for docker-desktop, never `enforced`
+  # unless an enforcement experiment on the selected provider has said so.
+  INFEROPS_TARGET_NETWORK_POLICY_ENFORCEMENT="not-enforced"
+  INFEROPS_TARGET_DEFAULT_STORAGE_CLASS="$(inferops::target_kubectl get storageclass \
+    -o jsonpath='{range .items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")]}{.metadata.name}{" "}{.provisioner}{end}' \
+    2>/dev/null || true)"
+  readonly INFEROPS_TARGET_NODE_NAMES INFEROPS_TARGET_CONTAINER_RUNTIME \
+    INFEROPS_TARGET_NETWORK_PLUGIN INFEROPS_TARGET_NETWORK_POLICY_ENFORCEMENT \
+    INFEROPS_TARGET_DEFAULT_STORAGE_CLASS
+
+  local engine_cpus engine_mem
+  engine_cpus="$(docker info --format '{{.NCPU}}' 2>/dev/null || true)"
+  engine_mem="$(docker info --format '{{.MemTotal}}' 2>/dev/null || true)"
+  INFEROPS_TARGET_ENGINE_CAPACITY="cpus=${engine_cpus:-unknown} memoryBytes=${engine_mem:-unknown}"
+  readonly INFEROPS_TARGET_ENGINE_CAPACITY
+
+  INFEROPS_TARGET_VERIFIED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  INFEROPS_TARGET_VERIFIED_REVISION="$(cd "${INFEROPS_ROOT}" && git rev-parse HEAD 2>/dev/null || echo unknown)"
+  readonly INFEROPS_TARGET_VERIFIED_AT INFEROPS_TARGET_VERIFIED_REVISION
+
+  inferops::log "target verified: provider=${INFEROPS_TARGET_PROVIDER} cluster=${INFEROPS_TARGET_CLUSTER_NAME} context=${INFEROPS_TARGET_CONTEXT}"
+}

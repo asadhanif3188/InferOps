@@ -284,7 +284,7 @@
         "helm",
         "contributor-host"
       ],
-      "handoff": "Enabled, reset and disabled in Docker Desktop's own settings by the operator, never by InferOps, which ships nothing that could. Planned rather than implemented because no InferOps guard can identify it: the only identity check requires kind-labelled node containers, so every environment script refuses this cluster, which is the correct failure until ADR 0011's Docker Desktop check exists. Two real records were made on it by hand with an explicit context -- the Sprint 0 runtime feasibility trial and the NetworkPolicy enforcement experiment -- and neither installed anything through this project's chart. What a reset removes has not been observed, and kind's answer is not borrowed for it.",
+      "handoff": "Enabled, reset and disabled in Docker Desktop's own settings by the operator, never by InferOps, which ships nothing that could. Planned rather than implemented: an identity guard now exists (inferops::_docker_desktop_target_problem in scripts/environment/lib.sh), so a mutating workflow no longer refuses this cluster purely for lacking one, but no InferOps release has been installed through it under the provider contract and the guard itself does not confirm its nodes are bound to this machine's engine the way kind's are. Two real records were made on it by hand with an explicit context -- the Sprint 0 runtime feasibility trial and the NetworkPolicy enforcement experiment -- and neither installed anything through this project's chart. What a reset removes has not been observed, and kind's answer is not borrowed for it.",
       "evidenceRef": null
     },
     {
@@ -306,7 +306,7 @@
         "terraform",
         "helm"
       ],
-      "handoff": "It holds a client certificate and key, is ignored by version control, and is removed on full teardown. Terraform and Helm read it and must not write to the contributor's default kubeconfig. Today only the kind helper writes it, for the one cluster it creates. ADR 0011 moves its creation to target verification, for either provider and only after positive identification; for Docker Desktop it would hold a copy of Docker Desktop's client credential under the same rules. That half is implemented by nothing yet.",
+      "handoff": "It holds a client certificate and key, is ignored by version control, and is removed on full teardown. Terraform and Helm read it and must not write to the contributor's default kubeconfig. The kind helper still writes its own copy for the one cluster it creates; separately, inferops::resolve_target in scripts/environment/lib.sh now writes a second one, `.kube/inferops-target.config`, for whichever provider a platform workflow explicitly selects, rewritten fresh on every call and only after that provider's identity checks pass. For Docker Desktop it holds a copy of Docker Desktop's client credential under the same rules.",
       "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md"
     },
     {

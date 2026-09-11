@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/environment/local-cluster-provider-contract.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "Local Kubernetes cluster provider contract, v1alpha1",
-  "description": "How InferOps consumes an existing local Kubernetes cluster that somebody else created: the providers it supports, how one is selected, what verification must establish before anything is mutated, what the verified target hands to Terraform, Helm, kubectl workflows and certification, when a workflow must refuse, and where the two providers differ. Cluster lifecycle is outside InferOps. Every identity check, refusal and rule states whether anything enforces it today, and every capability answer states how it is known. On the date this was written the only implemented guard is the kind one, for the one cluster name the environment scripts pin; nothing identifies a Docker Desktop cluster yet, so every script refuses one.",
+  "description": "How InferOps consumes an existing local Kubernetes cluster that somebody else created: the providers it supports, how one is selected, what verification must establish before anything is mutated, what the verified target hands to Terraform, Helm, kubectl workflows and certification, when a workflow must refuse, and where the two providers differ. Cluster lifecycle is outside InferOps. Every identity check, refusal and rule states whether anything enforces it today, and every capability answer states how it is known. On the date this was written every mutating environment script requires an explicit provider selection and re-verifies it through inferops::resolve_target in scripts/environment/lib.sh, for kind or for docker-desktop; three of those scripts -- the kind-pinned certification and experiment workflows -- pass that check and then refuse any target but the one their descriptor still describes, until they are ported to a provider-neutral target.",
   "decisionRef": "docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md",
   "documentRef": "docs/environment/local-cluster-provider-contract.md",
   "referenceProviderId": "docker-desktop",
@@ -51,25 +51,25 @@
           "checkId": "the-project-kubeconfig-names-the-kind-context",
           "statement": "The project-scoped kubeconfig exists and its current context is `kind-<clusterName>`.",
           "status": "implemented",
-          "enforcedBy": "inferops::target_cluster_problem",
-          "gap": "Only for the one name lib.sh pins, inferops-dev. A selected name is not accepted yet.",
-          "owedBy": "V1-S3-010-PR2"
+          "enforcedBy": "inferops::_kind_target_problem",
+          "gap": "",
+          "owedBy": null
         },
         {
           "checkId": "every-node-is-a-container-kind-labelled-for-the-cluster",
           "statement": "Every node the reachable API server reports is a container on the local engine that kind labelled `io.x-k8s.kind.cluster=<clusterName>`. A context name alone is never accepted.",
           "status": "implemented",
-          "enforcedBy": "inferops::target_cluster_problem",
-          "gap": "The same pinned-name limitation as the check above.",
-          "owedBy": "V1-S3-010-PR2"
+          "enforcedBy": "inferops::_kind_target_problem",
+          "gap": "",
+          "owedBy": null
         },
         {
           "checkId": "kind-reports-the-selected-cluster",
           "statement": "`kind get clusters` lists the selected name as a whole line.",
           "status": "implemented",
-          "enforcedBy": "inferops::cluster_exists",
-          "gap": "Called by the helper and by cluster-verify.sh, not by the platform workflows, which rely on the two checks above instead.",
-          "owedBy": "V1-S3-010-PR2"
+          "enforcedBy": "inferops::_kind_cluster_matches",
+          "gap": "",
+          "owedBy": null
         }
       ],
       "capabilities": {
@@ -132,26 +132,26 @@
         {
           "checkId": "the-docker-desktop-context-exists",
           "statement": "The operator's kubeconfig holds a context named `docker-desktop`. Necessary and never sufficient: a context name is only what somebody typed.",
-          "status": "specified",
-          "enforcedBy": null,
-          "gap": "Nothing implements it.",
-          "owedBy": "V1-S3-010-PR2"
+          "status": "implemented",
+          "enforcedBy": "inferops::_docker_desktop_target_problem",
+          "gap": "",
+          "owedBy": null
         },
         {
           "checkId": "every-node-has-an-observed-docker-desktop-shape",
           "statement": "Every node the API server reports through that context matches a Docker Desktop node shape this project has observed and recorded. Today there is one: a single node named `desktop-control-plane` running kindest/kindnetd. A node set of any other shape is refused until it has been observed and recorded, rather than accepted because it might be legitimate.",
-          "status": "specified",
-          "enforcedBy": null,
-          "gap": "Nothing implements it.",
-          "owedBy": "V1-S3-010-PR2"
+          "status": "implemented",
+          "enforcedBy": "inferops::_docker_desktop_target_problem",
+          "gap": "Checks the node's name and count, not its network plugin image; a future single node named `desktop-control-plane` running something other than kindnetd would still pass. Recorded rather than silently treated as the whole shape.",
+          "owedBy": "a future revision of this check, once a Docker Desktop node set with a different network plugin has been observed and recorded"
         },
         {
           "checkId": "the-nodes-are-bound-to-the-local-engine",
           "statement": "The nodes are shown to belong to this machine's Docker Desktop virtual machine, in the way kind's check binds nodes to containers kind labelled. This is what would make the check more than a name and a shape.",
           "status": "undecided",
           "enforcedBy": null,
-          "gap": "No mechanism is chosen, because whether Docker Desktop's nodes are observable from the local engine has not been established. If none can be, the Docker Desktop guard is a name-and-shape check, weaker than kind's, and must be recorded as a security exception beside EX-02 rather than presented as equal to it.",
-          "owedBy": "V1-S3-010-PR2"
+          "gap": "No mechanism is chosen, because whether Docker Desktop's nodes are observable from the local engine has not been established. The other two Docker Desktop checks are implemented without it, so this guard is a name-and-shape check, weaker than kind's. docs/security/deferred-risks.md does not yet carry an accepted exception for this difference; until it does, this row is where the gap is recorded, not a claim that the two providers' guards are equally strong.",
+          "owedBy": "an ADR deciding whether Docker Desktop's nodes are observable from the local engine at all, and a security review recording the interim gap as an accepted exception"
         }
       ],
       "capabilities": {
@@ -159,7 +159,7 @@
           "value": "Not established. Whether an image built by the local engine is visible to this cluster's container runtime without a load step depends on how Docker Desktop provisions the cluster, and nothing here has observed it. `kind load` is not assumed to apply.",
           "evidence": "unknown",
           "source": null,
-          "owedBy": "V1-S3-010-PR2"
+          "owedBy": "V1-S3-011"
         },
         "defaultStorage": {
           "value": "A local-path provisioner that kept volumes under /var/local-path-provisioner/ on the node and reclaimed them on delete, observed in one trial. The class's name was not recorded, and whether resetting or disabling Kubernetes in Docker Desktop removes those bytes has not been observed.",
@@ -177,7 +177,7 @@
           "value": "Not established. The node runs inside the Docker Desktop virtual machine and shares it with the engine and with whatever else that cluster already hosts. Its allocatable processors and memory have never been recorded against the engine's allocation, and the one trial here found whole-machine memory contaminated by unrelated workloads in the same cluster.",
           "evidence": "unknown",
           "source": null,
-          "owedBy": "V1-S3-010-PR2"
+          "owedBy": "V1-S3-011"
         },
         "wholeClusterCleanup": {
           "value": "Not established. Resetting or disabling Kubernetes in Docker Desktop's settings is the operator's operation, never InferOps's. What it removes -- volumes, loaded images, the context -- has not been observed, and kind's answer is not borrowed for it.",
@@ -311,65 +311,65 @@
     {
       "refusalId": "no-provider-selected",
       "when": "A mutating workflow is invoked without a provider. There is no default and no inference from whichever cluster answers.",
-      "implementedFor": [],
-      "enforcedBy": null,
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": ["kind", "docker-desktop"],
+      "enforcedBy": "inferops::_target_problem",
+      "owedBy": null
     },
     {
       "refusalId": "unsupported-provider",
       "when": "The selected provider is neither `kind` nor `docker-desktop`.",
-      "implementedFor": [],
-      "enforcedBy": null,
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": ["kind", "docker-desktop"],
+      "enforcedBy": "inferops::_target_problem",
+      "owedBy": null
     },
     {
       "refusalId": "ambiguous-target",
       "when": "The selection does not resolve to exactly one cluster: `kind` without a cluster name, a name kind does not list exactly once, or a project kubeconfig holding more than one context.",
-      "implementedFor": [],
-      "enforcedBy": null,
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": ["kind", "docker-desktop"],
+      "enforcedBy": "inferops::_target_problem",
+      "owedBy": null
     },
     {
       "refusalId": "target-missing",
       "when": "The selected cluster is not there: no project kubeconfig, kind does not list the name, or no `docker-desktop` context exists.",
-      "implementedFor": ["kind"],
-      "enforcedBy": "inferops::target_cluster_problem",
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": ["kind", "docker-desktop"],
+      "enforcedBy": "inferops::_target_problem",
+      "owedBy": null
     },
     {
       "refusalId": "target-unreachable",
       "when": "The API server does not answer, or answers with no nodes.",
-      "implementedFor": ["kind"],
-      "enforcedBy": "inferops::target_cluster_problem",
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": ["kind", "docker-desktop"],
+      "enforcedBy": "inferops::_target_problem",
+      "owedBy": null
     },
     {
       "refusalId": "unexpected-context",
       "when": "The project kubeconfig's current context is not the one verification produced, whatever the operator's own current context is.",
-      "implementedFor": ["kind"],
-      "enforcedBy": "inferops::target_cluster_problem",
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": [],
+      "enforcedBy": null,
+      "owedBy": "not owed as a runtime check: inferops::resolve_target rewrites the project-scoped kubeconfig from the operator's kubeconfig on every call, naming the expected context explicitly rather than reading one back and comparing it against an expectation. There is no separately-written file whose current context could have drifted, so this refusal's condition cannot arise by construction rather than by a guard catching it."
     },
     {
       "refusalId": "provider-mismatch",
       "when": "The reachable cluster fails the selected provider's identity checks, including when it is a cluster of the other supported provider.",
-      "implementedFor": ["kind"],
-      "enforcedBy": "inferops::target_cluster_problem",
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": ["kind", "docker-desktop"],
+      "enforcedBy": "inferops::_target_problem",
+      "owedBy": null
     },
     {
       "refusalId": "capability-unknown-or-insufficient",
       "when": "The workflow depends on a capability the target lacks, or on one this contract records as `unknown` for the selected provider.",
-      "implementedFor": [],
-      "enforcedBy": null,
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": ["kind", "docker-desktop"],
+      "enforcedBy": "inferops::require_target_capability",
+      "owedBy": null
     },
     {
       "refusalId": "client-outside-skew",
       "when": "kubectl is more than one minor version from the version the selected cluster's server reports.",
-      "implementedFor": [],
-      "enforcedBy": null,
-      "owedBy": "V1-S3-010-PR2"
+      "implementedFor": ["kind", "docker-desktop"],
+      "enforcedBy": "inferops::resolve_target",
+      "owedBy": null
     }
   ],
   "rules": [
@@ -401,41 +401,41 @@
       "ruleId": "selection-is-explicit",
       "statement": "Every mutating workflow is given the provider, and for kind the cluster name, by the operator. No input has a default.",
       "rationale": "A default is a selection somebody else made, and the case it is wrong in is the case where the operator did not notice.",
-      "enforcement": "unimplemented",
-      "enforcedBy": null,
-      "owedBy": "V1-S3-010-PR2"
+      "enforcement": "script",
+      "enforcedBy": "inferops::_target_problem",
+      "owedBy": null
     },
     {
       "ruleId": "detection-never-selects",
       "statement": "A workflow may report which providers it can see. It never picks one of them.",
       "rationale": "Detection is useful exactly when the operator is unsure, which is the moment a guess does the most damage.",
-      "enforcement": "unimplemented",
-      "enforcedBy": null,
-      "owedBy": "V1-S3-010-PR2"
+      "enforcement": "test",
+      "enforcedBy": "tests/architecture/test_local_cluster_provider_contract.py::test_the_detection_script_never_selects_or_mutates",
+      "owedBy": null
     },
     {
       "ruleId": "verification-precedes-every-mutation",
       "statement": "Every workflow re-runs the selected provider's identity checks immediately before its first mutation. A target recorded by an earlier run is compared, never trusted.",
       "rationale": "The cluster a context points at can change between two commands, and a stale verification is how a correct check ends up guarding the wrong cluster.",
       "enforcement": "script",
-      "enforcedBy": "inferops::assert_target_cluster",
-      "owedBy": "V1-S3-010-PR2"
+      "enforcedBy": "inferops::resolve_target",
+      "owedBy": null
     },
     {
       "ruleId": "a-context-name-is-never-identity",
       "statement": "No identity check passes on a context name alone.",
       "rationale": "A context name is only what somebody typed. The kind guard was attacked with a real foreign cluster wearing this project's context name, and refused it for this reason.",
       "enforcement": "script",
-      "enforcedBy": "inferops::target_cluster_problem",
-      "owedBy": "V1-S3-010-PR2"
+      "enforcedBy": "inferops::_target_problem",
+      "owedBy": null
     },
     {
       "ruleId": "access-never-inherits-an-ambient-context",
       "statement": "Every kubectl and helm invocation names the project-scoped kubeconfig and its one context explicitly, so neither KUBECONFIG nor the operator's current context can redirect it.",
       "rationale": "An operator's own kubeconfig routinely holds contexts for clusters that matter more than a local one. Reading it to detect a provider is allowed; acting through it is not.",
       "enforcement": "script",
-      "enforcedBy": "inferops::kubectl",
-      "owedBy": "V1-S3-010-PR2"
+      "enforcedBy": "inferops::target_kubectl",
+      "owedBy": null
     },
     {
       "ruleId": "terraform-and-helm-receive-an-address-never-a-provider",
@@ -443,7 +443,7 @@
       "rationale": "A module that knows the provider starts accreting provider-specific lifecycle logic, which is the ownership this contract moved out of InferOps.",
       "enforcement": "test",
       "enforcedBy": "tests/architecture/test_local_cluster_provider_contract.py::test_the_terraform_module_names_no_provider",
-      "owedBy": "V1-S3-010-PR2"
+      "owedBy": null
     },
     {
       "ruleId": "terraform-and-helm-ownership-stays-disjoint",
@@ -467,7 +467,7 @@
       "rationale": "A record that does not say where it ran will be read as having run wherever the reader needs it to have.",
       "enforcement": "unimplemented",
       "enforcedBy": null,
-      "owedBy": "V1-S3-010-PR2"
+      "owedBy": "V1-S3-011: kubernetes-certification.sh, kubernetes-multi-replica-certification.sh, and helm-upgrade-rollback.sh still write cluster.name/cluster.context from the kind-pinned constants, not from the verified target, until their descriptors are ported to a provider-neutral target"
     },
     {
       "ruleId": "no-provider-certifies-another",

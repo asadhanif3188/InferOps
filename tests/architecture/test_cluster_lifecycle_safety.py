@@ -71,6 +71,7 @@ ENTRY_POINTS = (
     "kubernetes-certification.sh",
     "kubernetes-multi-replica-certification.sh",
     "helm-upgrade-rollback.sh",
+    "target-detect.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
@@ -239,8 +240,18 @@ def test_a_mutating_kubectl_call_goes_through_the_wrapper() -> None:
     A bare `kubectl apply` inherits whatever KUBECONFIG and current context the
     contributor's shell happens to carry, which on a developer machine is
     routinely a real cluster.
+
+    `inferops::target_kubectl` (V1-S3-010-PR2) is the second wrapper this
+    matches without exempting: the provider-aware target platform workflows act
+    through, pinning the same two flags against whichever target
+    `inferops::resolve_target` verified. `\\b(?:target_)?kubectl` is what makes
+    both wrapped forms visible to this pattern at all -- a bare `\\bkubectl\\b`
+    never matches inside `target_kubectl`, because `_` and `k` are both word
+    characters and there is no boundary between them.
     """
-    pattern = re.compile(rf"(?<!::)\bkubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b")
+    pattern = re.compile(
+        rf"(?<!::)\b(?:target_)?kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b"
+    )
     offenders = [
         f"{name}:{number}: {line.strip()}"
         for name, number, line in all_code_lines()
@@ -253,6 +264,14 @@ def test_the_wrapper_names_both_the_kubeconfig_and_the_context() -> None:
     assert (
         'kubectl --kubeconfig "${INFEROPS_KUBECONFIG}" '
         '--context "${INFEROPS_KUBE_CONTEXT}" "$@"' in LIB_TEXT
+    )
+
+
+def test_the_target_wrapper_names_both_the_kubeconfig_and_the_context() -> None:
+    """The provider-aware counterpart of the check above."""
+    assert (
+        'kubectl --kubeconfig "${INFEROPS_TARGET_KUBECONFIG}" '
+        '--context "${INFEROPS_TARGET_CONTEXT}" "$@"' in LIB_TEXT
     )
 
 
@@ -284,6 +303,14 @@ def test_the_helm_wrapper_names_both_the_kubeconfig_and_the_context() -> None:
     )
 
 
+def test_the_target_helm_wrapper_names_both_the_kubeconfig_and_the_context() -> None:
+    """The provider-aware counterpart of the check above."""
+    assert (
+        'helm --kubeconfig "${INFEROPS_TARGET_KUBECONFIG}" '
+        '--kube-context "${INFEROPS_TARGET_CONTEXT}" "$@"' in LIB_TEXT
+    )
+
+
 # A line that only prints. `inferops::log`, `warn`, and `fail` take a message and
 # run no tool, and the messages here quote the command a contributor should run
 # by hand after a failure -- which is the most useful thing they can say and
@@ -299,12 +326,19 @@ def prints_rather_than_runs(line: str) -> bool:
 
 
 def test_a_mutating_helm_call_goes_through_the_wrapper() -> None:
-    bare = re.compile(rf"(?<!::)\bhelm\s+({'|'.join(MUTATING_HELM_VERBS)})\b")
+    """`inferops::helm` and `inferops::target_helm` (V1-S3-010-PR2) both count.
+
+    Same reasoning as the kubectl check above: `\\bhelm\\b` never matches inside
+    `target_helm` on its own, so the pattern has to look for the optional
+    `target_` prefix explicitly to see either wrapper's calls at all.
+    """
+    bare = re.compile(rf"(?<!::)\b(?:target_)?helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b")
     offenders = [
         f"{name}:{number}: {line.strip()}"
         for name, number, line in all_code_lines()
         if bare.search(line)
         and "inferops::helm" not in line
+        and "inferops::target_helm" not in line
         and not prints_rather_than_runs(line)
     ]
     assert not offenders, offenders
@@ -313,7 +347,9 @@ def test_a_mutating_helm_call_goes_through_the_wrapper() -> None:
 def test_there_are_helm_calls_to_check() -> None:
     """The rule above says nothing about a repository that invokes no helm."""
     calls = [
-        row for row in all_code_lines() if re.search(r"inferops::helm\s+\w", row[2])
+        row
+        for row in all_code_lines()
+        if re.search(r"inferops::(?:target_)?helm\s+\w", row[2])
     ]
     assert len(calls) >= 5, calls
 
@@ -325,7 +361,9 @@ def test_every_release_operation_names_a_namespace() -> None:
     same name -- or, more often, an install into `default` that nothing later
     looks for.
     """
-    verbs = re.compile(rf"inferops::helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b")
+    verbs = re.compile(
+        rf"inferops::(?:target_)?helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b"
+    )
     offenders = [
         f"{name}:{number}: {line.strip()}"
         for name, number, line in all_code_lines()
@@ -383,7 +421,10 @@ DELETE_NAMES_A_RESOURCE = re.compile(
 # being, and nothing here needs it.
 DELETE_TAKES_EVERYTHING = re.compile(r"(?<![\w-])--all(?![\w-])")
 
-INVOKES_DELETE = re.compile(r"(?<!::)\bkubectl\s+delete\b|inferops::kubectl delete")
+INVOKES_DELETE = re.compile(
+    r"(?<!::)\b(?:target_)?kubectl\s+delete\b"
+    r"|inferops::kubectl delete|inferops::target_kubectl delete"
+)
 
 
 def deletion_lines() -> list[tuple[str, int, str]]:
@@ -452,7 +493,7 @@ def test_nothing_that_changes_state_crosses_every_namespace() -> None:
     ADR 0001 (D6) forbids is acting outside this project's own namespace, so that
     is what this refuses, rather than every appearance of the flag.
     """
-    mutating = re.compile(rf"kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b")
+    mutating = re.compile(rf"(?:target_)?kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b")
     offenders = [
         f"{name}:{number}: {line.strip()}"
         for name, number, line in all_code_lines()
@@ -476,11 +517,15 @@ def test_no_script_reaches_beyond_this_project(label: str, pattern: str) -> None
 
 def rules_reject(line: str) -> bool:
     """Whether any rule in this module would refuse a line."""
-    mutating = re.search(rf"kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b", line)
+    mutating = re.search(
+        rf"(?:target_)?kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b", line
+    )
     deletes = INVOKES_DELETE.search(line) is not None
-    bare_helm = re.search(rf"(?<!::)\bhelm\s+({'|'.join(MUTATING_HELM_VERBS)})\b", line)
+    bare_helm = re.search(
+        rf"(?<!::)\b(?:target_)?helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b", line
+    )
     wrapped_helm = re.search(
-        rf"inferops::helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b", line
+        rf"inferops::(?:target_)?helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b", line
     )
     return (
         (deletes and DELETE_TAKES_EVERYTHING.search(line) is not None)
@@ -489,6 +534,7 @@ def rules_reject(line: str) -> bool:
         or (
             bare_helm is not None
             and "inferops::helm" not in line
+            and "inferops::target_helm" not in line
             and not prints_rather_than_runs(line)
         )
         or (
@@ -529,6 +575,10 @@ def rules_reject(line: str) -> bool:
         'inferops::helm upgrade "${R}" "${C}" --wait',
         # The message exemption is not a way in: this one runs the uninstall.
         'inferops::fail "$(helm uninstall inferops --namespace x)"',
+        # The provider-aware wrapper (V1-S3-010-PR2) is held to the same rules:
+        # a namespace-less mutating call, and one naming no target.
+        'inferops::target_helm upgrade "${R}" "${C}" --wait',
+        'helm upgrade "${R}" "${C}" --namespace "${N}"',
     ),
 )
 def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:
@@ -561,6 +611,11 @@ def test_the_rules_reject_the_shapes_they_exist_to_reject(sample: str) -> None:
         "# --create-namespace is deliberately absent and must stay absent.",
         # Telling a contributor what to run by hand, which runs nothing.
         'inferops::warn "Remove it with: helm uninstall inferops --namespace x"',
+        # The provider-aware wrapper's own calls: helm-lifecycle.sh's install and
+        # api-image.sh/model-seed-image.sh's capability check, neither of which
+        # is a bare or unscoped call.
+        'inferops::target_helm install "${R}" "${C}" --namespace "${N}" --wait',
+        'inferops::target_kubectl create namespace "${INFEROPS_RELEASE_NAMESPACE}"',
     ),
 )
 def test_the_rules_accept_what_the_scripts_legitimately_do(sample: str) -> None:

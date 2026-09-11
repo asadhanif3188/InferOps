@@ -262,7 +262,23 @@ inferops::require_cmd kubectl
 inferops::require_cmd helm
 inferops::require_cmd terraform
 inferops::require_engine
-inferops::assert_target_cluster
+# The provider-aware target this project consumes rather than creates
+# (docs/environment/local-cluster-provider-contract.md): an explicit
+# INFEROPS_PROVIDER, and for kind an explicit INFEROPS_KIND_CLUSTER_NAME, with
+# no default, re-verified now rather than trusted from an earlier run.
+inferops::resolve_target
+
+# This certification's own descriptor and evidence tooling below are still
+# specific to the kind cluster this repository pins; porting them to a
+# provider-neutral target is V1-S3-011. Re-verifying through
+# inferops::resolve_target above closes `selection-is-explicit` for this
+# workflow; this closes the rest of the gap honestly rather than silently: a
+# Docker Desktop target passes the check above and is refused here instead of
+# being certified against a descriptor that does not describe it.
+if [ "${INFEROPS_TARGET_PROVIDER}" != "kind" ] ||
+  [ "${INFEROPS_TARGET_CLUSTER_NAME}" != "${INFEROPS_CLUSTER_NAME}" ]; then
+  inferops::fail "refusing: capability-unknown-or-insufficient: this certification's descriptor and evidence tooling are still specific to provider 'kind', cluster '${INFEROPS_CLUSTER_NAME}'. The selected target is provider '${INFEROPS_TARGET_PROVIDER}', cluster '${INFEROPS_TARGET_CLUSTER_NAME}'. Porting this workflow to a provider-neutral target is V1-S3-011."
+fi
 
 inferops::section "Multi-replica certification descriptor"
 (cd "${INFEROPS_ROOT}" && python -m "${INFEROPS_MULTI_MODULE}" check)

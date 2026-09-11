@@ -359,11 +359,20 @@ def test_the_image_script_derives_the_digest_rather_than_declaring_one() -> None
 
 
 def test_the_image_script_establishes_cluster_identity_before_it_loads() -> None:
-    """`kind load` names a cluster, and would happily name somebody else's."""
-    assert "inferops::assert_target_cluster" in IMAGE_SCRIPT
-    identity = IMAGE_SCRIPT.index("inferops::assert_target_cluster")
+    """`kind load` names a cluster, and would happily name somebody else's.
+
+    V1-S3-010-PR2: the provider-aware inferops::resolve_target and its
+    imagePreparation capability check replace the kind-pinned
+    inferops::assert_target_cluster here.
+    """
+    assert "inferops::resolve_target" in IMAGE_SCRIPT
+    assert "inferops::require_target_capability" in IMAGE_SCRIPT
+    identity = IMAGE_SCRIPT.index("inferops::resolve_target")
+    capability = IMAGE_SCRIPT.index("inferops::require_target_capability")
     load = IMAGE_SCRIPT.index("kind load docker-image")
-    assert identity < load, "the load happens before the cluster is identified"
+    assert identity < capability < load, (
+        "the load happens before the target and its capability are established"
+    )
 
 
 def test_the_image_script_pushes_to_no_registry() -> None:
