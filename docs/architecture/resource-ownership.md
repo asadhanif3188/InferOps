@@ -22,6 +22,16 @@ and `V1-S3-006-PR2` added a third at
 described in
 [the multi-replica certification procedure](../serving/kubernetes-multi-replica-certification.md).
 
+**The cluster itself changed hands on 2026-09-11.**
+[ADR 0011](decisions/ADR-0011-external-local-cluster-provider-contract.md) moved
+it out of InferOps: the operator provides an existing cluster through one of two
+supported providers, `kind` or Docker Desktop, and InferOps selects, verifies, and
+consumes it. The inventory now gives each provider's cluster its own row, owned by
+`cluster-operator` with the `operator-provided` lifecycle, because the two have
+different lifecycles and different evidence and one row had to average them. How
+a cluster is selected and identified is in
+[the provider contract](../environment/local-cluster-provider-contract.md).
+
 **Three procedures now install and uninstall the same release in the same
 namespace**, and the distinction is what each is for rather than what each
 touches. `helm-lifecycle.sh` answers "does the chart install, upgrade, roll back,
@@ -107,7 +117,8 @@ Three corollaries, because each is a mistake this inventory is built to prevent:
 | `repository` | This repository and its review process | `repository` | A merged pull request | A merged pull request |
 | `workload-owner` | The team that owns the workload | `out-of-band` | A documented manual step | A documented manual step |
 | `external-publisher` | The upstream image and model publishers | `external` | Publishes upstream | Withdraws upstream |
-| `contributor-host` | The contributor's machine, engine, and environment scripts | `host` | `scripts/environment/cluster-up.sh`, or a host prerequisite | Cluster teardown |
+| `contributor-host` | The contributor's machine, engine, and environment scripts | `host` | The environment scripts, or a host prerequisite | The environment scripts, or the contributor |
+| `cluster-operator` | The operator who provides the local cluster, with a supported provider's own tooling | `operator-provided` | The `kind` CLI, or enabling Kubernetes in Docker Desktop | Cluster teardown, by the operator. Nothing on the platform path does it |
 | `terraform` | The platform prerequisite layer | `prerequisite` | `terraform apply` | `terraform destroy` |
 | `helm` | The workload release layer | `release` | `helm install` or `helm upgrade` | `helm uninstall` |
 | `kubernetes-control-plane` | Kubernetes controllers | `derived` | Reconciliation | Garbage collection |
@@ -196,17 +207,18 @@ inside one.
 | `serving-runtime-container-image` | `external-publisher` | Pinned by digest. Availability is not this project's to guarantee |
 | `model-artifact-upstream` | `external-publisher` | Pinned by revision and per-file hash, verified before use |
 | `container-engine` | `contributor-host` | No step changes host-wide engine settings |
-| `local-kubernetes-cluster` | `contributor-host` | Terraform and Helm act inside a cluster neither may create or delete |
-| `project-kubeconfig` | `contributor-host` | Holds a client certificate and key; ignored by version control; removed on teardown |
-| `node-image-cache` | `contributor-host` | Retained across teardown by design; reclaimed by an opt-in step |
-| `platform-api-container-image` | `contributor-host` | Built locally and loaded into the cluster rather than pushed to a shared registry |
+| `kind-cluster` | `cluster-operator` | An existing `kind` cluster. Terraform and Helm act inside it and neither may create or delete it; since ADR 0011 nothing on the platform path may either. `implemented`, on `kind` evidence only |
+| `docker-desktop-cluster` | `cluster-operator` | Docker Desktop's cluster. `planned`: no guard can identify it yet, so every script refuses it |
+| `project-kubeconfig` | `contributor-host` | Holds a client certificate and key; ignored by version control; removed on teardown. Written today by the `kind` helper; ADR 0011 moves it to target verification |
+| `node-image-cache` | `cluster-operator` | `kind` only. Retained across teardown by design; reclaimed by an opt-in step |
+| `platform-api-container-image` | `contributor-host` | Built locally and made visible to the cluster by the provider's own image path rather than pushed to a shared registry. For Docker Desktop that path is not established |
 
 ### Not owned, and therefore not in V1
 
 | `resourceId` | Why it has no owner |
 |---|---|
 | `telemetry-backend` | Dashboards and an alert routing path. Narrowed by the Sprint 3 remediation: this row used to cover the collector as well, and the collector is now decided and owned. What is left is genuinely open -- a dashboard needs somebody to read it, and an alert needs a receiver, a routing tree and somebody on the other end |
-| `ingress-and-load-balancing` | The accepted local Kubernetes distribution ships neither, and installing them was recorded as an open cost. Until one is chosen, every service is ClusterIP |
+| `ingress-and-load-balancing` | `kind` ships neither, and installing them was recorded as an open cost; what Docker Desktop provides has not been examined here. Until one is chosen, every service is ClusterIP |
 
 ## Teardown, and why the order is not a preference
 
@@ -228,8 +240,10 @@ Five operations, ordered by how much they touch. Each subsumes the one before it
                               with it. This is not the routine uninstall
                               path.
 
-   cluster teardown        -> the cluster goes, by the environment
-                              scripts. Neither tool may do this.
+   cluster teardown        -> the cluster goes or is reset, by its
+                              operator with the provider's own tooling.
+                              Nothing on InferOps's platform path does
+                              this (ADR 0011), and neither tool may.
 ```
 
 The inventory records, per resource, which of these it survives. Two tests read
@@ -291,6 +305,12 @@ namespace cascades over what an uninstall removed, and deleting the cluster take
 all of it. So a resource that survives a wider operation survives every narrower
 one, and a survival list that skips an operation and claims a larger one is
 refused.
+
+Checked by `tests/architecture/test_local_cluster_provider_contract.py`, for the
+cluster rows only: that each supported provider's cluster has its own row, that
+both belong to `cluster-operator` and neither survives the operation that removes
+it, that no tool or script owns one, and that the Docker Desktop row stays
+`planned` while nothing can identify that cluster.
 
 Checked by `tests/architecture/test_helm_chart.py`, for the release layer only:
 that the committed chart renders every row the release table gives it or declares

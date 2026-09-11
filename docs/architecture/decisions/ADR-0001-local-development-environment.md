@@ -7,7 +7,7 @@
 | Date accepted | 2026-08-23, for D1, D2, D5, D6, and the minimum tier of D7 only |
 | Decision owner | Unassigned; no public maintainer roster exists yet |
 | Supersedes | None |
-| Superseded by | [ADR 0009](ADR-0009-python-toolchain.md), for D3 and D4 only |
+| Superseded by | [ADR 0009](ADR-0009-python-toolchain.md), for D3 and D4; [ADR 0011](ADR-0011-external-local-cluster-provider-contract.md), in part, for D2, D5, and D6 |
 
 > [!IMPORTANT]
 > This record is **accepted in part**. The container runtime, the local Kubernetes
@@ -24,17 +24,29 @@
 > runner D3 proposed and **accepts** the dependency manager D4 proposed. Read
 > ADR 0009 for either; the sections below are kept for the alternatives they
 > assessed and no longer state this project's decision.
+>
+> **D2, D5, and D6 are superseded in part** by
+> [ADR 0011](ADR-0011-external-local-cluster-provider-contract.md), from
+> 2026-09-11. The cluster stops being something InferOps creates and deletes: the
+> operator provides an existing one, through `kind` or Docker Desktop's
+> Kubernetes, and InferOps selects, verifies, and consumes it. `kind` stays, as a
+> supported provider and as the target of the helper scripts this record
+> describes, and every measurement below stands for what it measured. What no
+> longer holds is that creating and deleting `inferops-dev` is part of the
+> platform — and, with it, D2's rejection of the desktop application's cluster on
+> ownership grounds. Each affected section says which of its sentences ADR 0011
+> replaces; none of them has been rewritten.
 
 ## Decision status
 
 | ID | Decision | Status | Evidence |
 |---|---|---|---|
 | D1 | Container runtime: a Docker-API-compatible engine | **Accepted**, for the reference implementation only | Engine reached, versions captured, cluster and workload run on it |
-| D2 | Local Kubernetes distribution: kind | **Accepted** | Cluster created from a digest-pinned image four times; hello-world served a request twice |
+| D2 | Local Kubernetes distribution: kind | **Accepted; superseded in part** by ADR 0011. kind remains a supported provider; that InferOps creates it does not | Cluster created from a digest-pinned image four times; hello-world served a request twice |
 | D3 | Task runner: Task (go-task) | **Superseded** by ADR 0009 D7, which rejects a task runner | None. Never installed, never run |
 | D4 | Dependency installation: uv with a committed lockfile | **Superseded** by ADR 0009 D2 and D3, which accept and execute it | None here. The evidence is in ADR 0009 and its validation record |
-| D5 | Isolation | **Accepted** | Scoping rules exercised; four attempts to act outside the project's own cluster were refused |
-| D6 | Cleanup | **Accepted** | Full and partial teardown exercised; residue verified absent five times |
+| D5 | Isolation | **Accepted; superseded in part** by ADR 0011. The rule that the project creates its own cluster now binds only the helper; the rest stands | Scoping rules exercised; four attempts to act outside the project's own cluster were refused |
+| D6 | Cleanup | **Accepted; superseded in part** by ADR 0011. Deleting the cluster is the helper's operation and the operator's choice, not platform cleanup | Full and partial teardown exercised; residue verified absent five times |
 | D7 | Host resource requirements | **Minimum tier accepted; recommended tier proposed** | Minimum tier measured on one Windows host. The recommended tier remains an estimate |
 
 Two decisions are accepted only for what was actually exercised. D1 is accepted
@@ -146,6 +158,16 @@ compatibility is unproven and must be verified before any such support is claime
 ### D2 — Local Kubernetes distribution: kind
 
 Status: **accepted**, on the evidence recorded in the cluster smoke proof.
+
+> [!NOTE]
+> **Superseded in part by [ADR 0011](ADR-0011-external-local-cluster-provider-contract.md).**
+> `kind` remains a supported provider, and the pinned release and node image below
+> remain the helper's definition. Two things here no longer hold: that InferOps
+> creates this cluster, and the objection in the table's fourth row, which rejected
+> the desktop application's cluster because the project could not own it. Under
+> ADR 0011 the project owns no cluster, so ownership stops being an objection. The
+> rest of that row — a version bound to the desktop release, and a cluster shared
+> with anything else that uses it — becomes a recorded limitation of that provider.
 
 | Alternative | Fidelity | Teardown scope | Assessment |
 |---|---|---|---|
@@ -264,6 +286,14 @@ the test and certification strategy.
 Status: **accepted**. The rules below are implemented in `scripts/environment/`
 and were exercised; the refusals were additionally attacked rather than assumed.
 
+> [!NOTE]
+> **Superseded in part by [ADR 0011](ADR-0011-external-local-cluster-provider-contract.md).**
+> The first accepted rule below — *"the project creates its own cluster"* — and the
+> requirement to disable the desktop application's Kubernetes before creating
+> `inferops-dev` now bind the optional helper only. The platform consumes a cluster
+> the operator provides. Every other rule here stands, and ADR 0011 carries the
+> project-scoped kubeconfig and the identity guard into its own D5 and D7.
+
 Accepted rules:
 
 - The project creates its own cluster. It never installs into, reconfigures, or
@@ -320,6 +350,14 @@ it cannot prevent a name collision made on purpose.
 
 Status: **accepted**. Full teardown was exercised five times and partial teardown
 twice, with residue verified absent on every run.
+
+> [!NOTE]
+> **Superseded in part by [ADR 0011](ADR-0011-external-local-cluster-provider-contract.md).**
+> Deleting `inferops-dev` is now the helper's operation, run by an operator who
+> chose to, and not platform cleanup: nothing on the platform path deletes a
+> cluster. The partial teardown, the prohibitions on whole-engine pruning and on
+> deleting contexts the project did not create, and the rule that residue is
+> verified rather than assumed all stand.
 
 Accepted rules:
 

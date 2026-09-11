@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established; seven decisions accepted in part, one accepted with a
+Status: entry point established; eight decisions accepted in part, one accepted with a
 recorded exception, two accepted.
 
 Accepted architecture decisions are indexed here with their status, date, decision
@@ -35,7 +35,7 @@ with one exception: the platform domain now has typed workload objects in
 
 | ID | Decision | Status | Date | Evidence |
 |---|---|---|---|---|
-| [0001](decisions/ADR-0001-local-development-environment.md) | Local development and Kubernetes environment | Accepted in part | 2026-08-23 | [Host inventory](../proof/environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke proof](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
+| [0001](decisions/ADR-0001-local-development-environment.md) | Local development and Kubernetes environment | Accepted in part; D2, D5, and D6 superseded in part by 0011 | 2026-08-23 | [Host inventory](../proof/environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke proof](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
 | [0002](decisions/ADR-0002-model-and-serving-runtime.md) | Model and serving runtime | Accepted, with one recorded exception | 2026-08-24 | [Runtime feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
 | [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
 | [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
@@ -45,11 +45,17 @@ with one exception: the platform domain now has typed workload objects in
 | [0008](decisions/ADR-0008-v1-security-baseline.md) | V1 threat model and security baseline | Accepted in part | 2026-08-26 | [Change validation](../proof/security/v1-s0-009-pr1-validation.md); the baseline is machine-checked, and nothing in this repository defends a running system |
 | [0009](decisions/ADR-0009-python-toolchain.md) | InferOps Python toolchain | Accepted | 2026-08-27 | [Change validation](../proof/toolchain/v1-s0-011-pr1-validation.md); every tool named was run on this repository, and it supersedes ADR 0001 D3 and D4 |
 | [0010](decisions/ADR-0010-inference-api-compatibility-surface.md) | V1 inference API compatibility surface | Accepted in part | 2026-08-27 | [Change validation](../proof/serving/v1-s0-012-pr1-validation.md); the surface is machine-checked against the record that measured the runtime, and nothing in this repository serves a request |
+| [0011](decisions/ADR-0011-external-local-cluster-provider-contract.md) | Local Kubernetes clusters are external, explicitly selected provider targets | Accepted in part | 2026-09-11 | [Change validation](../proof/architecture/v1-s3-010-pr1-validation.md); the contract is machine-checked, the `kind` guard exists for one pinned name, and nothing identifies a Docker Desktop cluster |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
 and minimum host tier are accepted; the task runner, dependency installation
-approach, and recommended host tier are not. In 0004, six decisions are accepted
+approach, and recommended host tier are not; since 0011, the distribution,
+isolation, and cleanup decisions are superseded in part, because the cluster is no
+longer InferOps's to create or delete. In 0011, eleven decisions are accepted, one
+of them — positive identity — for `kind` only: how a Docker Desktop cluster would be
+bound to the local engine, which is what would make its identity check as strong as
+`kind`'s, is not decided. In 0004, six decisions are accepted
 and one — who owns telemetry collection and an ingress or load-balancer
 implementation — is explicitly not made. In 0005, five decisions are accepted and
 one — which continuous-integration service runs the lanes, and what labels a capable

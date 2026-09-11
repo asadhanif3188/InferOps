@@ -10,6 +10,7 @@
     "out-of-band": "Created by a person or a system outside this project's automation, on a documented manual step.",
     "external": "Published by a third party. This project pins it and can neither create nor destroy it.",
     "host": "Belongs to the contributor's own machine. Created and removed by the environment scripts or by the contributor.",
+    "operator-provided": "Provided by the operator outside InferOps, with a supported provider's own tooling. InferOps selects, verifies and consumes it, and nothing on its platform path creates, enables, resets, reconfigures, or deletes it (ADR 0011).",
     "prerequisite": "Provisioned before a workload release and outliving it. Terraform's half of the cluster.",
     "release": "Part of one Helm release. Created by install or upgrade, removed by uninstall.",
     "derived": "Never declared by any tool. A Kubernetes controller creates it from an owned object and garbage-collects it.",
@@ -48,8 +49,15 @@
       "ownerId": "contributor-host",
       "name": "The contributor's machine, container engine, and environment scripts",
       "lifecycle": "host",
-      "createdBy": "scripts/environment/cluster-up.sh, or a documented host prerequisite",
-      "destroyedBy": "cluster teardown"
+      "createdBy": "the environment scripts, or a documented host prerequisite",
+      "destroyedBy": "the environment scripts, or the contributor"
+    },
+    {
+      "ownerId": "cluster-operator",
+      "name": "The operator who provides the local Kubernetes cluster, with a supported provider's own tooling",
+      "lifecycle": "operator-provided",
+      "createdBy": "the operator: the kind CLI, or enabling Kubernetes in Docker Desktop",
+      "destroyedBy": "cluster teardown, performed by the operator"
     },
     {
       "ownerId": "terraform",
@@ -234,13 +242,13 @@
       "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md"
     },
     {
-      "resourceId": "local-kubernetes-cluster",
-      "name": "The local Kubernetes cluster",
+      "resourceId": "kind-cluster",
+      "name": "An existing kind cluster, selected explicitly",
       "kind": "kind cluster",
-      "owner": "contributor-host",
-      "lifecycle": "host",
+      "owner": "cluster-operator",
+      "lifecycle": "operator-provided",
       "v1Status": "implemented",
-      "createdBy": "scripts/environment/cluster-up.sh",
+      "createdBy": "the operator, with the kind CLI or the optional helper",
       "destroyedBy": "cluster teardown",
       "survives": [
         "pod restart",
@@ -250,10 +258,34 @@
       ],
       "referencedBy": [
         "terraform",
-        "helm"
+        "helm",
+        "contributor-host"
       ],
-      "handoff": "Terraform and Helm both act inside a cluster neither of them creates. Neither may create, reconfigure, or delete one. This is the boundary that keeps a contributor's unrelated clusters out of reach.",
+      "handoff": "Terraform and Helm both act inside a cluster neither of them creates, and since ADR 0011 nothing on InferOps's platform path creates or deletes one either: the operator does, with the kind CLI or with scripts/environment/cluster-up.sh and cluster-down.sh, which remain as an optional helper. The environment scripts positively identify it before any mutation -- every node must be a container kind labelled for the cluster -- but only for the one name lib.sh pins, inferops-dev. Deleting it removes every volume's bytes with it, because the helper's node declares no extraMounts. Its evidence is kind evidence and certifies nothing about docker-desktop-cluster.",
       "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md"
+    },
+    {
+      "resourceId": "docker-desktop-cluster",
+      "name": "Docker Desktop's Kubernetes cluster, selected explicitly",
+      "kind": "Docker Desktop Kubernetes cluster",
+      "owner": "cluster-operator",
+      "lifecycle": "operator-provided",
+      "v1Status": "planned",
+      "createdBy": "the operator, by enabling Kubernetes in Docker Desktop",
+      "destroyedBy": "cluster teardown",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy"
+      ],
+      "referencedBy": [
+        "terraform",
+        "helm",
+        "contributor-host"
+      ],
+      "handoff": "Enabled, reset and disabled in Docker Desktop's own settings by the operator, never by InferOps, which ships nothing that could. Planned rather than implemented because no InferOps guard can identify it: the only identity check requires kind-labelled node containers, so every environment script refuses this cluster, which is the correct failure until ADR 0011's Docker Desktop check exists. Two real records were made on it by hand with an explicit context -- the Sprint 0 runtime feasibility trial and the NetworkPolicy enforcement experiment -- and neither installed anything through this project's chart. What a reset removes has not been observed, and kind's answer is not borrowed for it.",
+      "evidenceRef": null
     },
     {
       "resourceId": "project-kubeconfig",
@@ -274,17 +306,17 @@
         "terraform",
         "helm"
       ],
-      "handoff": "It holds a client certificate and key, is ignored by version control, and is removed on full teardown. Terraform and Helm read it and must not write to the contributor's default kubeconfig.",
+      "handoff": "It holds a client certificate and key, is ignored by version control, and is removed on full teardown. Terraform and Helm read it and must not write to the contributor's default kubeconfig. Today only the kind helper writes it, for the one cluster it creates. ADR 0011 moves its creation to target verification, for either provider and only after positive identification; for Docker Desktop it would hold a copy of Docker Desktop's client credential under the same rules. That half is implemented by nothing yet.",
       "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md"
     },
     {
       "resourceId": "node-image-cache",
-      "name": "The cached Kubernetes node image",
+      "name": "The cached kind node image",
       "kind": "container image cache",
-      "owner": "contributor-host",
-      "lifecycle": "host",
+      "owner": "cluster-operator",
+      "lifecycle": "operator-provided",
       "v1Status": "implemented",
-      "createdBy": "the container engine, on first cluster creation",
+      "createdBy": "the container engine, when a kind cluster is first created",
       "destroyedBy": "an opt-in reclamation step",
       "survives": [
         "pod restart",
@@ -293,8 +325,10 @@
         "terraform destroy",
         "cluster teardown"
       ],
-      "referencedBy": [],
-      "handoff": "Retained across cluster teardown by design, so that recreating the cluster does not download it again. Reclaiming it is a separate opt-in step, which matters on a host with little free space.",
+      "referencedBy": [
+        "contributor-host"
+      ],
+      "handoff": "kind only. Retained across cluster teardown by design, so that recreating the cluster does not download it again. Reclaiming it is a separate opt-in step the helper offers, which matters on a host with little free space. It follows the cluster to its operator because it is a by-product of creating one. Docker Desktop's node images belong to the desktop application, and nothing here describes or reclaims them.",
       "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md"
     },
     {
@@ -304,7 +338,7 @@
       "owner": "contributor-host",
       "lifecycle": "host",
       "v1Status": "planned",
-      "createdBy": "a local build, loaded directly into the cluster",
+      "createdBy": "a local build, made visible to the selected cluster by that provider's own image path",
       "destroyedBy": "the contributor, or cluster teardown for the loaded copy",
       "survives": [
         "pod restart",
@@ -315,7 +349,7 @@
       "referencedBy": [
         "helm"
       ],
-      "handoff": "Built and loaded into the cluster rather than pushed to a shared registry during development, per ADR 0001 D5. Helm references it by a value and never builds it.",
+      "handoff": "Built and made visible to the cluster rather than pushed to a shared registry during development, per ADR 0001 D5. For kind that is kind load; for Docker Desktop it has not been established, and ADR 0011 records it as unknown rather than assuming either answer. Helm references it by a value and never builds it.",
       "evidenceRef": null
     },
     {
@@ -646,7 +680,7 @@
       "destroyedBy": "nothing; no owner has been chosen",
       "survives": [],
       "referencedBy": [],
-      "handoff": "The accepted local Kubernetes distribution ships neither, and installing them was recorded as an open cost. Until one is chosen, every service in this architecture is ClusterIP and external access is an explicit port-forward.",
+      "handoff": "kind ships neither, and installing them was recorded as an open cost; what Docker Desktop provides has not been examined here, and no V1 workflow depends on either provider's answer. Until one is chosen, every service in this architecture is ClusterIP and external access is an explicit port-forward.",
       "evidenceRef": null
     }
   ]

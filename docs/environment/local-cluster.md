@@ -3,6 +3,18 @@
 Status: the workflow on this page has been executed and its evidence recorded.
 See [the cluster smoke evidence](../proof/environment/v1-s0-002-pr2-cluster-smoke.md).
 
+> [!IMPORTANT]
+> **Since [ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
+> this page describes an optional helper, not the platform path.** InferOps now
+> consumes an existing cluster that the operator provides, selected explicitly from
+> two supported providers, `kind` and Docker Desktop's Kubernetes, and nothing on
+> its platform path creates or deletes one. The scripts below are one way for an
+> operator to create a `kind` cluster to this repository's pinned definition. Their
+> evidence stands for what it measured. How a cluster is selected, identified, and
+> refused is in [the provider contract](local-cluster-provider-contract.md) — and
+> today the only guard that exists is the `kind` one on this page, for the cluster
+> name `inferops-dev`.
+
 This page describes how to create, exercise, and remove the InferOps local
 development cluster. It covers the environment only. There is no InferOps
 application, serving runtime, or model to deploy into it yet, and the workload

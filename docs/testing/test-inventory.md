@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are twenty-two, and they are listed in their own section rather than
+empty list. There are twenty-three, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -103,8 +103,9 @@ read a WorkloadContract.
 
 ### `architecture-inventory` — [`tests/architecture/`](../../tests/architecture/)
 
-Nine modules. The committed ownership inventory against the documents describing
-it; every module under `src/inferops/` read for the imports the dependency rule
+Fourteen modules. The committed ownership inventory against the documents describing
+it; the local cluster provider contract against its document, the ownership
+inventory, the guard functions in `lib.sh`, and the Terraform module; every module under `src/inferops/` read for the imports the dependency rule
 forbids; the cluster and release lifecycle scripts read for the safety rules
 ADR 0001 and ADR 0004 state for them; the Terraform prerequisite layer against
 the ownership boundary it implements; the Helm chart read against the release
@@ -119,7 +120,9 @@ each read as a descriptor, a script, and the documents a run would have written.
 The count said two until `V1-S3-001-PR1`, then four, and it was wrong both times
 and again before this story: seven modules existed while the sentence said four.
 It is not machine-checked, which is why it keeps drifting, and it is recorded
-here rather than quietly corrected.
+here rather than quietly corrected. It drifted once more after that: by
+`V1-S3-010-PR1` thirteen modules existed while the sentence said nine, and that
+change added the fourteenth.
 
 ### `adapter` — [`tests/adapters/`](../../tests/adapters/)
 
@@ -172,7 +175,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Twenty-two suites protect something no row of the claim matrix names. Each carries its
+Twenty-three suites protect something no row of the claim matrix names. Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -198,9 +201,8 @@ matrix is complete needs to see them together.
 | [`tests/architecture/test_helm_upgrade_rollback.py`](../../tests/architecture/test_helm_upgrade_rollback.py) | The Helm upgrade and rollback experiment read as committed data and text: the descriptor against the chart, the model source record, and the Kubernetes certification it may not disagree with; the refusals that stop a rollback being claimed on Helm's own bookkeeping, a deadline being read as a detection of health, a candidate that never scheduled being read as a detected fault, and a mock answering after the rollback; and the safety properties of the operating script. The claim that a release upgrades and rolls back safely belongs to the real-runtime layer, which runs the workflow instead of reading it -- and which cannot, because no InferOps API image exists |
 | [`tests/architecture/test_kubernetes_troubleshooting.py`](../../tests/architecture/test_kubernetes_troubleshooting.py) | The published Kubernetes troubleshooting and cleanup guide against the repository it describes: every command it prints against the module, subcommand, script, or path it names; every target against `lib.sh`; every port, probe, budget, deadline, resource figure, claim name and size, byte count, and in-claim path against the committed render, the values file, the Terraform variables, or the model source record; the exit vocabulary against both Kubernetes tools; every quoted measurement against the proof record it is attributed to; and the rules that keep its samples scoped, credential-free, and labelled where they are destructive. It establishes that the guide has not drifted, never that following one of its recoveries repairs a fault — no cluster has installed the release |
 | [`tests/architecture/test_api_container_image.py`](../../tests/architecture/test_api_container_image.py) | The API container build path the chart depended on and did not have: the committed Dockerfile and its digest-pinned base, the unprivileged user and bytecode-free filesystem the chart's security context requires, the exec-form entrypoint that lets PID 1 receive SIGTERM, the copy list and ignore file that keep the host's model downloader and container packager out of a serving image, the carrier import that pulls none of them, the entrypoint's refusal of an unstated or impossible bind address, and the rule that no unverified digest replaces the labelled placeholder in the committed values. That the image runs belongs to a layer that starts one; this module builds nothing |
-
 | [`tests/architecture/test_model_acquisition_job.py`](../../tests/architecture/test_model_acquisition_job.py) | The writing side of the model cache handoff, run rather than read: an empty claim populated and verified, a verified artifact reused with no transfer at all, an artifact of the right length and the wrong content discarded rather than reused, another revision's directory left alone, and a failed acquisition leaving neither the artifact nor its temporary file behind. Whether the job schedules in a cluster belongs to a layer that installs one |
-
+| [`tests/architecture/test_local_cluster_provider_contract.py`](../../tests/architecture/test_local_cluster_provider_contract.py) | The provider contract `ADR 0011` accepted: exactly two providers, no selection default, Terraform and Helm handed an address rather than a provider, an identity check, refusal, or rule claimed as enforced only where `lib.sh` or a test really defines it, every capability answer labelled with how it is known, each provider's cluster owned by its operator, and no platform workflow that creates or deletes a cluster. It also pins the open gaps. That a cluster is correctly identified or refused belongs to a layer that contacts one |
 | [`tests/architecture/test_telemetry_collector.py`](../../tests/architecture/test_telemetry_collector.py) | The collector `ADR 0004` `D7` was amended to allow: owned but still `planned`, off by default, reading the scrape ConfigMap rather than a second copy of it, projecting an expiring token instead of automounting one, and storing series in a bounded `emptyDir`. Its one executable check runs the pinned collector's own `promtool` over the committed render, which establishes that the configuration loads and nothing about whether anything was collected |
 
 The two API-surface rows are the interesting pair. The matrix's drift claim,
