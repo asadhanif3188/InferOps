@@ -448,8 +448,15 @@ inferops::_kind_target_problem() {
     return 1
   fi
 
+  # Windows kubectl needs a native path, the same as every other invocation in
+  # this file: under Git Bash an unconverted POSIX path silently resolves to
+  # the wrong place, which here would mean every read below finding nothing --
+  # a kubeconfig this function itself just wrote a moment earlier.
+  local target_kubeconfig_native
+  target_kubeconfig_native="$(inferops::native_path "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}")"
+
   local current
-  current="$(kubectl --kubeconfig "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}" config current-context 2>/dev/null || true)"
+  current="$(kubectl --kubeconfig "${target_kubeconfig_native}" config current-context 2>/dev/null || true)"
   if [ "${current}" != "${expected_context}" ]; then
     printf "unexpected-context: expected '%s', the project-scoped kubeconfig holds '%s'." \
       "${expected_context}" "${current:-none}"
@@ -462,7 +469,7 @@ inferops::_kind_target_problem() {
   fi
 
   local api_nodes kind_nodes unmatched
-  api_nodes="$(kubectl --kubeconfig "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}" --context "${expected_context}" \
+  api_nodes="$(kubectl --kubeconfig "${target_kubeconfig_native}" --context "${expected_context}" \
     get nodes -o name 2>/dev/null | sed 's|^node/||' | sort || true)"
   if [ -z "${api_nodes}" ]; then
     printf 'target-unreachable: the API server reported no nodes, or could not be reached.'
@@ -520,8 +527,13 @@ inferops::_docker_desktop_target_problem() {
     return 1
   fi
 
+  # See the matching comment in inferops::_kind_target_problem: Windows kubectl
+  # needs a native path, not the POSIX one this file otherwise uses throughout.
+  local target_kubeconfig_native
+  target_kubeconfig_native="$(inferops::native_path "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}")"
+
   local api_nodes node_count
-  api_nodes="$(kubectl --kubeconfig "${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}" --context "${expected_context}" \
+  api_nodes="$(kubectl --kubeconfig "${target_kubeconfig_native}" --context "${expected_context}" \
     get nodes -o name 2>/dev/null | sed 's|^node/||' | sort || true)"
   if [ -z "${api_nodes}" ]; then
     printf 'target-unreachable: the API server reported no nodes, or could not be reached.'
@@ -587,6 +599,12 @@ inferops::require_target_capability() {
 # context just verified, and sets every INFEROPS_TARGET_* variable a consumer in
 # docs/environment/local-cluster-provider-contract.md reads. Nothing here is
 # cached from an earlier call: verification-precedes-every-mutation.
+#
+# None of the INFEROPS_TARGET_* variables it sets are `readonly`: every call
+# site here invokes this exactly once, but a second call in the same shell --
+# a future workflow re-verifying mid-run, an interactive or test harness
+# calling it twice -- must re-verify and overwrite rather than abort on a
+# readonly-variable error the second time.
 inferops::resolve_target() {
   local problem
   if ! problem="$(inferops::_target_problem)"; then
@@ -610,12 +628,9 @@ inferops::resolve_target() {
       INFEROPS_TARGET_IMAGE_PREPARATION="not-established"
       ;;
   esac
-  readonly INFEROPS_TARGET_PROVIDER INFEROPS_TARGET_CLUSTER_NAME \
-    INFEROPS_TARGET_CONTEXT INFEROPS_TARGET_IMAGE_PREPARATION
 
   INFEROPS_TARGET_KUBECONFIG_POSIX="${INFEROPS_TARGET_KUBECONFIG_POSIX_PATH}"
   INFEROPS_TARGET_KUBECONFIG="$(inferops::native_path "${INFEROPS_TARGET_KUBECONFIG_POSIX}")"
-  readonly INFEROPS_TARGET_KUBECONFIG_POSIX INFEROPS_TARGET_KUBECONFIG
 
   # client-outside-skew. Read from the target's own reported server version
   # rather than from the node-image pin the kind helper checks: the selected
@@ -624,7 +639,6 @@ inferops::resolve_target() {
   version_json="$(inferops::target_kubectl version -o json 2>/dev/null || true)"
   INFEROPS_TARGET_SERVER_VERSION="$(printf '%s' "${version_json}" |
     awk -F'"' '/"serverVersion"/ { server = 1 } server && /"gitVersion"/ { print $4; exit }')"
-  readonly INFEROPS_TARGET_SERVER_VERSION
   server_minor="$(printf '%s' "${version_json}" |
     awk -F'"' '/"serverVersion"/ { server = 1 } server && /"minor"/ { print $4; exit }' | tr -cd '0-9')"
   client_minor="$(kubectl version --client=true -o json 2>/dev/null |
@@ -652,19 +666,14 @@ inferops::resolve_target() {
   INFEROPS_TARGET_DEFAULT_STORAGE_CLASS="$(inferops::target_kubectl get storageclass \
     -o jsonpath='{range .items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")]}{.metadata.name}{" "}{.provisioner}{end}' \
     2>/dev/null || true)"
-  readonly INFEROPS_TARGET_NODE_NAMES INFEROPS_TARGET_CONTAINER_RUNTIME \
-    INFEROPS_TARGET_NETWORK_PLUGIN INFEROPS_TARGET_NETWORK_POLICY_ENFORCEMENT \
-    INFEROPS_TARGET_DEFAULT_STORAGE_CLASS
 
   local engine_cpus engine_mem
   engine_cpus="$(docker info --format '{{.NCPU}}' 2>/dev/null || true)"
   engine_mem="$(docker info --format '{{.MemTotal}}' 2>/dev/null || true)"
   INFEROPS_TARGET_ENGINE_CAPACITY="cpus=${engine_cpus:-unknown} memoryBytes=${engine_mem:-unknown}"
-  readonly INFEROPS_TARGET_ENGINE_CAPACITY
 
   INFEROPS_TARGET_VERIFIED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   INFEROPS_TARGET_VERIFIED_REVISION="$(cd "${INFEROPS_ROOT}" && git rev-parse HEAD 2>/dev/null || echo unknown)"
-  readonly INFEROPS_TARGET_VERIFIED_AT INFEROPS_TARGET_VERIFIED_REVISION
 
   inferops::log "target verified: provider=${INFEROPS_TARGET_PROVIDER} cluster=${INFEROPS_TARGET_CLUSTER_NAME} context=${INFEROPS_TARGET_CONTEXT}"
 }
