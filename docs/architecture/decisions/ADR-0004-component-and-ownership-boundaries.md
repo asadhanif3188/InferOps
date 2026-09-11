@@ -36,7 +36,7 @@
 |---|---|---|---|
 | D1 | Component decomposition and dependency direction | **Accepted** as a constraint on unwritten code | Review only. Nothing enforces it; there is no code to enforce it against |
 | D2 | The serving runtime is a separate deployment, not a sidecar | **Accepted** | The memory-mapping measurement in ADR 0002, and the probe mapping it proved |
-| D3 | Terraform owns prerequisites, Helm owns the release, controllers own derived objects | **Accepted** | A committed inventory, with single ownership and disjointness enforced by a test |
+| D3 | Terraform owns prerequisites, Helm owns the release, controllers own derived objects | **Accepted; amended 2026-09-11.** The cluster belongs to its operator, and the third prohibition binds the whole platform path ([ADR 0011](ADR-0011-external-local-cluster-provider-contract.md)) | A committed inventory, with single ownership and disjointness enforced by a test |
 | D4 | The model cache is a prerequisite, not a release resource | **Accepted** | The teardown finding in the feasibility record: a cache inside the release's own scope was destroyed and cost a full re-download |
 | D5 | The trust boundary map | **Accepted as a map only** | Every control it names is unimplemented. It records where controls would go and who owns deciding them |
 | D6 | Two serving capabilities, and no gateway or deep-serving work | **Accepted** as a scope rule | Review only |
@@ -155,6 +155,16 @@ Three prohibitions carry the rule:
    everywhere, and it silently gives both tools the namespace.
 2. Terraform never imports or adopts an object a release installed.
 3. Neither tool creates, reconfigures, or deletes a cluster.
+
+**Amended 2026-09-11.** [ADR 0011](ADR-0011-external-local-cluster-provider-contract.md)
+moved the cluster out of InferOps altogether, and the third prohibition now binds
+the whole platform path rather than only the two tools: no platform workflow
+creates, enables, resets, reconfigures, or deletes a cluster, and a test reads
+every one of them for it. In the inventory the cluster belongs to
+`cluster-operator`, with its own `operator-provided` lifecycle, and each supported
+provider's cluster has its own row. Nothing about the Terraform and Helm split
+changed: both still act inside a cluster neither may create or delete, whichever
+provider supplied it.
 
 ### The overlap this decision found
 

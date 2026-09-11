@@ -89,11 +89,14 @@ the choice rather than to draw a worse ASCII picture.
 Three things this diagram asserts, each of which is a decision rather than a
 drawing:
 
-- **The cluster is not InferOps's.** It belongs to the contributor's machine and is
-  created and destroyed by the environment scripts. The platform acts inside a
-  cluster it may not create, reconfigure, or delete. That boundary is what keeps a
-  contributor's unrelated clusters out of reach, and it was tested by attacking it
-  rather than by assuming it.
+- **The cluster is not InferOps's.** The operator provides it, with a supported
+  provider's own tooling — `kind`, or Docker Desktop's Kubernetes — and InferOps
+  selects it explicitly, verifies it, and acts inside it. Nothing on the platform
+  path creates, enables, resets, reconfigures, or deletes a cluster
+  ([ADR 0011](decisions/ADR-0011-external-local-cluster-provider-contract.md)).
+  That boundary is what keeps an operator's unrelated clusters out of reach. It was
+  tested by attacking it for `kind`; nothing yet identifies a Docker Desktop
+  cluster, so every script refuses one.
 - **Publishers are outside the trust boundary and outside the availability
   boundary.** The project pins an image digest and a model revision with a per-file
   hash, so it can prove what it ran. It cannot keep either available.
@@ -302,8 +305,12 @@ Ownership bands are marked. Nothing crosses a band except at a named handoff.
        render chart values                (nothing else writes them)
                 |
    -------------|------------------------------------------------------
-   [ contributor host ]                                     one time
-       create the cluster, load locally built images
+   [ operator ]                                    outside InferOps
+       provide an existing cluster: kind, or Docker Desktop
+                |
+   [ contributor host ]                                    every run
+       select the provider, verify it, load locally built images
+       by that provider's own path                        (ADR 0011)
                 |
    -------------|------------------------------------------------------
    [ terraform ] prerequisites, longer-lived than any release
@@ -345,8 +352,10 @@ Teardown is the reverse, and the order is not a preference:
                          with it -- which is why this is not the routine
                          uninstall path.
 
-   cluster teardown      removes the cluster itself, by the environment
-                         scripts, not by either tool.
+   cluster teardown      removes or resets the cluster itself. The
+                         operator does it with the provider's own
+                         tooling; nothing on InferOps's platform path
+                         does, and neither tool may (ADR 0011).
 ```
 
 The model cache is the interesting row, and the reason it sits on the Terraform
@@ -460,7 +469,9 @@ empty placement list rather than a convention.
    container engine, cluster, kubeconfig with a client key, image cache
      defended by:  project-scoped kubeconfig ignored by version control,
                    an identity guard that refuses to act on a cluster
-                   this project did not create, scoped teardown
+                   it cannot positively identify -- kind only, so a
+                   Docker Desktop cluster is refused (ADR 0011) --
+                   scoped teardown
      NOT defended: a second cluster deliberately given this project's
                    name satisfies every check
   =====================================================================
@@ -494,7 +505,7 @@ empty placement list rather than a convention.
 | Boundary | What crosses it | Enforced today | Owned by |
 |---|---|---|---|
 | B1 artifact | Container images, model weights | Digest and hash pinning, hash verified before use | The pinning rules in ADR 0002 |
-| B2 cluster | Every platform action on Kubernetes | Cluster identity guard and scoped teardown, in the environment scripts | ADR 0001 D5 and D6 |
+| B2 cluster | Every platform action on Kubernetes | Cluster identity guard and scoped teardown, in the environment scripts. The guard is `kind`'s alone, so a Docker Desktop cluster is refused rather than identified | ADR 0001 D5 and D6; [ADR 0011](decisions/ADR-0011-external-local-cluster-provider-contract.md) |
 | B3 namespace | Everything a release installs | A rendered default-deny, which the local cluster's network plugin was measured not to enforce | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
 | B4 workload | Process privilege inside a pod | Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
 | B5 caller | Inference requests and their responses | **Nothing.** There is no authentication, no authorization, no rate limit, and no tenant isolation | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |

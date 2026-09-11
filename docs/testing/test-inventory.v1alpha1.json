@@ -279,6 +279,14 @@
       "note": null
     },
     {
+      "module": "tests/architecture/test_local_cluster_provider_contract.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The local cluster provider contract ADR 0011 accepted, against its document, the decision record, the ownership inventory, the guard functions in lib.sh, and the Terraform module: exactly two providers, no selection default, Terraform and Helm handed an address and never a provider, an identity check, refusal, or rule claimed as enforced only where the guard or test exists, every capability answer labelled with how it is known and citing a record about that provider, each provider's cluster owned by its operator, no platform workflow that creates or deletes a cluster, and the open gaps pinned so that closing one updates the contract.",
+      "claims": [],
+      "note": "No published claim covers it. It reads a contract whose Docker Desktop half is implemented by nothing, and reads scripts as text; that a provider is positively identified, or that a wrong cluster is refused, belongs to a layer that contacts one."
+    },
+    {
       "module": "tests/architecture/test_terraform_prerequisites.py",
       "layer": "architecture-inventory",
       "marker": "architecture",

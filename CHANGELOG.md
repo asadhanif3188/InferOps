@@ -10,6 +10,40 @@ once versioned releases begin.
 
 ### Added
 
+- **The Kubernetes cluster is no longer InferOps's.**
+  [ADR 0011](docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
+  moves cluster lifecycle out of the project: the operator provides an existing cluster
+  through one of two supported providers, `kind` or Docker Desktop's Kubernetes, selects
+  it explicitly, and InferOps verifies and consumes it. Nothing on the platform path
+  creates, enables, resets, reconfigures, or deletes a cluster, and
+  [the provider contract](docs/environment/local-cluster-provider-contract.md) writes
+  down the rest as data: no selection input has a default, detection may report and
+  never select, every mutation re-verifies, Terraform and Helm are handed a kubeconfig
+  path and a context and never the provider, nine cases refuse before anything is
+  mutated, and seven capability questions are answered separately for each provider
+  with how each answer is known. **It is a decision, not an implementation, and it says
+  so row by row**: the only identity guard is the `kind` one, for the one name the
+  scripts pin, so every script still refuses a Docker Desktop cluster — the correct
+  failure until a positive check exists, and not support. Four of the nine refusals
+  exist, for `kind` only; three of the fourteen rules are enforced by nothing and two by
+  review alone; three Docker Desktop capabilities — image visibility, capacity, and what
+  a reset removes — are recorded as unknown rather than borrowed from `kind`; and the
+  engine binding that would make a Docker Desktop guard as strong as `kind`'s is
+  **undecided**, which is why the record is accepted in part. Read across, the evidence
+  says something easy to miss: ADR 0001's cluster evidence exists only for `kind`, and
+  ADR 0002's in-cluster runtime evidence exists only for Docker Desktop, and neither
+  certifies the other. ADR 0001 D2, D5, and D6 are superseded in part and ADR 0004 D3 is
+  amended, without rewriting either; the ownership inventory gains `cluster-operator`
+  and splits its cluster row into `kind-cluster`, `implemented`, and
+  `docker-desktop-cluster`, `planned`; and the `kind` runbook is now an optional
+  helper's. [The suite](tests/architecture/test_local_cluster_provider_contract.py)
+  holds the contract to its document, the ownership inventory, the guard functions in
+  `lib.sh`, and the Terraform module, reads every platform workflow for a cluster
+  create, delete, or helper invocation — with a control case showing the pattern does
+  catch the helper — and pins the open gaps, so closing one has to update the
+  contract. **No script, chart, descriptor, or Terraform file changed, and no cluster
+  was contacted.**
+
 - **A troubleshooting page for the Kubernetes path, organised by what you saw rather
   than by which component owns the fault** — and honest about the fact that half of what
   it describes has never been installed. The
