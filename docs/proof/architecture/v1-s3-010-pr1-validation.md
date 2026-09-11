@@ -75,7 +75,7 @@ the other. None of the four records was edited.
 ## What the suite checks
 
 [`tests/architecture/test_local_cluster_provider_contract.py`](../../../tests/architecture/test_local_cluster_provider_contract.py),
-211 checks, in seven groups:
+217 checks, in seven groups:
 
 1. **Shape.** Identity and version; referenced documents exist; the providers are
    exactly `kind` and `docker-desktop`; the reference provider is one of them; the
@@ -101,8 +101,11 @@ the other. None of the four records was edited.
    counting the rules is recomputed from the data.
 6. **The repository.** Every environment script is classified as a platform
    workflow or a `kind` helper; no platform workflow contains a cluster create,
-   a cluster delete, a Docker Desktop CLI call, or an invocation of a helper; a
-   control case shows the same pattern does catch the helper that does each; the
+   a cluster delete, a Docker Desktop CLI call, or an invocation of a helper.
+   Control cases show the pattern does catch each form — against the helper
+   scripts that really contain one, and against literal lines for the forms no
+   committed script uses, such as a Docker Desktop CLI call — and negative controls
+   show it ignores a refusal message that names the helper and a `kind load`. The
    Terraform module names no provider; each provider's cluster is owned by
    `cluster-operator` in the inventory.
 7. **Documents.** The contract document publishes every identifier the data
@@ -110,10 +113,11 @@ the other. None of the four records was edited.
    the ADR has the sections this project requires; ADR 0001's header and the
    architecture index point at ADR 0011.
 
-**Four of those checks pin gaps rather than properties**: the Terraform
+**Five of those checks pin four gaps rather than properties**: the Terraform
 environment root still validates `kube_context` against `^kind-inferops-`; no
-Docker Desktop identity check or refusal is implemented; three Docker Desktop
-capabilities are unknown; and `docker-desktop-cluster` is `planned`. Each is true
+Docker Desktop identity check is implemented, and no refusal is either — one test
+each; three Docker Desktop capabilities are unknown; and
+`docker-desktop-cluster` is `planned`. Each is true
 today and each should stop being true. When one does, its test fails and the
 contract has to change in the same commit.
 
@@ -124,7 +128,7 @@ New:
 - `docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md`
 - `docs/environment/local-cluster-provider-contract.v1alpha1.json` — the contract.
 - `docs/environment/local-cluster-provider-contract.md` — its document.
-- `tests/architecture/test_local_cluster_provider_contract.py` — 211 checks.
+- `tests/architecture/test_local_cluster_provider_contract.py` — 217 checks.
 - `docs/proof/architecture/v1-s3-010-pr1-validation.md` — this record.
 
 Changed:
@@ -156,11 +160,11 @@ shell.
 
 | Command | Result |
 |---|---|
-| `uv run --locked python -m pytest tests/architecture/test_local_cluster_provider_contract.py -q` | 211 passed |
+| `uv run --locked python -m pytest tests/architecture/test_local_cluster_provider_contract.py -q` | 217 passed |
 | `uv run --locked python -m pytest tests/architecture/test_resource_ownership.py tests/architecture/test_cluster_lifecycle_safety.py tests/security/test_security_baseline.py -q` | all passed |
-| `uv run --locked python -m pytest -q` | 7,649 passed, 31 skipped, 14 deselected, **2 failed** — both the committed-render checks explained below, which fail identically on `main` |
+| `uv run --locked python -m pytest -q` | 7,655 passed, 31 skipped, 14 deselected, **2 failed** — both the committed-render checks explained below, which fail identically on `main` |
 | `uv run --locked python -m ruff check .` | `All checks passed!` |
-| `uv run --locked python -m ruff format --check .` | `337 files already formatted` |
+| `uv run --locked python -m ruff format --check .` | `338 files already formatted` — 185 Python files and 153 Markdown files, which ruff `0.16.4` also formats. The first commit's message says 337 because it was measured before this record existed |
 | `uv run --locked python -m mypy` | `Success: no issues found in 185 source files` |
 | `git diff --check` | no whitespace errors |
 | A scan of the diff and every new file for local paths, account names, workspace names, host cache paths, and private planning identifiers | no match |
@@ -200,10 +204,21 @@ repository should pin line endings for the chart with a `.gitattributes` rule.
 - **No script was changed.** The kind-only guard, the Terraform environment
   root's `kind-inferops-` validation, the `kind load` image steps, and the
   certification descriptors' pinned cluster name are all as they were.
-- **The two security records worded against the old design were not restated.**
-  The control `refuse-to-act-on-a-cluster-this-project-did-not-create` and exception
-  `EX-02` describe the guard that still runs. They are restated with the guard, so
-  that the baseline never describes a guard that does not exist.
+- **The security records worded against the old design were not restated.** Four
+  accepted security documents describe the cluster guard in terms of a cluster this
+  project created: threat `T-13`, *"a platform action reaches a cluster this
+  project did not create"*, in `docs/security/threat-model.md` and in
+  `docs/security/security-baseline.v1alpha1.json`, which also carries the same
+  premise in an asset's worst case; the control
+  `refuse-to-act-on-a-cluster-this-project-did-not-create` in that baseline and in
+  `docs/security/control-matrix.md`; and exception `EX-02` in
+  `docs/security/deferred-risks.md`, which names a second *kind* cluster. Under
+  ADR 0011 no cluster is ever this project's, so their premise has become the
+  universal case rather than the exception. What they describe is still what runs,
+  because the guard is unchanged, so they are restated with the guard — where the
+  new threat wording, control identifier, and exception can be written against a
+  check that exists. They are accepted architecture, unlike the runbooks below,
+  which is why the first answer under the acceptance criteria is qualified.
 - **Operational documents were not reconciled.** The troubleshooting guide, the
   prerequisite guide, the certification procedures, and the Helm lifecycle
   documents still name `cluster-up.sh` and `cluster-down.sh` as the way the cluster
@@ -225,17 +240,47 @@ repository should pin line endings for the chart with a `.gitattributes` rule.
 - **Every Docker Desktop fact is dated.** They come from records made on
   2026-08-24 and 2026-09-06, and Docker Desktop's version follows its release.
 
+## What two independent reviews found
+
+Both ran against the first commit of this change, and both are reflected above
+rather than summarised and set aside.
+
+The first re-derived every function's behaviour, every quoted fact, every count,
+and every cross-reference from its source — the four guard functions in `lib.sh`,
+`preflight.sh`'s skew comparison, all four proof records, and the rule, refusal,
+capability, module, and decision-status counts — and found **one MEDIUM**:
+
+| | Finding | Fix |
+|---|---|---|
+| MEDIUM | The first acceptance answer said no accepted architecture record still made the cluster InferOps's, and this record said "two security records" were left unrestated without naming them. Four accepted security documents — the threat model's `T-13`, the baseline's control and worst case, the control matrix, and `EX-02` — still frame the guard around a cluster this project created, and the architecture index lists the security baseline as an architecture document | All four named, here and in ADR 0011's security considerations and `R7`, and the acceptance answer qualified |
+
+The second checked the change against the decisions and acceptance criteria it
+was written for, and for scope, test quality, security, and privacy, and found
+**two MEDIUM**:
+
+| | Finding | Fix |
+|---|---|---|
+| MEDIUM | The acceptance table read as a transcription of a requirements list rather than an assessment in this record's own voice, where every other section restates the same ideas in its own words | Rewritten as five questions and answers |
+| MEDIUM | The lifecycle pattern's `docker desktop` alternative had no control case. No committed script contains one, so nothing showed it could ever match | Four literal lines now show each alternative matches, and two negative controls show that a refusal message naming the helper, and a `kind load`, do not |
+
+**What the first draft also got wrong**, found while fixing those. It said four
+checks pinned gaps; it is five checks pinning four gaps, because the Docker Desktop
+identity and refusal gaps are pinned by one test each. It said the suite had 211
+checks; the control cases above made it 217. And ADR 0011's context attributed a
+statement about the NetworkPolicy experiment to a review, when the experiment's own
+record makes it first.
+
 ## Acceptance criteria
 
-This PR's boundary:
+Five questions this change had to be able to answer, and where each stands:
 
-| Criterion | Status |
+| Question | Answer |
 |---|---|
-| No accepted architecture document requires InferOps to own cluster lifecycle | **Met.** ADR 0001 D2, D5, and D6 are superseded in part, ADR 0004 D3 amended, and the ownership inventory, system architecture, and index say the cluster is the operator's. Operational documents are not accepted architecture and are listed above as not yet reconciled |
-| The provider contract, explicit selection, normalised facts, safety and refusal semantics, and evidence labelling are unambiguous | **Met, with one question deliberately left open.** Everything is data and checked. How a Docker Desktop cluster would be bound to the local engine is **undecided**, and the record is accepted in part for that reason |
-| Terraform and Helm ownership remains disjoint | **Met.** Asserted by the ownership suite and named as a rule in the contract |
-| Existing history and evidence are preserved and accurately labelled | **Met.** No proof record edited; four real-cluster records labelled by provider in the ledger |
-| Docker Desktop and `kind` differences are not hidden behind false equivalence | **Met.** Seven questions answered per provider with evidence labels, three Docker Desktop unknowns recorded as unknown, and separate `implemented` and `planned` inventory rows |
+| Does any accepted architecture record still make the cluster InferOps's to create or delete? | **No decision or ownership record does. The security baseline still reads as though one did.** ADR 0001's D2, D5, and D6 carry superseded-in-part notes, ADR 0004's D3 is amended, and the inventory, the system architecture, and the index all give the cluster to its operator. The four security documents named above still frame a threat, a control, and an exception around a cluster this project created; none of them requires InferOps to own a cluster, and none has been restated yet. The operational runbooks still describe the helper, because the helper still does what they say |
+| Can a reader tell from the contract alone how a cluster is chosen, identified, handed on, refused, and labelled? | **Yes, with one question left open on purpose.** Every part is committed data with a check behind it. How a Docker Desktop cluster would be bound to the local engine is **undecided**, which is why ADR 0011 is accepted in part |
+| Did the boundary inside the cluster move? | **No.** Terraform's set and Helm's set are still disjoint, asserted by the ownership suite and carried into the contract as a rule |
+| Was anything historical rewritten? | **No.** No proof record was edited, and the four that contacted a real cluster are labelled by provider in the ledger instead |
+| Are the two providers presented as interchangeable? | **No.** Each of seven questions is answered per provider with how the answer is known; three Docker Desktop answers are recorded as unknown; and the inventory gives the two clusters different statuses |
 
 Parent story `V1-S3-010`: the ADR and ownership amendment and the machine-checked
 contract are delivered here. Provider verification, the Docker Desktop

@@ -65,8 +65,8 @@ does anything.
 real-cluster records.** ADR 0002's runtime feasibility trial ran in it — *"not in
 `inferops-dev`"*, as that record says before anything else — and so did the
 NetworkPolicy enforcement experiment. Neither could be counted as evidence for the
-accepted environment, and the Sprint 3 completion review said so about the
-second.
+accepted environment, and the second record says so itself, before it gives a
+result.
 
 **ADR 0001's objection to Docker Desktop's cluster was ownership.** Its D2 table
 rejected it because *"the cluster is a machine-global singleton owned by the
@@ -319,12 +319,15 @@ unchanged in behaviour.
 - **Trust boundary B2 is still enforced by the `kind` guard alone.** A Docker
   Desktop target is refused, which fails closed. Nothing about B2 improves until a
   Docker Desktop check exists, and D5 says it may be weaker when it does.
-- **Two security records are now worded against a design this record replaces.**
-  The control `refuse-to-act-on-a-cluster-this-project-did-not-create` and exception
-  `EX-02` are stated in terms of a cluster this project created. The guard behind
-  them checks identity, not provenance, and is unchanged here, so what they
-  describe is still what runs. They are restated when the guard changes, not
-  before, so that the security baseline never describes a guard that does not exist.
+- **The security baseline is still worded against the design this record
+  replaces.** Threat `T-13` — *"a platform action reaches a cluster this project
+  did not create"* — the control
+  `refuse-to-act-on-a-cluster-this-project-did-not-create` in the baseline and the
+  control matrix, and exception `EX-02` are all stated in terms of a cluster this
+  project created, which under D1 no cluster ever is. The guard behind them checks
+  identity, not provenance, and is unchanged here, so what they describe is still
+  what runs. They are restated when the guard changes, not before, so that the
+  security baseline never describes a guard that does not exist.
 - **The Docker Desktop kubeconfig would be a credential.** D7 puts it under the
   same rules as the `kind` one.
 - **Detection reads the operator's kubeconfig.** It may list contexts; it may not
@@ -353,5 +356,5 @@ correctly identified or refused: **nothing**. That needs a cluster.
 | R4 | Docker Desktop's Kubernetes version follows its release | Accepted | Evidence on the reference provider is dated to a release, not pinned |
 | R5 | The `kind` path will be largely unexecuted in V1 | Accepted | The reference host has no `kind` CLI. Implemented and tested `kind` checks will be reported as such, and unexecuted runs as not run |
 | R6 | A Docker Desktop cluster provisioned differently from the one observed may appear | Mitigated by design | Its node shape fails D5's second check and it is refused until observed and recorded |
-| R7 | Two security records are worded against the superseded design | Open, deliberately | Restated with the guard, so that neither describes a guard that does not exist |
+| R7 | The security baseline — threat `T-13`, the control `refuse-to-act-on-a-cluster-this-project-did-not-create` in the baseline and the control matrix, and exception `EX-02` — is worded against the superseded design | Open, deliberately | Restated with the guard, so that none of them describes a guard that does not exist |
 | R8 | No public maintainer roster exists | Open | This record has no named decision owner |

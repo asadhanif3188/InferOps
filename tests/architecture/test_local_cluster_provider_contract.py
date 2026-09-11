@@ -696,6 +696,43 @@ def test_the_lifecycle_pattern_catches_the_helper_that_does_it(
     assert any(expected in line for line in found), (script, found)
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        "docker desktop restart",
+        "  docker desktop stop",
+        'bash "${here}/cluster-down.sh" --workload',
+        "  scripts/environment/smoke.sh",
+    ],
+)
+def test_the_lifecycle_pattern_catches_forms_no_committed_script_uses(
+    line: str,
+) -> None:
+    """The control case for the alternatives the scripts above never exercise.
+
+    No committed script calls Docker Desktop's CLI, so without a literal here the
+    `docker desktop` alternative could match nothing, ever, and nobody would know.
+    """
+    assert CLUSTER_LIFECYCLE_COMMAND.search(line), line
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        '  inferops::fail "no project kubeconfig. Bring the cluster up first: '
+        'scripts/environment/cluster-up.sh"',
+        '    kind load docker-image "${INFEROPS_API_IMAGE_REF}" \\',
+    ],
+)
+def test_the_lifecycle_pattern_ignores_what_changes_no_lifecycle(line: str) -> None:
+    """The other direction: a refusal naming the helper, and an image load.
+
+    Both appear in platform workflows today. If either matched, the rule could only
+    be satisfied by deleting a useful recovery message or the kind image path.
+    """
+    assert not CLUSTER_LIFECYCLE_COMMAND.search(line), line
+
+
 def test_the_terraform_module_names_no_provider() -> None:
     """ADR 0011 D4: the module is given an address and never learns the provider."""
     sources = sorted(TERRAFORM_MODULE_DIR.glob("*.tf"))
