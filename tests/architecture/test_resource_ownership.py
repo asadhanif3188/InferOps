@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -424,4 +425,55 @@ def test_no_implemented_row_still_describes_itself_as_planned(resource: dict) ->
         assert forbidden.lower() not in prose.lower(), (
             f"resource '{resource['resourceId']}' is implemented and its handoff "
             f"still says {forbidden!r}"
+        )
+
+
+@pytest.mark.parametrize(
+    "resource", RESOURCES, ids=lambda resource: resource["resourceId"]
+)
+def test_the_document_does_not_call_an_implemented_row_planned(
+    ownership_document: str,
+    resource: dict,
+) -> None:
+    """A row the data calls ``implemented`` is not described as ``planned`` in prose.
+
+    The data is authoritative and the tables are what a reader sees. Twenty rows
+    moved to ``implemented`` in one change, and the failure this guards against is
+    a table cell that still explains why the row is a commitment. It reads only the
+    lines that name this resource, so prose elsewhere about some other row's status
+    is not caught by accident.
+    """
+    if resource["v1Status"] != "implemented":
+        return
+    marker = f"`{resource['resourceId']}`"
+    rows = [line for line in ownership_document.splitlines() if marker in line]
+    if not rows:
+        return
+    for row in rows:
+        lowered = row.lower()
+        for forbidden in ("`planned`", "stays planned", "still planned"):
+            assert forbidden not in lowered, (
+                f"resource '{resource['resourceId']}' is implemented in the data, "
+                f"and a row naming it in resource-ownership.md says {forbidden!r}"
+            )
+
+
+def test_the_document_states_the_status_split_the_data_produces(
+    ownership_document: str,
+) -> None:
+    """Any status count the document publishes is the one the data produces.
+
+    The document publishes how many rows moved rather than a running total, so this
+    checks the claim it actually makes: that most rows are implemented, and that the
+    two rows still planned and the three still deferred are the ones the data names.
+    """
+    counts = Counter(resource["v1Status"] for resource in RESOURCES)
+    assert counts["implemented"] > counts["planned"] + counts["deferred"], counts
+    assert "Most rows below are now `implemented`" in ownership_document, counts
+    for resource in RESOURCES:
+        if resource["v1Status"] == "implemented":
+            continue
+        assert f"`{resource['resourceId']}`" in ownership_document, (
+            f"resource '{resource['resourceId']}' is {resource['v1Status']} in the "
+            "data and is not named in the document that publishes the split"
         )

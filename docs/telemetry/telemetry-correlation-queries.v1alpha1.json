@@ -60,12 +60,12 @@
     "statement": "No published query names a job. Job names are release-qualified, so a query naming one would be a query that works in exactly one installation.",
     "howReleasesAreDistinguished": "k8s_namespace and k8s_component, which the collector attaches to every series from both jobs, and which are the same two labels in every installation.",
     "exception": "The recording rules the chart renders do name their own release's jobs, because a rule is rendered per release and an absent() over an unscoped job name would read 0 as soon as any release published one. A query reads the recorded name and never the job name.",
-    "recordedNamesAreReadNotDefined": "A query that reads inferops:something is reading a series a collector evaluating the chart's recording rules would have written. Where no collector exists, the series does not exist either, and the query returns nothing."
+    "recordedNamesAreReadNotDefined": "A query that reads inferops:something is reading a series a collector evaluating the chart's recording rules writes. Where the release's collector is not deployed - telemetry.collection.collector.deploy is off by default - the series does not exist either, and the query returns nothing."
   },
   "answerabilityClasses": [
     {
       "classId": "answerable-once-collected",
-      "meaning": "Every series it reads is emitted today by a component that publishes it. It returns nothing now because nothing scrapes the endpoint, and it would return an answer the day a collector did."
+      "meaning": "Every series it reads is emitted today by a component that publishes it, and the release's collector does scrape it. It returns an answer where that collector is deployed, and nothing where it is not."
     },
     {
       "classId": "not-answerable-nothing-emits",
@@ -593,8 +593,8 @@
   ],
   "limitations": [
     {
-      "limitationId": "no-engine-has-run-these",
-      "statement": "No Prometheus has parsed, loaded, or evaluated any expression in this record. Every result was produced by the declared PromQL subset evaluator in this repository, over fixture stores written by hand."
+      "limitationId": "results-here-are-the-evaluators",
+      "statement": "Every result recorded in this file was produced by the declared PromQL subset evaluator in this repository, over fixture stores written by hand. A real Prometheus has since parsed, loaded and evaluated every expression against a real scrape on the docker-desktop provider (V1-S3-011), and those answers are recorded separately - not here."
     },
     {
       "limitationId": "fixtures-are-synthetic",
@@ -610,7 +610,7 @@
     },
     {
       "limitationId": "recording-rules-are-evaluated-here-and-nowhere-else",
-      "statement": "The chart's recording rules are read from the committed render and evaluated by this repository's evaluator at each fixture instant, in render order. No collector evaluates them, no group interval is honoured, and a rule's staleness behaviour between evaluations is not modelled."
+      "statement": "The chart's recording rules are read from the committed render and evaluated by this repository's evaluator at each fixture instant, in render order. No group interval is honoured here and a rule's staleness behaviour between evaluations is not modelled. A real collector has since evaluated them in a release, and none of the results recorded here came from it."
     },
     {
       "limitationId": "an-empty-result-is-the-common-answer",
@@ -618,7 +618,7 @@
     },
     {
       "limitationId": "the-evaluator-was-corrected-by-review-not-by-an-engine",
-      "statement": "Independent review before push found seven defects here, and every one was found by reading rather than by running the queries against Prometheus. Three were in the evaluator's semantics or its refusal contract, one was a rule that was not enforced for half the syntax it claimed to cover, and three were miscounts in published prose. A cross-check against promtool remains the first follow-up and remains not done."
+      "statement": "Independent review before push found seven defects here, and every one was found by reading rather than by running the queries against Prometheus. Three were in the evaluator's semantics or its refusal contract, one was a rule that was not enforced for half the syntax it claimed to cover, and three were miscounts in published prose. promtool has since accepted both committed renders and a real Prometheus has evaluated every expression in a release; what remains not done is running these expressions against an engine over these fixtures and comparing its answers with the ones recorded here."
     }
   ]
 }

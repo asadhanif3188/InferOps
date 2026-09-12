@@ -634,6 +634,16 @@
       "note": null
     },
     {
+      "module": "tests/testing/test_document_links.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "Every relative link in every committed Markdown document, checked from the directory of the file that contains it. This is the claim's own check rather than a subset of it; before it existed the claim was certified and the shell command that would have caught a break was run by hand.",
+      "claims": [
+        "published-documents-link-only-to-things-that-exist"
+      ],
+      "note": "It establishes only that a path resolves, not that the document at the other end says what the citing sentence claims."
+    },
+    {
       "module": "tests/testing/test_test_inventory.py",
       "layer": "documentation",
       "marker": "docs",
@@ -704,11 +714,7 @@
     }
   ],
   "coverageGaps": [
-    {
-      "claimId": "published-documents-link-only-to-things-that-exist",
-      "reason": "No pytest module walks every relative link in every published document. The suites that check committed data each assert that the references their own record cites resolve, which is a subset of the claim rather than the claim.",
-      "coveredBy": "the link and whitespace check published in CONTRIBUTING.md, which is a shell command run by hand"
-    },
+
     {
       "claimId": "the-model-artifact-matches-its-published-hash",
       "reason": "No pytest module computes or compares the artifact hash. The real-runtime suite drives a running runtime, and the runtime exposes no hash of the file it loaded; the comparison happens in the download procedure rather than in a test.",
@@ -726,8 +732,8 @@
     },
     {
       "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
-      "reason": "A chart exists, a lifecycle procedure exists, and nothing has installed anything. The claim names the kubernetes-smoke layer, which declares no test paths, and installing is what the claim is about: tests/architecture/test_helm_chart.py reads the chart and two committed renders of it without applying anything, and scripts/environment/helm-lifecycle.sh would answer the claim but cannot be run until an InferOps API image is published.",
-      "coveredBy": null
+      "reason": "No pytest module installs a release. The claim names the kubernetes-smoke layer, which declares no test paths, and installing is what the claim is about: tests/architecture/test_helm_chart.py reads the chart and two committed renders of it without applying anything, so it can refuse a bad chart and cannot produce a good install.",
+      "coveredBy": "the operator-run workflow scripts/environment/helm-lifecycle.sh, executed on docker-desktop with a locally built and loaded API image, whose result is recorded in docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "claimId": "sustained-throughput-and-capacity-under-load",

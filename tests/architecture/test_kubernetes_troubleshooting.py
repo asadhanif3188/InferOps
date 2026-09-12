@@ -32,9 +32,10 @@ properties, each corresponding to a way this particular document rots:
 8. **An unscoped or credential-bearing command.** No fenced ``kubectl`` or
    ``helm`` sample may rely on an ambient context, and no fenced block may carry a
    token, header, password, or alternate-server flag.
-9. **A claim the page is not entitled to make.** It must keep saying that the
-   release has never been installed, that the network policy is not enforced on
-   this plugin, and that the executed evidence is one Windows host's.
+9. **A claim the page is not entitled to make.** It must keep saying that every
+   result behind it is one provider's, that a reader may not read an executed
+   release as an executed fault, that the network policy is not enforced on this
+   plugin, and that the executed evidence is one Windows host's.
 
 What this suite establishes is that the document describes this repository. It
 establishes nothing about whether following it repairs anything: no cluster has

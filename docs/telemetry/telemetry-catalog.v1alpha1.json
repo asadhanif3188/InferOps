@@ -16,7 +16,7 @@
     "meaning": "The InferOps API emits the eight metrics marked emitted below and writes the structured log records this catalog specifies. Nothing else emits: the serving-runtime adapter's four metrics and the contract validator's one are specifications for components that are not instrumented, no span is produced by anything, and one metric assigned to the API has no source it is permitted to read. Every metric carries an emission field, so which is which is read from this record rather than inferred from a scrape. The only signals ever observed from another component are the serving runtime's own, in one recorded trial, listed under runtimeNativeSeries.",
     "emitters": ["inferops-api"],
     "transport": "A pull endpoint and a process stream. Metrics are rendered on GET /metrics in the Prometheus text exposition format when something scrapes it, and log records are written one JSON object per line to the stream the composition point supplies. Nothing is pushed anywhere.",
-    "collector": "not selected; who owns a collector, store, dashboard, or alerting path is an open question in ADR 0004 and is deliberately not answered here. Nothing scrapes the endpoint and nothing collects the stream."
+    "collector": "selected and Helm-owned since ADR 0004 D7 was amended; a release-scoped Prometheus has scraped this endpoint and both InferOps jobs on the docker-desktop reference provider. Its series live in an emptyDir and go with its pod, so it is not a store anything may depend on. No durable store, dashboard, or alerting path is selected, and nothing collects the log stream."
   },
 
   "cardinalityBudget": {
@@ -1382,7 +1382,7 @@
     },
     {
       "limitationId": "no-collector",
-      "statement": "No collector, store, dashboard, or alerting path is selected. The metrics endpoint answers when something scrapes it and nothing scrapes it; who would own a collector is an open question in ADR 0004 that this record deliberately does not answer."
+      "statement": "No durable store, dashboard, or alerting path is selected. A collector is: ADR 0004 D7 was amended to make it Helm-owned and release-scoped, and it has scraped this endpoint. Its series are ephemeral - an emptyDir that goes with the collector pod - so nothing here is a store anything may depend on."
     },
     {
       "limitationId": "no-tracer",
@@ -1406,7 +1406,7 @@
     },
     {
       "limitationId": "no-workload-identity-from-a-document",
-      "statement": "The workload identity on every series and every record is deployment configuration, not a value read out of a validated WorkloadContract document. Nothing in this repository deploys a workload, so there is no document for it to come from. A workload identifier read off a caller's header would be an unbounded metric label wearing a bounded one's name, and is deliberately not read."
+      "statement": "The workload identity on every series and every record is deployment configuration, not a value read out of a validated WorkloadContract document. No component reads a validated contract at deploy time, so there is no document for it to come from. A workload identifier read off a caller's header would be an unbounded metric label wearing a bounded one's name, and is deliberately not read."
     },
     {
       "limitationId": "no-runtime-request-counter",
@@ -1418,11 +1418,11 @@
     },
     {
       "limitationId": "budget-is-not-measured",
-      "statement": "The cardinality budget is arithmetic over declared bounds, not a measurement of a running system. It establishes that the catalogue is internally affordable, not that any store was tested with it - and no store has scraped this endpoint."
+      "statement": "The cardinality budget is arithmetic over declared bounds, not a measurement of a running system. It establishes that the catalogue is internally affordable, not that any store was tested with it: the only thing that has scraped this endpoint is an ephemeral collector, and nothing counted the series it held."
     },
     {
       "limitationId": "templates-have-produced-nothing",
-      "statement": "The four evidence templates have produced no record. They are a format, and a format is not evidence."
+      "statement": "Two of the four evidence templates have produced records - one experiment and five raw results - and the environment and claim-evidence templates have produced none. A template is a format, and a format is not evidence. No Sprint 3 record declares a template at all, so the counts beside each template describe template discipline rather than the evidence base."
     },
     {
       "limitationId": "no-published-figures",

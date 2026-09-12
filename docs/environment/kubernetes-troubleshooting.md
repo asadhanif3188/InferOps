@@ -470,11 +470,14 @@ it is enforced at the sink rather than promised.
 
 ## Telemetry scrape
 
-**Nothing scrapes either endpoint.** The chart renders a ConfigMap holding a
-Prometheus scrape configuration and a set of recording rules; no collector,
-store, dashboard, or alerting path is selected; nothing in this project reads that
-ConfigMap. A missing dashboard is not a fault, and there is no collector to
-restart.
+**Whether anything scrapes depends on one switch.** The chart renders a ConfigMap
+holding a Prometheus scrape configuration and a set of recording rules, and —
+when `telemetry.collection.collector.deploy` is on — a release-scoped collector
+that reads it. With it off, nothing reads that ConfigMap and there is no collector
+to restart. With it on, the collector is an ordinary pod: restart it like any
+other, and note that its series live in an `emptyDir`, so a restart discards what
+it collected. No durable store, dashboard, or alerting path is selected either
+way, so a missing dashboard is not a fault.
 
 What can be wrong is the configuration itself, and it is checkable without a
 cluster:

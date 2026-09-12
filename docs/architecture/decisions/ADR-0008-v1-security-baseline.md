@@ -11,10 +11,13 @@
 
 > [!IMPORTANT]
 > This record decides what V1 protects, from whom, at which boundary, and which
-> controls this repository really enforces. It does **not** make anything safe. No
-> component here authenticates a caller, authorises a request, enforces a network
-> policy, or applies a security context to a pod it deployed, because none of them
-> deploys a pod or serves a request. No secret scanner has been run and recorded.
+> controls this repository really enforces. It does **not** establish that anything
+> is defended. No component here authenticates a caller, authorises a request, or
+> admits a pod. Pods **have** since been deployed from this repository's chart and
+> they carried the pod-security settings it renders; no control here reads one back,
+> no admission control constrains one, and the network policy the release creates
+> was measured not to be enforced by the plugin the observed clusters run. No secret
+> scanner has been run and recorded.
 > An image scanner and a dependency auditor have each been run once, by hand,
 > against the pinned runtime image and the committed dependency lockfile; neither
 > runs continuously, because no continuous-integration service is selected. No
@@ -76,8 +79,9 @@ travels; the qualification stays in the paragraph above it.
 
 **A property of a repository is read as a property of a system.** Every manifest
 here sets `runAsNonRoot`. That is true, checkable, and worth having. It is also a
-statement about five YAML files, none of which this platform deploys, and the
-distance between those two sentences is the distance between a check and a claim.
+statement about five YAML files and two committed renders. The renders have since
+been deployed; the check still read the file and never the pod, and the distance
+between those two sentences is the distance between a check and a claim.
 
 **A deferral disappears.** A risk nobody wrote down is a risk nobody has to explain,
 and the register that would have carried it is exactly the artifact somebody trims
@@ -165,14 +169,17 @@ enforced by whoever writes the next manifest remembering it.
 
 The wording of what this establishes is deliberate and it is the whole reason `EX-04`
 exists: these are properties of **five committed YAML files that are smoke and trial
-apparatus**, and this platform deploys none of them as a serving path. Nothing here
-constrains a pod this platform deployed, because it has deployed none, and no
-admission control exists to constrain one it does not own. `DR-05` carries that gap.
+apparatus** and of the chart's two committed renders. This platform has deployed a
+release from those renders, so the workloads it deployed carried the settings — and
+nothing here constrains a pod this platform deployed, because no check reads a
+running pod and no admission control exists to constrain one it owns or one it does
+not. `DR-05` carries that gap.
 
 The alternative was to write a Kubernetes admission policy now. It was rejected
 because a policy object nothing installs is a control nothing applies, and because
-the local cluster's ability to enforce one has never been tested — the same untested
-assumption `DR-04` records about network policy.
+the local cluster's ability to enforce one was then untested. It has since been
+tested and the answer was negative — the same result `DR-04` now records about
+network policy, which is a worse position than untested rather than a better one.
 
 ## D4 — Least exposure, and no authentication
 
@@ -307,7 +314,7 @@ publish.
 
 ## D11 — An exception is argued, not absorbed
 
-Four exceptions are recorded. Each names where it was accepted, the compensating
+Six exceptions are recorded. Each names where it was accepted, the compensating
 control that makes it tolerable, what remains undefended anyway, and the condition
 under which it should be revisited. A test refuses an exception missing any of them
 and refuses one whose compensating control is not a control this baseline declares.
@@ -384,14 +391,16 @@ can commit to without deciding who does it.
   the first half of what `EX-04` said would have to happen when a rendering path
   appeared; the second half, admission control, still does not exist. **What moved
   is the policy and not its enforcement:** a NetworkPolicy is applied by the
-  cluster's network plugin rather than by the object, no cluster has installed this
-  chart, and `EX-05` records that gap against `DR-04` rather than letting the
-  presence of the object imply the absence of it.
+  cluster's network plugin rather than by the object. A cluster has since installed
+  this chart and created the objects, an executed experiment established that the
+  plugin the observed clusters run does not apply them, and `EX-05` records that gap
+  against `DR-04` rather than letting the presence of the object imply the absence
+  of it.
 - **A habit became a property.** The eight pod-security assertions and the digest pin
   held over every manifest here before this change, by convention. A convention is
   enforced by memory; this is now enforced by a suite.
 - **The register is long and it is meant to be.** Twelve deferred risks, ten of them
-  blocking production use, and four accepted exceptions. A shorter register at this
+  blocking production use, and six accepted exceptions. A shorter register at this
   stage of a project would mean less enumeration, not less risk.
 - **One new public claim, at the narrowest level that is honest.** The claim and test
   matrix gains `a-security-control-cannot-claim-enforcement-it-does-not-have`,
@@ -431,8 +440,9 @@ acquire a verification that a test confirms exists. Eight pod-security assertion
 a digest pin become properties a change has to break deliberately. Twelve risks move
 from unstated to registered, each with what may not be claimed while it stands.
 
-**What it does not change.** Nothing here defends a running system, because there is
-none. The most consequential controls in the register are the ones with no
+**What it does not change.** Nothing here is shown to defend a running system. One
+has since run, and no control in this baseline observed it. The most consequential
+controls in the register are the ones with no
 verification at all — no caller is identified, no request is authorised, no traffic
 is policed, and nothing is logged, so a failure of any control here would leave no
 trace to find it by. `DR-12` is written last in the register and is arguably first in
@@ -453,7 +463,9 @@ image and the committed dependency lockfile — after this record was accepted, 
 recorded separately from it — and neither runs continuously, because no
 continuous-integration service is selected. No assessment by an outside party has
 ever been performed. Every runtime observation behind `B1` and `B4` comes from one
-trial, on one host, on one day.
+Windows host, on CPU, under one cluster provider. Multi-replica operation was refused
+at a capacity gate and is not certified, and `kind` has not been re-certified since
+the ownership realignment.
 
 ## Evidence
 

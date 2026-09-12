@@ -25,7 +25,7 @@ from that file without a failing build.
 | How do log records leave the process? | One JSON object per line, to the stream the composition point supplies. In a deployment that is standard error |
 | Is there a span? | No. No tracer, propagator, exporter, or SDK is selected |
 | Is a prompt or a response ever captured? | No, and there is no flag that could turn it on |
-| Has a store held any of this? | No. Nothing scrapes the endpoint and nothing collects the stream |
+| Has a store held any of this? | The release's own collector has scraped the endpoint into an `emptyDir` that goes with its pod. No durable store has held any of it, and nothing collects the stream |
 
 ## Eight metrics, and what moves each one
 
@@ -301,10 +301,10 @@ a label in the contents rather than in the directory name — applied to telemet
 
 Read this section before quoting anything above.
 
-**Nothing collects any of it.** No exporter, collector, store, dashboard, or alert
-is selected. The endpoint answers when something scrapes it and nothing scrapes it;
-records go to a stream and no store has held one. No retention window, shipper, or
-access rule exists.
+**The metrics are collected; nothing else is.** A release-scoped collector scrapes
+this endpoint, and its series live in an `emptyDir` that goes with its pod. No
+exporter, durable store, dashboard, or alert is selected. Records go to a stream and
+no store has held one. No retention window, shipper, or access rule exists.
 
 **No span exists.** `traceparent` and `tracestate` are neither read nor written,
 and `trace.id` and `span.id` are specified fields nothing populates. The

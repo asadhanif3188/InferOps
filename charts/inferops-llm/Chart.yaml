@@ -21,14 +21,14 @@ type: application
 # every new member has a default, but the render is not the same one, and the bump
 # is for the reader who compares two renders. (0.2.0 was V1-S3-004's, for the same
 # reason: it rendered resources 0.1.0 did not and changed the shape of
-# `security.serviceAccount`. Nothing has installed any of them, so no upgrade path
-# is owed to anyone.)
+# `security.serviceAccount`. Only 0.3.0 has been installed anywhere, so no upgrade
+# path from 0.1.0 or 0.2.0 is owed to anyone.)
 version: 0.3.0
 
-# What this chart installs, when the API image exists to install. No InferOps
-# image is published: `platform-api-container-image` is `planned` in the
-# ownership inventory, and although `deploy/api/Dockerfile` now builds one, it is
-# loaded into a node rather than pushed anywhere. So `appVersion` names the
+# What this chart installs. `platform-api-container-image` is `implemented` in the
+# ownership inventory: `deploy/api/Dockerfile` builds one and `V1-S3-011` loaded it
+# into the selected cluster. No InferOps image is published to a registry, so it is
+# loaded into a node rather than pulled from anywhere. So `appVersion` names the
 # repository revision the templates were written against rather than a release
 # nobody can pull.
 appVersion: "0.1.0"

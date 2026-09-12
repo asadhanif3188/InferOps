@@ -52,8 +52,9 @@ from enum import StrEnum
 #: configures one, and refuses a values file where it does not cover this budget
 #: and the pre-stop pause together — because a grace period that expires
 #: mid-drain ends in `SIGKILL`, and the drain this module performs was then
-#: decoration. Nothing has installed that chart, so the relationship is between
-#: two configured numbers and not between two observed behaviours.
+#: decoration. No drain has been observed against that chart's release, so the
+#: relationship is between two configured numbers and not between two observed
+#: behaviours.
 DEFAULT_DRAIN_TIMEOUT_MS = 15_000
 
 #: How often the drain loop checks whether the in-flight count has reached zero.

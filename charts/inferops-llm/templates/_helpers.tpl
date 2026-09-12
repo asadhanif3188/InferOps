@@ -877,10 +877,10 @@ each other by their shared prefix.
 {{/*
 The Prometheus scrape configuration for this release.
 
-**What it is, and what it is not.** It is a document. No collector, store,
-dashboard, or alerting path is selected -- ADR 0006 D8 leaves that to the open
-question ADR 0004 carries -- so nothing reads this, and nothing scrapes either
-endpoint. What it removes is the step where somebody writes scrape configuration by
+**What it is, and what it is not.** It is a document. The release's own collector
+reads it when `telemetry.collection.collector.deploy` is on, and nothing reads it
+when that is off. No durable store, dashboard, or alerting path is selected either
+way -- ADR 0006 D8 leaves those to the open question ADR 0004 carries. What it removes is the step where somebody writes scrape configuration by
 hand against labels they guessed, and gets a job that silently matches nothing.
 
 **Discovery selects on labels, not on annotations.** Every pod this chart installs

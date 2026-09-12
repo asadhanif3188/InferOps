@@ -329,8 +329,8 @@ refused.
 Checked by `tests/architecture/test_local_cluster_provider_contract.py`, for the
 cluster rows only: that each supported provider's cluster has its own row, that
 both belong to `cluster-operator` and neither survives the operation that removes
-it, that no tool or script owns one, and that the Docker Desktop row stays
-`planned` while nothing can identify that cluster.
+it, that no tool or script owns one, and that each provider's row cites only
+evidence made on its own provider.
 
 Checked by `tests/architecture/test_helm_chart.py`, for the release layer only:
 that the committed chart renders every row the release table gives it or declares

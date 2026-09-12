@@ -9,8 +9,9 @@ label sets the chart's rendered scrape configuration would attach, and values ch
 so that each query's answer is one somebody can check by hand.
 
 **What this is not.** It is not Prometheus, and a result here is not a measurement.
-Nothing has been scraped, no collector exists, and every series below was written
-into a fixture file by hand. The known differences from the engine are declared
+Nothing is scraped here and every series below was written into a fixture file by
+hand. A real collector has since been installed and queried on one provider; that
+record is separate and this module establishes nothing about it. The known differences from the engine are declared
 rather than left to be discovered:
 
 ``rate`` and ``increase`` do not extrapolate

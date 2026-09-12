@@ -79,7 +79,8 @@ million.
 
 Two constraints come from outside this record. The telemetry catalog records that
 **container and node resource use has no source** — the local cluster runs no metrics
-server, no collector, and no store — which removes measured utilisation from the
+server and no durable store, and the release-scoped collector that exists carries no
+container or node resource series — which removes measured utilisation from the
 inputs entirely. And [the project boundaries](../project-boundaries.md) forbid V1
 publishing any throughput, latency, capacity, or benchmark figure, which turns out to
 constrain cost directly: a cost per thousand requests is an hourly reservation
@@ -107,7 +108,8 @@ one; amounts on different bases are never summed; and a record whose basis is no
 
 Two of the three are unreachable here, and saying so is most of what this decision is
 worth today. `actual` needs a provider account this project does not have. `estimated`
-needs utilisation telemetry that no component emits and no collector reads. What is
+needs container and node utilisation telemetry that no component emits and no
+collector here collects. What is
 left is an allocation, which is derived from a validated workload document and a rate
 card, and needs no running system at all.
 
@@ -280,7 +282,8 @@ can, for identity and for requests and tokens. It cannot for utilisation, and th
 mapping says so in three named gaps rather than leaving the reader to discover it.
 
 One consequence is that **no usage input is available today**, whatever its coverage
-says, because no component emits a single signal and no collector reads one. Coverage
+says, because no component emits the utilisation signals they name and no collector
+here collects one. Coverage
 describes what the catalog would supply. A test refuses any usage input that claims to
 be available.
 

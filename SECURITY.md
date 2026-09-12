@@ -45,12 +45,16 @@ enough to be worth stating here rather than left for a reader to infer:
 |---|---|
 | [Threat model](docs/security/threat-model.md) | The assets, actors, boundaries, and twenty-two abuse cases this project models |
 | [Control matrix](docs/security/control-matrix.md) | Every control, what verifies it, and who owns that verification |
-| [Deferred risks and exceptions](docs/security/deferred-risks.md) | Twelve risks V1 carries rather than reduces, and four weaknesses it accepts |
+| [Deferred risks and exceptions](docs/security/deferred-risks.md) | Twelve risks V1 carries rather than reduces, and six weaknesses it accepts |
 | [ADR 0008](docs/architecture/decisions/ADR-0008-v1-security-baseline.md) | The decision behind all three |
 
-**None of it defends a running system.** Nothing in this repository authenticates a
-caller, authorises a request, enforces a network policy, or applies a security
-context to a pod it deployed, because nothing here deploys a pod or serves a request.
+**None of it establishes that a running system is defended.** Nothing in this
+repository authenticates a caller, authorises a request, or admits a pod. A release
+installed from this repository's chart has served a completion, and the workloads it
+deployed carried the pod-security settings the chart renders — a property of what was
+rendered and applied, not evidence that anything is defended: no check here reads a
+running pod, no admission control constrains one, and the network policy the release
+creates was measured not to be enforced by the plugin the observed clusters run.
 No secret scanner has been run and recorded. An image scanner and a dependency
 auditor have each been run once, by hand, against the pinned runtime image and the
 committed dependency lockfile; neither runs continuously, because no continuous-
@@ -58,6 +62,8 @@ integration service is selected, and no assessment by an outside party has ever 
 performed.
 
 What is enforced is enforced over committed files, over five YAML manifests that are
-smoke and trial apparatus, and by four shell functions on a contributor's own machine.
+smoke and trial apparatus, over the chart's two committed renders, and by four shell
+functions on a contributor's own machine. A release was installed from those renders;
+no check here read the pods it produced.
 A control's status in that baseline is derived from the verification it names rather
 than asserted, which is what stops the list above being read as more than it is.

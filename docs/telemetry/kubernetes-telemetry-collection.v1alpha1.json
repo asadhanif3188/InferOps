@@ -300,20 +300,20 @@
       "record": "inferops:scrape_targets:count",
       "detects": "how many targets each job has",
       "expression": "count by (job, k8s_namespace, k8s_component) (up{job=~\"<the release's own job names>\"})",
-      "readsToday": "nothing; no collector evaluates it"
+      "readsToday": "the release own series where the collector is deployed; nothing where it is not"
     },
     {
       "record": "inferops:scrape_targets_up:sum",
       "detects": "how many of them answered",
       "expression": "sum by (job, k8s_namespace, k8s_component) (up{job=~\"<the release's own job names>\"})",
       "whySumAndNotCount": "A job whose every target is down must read zero here. A count over a vector filtered by == 1 reads nothing at all, and nothing looks like a healthy quiet system.",
-      "readsToday": "nothing; no collector evaluates it"
+      "readsToday": "the release own series where the collector is deployed; nothing where it is not"
     },
     {
       "record": "inferops:scrape_job_absent:platform_api",
       "detects": "a job whose discovery matched no pod, which produces no up series to be zero",
       "expression": "absent(up{job=\"<release fullname>-platform-api\"})",
-      "readsToday": "nothing; no collector evaluates it"
+      "readsToday": "the release own series where the collector is deployed; nothing where it is not"
     },
     {
       "record": "inferops:scrape_job_absent:serving_runtime",
@@ -322,13 +322,13 @@
       "profiles": [
         "real"
       ],
-      "readsToday": "nothing; no collector evaluates it"
+      "readsToday": "the release own series where the collector is deployed; nothing where it is not"
     },
     {
       "record": "inferops:build_info_absent:platform_api",
       "detects": "a target that is up and useless: it answered a scrape and published no identity, which up alone cannot tell from one that is up and correct",
       "expression": "absent(inferops_build_info{k8s_namespace=\"<release namespace>\", k8s_component=\"platform-api\"})",
-      "readsToday": "nothing; no collector evaluates it",
+      "readsToday": "the release own series where the collector is deployed; nothing where it is not",
       "scoped": "to the release namespace and the API tier. An unscoped absent() over a store holding two releases reads 0 as soon as either one publishes an identity, which is the opposite of what the rule is for."
     },
     {

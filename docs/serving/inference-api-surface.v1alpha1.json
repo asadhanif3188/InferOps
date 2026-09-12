@@ -96,7 +96,7 @@
       "purpose": "InferOps's own metrics in Prometheus text format, including the request counter the runtime does not have.",
       "servingContractRole": "metrics",
       "v1Status": "in-scope",
-      "servedBy": "inferops.api serves the route and publishes the eight metrics the accepted telemetry catalog assigns to the inferops-api emitter, in the Prometheus text exposition format, including the two this record binds to this endpoint. The catalog's emissionStatus records partially-emits and every metric carries an emission field: the four assigned to the serving-runtime adapter, the one assigned to the contract validator, and one assigned to this API with no source it may read are not emitted, and the exposition names the last of those in a comment rather than publishing a zero. No exporter, collector, or store is selected, so the endpoint answers when something scrapes it and nothing scrapes it.",
+      "servedBy": "inferops.api serves the route and publishes the eight metrics the accepted telemetry catalog assigns to the inferops-api emitter, in the Prometheus text exposition format, including the two this record binds to this endpoint. The catalog's emissionStatus records partially-emits and every metric carries an emission field: the four assigned to the serving-runtime adapter, the one assigned to the contract validator, and one assigned to this API with no source it may read are not emitted, and the exposition names the last of those in a comment rather than publishing a zero. No exporter or durable store is selected. A release-scoped collector is, and it has scraped this endpoint; its series live in an emptyDir and go with its pod.",
       "runtimeCounterpart": "GET /metrics",
       "runtimeCounterpartObserved": true
     }

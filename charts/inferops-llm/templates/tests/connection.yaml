@@ -17,7 +17,8 @@ behind them answers the path this chart told the kubelet to probe. A rollout
 that reported success and a Service that selects nothing look identical from
 outside until somebody asks.
 
-It has never been run. No cluster has installed this chart. The image is BusyBox,
+It has been run once, on `docker-desktop`, as part of the `V1-S3-011` release
+lifecycle. The image is BusyBox,
 pinned by digest, and it is the only image in this chart that is neither the
 InferOps API nor the runtime ADR 0002 selected.
 */}}

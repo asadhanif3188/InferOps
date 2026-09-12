@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/security/security-baseline.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "V1 threat model and security baseline, v1alpha1",
-  "description": "What V1 is protecting, who it is protected from, where the boundaries are, which controls this repository actually enforces, who verifies each one, and which risks are deferred out of V1 rather than defended. The baseline is committed as data so that a control's status is derived from the verification it names rather than asserted by whoever wrote it down. Nothing here authenticates a caller, authorises a request, or applies a security context to a pod this platform deployed, because this platform deploys none.",
+  "description": "What V1 is protecting, who it is protected from, where the boundaries are, which controls this repository actually enforces, who verifies each one, and which risks are deferred out of V1 rather than defended. The baseline is committed as data so that a control's status is derived from the verification it names rather than asserted by whoever wrote it down. Nothing here authenticates a caller, authorises a request, or admits a pod. A release installed from this repository's chart deployed workloads carrying the pod-security settings the chart renders, and no control here reads one back, which is why none of this establishes that the running platform is defended.",
   "decisionRef": "docs/architecture/decisions/ADR-0008-v1-security-baseline.md",
   "documentRef": "docs/security/threat-model.md",
   "controlMatrixRef": "docs/security/control-matrix.md",
@@ -15,7 +15,7 @@
   "reportingRef": "SECURITY.md",
   "securityStatus": {
     "state": "nothing-enforces-at-runtime",
-    "meaning": "No component in this repository authenticates a caller, authorises a request, terminates a connection, enforces a network policy, admits or rejects a pod, or applies a security context to a workload it deployed - because no component in this repository deploys a workload or serves a request. What is enforced today is enforced over committed files, over manifests, and by two host scripts. That is a real and narrow thing, and the difference between it and a defended system is the subject of the deferred-risk register.",
+    "meaning": "No component in this repository authenticates a caller, authorises a request, terminates a connection, admits or rejects a pod, or reads a workload it deployed. A release installed from this repository's chart does deploy workloads carrying the pod-security settings the chart renders, and the network policy it creates was measured not to be enforced by the plugin the observed clusters run. What is enforced today is enforced over committed files, over manifests and committed renders, and by four host scripts. That is a real and narrow thing, and the difference between it and a defended system is the subject of the deferred-risk register.",
     "controlsEnforcedInARunningSystem": 0,
     "secretScannerRunsRecorded": 0,
     "securityAssessmentsPerformed": 0,
@@ -114,7 +114,7 @@
       "boundaryId": "B4",
       "name": "The workload boundary",
       "whatCrosses": "Process privilege inside a pod",
-      "enforcedToday": "Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none",
+      "enforcedToday": "Rendered and deployed workloads carry the documented pod-security settings. Nothing here reads a pod this platform deployed and no admission control constrains one, so nothing enforces it",
       "notDefended": "Anything a pod this platform has not deployed does, and anything the kernel or the container runtime does not isolate. No admission control exists.",
       "mappedInArchitecture": true,
       "owner": "security"
@@ -405,7 +405,7 @@
         "use-a-dedicated-service-account-per-workload",
         "refuse-a-workload-manifest-that-omits-a-required-control"
       ],
-      "residualRisk": "Enforced over every manifest committed here, and observed once in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none, and no admission control exists to enforce it for a pod it does not own.",
+      "residualRisk": "Enforced over every manifest and committed render here, and observed once in a trial. The release this platform installed carried the properties; nothing here reads the pods that resulted, and no admission control exists to enforce it for a pod it owns or one it does not.",
       "deferredRiskRef": "DR-05"
     },
     {
@@ -615,11 +615,11 @@
     },
     {
       "scopeId": "trial-apparatus",
-      "meaning": "The control acts on the manifests this repository publishes, all of which are smoke or trial apparatus. No manifest here is a V1 serving path."
+      "meaning": "The control acts on the manifests this repository publishes - the smoke and trial apparatus under deploy/, and the chart's committed renders, which a release has been installed from. The control reads the file either way and never the pod."
     },
     {
       "scopeId": "running-system",
-      "meaning": "The control acts inside a system this platform deployed and is serving requests. **No control in V1 has this scope**, because no such system exists."
+      "meaning": "The control acts inside a system this platform deployed and is serving requests. **No control in V1 has this scope**, because no control here reads a system it deployed."
     }
   ],
   "controlStatuses": [
@@ -933,7 +933,7 @@
       "v1Status": "enforced-over-manifests",
       "owner": "security",
       "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
-      "whatItDoesNotVerify": "Anything about a pod this platform deployed. It deploys none, and no admission control exists to enforce this for a pod it does not own."
+      "whatItDoesNotVerify": "Anything about a pod this platform deployed. It has deployed pods from this chart and nothing here reads one, and no admission control exists to enforce this for a pod it owns or one it does not."
     },
     {
       "controlId": "forbid-privilege-escalation",
@@ -1515,9 +1515,9 @@
       "threats": [
         "T-11"
       ],
-      "whyDeferred": "This platform deploys no pod. The six pod-security properties are enforced over every manifest committed here and, since V1-S3-002-PR1, over the chart's committed renders as well; since V1-S3-004-PR1 a workload policy also refuses a render that drops an identity, an envelope, a rendered secret, or a default-deny. All of it is a repository property rather than a cluster one.",
+      "whyDeferred": "This platform now deploys a release of its own chart, and nothing verifies the pods that result. The six pod-security properties are enforced over every manifest committed here and, since V1-S3-002-PR1, over the chart's committed renders as well; since V1-S3-004-PR1 a workload policy also refuses a render that drops an identity, an envelope, a rendered secret, or a default-deny. All of it is a repository property rather than a cluster one.",
       "whatWouldHaveToBeTrue": "A rendering path that produces pod specifications, which the chart now is, and an admission policy in the cluster that refuses one that does not carry the properties, which nothing here has. The second is what this risk turns on, and a validator that reads a file is not it.",
-      "notClaimed": "No document may describe a workload this platform deployed as constrained, because it has deployed none.",
+      "notClaimed": "No document may describe a workload this platform deployed as constrained. It has deployed some and they carried the rendered settings; nothing here read a running pod and no admission control refused anything, so the prohibition rests on the absence of verification rather than on the absence of a deployment.",
       "blocksProductionUse": true
     },
     {
@@ -1640,7 +1640,7 @@
       "statement": "The six pod-security properties are enforced over manifests that are smoke and trial apparatus, not over a serving path.",
       "acceptedIn": "docs/architecture/decisions/ADR-0008-v1-security-baseline.md",
       "compensatingControl": "run-as-non-root",
-      "residualRisk": "The enforcement is real and its subject is small. Every manifest this repository publishes carries the properties, and this repository publishes no manifest that serves a V1 workload.",
+      "residualRisk": "The enforcement is real and its subject is a file. Every manifest and committed render this repository publishes carries the properties, and a release installed from those renders deployed workloads that carried them too - but the control read the file and never the pod, and no admission control checked either.",
       "revisitedWhen": "A rendering path produces pod specifications, at which point the check must move from committed manifests to rendered output and be joined by admission control.",
       "deferredRiskRef": "DR-05"
     },
@@ -1690,7 +1690,7 @@
     },
     {
       "ruleId": "no-control-acts-inside-a-running-system",
-      "statement": "No control declares the running-system scope while nothing in this repository serves a request.",
+      "statement": "No control declares the running-system scope. No control here acts inside a system this platform deployed, whether or not one is serving.",
       "enforcedBy": "test",
       "testRef": "test_no_control_claims_to_act_inside_a_running_system"
     },
@@ -1820,7 +1820,7 @@
   "limitations": [
     {
       "limitationId": "nothing-runs",
-      "statement": "No control here has ever acted inside a system serving a request. What is enforced is enforced over committed files, over manifests, and by two host scripts."
+      "statement": "No control here has ever acted inside a system serving a request. What is enforced is enforced over committed files, over manifests and committed renders, and by four host scripts."
     },
     {
       "limitationId": "no-scanner-run",
@@ -1832,11 +1832,11 @@
     },
     {
       "limitationId": "manifests-are-apparatus",
-      "statement": "Every manifest the pod-security controls act on is smoke or trial apparatus. None is a V1 serving path, and the properties they carry are not properties of anything this platform deployed."
+      "statement": "The pod-security controls act on the smoke and trial apparatus under deploy/ and on the chart's committed renders. A release has been installed from those renders, so the workloads deployed did carry the properties - and the controls read files, so nothing here establishes a property of any pod that resulted."
     },
     {
       "limitationId": "one-host-one-trial",
-      "statement": "The runtime observations behind B1 and B4 come from one trial, on one Windows host, on one day. Nothing here has been reproduced on a second machine or a second operating system."
+      "statement": "The runtime observations behind B1 and B4 come from one Windows host, on CPU, under one cluster provider. Multi-replica operation was refused at a capacity gate and is not certified, kind has not been re-certified since the ownership realignment, and nothing here has been reproduced on a second machine or a second operating system."
     },
     {
       "limitationId": "review-only-rules",

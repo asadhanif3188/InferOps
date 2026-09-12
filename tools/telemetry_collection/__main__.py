@@ -19,8 +19,9 @@ without writing a test to do it.
 
 **It reads a file.** It contacts no cluster, loads no collector, and scrapes
 nothing, so a passing result says a configuration describes a collection that would
-be permitted and says nothing about a collection that happened. Nothing scrapes
-either InferOps endpoint. See docs/telemetry/kubernetes-telemetry-collection.md.
+be permitted and says nothing about a collection that happened -- including the one
+that did, on one provider, which is recorded under docs/proof/ and observed by
+nothing here. See docs/telemetry/kubernetes-telemetry-collection.md.
 """
 
 from __future__ import annotations

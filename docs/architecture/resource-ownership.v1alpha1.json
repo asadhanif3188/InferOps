@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/architecture/resource-ownership.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "V1 resource ownership inventory, v1alpha1",
-  "description": "Which tool, person, or controller owns the lifecycle of each resource the V1 architecture names, and what happens to that resource under each teardown operation. Ownership means the right to create and destroy. Referencing a resource is not owning it, and no resource in this file has more than one owner. Most rows are design commitments for work that does not exist yet; the v1Status field says which is which, and a row may only cite evidence when it is implemented.",
+  "description": "Which tool, person, or controller owns the lifecycle of each resource the V1 architecture names, and what happens to that resource under each teardown operation. Ownership means the right to create and destroy. Referencing a resource is not owning it, and no resource in this file has more than one owner. Most rows are now implemented and cite the run that moved them; the v1Status field says which is which, and a row may only cite evidence when it is implemented.",
   "decisionRef": "docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md",
   "documentRef": "docs/architecture/resource-ownership.md",
   "lifecycles": {

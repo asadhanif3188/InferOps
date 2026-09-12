@@ -31,7 +31,7 @@ disagrees with the derived one is a failing test rather than a judgement call.
 |---|---|
 | `repository-only` | On files committed here, and on nothing else |
 | `host-scripts` | When a contributor runs the environment scripts on their own machine |
-| `trial-apparatus` | On the manifests this repository publishes, every one of which is smoke or trial apparatus |
+| `trial-apparatus` | On the manifests this repository publishes — the smoke and trial apparatus under `deploy/`, and the chart's committed renders, which a release has been installed from. The control reads the file either way |
 | `running-system` | Inside a system this platform deployed and is serving requests. **No control has this scope**, and a test refuses one that claims it |
 
 The pair derives the status:
@@ -127,11 +127,12 @@ test holds the exemption to exactly two rules. What it leaves standing is stated
 rather than implied: those manifests name no service account and are covered by no
 policy.
 
-**Every manifest here is smoke or trial apparatus.** That sentence is why this status
-exists as something separate from `enforced-over-documents`, and it is what `EX-04`
-records. This platform deploys its own release as a serving path and nothing else, and
-**nothing in this block establishes a property of any running pod** — it reads
-files. No admission control exists, for a pod it owns or one it does not, and
+**Every manifest here is read as a file, whether it is apparatus or a render a
+release was installed from.** That sentence is why this status exists as something
+separate from `enforced-over-documents`, and it is what `EX-04` records. This
+platform deploys its own release as a serving path and nothing else; the workloads
+that release deployed carried these properties, and **nothing in this block
+establishes a property of any running pod** — it reads files. No admission control exists, for a pod it owns or one it does not, and
 the NetworkPolicy objects the release creates are not applied by
 `kindnetd`, the plugin the enforcement experiment tested. `DR-05` carries
 that gap.

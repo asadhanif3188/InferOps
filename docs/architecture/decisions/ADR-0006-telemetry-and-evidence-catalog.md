@@ -11,18 +11,24 @@
 
 > [!IMPORTANT]
 > This record decides which signals V1 emits, where each field is allowed to be
-> placed, and what an evidence record has to contain. It does **not** implement any
-> of it. No component in this repository emits a metric, a log record, or a span;
-> no collector, store, dashboard, or alert exists; and no tracer, exporter, or
-> logging library is selected.
+> placed, and what an evidence record has to contain. It did **not** implement any
+> of it, and what has been implemented since is recorded elsewhere: since
+> `V1-S1-008` the InferOps API emits eight of the catalog's metrics and writes the
+> specified log records, and since the Sprint 3 remediation a Helm-owned,
+> release-scoped collector has scraped both InferOps jobs. Still absent: no
+> component emits a span, no tracer or exporter is selected, the collector's series
+> live in an `emptyDir` and no durable store exists, and there is no dashboard and
+> no alerting path.
 >
 > One half of it is machine-checked. The catalog is committed as data and validated
 > by `tests/telemetry/test_telemetry_catalog.py`, which derives every field's
 > permitted placement from its two declared classes, recomputes every metric's
 > series count from its labels, and compares every native runtime series named here
 > against the record that measured it. The other half — whether the components that
-> would emit this will emit it faithfully — has no check, because those components
-> do not exist.
+> emit this emit it faithfully — is now checked for one emitter, by
+> `tests/telemetry/test_api_telemetry_agreement.py`, which compares the API's
+> implementation against this catalog in both directions. It is unchecked for the
+> serving-runtime adapter and the contract validator, which are not instrumented.
 >
 > D7 is **not decided**: no content-capture policy exists, and there is no
 > configuration flag that could enable capture. D8 is **not decided here**, on
@@ -41,7 +47,7 @@
 | D5 | Structured logs with a required field set, a bounded event identifier, and no free-form message | **Accepted** as a rule | Review, plus tests that every named field is declared and permitted in a log |
 | D6 | Four versioned evidence templates with seven mandatory sections | **Accepted** | The templates exist and a test reads each one for every required section |
 | D7 | What would allow prompt and response capture: classification, redaction, retention, access, lawful basis | **Not decided** | Nothing. Capture is disabled and there is no flag to change that |
-| D8 | Which telemetry SDK, exporter, collector, and store, and who owns them | **Not decided, and not this record's to decide** | ADR 0004 leaves the collector unowned; this record does not fill that in |
+| D8 | Which telemetry SDK, exporter, collector, and store, and who owns them | **Partly decided elsewhere.** ADR 0004 `D7` was amended 2026-09-09 and the collector is Helm-owned and release-scoped | SDK, exporter, durable store, dashboard and alerting path remain undecided, and `telemetry-backend` remains deferred |
 
 ## Context
 
@@ -213,8 +219,11 @@ The alternative was a message field with a redaction filter over it. It was reje
 because a filter is a list of patterns, a list of patterns is the forbidden-field
 list again, and this time it runs at the moment of writing rather than at review.
 
-**Not decided, and not claimed:** there is no logger, no formatter, and no redacting
-sink. No log line has ever been inspected, because none has been written.
+**Amended.** When this was written there was no logger, no formatter, and no
+redacting sink, and no log line had been inspected because none had been written.
+Since `V1-S1-008` all three exist and the suites drive the application and inspect
+the records it wrote. No log store, shipper, retention window, or access rule is
+selected, so no record has been inspected inside a store.
 
 ## D6 — Four evidence templates with seven mandatory sections
 
@@ -292,8 +301,9 @@ path on an existing layer; no layer, lane, marker, or certification level change
 
 Attribute and metric names are published here for the first time and are versioned
 as `v1alpha1`. Renaming one after a component emits it would be a breaking change for
-any dashboard or query built on it; today nothing emits and nothing queries, which is
-the cheapest moment there will ever be to get the names wrong and fix them.
+any dashboard or query built on it; today the API emits eight of them and a
+release-scoped collector queries them, while nothing durable, no dashboard and no
+alert depends on the names. A rename is still cheap, and no longer free.
 
 ## Security considerations
 
@@ -310,10 +320,11 @@ error body is not passed through verbatim, and that no operating figure is publi
 as a benchmark. Both need code or human judgement that no test can supply, and
 labelling them as tested would have been the more comfortable and less true option.
 
-The residual risk is stated plainly: none of this is enforced at runtime, because
-there is no runtime. A redacting sink, a field allowlist in code, and a test that
-inspects a real log line are all future work, and no claim here should be read as
-covering them.
+**Amended.** The residual risk was that none of this was enforced at runtime because
+there was no runtime. A redacting sink, a field allowlist in code, and a test that
+inspects a real record now exist for the API and are enforced where a signal is
+created. They cover one emitter: the serving-runtime adapter is not instrumented, and
+no record has been produced against a real runtime.
 
 ## Evidence
 
@@ -328,5 +339,8 @@ The native runtime series come from
 executed on 2026-08-24 on one host — `local-real-cpu` evidence for what that runtime
 exposes, and evidence for nothing else here.
 
-There is no evidence that any signal in this catalog has ever been emitted, because
-none has.
+**Amended.** [The API instrumentation validation](../../proof/telemetry/v1-s1-008-pr1-validation.md)
+is mock-backed evidence that eight of these metrics and the specified records are
+emitted, and [what telemetry saw while a serving pod was replaced](../../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md)
+is `local-real-cpu` evidence that a real Prometheus collected and queried them on one
+provider, on one host. No span has ever been emitted.

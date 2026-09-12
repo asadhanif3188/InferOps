@@ -1,7 +1,7 @@
 # Architecture and decision records
 
-Status: entry point established; eight decisions accepted in part, one accepted with a
-recorded exception, two accepted.
+Status: entry point established; seven decisions accepted in part, one accepted with a
+recorded exception, two accepted, and one accepted and later amended.
 
 Accepted architecture decisions are indexed here with their status, date, decision
 owner, alternatives, consequences, compatibility impact, and supporting evidence.
@@ -10,16 +10,19 @@ Superseded decisions remain available and link to their replacement.
 The local development and Kubernetes environment is partly settled, a model and
 serving runtime are now selected on executed proof, the schema language and
 validation approach behind the first public contract are settled, and the component
-and resource-ownership boundaries are now decided for components that do not exist
-yet. A proposed decision record is a subject for review, not a supported capability,
+and resource-ownership boundaries, decided before the components existed, have since
+been executed against a real cluster for every row the inventory marks implemented.
+A proposed decision record is a subject for review, not a supported capability,
 and must not be implemented against as though it were settled.
 
 ## Architecture documents
 
-These describe the V1 design. Every component below the contract layer is unbuilt,
-with one exception: the platform domain now has typed workload objects in
-[the workload domain model](../domain/workload-domain-model.md). Nothing below
-*that* is built — no adapter, no API, no chart, no Terraform.
+These describe the V1 design. The platform domain — with typed workload objects in
+[the workload domain model](../domain/workload-domain-model.md) — both serving
+adapters, the InferOps API, the Helm chart and the Terraform prerequisite layer are
+now built, and the chart and the prerequisite layer have been installed and applied
+on the `docker-desktop` reference provider. Deployment rendering is the component
+still unbuilt: nothing turns a validated document into release values.
 
 | Document | What it covers |
 |---|---|
@@ -39,35 +42,40 @@ with one exception: the platform domain now has typed workload objects in
 | [0002](decisions/ADR-0002-model-and-serving-runtime.md) | Model and serving runtime | Accepted, with one recorded exception | 2026-08-24 | [Runtime feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
 | [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
 | [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
-| [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, and five of its eleven test layers have no code |
-| [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Original change validation](../proof/telemetry/v1-s0-007-pr1-validation.md) plus [API instrumentation validation](../proof/telemetry/v1-s1-008-pr1-validation.md); the catalog and API emission declarations are machine-checked, while spans, a collector, and a store remain absent |
+| [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, eight of its eleven test layers exist, and three do not — failure-and-resilience and security-scan are planned, capacity-and-load is deferred |
+| [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Original change validation](../proof/telemetry/v1-s0-007-pr1-validation.md) plus [API instrumentation validation](../proof/telemetry/v1-s1-008-pr1-validation.md); the catalog and API emission declarations are machine-checked; a release-scoped collector now exists and has scraped both InferOps jobs, while spans and any durable store remain absent |
 | [0007](decisions/ADR-0007-inference-cost-method.md) | Inference cost-calculation method | Accepted in part | 2026-08-26 | [Change validation](../proof/cost/v1-s0-008-pr1-validation.md); the method and its worked example are machine-checked, and nothing in this repository computes a cost record |
 | [0008](decisions/ADR-0008-v1-security-baseline.md) | V1 threat model and security baseline | Accepted in part | 2026-08-26 | [Change validation](../proof/security/v1-s0-009-pr1-validation.md); the baseline is machine-checked, and nothing in this repository defends a running system |
 | [0009](decisions/ADR-0009-python-toolchain.md) | InferOps Python toolchain | Accepted | 2026-08-27 | [Change validation](../proof/toolchain/v1-s0-011-pr1-validation.md); every tool named was run on this repository, and it supersedes ADR 0001 D3 and D4 |
-| [0010](decisions/ADR-0010-inference-api-compatibility-surface.md) | V1 inference API compatibility surface | Accepted in part | 2026-08-27 | [Change validation](../proof/serving/v1-s0-012-pr1-validation.md); the surface is machine-checked against the record that measured the runtime, and nothing in this repository serves a request |
-| [0011](decisions/ADR-0011-external-local-cluster-provider-contract.md) | Local Kubernetes clusters are external, explicitly selected provider targets | Accepted in part | 2026-09-11 | [Change validation](../proof/architecture/v1-s3-010-pr1-validation.md); the contract is machine-checked, the `kind` guard exists for one pinned name, and nothing identifies a Docker Desktop cluster |
+| [0010](decisions/ADR-0010-inference-api-compatibility-surface.md) | V1 inference API compatibility surface | Accepted; amended 2026-09-01 | 2026-08-27; amended 2026-09-01 | [Change validation](../proof/serving/v1-s0-012-pr1-validation.md); the surface is machine-checked against both the record that measured the runtime and the implemented ASGI application, which has served a real completion through an installed release's Service; no OpenAPI document or JSON Schema is published and `contracts/` is untouched |
+| [0011](decisions/ADR-0011-external-local-cluster-provider-contract.md) | Local Kubernetes clusters are external, explicitly selected provider targets | Accepted in part | 2026-09-11 | [Change validation](../proof/architecture/v1-s3-010-pr1-validation.md); the contract is machine-checked and both providers have an identity guard — `kind`'s by container label for any explicitly selected cluster name, Docker Desktop's by node shape plus the API server port the verified kubeconfig dials — and neither can refuse a cluster deliberately named to impersonate the other |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
 and minimum host tier are accepted; the task runner, dependency installation
 approach, and recommended host tier are not; since 0011, the distribution,
 isolation, and cleanup decisions are superseded in part, because the cluster is no
-longer InferOps's to create or delete. In 0011, eleven decisions are accepted, one
-of them — positive identity — for `kind` only: how a Docker Desktop cluster would be
-bound to the local engine, which is what would make its identity check as strong as
-`kind`'s, is not decided. In 0004, six decisions are accepted
-and one — who owns telemetry collection and an ingress or load-balancer
-implementation — is explicitly not made. In 0005, five decisions are accepted and
+longer InferOps's to create or delete. In 0011, eleven decisions are accepted, and
+positive identity now covers both providers: a Docker Desktop cluster is bound to the
+local engine through its node container and the API server port the verified
+kubeconfig dials, with the two residual impersonation gaps recorded as `EX-06`. In
+0004, six decisions are accepted and the seventh is decided in part — the telemetry
+collector is Helm-owned and release-scoped since the 2026-09-09 amendment, while an
+ingress or load-balancer implementation, a durable store, dashboards and an alert
+routing path are explicitly not assigned. In 0005, five decisions are accepted and
 one — which continuous-integration service runs the lanes, and what labels a capable
 runner — is explicitly not made. In 0006, six decisions are accepted, one — what would
 allow prompt and response capture — is explicitly not made, and one — the telemetry
-toolchain and who owns a collector — is deliberately left to 0004's open question
-rather than answered in passing. In 0007, eleven decisions are accepted and two —
+toolchain, exporter and store — is deliberately left to 0004 rather than answered in
+passing; 0004 has since assigned the collector and left the store, dashboards and
+alerting open. In 0007, eleven decisions are accepted and two —
 which provider rate cards a comparison would use, and which component computes a cost
 record — are not. In 0008, twelve decisions are accepted and two — who signs off a
 control, and whether a renderer or an admission policy enforces a pod-security
-property — are not. In 0010, eight decisions are accepted and one — whether the decided
-surface is ever published as a contract artifact, and by what mechanism — is not.
+property — are not. In 0010, all nine decisions are accepted: `D3` was narrowed and
+`D9` accepted on 2026-09-01, designating `inference-api-surface.v1alpha1.json` as the
+canonical tested snapshot — explicitly not OpenAPI, not JSON Schema, and not an
+artifact in `contracts/`.
 
 0002 selects one runtime image digest and one immutable model revision, on evidence
 from a trial that was executed on 2026-08-24: a model was downloaded and
@@ -87,16 +95,18 @@ off-the-shelf conformant validator, and no code generation in V1. It deliberatel
 does **not** select the repository-wide Python, packaging, or continuous-integration
 toolchain, which remain open.
 
-0004 decides boundaries for components that do not exist. It fixes the component
+0004 decided boundaries for components that did not exist when it was written; most
+of them now do. It fixes the component
 decomposition and which direction dependencies may point, puts the serving runtime
 in its own deployment rather than a sidecar, splits resource ownership so that
 Terraform owns what outlives a release and Helm owns the release, makes the model
 cache a prerequisite, maps five trust boundaries without implementing a single
 control, and states where this project stops. The ownership half is committed as
-data and checked by a test; the component half has no code to check it against.
-**One decision inside it is deliberately not made**: nobody owns a telemetry
-collector or an ingress implementation, and both are deferred rather than assigned
-for tidiness.
+data and checked by a test; the decomposition it draws still has no check of its own.
+**One decision inside it is deliberately not made**: nobody owns an ingress
+implementation. The telemetry collector was the other half of that deferral, and
+`D7` was amended on 2026-09-09 to make it Helm-owned and release-scoped; a durable
+store, dashboards and alert routing stay deferred as `telemetry-backend`.
 
 0006 decides what a running V1 would say about itself: correlation over W3C Trace
 Context assigned at the edge, a field registry in which every attribute declares a
@@ -110,11 +120,14 @@ classes have an empty list — which is what makes "no prompt in telemetry" arit
 instead of a convention somebody has to remember.
 
 The InferOps API now emits eight catalog metrics and structured request records when
-the ASGI application is exercised. No component emits a span, and no collector or
-store is selected. The selected serving runtime's own signals were observed in one
-trial, on one host; the API's committed evidence is local and mock-backed rather
-than evidence of a deployed network service. Two of ADR 0006's fifteen rules remain
-marked as enforced by review alone rather than promoted to tested.
+the ASGI application is exercised. No component emits a span. A release-scoped
+Prometheus collector is now Helm-owned and has scraped both InferOps jobs on
+`docker-desktop`; it writes to an `emptyDir` that goes with its pod, so no durable
+store, dashboard, or alerting path exists. The selected serving runtime's own signals
+were observed in one trial, on one host; the API's committed evidence is local and
+mock-backed rather than evidence of a deployed network service. Two of ADR 0006's
+eighteen rules remain marked as enforced by review alone rather than promoted to
+tested.
 
 0005 decides how V1 is tested and what a passing result may be used to claim: eleven
 test layers, four lanes, a ceiling on each layer's evidence class, certification at
@@ -138,13 +151,16 @@ control claiming an implemented status has to name a committed evidence record. 
 is the same shape as 0007's derived confidence, applied to the failure that a written
 control is counted as an enforced one.
 
-It defends **nothing that is running**. Twenty-two of its thirty-two controls are
-enforced by something and ten are not; twelve risks are carried rather than reduced,
-ten of them blocking production use; four exceptions are recorded with a compensating
-control each; and the pod-security properties hold over five YAML files that are
-smoke and trial apparatus rather than over any pod this platform deployed. No
-scanner has been run and recorded, and no assessment by an outside party has ever been
-performed. Four of its fifteen rules are enforced by review alone.
+It establishes **nothing about whether anything running is defended**. Twenty-nine of
+its thirty-eight controls are enforced by something and nine are not; twelve risks are
+carried rather than reduced, ten of them blocking production use; six exceptions are
+recorded with a compensating control each; and the pod-security properties hold over
+five YAML files and two committed renders, read as files — a release has since been
+installed from those renders and no check here reads a pod that resulted. No secret
+scanner has been run and recorded. An image scanner and a dependency auditor have each
+been run once by hand and neither runs continuously, because no continuous-integration
+service is selected. No assessment by an outside party has ever been performed. Four
+of its fifteen rules are enforced by review alone.
 
 0007 decides how a V1 cost figure is produced and what it may be called: three bases
 of which only an allocation is reachable, allocation by reserved capacity rather than
@@ -179,11 +195,13 @@ against the choice, which is that the shape is not this project's to version. An
 would provoke a real failure does not exist. The record marks every row either way, and
 a test refuses a row claiming an observation the trial did not record.
 
-It **serves nothing**. No component listens on a port, no OpenAPI document is
-published, and `contracts/` is untouched. It also carries ADR 0002's `T7` exception
+It **publishes nothing as a contract**. No OpenAPI document or JSON Schema is
+published and `contracts/` is untouched; the API is implemented, the distribution
+carries no server dependency of its own, and one real completion has been served
+through an installed release's Service. It also carries ADR 0002's `T7` exception
 forward as a stated obligation rather than a discharged one: the runtime has no
-cumulative request counter, so the API owes one, and the metric it owes already exists
-in the telemetry catalog and is emitted by nothing.
+cumulative request counter, so the API owes one, and the metric it owes exists in the
+telemetry catalog and is now emitted by the API.
 
 ## Conventions
 

@@ -7,9 +7,12 @@ does **not** establish that anything is defended, and roughly a third of the thr
 below have no control at all.
 
 > [!WARNING]
-> Nothing in this repository authenticates a caller, authorises a request, enforces
-> a network policy, or applies a security context to a pod it deployed — because
-> nothing here deploys a pod or serves a request. No secret scanner has been run
+> Nothing in this repository authenticates a caller, authorises a request, or
+> admits a pod. The workloads a release deploys carry the pod-security settings the
+> chart renders, and that establishes nothing about whether the running platform is
+> defended: no check here reads a pod back, no admission control constrains one,
+> and the network policy the release creates was measured not to be enforced by the
+> plugin the observed clusters run. No secret scanner has been run
 > and recorded. An image scanner and a dependency auditor have each been run
 > once, by hand, against the pinned runtime image and the committed dependency
 > lockfile; neither runs continuously, because no continuous-integration service
@@ -17,7 +20,9 @@ below have no control at all.
 > document review is not one.
 >
 > What is really enforced is enforced over committed files, over five YAML
-> manifests, and by four shell functions. That is a narrow and real thing, and the
+> manifests, over the chart's two committed renders, and by four shell functions.
+> A release installed from those renders was read by none of them. That is a narrow
+> and real thing, and the
 > distance between it and a defended system is
 > [the deferred-risk register](deferred-risks.md).
 
@@ -95,7 +100,7 @@ sixth is new here.
 | B1 artifact | Container images, model weights | Digest and hash pinning, hash verified before use | serving |
 | B2 cluster | Every platform action on Kubernetes | Cluster identity guard and scoped teardown, in the environment scripts | environment |
 | B3 namespace | Everything a release installs | A rendered default-deny, which the local cluster's network plugin was measured not to enforce | security |
-| B4 workload | Process privilege inside a pod | Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none | security |
+| B4 workload | Process privilege inside a pod | Rendered and deployed workloads carry the documented pod-security settings. Nothing here reads a pod this platform deployed and no admission control constrains one, so nothing enforces it | security |
 | B5 caller | Inference requests and their responses | **Nothing.** There is no authentication, no authorization, no rate limit, and no tenant isolation | security |
 | B6 publication | Every file, record, and message this project commits or pushes in public | Ignore rules for host state and the project kubeconfig, a committed secret-scan configuration, and a suite that refuses a tenant identifier or a personal filesystem path in a committed file | security |
 
@@ -124,7 +129,8 @@ to be false, the controls resting on it are worth no more than the assumption.
   paragraphs a reader is asked to remember.
 - **The local cluster behaves like Kubernetes** for the properties named here. The
   one property where this is explicitly *not* assumed is network-policy enforcement,
-  which `DR-04` records as untested.
+  which an executed experiment measured and `DR-04` records as tested and not
+  enforced.
 
 ## Threats
 
@@ -158,11 +164,15 @@ because that is the shape of a threat nobody decided about.
 | T-21 | A stale cache is trusted instead of a hash | tampering | `model-cache-volume` | B3 | Contributor | `verify-artifact-hash-before-use` | — |
 | T-22 | A secret reference names a place nobody manages | information-disclosure | `secret-material` | B3 | Workload owner | `refuse-a-secret-value-in-a-contract` | DR-10 |
 
-Four of the twenty-two name only a control with no verification at all —
-`authenticate-and-authorise-a-caller`, `limit-what-one-caller-may-consume`,
-`record-what-the-platform-did`, and `network-policy-in-the-release-namespace`. Those
-rows are naming the gap in the shape of a control so that the register has something
-to point at, and the matrix marks every one of them `deferred` or `specified-only`.
+Three of the twenty-two name only a control with no verification at all —
+`authenticate-and-authorise-a-caller`, `limit-what-one-caller-may-consume`, and
+`record-what-the-platform-did`. Those rows are naming the gap in the shape of a
+control so that the register has something to point at, and the matrix marks every
+one of them `deferred` or `specified-only`. A fourth, T-12, used to belong here:
+`network-policy-in-the-release-namespace` is now verified over the committed renders
+and is `enforced-over-manifests`, which moved the object and not its enforcement —
+the plugin the observed clusters run was measured not to apply one, and `DR-04` and
+`EX-05` carry that.
 
 Two more — T-02 and T-19 — name one control with no verification alongside one that
 is now verified on a contributor's host: `verify-artifact-provenance` and
@@ -201,9 +211,11 @@ cluster credential already in the filesystem.
 Every manifest here sets all eight properties, and a test parses them rather than
 trusting the habit. The exact wording of what that establishes matters, and `EX-04`
 carries it: these are properties of **five committed YAML files**, all of them smoke
-or trial apparatus. This platform deploys one of them as a serving path — its own release — and nothing verifies the pods that result, so nothing
-here constrains a pod it deployed, and no admission control exists to constrain one
-it does not own.
+or trial apparatus, and of **the chart's two committed renders**. This platform
+deploys a release rendered from the latter, so the workloads it deployed did carry
+these properties — and nothing verifies the pods that result, so nothing here
+constrains a pod it deployed, and no admission control exists to constrain one it
+does not own.
 
 ### T-08 — A tenant identifier supplied by a caller is trusted
 

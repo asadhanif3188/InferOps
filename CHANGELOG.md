@@ -8,6 +8,49 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Changed
+
+- **Sprint 3's public claims now say what the evidence says.** A reconciliation pass
+  read every current-status document against the authoritative data and the executed
+  records, and corrected what had drifted. The claim and test matrix and the README
+  both published *twelve of twenty-one claims certified*; the strategy data holds
+  **twenty-four — sixteen certified, seven planned, one deferred**, and the matrix's
+  own tables already agreed with it. Only the prose was wrong, and nothing read the
+  prose. Three tests now derive those counts from the data, and a fourth refuses a
+  claim published under a heading its status does not name.
+- **The network-policy experiment's provider was recorded backwards and is corrected.**
+  The Sprint 3 completion review said it ran on a `kind` cluster and that Docker
+  Desktop's plugin was never tested;
+  [the record](docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md) says
+  the opposite and always did — it ran on Docker Desktop's Kubernetes, because `kind`
+  is not installed on this host. The finding is unchanged: `kindnetd` does not enforce
+  a NetworkPolicy, and that is now correctly a result **on the reference provider** and
+  **not** one on `kind`.
+- **Four relative links did not resolve**, two of them inside evidence records this
+  sprint produced, while `published-documents-link-only-to-things-that-exist` was
+  certified at `C0` and checked only by a shell command somebody had to remember to
+  run. The links are fixed and
+  [`tests/testing/test_document_links.py`](tests/testing/test_document_links.py) walks
+  every committed Markdown file, so the certified claim is defended by a module rather
+  than by a habit.
+- **Security wording caught up with the deployment without gaining an inch of ground.**
+  Statements that nothing here *applies a security context to a pod it deployed,
+  because nothing here deploys a pod* were false after `V1-S3-011`. They now say what
+  is true: the rendered and deployed workloads carry the documented pod-security
+  settings, and that establishes nothing about whether the running platform is
+  defended — no check reads a running pod, no admission control exists, and the
+  network policy the release creates is not enforced. Every deferred risk and accepted
+  exception is unchanged.
+- **Counts published as prose were re-derived from their own data**: six accepted
+  security exceptions rather than four, thirty-eight controls with nine unenforced
+  rather than thirty-two with ten, three test layers without code rather than five or
+  six, eighteen telemetry rules rather than fifteen, and eleven ADRs tallied including
+  the one that had been silently dropped.
+- **Collector wording was reconciled in both directions.** Documents still saying no
+  collector exists were corrected; every statement that its series are ephemeral and
+  that no durable store, dashboard, or alerting path exists was kept, and the generator
+  that writes a query-evaluation record no longer emits a stale sentence into it.
+
 ### Added
 
 - **Sprint 3 is closed, and the verdict is published rather than implied.**

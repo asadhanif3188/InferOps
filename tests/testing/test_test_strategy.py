@@ -776,6 +776,168 @@ def test_the_matrix_publishes_every_claim_and_only_claims(
     }
 
 
+# Spelled-out forms for the counts the published documents state in prose. The
+# documents write numbers as words, so a count test has to compare words.
+NUMBER_WORDS = (
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
+    "twenty",
+    "twenty-one",
+    "twenty-two",
+    "twenty-three",
+    "twenty-four",
+    "twenty-five",
+    "twenty-six",
+    "twenty-seven",
+    "twenty-eight",
+    "twenty-nine",
+    "thirty",
+)
+
+# Longest first, so ``twenty`` cannot match the first half of ``twenty-four``.
+_ANY_NUMBER = "|".join(sorted(NUMBER_WORDS, key=len, reverse=True))
+
+COUNT_PHRASE = re.compile(
+    r"\b(" + _ANY_NUMBER + r")\s+of\s+(" + _ANY_NUMBER + r")\b"
+    r"[^.]{0,40}?claims?",
+    re.IGNORECASE,
+)
+
+
+def spelled(count: int) -> str:
+    """The word a published document uses for ``count``."""
+    assert 0 <= count < len(NUMBER_WORDS), f"no spelled form for {count}"
+    return NUMBER_WORDS[count]
+
+
+def claims_with_status(status: str) -> list[dict]:
+    return [claim for claim in CLAIMS if claim["v1Status"] == status]
+
+
+def status_counts() -> dict[str, int]:
+    """The authoritative certified/planned/deferred split, derived not declared."""
+    return {status: len(claims_with_status(status)) for status in CLAIM_STATUSES}
+
+
+def section_of(document: str, heading: str) -> str:
+    """The body of one ``## heading`` section, up to the next heading of that rank."""
+    marker = f"\n## {heading}\n"
+    start = document.index(marker) + len(marker)
+    body = document[start:]
+    end = body.find("\n## ")
+    return body if end == -1 else body[:end]
+
+
+def readme_document() -> str:
+    return (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("status", sorted(CLAIM_STATUSES))
+def test_the_matrix_lists_each_claim_under_the_status_the_data_gives_it(
+    matrix_document: str,
+    status: str,
+) -> None:
+    """A claim is published under the heading its own ``v1Status`` names.
+
+    The identifier check above would pass with every claim in the wrong section.
+    This is what stops a planned claim being published among the certified ones.
+    """
+    heading = status.capitalize()
+    published = published_ids(section_of(matrix_document, heading))
+    expected = {claim["claimId"] for claim in claims_with_status(status)}
+    assert published == expected, {
+        "status": status,
+        f"{status} in the data, missing from the {heading} section": sorted(
+            expected - published
+        ),
+        f"published under {heading} but not {status} in the data": sorted(
+            published - expected
+        ),
+    }
+
+
+def test_the_matrix_publishes_the_claim_counts_its_own_data_produces(
+    matrix_document: str,
+) -> None:
+    """The matrix's summary sentence is derived from the data, not kept by hand.
+
+    ``Twelve of twenty-one claims are certified today`` outlived the data that
+    made it true by nine claims. Nothing failed, because no test read the sentence.
+    """
+    counts = status_counts()
+    expected = (
+        f"{spelled(counts['certified']).capitalize()} of {spelled(len(CLAIMS))} "
+        f"claims are certified today, {spelled(counts['planned'])} are commitments, "
+        f"and {spelled(counts['deferred'])} is deferred out of V1."
+    )
+    assert expected in " ".join(matrix_document.split()), {
+        "expected sentence": expected,
+        "counts derived from the strategy data": counts,
+        "total": len(CLAIMS),
+    }
+
+
+def test_the_readme_publishes_the_claim_counts_the_strategy_data_produces() -> None:
+    """The repository README republishes the same split and must derive it too."""
+    counts = status_counts()
+    expected = (
+        f"{spelled(counts['certified']).capitalize()} of {spelled(len(CLAIMS))} "
+        f"public claims certified, {spelled(counts['planned'])} are commitments, "
+        f"and {spelled(counts['deferred'])} is deferred"
+    )
+    assert expected in " ".join(readme_document().split()), {
+        "expected phrase": expected,
+        "counts derived from the strategy data": counts,
+        "total": len(CLAIMS),
+    }
+
+
+def test_no_current_status_document_republishes_a_stale_claim_count(
+    matrix_document: str,
+) -> None:
+    """A claim count that disagrees with the data may not survive where it is published.
+
+    This reads only the two current-status documents that publish a split. Evidence
+    records under ``docs/proof/`` state what was true when they were written and are
+    deliberately not read here.
+    """
+    counts = status_counts()
+    live = {counts["certified"], counts["planned"], counts["deferred"]}
+    for label, document in (
+        ("docs/testing/claim-test-matrix.md", matrix_document),
+        ("README.md", readme_document()),
+    ):
+        for part, whole in COUNT_PHRASE.findall(" ".join(document.split())):
+            part_n = NUMBER_WORDS.index(part.lower())
+            whole_n = NUMBER_WORDS.index(whole.lower())
+            assert whole_n == len(CLAIMS), (
+                f"{label} publishes a claim total of {whole_n}; "
+                f"the strategy data has {len(CLAIMS)}"
+            )
+            assert part_n in live, (
+                f"{label} publishes {part_n} of {whole_n} claims; "
+                f"the strategy data produces {counts}"
+            )
+
+
 def test_the_data_points_back_at_the_documents_that_describe_it() -> None:
     for field in (
         "decisionRef",
