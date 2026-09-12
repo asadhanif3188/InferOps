@@ -71,6 +71,7 @@ ENTRY_POINTS = (
     "kubernetes-certification.sh",
     "kubernetes-multi-replica-certification.sh",
     "helm-upgrade-rollback.sh",
+    "kubernetes-pod-restart.sh",
     "telemetry-collection-verify.sh",
     "target-detect.sh",
 )
@@ -810,3 +811,36 @@ def test_every_committed_environment_script_is_inventoried() -> None:
     """
     committed = {path.name for path in SCRIPT_DIR.glob("*.sh") if path.name != "lib.sh"}
     assert committed == set(ENTRY_POINTS), committed.symmetric_difference(ENTRY_POINTS)
+
+
+def test_no_script_assigns_a_name_lib_declares_readonly() -> None:
+    """V1-S3-011-PR2, found by executing a workflow for the first time.
+
+    Both Kubernetes experiments build their evidence document by passing facts to
+    an embedded Python reader as a command-prefix environment assignment. One of
+    those names was `INFEROPS_NAMESPACE`, which `lib.sh` declares `readonly` as
+    the *smoke* namespace -- a different namespace entirely. Bash refuses the
+    assignment, the whole prefix fails, and the run dies at
+    `INFEROPS_NAMESPACE: readonly variable` after a complete and successful
+    lifecycle, with every stage recorded and no record written.
+
+    Nothing short of a run could have found it: the name is valid, the script
+    parses, and the collision only exists because `lib.sh` happens to have
+    claimed that name for something else. This is the check that makes the next
+    one a failing test instead.
+    """
+    declared = set(re.findall(r"^readonly (INFEROPS_[A-Z0-9_]+)", LIB_TEXT, re.M))
+    # lib.sh also uses the assign-then-freeze form, on its own two lines.
+    declared |= {
+        name
+        for name in re.findall(r"^(INFEROPS_[A-Z0-9_]+)=", LIB_TEXT, re.M)
+        if re.search(rf"^readonly {name}$", LIB_TEXT, re.M)
+    }
+    assert declared, "no readonly constants were found in lib.sh"
+    for name in ENTRY_POINTS:
+        text = (SCRIPT_DIR / name).read_text(encoding="utf-8")
+        assigned = set(re.findall(r"^\s*(INFEROPS_[A-Z0-9_]+)=", text, re.M))
+        collisions = sorted(assigned & declared)
+        assert not collisions, (
+            f"{name} assigns {collisions}, which lib.sh makes readonly"
+        )

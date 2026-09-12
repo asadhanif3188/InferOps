@@ -1,11 +1,21 @@
 # Correlated platform telemetry: the queries, and what they answer
 
-Status: verified against fixtures. **Nothing has been collected.** No collector,
-store, dashboard, or alerting path is selected — [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
+Status: verified against fixtures **and evaluated by a real Prometheus.** The
+chart installs a release-scoped collector, it scrapes both InferOps endpoints, and
+every expression on this page has been parsed, loaded, and evaluated by that
+collector against a real scrape on the `docker-desktop` provider. That is recent
+and the history matters: **until V1-S3-011-PR1 no Prometheus had parsed, loaded,
+or evaluated any expression on this page**, and everything published here rested
+on fixtures somebody wrote to look like a scrape. [`V1-S3-011-PR2`](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md)
+asked the same expressions before, during, and after a real serving pod was
+replaced.
+
+What is still **not** selected is a durable store, a dashboard, or an alerting
+path — [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
 D8 leaves that to the open question [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
-carries — nothing scrapes either InferOps endpoint, this chart has never been
-installed, and **until V1-S3-011-PR1 no Prometheus had parsed, loaded, or evaluated any expression on this
-page**.
+carries. The collector's series live in an `emptyDir` and go with its pod, so
+nothing here is a store anything may depend on, and an expression being
+answerable is not the same as anyone being told when its answer changes.
 
 [The collection document](kubernetes-telemetry-collection.md) says what a collector
 would find. This one says what an operator could then ask, in what vocabulary, and —

@@ -102,6 +102,7 @@ PLATFORM_WORKFLOWS = (
     "kubernetes-certification.sh",
     "kubernetes-multi-replica-certification.sh",
     "helm-upgrade-rollback.sh",
+    "kubernetes-pod-restart.sh",
     "telemetry-collection-verify.sh",
     "api-image.sh",
     "model-seed-image.sh",
@@ -110,16 +111,17 @@ PLATFORM_WORKFLOWS = (
 
 # The platform workflows that mutate a target, as distinct from target-detect.sh,
 # which only ever reports. Every one of these must call the provider-aware guard
-# before its first mutation. Both certifications now act on whichever provider
-# that guard verified; helm-upgrade-rollback.sh still relies on the front-door
-# check and then refuses anything but the kind cluster its descriptor describes,
-# until V1-S3-011-PR2 ports it.
+# before its first mutation, and every one of them now acts on whichever provider
+# that guard verified. V1-S3-011-PR2 removed the last exception:
+# helm-upgrade-rollback.sh used to pass the front-door check and then refuse
+# anything but the kind cluster its descriptor pinned.
 MUTATING_PLATFORM_WORKFLOWS = (
     "terraform-prerequisites.sh",
     "helm-lifecycle.sh",
     "kubernetes-certification.sh",
     "kubernetes-multi-replica-certification.sh",
     "helm-upgrade-rollback.sh",
+    "kubernetes-pod-restart.sh",
     "telemetry-collection-verify.sh",
     "api-image.sh",
     "model-seed-image.sh",
@@ -939,30 +941,31 @@ def test_the_docker_desktop_cluster_cites_only_its_own_evidence() -> None:
     describe *this* provider". Borrowing kind's record is what must stay
     impossible.
 
-    The status stays `planned`. Promoting the release layer to what that
-    certification installed is V1-S3-011-PR2's reconciliation, and promoting one
-    row ahead of its siblings would make the inventory disagree with itself.
+    V1-S3-011-PR2 promoted this row along with the whole release layer, which is
+    the reconciliation the previous version of this test was waiting for. What it
+    may not do is rest that promotion on the other provider's record, and that is
+    what stays asserted: both providers are `implemented`, and each cites a record
+    about itself.
     """
     inventory = load_json(OWNERSHIP_PATH)
     rows = {resource["resourceId"]: resource for resource in inventory["resources"]}
 
-    assert rows["kind-cluster"]["v1Status"] == "implemented"
+    for provider_row in ("kind-cluster", "docker-desktop-cluster"):
+        assert rows[provider_row]["v1Status"] == "implemented", provider_row
 
     desktop = rows["docker-desktop-cluster"]
-    assert desktop["v1Status"] == "planned"
-
     reference = desktop["evidenceRef"]
-    if reference is not None:
-        record = REPO_ROOT / reference
-        assert record.is_file(), reference
-        text = record.read_text(encoding="utf-8")
-        assert any(marker in text for marker in PROVIDER_MARKERS["docker-desktop"]), (
-            f"{reference} is not a record about docker-desktop"
-        )
-        assert all(
-            marker not in text.split("## Limitations")[0]
-            for marker in PROVIDER_MARKERS["kind"]
-        ), f"{reference} rests a docker-desktop row on a kind result"
+    assert reference, "an implemented row cites the run that moved it"
+    record = REPO_ROOT / reference
+    assert record.is_file(), reference
+    text = record.read_text(encoding="utf-8")
+    assert any(marker in text for marker in PROVIDER_MARKERS["docker-desktop"]), (
+        f"{reference} is not a record about docker-desktop"
+    )
+    assert all(
+        marker not in text.split("## Limitations")[0]
+        for marker in PROVIDER_MARKERS["kind"]
+    ), f"{reference} rests a docker-desktop row on a kind result"
 
 
 # --------------------------------------------------------------------------

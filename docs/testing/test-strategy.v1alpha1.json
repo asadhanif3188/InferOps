@@ -411,7 +411,7 @@
     {
       "layerId": "failure-and-resilience",
       "name": "Failure and resilience",
-      "purpose": "Provoke the failures the architecture names as canonical errors — model not ready, runtime unreachable, timeout — against the real runtime rather than against an anticipated mock.",
+      "purpose": "Provoke the failures the architecture names as canonical errors \u2014 model not ready, runtime unreachable, timeout \u2014 against the real runtime rather than against an anticipated mock.",
       "lane": "real-runtime",
       "environment": "capable-host",
       "marker": "failure",
@@ -426,7 +426,7 @@
       "publishable": true,
       "v1Status": "planned",
       "evidenceRef": null,
-      "notes": "Full C3 failure certification — denial, retry, and recovery proven exhaustively — is out of V1 scope. What V1 needs from this layer is that each canonical error is produced by the condition it names."
+      "notes": "Full C3 failure certification \u2014 denial, retry, and recovery proven exhaustively \u2014 is out of V1 scope. What V1 needs from this layer is that each canonical error is produced by the condition it names."
     },
     {
       "layerId": "capacity-and-load",
@@ -804,8 +804,38 @@
       "requiredCertification": "C2",
       "requiresRealModel": false,
       "evidenceOwner": "environment",
-      "v1Status": "planned",
-      "evidenceRef": null,
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr2-scoped-cleanup.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+      "statement": "A release upgraded with a controlled change and then with a fault the cluster cannot run is detected off the workload the fault was injected into, rolled back to its last known-good revision, and serves a real model-generated completion again.",
+      "layers": [
+        "kubernetes-smoke",
+        "real-runtime-smoke"
+      ],
+      "environment": "local-kubernetes",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "environment",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md",
+      "deferralReason": null
+    },
+    {
+      "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+      "statement": "Deleting one serving runtime pod produces a replacement with a different name and a different UID that remounts the same Terraform-owned claim, finds the same artifact file by byte count, SHA-256, inode and modification time, verifies it inside the cluster, and serves a real model-generated completion again without anything re-acquiring the model.",
+      "layers": [
+        "kubernetes-smoke",
+        "real-runtime-smoke"
+      ],
+      "environment": "local-kubernetes",
+      "requiredCertification": "C2",
+      "requiresRealModel": true,
+      "evidenceOwner": "environment",
+      "v1Status": "certified",
+      "evidenceRef": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md",
       "deferralReason": null
     },
     {

@@ -1,9 +1,28 @@
 # Certifying multi-replica inference through Kubernetes
 
-Status: **published procedure, not yet executed.** The workflow described here is
-committed and its descriptor validates. Nothing in this repository has installed
-the chart into a cluster, and no multi-replica `C2` record exists. Every figure in
-a future record comes from a run; none is quoted here.
+Status: **executed, and refused at the capacity gate. Multi-replica serving is
+NOT certified.** `V1-S3-011` ran this workflow on the `docker-desktop` provider
+and it stopped before installing anything:
+
+```text
+REFUSED multi-replica certification at stage capacity: this host cannot hold the
+profile.
+  uncommitted cluster memory: 8484278272 bytes available, 8657043456 bytes required.
+```
+
+Short by 172 765 184 bytes — about 165 MiB — held by workloads in another
+namespace that belong to unrelated work and are not this project's to remove.
+They were not removed.
+
+**A refusal is the evidence, and it is not a weaker form of a certification.** No
+multi-replica `C2` record exists, the gate was not weakened, and the replica count
+was not reduced to fit: a certification of fewer replicas than the profile
+requests is not this certification. The refusal is recorded at
+`.cache/inferops/certification/k8s-multi-replica-inference-diagnostics.json`, and
+the run is described in
+[the reference-provider paved road](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md).
+
+Every figure in a future record comes from a run; none is quoted here.
 
 This procedure answers one question the
 [single-replica certification](kubernetes-real-inference-certification.md)
@@ -273,14 +292,16 @@ Before an authorized run, everything the
 requires, and one thing more: enough host and cluster capacity for two API
 replicas, which the preflight measures rather than assumes.
 
-The same blocker applies and is stated here rather than discovered at the first
-image pull. **No InferOps API image is published.**
-`platform-api-container-image` is `planned` in
-[the ownership inventory](../architecture/resource-ownership.md), no Dockerfile is
-committed, and until an image exists and is loaded into the cluster an authorized
-run stops at the `release` stage with a pull failure and a diagnostics record
-saying so. That is the workflow behaving correctly; it is not a workflow that has
-been run.
+**The API image is no longer what stops this workflow.**
+`platform-api-container-image` is `implemented` in
+[the ownership inventory](../architecture/resource-ownership.md),
+[`deploy/api/Dockerfile`](../../deploy/api/Dockerfile) is committed, and the image
+is loaded into the selected cluster by that provider's own image path. What
+stopped this workflow on the reference host is the capacity gate above, which is a
+different thing and a better one: it refuses **before** anything is installed, and
+it reads the node's own allocatable memory minus what is already requested on it
+rather than the engine's total — which on that host is the difference between
+passing and refusing.
 
 ## Running it
 

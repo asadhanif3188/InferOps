@@ -1,21 +1,21 @@
 # Upgrading a release, breaking it on purpose, and getting it back
 
-Status: **written and never run.** The descriptor, the operating script, the
-assertions, and the record all exist;
-[`tests/architecture/test_helm_upgrade_rollback.py`](../../tests/architecture/test_helm_upgrade_rollback.py)
-drives every one of them against synthetic documents, and **no cluster in this
-project has executed any of it**. It cannot be executed yet, and the reason is
-the same one line that blocks
-[the lifecycle procedure](helm-release-lifecycle.md): **no InferOps API image is
-published.** `platform-api-container-image` is `planned` in
-[the ownership inventory](../architecture/resource-ownership.v1alpha1.json), no
-`Dockerfile` is committed anywhere in this repository, and a release whose API
-image does not resolve never becomes ready.
+Status: **executed on the `docker-desktop` provider.** The record is
+[`docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md`](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md).
+A real release was installed, upgraded with a controlled change, upgraded again
+with a fault the cluster could not run, detected off the workload the fault was
+injected into, rolled back to its last known-good revision, and a real model
+answered again.
 
-That is a blocker and not a caveat. Nothing below may be cited as evidence that
-this chart upgrades, fails, rolls back, or recovers. What exists is the exact
-procedure and the exact assertions, so that the day an API image exists the
-answer is one command away rather than a design question.
+This document previously said the experiment was written and never run, and that
+the blocker was one line: **no InferOps API image is published.** That image now
+exists and is loaded into the selected cluster. Five attempts were needed, four
+of them failed, and each failure found a defect that only an execution could
+find; they are recorded in the proof record rather than omitted from it.
+
+What that record establishes is bounded to `docker-desktop`, one Windows host,
+CPU only, one replica of each tier, and one injected fault. It certifies no other
+provider.
 
 ## What it answers, and what `helm rollback` does not
 
@@ -161,7 +161,9 @@ and measures no throughput, no latency distribution, and no in-flight request.
   project's;
 - the Terraform prerequisite layer applies — the script applies it;
 - the model cache claim already holds the pinned artifact;
-- **an InferOps API image exists and is loaded into the cluster.** It does not.
+- **an InferOps API image exists and is loaded into the cluster.** It does: it is
+built by [`scripts/environment/api-image.sh`](../../scripts/environment/api-image.sh)
+and made visible to the selected cluster by that provider's own image path.
   See the status note at the top.
 
 The values file is required and nothing is assumed: the chart's shipped defaults
@@ -220,9 +222,9 @@ descriptor and refused if it is not.
 These are the descriptor's own `limitations`, and a test asserts that every one
 of them appears here:
 
-- The evidence is local real Kubernetes on a single-node kind cluster and implies
-  nothing about a production upgrade, a multi-node rollout, or a release under
-  load.
+- The evidence is local real Kubernetes on a single-node cluster belonging to one
+  explicitly selected provider, and implies nothing about another provider, a
+  production upgrade, a multi-node rollout, or a release under load.
 - The unhealthy candidate is one injected fault - a byte count the mounted
   artifact cannot match - and detecting it says nothing about faults this
   experiment does not inject, including a runtime that starts and answers

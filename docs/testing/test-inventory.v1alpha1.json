@@ -687,6 +687,14 @@
       "note": "No published claim covers it. It reads a committed descriptor, a chart render, a shell script, and documents a run would have written; it installs nothing, upgrades nothing, breaks nothing, and contacts no cluster, so it could not support a claim that a release upgrades and rolls back safely if it named one. That claim belongs to the real-runtime layer, which runs the workflow instead of reading it, and the workflow cannot be run at all until an InferOps API image exists."
     },
     {
+      "module": "tests/architecture/test_kubernetes_pod_restart.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The Kubernetes pod-restart persistence experiment against every way a pod coming back could be read as a model surviving: that the descriptor cannot disagree with the Kubernetes real-inference certification about the providers, the release, the request, or a budget they share, cannot name a disruption other than deleting one serving pod, cannot describe that pod as a declared object, cannot claim a replacement this workflow made rather than the Deployment controller, cannot drop an artifact comparison, cannot stop requiring a different pod UID, cannot set a replacement budget shorter than a healthy rollout, cannot poll fast enough to spin against the API server, and cannot write its record anywhere version control does not ignore; that the collected facts are held to it, so the same pod name, the same pod UID, a replacement owned by another workload, a different claim, a claim rebound to another volume, a writable remount, a changed byte count or digest, a mount that is not revision-scoped, a moved release revision, an integrity init container that never ran, readiness that never dropped, too few readiness samples, and timings out of order or beyond budget each stop the run; that an artifact carrying a new inode or a new modification time stops the run, which is the only way a re-acquired artifact can be told apart from a surviving one, since both have the pinned size and the pinned digest; that an acquisition job appearing across the replacement, or one whose identity changed, stops the run; that a baseline which never answered, answered from a mock, or was never ready stops the run, and so does a mock, an empty, or an unaccounted-for answer afterwards; that the record carries no prompt and no completion, names the provider, says whether InferOps pinned the node image, and states that its timings are not a benchmark; and that the operating script verifies its target before installing, issues exactly one delete naming exactly one pod with no label selector and no --all, computes the digest rather than repeating the pin, reads the read-only mount off the serving container rather than off the acquisition hook's writable one, and deletes no namespace, no claim, and no cluster.",
+      "claims": [],
+      "note": "No published claim covers it. It reads a committed descriptor, a shell script, and documents a run would have written; it installs nothing, deletes no pod, and contacts no cluster, so it could not support a claim that a model artifact survives a real pod replacement if it named one. That claim belongs to the real-runtime layer, which runs the workflow instead of reading it, and its result is recorded in docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md."
+    },
+    {
       "module": "tests/architecture/test_kubernetes_troubleshooting.py",
       "layer": "architecture-inventory",
       "marker": "architecture",
@@ -725,6 +733,16 @@
       "claimId": "sustained-throughput-and-capacity-under-load",
       "reason": "Deferred out of V1. The capacity-and-load layer is deferred and its marker is deselected by default, so a module here would be a module nothing may publish the output of.",
       "coveredBy": null
+    },
+    {
+      "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+      "reason": "No pytest module upgrades a release, breaks it, or rolls it back. tests/architecture/test_helm_upgrade_rollback.py reads the descriptor, the script and documents a run would have written, and it contacts no cluster -- so it can refuse a bad record and cannot produce a good one.",
+      "coveredBy": "the operator-run workflow scripts/environment/helm-upgrade-rollback.sh, whose executed result is recorded in docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md"
+    },
+    {
+      "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+      "reason": "No pytest module deletes a pod or reads a mounted claim. tests/architecture/test_kubernetes_pod_restart.py reads the descriptor, the script and documents a run would have written, and it contacts no cluster.",
+      "coveredBy": "the operator-run workflow scripts/environment/kubernetes-pod-restart.sh, whose executed result is recorded in docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md"
     }
   ]
 }

@@ -106,6 +106,13 @@ def _print_check(experiment: Experiment) -> None:
         "outside the release"
     )
     print(
+        "              aimed at the workload by --set "
+        f"{experiment.fault.scoped_to_workload_by_values_path}="
+        f"{experiment.fault.scoped_to_workload_by_value} on the same upgrade, so "
+        "the acquisition hook the same byte count would otherwise fail is not "
+        "rendered"
+    )
+    print(
         f"detection     decisive: {', '.join(experiment.detection.decisive_signals)}; "
         f"polled every {experiment.detection.poll_interval_ms} ms"
     )

@@ -123,6 +123,19 @@ CANDIDATE_CONFIG_MAP_KEY = "INFEROPS_SERVICE_VERSION"
 #: failure is fast, decisive, and printed by the init container that made it.
 FAULT_MECHANISM = "model-artifact-byte-count-mismatch"
 FAULT_VALUES_PATH = "model.artifact.sizeBytes"
+# The one other value the unhealthy-candidate upgrade sets, and the only reason
+# it sets two. `model.artifact.sizeBytes` renders into the model acquisition
+# hook as well as into the serving runtime's `verify-model` init container, and
+# the hook runs first: `pre-upgrade`, weight -5, before any workload object is
+# updated. A hook asked to acquire a one-byte artifact therefore fails the
+# upgrade outright, no unhealthy serving pod is ever created, and the experiment
+# has nothing at the workload to detect or to recover -- which is exactly what
+# the first real execution of this experiment produced. Not rendering the hook
+# for the one upgrade that carries the fault puts the fault back where the
+# descriptor says it lands. The rollback restores both values together, because
+# a rollback restores a revision rather than a value.
+FAULT_SCOPE_VALUES_PATH = "model.acquisition.enabled"
+FAULT_SCOPE_VALUE = "false"
 FAULT_WORKLOAD = "serving-runtime"
 FAULT_CONTAINER = "verify-model"
 FAULT_SCOPE = "release"
@@ -263,6 +276,8 @@ class FaultInjection:
     mechanism: str
     values_path: str
     injected_size_bytes: int
+    scoped_to_workload_by_values_path: str
+    scoped_to_workload_by_value: str
     fails_in_container: str
     fails_in_workload: str
     scope: str
@@ -567,6 +582,9 @@ def _read_fault(fault: Mapping[str, Any]) -> FaultInjection:
             "mechanism",
             "valuesPath",
             "injectedSizeBytes",
+            "scopedToWorkloadByValuesPath",
+            "scopedToWorkloadByValue",
+            "scopedToWorkloadBecause",
             "failsInContainer",
             "failsInWorkload",
             "scope",
@@ -581,6 +599,9 @@ def _read_fault(fault: Mapping[str, Any]) -> FaultInjection:
         },
     )
     _string(fault.get("description"), "faultInjection.description")
+    _string(
+        fault.get("scopedToWorkloadBecause"), "faultInjection.scopedToWorkloadBecause"
+    )
     return FaultInjection(
         mechanism=_string(fault.get("mechanism"), "faultInjection.mechanism"),
         values_path=_string(fault.get("valuesPath"), "faultInjection.valuesPath"),
@@ -588,6 +609,14 @@ def _read_fault(fault: Mapping[str, Any]) -> FaultInjection:
             fault.get("injectedSizeBytes"),
             "faultInjection.injectedSizeBytes",
             minimum=MINIMUM_INJECTED_SIZE_BYTES,
+        ),
+        scoped_to_workload_by_values_path=_string(
+            fault.get("scopedToWorkloadByValuesPath"),
+            "faultInjection.scopedToWorkloadByValuesPath",
+        ),
+        scoped_to_workload_by_value=_string(
+            fault.get("scopedToWorkloadByValue"),
+            "faultInjection.scopedToWorkloadByValue",
         ),
         fails_in_container=_string(
             fault.get("failsInContainer"), "faultInjection.failsInContainer"
@@ -1115,6 +1144,17 @@ def _validate_fault(experiment: Experiment) -> None:
         raise ExperimentError(
             f"the only fault this experiment may inject is '{FAULT_MECHANISM}' "
             f"through '{FAULT_VALUES_PATH}'"
+        )
+    if (
+        fault.scoped_to_workload_by_values_path != FAULT_SCOPE_VALUES_PATH
+        or fault.scoped_to_workload_by_value != FAULT_SCOPE_VALUE
+    ):
+        raise ExperimentError(
+            "the injected fault must be scoped to the serving runtime by setting "
+            f"'{FAULT_SCOPE_VALUES_PATH}={FAULT_SCOPE_VALUE}' on the same "
+            "upgrade. The same byte count renders into the model acquisition "
+            "hook, which fails before the workload is reached, and a failure "
+            "there is not the failure this experiment injects"
         )
     if (
         fault.fails_in_container != FAULT_CONTAINER

@@ -1,20 +1,22 @@
 # Platform prerequisites: what Terraform owns, its state, and its teardown
 
-Status: **written, formatted, validated, and never applied.** This configuration
-has never been applied to any cluster, by anyone, on any machine. No namespace
-was created, no claim was provisioned, no state file exists, and every
-Terraform-owned row in
-[the ownership inventory](../architecture/resource-ownership.md) is still
-`planned` — which is the same status every Helm row kept after the chart was
-written, and for the same reason. A configuration is a file. Running one is a
-different event, and this document does not report it.
+Status: **applied, re-applied, and destroyed on the `docker-desktop` provider.**
+`V1-S3-011` ran this configuration against the Kubernetes cluster Docker Desktop
+provides: it created the namespace and the model cache claim, a re-apply reported
+no changes, releases were installed into and removed from the namespace it owns,
+and a guarded `destroy` removed both. Every Terraform-owned row in
+[the ownership inventory](../architecture/resource-ownership.md) is now
+`implemented` and cites the run that moved it.
 
-What *is* established is stated exactly: `terraform fmt` and `terraform validate`
-pass, and an architecture suite compares this configuration against the ownership
-inventory in both directions. That is `local-static` evidence about files. The
-plan and apply figures a reader would want — how long an apply takes, whether a
-re-apply is a no-op in practice, what a destroy leaves behind — are not here,
-because nothing has produced them.
+That is one provider, on one Windows host. `kind` has not executed this
+configuration since the ownership realignment, and
+[ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
+forbids reading one provider's answer as the other's.
+
+What was already established remains what it was: `terraform fmt` and
+`terraform validate` pass, and an architecture suite compares this configuration
+against the ownership inventory in both directions. That is `local-static`
+evidence about files, and it is a different kind of evidence from a run.
 
 ## Where it lives
 
@@ -209,8 +211,8 @@ cluster is not something V1 has.
 
 ## Apply, and what a second apply does
 
-Derived from the provider's semantics, **not measured** — nothing has applied
-this.
+Derived from the provider's semantics, and since `V1-S3-011` also observed on
+`docker-desktop`.
 
 | Operation | Expected |
 |---|---|
@@ -317,13 +319,17 @@ with no cluster and no network:
 
 ## What this does not establish
 
-- **That any of it applies.** Nothing has run `terraform apply`. Every row in the
-  apply table above is derived from provider semantics, not observed.
-- **That the claim binds.** It has never been bound, because binding needs a pod
-  and no pod has ever mounted it. `bound-persistent-volume` remains a
-  controller-owned row nothing has exercised.
-- **That a re-apply is a no-op.** It is expected to be, for the reason given, and
-  expectation is not measurement.
+- **That it applies on any provider but the one that ran it.** `terraform apply`,
+  a re-apply, and `terraform destroy` have all run, on `docker-desktop` only.
+- **That the claim binds under another provisioner.** It bound here:
+  `WaitForFirstConsumer` held it `Pending` until a serving pod mounted it, and it
+  stayed bound to the same PersistentVolume across a pod replacement. The
+  StorageClass that did that is `rancher.io/local-path`, and nothing here says
+  what another provisioner would do.
+- **That a re-apply is a no-op in general.** It was one here, repeatedly:
+  `No changes. Your infrastructure matches the configuration.` on every re-apply
+  during `V1-S3-011`. That is an observation on one provider, not a property
+  proved for every cluster.
 - **That the prerequisite label protects anything.** It is set here. The teardown
   that must exclude it has not been written, and until a sweep exists to exclude
   it, the label is a marker with no enforcement behind it.

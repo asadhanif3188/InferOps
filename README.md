@@ -10,9 +10,20 @@ reproducible evidence.
 > adapters, an ASGI inference API, workload scaffolding, verified model-cache
 > tooling, a loopback-only local composition workflow, a C2 real-runtime
 > certification workflow, a model lifecycle state model, a measured local serving
-> baseline, and software-supply-chain evidence. It does not provide a deployable
-> platform, a production network server, or a released V1 capability. Nothing here
-> deploys or admits a workload.
+> baseline, a Terraform prerequisite layer and a Helm chart that have been applied
+> and installed on a real local Kubernetes cluster, and software-supply-chain
+> evidence. It does not provide a production network server or a released V1
+> capability, and nothing here **admits** a workload — no admission control, no
+> gateway, and no multi-tenancy exist.
+>
+> It **does** now deploy one. `V1-S3-011` installed the real profile into the
+> Kubernetes cluster Docker Desktop provides, loaded the pinned model from a
+> Terraform-owned claim, served a real completion through the release's own
+> Service, upgraded and rolled the release back, replaced a deleted serving pod
+> against the surviving claim, and removed everything it owns. That is one
+> provider, on one Windows host, on CPU, with one replica of each tier, and the
+> multi-replica profile was refused at the capacity gate on that host. It is not a
+> portable production Kubernetes platform and no evidence here claims to be one.
 >
 > A serving runtime and model **have** been selected, and the selected model
 > **does** now serve real completions through the InferOps API on a contributor's
@@ -20,10 +31,11 @@ reproducible evidence.
 > [the C2 certification result](docs/proof/serving/v1-s2-004-c2-certification-result.md)
 > and [the measured baseline](docs/proof/serving/v1-s2-005-baseline-raw-results.md).
 > That is a working local path backed by evidence, not a capability anyone can
-> deploy. Every run behind it is loopback-only, on one host, on CPU, started by
-> hand under explicit authorization. Nothing here is exposed to a network,
-> authenticated, authorized, scheduled, or defended, and the manifests that exist
-> are apparatus rather than a product.
+> deploy for someone else. Every run behind it is loopback-only, on one host, on
+> CPU, started by hand under explicit authorization against a cluster the operator
+> already owns. Nothing here is exposed to a network, authenticated, authorized,
+> or defended, and the Kubernetes objects that exist are apparatus rather than a
+> product.
 
 ## Repository status
 
@@ -31,7 +43,12 @@ The repository has established its public foundations, implemented the local
 developer paths through the contract, adapters, ASGI API, and scaffolder, and
 proved a real local serving path end to end: the pinned runtime loads the
 hash-verified model, the API serves a real completion, and the run is certified at
-`C2`. The [developer quick start](docs/developer-quick-start.md) is the shortest
+`C2`. Sprint 3 then put that path through Kubernetes on the `docker-desktop`
+reference provider — Terraform prerequisites, a Helm release, a real completion
+through the release's Service, a controlled upgrade and rollback, a deleted pod
+replaced against a surviving claim, real telemetry collection, and a scoped
+teardown that left the operator's cluster intact. Every one of those results names
+its provider and certifies no other. The [developer quick start](docs/developer-quick-start.md) is the shortest
 verified entry point; the real path needs a capable host and explicit
 authorization. Any capability claim must link to reproducible evidence and
 identify whether the result is documented, synthetic, mock, estimated, or produced
@@ -45,9 +62,9 @@ by a real runtime.
 | Contribution and review | [CONTRIBUTING.md](CONTRIBUTING.md) | Accepted repository convention |
 | Repository governance | [docs/governance/repository.md](docs/governance/repository.md) | Accepted for this repository skeleton |
 | Supported-host prerequisites | [docs/prerequisites.md](docs/prerequisites.md) | Documentation and local development supported; serving requirements measured on one host |
-| Local cluster provider contract | [docs/environment/local-cluster-provider-contract.md](docs/environment/local-cluster-provider-contract.md) | Accepted in [ADR 0011](docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md): InferOps consumes an existing `kind` or Docker Desktop cluster the operator selects, and creates or deletes none. Only the `kind` guard exists, for one pinned name; nothing yet identifies a Docker Desktop cluster |
+| Local cluster provider contract | [docs/environment/local-cluster-provider-contract.md](docs/environment/local-cluster-provider-contract.md) | Accepted in [ADR 0011](docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md): InferOps consumes an existing `kind` or Docker Desktop cluster the operator selects, and creates or deletes none. Both guards exist: `kind` by cluster name, and Docker Desktop by binding its node container to the API server port the verified kubeconfig dials. Docker Desktop is the executed V1 reference provider |
 | Local development cluster | [docs/environment/local-cluster.md](docs/environment/local-cluster.md) | An optional `kind` helper since ADR 0011. Executed and evidenced on one Windows host |
-| Kubernetes troubleshooting and cleanup | [docs/environment/kubernetes-troubleshooting.md](docs/environment/kubernetes-troubleshooting.md) | Symptom-oriented diagnosis for cluster, scheduling, OOM, storage, model load, probes, Service, telemetry, Helm, and Terraform, and four separated cleanup radii. The cluster half is executed and evidenced on one Windows host; the release half is derived and has never been installed, and every command is machine-checked against the repository |
+| Kubernetes troubleshooting and cleanup | [docs/environment/kubernetes-troubleshooting.md](docs/environment/kubernetes-troubleshooting.md) | Symptom-oriented diagnosis for cluster, scheduling, OOM, storage, model load, probes, Service, telemetry, Helm, and Terraform, and four separated cleanup radii. Both halves are now executed and evidenced on one Windows host, on the `docker-desktop` provider: the release installs, serves, upgrades, fails, rolls back, and uninstalls without residue. Every command is machine-checked against the repository |
 | Serving runtime and model feasibility | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Procedure executed once; one runtime and model revision selected |
 | Model acquisition | [docs/serving/model-acquisition.md](docs/serving/model-acquisition.md) | Revision-pinned, resumable, hash-verifying workspace cache workflow; executed against the real 1.71 GiB artifact, which downloaded and verified against its published SHA-256. Resumption after interruption is proved synthetically only |
 | Local LLM runtime profile | [docs/serving/local-runtime-profile.md](docs/serving/local-runtime-profile.md) | Digest-pinned process, external model mount, CPU resources, generation defaults, timeouts, and health semantics validated offline |
@@ -66,7 +83,7 @@ by a real runtime.
 | Workload template | [docs/scaffolding/workload-template.md](docs/scaffolding/workload-template.md) | Template, rendering library, and non-overwriting scaffolding command implemented and verified for mock and synchronous profiles; no generated workload is committed |
 | Architecture and ADRs | [docs/architecture/README.md](docs/architecture/README.md) | Seven decisions accepted in part, one accepted with a recorded exception, two accepted |
 | V1 system architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | Design boundary accepted; the platform domain is partly built and everything below it is unbuilt |
-| Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked; no Terraform or Helm exists |
+| Resource ownership | [docs/architecture/resource-ownership.md](docs/architecture/resource-ownership.md) | Ownership inventory accepted and machine-checked. Terraform and Helm both exist and have been applied and installed on `docker-desktop`; twenty rows moved from `planned` to `implemented` and each cites the run that moved it |
 | Project boundaries | [docs/architecture/project-boundaries.md](docs/architecture/project-boundaries.md) | Accepted scope rule; two serving capabilities and no gateway or deep-serving work |
 | Test and CI strategy | [docs/testing/test-strategy.md](docs/testing/test-strategy.md) | Strategy accepted and machine-checked; eight of eleven test layers exist and no CI lane is configured |
 | Python toolchain | [docs/architecture/decisions/ADR-0009-python-toolchain.md](docs/architecture/decisions/ADR-0009-python-toolchain.md) | Packaging, dependency manager, lockfile, linter, formatter, and type checker accepted and executed; no task runner and no CI service selected |

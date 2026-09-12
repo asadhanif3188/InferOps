@@ -120,9 +120,11 @@ scripts/environment/cluster-down.sh
 
 Installing the InferOps release into that cluster is a separate procedure with
 its own document:
-[the release lifecycle](helm-release-lifecycle.md). It has never been run — both
-profiles install an API container and no InferOps API image is published — and
-nothing about it may be read as evidence that the chart installs.
+[the release lifecycle](helm-release-lifecycle.md). It has now been run on the `docker-desktop` provider: an InferOps API
+image is built on the host and loaded into the selected cluster, and the
+chart installs, serves, upgrades, rolls back, and uninstalls. Nothing
+about that may be read as evidence about `kind`, which has not executed
+it since the ownership realignment.
 
 None of these accepts an argument it does not understand. Every one of them
 refuses and exits rather than ignoring it, because on a script that deletes

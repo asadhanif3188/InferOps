@@ -52,6 +52,9 @@ Each of these rests on an executed record in [`docs/proof/`](../proof/).
 | `a-local-cluster-is-created-and-removed-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | real-runtime-smoke | capable-host | C2 | serving |
 | `the-model-artifact-matches-its-published-hash` | real-runtime-smoke | capable-host | C2 | serving |
+| `a-helm-release-installs-and-uninstalls-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
+| `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | kubernetes-smoke, real-runtime-smoke | local-kubernetes | C2 | environment |
+| `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | kubernetes-smoke, real-runtime-smoke | local-kubernetes | C2 | environment |
 
 The cost row is the newest, and its scope is exactly the committed method. It
 certifies that every amount there declares a basis, that only an invoice-backed basis
@@ -145,7 +148,6 @@ may be cited as evidence of anything today.
 | `an-unreachable-runtime-is-a-canonical-error` | adapter, mock-integration, failure-and-resilience | capable-host | C2 | platform |
 | `no-prompt-response-or-secret-reaches-a-log-or-a-metric` | unit, mock-integration, security-scan, real-runtime-smoke | capable-host | C2 | security |
 | `no-credential-or-model-artifact-enters-public-history` | security-scan | repository-only | C0 | security |
-| `a-helm-release-installs-and-uninstalls-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
 
 Two of these rows show the mock boundary doing its work. Both canonical-error claims
 cite the mock layers *and* a real one, and they require `C2`. The mock layers will
@@ -154,9 +156,13 @@ that the condition occurs, or that the runtime produces it in the way the mock's
 author imagined. Only the real layer can, and the matrix will not let the claim reach
 `C2` without it.
 
-The last row is a reminder that "real" and "serving" are different axes. Installing
-and uninstalling a Helm release is a `C2` claim proven in a cluster with no model in
-it at all.
+The three Kubernetes rows in *Certified* are the newest, and every one of them is
+bounded to a single provider. They were established on `docker-desktop`, on one
+Windows host, on CPU, with one replica of each tier, and
+[ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
+forbids reading any of them as a `kind` result. **No multi-replica claim appears
+anywhere in this matrix**: that certification was run and refused at the capacity
+gate on the reference host, and a refusal is not a weaker certification.
 
 ## Deferred
 

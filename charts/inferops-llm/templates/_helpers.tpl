@@ -718,6 +718,24 @@ artifact was measured not to survive, which is the finding that made the Sprint 
 downloader resumable. `wget -c` continues an existing `.part`, and the attempt
 budget bounds it.
 
+**A replacement is staged, never a removal followed by a hope.** An artifact that
+is present and does not match the pins used to be deleted here, before anything
+had been acquired to put in its place. The first real execution of the
+V1-S3-008 upgrade/rollback experiment is what showed the cost of that ordering,
+and it is worth stating plainly because nothing short of a run could have found
+it: that experiment injects a deliberately wrong `model.artifact.sizeBytes`, the
+same value renders into *this* script as well as into the serving runtime's
+verification, and so the hook dutifully discarded a 1.83 GB artifact it then
+could not replace -- leaving the Terraform-owned claim empty and the rollback
+with nothing to roll back to. The claim is a prerequisite this release is a guest
+in. A candidate that cannot be acquired must leave it exactly as it was found, so
+the replacement is staged beside the artifact and moved over it only once it has
+verified.
+
+The cost is disk: for the length of one acquisition the claim holds the old
+artifact and the new one. That is the right trade against emptying a claim
+nothing else can refill.
+
 `$(...)` appears below and the shell evaluates it: Kubernetes substitutes only
 `$(VAR)` references it recognises and leaves the rest exactly as written. Every
 interpolated value reaches that shell, which is why `artifact.repository`,
@@ -747,8 +765,7 @@ if verify "$artifact"; then
 fi
 #
 if [ -e "$artifact" ]; then
-  echo "the claim holds an artifact that does not match the pinned byte count and hash; discarding it" >&2
-  rm -f "$artifact"
+  echo "the claim holds an artifact that does not match the pinned byte count and hash; it will be replaced only by bytes that verify" >&2
 fi
 {{- if eq .Values.model.acquisition.source "seed-image" }}
 seed='{{ .Values.model.acquisition.seedImage.artifactPath }}/{{ .Values.model.artifact.fileName }}'
@@ -756,7 +773,11 @@ if [ ! -f "$seed" ]; then
   echo "REFUSED: the seed image carries no artifact at $seed" >&2
   exit 1
 fi
-cp "$seed" "$artifact.part"
+if ! cp "$seed" "$artifact.part"; then
+  echo "REFUSED: the seed artifact could not be staged onto the claim" >&2
+  rm -f "$artifact.part"
+  exit 1
+fi
 {{- else }}
 attempt=1
 until wget -c -q -O "$artifact.part" '{{ .Values.model.artifact.sourceUrl }}'; do
@@ -778,6 +799,9 @@ done
 if ! verify "$artifact.part"; then
   echo "REFUSED: the acquired bytes do not match the pinned byte count and SHA-256" >&2
   rm -f "$artifact.part"
+  if [ -e "$artifact" ]; then
+    echo "the artifact already on the claim was left exactly as it was found" >&2
+  fi
   exit 1
 fi
 #

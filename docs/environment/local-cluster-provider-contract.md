@@ -28,7 +28,7 @@ workflows that used to re-verify and then refuse anything but the pinned kind
 target, two -- `kubernetes-certification.sh` and
 `kubernetes-multi-replica-certification.sh` -- were ported by V1-S3-011-PR1 and
 now certify whichever supported provider they verified.
-`helm-upgrade-rollback.sh` still refuses, and porting it is V1-S3-011-PR2.
+`helm-upgrade-rollback.sh` was the last workflow that refused a verified non-kind target; V1-S3-011-PR2 ported it, and it now acts on whichever provider the guard verified.
 Every row below that nothing enforces says so, and says who owes it.
 
 ## What InferOps does and does not do to a cluster
@@ -263,8 +263,9 @@ editing them — they are history rather than documentation:
 
 Read across, that says something easy to miss. **The cluster evidence behind
 ADR 0001 exists only for `kind`; the in-cluster runtime evidence behind ADR 0002
-exists only for Docker Desktop.** No InferOps release has been installed on
-either, and neither column certifies the other.
+exists only for Docker Desktop.** An InferOps release has been installed,
+certified, upgraded, rolled back, had a pod replaced under it, and removed — on
+the Docker Desktop column only. Neither column certifies the other.
 
 ## The rules, and which of them anything enforces
 

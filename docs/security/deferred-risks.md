@@ -146,7 +146,7 @@ rendered policy may not be described as a control while the plugin ignores it. S
 
 ### DR-05 — No pod security property is enforced for a pod this platform deploys
 
-**Why deferred.** This platform deploys no pod. The eight pod-security assertions are
+**Why deferred.** This platform deploys pods only into a cluster the operator already owns, under one release it installs and removes itself, and admits nothing from anyone else. The eight pod-security assertions are
 enforced over every manifest committed here, which is a property of five YAML files
 rather than of a cluster. Since `V1-S3-002-PR1` the same six properties are also
 asserted over the chart's committed renders, by
@@ -165,7 +165,9 @@ nothing being applied. Which of the two enforces it is `D14` in the decision rec
 and is explicitly not decided.
 
 **Not claimed.** No document may describe a workload this platform deployed as
-constrained, because it has deployed none. See `EX-04`.
+constrained **by an enforced policy**. It deploys its own release, and what that
+release carries is rendered rather than enforced: the local network plugin
+ignores a NetworkPolicy and no admission control exists. See `EX-04`.
 
 ### DR-06 — The transport delivering a model artifact is not authenticated
 

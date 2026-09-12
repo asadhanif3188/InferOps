@@ -129,9 +129,11 @@ policy.
 
 **Every manifest here is smoke or trial apparatus.** That sentence is why this status
 exists as something separate from `enforced-over-documents`, and it is what `EX-04`
-records. This platform deploys none of these as a serving path, so nothing in this
-block establishes a property of a pod it deployed — it has deployed none — and no
-admission control exists to establish one for a pod it does not own. `DR-05` carries
+records. This platform deploys its own release as a serving path and nothing else, so
+nothing in this block establishes a property of a pod belonging to anyone else,
+and no admission control exists to establish one for a pod it does not own. What
+its own release carries is rendered, and the network policy is not enforced by
+the local plugin. `DR-05` carries
 that gap.
 
 The last row is the other one worth reading precisely. Least exposure means both

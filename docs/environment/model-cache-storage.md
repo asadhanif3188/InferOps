@@ -1,13 +1,18 @@
 # Model cache storage: ownership, revision scoping, integrity, restart, cleanup
 
-Status: **both halves are now written and neither has run inside Kubernetes.**
-The chart mounts a claim, scopes the mount to a revision, and verifies the
-artifact before the runtime starts; the claim itself is declared by
-[the Terraform prerequisite layer](platform-prerequisites.md). No cluster has
-installed the chart — no InferOps API image is published — and no cluster has
-applied the Terraform, so `model-cache-volume-claim` is still `planned` in
-[the ownership inventory](../architecture/resource-ownership.md): a configuration
-nobody has applied provisions nothing.
+Status: **both halves have now run inside Kubernetes, on the `docker-desktop`
+provider.** The chart mounts a claim, scopes the mount to a revision, and verifies
+the artifact before the runtime starts; the claim itself is declared by
+[the Terraform prerequisite layer](platform-prerequisites.md). `V1-S3-011` applied
+that layer, installed the chart against it, filled the claim through the release's
+acquisition hook, loaded the model from it, **deleted the serving pod and watched
+the replacement read the same file**, and removed both layers afterwards.
+`model-cache-volume-claim` is `implemented` in
+[the ownership inventory](../architecture/resource-ownership.md) and cites the run
+that moved it.
+
+That is one provider, on one Windows host. `kind` has executed none of it since
+the ownership realignment.
 
 What *has* been measured is the property underneath all of it — that a stopped
 runtime leaves its artifact behind and the next start reads it without a network
@@ -39,10 +44,10 @@ cache would be a second writer nobody decided on.
 
 `model-acquisition-job` is now rendered, and the chart's `Chart.yaml` declares
 it owned rather than deferred. It is a `pre-install,pre-upgrade` hook, so it
-completes before the runtime Deployment exists to read what it wrote. It is
-**not** evidence that the claim has ever been filled in a cluster: the row stays
-`planned` because no release has installed it, and a pod that finds the claim
-empty is still refused by the check below rather than served from.
+completes before the runtime Deployment exists to read what it wrote. Since `V1-S3-011` it **is** evidence that the claim gets filled in a cluster:
+the row is `implemented`, a release has installed the hook on the
+`docker-desktop` provider, and the hook filled the claim there. A pod that finds
+the claim empty is still refused by the check below rather than served from.
 
 It takes its bytes from one of two places, and the choice is stated in values
 rather than inferred:
@@ -222,17 +227,26 @@ Nothing in this repository deletes the cluster-side claim except
 through
 [`scripts/environment/terraform-prerequisites.sh`](../../scripts/environment/terraform-prerequisites.sh),
 which refuses it without `--confirm` and refuses it while a release is still
-installed — and it has never been run.
+installed. `V1-S3-011` ran it on the `docker-desktop` provider: the namespace and
+the claim were both removed, and the release had already been uninstalled, so
+neither refusal fired.
 
 ## What this does not establish
 
-- **Nothing here has run in Kubernetes.** The init container has never been
-  scheduled, the claim has never been bound, and a rendered manifest is a file.
-  The measured restart is a container-level restart on one host — the same
-  property one layer down, not the same experiment.
+- **The storage underneath the claim was not tested for durability.** The claim
+  bound, the init container ran, and the artifact survived a pod replacement —
+  all on `rancher.io/local-path` inside one node container. Nothing here says what
+  survives a host failure, a Docker Desktop reset, or another provisioner, and
+  what a reset reclaims is still recorded as unknown.
+- **Two different restart experiments exist, and neither replaces the other.**
+  [The container-level measurement](../proof/serving/v1-s3-003-pr1-restart-reload.md)
+  is the same property one layer down, on one host;
+  [the pod-restart record](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md)
+  is the Kubernetes one.
 - **BusyBox reading a 1.71 GiB file under a read-only root filesystem as uid
-  65534 is untested.** The applets it needs were confirmed present in the pinned
-  image; running them under the pod's security context needs a pod.
+  65534 is no longer untested**: the `verify-model` init container did exactly
+  that, under the pod's own security context, and exited zero on every pod start
+  in `V1-S3-011`. On `docker-desktop` only.
 - **`size` and `none` are weaker than they look.** `size` catches a truncated
   file and nothing else; a same-length substitution passes it.
 - **No figure here is a performance claim.** The load times quoted are from one

@@ -346,9 +346,14 @@ throughput figure, the ten deliberately wrong queries and the rule that refuses 
 and the six questions that have no answer — is in
 [the correlated query document](telemetry-correlation-queries.md) and its record.
 
-Nothing there changes anything here: the queries have been parsed, checked against the
-catalog's placement rules, and evaluated against synthetic fixtures by this
-repository's own evaluator, and **no Prometheus has parsed, loaded, or evaluated one**.
+That document has since changed, and so has this one: the queries were parsed,
+checked against the catalog's placement rules, and evaluated against synthetic
+fixtures by this repository's own evaluator, and since `V1-S3-011` **a real
+Prometheus has parsed, loaded, and evaluated every one of them** against a real
+scrape of both InferOps jobs on the `docker-desktop` provider. See
+[the collection record](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)
+and [what telemetry saw while a serving pod was replaced](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md).
+That is one provider, on one host; it says nothing about `kind`.
 
 ## Running the checks
 

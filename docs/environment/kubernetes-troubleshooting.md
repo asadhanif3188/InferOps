@@ -1,27 +1,45 @@
 # Kubernetes troubleshooting and cleanup
 
-Status: **the cluster half of this page was executed; the release half was
-not.** Everything about creating, verifying, scheduling into, and tearing down
-the `inferops-dev` cluster has been run on one Windows host and recorded in
+Status: **both halves have now been executed, on one provider.** Everything about
+creating, verifying, scheduling into, and tearing down the `inferops-dev` `kind`
+cluster was run on one Windows host and recorded in
 [the cluster smoke evidence](../proof/environment/v1-s0-002-pr2-cluster-smoke.md)
 and [the cluster lifecycle result](../proof/environment/v1-s3-001-pr1-cluster-lifecycle.md).
-Everything about the `inferops-llm` release — install, upgrade, rollback, model
-load, probes, Service, telemetry scrape, uninstall — **has never been run by
-anybody, on any cluster**, and every symptom entry below that concerns it is
-derived from the chart, the scripts, the descriptors, and the tooling rather than
-observed.
+Everything about the `inferops-llm` release — install, model load, probes,
+Service, telemetry scrape, upgrade, rollback, pod replacement, and uninstall —
+has now been run on the Kubernetes cluster **Docker Desktop** provides, and is
+recorded in
+[the reference-provider paved road](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md),
+[the upgrade and rollback experiment](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md),
+and [the pod-restart experiment](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md).
 
-**The blocker is one line, and it is the same one three other documents open
-with.** `platform-api-container-image` is `planned` in
-[the ownership inventory](../architecture/resource-ownership.md), the committed
-real values still carry a placeholder digest for it, and a release whose API
-image does not resolve never becomes ready — so `helm install --wait` reaches its timeout before
-any of the release symptoms below can occur. **Which failure the kubelet reports
-depends on the pull policy**, and the two are different words: see
+**What that does and does not make the entries below.** The symptoms this page
+describes are still derived from the chart, the scripts, the descriptors, and the
+tooling rather than from having each been *provoked* — a page of faults is not a
+page of faults somebody caused on purpose. Several of them were provoked, by
+accident or by design, during `V1-S3-011`, and those are called out where they
+appear. The rest remain derived, and this page says which is which rather than
+letting an executed release imply an executed symptom.
+
+The blocker this page used to open with is gone. `platform-api-container-image`
+is `implemented` in [the ownership inventory](../architecture/resource-ownership.md),
+[`deploy/api/Dockerfile`](../../deploy/api/Dockerfile) is committed, and the image
+is built on the host and made visible to the selected cluster by that provider's
+own image path. A release whose API image resolves becomes ready, and one has.
+
+**The committed real values still carry a placeholder digest for it**, and that
+has not changed: the image is built on a contributor's own machine and published
+to no registry, so no digest this repository could commit would resolve anywhere
+else. An executed run supplies the host's own digest as an overlay, which the
+image script prints. Following this page with the committed values alone still
+reaches an image that does not resolve, and **which failure the kubelet reports
+depends on the pull policy** — the two are different words: see
 [the scheduling table](#scheduling-resources-and-out-of-memory).
 
-That is a blocker and not a caveat. Nothing on this page may be cited as evidence that the release installs,
-serves, fails, recovers, or uninstalls.
+**Every result behind this page is `docker-desktop`'s**, on one Windows host, on
+CPU, with one replica of each tier.
+[ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
+forbids reading any of it as a `kind` result.
 
 This page is organised by **what you observed**, because the observation is the
 only thing you have when you arrive. Its host-local sibling —
@@ -200,7 +218,7 @@ kubectl --kubeconfig .kube/inferops-dev.config --context kind-inferops-dev \
 | `Pending`, event `Insufficient cpu` or `Insufficient memory` | The single kind node cannot satisfy the request. This is capacity, not configuration |
 | `Pending` with no scheduling event at all | Usually an unbound volume rather than capacity — see [storage](#model-cache-and-storage) |
 | `ContainerCreating` for minutes | An image pull, or a volume mount that has not completed. `describe` names which |
-| `ErrImageNeverPull` on the API container | **The expected state today**, for the committed [`real-values.yaml`](../../charts/inferops-llm/ci/real-values.yaml): it sets `api.image.pullPolicy: Never`, so the kubelet never attempts a pull and says the image is not present. No InferOps API image is published, and nothing in this repository can fix it |
+| `ErrImageNeverPull` on the API container | **The expected state today**, for the committed [`real-values.yaml`](../../charts/inferops-llm/ci/real-values.yaml): it sets `api.image.pullPolicy: Never`, so the kubelet never attempts a pull and says the image is not present. An InferOps API image is built by `scripts/environment/api-image.sh` and loaded by the provider's own image path |
 | `ErrImagePull` / `ImagePullBackOff` on the API container | The same absent image, seen through the chart's shipped `IfNotPresent` default instead. Same cause, same non-fix |
 | `ErrImagePull` on the runtime or `verify-model` | The digest-pinned image is not in the node. `kind load docker-image <image> --name inferops-dev` puts one there — **name the cluster**, or kind loads into its own default `kind` cluster instead. Nothing here pulls implicitly |
 | `OOMKilled` on `runtime` | The `3Gi` limit was reached, or the engine's own ceiling was. The two are different and the recovery differs |
@@ -223,15 +241,16 @@ own those figures.
 ## Model cache and storage
 
 The claim is a **prerequisite**, not part of the release. Terraform owns it, the
-chart mounts it read-only, and the acquisition job that would fill it is
-`deferred`. That division is the whole of
+chart mounts it read-only, and the chart's own `pre-install,pre-upgrade`
+acquisition hook fills it — the single sanctioned place where a release writes
+into a prerequisite. That division is the whole of
 [the ownership boundary](../architecture/resource-ownership.md), and most storage
 symptoms here are one half of it acting without the other.
 
 | | Owner | Created by | Removed by |
 |---|---|---|---|
 | The claim `inferops-model-cache` | `terraform` | `terraform apply` | `terraform destroy` |
-| The bytes inside it | `helm`, through the deferred acquisition job | — | **Nothing in a release.** They outlive it |
+| The bytes inside it | `helm`, through the acquisition hook | — | **Nothing in a release.** They outlive it |
 | The mount | `helm` | `helm install` | `helm uninstall` |
 
 ```text
@@ -246,11 +265,11 @@ kubectl --kubeconfig .kube/inferops-dev.config --context kind-inferops-dev \
 |---|---|
 | The claim is `Pending` and nothing mounts it | **Correct, not a fault.** The local provisioner binds on first consumer, which is why `wait_until_bound` defaults to `false`; a Terraform apply that waited would time out on a healthy prerequisite |
 | The claim is `Pending` and a pod is `Pending` on it | Now it matters. Read the claim's events: no storage class, or no capacity |
-| `verify-model` exits 1 with `REFUSED: the mounted model cache holds no artifact for the declared revision` | **The likeliest one**, because the acquisition job is deferred and the claim is filled out of band. There is no file at the revision-scoped path: either nothing filled the claim, or `model.revision` and `model.artifact.repository` do not match the bytes that are in it |
+| `verify-model` exits 1 with `REFUSED: the mounted model cache holds no artifact for the declared revision` | **Less likely than it was**, because the acquisition hook now fills the claim as part of the install rather than leaving it to be filled out of band. There is no file at the revision-scoped path: either nothing filled the claim, or `model.revision` and `model.artifact.repository` do not match the bytes that are in it |
 | `verify-model` exits 1 with `REFUSED: the mounted model artifact does not match the pinned byte count` | A file is there and is the wrong size — truncated, or a different artifact. The check compares the count **before** the SHA-256 read, so it fails fast and says why |
 | `verify-model` fails inside `sha256sum -c -` | The bytes are the right length and the wrong content |
 | `verify-model` reports `model artifact present; content not verified` | `model.integrity.verifyOnStart` is `none`. The file-exists check still ran; nothing else did |
-| The pod mounts the claim but finds nothing | The claim is empty. It is filled out of band today — the acquisition job is deferred — and an empty claim is refused rather than served from |
+| The pod mounts the claim but finds nothing | The claim is empty. It is filled by the release's own acquisition hook, and an empty claim is refused rather than served from |
 
 The path inside the claim is derived, never typed:
 
@@ -690,10 +709,12 @@ above, and it is a smaller operation than it feels like at the time.
   smoke result, the NetworkPolicy enforcement answer, and every model-load
   measurement quoted here. Each links to the record that produced it. None is a
   benchmark, and none may be published as one.
-- **Unexecuted, by this change and by anybody** — every `helm install`,
-  `helm upgrade`, `helm rollback`, `helm uninstall`, `terraform apply`,
-  `terraform destroy`, `kubectl port-forward`, probe, scrape, and completion this
-  page describes.
+- `local-real`, from `V1-S3-011` on the `docker-desktop` provider — every
+  `helm install`, `helm upgrade`, `helm rollback`, `helm uninstall`,
+  `terraform apply`, `terraform destroy`, `kubectl port-forward`, probe, scrape,
+  and completion this page describes has now been executed at least once there.
+  Executing a command is not the same as provoking the symptom an entry
+  describes, and this page does not claim otherwise.
 
 [`tests/architecture/test_kubernetes_troubleshooting.py`](../../tests/architecture/test_kubernetes_troubleshooting.py)
 holds this page to the repository: every tool command it prints must name a real
@@ -707,9 +728,12 @@ trusts it.
 
 ## What this page does not establish
 
-- **That any of it works.** The cluster half was executed; the release half has
-  never been installed by anyone. Every release symptom above is derived from the
-  chart, the scripts, the descriptors, and the tooling.
+- **That the symptoms above were provoked.** The commands have been executed and
+  the release has been installed, upgraded, broken on purpose, rolled back, had a
+  pod deleted under it, and uninstalled — on `docker-desktop` only. Most
+  individual symptom entries remain derived from the chart, the scripts, the
+  descriptors, and the tooling rather than observed, and a reader may not read an
+  executed release as an executed fault.
 - **That the recoveries recover.** A described recovery and an executed one are
   different kinds of statement, and [the certification levels](../testing/certification.md)
   are where that distinction is defined.

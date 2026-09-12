@@ -270,7 +270,7 @@
       "kind": "Docker Desktop Kubernetes cluster",
       "owner": "cluster-operator",
       "lifecycle": "operator-provided",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "the operator, by enabling Kubernetes in Docker Desktop",
       "destroyedBy": "cluster teardown",
       "survives": [
@@ -285,7 +285,7 @@
         "contributor-host"
       ],
       "handoff": "Enabled, reset and disabled in Docker Desktop's own settings by the operator, never by InferOps, which ships nothing that could. Planned rather than implemented: an identity guard now exists (inferops::_docker_desktop_target_problem in scripts/environment/lib.sh), so a mutating workflow no longer refuses this cluster purely for lacking one, and V1-S3-011-PR1 both installed a release through it under the provider contract and strengthened that guard: it now binds each node the API server reports to a container on the engine this docker CLI talks to, and requires that container to publish the very API server port the verified kubeconfig dials. What the guard still cannot refuse is a kind cluster the operator themselves named 'desktop' reached through a context they named 'docker-desktop' -- recorded in the check's own gap and as an accepted exception in docs/security/deferred-risks.md. evidenceRef stays null because this inventory lets only an implemented resource cite a record, and the status stays planned because promoting the release layer's status to what that certification installed is V1-S3-011-PR2's reconciliation, and promoting one row ahead of the rest would make this inventory disagree with itself. Two earlier records were made on it by hand with an explicit context -- the Sprint 0 runtime feasibility trial and the NetworkPolicy enforcement experiment -- and neither installed anything through this project's chart. What a reset removes has not been observed, and kind's answer is not borrowed for it.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "project-kubeconfig",
@@ -337,7 +337,7 @@
       "kind": "container image",
       "owner": "contributor-host",
       "lifecycle": "host",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "a local build, made visible to the selected cluster by that provider's own image path",
       "destroyedBy": "the contributor, or cluster teardown for the loaded copy",
       "survives": [
@@ -350,7 +350,7 @@
         "helm"
       ],
       "handoff": "Built and made visible to the cluster rather than pushed to a shared registry during development, per ADR 0001 D5. For kind that is kind load. For Docker Desktop V1-S3-011-PR1 established it: that cluster does not share the local engine's image store, so the image is imported into the node's own containerd and then named by digest there, because containerd resolves a repository@digest reference by name and an import creates only the archive's tag. inferops::target_load_image owns both mechanisms, so no workflow names one. Helm references it by a value and never builds it.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "platform-namespace",
@@ -358,7 +358,7 @@
       "kind": "v1/Namespace",
       "owner": "terraform",
       "lifecycle": "prerequisite",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "terraform apply",
       "destroyedBy": "terraform destroy",
       "survives": [
@@ -370,7 +370,7 @@
         "helm"
       ],
       "handoff": "Terraform creates it; Helm installs into it. Helm must never be invoked with --create-namespace, which is the single most likely way for these two tools to end up owning one object.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "namespace-metadata",
@@ -378,7 +378,7 @@
       "kind": "object metadata",
       "owner": "terraform",
       "lifecycle": "prerequisite",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "terraform apply",
       "destroyedBy": "terraform destroy",
       "survives": [
@@ -391,7 +391,7 @@
         "contributor-host"
       ],
       "handoff": "Namespace-level metadata is Terraform's. Per-object metadata inside a release is Helm's. The lifecycle label that keeps a scoped sweep away from prerequisites is set here.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "model-cache-volume-claim",
@@ -399,7 +399,7 @@
       "kind": "v1/PersistentVolumeClaim",
       "owner": "terraform",
       "lifecycle": "prerequisite",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "terraform apply",
       "destroyedBy": "terraform destroy",
       "survives": [
@@ -411,7 +411,7 @@
         "helm"
       ],
       "handoff": "Terraform provisions an empty claim; a Helm-owned job fills it; the serving Deployment mounts it read-only. Its lifecycle is deliberately longer than a release's, so that uninstalling does not force a re-download of weights whose transport is unauthenticated. The cost is that it holds roughly 1.7 GiB until terraform destroy runs, and that must be documented rather than discovered.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "platform-resource-quota",
@@ -437,7 +437,7 @@
       "kind": "v1/ServiceAccount",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -445,7 +445,7 @@
       ],
       "referencedBy": [],
       "handoff": "One per workload since V1-S3-004, release-scoped, and granted nothing: the chart renders no Role and no RoleBinding, and no pod mounts a token. Two accounts rather than one because a RoleBinding written for one workload and attached to a shared account is a grant to the other, made by somebody not thinking about the other. Not a prerequisite: an identity that outlives the thing it identifies is a permission nobody is watching.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "platform-api-deployment",
@@ -453,7 +453,7 @@
       "kind": "apps/v1 Deployment",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -461,7 +461,7 @@
       ],
       "referencedBy": [],
       "handoff": "Carries the API image, its probes, its resource requests and limits, and its security context. It reaches the serving runtime over the cluster network and never through a shared process or a shared volume.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "platform-api-service",
@@ -469,7 +469,7 @@
       "kind": "v1/Service",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -477,7 +477,7 @@
       ],
       "referencedBy": [],
       "handoff": "ClusterIP in V1. No ingress controller and no load-balancer implementation is installed in the accepted local cluster, so anything outside the cluster reaches this through an explicit port-forward.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "serving-runtime-deployment",
@@ -485,7 +485,7 @@
       "kind": "apps/v1 Deployment",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -493,7 +493,7 @@
       ],
       "referencedBy": [],
       "handoff": "Separate from the API deployment because model load and process liveness are different questions. Its probe mapping is the one ADR 0002 proved: a startup probe absorbs model load, readiness follows the runtime's own 503-while-loading, and only a socket-level liveness probe may restart the pod.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "serving-runtime-service",
@@ -501,7 +501,7 @@
       "kind": "v1/Service",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -509,7 +509,7 @@
       ],
       "referencedBy": [],
       "handoff": "The only address at which the API may reach the runtime. It is internal to the release and is not a public surface.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "runtime-configuration",
@@ -517,7 +517,7 @@
       "kind": "v1/ConfigMap",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -525,7 +525,7 @@
       ],
       "referencedBy": [],
       "handoff": "Rendered from values that were derived from a validated workload contract. It holds no secret value: a secret reaches a pod by reference to material this project does not own.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "model-acquisition-job",
@@ -533,13 +533,13 @@
       "kind": "batch/v1 Job",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [],
       "referencedBy": [],
-      "handoff": "The one place where a release writes into a prerequisite. A pre-install,pre-upgrade hook, so it completes before the serving runtime's own integrity check runs. It fetches or copies the pinned artifact into the revision-scoped directory the runtime mounts, verifies byte count and SHA-256 before the bytes are used, writes through a temporary file and renames only after verification, and is a no-op when the claim already holds a verified file. An artifact that fails verification is discarded rather than reused, so a corrupt cache is never a cache hit. It writes the claim and does not own it: Terraform creates and destroys that. destroyedBy and survives describe the succeeded object, which deletes itself: Helm removes no hook on uninstall, so hook-succeeded is what keeps it from becoming residue. A run that FAILED is deliberately kept for its logs, and that one does outlive helm uninstall; kubectl delete job -l app.kubernetes.io/component=model-acquisition is its scoped removal.",
-      "evidenceRef": null
+      "handoff": "The one place where a release writes into a prerequisite. A pre-install,pre-upgrade hook, so it completes before the serving runtime's own integrity check runs. It fetches or copies the pinned artifact into the revision-scoped directory the runtime mounts, verifies byte count and SHA-256 before the bytes are used, writes through a temporary file and renames only after verification, and is a no-op when the claim already holds a verified file. An artifact that fails verification is never reused, so a corrupt cache is never a cache hit -- but it is replaced rather than removed first: the replacement is staged beside it and moved over it only once it verifies, so an acquisition that cannot complete leaves the claim exactly as it found it. V1-S3-011-PR2 changed that ordering after the first real run of the upgrade/rollback experiment showed what the old one cost: that experiment's deliberately wrong byte count renders into this hook as well as into the serving runtime, and the hook discarded a 1.83 GB artifact it then could not replace. It writes the claim and does not own it: Terraform creates and destroys that. destroyedBy and survives describe the succeeded object, which deletes itself: Helm removes no hook on uninstall, so hook-succeeded is what keeps it from becoming residue. A run that FAILED is deliberately kept for its logs, and that one does outlive helm uninstall; kubectl delete job -l app.kubernetes.io/component=model-acquisition is its scoped removal.",
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "model-acquisition-service-account",
@@ -547,13 +547,13 @@
       "kind": "v1/ServiceAccount",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [],
       "referencedBy": [],
       "handoff": "A third account, separate from the two workload accounts, and it exists for a sequencing reason rather than a permissions one. Helm applies a phase's hooks before the release manifest, so the runtime account the acquisition job used to name does not exist when the job is created: the API server refuses the Job, the hook times out, and the install fails reporting only 'failed pre-install: timed out waiting for the condition'. V1-S3-011 found that by installing this chart into a real cluster for the first time. The account is created by the same hook phase at a lower weight and carries the same delete policy as the job, so createdBy and destroyedBy above describe the release the way every other Helm-owned row does, while the object's actual lifetime is the hook's: removed when the hook succeeds, kept beside a failed job for inspection, replaced before the next attempt. Helm removes no hook on uninstall, so hook-succeeded is what keeps it from becoming residue -- the same sentence the acquisition job's row has to say. Granted nothing, and no pod mounts a token. Labelled app.kubernetes.io/component=model-acquisition rather than workload-identity, because it belongs to the hook and not to the set of identities the release owns. Still 'planned' for the same reason its siblings are: promoting the release layer's status to what the Sprint 3 re-certification actually installed is V1-S3-011-PR2's reconciliation, and promoting one row ahead of the rest would make the inventory disagree with itself.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "workload-network-policy",
@@ -561,7 +561,7 @@
       "kind": "networking.k8s.io/v1 NetworkPolicy",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -569,7 +569,7 @@
       ],
       "referencedBy": [],
       "handoff": "Rendered since V1-S3-004: a default-deny over the release's own pods and one rule each for the API, the runtime, and the release test, scoped to the release rather than to the namespace so that a Terraform-owned prerequisite beside it is untouched. Whether the accepted local cluster's network plugin enforces one has still not been tested here, so it is a declaration until an executed test proves otherwise (DR-04, EX-05).",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "telemetry-scrape-configuration",
@@ -577,7 +577,7 @@
       "kind": "v1/ConfigMap",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -585,7 +585,7 @@
       ],
       "referencedBy": [],
       "handoff": "Rendered since V1-S3-007: a ConfigMap holding a Prometheus scrape configuration for the API and, under the real profile, the serving runtime, plus recording rules mapping the native runtime series and publishing the absence of the signals nothing emits. It describes what exposes metrics and where. It does not create a place to send them: the collector and store are a separate, undecided resource (ADR 0004), nothing in this release mounts this ConfigMap, and it is inert until a collector exists. It stays planned for the same reason workload-network-policy does: nothing has installed it, and a rendered object is not an installed one.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "telemetry-collector",
@@ -593,7 +593,7 @@
       "kind": "platform service (Deployment, Service, ConfigMap, ServiceAccount, Role, RoleBinding)",
       "owner": "helm",
       "lifecycle": "release",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "helm install or helm upgrade",
       "destroyedBy": "helm uninstall",
       "survives": [
@@ -601,7 +601,7 @@
       ],
       "referencedBy": [],
       "handoff": "The reader for telemetry-scrape-configuration, which was rendered for two sprints with nothing consuming it. ADR 0004 D7 left collector ownership undecided; the Sprint 3 remediation resolved it for the collector alone, as Helm-owned and release-scoped, and left ingress, load balancing, dashboards and alert routing undecided. It reads the scrape jobs and recording rules out of that ConfigMap rather than carrying its own copy, so one release cannot have two scrape configurations. Its series live in an emptyDir and go with the pod: it answers questions about the release running now, and is not a store anything may depend on outliving a restart. It stays planned because no release has installed it.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "replica-sets",
@@ -609,7 +609,7 @@
       "kind": "apps/v1 ReplicaSet",
       "owner": "kubernetes-control-plane",
       "lifecycle": "derived",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "the deployment controller",
       "destroyedBy": "controller garbage collection when its deployment goes",
       "survives": [
@@ -617,7 +617,7 @@
       ],
       "referencedBy": [],
       "handoff": "Never templated, never named in a chart, never imported into Terraform state. A tool that adopts a derived object takes ownership of something a controller will keep rewriting.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md"
     },
     {
       "resourceId": "pods",
@@ -625,13 +625,13 @@
       "kind": "v1/Pod",
       "owner": "kubernetes-control-plane",
       "lifecycle": "derived",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "the replica set controller",
       "destroyedBy": "controller garbage collection, eviction, or rescheduling",
       "survives": [],
       "referencedBy": [],
       "handoff": "A pod is disposable by definition, which is why nothing durable may live only inside one. This is the row that makes the model cache a prerequisite rather than an emptyDir.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md"
     },
     {
       "resourceId": "endpoint-slices",
@@ -639,7 +639,7 @@
       "kind": "discovery.k8s.io/v1 EndpointSlice",
       "owner": "kubernetes-control-plane",
       "lifecycle": "derived",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "the endpoint slice controller",
       "destroyedBy": "controller garbage collection when its service goes",
       "survives": [
@@ -647,7 +647,7 @@
       ],
       "referencedBy": [],
       "handoff": "Readiness decides membership. This is where a probe mapping stops being a manifest detail and starts deciding whether a request can reach a model that has not finished loading.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
       "resourceId": "bound-persistent-volume",
@@ -655,7 +655,7 @@
       "kind": "v1/PersistentVolume",
       "owner": "kubernetes-control-plane",
       "lifecycle": "derived",
-      "v1Status": "planned",
+      "v1Status": "implemented",
       "createdBy": "the storage provisioner, on binding the claim",
       "destroyedBy": "the reclaim policy, when the claim goes",
       "survives": [
@@ -667,7 +667,7 @@
         "terraform"
       ],
       "handoff": "Terraform owns the claim; the provisioner owns the volume. Deleting the volume out from under a claim Terraform believes it owns is the failure this split exists to make visible.",
-      "evidenceRef": null
+      "evidenceRef": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md"
     },
     {
       "resourceId": "telemetry-backend",
