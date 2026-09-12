@@ -198,8 +198,14 @@ operator themselves named `desktop`, reached through a context they named
 `docker-desktop`, satisfies every check including the port; and "this machine" is
 really "the engine this `docker` CLI is configured to reach", since nothing pins
 `DOCKER_HOST` or the active docker context. Both are accepted as `EX-06` in
-[the deferred-risk register](../../security/deferred-risks.md). The record stays
-accepted in part for the decisions that are still open elsewhere, not for this one.
+[the deferred-risk register](../../security/deferred-risks.md).
+
+This decision is therefore no longer the reason the record is **accepted in part**.
+Two implementation gaps are, and both are stated where they belong rather than
+here: D6's ninth refusal is unreachable by construction rather than guarded, and
+D10's provider field is accepted as a rule that nothing writes yet. Whether those
+are enough to move the record's own status is the record owner's call, and this
+reconciliation does not make it.
 
 ## D6 — Refusals
 
