@@ -289,9 +289,17 @@ Sprint 4 has not been started.
 
 ## L. Final claim reconciliation, after this review
 
-This section is an amendment. The review above stands as written; what follows is
-what the final reconciliation pass found when it checked every public claim against
-these records, and what it changed. None of it altered the PASS.
+This section is an amendment, and it is exact about which kind. **The verdict, the
+provider boundary in §D, the limitations in §J and the residue named in §H are
+unchanged. Four passages above were corrected in place**, because each stated a fact
+that was wrong rather than a judgement that had moved, and a record that keeps a
+false sentence for the sake of its own history is not more honest for it. Those four
+are named below, with what each said and what it says now. Everything else above is
+as it was written.
+
+The four corrected in place are §B's `S3-004` and `S3-011` rows, §C's
+provider-provenance row, §J item 5, and §K's opening sentence. None of them changed
+a PASS, a limitation, or an evidence classification.
 
 - **The published claim counts were wrong.** The claim and test matrix and the
   repository README both said *twelve of twenty-one claims are certified*. The
@@ -307,6 +315,10 @@ these records, and what it changed. None of it altered the PASS.
   `kind` is not installed on this host. Both passages are corrected above. The
   finding itself is unchanged — `kindnetd` does not enforce a NetworkPolicy — and it
   is now correctly a result **on the reference provider** and **not** one on `kind`.
+- **§K claimed more than §B did.** Its opening sentence said every story was backed
+  by an executed record *on the reference provider*, which §B's own `S3-001` row
+  contradicts: that row is `PASS, historical`, on `kind`, and is kept as history
+  rather than re-run. §K now states the exception instead of averaging over it.
 - **The record count was low.** §B and §C said *four records*; five runtime records
   were executed on `docker-desktop`, and the network-policy experiment is a sixth
   that also named it.
