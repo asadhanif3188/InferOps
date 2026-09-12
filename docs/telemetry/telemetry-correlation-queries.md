@@ -259,7 +259,7 @@ queries returned rather than a description of what somebody expected.
 | `identity-absent-on-a-target-that-answered` reading 1 | An API target answered a scrape and published no identity. Every identity join is empty until it does |
 | `model-readiness-absent` reading 1 | Expected, today and until the serving-runtime adapter is instrumented |
 | `throughput-joined-to-build-identity` empty while `request-throughput-by-workload-model-and-outcome` is not | The identity is missing, not the traffic. The join drops every element with no counterpart rather than returning a partial answer |
-| Any query empty in a store with no collector | Everything. Nothing scrapes either endpoint, so nothing is in any store |
+| Every query empty at once | Either no collector is running against this release, or the collector pod restarted — its series live in an `emptyDir` and do not survive it |
 | A non-zero `api-and-runtime-in-flight-side-by-side` | Expected. The two count different boundaries and the collection record already says they are not expected to agree |
 | A `histogram_quantile` returning `NaN` | The bucket set reaching it had no `+Inf` bucket, so there is no total to take a fraction of |
 | A many-to-many match error | A join whose key both sides share on more than one series. `no-cross-tier-identity-join` below is the case this release has |
@@ -297,9 +297,12 @@ Four gaps, and each says what would close it.
 
 ## What this does not establish
 
-- `no-engine-has-run-these`. No Prometheus has parsed, loaded, or evaluated any
-  expression here. Every result came from the declared subset evaluator in this
-  repository.
+- `results-here-are-the-evaluators`. Every result table in this document came from
+  the declared subset evaluator in this repository, over synthetic fixtures. A real
+  Prometheus has since parsed, loaded and evaluated every expression against a real
+  scrape on one provider — [`V1-S3-011`](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)
+  and [what telemetry saw during a recovery](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md)
+  — and the numbers below are not that run's.
 - `fixtures-are-synthetic`. Every series in every scenario was written by hand to have
   the label set the rendered relabelling would attach. Nothing was scraped and no value
   was measured.
@@ -311,8 +314,9 @@ Four gaps, and each says what would close it.
   simulated.
 - `recording-rules-are-evaluated-here-and-nowhere-else`. The chart's recording rules are
   read from the committed render and evaluated by this repository at each fixture
-  instant, in render order. No collector evaluates them and no group interval is
-  honoured.
+  instant, in render order. No group interval is honoured here and no staleness
+  behaviour between evaluations is modelled. A real collector has since evaluated
+  them in a release; none of the numbers in this document came from it.
 - `an-empty-result-is-the-common-answer`. Four queries return nothing however long
   anybody waits and two have no expression at all. That is the honest state of the
   collection, published rather than omitted: a question missing from a query catalogue
@@ -320,5 +324,10 @@ Four gaps, and each says what would close it.
 - `the-evaluator-was-corrected-by-review-not-by-an-engine`. Independent review before
   push found seven defects here — three in the evaluator's semantics or its refusal
   contract, one rule that was not enforced for half the syntax it claimed to cover,
-  and three miscounts in published prose. Every one was found by reading. A
-  cross-check against `promtool` remains the first follow-up and remains not done.
+  and three miscounts in published prose. Every one was found by reading.
+  `promtool check config` and `check rules` have since accepted both committed
+  renders, and a real Prometheus has parsed, loaded and evaluated every expression
+  in a release — so the syntax and the loadability are no longer only claimed. What
+  is still not done is the comparison this limitation is really about: nobody has
+  run these expressions against an engine over *these* fixtures and checked that the
+  answers match the ones below.

@@ -216,25 +216,29 @@ here rather than closed by widening a claim's wording.
 
 ## Coverage gaps
 
-Eight claims are not defended by any module here. Each is recorded with a reason
+Seven claims are not defended by any module here. Each is recorded with a reason
 and, where something outside pytest defends it, what that is.
 
 | Claim | Why no module | Defended by |
 |---|---|---|
-| `published-documents-link-only-to-things-that-exist` | No pytest module walks every relative link in every published document. The data suites each assert that their own record's references resolve, which is a subset of the claim | The link and whitespace check published in [CONTRIBUTING](../../CONTRIBUTING.md), run by hand |
 | `the-model-artifact-matches-its-published-hash` | No pytest module computes or compares the hash. The real-runtime suite drives a running runtime, and the runtime exposes no hash of the file it loaded | The download step of [the feasibility workflow](../serving/feasibility-workflow.md), with both hashes recorded in [its evidence record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
 | `a-local-cluster-is-created-and-removed-without-residue` | The `kubernetes-smoke` layer declares no test paths | [`scripts/environment/`](../../scripts/environment/), run by hand, with the record under [`docs/proof/environment/`](../proof/environment/) |
 | `no-credential-or-model-artifact-enters-public-history` | The `security-scan` layer is planned. A configuration and an allowlist are committed and no recorded run of a scanner exists | Nothing yet |
-| `a-helm-release-installs-and-uninstalls-without-residue` | The layer the claim names declares no test paths; no pytest module installs or uninstalls anything | [`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh) and the certification workflows, run by hand, with the executed result in [the scoped cleanup record](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) |
+| `a-helm-release-installs-and-uninstalls-without-residue` | The layer the claim names declares no test paths; no pytest module installs or uninstalls anything | [`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh) and the certification workflows, run by hand on `docker-desktop` with a locally built and loaded API image, with the executed results in [the paved road](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) and [the scoped cleanup record](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) |
 | `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | No pytest module upgrades a release, breaks it, or rolls it back. [`test_helm_upgrade_rollback.py`](../../tests/architecture/test_helm_upgrade_rollback.py) reads the descriptor, the script, and documents a run would have written, and contacts no cluster — so it can refuse a bad record and cannot produce a good one | [`scripts/environment/helm-upgrade-rollback.sh`](../../scripts/environment/helm-upgrade-rollback.sh), run by hand, with the executed result in [its record](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md) |
 | `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | No pytest module deletes a pod or reads a mounted claim. [`test_kubernetes_pod_restart.py`](../../tests/architecture/test_kubernetes_pod_restart.py) reads committed files only | [`scripts/environment/kubernetes-pod-restart.sh`](../../scripts/environment/kubernetes-pod-restart.sh), run by hand, with the executed result in [its record](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md) |
 | `sustained-throughput-and-capacity-under-load` | Deferred out of V1. A module here would produce output nothing may publish | Nothing, deliberately |
 
-The first two rows are the ones worth reading twice. Both claims are
-**certified**, and the evidence for each is a procedure rather than a suite — a
-shell check for the first, a manual download for the second. Both are legitimate,
-and both are exactly the kind of thing an inventory of pytest modules would
-otherwise imply was missing.
+The first row is the one worth reading twice. The claim is **certified**, and its
+evidence is a manual download rather than a suite — legitimate, and exactly the kind
+of thing an inventory of pytest modules would otherwise imply was missing.
+
+One row left this table in this change. `published-documents-link-only-to-things-that-exist`
+was certified while the only thing that checked it was a shell command in
+[CONTRIBUTING](../../CONTRIBUTING.md) that somebody had to remember to run, and four
+links in this repository had been broken long enough for that to matter.
+[`test_document_links.py`](../../tests/testing/test_document_links.py) now walks every
+committed Markdown file, so the claim is defended by a module rather than by a habit.
 
 ## What this inventory does not do
 

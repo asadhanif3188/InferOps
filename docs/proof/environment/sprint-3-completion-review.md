@@ -28,14 +28,14 @@ at.
 | **S3-001** | A local cluster is created and destroyed without residue | [cluster lifecycle](v1-s3-001-pr1-cluster-lifecycle.md) | **PASS, historical** | `kind` only, and its ownership assumption is superseded by S3-010. Kept as history, not rewritten |
 | **S3-002** | Helm installs, upgrades, and uninstalls the release without manual manifests or residue | [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md), [upgrade/rollback](v1-s3-011-pr2-upgrade-rollback.md), [scoped cleanup](v1-s3-011-pr2-scoped-cleanup.md) | **PASS** | `docker-desktop` only; one replica of each tier |
 | **S3-003** | Model artifacts survive a pod restart on the Terraform-owned claim | [Kubernetes pod restart](../serving/v1-s3-003-pr2-kubernetes-pod-restart.md), with [the container-level measurement](../serving/v1-s3-003-pr1-restart-reload.md) beside it | **PASS** | One pod, deleted once. The claim's underlying storage durability is untested |
-| **S3-004** | Kubernetes workload security defaults are explicit and rendered | [security validation](../security/v1-s3-004-pr1-validation.md), [NetworkPolicy enforcement](../security/v1-s3-004-pr1-network-policy-enforcement.md) | **PASS within documented local security limits** | NetworkPolicy objects are created. Enforcement was tested on `kindnetd` and **does not happen**; both providers' clusters were observed running that plugin, and Docker Desktop's was not itself tested. No admission control exists |
+| **S3-004** | Kubernetes workload security defaults are explicit and rendered | [security validation](../security/v1-s3-004-pr1-validation.md), [NetworkPolicy enforcement](../security/v1-s3-004-pr1-network-policy-enforcement.md) | **PASS within documented local security limits** | NetworkPolicy objects are created. Enforcement was tested on `kindnetd` and **does not happen**; the experiment ran on Docker Desktop's own cluster, so that result is the reference provider's, and `kind`'s plugin was observed but not itself tested. No admission control exists |
 | **S3-005** | Terraform provisions prerequisites, re-applies cleanly, and destroys safely | [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md), [scoped cleanup](v1-s3-011-pr2-scoped-cleanup.md) | **PASS** | `docker-desktop` only; `rancher.io/local-path` storage only |
 | **S3-006** | Real LLM inference through Kubernetes, single and multi replica | [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md) | **PASS for single-replica C2; multi-replica correctly recorded as capacity-refused** | See §E. No multi-replica claim exists anywhere |
 | **S3-007** | API and runtime telemetry is actually collected and correlated | [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md), [telemetry during recovery](../telemetry/v1-s3-011-pr2-telemetry-during-recovery.md) | **PASS** | Collected into an `emptyDir` that goes with the collector pod. No dashboard, no alerting, no durable store |
 | **S3-008** | A controlled upgrade fails, is detected, is rolled back, and real inference is restored | [upgrade/rollback](v1-s3-011-pr2-upgrade-rollback.md) | **PASS** | One injected fault; five attempts, four of which failed and are recorded |
 | **S3-009** | Troubleshooting and cleanup are documented and consistent with what happened | [troubleshooting](../../environment/kubernetes-troubleshooting.md), reconciled in this PR | **PASS** | The commands have been executed; most individual symptoms remain derived rather than provoked, and the page says so |
 | **S3-010** | Cluster lifecycle is external; both providers select explicitly and verify | [ADR 0011](../../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md), [provider contract](../../environment/local-cluster-provider-contract.md), [S3-010-PR1 validation](../architecture/v1-s3-010-pr1-validation.md) | **PASS** | Identity residual risks accepted as `EX-06` |
-| **S3-011** | The whole paved road re-certified on the reference provider, with cleanup and reconciliation | all four records above, plus this one | **PASS** | Everything is `docker-desktop`'s |
+| **S3-011** | The whole paved road re-certified on the reference provider, with cleanup and reconciliation | all five runtime records above — paved road, upgrade/rollback, scoped cleanup, pod restart, telemetry during recovery — plus this one | **PASS** | Everything is `docker-desktop`'s |
 
 ## C. What each Sprint 3 exit criterion asked for, and what answers it
 
@@ -57,7 +57,7 @@ names the run.
 | Telemetry is collected there, not merely configured | A real Prometheus scraped both jobs and evaluated every accepted query, at rest and across a pod replacement — [telemetry during recovery](../telemetry/v1-s3-011-pr2-telemetry-during-recovery.md) |
 | A release change can be reversed, and the teardown is scoped | [upgrade/rollback](v1-s3-011-pr2-upgrade-rollback.md) and [scoped cleanup](v1-s3-011-pr2-scoped-cleanup.md), both executed |
 | The externally owned cluster survives the teardown | §H |
-| Every record names its provider and generalizes to no other | Each of the four records above names `docker-desktop` in its own provenance, and every promoted ownership row cites the run that moved it |
+| Every record names its provider and generalizes to no other | Each of the five runtime records above names `docker-desktop` in its own provenance, the network-policy experiment names it too, and every promoted ownership row cites the run that moved it |
 
 ## D. Provider boundary
 
@@ -232,13 +232,13 @@ nothing about whether a target was discovered.
 4. **Multi-replica serving is not certified.** The capacity gate refused.
 5. **NetworkPolicy is rendered and created; enforcement was tested and
    refuted.** [The enforcement experiment](../security/v1-s3-004-pr1-network-policy-enforcement.md)
-   ran on a `kind` cluster and established that `kindnetd` does not apply
-   one. Both providers' clusters were **observed** running a `kindnetd`
-   image — the reference provider's is recorded in
-   [the paved road](v1-s3-011-pr1-docker-desktop-paved-road.md) — but
-   Docker Desktop's plugin was not itself put through that experiment, so
-   that is an observation and not a second result. No admission control
-   exists either way. `DR-04`, `DR-05`, `EX-05`.
+   ran on **Docker Desktop's** Kubernetes — `kind` is not installed on this
+   host — and established that `kindnetd` does not apply one. It is therefore
+   a result on the reference provider itself, and **not** a result on `kind`:
+   the accepted `kind` cluster was observed running a `kindnetd` image, but its
+   plugin was not itself put through the experiment, so for `kind` that is an
+   observation and not a second result. No admission control exists either way.
+   `DR-04`, `DR-05`, `EX-05`.
 6. **No production HA.** One replica of each tier, one node, no anti-affinity, no
    disruption budget.
 7. **No production network exposure.** ClusterIP only, no Ingress, no load
@@ -270,10 +270,12 @@ nothing about whether a target was discovered.
 
 ## K. Final verdict
 
-Every Sprint 3 story has an acceptance criterion backed by an executed record on
-the reference provider, every amended exit-gate item is met, the repository's
-public claims have been reconciled to what those records actually say, and the
-limitations above are published rather than implied.
+Every Sprint 3 story has an acceptance criterion backed by an executed record —
+each on the reference provider, except `S3-001`, whose `kind` lifecycle result is
+kept as the historical evidence it is. Every amended exit-gate item is met, and the
+limitations above are published rather than implied. The repository's public claims
+have been reconciled to what those records actually say; §L records what that
+reconciliation still had to change after this review was written.
 
 ```text
 Sprint 3: PASS
@@ -284,3 +286,65 @@ The PASS is bounded by §D and §J and by nothing else. It is a PASS for the
 named — not a claim that InferOps is a portable production Kubernetes platform.
 
 Sprint 4 has not been started.
+
+## L. Final claim reconciliation, after this review
+
+This section is an amendment, and it is exact about which kind. **The verdict, the
+provider boundary in §D, the limitations in §J and the residue named in §H are
+unchanged. Four passages above were corrected in place**, because each stated a fact
+that was wrong rather than a judgement that had moved, and a record that keeps a
+false sentence for the sake of its own history is not more honest for it. Those four
+are named below, with what each said and what it says now. Everything else above is
+as it was written.
+
+The four corrected in place are §B's `S3-004` and `S3-011` rows, §C's
+provider-provenance row, §J item 5, and §K's opening sentence. None of them changed
+a PASS, a limitation, or an evidence classification.
+
+- **The published claim counts were wrong.** The claim and test matrix and the
+  repository README both said *twelve of twenty-one claims are certified*. The
+  authoritative strategy data holds **twenty-four claims — sixteen certified, seven
+  planned, one deferred**, and the matrix's own tables already agreed with the data.
+  Only the prose had drifted. Both sentences are now derived from the data by
+  `tests/testing/test_test_strategy.py`, which also refuses a claim published under a
+  heading its `v1Status` does not name.
+- **The network-policy experiment's provider was stated backwards.** §B and §J
+  item 5 said the experiment ran on a `kind` cluster and that Docker Desktop's plugin
+  was never tested. [The record](../security/v1-s3-004-pr1-network-policy-enforcement.md)
+  says the opposite and always did: it ran on Docker Desktop's Kubernetes, because
+  `kind` is not installed on this host. Both passages are corrected above. The
+  finding itself is unchanged — `kindnetd` does not enforce a NetworkPolicy — and it
+  is now correctly a result **on the reference provider** and **not** one on `kind`.
+- **§K claimed more than §B did.** Its opening sentence said every story was backed
+  by an executed record *on the reference provider*, which §B's own `S3-001` row
+  contradicts: that row is `PASS, historical`, on `kind`, and is kept as history
+  rather than re-run. §K now states the exception instead of averaging over it.
+- **The record count was low.** §B and §C said *four records*; five runtime records
+  were executed on `docker-desktop`, and the network-policy experiment is a sixth
+  that also named it.
+- **Four relative links in this repository did not resolve**, two of them from
+  evidence records this sprint produced, while
+  `published-documents-link-only-to-things-that-exist` was certified at `C0` and
+  checked only by a shell command run by hand. The links are fixed and
+  `tests/testing/test_document_links.py` now walks every committed Markdown file, so
+  the certified claim is defended by a module rather than by a habit.
+- **Security wording that predated the deployment was corrected without weakening
+  it.** Statements that nothing here *applies a security context to a pod it
+  deployed, because nothing here deploys a pod* were false after `V1-S3-011`. They
+  now say what is true: the rendered and deployed workloads carry the documented
+  pod-security settings, and that establishes nothing about whether the running
+  platform is defended — no check here reads a running pod, no admission control
+  exists, and the network policy the release creates is not enforced. Every deferred
+  risk and exception is unchanged.
+- **Counts published as prose were re-derived**: six exceptions rather than four,
+  thirty-eight controls with nine unenforced rather than thirty-two with ten, three
+  test layers without code rather than five or six, and eighteen telemetry rules
+  rather than fifteen.
+- **Collector wording was reconciled in both directions.** Documents saying no
+  collector exists were corrected; every statement that the series are ephemeral and
+  that no durable store, dashboard, or alerting path exists was kept.
+
+What did **not** change: the PASS, the provider boundary in §D, the limitations in
+§J, the residue named in §H, and the classification of every evidence record. The
+evidence records under `docs/proof/` describe the runs they describe and were not
+rewritten — only four broken link targets in them were repaired.

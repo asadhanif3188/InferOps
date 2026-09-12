@@ -1,7 +1,8 @@
 # Evidence records
 
-Status: entry point established. The records here are the only thing in this
-repository that may be cited as evidence for a public claim.
+Status: entry point established, and the index now covers a full Sprint 3 closure
+executed on the `docker-desktop` reference provider. The records here are the only
+thing in this repository that may be cited as evidence for a public claim.
 
 A record here is produced by a reviewed change, never by a job. That rule comes from
 [the telemetry and evidence flow](../architecture/system-architecture.md): a record a
@@ -20,8 +21,8 @@ nominate its own strength.
 | Environment | [host inventory](environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke](environment/v1-s0-002-pr2-cluster-smoke.md), the [cluster lifecycle result](environment/v1-s3-001-pr1-cluster-lifecycle.md), the [Docker Desktop paved road](environment/v1-s3-011-pr1-docker-desktop-paved-road.md), the [upgrade and rollback experiment](environment/v1-s3-011-pr2-upgrade-rollback.md), the [scoped cleanup and cluster-survival result](environment/v1-s3-011-pr2-scoped-cleanup.md), the [Sprint 3 completion review](environment/sprint-3-completion-review.md), and the change-validation records beside them |
 | Serving | [runtime feasibility](serving/v1-s0-003-pr2-runtime-feasibility.md), [Sprint 1 real-runtime closure](serving/v1-s1-real-runtime-closure.md), [`v1-s0-012-pr1-validation.md`](serving/v1-s0-012-pr1-validation.md), [Sprint 1 completion remediation](serving/sprint-1-completion-remediation-validation.md), [`v1-s2-002-pr2-validation.md`](serving/v1-s2-002-pr2-validation.md), [`v1-s2-003-pr1-validation.md`](serving/v1-s2-003-pr1-validation.md), [`v1-s2-004-pr1-validation.md`](serving/v1-s2-004-pr1-validation.md), the [executed local baseline experiment](serving/v1-s2-005-local-baseline-experiment.md) with its [raw results](serving/v1-s2-005-baseline-raw-results.md), the [measured cold and warm start comparison](serving/v1-s2-007-pr1-cold-warm-start.md) with its [real cache miss observation](serving/v1-s2-007-cache-miss-observation.md), the [measured restart and reload comparison](serving/v1-s3-003-pr1-restart-reload.md), the [Kubernetes pod-restart persistence result](serving/v1-s3-003-pr2-kubernetes-pod-restart.md), the [C2 real-runtime certification result](serving/v1-s2-004-c2-certification-result.md), [`v1-s2-008-pr1-validation.md`](serving/v1-s2-008-pr1-validation.md), the [Sprint 2 completion review](serving/sprint-2-completion-review.md), and the change-validation records beside them |
 | Contracts | [`v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) |
-| Domain | [`v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md) |
-| Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md), [`v1-s3-002-pr1-validation.md`](architecture/v1-s3-002-pr1-validation.md), [`v1-s3-002-pr2-validation.md`](architecture/v1-s3-002-pr2-validation.md), [`v1-s3-003-pr1-validation.md`](architecture/v1-s3-003-pr1-validation.md) |
+| Domain | [`v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md), [`v1-s1-001-pr2-validation.md`](domain/v1-s1-001-pr2-validation.md) |
+| Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md), [`v1-s3-002-pr1-validation.md`](architecture/v1-s3-002-pr1-validation.md), [`v1-s3-002-pr2-validation.md`](architecture/v1-s3-002-pr2-validation.md), [`v1-s3-003-pr1-validation.md`](architecture/v1-s3-003-pr1-validation.md), and the [provider realignment validation](architecture/v1-s3-010-pr1-validation.md) |
 | Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md), [`v1-s1-007-pr1-validation.md`](testing/v1-s1-007-pr1-validation.md) |
 | Telemetry | [`v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md), [`v1-s1-008-pr1-validation.md`](telemetry/v1-s1-008-pr1-validation.md), [`v1-s3-007-pr1-validation.md`](telemetry/v1-s3-007-pr1-validation.md), [`v1-s3-007-pr2-validation.md`](telemetry/v1-s3-007-pr2-validation.md), the [query evaluation record](telemetry/v1-s3-007-pr2-query-evaluation.md), and [what telemetry saw while a serving pod was replaced](telemetry/v1-s3-011-pr2-telemetry-during-recovery.md) |
 | Cost | [`v1-s0-008-pr1-validation.md`](cost/v1-s0-008-pr1-validation.md) |
@@ -58,7 +59,7 @@ believed.
 |---|---|
 | `classification` | The weakest label the record actually supports, and the ceiling that label carries. A record without it is read at whatever strength the reader wants |
 | `provenance` | The immutable versions: repository revision, image digests, model revision, tool versions. A result whose inputs are named by a moving tag is not reproducible |
-| `environment` | The host, operating system, resources, and cluster. Two of this project's accepted records are true of exactly one machine, and say so here |
+| `environment` | The host, operating system, resources, and cluster. Every record here that carries a `local-real` class is true of exactly one machine, and says so in this section |
 | `method` | The exact commands, in the order they were run, including the ones that failed. A method that cannot be re-executed describes a result rather than evidencing one |
 | `results` | What was observed, with measured values labelled measured and derived values labelled derived |
 | `limitations` | What the record does **not** establish. This is the section that stops a result being cited for something adjacent to what it measured |
@@ -92,3 +93,8 @@ rather than hiding: the environment facts this project relies on are spread thro
 individual records instead of being collected once, and no claim in
 [the matrix](../testing/claim-test-matrix.md) has yet been bound to its evidence in
 the one-claim-per-record form the fourth template exists to enforce.
+
+One more thing these counts do not say. Every record they count is from Sprint 2 or
+earlier: no Sprint 3 record declares a template, so the five `local-real-cpu`
+Kubernetes results that closed Sprint 3 are outside this table entirely. The counts
+measure template discipline, not the size or the strength of the evidence base.

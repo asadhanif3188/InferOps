@@ -13,11 +13,13 @@ machine that has no Helm and no cluster.
 [`tests/architecture/test_helm_chart.py`](../../../../tests/architecture/test_helm_chart.py)
 reads them.
 
-They are **not** evidence that this chart installs. Nothing here has been
-applied to a cluster. A rendered manifest is a file; whether the objects in it
-schedule, become ready, and can be removed without residue is answered by
-[the lifecycle script](../../../../scripts/environment/helm-lifecycle.sh), which
-has never been run because no InferOps API image is published.
+They are **not** evidence that this chart installs. These files were applied to no
+cluster. A rendered manifest is a file; whether the objects in it schedule, become
+ready, and can be removed without residue is answered by
+[the lifecycle script](../../../../scripts/environment/helm-lifecycle.sh), which has
+been run on `docker-desktop` with an API image built on the host and loaded into the
+cluster. Its record is
+[the paved road](../../../../docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md).
 
 The API image digest in both files is a placeholder that resolves to no image,
 for the reason [`../real-values.yaml`](../real-values.yaml) states.

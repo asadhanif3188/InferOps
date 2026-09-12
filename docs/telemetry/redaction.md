@@ -149,8 +149,9 @@ check this document previously recorded as absent.
 
 Three things it still does not establish, in the order they matter.
 
-**Nothing has been checked against a store.** Records go to a stream and metrics wait
-on an endpoint nobody scrapes. No log store, shipper, retention window, or access
+**Nothing has been checked against a durable store.** Records go to a stream nothing
+collects; metrics are scraped by the release's own collector into an `emptyDir` that
+goes with its pod. No log store, shipper, retention window, or access
 rule is selected, so the retention the catalog requires to be stated before content
 of any kind is written is still unstated.
 

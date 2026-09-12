@@ -614,7 +614,7 @@ telemetry:
 # when it succeeds, and it appears in `helm template` output because Helm
 # renders hooks alongside everything else.
 #
-# It has never been run. No cluster has installed this chart.
+# It has been run once, on `docker-desktop`, as part of the V1-S3-011 lifecycle.
 tests:
   enabled: true
   image:

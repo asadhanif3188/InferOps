@@ -1,15 +1,22 @@
 # The `inferops-llm` chart
 
-Status: **the chart is complete and nothing has installed it.** The probes, the
-shutdown ordering, the release test, and the lifecycle script all exist; none of
-them has been run against a cluster, because no InferOps API image is published
-and no release can start without one. What is checked here is that the chart
-renders, that what it renders is what the ownership inventory lets Helm own,
-that the probe mapping is the one the accepted health records publish, and that
-a release cannot quietly be the wrong one. Whether it installs, becomes ready,
-and uninstalls without residue is answered by running
-[`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh),
-and it has not been run. Reading a chart does not answer it.
+Status: **the chart is complete and has been installed.** `V1-S3-011` ran
+[`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh)
+on the `docker-desktop` reference provider with an API image built on the host and
+loaded into the cluster: the release installed, became ready, served a real
+completion through its own Service, passed `helm test`, took a controlled upgrade,
+failed on an injected fault, rolled back, and uninstalled without residue —
+[the paved road](../../docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)
+and [the upgrade and rollback record](../../docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md).
+That is one provider, one Windows host, CPU, and one replica of each tier; the
+multi-replica profile was refused at the capacity gate there, and nothing has been
+re-certified on `kind` since the ownership realignment. No InferOps API image is
+published to a registry, so a run on another host must build and load one.
+
+What is checked without a cluster is that the chart renders, that what it renders is
+what the ownership inventory lets Helm own, that the probe mapping is the one the
+accepted health records publish, and that a release cannot quietly be the wrong one.
+Reading a chart still does not answer whether it installs; the record above does.
 
 It packages two workloads as one release: the platform API, and — under the real
 profile — the `llama.cpp` server
@@ -244,17 +251,19 @@ convention, so switching it on changes what something outside this release does,
 while a ConfigMap is read by nothing unless somebody mounts it. What it holds is a
 Prometheus scrape configuration for the API and, under the real profile, the
 runtime, plus recording rules mapping the native runtime series and publishing the
-absence of the signals nothing emits. **Nothing reads it, no collector is selected,
-and nothing scrapes either endpoint** —
+absence of the signals nothing emits. **`telemetry.collection.collector.deploy`
+installs the collector that reads it — off by default, on under the real profile.
+With it off, nothing reads this ConfigMap and nothing scrapes either endpoint** —
 [the collection document](../../docs/telemetry/kubernetes-telemetry-collection.md)
-states what it would find and what each label would cost. Discovery selects on the
+states what it finds and what each label costs. Discovery selects on the
 Kubernetes labels this chart always sets rather than on the annotations above, so
 it does not depend on a switch that is off by default.
 
 `telemetry.collection.collector` names the collector the release's network policy
 would let in: a namespace and a pod selector, required together, rendering one
 ingress rule per workload policy. Both empty is the default and leaves the
-default-deny whole, because there is no collector to name.
+default-deny whole, because with `deploy` off there is no collector to name; with it
+on, the chart fills both selectors in from the collector it just rendered.
 
 One caveat on the word *inert*, because it is a property of this environment and
 not of the annotation. These three keys are the legacy Prometheus

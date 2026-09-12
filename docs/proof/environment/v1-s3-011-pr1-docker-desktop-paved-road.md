@@ -389,7 +389,7 @@ environment itself. Both certification test files now assert that every
 - **Three inference requests are not a measurement.** They exist so that counters
   are non-zero when the correlation queries are asked. No latency, throughput, or
   capacity figure is published from this record, in keeping with
-  [ADR 0005](../../architecture/decisions/ADR-0005-evidence-and-measurement.md).
+  [ADR 0005](../../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
 - **`kind` was not executed.** Nothing here certifies the `kind` provider, and its
   image path remains *implemented and not executed*.
 - **What resetting or disabling Kubernetes in Docker Desktop reclaims was not

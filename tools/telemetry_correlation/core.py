@@ -8,9 +8,11 @@ telemetry catalog bars from a metric, or claims an answer a signal nothing emits
 cannot give.
 
 **What it establishes stops at the file, exactly as
-:mod:`tools.telemetry_collection` does.** No collector, store, dashboard, or alerting
-path is selected; nothing scrapes either InferOps endpoint; this chart has never been
-installed; and no Prometheus has evaluated any expression here. A query this accepts
+:mod:`tools.telemetry_collection` does.** No durable store, dashboard, or alerting
+path is selected, and no Prometheus evaluates any expression here. A release-scoped
+collector has since scraped both InferOps endpoints on one provider and a real
+Prometheus has evaluated these expressions there; nothing in this module observed
+either. A query this accepts
 is a query that would be well formed against the labels the chart's rendered scrape
 configuration would attach. That is a statement about two files.
 

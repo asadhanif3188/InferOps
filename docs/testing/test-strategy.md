@@ -228,8 +228,8 @@ checks host prerequisites before anything is created, composes both components,
 asserts real identity and one real completion, refuses mock identity or mock
 capability metadata, and writes a machine-readable `local-real-cpu` record. It is
 outside the default lane by construction rather than by marker, because it refuses
-to run without explicit confirmation. **It has not been run against a runtime**,
-so it has produced no record and raised nothing.
+to run without explicit confirmation. **One authorized run certified at `C2`** on
+2026-09-04 and its record is committed.
 
 `V1-S3-006-PR1` added a fourth, and the first that goes through Kubernetes:
 [the Kubernetes certification workflow](../serving/kubernetes-real-inference-certification.md).
@@ -240,10 +240,12 @@ adapter's, which are nearly half as large and would report a recorded cold load 
 a failure — runs the release's own in-cluster connection test, sends one real
 request through the release's API Service, and writes a record labelled
 `local real Kubernetes` before uninstalling the release. It removes neither the
-prerequisites nor the cluster. **It has not been run either**, and for a reason
-that is not merely scheduling: no InferOps API image is published, so an
-authorized run stops at the `release` stage with a pull failure and a diagnostics
-record. The label is a new one and is registered in the vocabularies
+prerequisites nor the cluster. **It has been run**, on `docker-desktop`, with an API
+image built on the host and loaded into the cluster rather than pulled from a
+registry; the record is
+[the paved road](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md).
+No InferOps API image is published to any registry, so a run on another host must
+build and load one of its own. The label is a new one and is registered in the vocabularies
 [CONTRIBUTING](../../CONTRIBUTING.md) and
 [the mock and real boundary](../serving/mock-and-real-boundary.md) publish; the
 evidence class is still `local-real-cpu`, because a new class would have raised a
@@ -261,8 +263,10 @@ in-cluster Job -- so that `kube-proxy` rather than a port-forward chooses each
 endpoint -- and correlates the successful requests to the replicas that recorded
 them, using the request identifiers and `k8s.pod.name` the API's own structured
 logs already carry. A run whose successful requests reached one replica fails and
-says so. **It has not been run either**, and for the same reason: no InferOps API
-image is published. Only the API tier is multi-replica, because `llama-server`
+says so. **It has been entered and refused**: on the reference host the capacity gate
+measured insufficient headroom for two API replicas and refused rather than reducing
+the count to fit, so no multi-replica claim is certified anywhere. Only the API tier
+is multi-replica, because `llama-server`
 publishes no per-request pod-aware record to correlate against, and the record
 carries that limitation rather than leaving it to a reader.
 

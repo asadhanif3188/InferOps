@@ -83,8 +83,10 @@ for in writing rather than pass over.
 
 ## What this checklist cannot do
 
-It cannot tell whether the ownership inventory describes the Terraform and Helm that
-eventually get written, because neither exists. It cannot tell whether a diagram is
-still accurate after code lands under it. Both gaps close by reconciling the
-implemented architecture against these records once there is an implementation, and
-until then they are open by construction rather than by oversight.
+It cannot tell whether a diagram is still accurate after code lands under it. It no
+longer has to guess about the tools: Terraform and Helm both exist, and
+`tests/architecture/test_terraform_prerequisites.py` and
+`tests/architecture/test_helm_chart.py` compare each to the ownership inventory in
+both directions — but a suite reads files, and a file is not a cluster. The
+reconciliation of the implemented architecture against these records is now due
+rather than pending, and the diagram gap stays open by construction.

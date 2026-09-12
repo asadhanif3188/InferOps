@@ -381,7 +381,7 @@ measured.
 |---|---|
 | No container or node resource metric, and no metrics server | The `estimated` basis and the `observed-utilisation-share` method |
 | No accelerator metric, and no accelerator ever used | Any accelerator line above an allocation from a declaration |
-| No collector reads anything | Every usage input, including the ones with full catalog coverage |
+| No collector collects a utilisation series, and no durable store holds one | Every usage input, including the ones with full catalog coverage |
 
 Two questions are **not decided** here and are not this record's to decide: which
 provider rate cards a comparison against hosted capacity would use, and which

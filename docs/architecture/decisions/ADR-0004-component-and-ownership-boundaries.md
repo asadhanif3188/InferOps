@@ -13,10 +13,13 @@
 > This record decided boundaries for components that did not exist when it was
 > accepted. Two of them do now: the platform API and its adapters are implemented,
 > and `V1-S3-002-PR1` added the Helm chart under
-> [`charts/inferops-llm/`](../../../charts/inferops-llm/). There is still no
-> Terraform configuration. **No decision below has changed**, and the arrival of a
-> chart is not evidence that the design works: nothing in this repository has
-> installed it, so what exists is a chart that renders, not a release that runs.
+> [`charts/inferops-llm/`](../../../charts/inferops-llm/). A Terraform prerequisite
+> layer exists too. **No decision below has changed**, and the design has since been
+> executed rather than only rendered: Terraform applied and destroyed the
+> prerequisites, and the release installed, served, upgraded, rolled back and
+> uninstalled — on `docker-desktop`, one Windows host, one replica of each tier,
+> with the multi-replica profile refused at the capacity gate and nothing
+> re-certified on `kind`.
 >
 > The constraint is what the record is for, and it is now a constraint something
 > can be checked against rather than only a commitment about future work.
@@ -24,11 +27,17 @@
 > One half of it is machine-checked. The ownership inventory this record accepts is
 > committed as data and validated by `tests/architecture/test_resource_ownership.py`,
 > so single ownership and the Terraform/Helm disjointness are properties a change
-> has to break a test to violate. The component half has no such check, because
-> there is no code, and this record does not pretend otherwise.
+> has to break a test to violate. Both tools are now checked against it as well, by
+> `test_helm_chart.py` and `test_terraform_prerequisites.py`. The decomposition this
+> record draws still has no check of its own, and this record does not pretend
+> otherwise.
 >
-> D7 is **not decided**. Two resources have no owner, are recorded as unowned, and
-> are deferred out of V1 rather than assigned to a tool for tidiness.
+> D7 is **decided in part**. Amended 2026-09-09: the telemetry collector is
+> Helm-owned and release-scoped, and a release has installed one. An ingress
+> controller, a load-balancer implementation, a durable store, dashboards and an
+> alert routing path remain **not decided** — two resources still carry an
+> `undecided` owner, are recorded as unowned, and are deferred out of V1 rather than
+> assigned to a tool for tidiness.
 
 ## Decision status
 
@@ -175,9 +184,9 @@ inside the blast radius of a routine scoped teardown, giving one resource two
 destroyers.
 
 It is not a live defect: the implemented teardown is bound to one smoke-test
-namespace and sweeps nothing else, and no prerequisite exists to sweep. It becomes
-one the moment either the sweep is generalised to match the accepted wording or
-Terraform is written.
+namespace and sweeps nothing else. Terraform has since been written and applied, so
+there are prerequisites to sweep; it becomes a live defect the moment the sweep is
+generalised to match the accepted wording.
 
 A resolution is specified: a lifecycle label that a scoped sweep must exclude, set on
 the namespace metadata Terraform owns, plus a platform namespace distinct from the
@@ -288,8 +297,10 @@ owner now.
 
 **What this does not decide.** It selects no telemetry SDK, exporter, tracer or
 log pipeline — `ADR 0006` `D8` still leaves those open. It makes no claim that
-the platform is observable: a collector that has never run collects nothing, and
-`telemetry-collector` stays `planned` until a release installs it.
+the platform is observable. A release has since installed the collector and a real
+Prometheus scraped both InferOps jobs through it, so `telemetry-collector` is
+`implemented` — and its series are ephemeral, nothing is dashboarded, and nobody is
+paged.
 
 ## Consequences
 
@@ -382,13 +393,13 @@ and the day an implementation exists this suite will not be sufficient.
 
 | ID | Item | Status | Impact |
 |---|---|---|---|
-| R1 | The ownership inventory describes tools that do not exist | Open, by construction | Nothing compares the inventory to a real Terraform configuration or chart. It can be wrong in ways no test here can find |
-| R2 | The scoped teardown could delete a Terraform-owned prerequisite if it is generalised to match the accepted cleanup wording | Open | Two destroyers for one resource. Mitigated only by a lifecycle label that is specified here and implemented nowhere |
+| R1 | The inventory is checked against files, and a file is not a cluster | **Partly closed** | Both tools exist and two suites compare the inventory to them in both directions. Execution closed the rest on one provider: Terraform applied and destroyed, the release installed, upgraded, rolled back and uninstalled without residue. Nothing establishes either on `kind`, and no suite here can |
+| R2 | The scoped teardown could delete a Terraform-owned prerequisite if it is generalised to match the accepted cleanup wording | Open, on the sweep side | Two destroyers for one resource. The lifecycle label is no longer only specified: Terraform sets `inferops.io/lifecycle: prerequisite` on the namespace and the claim and a test enforces it. The scoped sweep still does not exclude it, so the mitigation is half-built |
 | R3 | The adapter interface has one real implementation | Open | It will encode that runtime's assumptions, and the cost surfaces when a second runtime is attempted rather than now |
-| R4 | `helm uninstall` leaves roughly 1.7 GiB occupied | Open | On a host with about 23 GB free, and where teardown was measured not to return disk space, this accumulates. The reclamation path must be documented before anyone runs a second workload |
-| R5 | No collector exists for the metrics these components will expose | **Closed in design, open in evidence** (D7, amended 2026-09-09) | An owner is chosen and a collector is rendered, so telemetry is no longer emitted into nothing by construction. It has not run: `telemetry-collector` is `planned`, and a claim that the platform is observable stays unsupported until a release installs one and something is actually scraped |
+| R4 | `helm uninstall` leaves roughly 1.7 GiB occupied, and removing it does not return host disk | **Partly closed** | The reclamation path has been executed rather than only specified: `terraform destroy` removed the namespace, its metadata and the model cache claim, in the documented release-first order. What stays open is the layer below — the container engine's virtual disk grows to hold this and does not shrink when it is removed (ADR 0001 R11), so reclaiming host space needs an engine maintenance operation this project must not perform for a contributor |
+| R5 | No collector exists for the metrics these components will expose | **Closed** (D7, amended 2026-09-09) | An owner was chosen, a collector was rendered, a release installed it, and a real Prometheus scraped both InferOps jobs with the accepted correlation queries evaluated against what it held. `telemetry-collector` is `implemented`. A claim that the platform is *observable* stays unsupported: the series live in an `emptyDir` and go with the pod, no durable backend, dashboard or alert routing path exists, and this is one run on `docker-desktop` with one replica of each tier |
 | R6 | Every service is ClusterIP, because the accepted cluster ships no ingress or load balancer | Open | External access is a port-forward. The contracts InferOps most needs to exercise remain unexercised |
-| R7 | The network policy planned for the release may not be enforced by the local cluster's network plugin | Open | A policy that is not enforced is a comment. It must be tested before it is described as a control |
+| R7 | The release's network policy is **not** enforced by the network plugin the observed clusters run | **Open, and now measured** | An executed experiment established that `kindnetd` does not apply one. The objects are created and inert. A policy that is not enforced is a comment, and this is a worse position than untested rather than a better one (`DR-04`, `EX-05`) |
 | R8 | No public maintainer roster exists | Open | This record has no named decision owner and cannot be formally approved by one |
 | R9 | The trust boundary map names five boundaries and three of them have no control at all | Open, and stated | The map could be read as coverage. It is labelled as a map in the record, the diagram, and the table |
 
@@ -396,5 +407,6 @@ Open questions carried forward: whether a GitOps controller should replace the
 Terraform layer once the environment is less memory-constrained; what the lifecycle
 label must be named so that it does not collide with the existing project label
 selector; whether the acquisition job belongs in the release at all, or whether
-model acquisition is a prerequisite operation with the claim it fills; and who owns
-a telemetry collector, which D7 leaves open on purpose.
+model acquisition is a prerequisite operation with the claim it fills; and who owns a
+durable telemetry store, a dashboard, and an alert routing path, which D7 still
+leaves open on purpose now that the collector itself is assigned.

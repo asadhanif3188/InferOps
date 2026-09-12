@@ -1,21 +1,29 @@
 # V1 system architecture
 
 Status: **accepted as the V1 design boundary**, in
-[ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md). Every
-component below the contract layer is **unbuilt**. This document describes what V1
-is allowed to become, not what exists.
+[ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md). Most
+components below the contract layer are now **built**, and one is not. This
+document describes the boundary V1 is held to; each box says what exists.
 
 > [!IMPORTANT]
 > Read every box in every diagram as a design commitment unless it is marked
-> otherwise. Exactly four things drawn here exist today: the workload contract and
-> its validator, the local Kubernetes cluster, the serving runtime and model that
-> were selected on executed proof, and the evidence records. Nothing serves a
-> request through this architecture, because no platform API, adapter, chart, or
-> Terraform configuration has been written.
+> otherwise. What exists today is the workload contract and its validator, the
+> platform domain, both serving adapters, the InferOps API, the Helm chart, the
+> Terraform prerequisite layer, the cluster an operator provides, the serving
+> runtime and model selected on executed proof, and the evidence records. A
+> request **has** been served through this architecture: `V1-S3-011` installed the
+> release on the `docker-desktop` reference provider and a real completion came
+> back through the release's own Service. **Deployment rendering is still
+> unbuilt** — nothing turns a validated contract document into release values, and
+> a values file is written by hand.
+>
+> Every result behind that sentence is one provider, one Windows host, CPU, and one
+> replica of each tier. The multi-replica profile was refused at the capacity gate
+> on that host, and no box here is evidence of a portable production platform.
 >
 > The ownership half of this design is machine-checked. The component half is not:
-> there is no code for a test to check it against, and this document says so rather
-> than implying that a diagram constrains anything on its own.
+> no test checks the decomposition this document draws, and the document says so
+> rather than implying that a diagram constrains anything on its own.
 
 ## What this document is for
 
@@ -94,9 +102,12 @@ drawing:
   selects it explicitly, verifies it, and acts inside it. Nothing on the platform
   path creates, enables, resets, reconfigures, or deletes a cluster
   ([ADR 0011](decisions/ADR-0011-external-local-cluster-provider-contract.md)).
-  That boundary is what keeps an operator's unrelated clusters out of reach. It was
-  tested by attacking it for `kind`; nothing yet identifies a Docker Desktop
-  cluster, so every script refuses one.
+  That boundary is what keeps an operator's unrelated clusters out of reach. The
+  `kind` guard was tested by attacking it with a real foreign cluster wearing this
+  project's context name, and it refused. A Docker Desktop guard exists too, binding
+  each node to a container on this engine and to the API server port the verified
+  kubeconfig dials; it has not been attacked the same way, and neither guard can
+  refuse a cluster an operator deliberately named to impersonate the other.
 - **Publishers are outside the trust boundary and outside the availability
   boundary.** The project pins an image digest and a model revision with a per-file
   hash, so it can prove what it ran. It cannot keep either available.
@@ -123,11 +134,11 @@ drawing:
    +--------------------------------+--------------------------------+
                                     v
    +-----------------------------------------------------------------+
-   |  Platform domain                                        PARTIAL |
+   |  Platform domain                                         EXISTS |
    |  workload identity, model and runtime selection, resource and   |
    |  scaling policy, environment and ownership metadata, security   |
    |  classification, attribution           <- typed objects EXIST   |
-   |  canonical errors, validation rules, policy    <- UNBUILT       |
+   |  canonical errors, validation rules, policy    <- EXIST         |
    |                                                                 |
    |  owns the serving-adapter interface; depends on no adapter,     |
    |  no Kubernetes client, no Helm, and no runtime SDK              |
@@ -136,17 +147,17 @@ drawing:
          | implements the interface                            | renders
          | the domain owns                                     v
    +-----+------------------------+   +----------------------------------+
-   |  Serving adapters   PARTIAL  |   |  Deployment rendering    UNBUILT |
+   |  Serving adapters    EXISTS  |   |  Deployment rendering    UNBUILT |
    |                              |   |  a validated domain object       |
    |  +------------+ +---------+  |   |  becomes chart values, and       |
-   |  | mock       | | real    |  |   |  nothing else writes them        |
-   |  | CI only    | | runtime |  |   +----------------+-----------------+
-   |  | EXISTS     | | UNBUILT |  |                    |
+   |  | mock       | | real    |  |   |  nothing else writes them; a     |
+   |  | CI only    | | runtime |  |   |  values file is written by hand  |
+   |  | EXISTS     | | EXISTS  |  |   +----------------+-----------------+
    |  +------------+ +----+----+  |                    |
    +---------------------|--------+                    v
                          |                +--------------------------+
-   +---------------------|--------+       |  Helm chart      UNBUILT |
-   |  InferOps API       |UNBUILT |       |  and its values schema   |
+   +---------------------|--------+       |  Helm chart      EXISTS  |
+   |  InferOps API       |EXISTS  |       |  and its values schema   |
    |  inference, live,   |        |       +--------------------------+
    |  ready, metrics,    |        |
    |  correlation id,    |        |
@@ -163,8 +174,9 @@ drawing:
    |  Serving runtime               | reads  |  Model cache volume    |
    |  third party, pinned by digest +------->|  holds one hash-       |
    |  EXISTS as a selected, proven  |        |  verified artifact     |
-   |  dependency; not yet deployed  |        |  UNBUILT               |
-   |  by this platform              |        +------------------------+
+   |  dependency, and the release   |        |  EXISTS, Terraform-    |
+   |  deploys it                    |        |  owned and filled      |
+   |                                |        +------------------------+
    +--------------------------------+
 ```
 
@@ -188,9 +200,11 @@ this distribution. The validation rules, the canonical error surface, and the
 serving-adapter interface now sit beside it, and the first implementation of that
 interface — [the deterministic mock adapter](../serving/mock-serving-adapter.md) —
 lives outside the domain in `src/inferops/adapters/`, which is the dependency
-direction this rule exists to fix. What is still unbuilt is the adapter for the
-selected runtime, the API that would compose one, and everything downstream of
-both.
+direction this rule exists to fix. The adapter for the selected runtime, the API
+that composes one, the chart, and the prerequisite layer have all been built
+since, and `V1-S3-011` ran them together on the reference provider. What is still
+unbuilt is deployment rendering: nothing turns a validated document into release
+values, and a values file is written by hand.
 
 The rule has a visible consequence and it is worth stating rather than discovering:
 the composition point — the place that decides which adapter is live — is the one
@@ -394,13 +408,17 @@ other is committed and immutable.
                                    |
                                    v
                    +-------------------------------+
-                   |  Collector and store          |
-                   |  NOT SELECTED. Nothing scrapes|
-                   |  these endpoints today, and   |
-                   |  the ownership inventory      |
-                   |  records the gap rather than  |
-                   |  assigning it to a tool by    |
-                   |  accident.                    |
+                   |  Collector: Helm-owned and    |
+                   |  release-scoped. It scraped   |
+                   |  both endpoints on the        |
+                   |  reference provider. Series   |
+                   |  live in an emptyDir and go   |
+                   |  with the pod.                |
+                   |                               |
+                   |  Durable store, dashboard,    |
+                   |  alert routing: NOT SELECTED. |
+                   |  telemetry-backend is         |
+                   |  deferred in the inventory.   |
                    +-------------------------------+
 
    -------------------------------------------------------------------
@@ -428,8 +446,9 @@ What was deferred here is now decided elsewhere. Which metrics exist, their name
 their labels and cardinality budget, and the log schema are in
 [the telemetry catalog](../telemetry/telemetry-catalog.md); what a claim needs before
 it may cite a run is in [the test strategy](../testing/test-strategy.md) and
-[the certification levels](../testing/certification.md). Both are catalogues of
-components that do not exist yet, and both say so.
+[the certification levels](../testing/certification.md). Both catalogue what each
+component may claim rather than what it does, they mark which components exist,
+and most of them now do.
 
 Nothing about the three rules above changed when they were written down in detail.
 The catalog turns the third one into arithmetic — a field's placement is derived from
@@ -469,9 +488,10 @@ empty placement list rather than a convention.
    container engine, cluster, kubeconfig with a client key, image cache
      defended by:  project-scoped kubeconfig ignored by version control,
                    an identity guard that refuses to act on a cluster
-                   it cannot positively identify -- kind only, so a
-                   Docker Desktop cluster is refused (ADR 0011) --
-                   scoped teardown
+                   it cannot positively identify -- `kind` by pinned
+                   cluster name, Docker Desktop by binding its node
+                   container to the API server port the verified
+                   kubeconfig dials (ADR 0011) -- scoped teardown
      NOT defended: a second cluster deliberately given this project's
                    name satisfies every check
   =====================================================================
@@ -505,9 +525,9 @@ empty placement list rather than a convention.
 | Boundary | What crosses it | Enforced today | Owned by |
 |---|---|---|---|
 | B1 artifact | Container images, model weights | Digest and hash pinning, hash verified before use | The pinning rules in ADR 0002 |
-| B2 cluster | Every platform action on Kubernetes | Cluster identity guard and scoped teardown, in the environment scripts. The guard is `kind`'s alone, so a Docker Desktop cluster is refused rather than identified | ADR 0001 D5 and D6; [ADR 0011](decisions/ADR-0011-external-local-cluster-provider-contract.md) |
+| B2 cluster | Every platform action on Kubernetes | Cluster identity guard and scoped teardown, in the environment scripts. Both providers have a guard: `kind`'s binds nodes to kind-labelled containers, Docker Desktop's binds them to a container on this engine and to the API server port the verified kubeconfig dials. Neither can refuse a cluster deliberately named to impersonate the other | ADR 0001 D5 and D6; [ADR 0011](decisions/ADR-0011-external-local-cluster-provider-contract.md) |
 | B3 namespace | Everything a release installs | A rendered default-deny, which the local cluster's network plugin was measured not to enforce | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
-| B4 workload | Process privilege inside a pod | Proven once for the runtime pod in a trial. Nothing enforces it for a pod this platform deploys, because it deploys none | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
+| B4 workload | Process privilege inside a pod | Rendered and deployed workloads carry the documented pod-security settings. Nothing here reads a pod this platform deployed and no admission control constrains one, so nothing enforces it | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
 | B5 caller | Inference requests and their responses | **Nothing.** There is no authentication, no authorization, no rate limit, and no tenant isolation | [ADR 0008](decisions/ADR-0008-v1-security-baseline.md) |
 
 The tenant field is the one worth calling out here, because getting it wrong is how
@@ -533,8 +553,12 @@ That rule now has a home rather than only a paragraph: it is `T-08` in
 - **It does not describe any project other than this one.** The boundary rules for
   work that lives elsewhere are in
   [the project boundaries document](project-boundaries.md).
-- **It is not evidence.** No component drawn here has served a request through this
-  architecture, because most of them do not exist.
+- **It is not a general claim.** Components drawn here have served a request through
+  this architecture — once, on `docker-desktop`, on one Windows host, on CPU, with
+  one replica of each tier, and with the multi-replica profile refused at the
+  capacity gate. A drawing is not the evidence; the records under
+  [`docs/proof/`](../proof/README.md) are, and no result on one provider is a result
+  on the other.
 
 ## Related records
 

@@ -17,9 +17,11 @@ the outside, with the emitter none the wiser -- so the same derivation is applie
 the scrape configuration, and the drop list is recomputed from the catalog on every
 run rather than copied into it.
 
-**None of this establishes that anything is collected.** No collector, store,
-dashboard, or alerting path is selected, nothing scrapes either InferOps endpoint,
-and this chart has never been installed. Every check here reads a file.
+**None of this establishes that anything is collected.** Every check here reads a
+file and contacts no cluster. A release-scoped collector does exist and has scraped
+both InferOps endpoints on one provider; that is recorded under ``docs/proof/`` and
+nothing in this module observed it. No durable store, dashboard, or alerting path
+is selected.
 """
 
 from __future__ import annotations
@@ -494,11 +496,21 @@ def test_the_absence_of_model_readiness_is_published_rather_than_averaged() -> N
     assert rule["readsToday"].startswith("1,")
 
 
-def test_no_missing_signal_rule_claims_anything_evaluates_it() -> None:
+def test_no_missing_signal_rule_claims_a_series_where_there_is_none() -> None:
+    """Each rule says what it reads, and says it is conditional on a collector.
+
+    These rules used to say ``no collector evaluates it``, which stopped being true
+    once the chart gained one. What has to stay true is narrower: the rule reads the
+    release's own series only where a collector is deployed, and nothing where one
+    is not. Pinning the old sentence would have kept the record describing a chart
+    that no longer exists.
+    """
     for rule in RECORD["missingSignalVisibility"]:
         if rule["record"] == "inferops:model_ready_absent:platform_api":
             continue
-        assert "no collector evaluates it" in rule["readsToday"]
+        reads = rule["readsToday"]
+        assert "where the collector is deployed" in reads, rule["record"]
+        assert "nothing where it is not" in reads, rule["record"]
 
 
 def test_every_unavailable_catalog_metric_is_one_the_catalog_says_is_not_emitted() -> (

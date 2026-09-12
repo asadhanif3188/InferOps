@@ -999,9 +999,18 @@ def test_a_pod_security_control_is_a_manifest_property_and_says_so(
 
 
 def test_the_pod_security_gap_is_carried_by_a_deferred_risk() -> None:
+    """``DR-05`` carries the gap, and says which gap it is.
+
+    The gap used to be that nothing was deployed. Since ``V1-S3-011`` a release
+    deploys workloads that carry the rendered settings, so the risk that remains
+    is that nothing here verifies the pods that result. This asserts the second
+    reason rather than the first: pinning the old phrase would have kept the
+    register describing a state the repository had already left.
+    """
     risk = next(row for row in RISKS if row["riskId"] == "DR-05")
     assert risk["boundaryId"] == "B4"
-    assert "deploys no pod" in risk["whyDeferred"]
+    assert "nothing verifies the pods that result" in risk["whyDeferred"]
+    assert "deploys no pod" not in risk["whyDeferred"]
     assert risk["blocksProductionUse"] is True
     exception = next(row for row in EXCEPTIONS if row["exceptionId"] == "EX-04")
     assert exception["compensatingControl"] in POD_SECURITY_CONTROLS

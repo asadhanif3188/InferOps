@@ -22,10 +22,11 @@ the collection record, and then *run*, against synthetic stores whose series car
 the label sets the render would produce.
 
 **None of this establishes that anything is collected or that any query has been
-answered.** No collector, store, dashboard, or alerting path is selected, nothing
-scrapes either InferOps endpoint, this chart has never been installed, and no
-Prometheus has parsed, loaded, or evaluated a single expression here. Every check
-reads a file.
+answered.** Every check reads a file, and no Prometheus parses, loads, or evaluates
+a single expression here. A release-scoped collector has since scraped both InferOps
+endpoints and a real Prometheus has evaluated these expressions on one provider;
+that is recorded under ``docs/proof/`` and nothing in this module observed it. No
+durable store, dashboard, or alerting path is selected.
 """
 
 from __future__ import annotations

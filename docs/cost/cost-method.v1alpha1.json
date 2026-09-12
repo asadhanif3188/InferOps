@@ -1515,7 +1515,7 @@
       {
         "gapId": "no-collector-reads-anything",
         "affects": ["requests", "input-tokens", "output-tokens", "ready-seconds"],
-        "statement": "The signals these inputs name are specified and emitted by nothing. No collector, store, or scrape exists.",
+        "statement": "The signals these inputs name are specified and emitted by nothing. There is no metrics server and no durable store, so there is no utilisation series to integrate over a window - the release's own collector scrapes what InferOps publishes and never container, pod, or node consumption.",
         "consequence": "Every usage input is unavailable today, whatever its coverage says. Coverage describes what the catalog would supply, not what exists."
       }
     ]

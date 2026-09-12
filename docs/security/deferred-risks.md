@@ -124,7 +124,7 @@ leaving egress wide open.
 all egress was applied to a real cluster running `kindnetd` — the plugin a `kind`
 cluster ships — and pod-to-pod traffic by IP, DNS resolution, and a direct query to
 CoreDNS all continued to work. The plugin runs with no feature gate enabling policy
-enforcement and does not enforce. [The raw result](v1-s3-004-pr1-network-policy-enforcement.md) records the
+enforcement and does not enforce. [The raw result](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md) records the
 procedure, the environment, and what it does and does not transfer.
 
 So what exists is a **correct policy that nothing applies**, and a declaration that
@@ -148,7 +148,7 @@ rendered policy may not be described as a control while the plugin ignores it. S
 
 **Why deferred.** This platform now deploys one release of its own chart, and **nothing verifies the pod that results**. There is no admission control, no gateway, and no multi-tenancy: it admits no workload from anyone else, which bounds the blast radius and closes none of this risk. The eight pod-security assertions are
 enforced over every manifest committed here, which is a property of five YAML files
-rather than of a cluster. Since `V1-S3-002-PR1` the same six properties are also
+and two committed renders rather than of a cluster. Since `V1-S3-002-PR1` the same six properties are also
 asserted over the chart's committed renders, by
 `tests/architecture/test_helm_chart.py` rather than by this suite; since
 `V1-S3-004-PR1` [a workload policy](workload-policy.md) also refuses a render that
@@ -398,7 +398,7 @@ Accepted in [the workload policy document](workload-policy.md).
 and the object is the artifact that travels: it appears in a render, in a diff, and
 in a list of what a release installs, and none of those says whether the plugin read
 it. **That sentence was written as a hypothetical and is now an observation** —
-[the executed experiment](v1-s3-004-pr1-network-policy-enforcement.md) established that `kindnetd` ignores it. What
+[the executed experiment](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md) established that `kindnetd` ignores it. What
 actually limits reachability today is the compensating control: both Services are
 `ClusterIP` and no Ingress is declared, so anything outside the cluster needs a
 deliberate port-forward from a machine that already holds the cluster's credential.

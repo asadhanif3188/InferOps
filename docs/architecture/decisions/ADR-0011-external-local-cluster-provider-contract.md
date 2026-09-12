@@ -15,11 +15,15 @@
 > supported providers, `kind` and `docker-desktop`, selected explicitly. It never
 > creates, enables, resets, reconfigures, or deletes one.
 >
-> **It is a decision, not an implementation.** No script changed with it. The only
-> identity guard that exists is the `kind` one, for the one cluster name the
-> environment scripts pin, and nothing can yet identify a Docker Desktop cluster —
-> so every script still refuses one. That refusal is the correct behaviour until a
-> positive check exists, and this record does not describe it as support.
+> **It was a decision before it was an implementation.** `V1-S3-010-PR2` implemented
+> it. `inferops::resolve_target` in `lib.sh` carries a positive identity guard for
+> both providers and eight of D6's nine refusals: `kind`'s binds every node the API
+> server reports to a kind-labelled container on the local engine for any explicitly
+> selected cluster name, and Docker Desktop's binds every node to a container on this
+> engine **and** to the API server port the verified kubeconfig dials. What stays
+> open is written under D5: neither guard can refuse a cluster an operator
+> deliberately named to impersonate the other, and nothing pins the engine the
+> `docker` CLI talks to. Those residuals are `EX-06`.
 >
 > **It rewrites no history.** ADR 0001's `kind` lifecycle was executed and its
 > evidence stands for what it measured. What changes is that creating and deleting
@@ -35,12 +39,12 @@
 | ID | Decision | Status | What supports it |
 |---|---|---|---|
 | D1 | Cluster lifecycle is outside InferOps | **Accepted** | The ownership inventory gives every cluster to its operator, and a test reads every platform workflow for a cluster create, delete, or helper invocation |
-| D2 | The supported providers are exactly `kind` and `docker-desktop` | **Accepted** as scope | A test on the contract data. Supported means the contract covers it; only `kind` has a guard |
-| D3 | Selection is explicit; detection is advisory; every mutation re-verifies | **Accepted** as a rule | Nothing implements selection. The re-verification half exists for `kind` |
+| D2 | The supported providers are exactly `kind` and `docker-desktop` | **Accepted** as scope | A test on the contract data. Supported means the contract covers it; both providers now have an identity guard, and D5 records how they differ |
+| D3 | Selection is explicit; detection is advisory; every mutation re-verifies | **Accepted** as a rule | `V1-S3-010-PR2` implemented selection through `INFEROPS_PROVIDER`, and the re-verification half exists for both providers |
 | D4 | Verification hands on normalised target facts; Terraform and Helm receive an address and never a provider | **Accepted** | The data, checked. The prerequisite module names no provider; the environment root's `kind` pin is a recorded gap |
-| D5 | Each provider has a positive identity check | **Accepted for `kind`**, on ADR 0001's executed evidence. **For `docker-desktop` the requirements are accepted and the engine-binding mechanism is not decided** | See D5 |
-| D6 | Refusals happen before any mutation, for nine named cases | **Accepted** | Four of the nine are implemented, for `kind` only |
-| D7 | Access is project-scoped: one kubeconfig, one verified context | **Accepted** | Implemented for `kind` by the wrappers ADR 0001 D5 describes |
+| D5 | Each provider has a positive identity check | **Accepted for both**, on ADR 0001's executed evidence for `kind` and on `V1-S3-010-PR2` for `docker-desktop`, whose engine binding is the API server port the verified kubeconfig dials | See D5 for the two residual gaps, carried as `EX-06` |
+| D6 | Refusals happen before any mutation, for nine named cases | **Accepted** | Eight of the nine are implemented, for both providers, in `inferops::resolve_target`. `unexpected-context` is unreachable by construction rather than guarded, and D6 says why |
+| D7 | Access is project-scoped: one kubeconfig, one verified context | **Accepted** | Implemented for both providers: the wrappers ADR 0001 D5 describes write one project-scoped kubeconfig per verified target |
 | D8 | Provider differences are recorded per provider, with how each answer is known | **Accepted** | The data, checked |
 | D9 | `docker-desktop` is the reference provider for the current re-certification | **Accepted** as a choice of host | Review alone |
 | D10 | Every runtime record names its provider; no provider certifies another | **Accepted** as a rule | The existing records are labelled; nothing writes the field yet |
@@ -178,16 +182,30 @@ For `docker-desktop` three checks are required:
 3. the nodes are bound to this machine's Docker Desktop virtual machine, the way
    `kind`'s check binds nodes to labelled containers.
 
-V1-S3-010-PR2 implemented the first two. **The third is the part that is not
-decided**, because whether Docker Desktop's nodes are observable from the local
-engine has not been established. If no mechanism can be established, the Docker
-Desktop guard is a name-and-shape check, weaker than `kind`'s. It is not yet
-recorded as an accepted security exception in `docs/security/deferred-risks.md`
--- until it is, this ADR and the contract data are where the gap is written
-down, not a claim that the two guards are equal. This is why the record is
-accepted in part rather than accepted: the check that would make the two
-providers' guards comparable is a runtime question, and no runtime has answered
-it.
+V1-S3-010-PR2 implemented all three. Docker Desktop's nodes **are** observable from
+the local engine: it provisions its Kubernetes with kind, and `desktop-control-plane`
+is an ordinary container on the engine the operator's `docker` CLI already talks to.
+The binding that carries the weight is not the label check `kind` uses — the
+`io.x-k8s.kind.*` labels Docker Desktop exposes are kind's generic ones, which an
+ordinary `kind create cluster --name desktop` reproduces. It is the port: the
+control-plane container's published `6443/tcp` host port must be the port the
+project-scoped kubeconfig this verification just wrote actually dials, which ties the
+connection being verified to the container being inspected rather than correlating
+two names.
+
+Two gaps remain, and they are recorded rather than closed: a `kind` cluster an
+operator themselves named `desktop`, reached through a context they named
+`docker-desktop`, satisfies every check including the port; and "this machine" is
+really "the engine this `docker` CLI is configured to reach", since nothing pins
+`DOCKER_HOST` or the active docker context. Both are accepted as `EX-06` in
+[the deferred-risk register](../../security/deferred-risks.md).
+
+This decision is therefore no longer the reason the record is **accepted in part**.
+Two implementation gaps are, and both are stated where they belong rather than
+here: D6's ninth refusal is unreachable by construction rather than guarded, and
+D10's provider field is accepted as a rule that nothing writes yet. Whether those
+are enough to move the record's own status is the record owner's call, and this
+reconciliation does not make it.
 
 ## D6 — Refusals
 
@@ -362,11 +380,11 @@ correctly identified or refused: **nothing**. That needs a cluster.
 
 | ID | Item | Status | Impact |
 |---|---|---|---|
-| R1 | Docker Desktop's nodes may not be observable from the local engine | Open | The Docker Desktop guard would be a name-and-shape check, weaker than `kind`'s, and a new security exception |
-| R2 | Whether an engine-built image is visible to Docker Desktop's cluster without a load step is unknown | Open | The API and model-seed image steps assume `kind load`. Until this is answered, no release can be installed on the reference provider |
+| R1 | Neither guard can refuse a cluster deliberately named to impersonate the other | **Closed as asked, reopened narrower** | Docker Desktop's nodes are observable from the local engine, and the guard binds each to a container and to the API server port the verified kubeconfig dials. What it cannot refuse is a `kind` cluster an operator themselves named `desktop` reached through a context they named `docker-desktop`, and nothing pins the engine the `docker` CLI talks to. Accepted as `EX-06` |
+| R2 | Docker Desktop's cluster does not share the engine's image store | **Closed** | Established during `V1-S3-011`: a locally built image is made visible by a `docker save` piped into the node's own containerd and an explicit `repository@digest` tag, not by `kind load`. A release has since been installed on the reference provider |
 | R3 | The reference host's bundled kubectl was measured at `v1.36.1`, and both providers' servers here report 1.34 | Open | The skew rule refuses that client on either provider. A supported client is needed before any run, exactly as ADR 0001 R8 already says for `kind` |
 | R4 | Docker Desktop's Kubernetes version follows its release | Accepted | Evidence on the reference provider is dated to a release, not pinned |
 | R5 | The `kind` path will be largely unexecuted in V1 | Accepted | The reference host has no `kind` CLI. Implemented and tested `kind` checks will be reported as such, and unexecuted runs as not run |
 | R6 | A Docker Desktop cluster provisioned differently from the one observed may appear | Mitigated by design | Its node shape fails D5's second check and it is refused until observed and recorded |
-| R7 | The security baseline — threat `T-13`, the control `refuse-to-act-on-a-cluster-this-project-did-not-create` in the baseline and the control matrix, and exception `EX-02` — is worded against the superseded design | Open, deliberately | Restated with the guard, so that none of them describes a guard that does not exist |
+| R7 | The security baseline — threat `T-13`, the control `refuse-to-act-on-a-cluster-this-project-did-not-create` in the baseline and the control matrix, and exception `EX-02` — is worded against the superseded design | Open, and now due | The guard has since changed: both providers are covered and the Docker Desktop check binds a port, so the condition this row set for restating them is met |
 | R8 | No public maintainer roster exists | Open | This record has no named decision owner |

@@ -4,8 +4,8 @@ Status: **accepted matrix**, in
 [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
 It lists every public claim V1 intends to make, the test layers behind it, the
 environment it is proven in, the certification level it needs, and who owns its
-evidence. Twelve of twenty-one claims are certified today. The rest are commitments, and
-the difference is the point of the table.
+evidence. Sixteen of twenty-four claims are certified today, seven are commitments, and
+one is deferred out of V1. The difference between the three is the point of the table.
 
 The authoritative form is
 [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json). This document and that
@@ -79,12 +79,15 @@ assertions, and exposes no service outside the cluster; and that the reserved
 vocabulary of a security posture appears in those documents only where it is denied.
 
 It certifies **nothing about whether anything is defended.** Nothing in this
-repository authenticates a caller, authorises a request, enforces a network policy, or
-applies a security context to a pod it deployed; no secret scanner has been run and
-recorded; and no assessment by an outside party has ever been performed. Ten of its
-thirty-two controls have no verification at all, twelve risks are carried rather than
-reduced, and the eight manifest assertions are properties of five YAML files that are
-smoke and trial apparatus rather than of any pod this platform deployed.
+repository authenticates a caller, authorises a request, or admits a pod; the network
+policy the release creates was measured not to be enforced by the plugin the observed
+clusters run; no secret scanner has been run and recorded; and no assessment by an
+outside party has ever been performed. Six of its thirty-eight controls have no
+verification at all and nine are enforced by nothing automated, twelve risks are
+carried rather than reduced, and the eight manifest assertions are properties of five
+YAML files and two committed renders. A release **has** been installed from those
+renders and the workloads it deployed carried the settings — and no check here reads
+a pod that resulted, which is the distance this row keeps.
 
 An image scanner and a dependency auditor **have** each been run once, by hand,
 against the pinned runtime image and the committed dependency lockfile, and recorded

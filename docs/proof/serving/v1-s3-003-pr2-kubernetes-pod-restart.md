@@ -172,7 +172,7 @@ another minute to load. The figures above are from a run of the corrected code.
 one moment, with a host file cache in whatever state the preceding run left it.
 They are not a restart benchmark, a service-level objective, an availability
 figure, or a number anything may be compared against.
-[ADR 0005](../../architecture/decisions/ADR-0005-evidence-and-measurement.md) is
+[ADR 0005](../../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md) is
 why they are published as a single observation rather than as a measurement.
 
 ### Cleanup

@@ -4,8 +4,9 @@ This suite reads files. It renders nothing by itself, contacts no cluster, pulls
 no image, and installs nothing, so a passing run here is `local-static` evidence
 about a chart and says nothing whatever about a release. Whether this chart
 installs and uninstalls is answered by running
-`scripts/environment/helm-lifecycle.sh`, which has never been run, and not by
-reading anything here.
+`scripts/environment/helm-lifecycle.sh`, which has been run on `docker-desktop` and
+whose record is `docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md`,
+and not by reading anything here.
 
 Three properties are what this module exists for, and each is a rule stated
 somewhere else in the repository that a chart is in a position to break quietly.

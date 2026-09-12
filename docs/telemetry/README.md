@@ -5,7 +5,9 @@ decisions in [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidenc
 with the content-capture policy and the telemetry toolchain explicitly not chosen.
 The InferOps API emits eight of the thirteen active metrics and writes the specified
 log records; the serving-runtime adapter, the contract validator, and every span do
-not.
+not. A release-scoped collector now exists and has scraped both InferOps jobs on the
+`docker-desktop` reference provider; its series are ephemeral, and no durable
+backend, dashboard, or alerting path is selected.
 
 This directory answers a question that is easy to answer by accumulation: which
 signals a system should emit. The failure mode is not emitting too few — it is
@@ -24,9 +26,9 @@ and never a key. None of those is a convention anybody has to remember.
 | [Telemetry catalog](telemetry-catalog.md) | Correlation, resource and request attributes, thirteen active metrics, the cardinality budget, what the selected runtime already emits, and the log record |
 | [Redaction rules](redaction.md) | What is excluded, why each exclusion is tempting, which rules are really enforced, and what would have to exist before content capture could be enabled |
 | [API instrumentation](api-instrumentation.md) | What the API actually emits: the eight metrics, a scrape, a record, the variables a deployment states its identity in, and what is still absent |
-| [Collecting telemetry in Kubernetes](kubernetes-telemetry-collection.md) | What a collector would scrape from an installed release: two jobs, the labels the collector attaches and the ones it deliberately does not, what `instance` costs, the native runtime mapping, and the signals that have no source |
+| [Collecting telemetry in Kubernetes](kubernetes-telemetry-collection.md) | What the collector scrapes from an installed release: two jobs, the labels it attaches and the ones it deliberately does not, what `instance` costs, the native runtime mapping, and the signals that have no source |
 | [`kubernetes-telemetry-collection.v1alpha1.json`](kubernetes-telemetry-collection.v1alpha1.json) | The authoritative form of that document, compared against the committed chart renders by [`tests/telemetry/`](../../tests/telemetry/) |
-| [Correlated telemetry queries](telemetry-correlation-queries.md) | What an operator could ask of a store holding it: twenty-three questions, the vocabulary a query may use, the identity join, ten deliberately wrong queries and the rule that refuses each, and the six questions with no answer |
+| [Correlated telemetry queries](telemetry-correlation-queries.md) | What an operator can ask of the release's own collector, and what a durable store would add: twenty-three questions, the vocabulary a query may use, the identity join, ten deliberately wrong queries and the rule that refuses each, and the six questions with no answer |
 | [`telemetry-correlation-queries.v1alpha1.json`](telemetry-correlation-queries.v1alpha1.json) | The authoritative form of that document, checked against the catalog and the collection record and evaluated against fixtures by [`tests/telemetry/`](../../tests/telemetry/) |
 | [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json) | The authoritative form of both, validated by [`tests/telemetry/`](../../tests/telemetry/) |
 | [Evidence records and templates](../proof/README.md) | The four templates a record is written from, and the sections every record carries |
@@ -62,24 +64,29 @@ It reads only files in this repository and needs `pytest` alone.
 
 ## What is not here
 
-No exporter, no collector, no store, no dashboard, and no alert. No tracer and no
+No exporter, no durable store, no dashboard, and no alert. No tracer and no
 propagator. A logger and a redacting sink now exist, and they write to a stream:
-nothing scrapes the endpoint, nothing collects the stream, and no retention window,
-shipper, or access rule is selected. The ownership inventory
-[records that gap](../architecture/resource-ownership.md) rather than assigning it to
-a tool by accident.
+nothing collects that stream, and no retention window, shipper, or access rule is
+selected. The ownership inventory
+[records what is still missing](../architecture/resource-ownership.md) — a durable
+`telemetry-backend`, deferred — rather than assigning it to a tool by accident.
 
-The chart now renders a scrape configuration, and that changes none of the sentence
-above. A configuration describing what a collector would find is not a collector,
-and [the collection document](kubernetes-telemetry-collection.md) is explicit that
-nothing reads it.
+A collector, by contrast, is no longer missing. The chart renders the scrape
+configuration **and** owns the release-scoped Prometheus that reads it, and
+`V1-S3-011` installed one: it discovered and scraped both InferOps jobs on the
+`docker-desktop` reference provider. [The collection document](kubernetes-telemetry-collection.md)
+records what it found. Its series live in an `emptyDir` and go with its pod, so it
+answers questions about the release running now and is not a store anything may
+depend on.
 
-There are now queries as well, and they change none of it either. Every one of them
-has been parsed, checked against the catalog's placement rules, and evaluated against
-synthetic fixtures by this repository's own evaluator; **no Prometheus has parsed,
-loaded, or evaluated a single one**. [The query document](telemetry-correlation-queries.md)
-publishes what each would return, what an empty result would mean, and the four things
-that cannot be correlated at all.
+The queries have been run against it. Every one was first parsed, checked against the
+catalog's placement rules, and evaluated against synthetic fixtures by this
+repository's own evaluator, and a real Prometheus has since parsed, loaded, and
+evaluated every one against a real scrape — on one provider, on one host.
+[The query document](telemetry-correlation-queries.md) publishes what each returns,
+what an empty result would mean, and the four things that cannot be correlated at
+all. Nobody is told when an answer changes: there is no dashboard and no alerting
+path.
 
 The one thing here that was measured rather than specified is the list of series the
 selected serving runtime exposes. That came from

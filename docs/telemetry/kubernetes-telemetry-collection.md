@@ -1,6 +1,8 @@
 # Collecting telemetry in Kubernetes
 
-Status: **collector selected and rendered, nothing collected.** The `inferops-llm`
+Status: **collector selected, rendered, installed, and it has collected.** Its
+series are ephemeral, and no durable store, dashboard, or alerting path is selected.
+The `inferops-llm`
 chart renders the `telemetry-scrape-configuration` row of
 [the ownership inventory](../architecture/resource-ownership.md) as a ConfigMap
 holding a Prometheus scrape configuration and a set of recording rules, and — since
@@ -298,7 +300,9 @@ from everything outside the release.
 
 `telemetry.collection.collector` is the allowance: a namespace and a pod selector,
 required together, rendering one ingress rule per workload policy. Naming neither is
-the default and leaves the denial whole — there is no collector to name.
+the default and leaves the denial whole — with `deploy` off there is no collector
+to name, and with it on the chart fills both selectors in from the collector it
+just rendered.
 
 The namespace selector and the pod selector are **one `from` item**, which means "a
 pod in that namespace with those labels". Written as two items they would mean "any

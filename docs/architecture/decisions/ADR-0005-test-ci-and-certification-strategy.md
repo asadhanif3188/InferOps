@@ -20,7 +20,8 @@
 > committed `pytest.ini` in both directions — so "a mock cannot certify C2" and "the
 > default lane cannot run a real model" are properties a change has to break a test
 > to violate. The other half — whether the layers described will ever be written — has
-> no such check, because six of the eleven have no code.
+> no such check, because three of the eleven have no code: failure-and-resilience and
+> security-scan are planned, and capacity-and-load is deferred.
 >
 > D6 is **not decided**. No continuous-integration service, runner, or hosted
 > capable runner is selected, and the lack is recorded rather than filled in.
@@ -89,9 +90,10 @@ runtime, are the same shape and are not the same evidence. The layer list here i
 organised around the second distinction because it is the one that gets misused.
 
 The ceiling lives in the data rather than in a comment, so the check is `layer's
-ceiling ≤ its class's ceiling` rather than `does the reviewer remember`. Six of the
-eleven layers have no code. They are registered anyway, because a marker that exists
-is the marker the first test of that kind gets written under.
+ceiling ≤ its class's ceiling` rather than `does the reviewer remember`. Three of the
+eleven layers have no code — failure-and-resilience and security-scan are planned,
+capacity-and-load is deferred. They are registered anyway, because a marker that
+exists is the marker the first test of that kind gets written under.
 
 ## D2 — Four lanes, and one of them is free
 
@@ -251,7 +253,7 @@ runtime.
 
 ## Risks, assumptions, and open questions
 
-- **The strategy can be internally perfect and describe nothing.** Six layers have
+- **The strategy can be internally perfect and describe nothing.** Three layers have
   no code, and no test can distinguish an honestly planned layer from one that will
   never be written. The mitigation is that a claim cannot be certified from a planned
   layer, so the gap shows up as uncertified claims rather than as silent absence.

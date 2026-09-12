@@ -280,9 +280,11 @@ only by rows marked implemented, and that
 [the ownership document](docs/architecture/resource-ownership.md) and the data
 publish the same identifiers in both directions.
 
-It checked a design commitment and now checks half an implementation. No Terraform
-configuration exists, so nothing here can establish that the inventory describes
-it. A Helm chart does, at [`charts/inferops-llm/`](charts/inferops-llm/), and
+It checked a design commitment and now checks an implementation. A Terraform
+configuration exists at [`infra/terraform/`](infra/terraform/), and
+`tests/architecture/test_terraform_prerequisites.py` holds it to the prerequisite
+half of the inventory without needing a cluster. A Helm chart exists too, at
+[`charts/inferops-llm/`](charts/inferops-llm/), and
 `tests/architecture/test_helm_chart.py` holds it to the release half of the
 inventory: it renders only rows the inventory gives Helm, it renders no
 Terraform-owned object, and every Helm-owned row is either rendered or named in
@@ -671,9 +673,10 @@ that is not a committed render:
 python -m tools.telemetry_collection charts/inferops-llm/ci/rendered
 ```
 
-That suite checks a configuration and not a collection. **No collector, store,
-dashboard, or alerting path is selected, nothing scrapes either endpoint, and this
-chart has never been installed** —
+That suite checks a configuration and not a collection: it reads a committed render
+and contacts nothing. A release-scoped collector now exists and has scraped both
+endpoints on `docker-desktop`. **What is still absent is a durable store, a
+dashboard, and an alerting path** —
 [the collection document](docs/telemetry/kubernetes-telemetry-collection.md) is where
 that distance is stated.
 
@@ -778,9 +781,11 @@ data; and that a reserved vocabulary of twelve terms appears in **every Markdown
 document committed here** only inside a sentence that denies it.
 
 It checks a baseline, not a system. Nothing in this repository authenticates a
-caller, authorises a request, enforces a network policy, or applies a security
-context to a pod it deployed, because nothing here deploys a pod or serves a request.
-No secret scanner has been run and recorded. An image scanner and a dependency
+caller, authorises a request, or admits a pod. A release does now deploy pods and
+serve requests, and those pods carry the security context the chart renders — no
+check here reads one back, no admission control constrains one, and the network
+policy the release creates was measured not to be enforced by the plugin the
+observed clusters run. No secret scanner has been run and recorded. An image scanner and a dependency
 auditor have each been run once, by hand, against the pinned runtime image and the
 committed dependency lockfile; neither runs continuously, because no continuous-
 integration service is selected, and no assessment by an outside party has ever
@@ -997,10 +1002,12 @@ The release lifecycle — install, `helm test`, upgrade, rollback, uninstall, an
 the assertion that the uninstall left the prerequisites and nothing else — is
 [`scripts/environment/helm-lifecycle.sh`](scripts/environment/helm-lifecycle.sh),
 documented in
-[the lifecycle record](docs/environment/helm-release-lifecycle.md). **It has
-never been run**, and it cannot be until an InferOps API image exists: both
-profiles install an API container and no image is published. Do not cite it, or
-anything under `charts/`, as evidence that this chart installs.
+[the lifecycle record](docs/environment/helm-release-lifecycle.md). **It has been run
+once**, on `docker-desktop`, with an API image built from `deploy/api/Dockerfile` and
+loaded into the cluster rather than pulled from a registry. Cite
+[the paved road record](docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)
+for that run, and do not cite anything under `charts/` — a chart or a render — as
+evidence that this chart installs.
 
 ### The Terraform prerequisite layer
 

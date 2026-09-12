@@ -6,8 +6,9 @@ The catalog is committed as data and machine-checked, and part of it is now
 emitted. The InferOps API emits the eight metrics marked emitted in section 7 and
 writes the records in section 10; the serving-runtime adapter's four metrics, the
 contract validator's one, and one metric assigned to the API itself are not
-emitted, and no component produces a span. No collector, store, dashboard, or
-alert path is selected, and nothing scrapes the endpoint.
+emitted, and no component produces a span. A release-scoped collector is selected
+and has scraped this endpoint on the `docker-desktop` reference provider; its series
+are ephemeral, and no durable store, dashboard, or alert path is selected.
 
 The authoritative form is
 [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json). This document
@@ -327,7 +328,8 @@ Three metrics are defined and deferred:
 The budget is arithmetic over the declared bounds, recomputed by the suite from each
 metric's labels and buckets. It establishes that the catalog is internally
 affordable on the single-node environment this project targets. It is not a
-measurement, and no store has been tested with it — nothing scrapes the endpoint,
+measurement, and no store has been tested against it — the only thing that has
+scraped the endpoint is an ephemeral collector, and nothing counted what it held,
 so no store has held a single one of these series.
 
 What a running process actually holds is far below the declared bound and for an
@@ -429,14 +431,14 @@ document should be read:
 - **Only part of this emits.** The API emits eight metrics and writes seven kinds of
   record. The adapter's four metrics, the validator's one, and one of the API's own
   are specifications for behaviour that does not exist, and nothing produces a span.
-- **No collector, store, dashboard, or alert path is selected.** Who would own one is
-  an open question in
+- **A collector is selected; no durable store, dashboard, or alert path is.**
   [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
-  that this record deliberately does not answer. The endpoint answers when something
-  scrapes it, and nothing scrapes it. The chart renders a scrape configuration for a
-  collector that does not exist —
-  [what it would find, and what it would cost](kubernetes-telemetry-collection.md) —
-  and a configuration is not a collector.
+  `D7` was amended to make the collector Helm-owned and release-scoped, and a release
+  installed one that scraped both InferOps jobs —
+  [what it finds, and what it costs](kubernetes-telemetry-collection.md). Its series
+  live in an `emptyDir` and go with its pod, so nothing it collected outlives the
+  release. Who owns a dashboard and an alert routing path is still open, and
+  `telemetry-backend` is still deferred.
 - **Records go to a stream and no further.** No log store, shipper, retention window,
   or access rule is selected, so the retention this catalog requires to be stated
   before content of any kind is written is still unstated.
