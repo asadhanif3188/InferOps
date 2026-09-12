@@ -1,61 +1,84 @@
-# Gitleaks configuration for InferOps
-# This file defines exceptions for test fixtures and synthetic credentials
-# that are deliberately used in validation tests but do not authenticate against anything
+# Gitleaks configuration for InferOps.
+#
+# It defines exceptions for the test fixtures and synthetic credentials this
+# repository deliberately commits to prove that validation and redaction work.
+# None of them authenticates against anything; each is explained in
+# .github/secret-scanning-allowlist.md, and the wholesale path exceptions are
+# recorded as EX-03 in the security baseline.
+#
+# The structure is `[[allowlists]]`, plural, and the shape is not cosmetic. A
+# gitleaks allowlist's `regexes` key is a list of **strings**. This file used to
+# declare it as a list of `[[allowlist.regexes]]` tables carrying a `description`
+# and a `regex`, which reads well and is not the schema: gitleaks refuses the
+# whole configuration with eleven decoding errors and scans nothing. Nobody saw
+# that, because no run of the scanner had ever been made - which is exactly what
+# the `security-scan` layer being `planned` meant, and exactly the class of
+# defect that survives in a configuration nothing executes.
+#
+# `[[allowlists]]` keeps each exception's description beside the pattern it
+# exempts, one block per pattern, which is what the table form was reaching for.
 
-[allowlist]
-# Paths containing test fixtures and synthetic credentials used to prove validation behavior
+title = "InferOps"
+
+# --- Paths ------------------------------------------------------------------
+
+# Two directories exempted wholesale, because the fixtures in them are
+# credential-shaped on purpose. Recorded as EX-03; the residual risk is that a
+# real credential committed under either would not be flagged, and the accepted
+# revisit is to narrow this to specific values once a scanner run is recorded.
+[[allowlists]]
+description = "Test fixtures and evidence records that deliberately carry credential-shaped values"
 paths = [
-    "tests/contracts/",
-    "docs/proof/",
+    '''tests/contracts/''',
+    '''docs/proof/''',
 ]
 
-# AWS placeholder keys from AWS documentation
-# These are not real keys - they are the official examples used in AWS docs
-[[allowlist.regexes]]
-description = "AWS official placeholder access key (AKIA pattern)"
-regex = "AKIAIOSFODNN7EXAMPLE"
+# --- Published placeholder values -------------------------------------------
 
-[[allowlist.regexes]]
-description = "AWS official placeholder session credential (ASIA pattern)"
-regex = "ASIAIOSFODNN7EXAMPLE"
+# Path-independent on purpose. A path allowlist for tests/domain/ would exempt a
+# future secret in that directory; these exempt two published placeholders and
+# nothing else.
 
-# Synthetic credentials with trailing zeros - deliberately fake test values
-# These follow credential format prefixes but use zero-padding to ensure
-# they cannot authenticate against any real service
+[[allowlists]]
+description = "AWS official placeholder access key (AKIA pattern), published in AWS documentation"
+regexes = ['''AKIAIOSFODNN7EXAMPLE''']
 
-[[allowlist.regexes]]
+[[allowlists]]
+description = "AWS official placeholder session credential (ASIA pattern), published in AWS documentation"
+regexes = ['''ASIAIOSFODNN7EXAMPLE''']
+
+[[allowlists]]
 description = "GitHub PAT synthetic test value (all zeros)"
-regex = "ghp_[0]{34}"
+regexes = ['''ghp_[0]{34}''']
 
-[[allowlist.regexes]]
-description = "GitHub PAT (new format) synthetic test value"
-regex = "github_pat_[0]{26}"
+[[allowlists]]
+description = "GitHub PAT, new format, synthetic test value (all zeros)"
+regexes = ['''github_pat_[0]{26}''']
 
-[[allowlist.regexes]]
-description = "GitLab PAT synthetic test value"
-regex = "glpat-[0]{20}"
+[[allowlists]]
+description = "GitLab PAT synthetic test value (all zeros)"
+regexes = ['''glpat-[0]{20}''']
 
-[[allowlist.regexes]]
-description = "Hugging Face synthetic test value"
-regex = "hf_[0]{36}"
+[[allowlists]]
+description = "Hugging Face synthetic test value (all zeros)"
+regexes = ['''hf_[0]{36}''']
 
-[[allowlist.regexes]]
-description = "Slack bot synthetic test value"
-regex = "xoxb-[0]{12}-[0]{12}-[0]{6}"
+[[allowlists]]
+description = "Slack bot synthetic test value (all zeros)"
+regexes = ['''xoxb-[0]{12}-[0]{12}-[0]{6}''']
 
-[[allowlist.regexes]]
-description = "OpenAI API key synthetic test value"
-regex = "sk-[0]{34}"
+[[allowlists]]
+description = "OpenAI API key synthetic test value (all zeros)"
+regexes = ['''sk-[0]{34}''']
 
-[[allowlist.regexes]]
-description = "Google API key synthetic test value"
-regex = "AIza[0]{33}"
+[[allowlists]]
+description = "Google API key synthetic test value (all zeros)"
+regexes = ['''AIza[0]{33}''']
 
-[[allowlist.regexes]]
-description = "JWT header (unsigned, universally published)"
-regex = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+[[allowlists]]
+description = "JWT header, unsigned and universally published: {\"alg\":\"HS256\",\"typ\":\"JWT\"}"
+regexes = ['''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9''']
 
-# Synthetic credential in path format used for testing path-based credential detection
-[[allowlist.regexes]]
-description = "Synthetic credential in path format for testing"
-regex = "inferops/telemetry/[A-Za-z0-9]{30}"
+[[allowlists]]
+description = "Synthetic credential in path format, for testing path-based credential detection"
+regexes = ['''inferops/telemetry/[A-Za-z0-9]{30}''']

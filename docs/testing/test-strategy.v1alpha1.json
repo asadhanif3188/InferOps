@@ -8,6 +8,7 @@
   "certificationRef": "docs/testing/certification.md",
   "matrixRef": "docs/testing/claim-test-matrix.md",
   "pytestConfigRef": "pytest.ini",
+  "ciGateMatrixRef": "docs/testing/ci-gate-matrix.v1alpha1.json",
   "certificationLevels": [
     {
       "levelId": "C0",
@@ -97,7 +98,7 @@
       "laneId": "default-checks",
       "name": "Default checks",
       "purpose": "Everything that can be proven from a checkout alone, run on every change, cheap enough that nobody is tempted to skip it.",
-      "trigger": "every change, before review",
+      "trigger": "every pull request, every push to main, and manual dispatch",
       "environment": "repository-only",
       "modelDownload": "none",
       "clusterRequired": false,
@@ -106,18 +107,23 @@
       "timeoutMinutes": 15,
       "prerequisites": [
         "Python 3.12 with pytest, jsonschema, and PyYAML",
-        "git"
+        "git",
+        "uv, for the locked toolchain the accepted record names",
+        "a container engine, for the API image build",
+        "trivy and gitleaks, for the scanning gates"
       ],
       "artifacts": [
         "test session output",
-        "the list of checks skipped and why"
+        "the list of checks skipped and why",
+        "the dependency and runtime-image vulnerability scan reports",
+        "the CycloneDX bills of materials for the lockfile and the pinned runtime image"
       ],
       "artifactRetentionDays": 30,
       "failureDiagnostics": "The failing assertion, the identifier of the row or fixture that failed, and the exact command to reproduce it from a clean checkout. No lane-specific state is needed to reproduce a failure here, which is the point of the lane.",
-      "automated": false,
-      "workflowRef": null,
-      "v1Status": "manual",
-      "notes": "Run by hand from CONTRIBUTING today. No continuous-integration lane is configured in this repository."
+      "automated": true,
+      "workflowRef": ".github/workflows/checks.yml",
+      "v1Status": "automated",
+      "notes": "Automated on GitHub Actions by ADR 0012, as nine gates published in docs/testing/ci-gate-matrix.md. No job has run on the service yet: the workflow is committed and every command in it was executed by hand on one Windows host. Those commands remain the local equivalents and CONTRIBUTING publishes them."
     },
     {
       "laneId": "cluster-smoke",
@@ -457,7 +463,10 @@
       "marker": null,
       "paths": [],
       "commands": [
-        "gitleaks detect --config .gitleaks.toml --no-banner",
+        "gitleaks git . --config .gitleaks.toml --redact --no-banner",
+        "scripts/security/scan-dependencies.sh",
+        "scripts/security/scan-runtime-image.sh",
+        "scripts/security/generate-sbom.sh",
         "git diff --check main...HEAD"
       ],
       "evidenceClass": "local-static",
@@ -465,9 +474,9 @@
       "requiresModel": false,
       "requiresCluster": false,
       "publishable": true,
-      "v1Status": "planned",
-      "evidenceRef": null,
-      "notes": "A scan configuration and an allowlist are committed. No recorded run of the scanner exists, so this layer is planned rather than implemented, and the difference is deliberate: a configuration file is not a result."
+      "v1Status": "implemented",
+      "evidenceRef": "docs/proof/testing/v1-s4-001-pr1-validation.md",
+      "notes": "Implemented as of V1-S4-001-PR1, which is the change that first ran the secret scanner. It found that the committed configuration did not parse at all - its allowlist patterns were declared as tables where the tool requires strings - so the scanner had been refusing the whole file and scanning nothing. The configuration is fixed and the run is clean over 134 commits. None of the three scans runs continuously: all are gates in the committed default-lane workflow and no job in it has executed on the selected service, so a finding here is current only as of the day it was produced."
     },
     {
       "layerId": "documentation",

@@ -73,14 +73,26 @@ implemented outcome without overstating it.
 
 ## Validation
 
-Run the smallest complete check set available for the changed files. Every check
-below is run **by hand**: no continuous-integration lane, workflow file, or capable
-runner is selected, and
+Run the smallest complete check set available for the changed files. **Run them by
+hand before opening a change**, and expect nine of them to run again on the pull
+request: [ADR 0012](docs/architecture/decisions/ADR-0012-continuous-integration-service.md)
+selects GitHub Actions for the `default-checks` lane and commits
+[`.github/workflows/checks.yml`](.github/workflows/checks.yml), and
+[the gate matrix](docs/testing/ci-gate-matrix.md) says which job runs what and which
+claim each one defends. **No job in it has run on that service yet**, and a workflow
+that has not run is a configuration rather than a result.
+
+The three lanes that need a cluster or the pinned model are still run entirely by
+hand. No runner is labelled capable and
 [ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
-D6 leaves that open on purpose. No task runner is selected either, and that one is
-settled rather than open —
+D6 leaves that half open on purpose. No task runner is selected either, and that one
+is settled rather than open —
 [ADR 0009](docs/architecture/decisions/ADR-0009-python-toolchain.md) D7 rejects one,
 so the list below is the list.
+
+Two of the commands below are not in the workflow and are not automated anywhere:
+the `helm`, `kubeconform`, and `terraform` checks, and `shellcheck` over `scripts/`.
+The first set is `V1-S4-001-PR2`'s boundary; the second is not scheduled.
 
 ### The toolchain, and how to get it
 
@@ -218,6 +230,21 @@ committed fixture:
 ```sh
 python -m tools.contract_validation path/to/workload.yaml
 ```
+
+The same command, and the workload-policy command below it, are run over every
+committed fixture as a gate — from a shell, reading the exit status rather than the
+return value, because an exit status is the only thing a continuous-integration job
+can read:
+
+```sh
+uv run --locked python -m tools.ci_gates expected-failures
+```
+
+Thirty controls run: every invalid contract document and insecure manifest bundle
+must exit non-zero, and every valid document and committed chart render must exit
+zero. The positive half is what stops a validator broken into refusing everything
+from passing a suite of negative controls. A fixture added to either directory joins
+the gate on the run that adds it.
 
 The suite reads only files in this repository — no network, no cluster, no model,
 no clock, no randomness — so a run that passes on one machine passes on every
@@ -612,7 +639,7 @@ a real runtime; that a module naming no claim says why; and that every claim is
 either named by a module or recorded as a coverage gap with a reason, and never
 both.
 
-It checks a strategy, not a test suite. Three of the eleven layers it describes have
+It checks a strategy, not a test suite. Two of the eleven layers it describes have
 no code, nothing here can distinguish a layer that is honestly planned from one that
 will never be written, and the inventory records which suite defends which claim
 without reading a single assertion inside one.
@@ -785,11 +812,12 @@ caller, authorises a request, or admits a pod. A release does now deploy pods an
 serve requests, and those pods carry the security context the chart renders — no
 check here reads one back, no admission control constrains one, and the network
 policy the release creates was measured not to be enforced by the plugin the
-observed clusters run. No secret scanner has been run and recorded. An image scanner and a dependency
-auditor have each been run once, by hand, against the pinned runtime image and the
-committed dependency lockfile; neither runs continuously, because no continuous-
-integration service is selected, and no assessment by an outside party has ever
-been performed.
+observed clusters run. A secret scanner, an image scanner, and a dependency auditor
+have each been run once, by hand, against the committed history, the pinned runtime
+image, and the committed dependency lockfile. None of them runs continuously: the
+default-lane workflow ADR 0012 commits carries all three as gates, and no job in it
+has executed on the service. No assessment by an outside party has ever been
+performed.
 
 A change that adds a control names the verification for it or declares that it has
 none — there is no third option, and the derivation is what makes that true rather

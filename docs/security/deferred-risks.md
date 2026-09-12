@@ -274,17 +274,22 @@ credential is shared, permanent, or absent.
 
 ### DR-11 — No run of a secret scanner over this history is recorded
 
-**Why deferred.** The scanner is not installed on the host this work was done on, and
-there is no lane to run it in. A configuration file is committed, and a configuration
-file is not a result.
+**Why deferred.** Narrowed by `V1-S4-001-PR1` rather than closed. One run is now
+recorded — by hand, from the scanner's published container image, over 134 commits,
+clean — and it is the run that found the committed configuration had never parsed, so
+every earlier statement that a scanner was *configured* described a file the tool
+refused. The security-scan layer of
+[the test strategy](../testing/test-strategy.md) is `implemented` from that run.
 
-**What would have to be true.** An executed run with a recorded scanner version and
-its output, which would move the security-scan layer of
-[the test strategy](../testing/test-strategy.md) from `planned` to `implemented`.
+**What would have to be true.** A run that recurs. The secret scan is a gate in the
+committed default-lane workflow and no job in it has executed on the selected
+service, so nothing makes the scan happen again; a finding is current only as of the
+day it was produced.
 
 **Not claimed.** The claim `no-credential-or-model-artifact-enters-public-history`
-stays `planned` and may not be cited. See `EX-03` for what the committed allowlist
-would not have caught even if a run existed.
+stays `planned` and may not be cited: one run on one host is not a property of the
+repository's history going forward. See `EX-03` for what the committed allowlist did
+not look at even in the run that happened.
 
 ### DR-12 — Records are written and nothing keeps them, so nothing can be reconstructed
 

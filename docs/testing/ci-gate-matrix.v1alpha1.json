@@ -1,0 +1,350 @@
+{
+  "$id": "https://inferops.io/testing/ci-gate-matrix.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 continuous-integration gate matrix, v1alpha1",
+  "description": "Which automated gate runs which command, which test layer it belongs to, which public claim it defends, and what a passing result may not be used to say. A gate is one job in one committed workflow: the job identifier here and the job key in the workflow are compared in both directions, so a job without a row and a row without a job are each a failing build. Certification ceilings are inherited from the test strategy rather than restated, because a ceiling written twice is a ceiling that can be raised in one place.",
+  "decisionRef": "docs/architecture/decisions/ADR-0012-continuous-integration-service.md",
+  "documentRef": "docs/testing/ci-gate-matrix.md",
+  "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
+  "strategyDocumentRef": "docs/testing/test-strategy.md",
+  "matrixRef": "docs/testing/claim-test-matrix.md",
+  "contributingRef": "CONTRIBUTING.md",
+  "service": {
+    "serviceId": "github-actions",
+    "name": "GitHub Actions",
+    "decidedIn": "ADR 0012",
+    "decides": "ADR 0005 D6, first half",
+    "stillUndecided": "What labels a capable runner. No runner is labelled, no hosted runner is authorized to hold the pinned model artifact, and the second half of ADR 0005 D6 stays open.",
+    "runner": "ubuntu-24.04",
+    "runnerRationale": "Pinned rather than `ubuntu-latest`, because a lane whose runner image moves underneath it is a lane whose failures cannot be attributed to a change."
+  },
+  "workflows": [
+    {
+      "workflowId": "checks",
+      "path": ".github/workflows/checks.yml",
+      "workflowName": "checks",
+      "lane": "default-checks",
+      "triggers": [
+        "pull_request",
+        "push to main",
+        "workflow_dispatch"
+      ],
+      "optIn": false,
+      "requiresModel": false,
+      "requiresCluster": false,
+      "requiresAuthorization": false,
+      "permissions": "contents: read",
+      "notes": "The normal lane. It reads this repository, drives the deterministic mock, builds a distribution and an image, and scans what is pinned. It reaches no Kubernetes cluster and downloads no model, and both are checked rather than asserted."
+    }
+  ],
+  "gates": [
+    {
+      "gateId": "code-quality",
+      "workflowId": "checks",
+      "jobId": "code-quality",
+      "purpose": "The formatter, the linter, and the type checker, run against the locked toolchain the accepted record names.",
+      "commands": [
+        "uv sync --locked",
+        "uv run --locked ruff format --check .",
+        "uv run --locked ruff check .",
+        "uv run --locked python -m mypy"
+      ],
+      "layers": [],
+      "claims": [],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": "Formatting, lint, and typing defend no published claim on their own. They are the conditions every other gate's result is read under: a suite that passed against an unlocked resolution measured the package index as much as it measured this repository.",
+      "whatItDoesNotProve": "That the code is correct. A strictly typed module that is wrong is still wrong.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "default-lane-tests",
+      "workflowId": "checks",
+      "jobId": "default-lane-tests",
+      "purpose": "The whole default lane, selected by the committed marker expression rather than by an argument in the workflow.",
+      "commands": [
+        "uv sync --locked",
+        "uv run --locked python -m pytest -q"
+      ],
+      "layers": [
+        "unit",
+        "contract-and-schema",
+        "architecture-inventory",
+        "adapter",
+        "mock-integration",
+        "documentation"
+      ],
+      "claims": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason",
+        "the-rejection-interface-cannot-change-without-a-failing-build",
+        "no-resource-in-the-architecture-has-two-owners",
+        "published-documents-link-only-to-things-that-exist",
+        "the-published-strategy-and-its-data-cannot-drift-apart",
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label",
+        "a-cost-figure-cannot-be-presented-as-a-bill",
+        "a-security-control-cannot-claim-enforcement-it-does-not-have",
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused",
+        "the-default-lane-cannot-execute-a-real-model",
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document",
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "a-model-that-is-not-ready-is-a-canonical-error",
+        "an-unreachable-runtime-is-a-canonical-error",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ],
+      "evidenceClass": "mock",
+      "maxCertification": "C1",
+      "blocking": true,
+      "defendsNoClaimBecause": null,
+      "whatItDoesNotProve": "Anything about a real runtime, a real cluster, or a real model. The lane's highest evidence class is `mock`, so every claim above rests on this gate only up to C1 and takes the rest of its support from a lane this workflow does not run.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "expected-failures",
+      "workflowId": "checks",
+      "jobId": "expected-failures",
+      "purpose": "The published validation commands, run from a shell against the documents this repository requires them to refuse and the documents it requires them to accept, with the exit status read rather than the return value.",
+      "commands": [
+        "uv sync --locked",
+        "uv run --locked python -m tools.ci_gates expected-failures"
+      ],
+      "layers": [
+        "contract-and-schema",
+        "documentation"
+      ],
+      "claims": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason",
+        "the-rejection-interface-cannot-change-without-a-failing-build",
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": null,
+      "whatItDoesNotProve": "That a refusal carries the right rule identifier or field location. That is the contract suite's work and it runs in the gate above; this one reads an exit status, which is all a workflow can read.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "documentation",
+      "workflowId": "checks",
+      "jobId": "documentation",
+      "purpose": "Every relative link resolves from the directory of the document that carries it, and no published document carries trailing whitespace or a hard tab.",
+      "commands": [
+        "uv run --locked python -m pytest tests/testing/test_document_links.py -q",
+        "git ls-files -z '*.md' | xargs -0 grep -n '[[:blank:]]$'",
+        "git ls-files -z '*.md' | xargs -0 grep -n \"$(printf '\t')\""
+      ],
+      "layers": [
+        "documentation"
+      ],
+      "claims": [
+        "published-documents-link-only-to-things-that-exist"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": null,
+      "whatItDoesNotProve": "That a document is accurate, or that an external link still resolves. Only repository-relative targets are checked; an external link is checked by hand and dated, as CONTRIBUTING requires. `git diff --check` is deliberately not here: on a clean checkout it has nothing to read, so running it would be a step that cannot fail. It stays a local check before a change is opened.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "distribution-build",
+      "workflowId": "checks",
+      "jobId": "distribution-build",
+      "purpose": "The wheel and the source distribution build, and what came out of them is inspected rather than assumed.",
+      "commands": [
+        "uv build",
+        "tar -tzf dist/*.tar.gz",
+        "unzip -l dist/*.whl"
+      ],
+      "layers": [],
+      "claims": [],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": "No published claim is about the distribution. The gate exists because the source-distribution include list in pyproject.toml is anchored to the repository root for a reason recorded in a comment there, and a comment is not a check.",
+      "whatItDoesNotProve": "That the distribution installs anywhere, or that it is fit to publish. It is not published to any index; the `Private :: Do Not Upload` classifier is what refuses an upload that tried.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "api-container-image",
+      "workflowId": "checks",
+      "jobId": "api-container-image",
+      "purpose": "The API image builds from the committed Dockerfile, defaults to the unprivileged uid the chart's pod security context sets, and carries only the two host-tooling packages its ignore file re-includes.",
+      "commands": [
+        "docker build -f deploy/api/Dockerfile -t inferops-api:ci .",
+        "docker image inspect inferops-api:ci --format '{{ .Config.User }}'"
+      ],
+      "layers": [],
+      "claims": [],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": "`platform-api-container-image` is owned by the contributor's host in the ownership inventory: it is built locally, loaded straight into a cluster, and published to no registry. A build here proves the Dockerfile still builds and supports no claim about a deployment.",
+      "whatItDoesNotProve": "That the image serves a request, or that the digest built here is the digest any deployment runs. Nothing is pushed and nothing is loaded into a cluster.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "dependency-and-image-scan",
+      "workflowId": "checks",
+      "jobId": "dependency-and-image-scan",
+      "purpose": "The committed lockfile and the pinned runtime image are scanned for known vulnerabilities through the committed scripts, which refuse to report success on a finding at or above the blocking severity those scripts own.",
+      "commands": [
+        "scripts/security/scan-dependencies.sh",
+        "scripts/security/scan-runtime-image.sh"
+      ],
+      "layers": [
+        "security-scan"
+      ],
+      "claims": [],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": "No published claim is about a vulnerability. The scans are recorded once each, by hand, and nothing makes them recur until a job executes on the selected service.",
+      "whatItDoesNotProve": "That the lockfile or the image is free of vulnerabilities. A scan reports what its database knew on the day it ran, so a green result is current as of that run and a new advisory can turn an unchanged commit red tomorrow. It also says nothing about a vulnerability nobody has published.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "software-bill-of-materials",
+      "workflowId": "checks",
+      "jobId": "software-bill-of-materials",
+      "purpose": "A CycloneDX bill of materials is generated for the pinned runtime image and for the committed lockfile, and published as lane output.",
+      "commands": [
+        "scripts/security/generate-sbom.sh"
+      ],
+      "layers": [
+        "security-scan"
+      ],
+      "claims": [],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": "An inventory of components is not a claim about any of them. The generated documents expire with the lane; the two committed copies under docs/proof/security/sbom/ are a promoted, reviewed snapshot and are not regenerated here.",
+      "whatItDoesNotProve": "That the inventory is complete, or that a component in it is the component that will run. Nothing here attests a build or verifies a provenance statement.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "secret-scan",
+      "workflowId": "checks",
+      "jobId": "secret-scan",
+      "purpose": "The committed history is scanned for credentials against the allowlist this repository publishes and explains.",
+      "commands": [
+        "gitleaks git . --config .gitleaks.toml --redact --no-banner --verbose"
+      ],
+      "layers": [
+        "security-scan"
+      ],
+      "claims": [
+        "no-credential-or-model-artifact-enters-public-history"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": null,
+      "whatItDoesNotProve": "That no credential was ever committed. A scanner finds what its rules recognise; a short, low-entropy secret has the shape of a name and passes, and the two allowlisted directories and eleven published placeholder patterns are exempt by construction.",
+      "claimStatusNote": "The claim is planned and stays planned. One run by hand, on one host, moved the security-scan layer to implemented and is recorded; it says nothing about the next change. The claim becomes certifiable when a run on the selected service is promoted into a record."
+    }
+  ],
+  "toolPins": [
+    {
+      "tool": "actions/checkout",
+      "pin": "93cb6efe18208431cddfb8368fd83d5badbf9bfd",
+      "humanVersion": "v5.0.1",
+      "pinnedBy": "commit SHA"
+    },
+    {
+      "tool": "astral-sh/setup-uv",
+      "pin": "bec219d24cd3e171d82865faccec33120bb574f4",
+      "humanVersion": "v10.1.0",
+      "pinnedBy": "commit SHA"
+    },
+    {
+      "tool": "actions/upload-artifact",
+      "pin": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+      "humanVersion": "v7.0.1",
+      "pinnedBy": "commit SHA"
+    },
+    {
+      "tool": "aquasecurity/setup-trivy",
+      "pin": "81e514348e19b6112ce2a7e3ecbafe19c1e1f567",
+      "humanVersion": "v0.3.1",
+      "pinnedBy": "commit SHA"
+    },
+    {
+      "tool": "trivy",
+      "pin": "v0.74.0",
+      "humanVersion": "v0.74.0",
+      "pinnedBy": "release version, installed by the pinned action"
+    },
+    {
+      "tool": "gitleaks",
+      "pin": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+      "humanVersion": "8.30.1",
+      "pinnedBy": "SHA-256 of the release archive, checked after download"
+    },
+    {
+      "tool": "runner image",
+      "pin": "ubuntu-24.04",
+      "humanVersion": "ubuntu-24.04",
+      "pinnedBy": "runner label"
+    }
+  ],
+  "prohibitions": [
+    {
+      "prohibitionId": "no-cluster-in-the-normal-lane",
+      "statement": "No job in a workflow declared cluster-free may invoke kubectl, helm, terraform, or kind, or select a cluster provider.",
+      "why": "A normal lane that can discover an ambient cluster is a normal lane that can mutate somebody's cluster on a pull request from a fork.",
+      "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
+    },
+    {
+      "prohibitionId": "no-model-download-in-the-normal-lane",
+      "statement": "No job in a workflow declared model-free may invoke the model acquisition tooling or fetch the pinned model artifact.",
+      "why": "ADR 0005 D2's premise is that the lane every change goes through costs nothing. The pinned artifact is 1.71 GiB.",
+      "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
+    },
+    {
+      "prohibitionId": "every-action-pinned-by-sha",
+      "statement": "Every `uses:` reference in every committed workflow names a 40-character commit SHA.",
+      "why": "A tag is a name somebody can move. It is the same argument this repository already makes for pinning a container image by digest rather than by tag.",
+      "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
+    },
+    {
+      "prohibitionId": "read-only-by-default",
+      "statement": "Every committed workflow declares its `permissions` explicitly.",
+      "why": "The default token permission set is a repository-wide setting this file cannot see. Declaring the set the workflow needs makes the grant reviewable in the diff that asks for it.",
+      "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
+    }
+  ],
+  "outOfScope": [
+    {
+      "item": "Helm, rendered-manifest, and Terraform gates",
+      "where": "V1-S4-001-PR2",
+      "note": "Chart lint and template, rendered-manifest schema and policy validation, Terraform format, validate and security checks, and the ownership-overlap check are that PR's boundary. The `helm`, `kubeconform`, and `terraform` commands CONTRIBUTING publishes are run by hand until then."
+    },
+    {
+      "item": "A capable-runner workflow for the real-runtime and cluster-smoke lanes",
+      "where": "V1-S4-001-PR2",
+      "note": "Both lanes stay `manual` in the strategy data. No runner is labelled capable, no hosted runner is authorized to hold the pinned model artifact, and the second half of ADR 0005 D6 stays open."
+    },
+    {
+      "item": "Shell script parsing and static analysis",
+      "where": "not scheduled",
+      "note": "CONTRIBUTING publishes `bash -n` and `shellcheck -x -S style` over scripts/. Neither runs here: the scripts belong to the cluster and host lanes, and adding their gate to this lane without their lane would suggest the lane covers them."
+    },
+    {
+      "item": "Certification of the two claims the scanning gates touch",
+      "where": "after a recorded run on the selected service",
+      "note": "One run of the secret scanner by hand moved the security-scan layer to implemented and found that the committed configuration had never parsed. It does not certify a claim: nothing makes that run recur until a job executes on the service."
+    }
+  ],
+  "limitations": [
+    "No job in this workflow has ever run on the service. The file is committed, the commands were run locally on one Windows host, and what a hosted Ubuntu runner does with them is untested until the first pull request opens.",
+    "A vulnerability scan is not deterministic. Its database changes daily, so an unchanged commit can pass today and fail tomorrow, and a green result dates rather than proves.",
+    "Three gates consume the network: the two scanning gates pull a vulnerability database and a container image, and the secret-scan gate downloads a pinned archive. The lane is therefore cheap and reproducible rather than hermetic.",
+    "Every gate here reads files, drives the mock, or scans what is pinned. None of them can support a claim above C1, and the two claims about a real runtime take no support from this workflow at all.",
+    "The secret scanner has been run once, by hand, from its published container image rather than from the pinned release archive this workflow installs. The tool and version are the same; the installation path is not.",
+    "The whitespace and hard-tab checks are the forms CONTRIBUTING publishes, copied rather than read from it. Nothing compares the two, so they can drift.",
+    "The image-scan gate pulls the pinned runtime image, which carries 392 operating system packages. That pull has never been timed on a hosted runner and shares the lane's fifteen-minute budget with the scan itself."
+  ]
+}

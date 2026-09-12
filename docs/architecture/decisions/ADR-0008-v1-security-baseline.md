@@ -284,11 +284,14 @@ carries a Windows user directory or a POSIX home directory; no file carries a mo
 artifact extension; and the secret-scan configuration is committed with an allowlist
 whose every path resolves.
 
-The fourth is the one that has to be described precisely, and `T-15` does: **no run
-of the scanner is recorded.** A configuration file is not a result. The security-scan
-layer of [the test strategy](../../testing/test-strategy.md) stays `planned` for
-exactly that reason, the claim it would support stays `planned` and may not be cited,
-and `DR-11` carries the gap. `EX-03` records that the allowlist covers two
+The fourth is the one that has to be described precisely, and `T-15` does: **the
+verification here runs no scanner.** A configuration file is not a result, and
+`V1-S4-001-PR1` is what that distinction bought — the first run of the scanner found
+that this configuration had never parsed, so the tool had been refusing all of it.
+One clean run is now recorded and the security-scan layer of
+[the test strategy](../../testing/test-strategy.md) is `implemented`; nothing makes
+the run recur, the claim it would support stays `planned` and may not be cited, and
+`DR-11` carries the gap. `EX-03` records that the allowlist covers two
 directories wholesale, which is the right shape for the credential-shaped fixtures in
 them and the wrong shape for a real credential committed beside one.
 
@@ -457,11 +460,13 @@ to report it, which is why the missing reporting channel appears in the register
 `DR-11`'s neighbour rather than as a footnote.
 
 **What must not be inferred.** No control here has ever acted inside a serving
-system. No secret scanner has been run and recorded. An image scanner and a
-dependency auditor have each been run once, by hand, against the pinned runtime
-image and the committed dependency lockfile — after this record was accepted, and
-recorded separately from it — and neither runs continuously, because no
-continuous-integration service is selected. No assessment by an outside party has
+system. A secret scanner, an image scanner, and a dependency auditor have each been
+run once, by hand, against the committed history, the pinned runtime image, and the
+committed dependency lockfile — after this record was accepted, and recorded
+separately from it. None of the three runs continuously: the default-lane workflow
+[ADR 0012](ADR-0012-continuous-integration-service.md) commits carries all three as
+gates and no job in it has executed on the service, so each recorded finding is
+current only as of the day it was produced. No assessment by an outside party has
 ever been performed. Every runtime observation behind `B1` and `B4` comes from one
 Windows host, on CPU, under one cluster provider. Multi-replica operation was refused
 at a capacity gate and is not certified, and `kind` has not been re-certified since

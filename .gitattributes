@@ -11,3 +11,11 @@
 # checkout receives CRLF and the next `uv lock` rewrites the whole file, which
 # turns a no-op into a diff.
 uv.lock text eol=lf
+
+# A workflow's `run:` blocks are shell scripts that a Linux runner executes, and
+# a CRLF line ending inside one becomes a literal carriage return in the command
+# — the same failure `*.sh` above is protected from, in a file that does not look
+# like a script. `text=auto` already normalises what is stored; this pins what is
+# checked out, so a runner cannot receive CRLF whatever the checkout did.
+.github/workflows/*.yml text eol=lf
+.github/workflows/*.yaml text eol=lf

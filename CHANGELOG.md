@@ -8,8 +8,101 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Added
+
+- **The default lane now runs on a continuous-integration service, and that changes
+  nothing about what it may certify.**
+  [ADR 0012](docs/architecture/decisions/ADR-0012-continuous-integration-service.md)
+  selects GitHub Actions for the `default-checks` lane and commits
+  [`.github/workflows/checks.yml`](.github/workflows/checks.yml): nine gates covering
+  formatting, lint, typing, the whole default pytest lane, the expected-failure
+  controls, documentation links and whitespace, the distribution build, the API
+  container image, dependency and runtime-image vulnerability scans, CycloneDX bills
+  of materials, and a secret scan over full history. It closes half of
+  [ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
+  D6; the half that would label a capable runner stays open, and the three lanes that
+  need one are still run by hand.
+
+  **No job in it has run on the service.** Every command was executed by hand on one
+  Windows host before it was written down. A committed workflow is a configuration,
+  a configuration is not a result, and that is why the `security-scan` layer is still
+  `planned` and the two claims resting on it are still uncertified.
+
+- **A gate matrix that cannot outlive the workflow it describes.**
+  [The matrix](docs/testing/ci-gate-matrix.md) is committed as data and as a document,
+  and [`tests/testing/test_ci_gate_matrix.py`](tests/testing/test_ci_gate_matrix.py)
+  compares it to the committed workflows in both directions — a job with no row and a
+  row with no job each fail. Every gate names the claims it defends **or records why
+  it defends none**; there is no third option, which is what makes the mapping
+  complete rather than merely present. Every ceiling is inherited from the evidence
+  class the strategy already gave the layer, so automating the mock lane cannot raise
+  what a mock certifies.
+
+  Four prohibitions are checked rather than reviewed: the normal lane may not invoke
+  `kubectl`, `helm`, `terraform`, `kind`, or a provider selection; it may not fetch
+  the pinned model artifact; every `uses:` reference must be forty hexadecimal
+  characters, because a tag is a name somebody can move; and every workflow must
+  declare its token permissions. The cluster check reads the file's text rather than
+  its parsed steps, because a cluster can be reached from a script block, an action
+  input, or an environment variable, and only the text sees all three.
+
+- **The expected-failure controls are a command now, not only a test.**
+  `python -m tools.ci_gates expected-failures` runs the published validation commands
+  from a shell against thirty fixtures and reads the **exit status**, which is the
+  only thing a continuous-integration job can read: every invalid contract document
+  and insecure manifest bundle must exit non-zero, and every valid document and
+  committed chart render must exit zero. The positive half is deliberate — a
+  validator broken into refusing everything would pass a suite of negative controls
+  perfectly — and each group declares a minimum count, so a glob that matched nothing
+  fails rather than producing an empty, passing run.
+
+### Fixed
+
+- **The secret-scan configuration had never parsed, and nothing could have noticed.**
+  The first run of `gitleaks` this repository has ever made refused
+  [`.gitleaks.toml`](.gitleaks.toml) outright with eleven decoding errors and scanned
+  nothing: the allowlist patterns were declared as tables carrying a `description` and
+  a `regex`, and the tool requires `regexes` to be a list of strings. The file had
+  been committed since `V1-S0-009` with a test reading it — a test that matched quoted
+  lines with a regular expression and so never asked the question the tool asks.
+
+  The configuration is rewritten as `[[allowlists]]` blocks, one per exemption, which
+  is the schema gitleaks accepts and keeps each description beside the pattern it
+  exempts. The exemptions are unchanged: the same two directories and the same eleven
+  published placeholder values. The check now parses the file with `tomllib`, requires
+  every allowlist to say what it exempts, requires every exempted path to exist, and
+  compiles every pattern.
+
+  The rerun is clean over 134 commits. It is the first recorded run of a secret
+  scanner here, which moves the `security-scan` layer from `planned` to `implemented`
+  — and the claim resting on that layer stays `planned`, because one run by hand on
+  one host says nothing about the next change.
+
+  This is what the distinction between a configuration and a result was for. Every
+  document that said a scanner had never run is corrected, and every document that
+  implied the configuration was doing something now says what it was actually doing.
+
+- **Twelve lines of trailing whitespace that a published check said were not there.**
+  `CONTRIBUTING` has stated since Sprint 0 that
+  `git ls-files -z '*.md' | xargs -0 grep -n '[[:blank:]]$'` returns no matches. It
+  returned twelve, all in
+  [one Sprint 1 record](docs/proof/serving/v1-s1-002-pr1-cumulative-review-fixes.md)
+  that used Markdown's trailing-two-space hard break for three runs of metadata
+  lines. Those runs are lists now, which render the same way without the whitespace;
+  no statement, result, or claim in the record is altered. The check is a gate from
+  this change on, so the gap between what the document claims and what the command
+  returns closes rather than reopening.
+
 ### Changed
 
+- **The statement that every check is run by hand is no longer true for nine of
+  them, and is corrected.** `CONTRIBUTING`, the test strategy, ADR 0005's status
+  banner and D6 section, the README, and the architecture decision index all said no
+  workflow file, runner, or automated lane existed. One lane of four is now
+  automated; the other three are not, no runner is labelled capable, and every
+  document says which is which. The local commands are unchanged and are still the
+  ones a contributor runs before opening a change — what changed is that forgetting
+  is now caught.
 - **Sprint 3's public claims now say what the evidence says.** A reconciliation pass
   read every current-status document against the authoritative data and the executed
   records, and corrected what had drifted. The claim and test matrix and the README

@@ -17,7 +17,7 @@
     "state": "nothing-enforces-at-runtime",
     "meaning": "No component in this repository authenticates a caller, authorises a request, terminates a connection, admits or rejects a pod, or reads a workload it deployed. A release installed from this repository's chart does deploy workloads carrying the pod-security settings the chart renders, and the network policy it creates was measured not to be enforced by the plugin the observed clusters run. What is enforced today is enforced over committed files, over manifests and committed renders, and by four host scripts. That is a real and narrow thing, and the difference between it and a defended system is the subject of the deferred-risk register.",
     "controlsEnforcedInARunningSystem": 0,
-    "secretScannerRunsRecorded": 0,
+    "secretScannerRunsRecorded": 1,
     "securityAssessmentsPerformed": 0,
     "penetrationTestsPerformed": 0,
     "vulnerabilityReportsReceived": 0,
@@ -1216,7 +1216,7 @@
       "v1Status": "enforced-over-documents",
       "owner": "security",
       "evidenceRef": "docs/proof/security/v1-s0-009-pr1-validation.md",
-      "whatItDoesNotVerify": "That a scanner has ever been run over this history. No run is recorded, the security-scan layer of the test strategy is `planned` for exactly that reason, and a configuration file is not a result."
+      "whatItDoesNotVerify": "That the history is free of credentials. The verification here reads the configuration and the tracked file list and runs no scanner, and a configuration is not a result - which V1-S4-001-PR1 demonstrated by running one: the configuration it read had never parsed, so the scanner had been refusing all of it. One clean run is now recorded, on one host, on one day, and nothing makes it recur until a job executes on the selected service."
     },
     {
       "controlId": "no-personal-filesystem-path-in-a-committed-file",
@@ -1824,7 +1824,7 @@
     },
     {
       "limitationId": "no-scanner-run",
-      "statement": "No secret scanner has been run and recorded; the configuration for it is committed. An image scanner and a dependency auditor (Trivy) have each been run once, on the machine that ran them, and nothing makes either recur: no continuous-integration service is selected, so a recorded finding is current only as of the day it was produced."
+      "statement": "No scanner runs continuously. A secret scanner (gitleaks), an image scanner, and a dependency auditor (Trivy) have each been run once, by hand, on the machine that ran them; all three are gates in the committed default-lane workflow and no job in it has executed on the selected service, so a recorded finding is current only as of the day it was produced."
     },
     {
       "limitationId": "no-assessment",
