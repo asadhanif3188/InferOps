@@ -7,24 +7,28 @@
 | Date accepted | 2026-08-25, for D1 through D5 only |
 | Decision owner | Unassigned; no public maintainer roster exists yet |
 | Supersedes | None |
-| Superseded by | None |
+| Superseded by | [ADR 0012](ADR-0012-continuous-integration-service.md), in part, for D6 |
 
 > [!IMPORTANT]
-> This record decides how V1 will be tested and certified. It does **not** configure
-> continuous integration. There is no workflow file, no runner, and no automated lane
-> in this repository, and nothing in this record or the documents it accepts claims
-> otherwise.
+> This record decides how V1 will be tested and certified. It did **not** configure
+> continuous integration; [ADR 0012](ADR-0012-continuous-integration-service.md) now
+> does, for one lane of four. One workflow file exists, it runs the `default-checks`
+> lane on GitHub Actions, and no job in it has executed on that service yet. No runner
+> is labelled capable, and the three lanes that need one are still run by hand.
 >
 > One half of it is machine-checked. The strategy is committed as data and validated
 > by `tests/testing/test_test_strategy.py`, which also compares it against the
 > committed `pytest.ini` in both directions — so "a mock cannot certify C2" and "the
 > default lane cannot run a real model" are properties a change has to break a test
 > to violate. The other half — whether the layers described will ever be written — has
-> no such check, because three of the eleven have no code: failure-and-resilience and
-> security-scan are planned, and capacity-and-load is deferred.
+> no such check, because two of the eleven have no code: failure-and-resilience is
+> planned and capacity-and-load is deferred. A third, security-scan, was planned until
+> V1-S4-001-PR1 ran the scanner for the first time.
 >
-> D6 is **not decided**. No continuous-integration service, runner, or hosted
-> capable runner is selected, and the lack is recorded rather than filled in.
+> D6 is **decided in part.** ADR 0012 selects the service and commits the workflow
+> for the `default-checks` lane. What labels a capable runner, and whether a hosted
+> runner may hold the pinned model artifact at all, is still not decided, and the lack
+> is recorded rather than filled in.
 
 ## Decision status
 
@@ -35,7 +39,7 @@
 | D3 | Markers registered in `pytest.ini`, with capable-host markers deselected by default | **Accepted**, and executed | The configuration is committed and the suite runs under it |
 | D4 | Certification levels C0 to C2 for V1, with class ceilings that stop a mock at C1 | **Accepted** | The published integration certification framework, plus three enforcing tests |
 | D5 | Evidence retention: lane artifacts expire, certifying records are committed and do not | **Accepted** as a rule | Review, plus a test that a claim cites a record only when certified |
-| D6 | Which continuous-integration service runs the lanes, and what labels a capable runner | **Not decided** | Nothing. No service is selected and no runner is labelled |
+| D6 | Which continuous-integration service runs the lanes, and what labels a capable runner | **Superseded in part** by [ADR 0012](ADR-0012-continuous-integration-service.md), which selects the service for `default-checks`. What labels a capable runner is still **not decided** | A committed workflow for one lane, which has not run on the service. Nothing for the runner: none is labelled |
 
 ## Context
 
@@ -90,9 +94,9 @@ runtime, are the same shape and are not the same evidence. The layer list here i
 organised around the second distinction because it is the one that gets misused.
 
 The ceiling lives in the data rather than in a comment, so the check is `layer's
-ceiling ≤ its class's ceiling` rather than `does the reviewer remember`. Three of the
-eleven layers have no code — failure-and-resilience and security-scan are planned,
-capacity-and-load is deferred. They are registered anyway, because a marker that
+ceiling ≤ its class's ceiling` rather than `does the reviewer remember`. Two of the
+eleven layers have no code — failure-and-resilience is planned, capacity-and-load is
+deferred. A third, security-scan, had none until `V1-S4-001-PR1` ran the scanner. They are registered anyway, because a marker that
 exists is the marker the first test of that kind gets written under.
 
 ## D2 — Four lanes, and one of them is free
@@ -180,6 +184,11 @@ a moment when somebody is looking.
 
 ## D6 — Which service, and what labels a capable runner
 
+> **Superseded in part by [ADR 0012](ADR-0012-continuous-integration-service.md).**
+> The service question is answered for the `default-checks` lane: GitHub Actions runs
+> it, from a committed workflow, and a gate matrix publishes what each job defends.
+> The runner question below is untouched and remains open.
+
 **Not decided.** No continuous-integration service is selected and no runner is
 labelled capable. The `real-runtime` lane's only reproducible path today is
 [the manual feasibility workflow](../../serving/feasibility-workflow.md), which has
@@ -229,10 +238,12 @@ Three existing test modules gain a module-level marker. No assertion in them cha
   forces a redaction step before anything becomes durable.
 - The `real-runtime` lane's artifact list excludes prompts and completions explicitly
   rather than by omission.
-- `security-scan` is recorded as `planned`, not `implemented`, because a committed
-  scan configuration is not a recorded run. Marking it implemented would be the exact
-  category of overclaim this record exists to prevent, in the one area where the
-  overclaim is a security statement.
+- `security-scan` was recorded as `planned`, not `implemented`, because a committed
+  scan configuration is not a recorded run, and marking it implemented would have been
+  the exact category of overclaim this record exists to prevent. The distinction paid
+  for itself: `V1-S4-001-PR1` ran the scanner for the first time and found that the
+  configuration had never parsed, so the tool had been refusing all of it. The layer is
+  `implemented` from that run, and the claim resting on it is still not certified.
 - Nothing here implements a control. The trust boundary map in
   [ADR 0004](ADR-0004-component-and-ownership-boundaries.md) is unchanged and remains
   a map.

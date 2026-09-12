@@ -81,8 +81,10 @@ vocabulary of a security posture appears in those documents only where it is den
 It certifies **nothing about whether anything is defended.** Nothing in this
 repository authenticates a caller, authorises a request, or admits a pod; the network
 policy the release creates was measured not to be enforced by the plugin the observed
-clusters run; no secret scanner has been run and recorded; and no assessment by an
-outside party has ever been performed. Six of its thirty-eight controls have no
+clusters run; the secret, image, and dependency scans have each been run once by
+hand and none of them runs continuously, because no job in the committed workflow has
+executed on the selected service; and no assessment by an outside party has ever been
+performed. Six of its thirty-eight controls have no
 verification at all and nine are enforced by nothing automated, twelve risks are
 carried rather than reduced, and the eight manifest assertions are properties of five
 YAML files and two committed renders. A release **has** been installed from those

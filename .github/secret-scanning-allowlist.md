@@ -34,7 +34,15 @@ These follow valid credential format prefixes but use trailing zeros to ensure t
 
 Secret scanning is configured in `.gitleaks.toml` with explicit allowlist rules for these patterns and paths.
 
-`.gitleaks.toml` allowlists two **paths** (`tests/contracts/`, `docs/proof/`) and, separately, the **patterns** above. The pattern rules are path-independent, which is why `tests/domain/` is covered without being added to the path list — and it is deliberately not added, because a path allowlist would exempt a future secret in that directory rather than the two published placeholders.
+`.gitleaks.toml` allowlists two **paths** (`tests/contracts/`, `docs/proof/`) and, separately, the eleven **patterns** above. The pattern rules are path-independent, which is why `tests/domain/` is covered without being added to the path list — and it is deliberately not added, because a path allowlist would exempt a future secret in that directory rather than the two published placeholders.
+
+### The structure, and why it changed
+
+Each exemption is a `[[allowlists]]` block — plural — carrying a `description` and either `paths` or `regexes`.
+
+It was written as a single `[allowlist]` with a list of `[[allowlist.regexes]]` **tables**, each pairing a `description` with a `regex`. That reads better than the schema and is not the schema: gitleaks requires `regexes` to be a list of strings, and it refused the whole configuration with eleven decoding errors and scanned nothing. Nobody saw that until `V1-S4-001-PR1` ran the scanner for the first time, because the check reading this file matched quoted lines with a regular expression rather than parsing it the way the tool does. That check now uses `tomllib`, asserts every allowlist says what it exempts, asserts every exempted path exists, and compiles every pattern.
+
+The exemptions themselves are unchanged: the same two directories and the same eleven values, in the shape the tool accepts.
 
 ## References
 

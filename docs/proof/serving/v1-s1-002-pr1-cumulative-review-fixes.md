@@ -1,9 +1,15 @@
 # V1-S1-002-PR1: Cumulative Review Fixes
 
-**Status:** Validation complete  
-**Date:** 2026-08-29  
-**Classification:** Local static testing, no model execution  
-**Scope:** Repair cumulative review findings for V1-S1-002-PR1
+> **Amended 2026-09-12 by `V1-S4-001-PR1`.** Three runs of metadata lines used
+> Markdown's trailing-two-space hard break, which the whitespace check
+> `CONTRIBUTING` publishes had been reporting as twelve matches under a claim
+> that it returns none. They are lists now. No statement, result, command, or
+> claim below is altered.
+
+- **Status:** Validation complete
+- **Date:** 2026-08-29
+- **Classification:** Local static testing, no model execution
+- **Scope:** Repair cumulative review findings for V1-S1-002-PR1
 
 ## Summary
 
@@ -206,8 +212,9 @@ All checks passed!
 
 ### 10. Public Traceability
 
-**Evidence file:** This document  
-**Scope:** V1-S1-002-PR1 cumulative review findings  
+- **Evidence file:** This document
+- **Scope:** V1-S1-002-PR1 cumulative review findings
+
 **Relation to public records:**
 - ADR-0010: Protocol design decisions (D6 streaming, telemetry mapping)
 - ADR-0006: Telemetry catalog and metric identities
@@ -296,13 +303,13 @@ No V1-S1-003, production mock adapter, real llama.cpp adapter, HTTP API, or Kube
 
 ## Acceptance Status
 
-✅ **All cumulative review findings addressed**  
-✅ **Agreement with ADR-0010 (synchronous, non-streaming, telemetry mapping)**  
-✅ **Sprint 0 and Sprint 1 validation semantics aligned**  
-✅ **Adapter protocol exposes honest provenance and telemetry**  
-✅ **Error sanitization preserves context without leaking secrets**  
-✅ **Conformance suite references only protocol members, so a real adapter passes it unchanged**  
-✅ **All repository-approved validation gates pass, with output quoted above**  
-✅ **Public diff contains no private material or sensitive data**
+- ✅ **All cumulative review findings addressed**
+- ✅ **Agreement with ADR-0010 (synchronous, non-streaming, telemetry mapping)**
+- ✅ **Sprint 0 and Sprint 1 validation semantics aligned**
+- ✅ **Adapter protocol exposes honest provenance and telemetry**
+- ✅ **Error sanitization preserves context without leaking secrets**
+- ✅ **Conformance suite references only protocol members, so a real adapter passes it unchanged**
+- ✅ **All repository-approved validation gates pass, with output quoted above**
+- ✅ **Public diff contains no private material or sensitive data**
 
 Ready for code review and merge.
