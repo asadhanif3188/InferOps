@@ -1,9 +1,17 @@
 # Certifying real inference through Kubernetes
 
-Status: **published procedure, not yet executed.** The workflow described here is
-committed and its descriptor validates. Nothing in this repository has installed
-the chart into a cluster, and no `C2` Kubernetes record exists. Every figure in a
-future record comes from a run; none is quoted here.
+Status: **executed and certified on the `docker-desktop` provider.** The record is
+[the reference-provider paved road](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md):
+`outcome: certified`, a real model-generated completion returned through the
+release's own Kubernetes Service, with the artifact hash compared inside the
+cluster by the release's integrity init container and the claim mounted read-only.
+
+That certifies `docker-desktop` and **nothing else**. `kind` has not executed this
+procedure since the ownership realignment, and
+[ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
+forbids reading one provider's certification as the other's. One Windows host, on
+CPU, one replica of each tier, one model revision, one runtime image digest. Every
+figure in the record comes from that run; none is quoted here.
 
 This procedure answers one question: **does a real model, loaded by the pinned
 runtime, answer a real request through the release's Kubernetes Service?** The
@@ -147,17 +155,25 @@ bytes the claim held — and the record's provenance names a SHA-256. The
 certification therefore reads the rendered init container's own command and
 refuses a run in which nothing compared the hash.
 
-Point 5 is the blocker today, and it is stated plainly rather than left to be
-discovered at the first image pull. **No InferOps API image is published.**
-`platform-api-container-image` is `planned` in
-[the ownership inventory](../architecture/resource-ownership.md), no Dockerfile is
-committed, and the digest in
-[`ci/real-values.yaml`](../../charts/inferops-llm/ci/real-values.yaml) is a
-documented placeholder that exists only so the chart's refusal of an unpinned
-image has something to accept in a render fixture. Until an API image exists and
-is loaded into the cluster, an authorized run stops at the `release` stage with a
-pull failure and a diagnostics record saying so. That is the workflow behaving
-correctly; it is not a workflow that has been run.
+Point 5 was the blocker until `V1-S3-011`, and what replaced it is worth stating
+as plainly. **An InferOps API image now exists.**
+`platform-api-container-image` is `implemented` in
+[the ownership inventory](../architecture/resource-ownership.md),
+[`deploy/api/Dockerfile`](../../deploy/api/Dockerfile) is committed, and
+[`scripts/environment/api-image.sh`](../../scripts/environment/api-image.sh) builds
+it on the host and makes it visible to the selected cluster by that provider's own
+image path.
+
+**The digest in [`ci/real-values.yaml`](../../charts/inferops-llm/ci/real-values.yaml)
+is still a documented placeholder, and it has to be.** The image is built on a
+contributor's own machine and published to no registry, so no digest this
+repository could commit would resolve anywhere else; the placeholder exists so the
+chart's refusal of an unpinned image has something to accept in a render fixture.
+An authorized run supplies the host's own digest as an overlay, which the image
+script prints. A run that used the committed values alone still stops at the
+`release` stage with a pull failure and a diagnostics record saying so — that is
+the workflow behaving correctly, and it is the one step a reader has to perform
+rather than copy.
 
 ## Running it
 

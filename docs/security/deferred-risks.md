@@ -146,7 +146,7 @@ rendered policy may not be described as a control while the plugin ignores it. S
 
 ### DR-05 — No pod security property is enforced for a pod this platform deploys
 
-**Why deferred.** This platform deploys no pod. The eight pod-security assertions are
+**Why deferred.** This platform now deploys one release of its own chart, and **nothing verifies the pod that results**. There is no admission control, no gateway, and no multi-tenancy: it admits no workload from anyone else, which bounds the blast radius and closes none of this risk. The eight pod-security assertions are
 enforced over every manifest committed here, which is a property of five YAML files
 rather than of a cluster. Since `V1-S3-002-PR1` the same six properties are also
 asserted over the chart's committed renders, by
@@ -165,7 +165,13 @@ nothing being applied. Which of the two enforces it is `D14` in the decision rec
 and is explicitly not decided.
 
 **Not claimed.** No document may describe a workload this platform deployed as
-constrained, because it has deployed none. See `EX-04`.
+constrained. It now deploys one — which is the sentence that changed, because
+the previous wording justified the prohibition by saying it had deployed none —
+and every pod-security assertion here reads a committed manifest or a committed
+render. **Nothing reads a running pod**, no admission control exists, and the
+NetworkPolicy objects the release creates are not applied by `kindnetd`,
+the plugin the enforcement experiment tested. See `EX-04`, which says the
+same thing and is unchanged.
 
 ### DR-06 — The transport delivering a model artifact is not authenticated
 

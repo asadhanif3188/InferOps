@@ -27,11 +27,7 @@ beside it, and a Deployment read on its own can never answer it.
 
 ## What this is not
 
-**It reads files.** It holds no credential, contacts no cluster, and stops
-nothing being applied. No admission controller in any cluster applies these
-rules, this platform has deployed no pod, and no cluster has installed the chart
-whose renders it checks. A pod running with a property this policy would refuse
-is a pod this policy will never see.
+**It reads files.** It holds no credential, contacts no cluster, and stops nothing being applied. No admission controller in any cluster applies these rules, this platform has deployed its own release on one provider, and nothing — here or anywhere in this repository — reads a pod that resulted. This validator reads files. A pod running with a property this policy would refuse is a pod this policy will never see.
 
 That is `DR-05` in [the deferred-risk register](deferred-risks.md), and nothing
 here narrows it. What V1-S3-004 changed is `network-policy-in-the-release-namespace`,

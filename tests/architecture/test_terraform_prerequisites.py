@@ -760,29 +760,38 @@ def test_the_prerequisite_document_exists_and_cites_the_inventory() -> None:
     assert "resource-ownership.md" in read(PREREQUISITE_DOCUMENT_PATH)
 
 
-def test_the_prerequisite_document_states_that_nothing_has_been_applied() -> None:
+def test_the_prerequisite_document_states_which_provider_applied_it() -> None:
     """The rule the whole repository runs on, applied to this document.
 
-    Every Terraform row in the inventory is still `planned`. A document that read
-    as though the layer were running would be the overclaim this project treats
-    as a defect, so the status has to be stated where a reader meets it.
+    It used to require the document to say the layer had never been applied. It
+    has been applied since V1-S3-011, so that sentence would now be the overclaim
+    inverted -- a false limitation is not a limitation. What the document must
+    still say is *where*: one provider ran it, and a reader must not take a
+    `docker-desktop` apply as a `kind` one.
     """
-    assert "has never been applied" in read(PREREQUISITE_DOCUMENT_PATH)
+    document = read(PREREQUISITE_DOCUMENT_PATH)
+    assert "applied, re-applied, and destroyed on the `docker-desktop` provider" in (
+        document
+    )
+    assert "`kind` has not executed this" in document
 
 
-def test_the_terraform_rows_stay_planned_until_something_applies_them() -> None:
-    """Writing a configuration is not running one.
+def test_the_terraform_rows_are_implemented_and_cite_the_apply() -> None:
+    """Writing a configuration is not running one; running one is recorded.
 
-    This mirrors the chart exactly: `V1-S3-002` wrote every template and every
-    Helm row stayed `planned`, because a rendered object is a file. A row here may
-    become `implemented` when an apply is recorded against a cluster, and the
-    evidence rule in `test_resource_ownership.py` will then require the record.
+    Every Terraform row stayed `planned` while the configuration was only a file,
+    which is what the previous version of this test asserted and why it said a row
+    "may become `implemented` when an apply is recorded against a cluster". One
+    was: V1-S3-011 applied, re-applied, and destroyed this layer on
+    `docker-desktop`. The evidence rule in `test_resource_ownership.py` requires
+    the record, and this requires the status and the record together, so that
+    neither can move without the other.
     """
     for row in TERRAFORM_ROWS:
         if row["v1Status"] == "deferred":
             continue
-        assert row["v1Status"] == "planned", (row["resourceId"], row["v1Status"])
-        assert row["evidenceRef"] is None, row["resourceId"]
+        assert row["v1Status"] == "implemented", (row["resourceId"], row["v1Status"])
+        assert row["evidenceRef"], row["resourceId"]
 
 
 def test_the_ownership_document_no_longer_says_this_check_cannot_exist() -> None:

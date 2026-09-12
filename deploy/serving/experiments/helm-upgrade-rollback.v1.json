@@ -70,10 +70,13 @@
     "requireRealInference": true
   },
   "faultInjection": {
-    "description": "A candidate that the chart accepts and the cluster cannot run, injected by value and removed by a rollback.",
+    "description": "A candidate that the chart accepts and the cluster cannot run, injected by value into the serving runtime and removed by a rollback.",
     "mechanism": "model-artifact-byte-count-mismatch",
     "valuesPath": "model.artifact.sizeBytes",
     "injectedSizeBytes": 1,
+    "scopedToWorkloadByValuesPath": "model.acquisition.enabled",
+    "scopedToWorkloadByValue": "false",
+    "scopedToWorkloadBecause": "The injected byte count renders into the model acquisition hook as well as into the serving runtime's verification, and a hook asked for a one-byte artifact fails before the workload is ever touched. The first real execution of this experiment proved that: the pre-upgrade hook failed, no unhealthy serving pod was created, and there was nothing at the workload to detect or to recover. The fault is aimed at the serving runtime, so the hook is not rendered for the one upgrade that carries it. The rollback restores both values together.",
     "failsInContainer": "verify-model",
     "failsInWorkload": "serving-runtime",
     "scope": "release",
@@ -108,10 +111,10 @@
     "requireRevisionRecorded": true
   },
   "impact": {
-    "description": "What a caller saw while the unhealthy candidate was rolling out.",
+    "description": "What a caller saw while the unhealthy candidate was rolling out. Sampled every 2000 ms because the injected fault is detected in seconds: the first complete run of this experiment detected it in 6947 ms, and a 5000 ms interval fits only two probes into a window that short. The requirement of at least three probes across the failure window is unchanged -- what changed is the sampling rate that makes it reachable, which is more evidence rather than less.",
     "probePath": "/health/ready",
-    "probeIntervalMs": 5000,
-    "probeTimeoutMs": 5000,
+    "probeIntervalMs": 2000,
+    "probeTimeoutMs": 2000,
     "minimumProbes": 3,
     "requireProbeRecord": true
   },
@@ -167,7 +170,7 @@
     "removesModelCacheClaim": false
   },
   "limitations": [
-    "The evidence is local real Kubernetes on a single-node kind cluster and implies nothing about a production upgrade, a multi-node rollout, or a release under load.",
+    "The evidence is local real Kubernetes on a single-node cluster belonging to one explicitly selected provider, and implies nothing about another provider, a production upgrade, a multi-node rollout, or a release under load.",
     "The unhealthy candidate is one injected fault - a byte count the mounted artifact cannot match - and detecting it says nothing about faults this experiment does not inject, including a runtime that starts and answers wrongly.",
     "The recovery time is measured from the moment the failure was detected to the moment a real completion was served again. It is not a time-to-detect for an operator who was not already watching, and it is not an outage duration.",
     "No request load is generated. The impact record is a readiness probe at a fixed interval through one forward, so it bounds what a single caller saw and measures no throughput, no latency distribution, and no in-flight request.",

@@ -90,11 +90,19 @@ PROCEDURE_PATH = REPO_ROOT / "docs" / "environment" / "helm-upgrade-rollback.md"
 EXPERIMENT = load_experiment()
 CERTIFICATION = load_certification()
 
-# The kind entry of the experiment's provider list. This experiment's own script
-# is still pinned to kind -- porting its execution to a verified provider-neutral
-# target is V1-S3-011-PR2 -- so the facts a run of it produces name kind, and the
-# fixtures below are built from the entry that describes it.
+# The two entries of the experiment's provider list. V1-S3-011-PR2 ported the
+# operating script off the kind-pinned target, so a run's facts now name
+# whichever provider was verified, and both entries have to hold up as fixtures.
+#
+# `KIND_TARGET` carries an InferOps-owned node-image pin; `DOCKER_DESKTOP_TARGET`
+# carries none, because Docker Desktop chooses its own node image and InferOps
+# does not select it. The default fixtures below are built from the kind entry so
+# that the pin assertions have something to assert against; the docker-desktop
+# entry is exercised where the difference is the point.
 (KIND_TARGET,) = [entry for entry in EXPERIMENT.clusters if entry.provider_id == "kind"]
+(DOCKER_DESKTOP_TARGET,) = [
+    entry for entry in EXPERIMENT.clusters if entry.provider_id == "docker-desktop"
+]
 MANIFEST = load_manifest()
 SCRIPT_TEXT = SCRIPT_PATH.read_text(encoding="utf-8")
 LIB_TEXT = LIB_PATH.read_text(encoding="utf-8")
@@ -872,6 +880,73 @@ def test_an_unpinned_node_image_stops_the_run(tmp_path: Path) -> None:
     assert "pinned node image" in stopped(tmp_path, lifecycle=facts)
 
 
+def test_a_provider_the_descriptor_does_not_describe_stops_the_run(
+    tmp_path: Path,
+) -> None:
+    """V1-S3-011-PR2. The kind-only refusal is gone; this is what replaced it.
+
+    Widening the workflow from one provider to the ones the descriptor describes
+    is not the same as widening it to any provider at all. A target nothing
+    describes is still a refusal.
+    """
+    facts = lifecycle_document(cluster={"provider": "some-cloud"})
+    assert "does not describe" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_the_reference_provider_is_accepted_with_its_own_node_image(
+    tmp_path: Path,
+) -> None:
+    """A provider-owned node image is recorded, not enforced as an InferOps pin.
+
+    Docker Desktop chooses its own node image and InferOps neither selects nor
+    pins it, so its descriptor entry says `pinned: false`. A digest that differs
+    from the kind entry's pin is therefore a fact about the operator's cluster
+    rather than a mismatch, and refusing it would refuse the reference provider
+    for running the image its vendor gave it.
+    """
+    assert DOCKER_DESKTOP_TARGET.node_image_pinned is False
+    facts = lifecycle_document(
+        cluster={
+            "provider": DOCKER_DESKTOP_TARGET.provider_id,
+            "name": DOCKER_DESKTOP_TARGET.name,
+            "context": DOCKER_DESKTOP_TARGET.context,
+            "nodeImageDigest": "sha256:" + "a" * 64,
+        }
+    )
+    result = run(tmp_path, lifecycle=facts)
+    assert result.facts.provider == DOCKER_DESKTOP_TARGET.provider_id
+    assert result.facts.node_image_digest == "sha256:" + "a" * 64
+
+
+def test_the_reference_provider_still_has_to_name_a_node_image(
+    tmp_path: Path,
+) -> None:
+    """Unpinned is not unrecorded. A record names the cluster it ran on."""
+    facts = lifecycle_document(
+        cluster={
+            "provider": DOCKER_DESKTOP_TARGET.provider_id,
+            "name": DOCKER_DESKTOP_TARGET.name,
+            "context": DOCKER_DESKTOP_TARGET.context,
+            "nodeImageDigest": "",
+        }
+    )
+    assert "do not name the node image" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_a_providers_cluster_identity_is_not_borrowed_from_another(
+    tmp_path: Path,
+) -> None:
+    """Naming one provider and another provider's cluster is still a refusal."""
+    facts = lifecycle_document(
+        cluster={
+            "provider": DOCKER_DESKTOP_TARGET.provider_id,
+            "name": KIND_TARGET.name,
+            "context": KIND_TARGET.context,
+        }
+    )
+    assert "not this project's" in stopped(tmp_path, lifecycle=facts)
+
+
 def test_an_unpinned_model_revision_stops_the_run(tmp_path: Path) -> None:
     facts = lifecycle_document(configuration={"modelRevision": "0" * 40})
     assert "pinned model revision" in stopped(tmp_path, lifecycle=facts)
@@ -1410,23 +1485,24 @@ def test_the_script_sources_the_shared_library() -> None:
 def test_the_script_validates_before_it_installs() -> None:
     """A descriptor is checked before anything is installed, not afterwards."""
     check = SCRIPT_TEXT.index('python -m "${INFEROPS_EXPERIMENT_MODULE}" check')
-    install = SCRIPT_TEXT.index("inferops::helm install")
+    install = SCRIPT_TEXT.index("inferops::target_helm install")
     assert check < install
 
 
 def test_the_script_asserts_the_target_cluster_before_it_acts() -> None:
-    """V1-S3-010-PR2: the provider-aware inferops::resolve_target replaces the
-    kind-pinned inferops::assert_target_cluster here."""
+    """V1-S3-010-PR2 put the provider-aware inferops::resolve_target here in
+    place of the kind-pinned inferops::assert_target_cluster; V1-S3-011-PR2 made
+    the rest of the script act on the target it verifies."""
     assert "inferops::resolve_target" in SCRIPT_TEXT
     assert SCRIPT_TEXT.index("inferops::resolve_target") < SCRIPT_TEXT.index(
-        "inferops::helm install"
+        "inferops::target_helm install"
     )
 
 
 def test_the_script_requires_the_confirmation_flag() -> None:
     assert "--confirm-real-kubernetes" in SCRIPT_TEXT
     guard = SCRIPT_TEXT.index('[ "${confirmed}" -eq 1 ]')
-    assert guard < SCRIPT_TEXT.index("inferops::helm install")
+    assert guard < SCRIPT_TEXT.index("inferops::target_helm install")
 
 
 def test_the_script_never_creates_the_namespace_it_installs_into() -> None:
@@ -1439,7 +1515,7 @@ def test_every_helm_call_goes_through_the_wrapper_and_names_a_namespace() -> Non
     calls = [
         line
         for line in SCRIPT_LINES
-        if re.search(rf"inferops::helm\s+({'|'.join(mutating)})\b", line)
+        if re.search(rf"inferops::target_helm\s+({'|'.join(mutating)})\b", line)
     ]
     assert len(calls) >= 6, calls
     for line in calls:
@@ -1448,16 +1524,73 @@ def test_every_helm_call_goes_through_the_wrapper_and_names_a_namespace() -> Non
         line
         for line in SCRIPT_LINES
         if re.search(rf"(?<!::)\bhelm\s+({'|'.join(mutating)})\b", line)
-        and "inferops::helm" not in line
+        and "inferops::target_helm" not in line
         and not line.startswith("inferops::")
     ]
     assert not bare, bare
 
 
-def test_the_script_only_sets_the_two_values_paths_the_descriptor_names() -> None:
-    """A `--set` whose left-hand side came from a document could set anything."""
+def test_the_script_only_sets_the_values_paths_the_descriptor_names() -> None:
+    """A `--set` whose left-hand side came from a document could set anything.
+
+    Three, and the third earns its place. `fault_scope_values_path` is
+    `model.acquisition.enabled`, set false on the one upgrade that carries the
+    fault, because the injected byte count renders into the acquisition hook as
+    well as into the workload and the hook runs first. Each of the three is
+    additionally compared against the single literal this script may set it to,
+    a few lines after the descriptor is read.
+    """
     assigned = set(re.findall(r'--set "\$\{(\w+)\}=', SCRIPT_TEXT))
-    assert assigned == {"candidate_values_path", "fault_values_path"}
+    assert assigned == {
+        "candidate_values_path",
+        "fault_values_path",
+        "fault_scope_values_path",
+    }
+    assert '[ "${fault_scope_values_path}" = "model.acquisition.enabled" ]' in (
+        SCRIPT_TEXT
+    )
+    assert '[ "${fault_scope_value}" = "false" ]' in SCRIPT_TEXT
+
+
+def test_the_fault_is_aimed_at_the_workload_it_declares() -> None:
+    """V1-S3-011-PR2, found by executing this experiment for the first time.
+
+    The model acquisition hook is rendered from the same
+    `model.artifact.sizeBytes` the fault injects, and it runs `pre-upgrade` at
+    weight -5 -- before any workload object is updated. The first real run
+    therefore failed in the hook, created no unhealthy serving pod, detected
+    nothing at the workload, and had nothing to recover.
+    """
+    assert EXPERIMENT.fault.scoped_to_workload_by_values_path == (
+        "model.acquisition.enabled"
+    )
+    assert EXPERIMENT.fault.scoped_to_workload_by_value == "false"
+    scope = SCRIPT_TEXT.index('--set "${fault_scope_values_path}=')
+    fault = SCRIPT_TEXT.index('--set "${fault_values_path}=${fault_size_bytes}"')
+    # Both on the same upgrade: the scoping value is useless on any other one,
+    # and harmful on the candidate, which must stay a healthy release.
+    assert 0 < scope - fault < 200
+    assert SCRIPT_TEXT.count('--set "${fault_scope_values_path}=') == 1
+
+
+def test_an_unscoped_fault_is_refused(tmp_path: Path) -> None:
+    """The scoping is a rule, not a convention the script happens to follow."""
+    document = mutated(faultInjection={"scopedToWorkloadByValuesPath": "model.cache"})
+    assert "scoped to the serving runtime" in refused(document, tmp_path)
+
+
+def test_each_values_path_is_compared_against_the_one_literal_it_may_be() -> None:
+    """Three `--set` paths, and each held to exactly one literal at its use site.
+
+    These assertions used to sit at the end of the test above, where an inserted
+    test left them documented by the wrong docstring.
+    """
+    assert '[ "${candidate_values_path}" = "telemetry.serviceVersion" ]' in SCRIPT_TEXT
+    assert '[ "${fault_values_path}" = "model.artifact.sizeBytes" ]' in SCRIPT_TEXT
+    assert '[ "${fault_scope_values_path}" = "model.acquisition.enabled" ]' in (
+        SCRIPT_TEXT
+    )
+    assert '[ "${fault_scope_value}" = "false" ]' in SCRIPT_TEXT
     assert '[ "${candidate_values_path}" = "telemetry.serviceVersion" ]' in SCRIPT_TEXT
     assert '[ "${fault_values_path}" = "model.artifact.sizeBytes" ]' in SCRIPT_TEXT
 
@@ -1614,3 +1747,98 @@ def test_the_procedure_document_states_every_limitation() -> None:
     assert "scripts/environment/helm-upgrade-rollback.sh" in procedure
     for limitation in EXPERIMENT.limitations:
         assert " ".join(limitation.split()) in procedure, limitation
+
+
+def test_the_script_carries_no_kind_only_refusal() -> None:
+    """V1-S3-011-PR2. The workflow selected the provider and then refused it.
+
+    The guard that did so is removed rather than relaxed: what replaces it is the
+    descriptor lookup below, which refuses a provider the experiment cannot
+    describe. Asserting the absence of the old comparison is the only way to
+    catch a re-introduction, because a re-introduced one would pass every other
+    test in this file.
+    """
+    assert not re.findall(r"\$\{INFEROPS_CLUSTER_NAME\}", SCRIPT_TEXT)
+    assert not re.findall(r"\$\{INFEROPS_KUBE_CONTEXT\}", SCRIPT_TEXT)
+    assert "Porting this workflow to a provider-neutral target" not in SCRIPT_TEXT
+
+
+def test_the_script_reads_the_descriptor_entry_for_the_verified_provider() -> None:
+    """The descriptor describes several providers; a run uses the one it is on."""
+    assert "read_provider_target" in SCRIPT_TEXT
+    lookup = SCRIPT_TEXT.index('read_provider_target "${INFEROPS_TARGET_PROVIDER}"')
+    assert SCRIPT_TEXT.index("inferops::resolve_target") < lookup
+    assert lookup < SCRIPT_TEXT.index("inferops::target_helm install")
+    assert '${descriptor_cluster}" = "${INFEROPS_TARGET_CLUSTER_NAME}' in SCRIPT_TEXT
+    assert '${descriptor_context}" = "${INFEROPS_TARGET_CONTEXT}' in SCRIPT_TEXT
+
+
+def test_every_kubectl_call_goes_through_the_verified_target_wrapper() -> None:
+    """The same argument the helm test above makes, for the client that reads.
+
+    `inferops::kubectl` is pinned to this repository's own kind kubeconfig. A
+    call left on it during a docker-desktop run would read one cluster while the
+    release was installed into another, and every assertion downstream would be
+    about the wrong cluster.
+    """
+    assert "inferops::kubectl" not in SCRIPT_TEXT
+    assert "inferops::running_node_digest" not in SCRIPT_TEXT
+    bare = [
+        line
+        for line in SCRIPT_LINES
+        if re.search(r"(?<!::)\bkubectl\s+\w", line)
+        and "inferops::target_kubectl" not in line
+        and not line.lstrip().startswith("#")
+    ]
+    assert not bare, bare
+
+
+def test_the_record_names_the_provider_that_was_verified() -> None:
+    """Not a constant, and not the provider the descriptor happens to list first."""
+    assert 'INFEROPS_PROVIDER_FACT="${INFEROPS_TARGET_PROVIDER}"' in SCRIPT_TEXT
+    assert 'INFEROPS_CLUSTER_NAME_FACT="${INFEROPS_TARGET_CLUSTER_NAME}"' in SCRIPT_TEXT
+    assert 'INFEROPS_CONTEXT="${INFEROPS_TARGET_CONTEXT}"' in SCRIPT_TEXT
+    assert 'node_digest="${INFEROPS_TARGET_NODE_IMAGE_DIGEST}"' in SCRIPT_TEXT
+
+
+def test_the_script_reads_the_one_configmap_the_descriptor_names() -> None:
+    """V1-S3-011-PR2, found by the first complete run of this experiment.
+
+    Both reads of the rendered configuration named a label selector, which was
+    right when the release carried one ConfigMap and wrong once it carried three:
+    the runtime configuration, the telemetry scrape configuration, and the
+    collector's. `items[*]` concatenates across all of them, and `items[0]` takes
+    whichever sorts first -- the collector's, which carries none of these fields.
+    The run reached the end of a successful rollback and then failed writing its
+    record, saying only that `release.profile` was not a string.
+    """
+    reads = [
+        line
+        for line in SCRIPT_LINES
+        if "get configmap" in line and not line.lstrip().startswith("#")
+    ]
+    assert reads, "the script no longer reads a ConfigMap"
+    for line in reads:
+        if "all,configmap" in line:
+            # The diagnostics dump, which deliberately collects everything.
+            continue
+        assert '"${descriptor_configmap}"' in line, line
+        assert "RELEASE_SELECTOR" not in line, line
+
+
+def test_the_residue_check_waits_for_the_garbage_collector() -> None:
+    """V1-S3-011-PR2, and the same defect both certifications already fixed.
+
+    `helm uninstall --wait` waits for the objects Helm deleted itself. A
+    Deployment's pods are not among them: the garbage collector removes them once
+    their owner is gone, on the controller manager's schedule. Asking once, the
+    instant Helm returns, reports terminating pods as residue -- which is how the
+    first complete run of this experiment ended, with two objects that were gone
+    moments later and every other stage already passed.
+    """
+    residue = SCRIPT_TEXT.index("deployments,replicasets,services,configmaps")
+    loop = SCRIPT_TEXT.rindex("residue_deadline=$((SECONDS +", 0, residue)
+    assert loop < residue, "the residue check is not inside a bounded retry"
+    assert "uninstall_budget_ms" in SCRIPT_TEXT[loop:residue], (
+        "the residue retry does not reuse the uninstall budget"
+    )

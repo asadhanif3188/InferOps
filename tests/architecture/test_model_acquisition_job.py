@@ -404,6 +404,39 @@ def test_bytes_that_do_not_verify_are_refused_and_leave_nothing(claim: Path) -> 
 
 
 @needs_bash
+def test_a_failed_acquisition_leaves_an_existing_artifact_exactly_as_it_found_it(
+    claim: Path,
+) -> None:
+    """V1-S3-011-PR2, and the first real run of the upgrade/rollback experiment.
+
+    This job used to delete a mismatching artifact *before* it had acquired
+    anything to replace it with. That looked reasonable in isolation -- a corrupt
+    cache should not be reused -- and the cost of the ordering only appeared once
+    something rendered the job with a deliberately wrong pin: the V1-S3-008
+    experiment injects a `model.artifact.sizeBytes` the artifact cannot match,
+    the same value renders into *this* script, and the hook dutifully discarded a
+    1.83 GB artifact it then could not replace. The Terraform-owned claim was
+    left empty and the rollback had nothing to roll back to.
+
+    The claim is a prerequisite this release is a guest in. A candidate that
+    cannot be acquired must leave it exactly as it was found.
+    """
+    target = artifact_path(claim)
+    target.parent.mkdir(parents=True)
+    # Present, and not what the pins describe: the case that used to delete it.
+    existing = b"an artifact this render does not describe\n"
+    target.write_bytes(existing)
+
+    run = run_acquisition(claim, payload=b"also not the pinned bytes\n")
+    assert run.refused, run.output
+    assert "do not match the pinned byte count and SHA-256" in run.output
+    assert target.exists(), "a failed acquisition emptied the claim"
+    assert target.read_bytes() == existing, "a failed acquisition rewrote the claim"
+    assert "left exactly as it was found" in run.output
+    assert not list(claim.rglob("*.part")), "the temporary file was left behind"
+
+
+@needs_bash
 def test_a_transfer_that_never_completes_is_refused_within_its_budget(
     claim: Path,
 ) -> None:

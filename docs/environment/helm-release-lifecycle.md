@@ -1,21 +1,28 @@
 # Installing, upgrading, rolling back, and removing the release
 
-Status: **written and never run.**
+Status: **executed on the `docker-desktop` provider.**
 [`scripts/environment/helm-lifecycle.sh`](../../scripts/environment/helm-lifecycle.sh)
 exists, its safety properties are asserted by
 [`tests/architecture/test_cluster_lifecycle_safety.py`](../../tests/architecture/test_cluster_lifecycle_safety.py),
-and no cluster in this project has executed it. It cannot be executed yet, and
-the reason is one line: **no InferOps API image is published.** Both profiles
-install an API container, no `Dockerfile` is committed anywhere in this
-repository, and a release whose API image does not resolve never becomes ready —
-so `helm install --wait` fails on the image pull rather than on anything this
-document describes.
+and `V1-S3-011` put the chart through the whole of this procedure against the
+Kubernetes cluster Docker Desktop provides: install, readiness, the release's own
+in-cluster connection test, a real completion, upgrade, rollback, and uninstall
+with no residue carrying the release's instance label.
 
-That is a blocker and not a caveat. Nothing below may be cited as evidence that
-this chart installs, upgrades, rolls back, or uninstalls. What the script gives
-is the exact procedure and the exact assertions, so that the day a
-`platform-api-container-image` exists the answer is one command away rather than
-a design question.
+The blocker this document used to state is gone. It was one line — **no InferOps
+API image is published** — and
+[`deploy/api/Dockerfile`](../../deploy/api/Dockerfile) now exists, the image is
+built on the host and loaded into the selected cluster by that provider's own
+image path, and a release whose API image resolves becomes ready.
+
+What may be cited, and what may not. The records are
+[the reference-provider paved road](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md),
+[the upgrade and rollback experiment](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md),
+and [the pod-restart experiment](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md).
+Each names `docker-desktop`, one Windows host, CPU only, and one replica of each
+tier. None of them certifies `kind`, none of them is a multi-replica result — the
+multi-replica profile was refused at the capacity gate on this host — and none of
+them says anything about a production cluster.
 
 ## What it does, in order
 
@@ -109,12 +116,15 @@ An installable values file needs, at minimum:
   `PersistentVolumeClaim` that already exists and already holds the artifact.
 
 Under `real` that claim is Terraform's (`V1-S3-005`) and the job that fills it is
-`V1-S3-003`'s. Neither exists, so the real profile has two prerequisites beyond
-the API image and the mock profile has none beyond it.
+the chart's own `pre-install,pre-upgrade` hook (`V1-S3-003`). Both exist and both
+have run: Terraform provisions the claim empty and the hook fills it with the
+pinned artifact, verifying byte count and SHA-256 before the bytes are used.
 
 ## What is not here
 
-- **Any measured duration.** No install has been timed, because none has run.
+- **A measured duration anyone may plan against.** Installs have been timed on one
+host, on one provider, and those figures appear in the proof records above as
+single observations rather than as a benchmark.
   The timeouts above are derived from model-load measurements taken outside
   Kubernetes and are budgets rather than expectations.
 - **Upgrade and rollback *safety*.** This script proves a rollback is mechanically

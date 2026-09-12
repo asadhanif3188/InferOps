@@ -1439,8 +1439,7 @@ spec:
               fi
               #
               if [ -e "$artifact" ]; then
-                echo "the claim holds an artifact that does not match the pinned byte count and hash; discarding it" >&2
-                rm -f "$artifact"
+                echo "the claim holds an artifact that does not match the pinned byte count and hash; it will be replaced only by bytes that verify" >&2
               fi
               attempt=1
               until wget -c -q -O "$artifact.part" 'https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true'; do
@@ -1461,6 +1460,9 @@ spec:
               if ! verify "$artifact.part"; then
                 echo "REFUSED: the acquired bytes do not match the pinned byte count and SHA-256" >&2
                 rm -f "$artifact.part"
+                if [ -e "$artifact" ]; then
+                  echo "the artifact already on the claim was left exactly as it was found" >&2
+                fi
                 exit 1
               fi
               #

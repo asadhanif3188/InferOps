@@ -10,6 +10,140 @@ once versioned releases begin.
 
 ### Added
 
+- **Sprint 3 is closed, and the verdict is published rather than implied.**
+  V1-S3-011-PR2 executes the lifecycle and cleanup half of the Kubernetes paved road on
+  the `docker-desktop` reference provider and reconciles the repository's public claims
+  to what the runs actually produced.
+  [The completion review](docs/proof/environment/sprint-3-completion-review.md) maps every
+  Sprint 3 story and every amended exit-gate item to its evidence and ends **Sprint 3:
+  PASS** — bounded to one provider, one Windows host, CPU only, single-replica, with the
+  limitations named in full. Sprint 4 is not started.
+
+- **A release is broken on purpose and rolled back, for real.** `V1-S3-008`'s experiment
+  had been written and never run. It now installs a known-good release, upgrades it with
+  a controlled change that reaches the workload, upgrades it again with a byte count the
+  mounted artifact cannot match, detects
+  `init-container-nonzero-exit` on `serving-runtime`/`verify-model` after 6 425 ms, rolls
+  back to the last known-good revision in 1 512 ms, and serves a real completion again
+  7 983 ms after detection — HTTP 200, adapter `real`, 35 tokens, content not retained.
+  Three readiness probes across the failure window, all answered: the failing candidate
+  never became ready, so the pod already serving kept serving.
+  [The record](docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md) includes the four
+  attempts that failed first, because a workflow that has only ever been read is not the
+  same as one that works.
+
+- **The pod-restart experiment `V1-S3-003` owed since Sprint 3 exists and has run.** Its
+  earlier evidence stopped a container on the host and said in as many words that it was
+  *not* a pod restart; that record stays exactly as it is. The new one deletes a serving
+  pod in a real cluster and establishes what a returning pod does not: a different pod
+  name **and** a different UID, the same Terraform-owned claim bound to the same
+  PersistentVolume, the same artifact by byte count and SHA-256 **and by inode and
+  modification time**, the integrity init container exiting zero, readiness observed at
+  zero and then above it, and a real completion before and after. Zero acquisition Jobs
+  either side: nothing re-fetched 1.83 GB.
+  [The record](docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md).
+
+- **Telemetry is asked what it saw during a failure, and answers honestly.** The
+  collector was queried before, during, and after a real pod replacement. Target
+  availability, workload identity, request counters and readiness failures are
+  **collected and queryable**; `inferops_model_ready` is **not emitted**; pod-restart
+  counters have **no source**. `up` never reached zero during the replacement — it means
+  "the scrape succeeded", not "the workload is ready" — and the record says so rather than
+  reading it as no interruption.
+  [The record](docs/proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md).
+
+- **The teardown is proven to be a guest's.** `helm uninstall` left zero objects carrying
+  the release's instance label, by every kind; `terraform destroy` through the guarded
+  wrapper removed exactly the namespace and the claim it owns; and afterwards the Docker
+  Desktop cluster still answers, its node is still Ready, its other namespaces are
+  untouched, and the provider still verifies. Exactly one namespace disappeared.
+  [The record](docs/proof/environment/v1-s3-011-pr2-scoped-cleanup.md) also names the one
+  piece of InferOps residue this teardown does *not* remove, rather than tidying it away.
+
+### Changed
+
+- **The upgrade/rollback workflow acts on the provider it verified.** It used to pass the
+  provider-aware target guard and then refuse anything but the pinned kind cluster, which
+  was honest while its descriptor and evidence tooling were kind-specific and is no longer
+  true of either. The refusal is replaced rather than deleted: the descriptor's entry for
+  the verified provider is looked up by provider id, a provider the experiment cannot
+  describe is still refused, and every `kubectl` and `helm` call now goes through the
+  target wrappers. A provider-owned node image — Docker Desktop chooses its own — is
+  **recorded** in the evidence and not enforced as an InferOps pin; kind's stays a pin,
+  because InferOps selects it.
+
+- **Twenty ownership rows moved from `planned` to `implemented`, and each cites the run
+  that moved it.** The prerequisite layer, every release object, and the controller-derived
+  rows were all observed in a cluster. `implemented` is stated with its bounds:
+  `docker-desktop` only, single-replica, and — for `workload-network-policy` — created by
+  Helm but **not enforced** by the local network plugin, which remains a different claim
+  and remains unproven.
+
+- **Every now-false status statement about Sprint 3 has been corrected.** The README, the
+  ownership document, the Terraform prerequisite guide, the Helm lifecycle and
+  upgrade/rollback procedures, the Kubernetes troubleshooting page, both certification
+  procedures, the model-cache, telemetry-collection and correlation-query documents, the
+  claim/test matrix, the test inventory, and the chart's own `NOTES.txt` all said the
+  release had never been installed, or that no API image existed. Statements that are
+  still true were kept — the committed API digest is still a placeholder, because the
+  image is host-local and published to no registry — and the honest limitations that
+  survived execution were kept or sharpened rather than dropped.
+
+### Fixed
+
+Six defects, each found by running something that had only ever been read, and four of
+them now have a guard test. Two more were found by independent review of this change
+and are listed with them.
+
+- **The model acquisition hook deleted an artifact it could not replace.** An artifact
+  that did not match its pins was removed *before* anything had been acquired to replace
+  it. The first real run of the upgrade/rollback experiment showed what that costs: the
+  experiment's deliberately wrong byte count renders into the hook as well as into the
+  serving runtime, so the hook discarded a 1.83 GB artifact and left the Terraform-owned
+  claim empty. The replacement is now staged beside the artifact and moved over it only
+  once it verifies, so a failed acquisition leaves the claim exactly as it found it.
+
+- **The injected fault never reached the workload it was aimed at.** The same byte count
+  renders into the acquisition hook, which runs `pre-upgrade` at weight `-5`, so the
+  upgrade failed before any serving pod was created and there was nothing to detect or
+  recover. The unhealthy-candidate upgrade now sets `model.acquisition.enabled=false`
+  alongside the fault — declared in the descriptor, validated, and restored by the
+  rollback — which puts the fault where the descriptor always said it lands.
+
+- **An evidence variable collided with a `readonly` constant.** The record writer passed
+  `INFEROPS_NAMESPACE`, which `lib.sh` freezes as the *smoke* namespace. Bash refused the
+  assignment and the run died after a complete and successful lifecycle with no record
+  written. Renamed in both Kubernetes experiments, and a test now refuses any environment
+  script that assigns a name `lib.sh` declares `readonly`.
+
+- **The release's configuration was read by label selector.** The release carried one
+  ConfigMap when the workflow was written and carries three now; a selector returned all
+  of them and the record took the collector's, which carries none of the fields it needed.
+  Both experiments now read the ConfigMap the descriptor names.
+
+- **The residue check raced the garbage collector.** Asked once, the instant
+  `helm uninstall --wait` returned, it reported terminating pods as residue — the same
+  defect both certification scripts had already been fixed for, in a workflow that had
+  never been run. It now asks repeatedly inside the uninstall budget.
+
+- **The impact prober was slower than the failure it sampled.** It asked every
+  5 000 ms against a failure detected in about 7 000 ms, so it could not reach the three
+  probes the descriptor requires. The interval is now 2 000 ms: the requirement is
+  unchanged and the sampling is denser, which is more evidence rather than less.
+
+- **A recovery figure was stamped before the thing it timed.** Found by review, not by
+  a run. The pod-restart experiment stamped "deletion to a served completion" when its
+  port-forward accepted a connection — which is earlier, and would not have moved if the
+  model had taken another minute to load. The origin now comes from the operating script
+  and the end is stamped by the tool, at the moment it has a completion in hand.
+
+- **The replacement loop broke on the wrong readiness.** Also found by review. It read
+  the Deployment's aggregate `readyReplicas`, which still counts a deleted pod inside its
+  termination grace period, while its own comment claimed it was reading the
+  replacement's. It now asks the replacement pod for its own `Ready` condition; the
+  aggregate is still sampled, because that is the right signal for whether the Deployment
+  noticed.
+
 - **The Kubernetes paved road is certified on Docker Desktop, end to end, for the first
   time.** V1-S3-011-PR1 executes the post-S3-010 path on the V1 reference provider rather
   than rendering it: the target is verified, the API and model-seed images are prepared,

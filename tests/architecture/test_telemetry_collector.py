@@ -82,18 +82,23 @@ def by_component(kind: str) -> list[dict]:
 # --------------------------------------------------------------------------
 
 
-def test_the_inventory_row_is_owned_and_still_planned() -> None:
-    """Owned answers "who"; planned answers "has it run". They are different."""
+def test_the_inventory_row_is_owned_and_now_implemented() -> None:
+    """Owned answers "who"; implemented answers "has it run". Still different.
+
+    The row was `planned` while the collector was only rendered, and V1-S3-011
+    installed one: it discovered and scraped both InferOps jobs, and a real
+    Prometheus evaluated every accepted correlation expression through it. A
+    rendered collector is still not an installed one -- what changed is that one
+    was installed, and the row has to cite the run that did it.
+    """
     row = next(
         r for r in INVENTORY["resources"] if r["resourceId"] == "telemetry-collector"
     )
     assert row["owner"] == "helm"
     assert row["lifecycle"] == "release"
-    assert row["v1Status"] == "planned", (
-        "a rendered collector is not an installed one, and evidenceRef stays null "
-        "until a release has actually installed it"
-    )
-    assert row["evidenceRef"] is None
+    assert row["v1Status"] == "implemented"
+    assert row["evidenceRef"], "an implemented row cites the run that moved it"
+    assert (REPO_ROOT / row["evidenceRef"]).is_file(), row["evidenceRef"]
 
     backend = next(
         r for r in INVENTORY["resources"] if r["resourceId"] == "telemetry-backend"

@@ -17,18 +17,33 @@ it returns is model output, and no result taken from it may be cited as evidence
 of real serving behaviour, however closely the response resembles one. The rule
 is docs/serving/mock-and-real-boundary.md.
 {{- else }}
-This release installs the real serving path. It is not yet proven to run: no
-InferOps API image is published, and no cluster in this project has installed
-this chart. The probes, the shutdown ordering, and the release test below are
-configured and unrun. V1-S3-006 certifies real inference through Kubernetes.
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
 {{- end }}
 
-What this chart does not install, so that a reader is not left inferring it:
+What this chart does NOT install, so that a reader is not left inferring it:
 
-  - the namespace and the model cache claim, which are Terraform's;
-  - the model acquisition job, which fills the cache (V1-S3-003);
-  - a NetworkPolicy (V1-S3-004);
-  - any scrape or collector configuration (V1-S3-007).
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
 
 Asking whether it actually answers, which a completed rollout does not tell you:
 

@@ -809,10 +809,23 @@ def test_every_destructive_sample_is_labelled_as_one() -> None:
 # 9. The claims the page must keep making
 # --------------------------------------------------------------------------
 
+# Statements this page may not quietly drop. Two of the originals were retired by
+# V1-S3-011-PR2, and only because the fact underneath them changed: the release
+# *has* now been installed, so "has never been run by anybody, on any cluster" and
+# "Nothing on this page may be cited as evidence that the release installs" became
+# false, and a false statement is not a limitation worth keeping. What replaces
+# them is the limitation that survived the execution -- that one provider ran it,
+# and that running a command is not provoking the symptom an entry describes.
+#
+# "still carry a placeholder digest for it" stays exactly where it was. It is
+# still true: the API image is built on a contributor's own machine and published
+# to no registry, so the committed values cannot name a digest that resolves
+# anywhere else, and a reader following this page with them alone still reaches an
+# image that does not resolve.
 REQUIRED_STATEMENTS = (
-    "has never been run by anybody, on any cluster",
     "still carry a placeholder digest for it",
-    "Nothing on this page may be cited as evidence that the release installs",
+    "Every result behind this page is docker-desktop's",
+    "a reader may not read an executed release as an executed fault",
     "The namespace, its metadata, and the model cache survive",
     "This is not the routine uninstall path.",
     "Neither Terraform nor Helm may delete a cluster",

@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/telemetry/kubernetes-telemetry-collection.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "Kubernetes telemetry collection for the InferOps release, v1alpha1",
-  "description": "What a collector would scrape in a Kubernetes installation of the inferops-llm chart, which labels it attaches, what those labels cost, which native runtime series map to an InferOps concept, and which signals have no source at all. It describes configuration this repository renders. It is not a claim that anything collects: no collector, store, dashboard, or alerting path is selected, nothing scrapes either endpoint, and this chart has never been installed.",
+  "description": "What a collector would scrape in a Kubernetes installation of the inferops-llm chart, which labels it attaches, what those labels cost, which native runtime series map to an InferOps concept, and which signals have no source at all. It describes configuration this repository renders. Since V1-S3-011 it is also a record of what a collector did scrape: the release installs one, it discovered and scraped both InferOps jobs on the docker-desktop provider, and a real Prometheus evaluated every accepted correlation expression through it. No store, dashboard, or alerting path is selected, the collector's series live in an emptyDir that goes with its pod, and nothing here has been executed on kind.",
   "decisionRef": "docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md",
   "documentRef": "docs/telemetry/kubernetes-telemetry-collection.md",
   "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
@@ -426,15 +426,15 @@
   "limitations": [
     {
       "limitationId": "no-collector",
-      "statement": "No collector, store, dashboard, or alerting path is selected. This record describes configuration for one and does not choose one, and nothing scrapes either endpoint."
+      "statement": "No store, dashboard, or alerting path is selected. A collector is: ADR 0004 D7 makes it Helm-owned and release-scoped, and it has scraped both endpoints on the docker-desktop provider. Its series are in an emptyDir and go with its pod, so nothing here is a store anything may depend on."
     },
     {
-      "limitationId": "never-installed",
-      "statement": "This chart has never been installed and no InferOps API image is published. Every job, label, and rule here has been rendered, parsed, and checked against committed records; none has been loaded by a Prometheus or pointed at a running pod."
+      "limitationId": "installed-on-one-provider-only",
+      "statement": "This chart has been installed on the docker-desktop provider only, on one Windows host, with one replica of each tier. Every job, label, and rule here was rendered, parsed, and checked against committed records first, and has since been loaded by a real Prometheus and pointed at running pods there. None of it has been executed on kind, and ADR 0011 forbids reading one provider's answer as the other's."
     },
     {
       "limitationId": "multiplier-is-arithmetic",
-      "statement": "The series multiplier is arithmetic over declared bounds multiplied by a replica count. It is not a measurement, and no store has held one of these series."
+      "statement": "The series multiplier is arithmetic over declared bounds multiplied by a replica count. It is not a measurement: no store has held these series for longer than one collector pod's life, and nothing has counted them."
     },
     {
       "limitationId": "runtime-mapping-was-measured-once",
@@ -458,7 +458,7 @@
     },
     {
       "limitationId": "job-names-are-scoped-and-that-is-all-that-is-scoped",
-      "statement": "Job names are release-qualified so that two releases' fragments can be merged into one collector configuration. Nothing here merges them, no collector has loaded either fragment, and a name that does not collide is not the same thing as a composition that works."
+      "statement": "Job names are release-qualified so that two releases' fragments can be merged into one collector configuration. Nothing here merges them; one collector has loaded both fragments of one release, and a name that does not collide is not the same thing as a composition that works."
     }
   ]
 }

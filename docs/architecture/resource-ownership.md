@@ -56,12 +56,31 @@ residue check that follows the uninstall names `jobs` explicitly, so a driver
 that survived its own run is a failure rather than a leftover nobody looked
 for.
 
-**Every row below is still `planned` or `deferred`, and that is correct**: a
-chart renders objects, a rendered object is a file, a Terraform configuration
-nobody has applied creates nothing, and a procedure nobody has executed changes
-nothing in a cluster. None of the resources in the release or prerequisite tables
-exists in a cluster, because nothing here has installed or applied one — and
-neither release procedure can be run until an InferOps API image exists.
+**Most rows below are now `implemented`, and it is worth being exact about what
+that means.** Until `V1-S3-011` every row in the release and prerequisite tables
+was `planned`, and that was correct: a chart renders objects, a rendered object is
+a file, and a Terraform configuration nobody has applied creates nothing. That is
+no longer the state. Terraform has applied and re-applied the prerequisite layer,
+Helm has installed, upgraded, rolled back and uninstalled the release, the
+acquisition hook has filled the claim, the controllers have made the derived
+objects, and each of those was observed in a cluster rather than in a render.
+
+What `implemented` does **not** mean here:
+
+- **not on every provider.** Every promotion below was observed on
+  `docker-desktop`, the V1 reference provider, on one Windows host. `kind` has
+  not executed any of it since the ownership realignment, and
+  [ADR 0011](decisions/ADR-0011-external-local-cluster-provider-contract.md)
+  forbids borrowing one provider's answer for the other;
+- **not enforced, where enforcement is a separate question.**
+  `workload-network-policy` is `implemented` because Helm creates and destroys
+  the objects, which is what a row in this table is about. Whether the local
+  network plugin *enforces* one is a different claim, it remains unproven, and
+  [the enforcement record](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md)
+  is where that stands;
+- **not multi-replica.** Every row was observed with one replica of each tier.
+  The multi-replica profile was refused at the capacity gate on this host and no
+  row here is evidence of anything else.
 
 The lifecycle script records one thing this document had left implicit. Something
 has to create the namespace a release installs into, and that something must not
@@ -173,11 +192,11 @@ crossed by accident rather than by argument:
 | `serving-runtime-deployment` | `apps/v1 Deployment` | Separate from the API for the reasons in [the system architecture](system-architecture.md) |
 | `serving-runtime-service` | `v1/Service` | Internal to the release; not a public surface |
 | `runtime-configuration` | `v1/ConfigMap` | Rendered from a validated contract. Holds no secret value |
-| `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive. Rendered since the Sprint 3 remediation as a `pre-install,pre-upgrade` hook, so it completes before the runtime's own integrity check runs. It writes through a temporary file and renames only after verification, so a failed acquisition leaves nothing that looks finished, and it discards rather than reuses an artifact that does not verify. Still `planned`, because no release has installed it |
-| `model-acquisition-service-account` | `v1/ServiceAccount` | The identity the job above presents, created by the same hook phase at a lower weight and removed by the same delete policy. It exists because Helm applies a phase's hooks before the release manifest: the runtime account the job used to name does not exist yet when the hook is created, so the API server refuses the Job and the install fails reporting only a pre-install timeout. Granted nothing, and no pod mounts a token. Still `planned`, for the same reason its siblings are |
-| `workload-network-policy` | `networking.k8s.io/v1 NetworkPolicy` | A declaration until a test proves the local cluster's network plugin enforces one |
+| `model-acquisition-job` | `batch/v1 Job` | Verifies the artifact hash before the bytes are used; resumable, because a single streamed transfer was measured not to survive. Rendered since the Sprint 3 remediation as a `pre-install,pre-upgrade` hook, so it completes before the runtime's own integrity check runs. It writes through a temporary file and renames only after verification, so a failed acquisition leaves nothing that looks finished, and it replaces rather than reuses an artifact that does not verify — replaces, because `V1-S3-011-PR2` changed the ordering: it used to delete the mismatching artifact first, and a run that could then not acquire a replacement left the claim empty. `implemented`: a release has installed it and it has filled the claim |
+| `model-acquisition-service-account` | `v1/ServiceAccount` | The identity the job above presents, created by the same hook phase at a lower weight and removed by the same delete policy. It exists because Helm applies a phase's hooks before the release manifest: the runtime account the job used to name does not exist yet when the hook is created, so the API server refuses the Job and the install fails reporting only a pre-install timeout. Granted nothing, and no pod mounts a token. `implemented`, along with the hook it identifies |
+| `workload-network-policy` | `networking.k8s.io/v1 NetworkPolicy` | `implemented` describes the objects, which Helm creates and destroys and `V1-S3-011` watched it do. It does not describe enforcement, and enforcement is not untested: [an executed experiment](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md) established that `kindnetd` -- the plugin that experiment tested, and the one both providers' clusters were observed running -- does not apply one, so these objects are created and inert (`DR-04`, `EX-05`) |
 | `telemetry-scrape-configuration` | `v1/ConfigMap` | A scrape configuration and recording rules for this release. Rendered since `V1-S3-007`; read since the Sprint 3 remediation by the collector below, which mounts it rather than carrying a second copy |
-| `telemetry-collector` | `platform service` | A Deployment, Service, ConfigMap, ServiceAccount, Role and RoleBinding. Reads the row above. `ADR 0004` `D7` left this undecided for two sprints and the consequence was a configuration nothing consumed; the amendment made it Helm-owned and release-scoped. Its series are in an `emptyDir` and go with the pod, so it answers questions about the release running now and is not a store anything may depend on. Still `planned`: no release has installed it |
+| `telemetry-collector` | `platform service` | A Deployment, Service, ConfigMap, ServiceAccount, Role and RoleBinding. Reads the row above. `ADR 0004` `D7` left this undecided for two sprints and the consequence was a configuration nothing consumed; the amendment made it Helm-owned and release-scoped. Its series are in an `emptyDir` and go with the pod, so it answers questions about the release running now and is not a store anything may depend on. `implemented`: a release installed it and a real Prometheus scraped both InferOps jobs through it |
 
 ### Derived, and owned by no tool
 
@@ -209,10 +228,10 @@ inside one.
 | `model-artifact-upstream` | `external-publisher` | Pinned by revision and per-file hash, verified before use |
 | `container-engine` | `contributor-host` | No step changes host-wide engine settings |
 | `kind-cluster` | `cluster-operator` | An existing `kind` cluster. Terraform and Helm act inside it and neither may create or delete it; since ADR 0011 nothing on the platform path may either. `implemented`, on `kind` evidence only |
-| `docker-desktop-cluster` | `cluster-operator` | Docker Desktop's cluster. A release has now been installed and certified through it under the provider contract, and the guard binds each node to a container on this engine and to the API server port the verified kubeconfig dials. Still `planned`, because promoting the release layer's status is `V1-S3-011-PR2`'s reconciliation and promoting one row alone would make this table disagree with itself |
+| `docker-desktop-cluster` | `cluster-operator` | Docker Desktop's cluster. A release has now been installed and certified through it under the provider contract, and the guard binds each node to a container on this engine and to the API server port the verified kubeconfig dials. `implemented`, along with the whole release layer, by `V1-S3-011-PR2`'s reconciliation — the operator still owns its lifecycle, and nothing here creates, enables, resets, or deletes it |
 | `project-kubeconfig` | `contributor-host` | Holds a client certificate and key; ignored by version control; removed on teardown. The `kind` helper writes its own fixed copy; `inferops::resolve_target` writes a second, provider-selected one fresh on every mutating workflow's run |
 | `node-image-cache` | `cluster-operator` | `kind` only. Retained across teardown by design; reclaimed by an opt-in step |
-| `platform-api-container-image` | `contributor-host` | Built locally and made visible to the cluster by the provider's own image path rather than pushed to a shared registry. For Docker Desktop that path is not established |
+| `platform-api-container-image` | `contributor-host` | Built locally and made visible to the cluster by the provider's own image path rather than pushed to a shared registry. For Docker Desktop that path is now established and is not `kind load`: the cluster does not share the engine's image store, and the mechanism is a `docker save` piped into the node's own containerd followed by an explicit `repository@digest` tag |
 
 ### Not owned, and therefore not in V1
 
@@ -335,8 +354,11 @@ the artifact this project pins, that the provider pin is exact and identical in
 every place it is written, and that the provider names its kubeconfig and context
 rather than inheriting them.
 
-**Not checked by anything, because nothing has produced it: that either
-configuration does what it says when it runs.** The chart has never been
-installed and the Terraform has never been applied. Both suites read files. Every
-row in both tables is `planned` for that reason, and the two halves of this
-document remain a commitment about behaviour and a verification about text.
+**What the two suites still do not check: that either configuration does what it
+says when it runs.** They read files, and a file is not a cluster. That gap is
+now closed by execution rather than by testing — Terraform has been applied and
+re-applied and the chart has been installed, upgraded, rolled back and
+uninstalled on `docker-desktop`, and the records are cited row by row above. What
+the suites establish remains what they establish: the two halves of this
+document are a commitment about behaviour and a verification about text, and it
+is a record of a run — not either suite — that moves a row to `implemented`.

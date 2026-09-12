@@ -472,12 +472,20 @@ def test_the_acquisition_job_is_rendered_rather_than_deferred() -> None:
     """
     assert "model-acquisition-job" in DECLARED_OWNED
     assert "model-acquisition-job" not in DECLARED_DEFERRED
-    assert any(
-        resource["resourceId"] == "model-acquisition-job"
-        and resource["owner"] == "helm"
-        and resource["v1Status"] == "planned"
+    # `implemented` since V1-S3-011-PR2, and only because a release installed it:
+    # the hook ran on the docker-desktop provider and filled the Terraform-owned
+    # claim. The row is required to cite the record that moved it, which is what
+    # stops a future edit promoting it back on the strength of a render.
+    (row,) = [
+        resource
         for resource in INVENTORY["resources"]
-    ), "the row stays planned until a release has actually installed it"
+        if resource["resourceId"] == "model-acquisition-job"
+    ]
+    assert row["owner"] == "helm"
+    assert row["v1Status"] == "implemented", (
+        "a row is implemented once a release has actually installed it"
+    )
+    assert row["evidenceRef"], "an implemented row cites the run that moved it"
 
     # It is a hook, so it is not in INSTALLED. The real profile renders exactly
     # one; the mock renders none, because a mock fills no claim and a mock that
@@ -1160,9 +1168,16 @@ def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() ->
     So the assertion inverted rather than relaxed. It used to require that no
     build path existed; it now requires that one does, that the workflow derives
     its digest instead of declaring one, and that nothing committed carries a
-    digest for an image nobody else can verify. `platform-api-container-image`
-    stays `planned` because no release has installed it -- a built image is not
-    an installed one.
+    digest for an image nobody else can verify.
+
+    **V1-S3-011-PR2 moved the row and did not move the placeholder**, which is
+    worth stating because the two look related and are not.
+    `platform-api-container-image` is `implemented`: a release has installed this
+    image and served real completions from it. The fixtures still carry the
+    placeholder, because the image is built on a contributor's own machine and
+    published to no registry -- so there is no digest this repository could commit
+    that would resolve on another one, whatever the row's status says. An
+    installed image is not a *published* image.
     """
     expected = (
         "sha256:"
@@ -1170,13 +1185,17 @@ def test_the_api_image_digest_in_the_fixtures_is_the_documented_placeholder() ->
     )
     for name, fixture in FIXTURES.items():
         assert fixture["api"]["image"]["digest"] == expected, name
-    assert any(
-        resource["resourceId"] == "platform-api-container-image"
-        and resource["v1Status"] == "planned"
+    (row,) = [
+        resource
         for resource in INVENTORY["resources"]
-    ), (
-        "the placeholder is justified by there being no published API image; if "
-        "that row is implemented, the fixtures name a real digest instead"
+        if resource["resourceId"] == "platform-api-container-image"
+    ]
+    # The justification is the lifecycle, not the status. `host` means the image
+    # belongs to the contributor's own machine, which is exactly why no committed
+    # digest can name it -- and that stays true now the row is implemented.
+    assert row["lifecycle"] == "host", (
+        "the placeholder is justified by the image being host-local and published "
+        "to no registry; an image with any other lifecycle would need a real digest"
     )
     tracked = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "ls-files", "--", "*Dockerfile*"],

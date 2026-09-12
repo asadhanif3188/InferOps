@@ -75,9 +75,9 @@ variable "model_cache_size" {
   validation {
     condition = (
       can(regex("^[1-9][0-9]*Gi$", var.model_cache_size)) &&
-      tonumber(regex("^([1-9][0-9]*)Gi$", var.model_cache_size)[0]) >= 2
+      tonumber(regex("^([1-9][0-9]*)Gi$", var.model_cache_size)[0]) >= 4
     )
-    error_message = "The pinned model artifact is 1,834,426,016 bytes, so a claim below 2Gi cannot hold one copy of it."
+    error_message = "The pinned model artifact is 1,834,426,016 bytes and the acquisition hook stages a replacement beside it, renaming it over the top only once it verifies -- so a claim has to hold two copies transiently and one below 4Gi cannot. The floor was 2Gi while the hook deleted the old artifact first; V1-S3-011-PR2 stopped it doing that, because a failed acquisition then left the claim empty."
   }
 }
 

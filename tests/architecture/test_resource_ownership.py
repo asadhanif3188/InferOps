@@ -391,3 +391,37 @@ def test_the_architecture_documents_cite_the_inventory() -> None:
     for relative in ("resource-ownership.md", "system-architecture.md"):
         text = (ARCHITECTURE_DIR / relative).read_text(encoding="utf-8")
         assert "resource-ownership.v1alpha1.json" in text, relative
+
+
+@pytest.mark.parametrize("resource", RESOURCES, ids=lambda r: r["resourceId"])
+def test_no_implemented_row_still_describes_itself_as_planned(resource: dict) -> None:
+    """V1-S3-011-PR2, found by an independent review of that change.
+
+    Twenty rows moved from `planned` to `implemented` and four of them kept prose
+    saying "stays planned because no release has installed it" -- in the same
+    object, in the machine-readable file four suites read as the source of truth.
+    The status and the sentence next to it were maintained separately, and only
+    one of them was updated.
+
+    A reviewer caught it; a reviewer will not always. This is the check that makes
+    the next one a failing test, and it is deliberately about the *contradiction*
+    rather than about wording: a row may say whatever it likes about what it is
+    not, as long as it does not say it is still planned while being implemented.
+    """
+    if resource["v1Status"] != "implemented":
+        return
+    prose = " ".join((resource.get("handoff") or "").split())
+    for forbidden in (
+        "stays planned",
+        "stays `planned`",
+        "Still planned",
+        "Still `planned`",
+        "Planned rather than implemented",
+        "evidenceRef stays null",
+        "no release has installed it",
+        "nothing has installed it",
+    ):
+        assert forbidden.lower() not in prose.lower(), (
+            f"resource '{resource['resourceId']}' is implemented and its handoff "
+            f"still says {forbidden!r}"
+        )

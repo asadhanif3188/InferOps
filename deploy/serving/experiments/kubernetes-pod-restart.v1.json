@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "experimentId": "inferops-kubernetes-pod-restart-persistence",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "certificationCeiling": "C2",
+  "lane": "real-runtime",
+  "chartRef": "charts/inferops-llm",
+  "certificationRef": "docs/testing/certification.md",
+  "procedureRef": "docs/serving/kubernetes-pod-restart-persistence.md",
+  "baselineCertificationRef": "deploy/serving/certification/k8s-real-inference.v1.json",
+  "cluster": {
+    "providers": [
+      {
+        "providerId": "kind",
+        "name": "inferops-dev",
+        "context": "kind-inferops-dev",
+        "nodeImage": {
+          "pinned": true,
+          "digest": "sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256"
+        }
+      },
+      {
+        "providerId": "docker-desktop",
+        "name": "docker-desktop",
+        "context": "docker-desktop",
+        "nodeImage": {
+          "pinned": false,
+          "digest": null
+        }
+      }
+    ]
+  },
+  "release": {
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real",
+    "apiServiceName": "inferops-inferops-llm",
+    "apiServicePort": 8090,
+    "apiDeploymentName": "inferops-inferops-llm",
+    "runtimeServiceName": "inferops-inferops-llm-runtime",
+    "runtimeDeploymentName": "inferops-inferops-llm-runtime",
+    "configMapName": "inferops-inferops-llm-configuration",
+    "instanceSelector": "app.kubernetes.io/instance=inferops",
+    "apiComponent": "platform-api",
+    "runtimeComponent": "serving-runtime",
+    "acquisitionComponent": "model-acquisition",
+    "replicas": 1
+  },
+  "prerequisites": {
+    "requiresTerraformPrerequisites": true,
+    "requiresTargetClusterAssertion": true,
+    "requiresHealthyBaseline": true,
+    "requiresVerifiedModelCache": true
+  },
+  "stages": [
+    "baseline",
+    "deletion",
+    "replacement",
+    "recovery",
+    "cleanup"
+  ],
+  "modelCache": {
+    "claimName": "inferops-model-cache",
+    "owner": "terraform",
+    "verificationInitContainer": "verify-model",
+    "requireReadOnlyMount": true,
+    "requireSameClaimRemounted": true,
+    "requireSameBoundVolume": true,
+    "requireRevisionScopedArtifact": true,
+    "requireArtifactByteCountUnchanged": true,
+    "requireArtifactDigestUnchanged": true,
+    "requireArtifactInodeUnchanged": true,
+    "requireArtifactMtimeUnchanged": true
+  },
+  "disruption": {
+    "description": "One delete, addressed to one serving runtime pod by name, with no change to any declared object.",
+    "mechanism": "delete-serving-runtime-pod",
+    "target": "serving-runtime",
+    "scope": "pod",
+    "deletesDeclaredObject": false,
+    "changesNoDeployment": true,
+    "changesNoPersistentVolumeClaim": true,
+    "changesNoReleaseRevision": true,
+    "changesNoClusterScopedObject": true,
+    "touchesNoOtherNamespace": true,
+    "reversedBy": "deployment-controller"
+  },
+  "replacement": {
+    "requireDifferentPodName": true,
+    "requireDifferentPodUid": true,
+    "requireSameDeploymentOwner": true,
+    "requireReadinessObservedFalse": true,
+    "requireReadinessObservedTrue": true,
+    "requireIntegrityInitContainerSucceeded": true,
+    "requireNoNewAcquisitionJob": true,
+    "requireAcquisitionNotRepeated": true,
+    "requireNoReleaseRevisionChange": true
+  },
+  "acquisition": {
+    "description": "What proves the artifact was not fetched again. Three things, because no one of them is enough on its own: no acquisition Job exists across the replacement, so no hook ran; and the file the replacement reads carries the same inode and the same modification time as the file the deleted pod read, so it is the same file rather than an identical copy. An acquisition writes a temporary file and renames it over the artifact, which changes both.",
+    "alreadyPresentSignal": "model artifact already present and verified; nothing to acquire",
+    "requireJobCountUnchanged": true,
+    "requireHookNotTriggeredByPodDeletion": true
+  },
+  "readiness": {
+    "installBudgetMs": 120000,
+    "runtimeStartupBudgetMs": 600000,
+    "runtimeRolloutBudgetMs": 900000,
+    "apiStartupBudgetMs": 60000,
+    "apiRolloutBudgetMs": 300000,
+    "releaseTestBudgetMs": 300000,
+    "forwardBudgetMs": 30000,
+    "replacementBudgetMs": 900000,
+    "recoveryBudgetMs": 1500000,
+    "uninstallBudgetMs": 600000
+  },
+  "observation": {
+    "description": "What the readiness of the serving runtime looked like across the replacement, read from the Deployment rather than from a caller.",
+    "pollIntervalMs": 2000,
+    "minimumSamples": 3,
+    "requireReadinessRecord": true
+  },
+  "request": {
+    "host": "127.0.0.1",
+    "path": "/v1/chat/completions",
+    "modelsPath": "/v1/models",
+    "readinessPath": "/health/ready",
+    "prompt": "In one sentence, what does a persistent volume claim preserve?",
+    "requestIdPrefix": "v1-s3-003-pr2-request",
+    "correlationId": "v1-s3-003-pr2-kubernetes-pod-restart",
+    "timeoutMs": 120000
+  },
+  "assertions": {
+    "requiredAdapterKind": "real",
+    "prohibitedIdentitySubstring": "mock",
+    "requireUsageCounts": true,
+    "requireNonEmptyContent": true,
+    "requirePinnedModelRevision": true,
+    "requireEveryReplicaReady": true,
+    "requirePinnedNodeImage": true,
+    "requireRecoveryRecorded": true,
+    "requireInferenceBeforeAndAfter": true
+  },
+  "evidence": {
+    "directory": ".cache/inferops/experiments",
+    "resultFile": "kubernetes-pod-restart.json",
+    "diagnosticsFile": "kubernetes-pod-restart-diagnostics.json",
+    "lifecycleFile": ".artifacts/kubernetes-pod-restart/lifecycle-facts.json",
+    "baselineCompletionFile": ".artifacts/kubernetes-pod-restart/baseline-completion.json",
+    "readinessFile": ".artifacts/kubernetes-pod-restart/readiness-observations.json",
+    "cleanupFile": ".artifacts/kubernetes-pod-restart/cleanup-facts.json",
+    "retainGeneratedText": false
+  },
+  "cleanup": {
+    "uninstallsRelease": true,
+    "removesPrerequisites": false,
+    "removesCluster": false,
+    "removesModelCacheClaim": false
+  },
+  "limitations": [
+    "The evidence is local real Kubernetes on a single-node cluster belonging to one explicitly selected provider, and implies nothing about another provider, a multi-node cluster, a node loss, or a claim on network-attached storage.",
+    "One pod was deleted, once. The recovery figures describe that one replacement on one host at one moment and are not a restart benchmark, a service-level objective, or an availability figure.",
+    "The disruption is a deleted pod. It says nothing about a node that goes away, a claim that fails to reattach, a volume that is corrupted, or a runtime that starts and answers wrongly.",
+    "The serving runtime is one replica, so the replacement window is an outage for any caller reaching that Service. Nothing here measures that outage from a caller's side and nothing here claims high availability.",
+    "The artifact is compared by the byte count and SHA-256 the release was rendered with, read inside the cluster. That establishes the bytes the runtime loaded, not that the claim's underlying storage is durable across a host failure or a cluster reset.",
+    "Model acquisition is proven not to repeat for a pod replacement because the acquisition hook runs on install and upgrade and a pod deletion is neither. Nothing here says what an upgrade would re-acquire."
+  ]
+}

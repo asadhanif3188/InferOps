@@ -201,8 +201,13 @@ one describing an experiment that was never run. What the executed run found, an
 what it does not support, is in
 [the restart record](../proof/serving/v1-s3-003-pr1-restart-reload.md).
 
-The Kubernetes half of this is a different experiment and has not been run. A
-container restart is not a pod restart: no InferOps API image is published and
+The Kubernetes half of this is a different experiment, and `V1-S3-011` ran it:
+[a real serving pod was deleted](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md)
+and the Deployment replaced it against the surviving Terraform-owned claim, with
+the artifact's byte count, SHA-256, inode and modification time all unchanged. A
+container restart is still not a pod restart, and the two records answer
+different questions. When the record below was written, no InferOps API image was
+published and
 the model cache claim is Terraform-owned and unwritten, so nothing has scheduled
 a replacement pod against a surviving claim. What the chart does about it — the
 revision-scoped mount and the integrity check every replacement pod re-runs — is

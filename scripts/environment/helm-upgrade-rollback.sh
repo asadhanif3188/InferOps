@@ -148,18 +148,6 @@ inferops::require_engine
 # no default, re-verified now rather than trusted from an earlier run.
 inferops::resolve_target
 
-# This experiment's own descriptor and evidence tooling below are still specific
-# to the kind cluster this repository pins; porting them to a provider-neutral
-# target is V1-S3-011. Re-verifying through inferops::resolve_target above
-# closes `selection-is-explicit` for this workflow; this closes the rest of the
-# gap honestly rather than silently: a Docker Desktop target passes the check
-# above and is refused here instead of being run against a descriptor that does
-# not describe it.
-if [ "${INFEROPS_TARGET_PROVIDER}" != "kind" ] ||
-  [ "${INFEROPS_TARGET_CLUSTER_NAME}" != "${INFEROPS_CLUSTER_NAME}" ]; then
-  inferops::fail "refusing: capability-unknown-or-insufficient: this experiment's descriptor and evidence tooling are still specific to provider 'kind', cluster '${INFEROPS_CLUSTER_NAME}'. The selected target is provider '${INFEROPS_TARGET_PROVIDER}', cluster '${INFEROPS_TARGET_CLUSTER_NAME}'. Porting this workflow to a provider-neutral target is V1-S3-011."
-fi
-
 inferops::section "Experiment descriptor"
 (cd "${INFEROPS_ROOT}" && python -m "${INFEROPS_EXPERIMENT_MODULE}" check)
 
@@ -179,17 +167,58 @@ for path in sys.argv[2:]:
 ' "$(inferops::native_path "${experiment_file}")" "$@"
 }
 
+# The descriptor's entry for the provider that was actually verified, read as a
+# lookup rather than as a path: the descriptor describes every provider this
+# experiment supports, and a run is recorded against the one it is on. A
+# provider the descriptor does not describe stops here rather than being run
+# against somebody else's entry -- which is the refusal the kind-only guard used
+# to make, kept, and widened from "every target that is not kind" to "every
+# target this experiment cannot describe".
+#
+# It also carries the pin distinction this experiment turns on. `nodeImage` is
+# provider-owned for `docker-desktop`: Docker Desktop chooses its own node image
+# and InferOps neither selects nor pins it, so that entry says `pinned: false`
+# and the digest read at run time is recorded rather than enforced. For `kind`
+# the image is this repository's own choice and stays an InferOps pin.
+read_provider_target() {
+  inferops::python -c '
+import json, sys
+from pathlib import Path
+
+record = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+wanted = sys.argv[2]
+for provider in record["cluster"]["providers"]:
+    if provider["providerId"] == wanted:
+        print(provider["name"])
+        print(provider["context"])
+        break
+else:
+    raise SystemExit(
+        f"the experiment descriptor does not describe provider {wanted!r}"
+    )
+' "$(inferops::native_path "${experiment_file}")" "$1"
+}
+
+if ! provider_target="$(read_provider_target "${INFEROPS_TARGET_PROVIDER}")"; then
+  inferops::fail "refusing: this experiment's descriptor does not describe provider '${INFEROPS_TARGET_PROVIDER}'. Nothing was installed."
+fi
+{
+  read -r descriptor_cluster
+  read -r descriptor_context
+} <<<"${provider_target}"
+
 # Read into a variable first and check the status, rather than through a process
 # substitution: a reader whose producer failed sees empty fields and no error,
 # and an empty budget below becomes an arithmetic expression rather than a
 # refusal.
 if ! descriptor_fields="$(read_descriptor \
-  cluster.name cluster.context \
   release.name release.namespace \
   release.apiDeploymentName release.runtimeDeploymentName \
-  release.apiComponent release.runtimeComponent \
+  release.apiComponent release.runtimeComponent release.configMapName \
   candidate.valuesPath candidate.candidateValue candidate.configMapKey \
   faultInjection.valuesPath faultInjection.injectedSizeBytes \
+  faultInjection.scopedToWorkloadByValuesPath \
+  faultInjection.scopedToWorkloadByValue \
   faultInjection.failsInContainer \
   detection.pollIntervalMs \
   impact.probePath impact.probeIntervalMs impact.probeTimeoutMs \
@@ -203,19 +232,20 @@ if ! descriptor_fields="$(read_descriptor \
 fi
 
 {
-  read -r descriptor_cluster
-  read -r descriptor_context
   read -r descriptor_release
   read -r descriptor_namespace
   read -r descriptor_api_deployment
   read -r descriptor_runtime_deployment
   read -r descriptor_api_component
   read -r descriptor_runtime_component
+  read -r descriptor_configmap
   read -r candidate_values_path
   read -r candidate_value
   read -r candidate_config_key
   read -r fault_values_path
   read -r fault_size_bytes
+  read -r fault_scope_values_path
+  read -r fault_scope_value
   read -r fault_container
   read -r detection_poll_ms
   read -r probe_path
@@ -238,8 +268,10 @@ fi
 
 for field in descriptor_cluster descriptor_context descriptor_release \
   descriptor_namespace descriptor_api_deployment descriptor_runtime_deployment \
-  descriptor_api_component descriptor_runtime_component candidate_values_path \
+  descriptor_api_component descriptor_runtime_component descriptor_configmap \
+  candidate_values_path \
   candidate_value candidate_config_key fault_values_path fault_size_bytes \
+  fault_scope_values_path fault_scope_value \
   fault_container detection_poll_ms probe_path probe_interval_ms \
   probe_timeout_ms descriptor_host install_budget_ms \
   runtime_rollout_budget_ms api_rollout_budget_ms release_test_budget_ms \
@@ -309,12 +341,19 @@ esac
   inferops::fail "the descriptor's controlled change is '${candidate_values_path}' and this script only sets 'telemetry.serviceVersion'. Nothing was installed."
 [ "${fault_values_path}" = "model.artifact.sizeBytes" ] ||
   inferops::fail "the descriptor's injected fault is '${fault_values_path}' and this script only sets 'model.artifact.sizeBytes'. Nothing was installed."
+[ "${fault_scope_values_path}" = "model.acquisition.enabled" ] ||
+  inferops::fail "the descriptor scopes the fault through '${fault_scope_values_path}' and this script only sets 'model.acquisition.enabled'. Nothing was installed."
+[ "${fault_scope_value}" = "false" ] ||
+  inferops::fail "the descriptor scopes the fault by setting '${fault_scope_values_path}=${fault_scope_value}' and this script only sets it false. Nothing was installed."
 
-# Four records name one target, and they are compared rather than assumed.
-[ "${descriptor_cluster}" = "${INFEROPS_CLUSTER_NAME}" ] ||
-  inferops::fail "the descriptor names cluster '${descriptor_cluster}' and these scripts operate '${INFEROPS_CLUSTER_NAME}'."
-[ "${descriptor_context}" = "${INFEROPS_KUBE_CONTEXT}" ] ||
-  inferops::fail "the descriptor names context '${descriptor_context}' and these scripts operate '${INFEROPS_KUBE_CONTEXT}'."
+# Four records name one target, and they are compared rather than assumed. The
+# first two compare the descriptor's entry for the selected provider against the
+# target inferops::resolve_target just verified, rather than against a constant
+# naming one cluster -- which is what made this workflow kind-only.
+[ "${descriptor_cluster}" = "${INFEROPS_TARGET_CLUSTER_NAME}" ] ||
+  inferops::fail "for provider '${INFEROPS_TARGET_PROVIDER}' the descriptor names cluster '${descriptor_cluster}' and the verified target is '${INFEROPS_TARGET_CLUSTER_NAME}'."
+[ "${descriptor_context}" = "${INFEROPS_TARGET_CONTEXT}" ] ||
+  inferops::fail "for provider '${INFEROPS_TARGET_PROVIDER}' the descriptor names context '${descriptor_context}' and the verified target is '${INFEROPS_TARGET_CONTEXT}'."
 [ "${descriptor_release}" = "${INFEROPS_RELEASE_NAME}" ] ||
   inferops::fail "the descriptor names release '${descriptor_release}' and these scripts operate '${INFEROPS_RELEASE_NAME}'."
 [ "${descriptor_namespace}" = "${INFEROPS_RELEASE_NAMESPACE}" ] ||
@@ -365,15 +404,15 @@ now_ms() { printf '%s' "$(($(date +%s%N) / 1000000))"; }
 collect_diagnostics() {
   mkdir -p "${diag_dir}"
   inferops::warn "collecting diagnostics into .artifacts/helm-upgrade-rollback/"
-  inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/releases.txt" 2>&1 || true
-  inferops::helm history "${INFEROPS_RELEASE_NAME}" \
+  inferops::target_helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/releases.txt" 2>&1 || true
+  inferops::target_helm history "${INFEROPS_RELEASE_NAME}" \
     --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/history.txt" 2>&1 || true
-  inferops::kubectl get all,configmap,serviceaccount,pvc \
+  inferops::target_kubectl get all,configmap,serviceaccount,pvc \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -o wide >"${diag_dir}/get-all.txt" 2>&1 || true
-  inferops::kubectl describe pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/describe-pods.txt" 2>&1 || true
-  inferops::kubectl get events -n "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_kubectl describe pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/describe-pods.txt" 2>&1 || true
+  inferops::target_kubectl get events -n "${INFEROPS_RELEASE_NAMESPACE}" \
     --sort-by=.lastTimestamp >"${diag_dir}/events.txt" 2>&1 || true
-  inferops::kubectl logs -n "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_kubectl logs -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -l "${INFEROPS_RELEASE_SELECTOR}" --all-containers --tail="${INFEROPS_LOG_TAIL}" >"${diag_dir}/release.log" 2>&1 || true
 }
 
@@ -431,7 +470,7 @@ bash "${INFEROPS_ROOT}/scripts/environment/terraform-prerequisites.sh" apply
 
 inferops::claim_count() {
   local output
-  if ! output="$(inferops::kubectl get pvc \
+  if ! output="$(inferops::target_kubectl get pvc \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -o name)"; then
     return 1
   fi
@@ -443,7 +482,7 @@ if ! claims_before="$(inferops::claim_count)"; then
 fi
 inferops::log "persistent volume claims present before install: ${claims_before}"
 
-if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
+if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   inferops::fail "release '${INFEROPS_RELEASE_NAME}' already exists in '${INFEROPS_RELEASE_NAMESPACE}'. This experiment starts from an install, so an existing release would make its first revision something other than the known-good one it reports. Remove it first: helm uninstall ${INFEROPS_RELEASE_NAME} --namespace ${INFEROPS_RELEASE_NAMESPACE}"
 fi
@@ -466,7 +505,7 @@ require_query() {
 # rendered init container command rather than out of the values file or out of
 # `helm get values`. Both of those are Helm's bookkeeping; this is the workload.
 runtime_verify_command() {
-  inferops::kubectl get deployment "${descriptor_runtime_deployment}" \
+  inferops::target_kubectl get deployment "${descriptor_runtime_deployment}" \
     -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -o "jsonpath={.spec.template.spec.initContainers[?(@.name==\"${fault_container}\")].command[2]}"
 }
@@ -477,7 +516,7 @@ runtime_verify_command() {
 ready_pod_of() {
   local component="$1"
   local pods
-  pods="$(inferops::kubectl get pods \
+  pods="$(inferops::target_kubectl get pods \
     -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -l "${INFEROPS_RELEASE_SELECTOR},app.kubernetes.io/component=${component}" \
     -o json)" || return 1
@@ -499,7 +538,7 @@ record_stage() {
   local release_json service_version verify_command runtime_pod api_pod
 
   release_json="$(require_query "the release's own status" \
-    inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
+    inferops::target_helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
     --filter "^${INFEROPS_RELEASE_NAME}\$" -o json)"
 
   # Each of these four may legitimately come back empty and none of them may
@@ -513,9 +552,14 @@ record_stage() {
   # empty whenever no pod of that component is ready -- which is the expected
   # state during the unhealthy stage -- and that is a different fact from a
   # query nobody answered.
-  if ! service_version="$(inferops::kubectl get configmap \
-    -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" \
-    -o "jsonpath={.items[*].data.${candidate_config_key}}")"; then
+  # By name, not by selector. The release carried one ConfigMap when this was
+  # written and carries three now -- the runtime configuration, the telemetry
+  # scrape configuration, and the collector's -- so `items[*]` would concatenate
+  # whatever each of them happens to hold under this key. The descriptor names
+  # the one that carries the rendered configuration.
+  if ! service_version="$(inferops::target_kubectl get configmap \
+    "${descriptor_configmap}" -n "${INFEROPS_RELEASE_NAMESPACE}" \
+    -o "jsonpath={.data.${candidate_config_key}}")"; then
     inferops::fail "could not read ${candidate_config_key} from the release's rendered configuration at the '${stage}' stage. An unanswered query is not an empty value, and whether the upgrade reached the workload is decided by the difference."
   fi
   if ! verify_command="$(runtime_verify_command)"; then
@@ -594,15 +638,15 @@ inferops::section "Installing the known-good release"
 # absent: the namespace is Terraform's, and Helm creating it would make this
 # release's uninstall delete a prerequisite.
 baseline_started="$(now_ms)"
-inferops::helm install "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
+inferops::target_helm install "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --values "${values_path}" \
   --timeout "$((install_budget_ms / 1000))s"
 
 baseline_ready_started="$(now_ms)"
-inferops::kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
+inferops::target_kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((runtime_rollout_budget_ms / 1000))s"
-inferops::kubectl rollout status "deployment/${descriptor_api_deployment}" \
+inferops::target_kubectl rollout status "deployment/${descriptor_api_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((api_rollout_budget_ms / 1000))s"
 baseline_ready_ms=$(($(now_ms) - baseline_ready_started))
 
@@ -610,7 +654,7 @@ baseline_ready_ms=$(($(now_ms) - baseline_ready_started))
 # `helm test --logs` then fails fetching logs from a pod that is gone,
 # reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
 # states the whole of it beside its own call.
-inferops::helm test "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --timeout "$((release_test_budget_ms / 1000))s"
 
@@ -626,16 +670,16 @@ inferops::section "Upgrading to the controlled candidate"
 # would produce a revision Helm records and Kubernetes never acts on, and rolling
 # that back would prove nothing about whether the workload followed.
 candidate_started="$(now_ms)"
-inferops::helm upgrade "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
+inferops::target_helm upgrade "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --values "${values_path}" \
   --set "${candidate_values_path}=${candidate_value}" \
   --timeout "$((upgrade_budget_ms / 1000))s"
 
 candidate_ready_started="$(now_ms)"
-inferops::kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
+inferops::target_kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((runtime_rollout_budget_ms / 1000))s"
-inferops::kubectl rollout status "deployment/${descriptor_api_deployment}" \
+inferops::target_kubectl rollout status "deployment/${descriptor_api_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((api_rollout_budget_ms / 1000))s"
 candidate_ready_ms=$(($(now_ms) - candidate_ready_started))
 
@@ -643,7 +687,7 @@ candidate_ready_ms=$(($(now_ms) - candidate_ready_started))
 # `helm test --logs` then fails fetching logs from a pod that is gone,
 # reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
 # states the whole of it beside its own call.
-inferops::helm test "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --timeout "$((release_test_budget_ms / 1000))s"
 
@@ -657,7 +701,7 @@ record_stage candidate healthy "${candidate_ms}" "${candidate_ready_ms}" true
 # on top of the refusal that explains it. Two failures for one cause reads as two
 # causes.
 candidate_release_json="$(require_query "the known-good revision to roll back to" \
-  inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --filter "^${INFEROPS_RELEASE_NAME}\$" -o json)"
 candidate_revision="$(INFEROPS_RELEASE_JSON="${candidate_release_json}" inferops::python -c '
 import json, os
@@ -679,7 +723,7 @@ api_port="$(require_query "the release's API Service port" \
   read_descriptor release.apiServicePort)"
 
 mkdir -p "${diag_dir}"
-inferops::kubectl port-forward "service/${api_service}" \
+inferops::target_kubectl port-forward "service/${api_service}" \
   "${forward_port}:${api_port}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --address "${descriptor_host}" >"${forward_log}" 2>&1 &
 forward_pid="$!"
@@ -717,6 +761,7 @@ inferops::log "the API Service is forwarded to ${base_url}."
 inferops::section "Upgrading to a candidate the cluster cannot run"
 
 inferops::log "injecting ${fault_values_path}=${fault_size_bytes}, which the mounted artifact cannot match."
+inferops::log "aiming it at the workload with ${fault_scope_values_path}=${fault_scope_value}: the same byte count renders into the model acquisition hook, which runs pre-upgrade and would fail before the serving runtime is reached."
 inferops::log "this changes no image reference, pulls nothing, creates no object outside the release, and is removed by the rollback."
 
 fault_started="$(now_ms)"
@@ -792,11 +837,22 @@ prober_pid="$!"
 # expected to fail, and waiting for it would turn the detection into a timeout --
 # which is the one reading this experiment refuses, because a deadline is a
 # statement about elapsed time rather than about health.
-inferops::helm upgrade "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
+#
+# Two values, for one fault. `model.artifact.sizeBytes` renders into the model
+# acquisition hook as well as into the serving runtime's `verify-model` init
+# container, and the hook runs first -- `pre-upgrade`, weight -5, before any
+# workload object is updated. Asked for a one-byte artifact it fails, Helm
+# abandons the upgrade, and no unhealthy serving pod is ever created: the first
+# real execution of this experiment produced exactly that, detected nothing at
+# the workload, and had nothing to recover. Not rendering the hook for this one
+# upgrade puts the fault where the descriptor says it lands. The rollback
+# restores both values at once, because a rollback restores a revision.
+inferops::target_helm upgrade "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --values "${values_path}" \
   --set "${candidate_values_path}=${candidate_value}" \
   --set "${fault_values_path}=${fault_size_bytes}" \
+  --set "${fault_scope_values_path}=${fault_scope_value}" \
   --timeout "$((upgrade_budget_ms / 1000))s" &
 fault_upgrade_pid="$!"
 
@@ -811,11 +867,11 @@ detected_at_ms=0
 detection_deadline=$((SECONDS + detection_budget_ms / 1000))
 
 while [ "${SECONDS}" -lt "${detection_deadline}" ]; do
-  pods_json="$(inferops::kubectl get pods \
+  pods_json="$(inferops::target_kubectl get pods \
     -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -l "${INFEROPS_RELEASE_SELECTOR},app.kubernetes.io/component=${descriptor_runtime_component}" \
     -o json)" || pods_json=""
-  deployment_json="$(inferops::kubectl get deployment "${descriptor_runtime_deployment}" \
+  deployment_json="$(inferops::target_kubectl get deployment "${descriptor_runtime_deployment}" \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -o json)" || deployment_json=""
   finding="$(INFEROPS_PODS_JSON="${pods_json}" \
     INFEROPS_DEPLOYMENT_JSON="${deployment_json}" \
@@ -983,14 +1039,14 @@ inferops::section "Rolling back to revision ${candidate_revision}"
 
 rollback_started_at_ms=$(($(now_ms) - fault_started))
 rollback_started="$(now_ms)"
-inferops::helm rollback "${INFEROPS_RELEASE_NAME}" "${candidate_revision}" \
+inferops::target_helm rollback "${INFEROPS_RELEASE_NAME}" "${candidate_revision}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --timeout "$((rollback_budget_ms / 1000))s"
 
 rollback_ready_started="$(now_ms)"
-inferops::kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
+inferops::target_kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((runtime_rollout_budget_ms / 1000))s"
-inferops::kubectl rollout status "deployment/${descriptor_api_deployment}" \
+inferops::target_kubectl rollout status "deployment/${descriptor_api_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((api_rollout_budget_ms / 1000))s"
 rollback_ready_ms=$(($(now_ms) - rollback_ready_started))
 rollback_finished_at_ms=$(($(now_ms) - fault_started))
@@ -999,7 +1055,7 @@ rollback_finished_at_ms=$(($(now_ms) - fault_started))
 # `helm test --logs` then fails fetching logs from a pod that is gone,
 # reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
 # states the whole of it beside its own call.
-inferops::helm test "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --timeout "$((release_test_budget_ms / 1000))s"
 
@@ -1007,7 +1063,7 @@ rollback_ms=$(($(now_ms) - rollback_started))
 verified_at_ms=$(($(now_ms) - fault_started))
 record_stage rollback healthy "${rollback_ms}" "${rollback_ready_ms}" true
 
-inferops::helm history "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm history "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}"
 
 # --- the collected record ----------------------------------------------------
@@ -1015,40 +1071,51 @@ inferops::helm history "${INFEROPS_RELEASE_NAME}" \
 inferops::section "Collecting lifecycle facts"
 
 server_version_json="$(require_query "the API server's version" \
-  inferops::kubectl version -o json)"
+  inferops::target_kubectl version -o json)"
 server_version="$(INFEROPS_VERSION_JSON="${server_version_json}" inferops::python -c '
 import json, os
 
 print(json.loads(os.environ["INFEROPS_VERSION_JSON"])["serverVersion"]["gitVersion"])
 ')"
 helm_version="$(require_query "the helm version" \
-  inferops::helm version --short)"
+  inferops::target_helm version --short)"
 kubectl_version_json="$(require_query "the kubectl version" \
-  inferops::kubectl version --client -o json)"
+  inferops::target_kubectl version --client -o json)"
 kubectl_version="$(INFEROPS_VERSION_JSON="${kubectl_version_json}" inferops::python -c '
 import json, os
 
 print(json.loads(os.environ["INFEROPS_VERSION_JSON"])["clientVersion"]["gitVersion"])
 ')"
-node_digest="$(inferops::running_node_digest)"
+# The verified target's own node image digest, collected once by
+# inferops::resolve_target. Recorded for every provider; enforced as a pin
+# only where the descriptor says InferOps chose the image, which it does not
+# for docker-desktop.
+node_digest="${INFEROPS_TARGET_NODE_IMAGE_DIGEST}"
+[ -n "${node_digest}" ] ||
+  inferops::fail "the target node's image digest could not be established. A lifecycle record names the cluster it ran on."
+# By name, for the reason stated at the other read of this ConfigMap: a selector
+# matches all three of the release's ConfigMaps, and the first one alphabetically
+# is the collector's, which carries none of the fields below. This is the defect
+# that stopped the first complete run of this experiment from producing a record
+# -- after every stage had already succeeded.
 configured="$(require_query "the release's rendered configuration" \
-  inferops::kubectl get configmap -n "${INFEROPS_RELEASE_NAMESPACE}" \
-  -l "${INFEROPS_RELEASE_SELECTOR}" -o json)"
+  inferops::target_kubectl get configmap "${descriptor_configmap}" \
+  -n "${INFEROPS_RELEASE_NAMESPACE}" -o json)"
 release_json="$(require_query "the release's own status" \
-  inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --filter "^${INFEROPS_RELEASE_NAME}\$" -o json)"
 
 mkdir -p "$(dirname "${lifecycle_file}")"
 
 INFEROPS_PROVIDER_FACT="${INFEROPS_TARGET_PROVIDER}" \
-  INFEROPS_CLUSTER_NAME_FACT="${INFEROPS_CLUSTER_NAME}" \
-  INFEROPS_CONTEXT="${INFEROPS_KUBE_CONTEXT}" \
+  INFEROPS_CLUSTER_NAME_FACT="${INFEROPS_TARGET_CLUSTER_NAME}" \
+  INFEROPS_CONTEXT="${INFEROPS_TARGET_CONTEXT}" \
   INFEROPS_SERVER_VERSION="${server_version}" \
   INFEROPS_NODE_DIGEST="${node_digest}" \
   INFEROPS_HELM="${helm_version}" \
   INFEROPS_KUBECTL="${kubectl_version}" \
   INFEROPS_RELEASE_NAME_FACT="${INFEROPS_RELEASE_NAME}" \
-  INFEROPS_NAMESPACE="${INFEROPS_RELEASE_NAMESPACE}" \
+  INFEROPS_NAMESPACE_FACT="${INFEROPS_RELEASE_NAMESPACE}" \
   INFEROPS_RELEASE_JSON="${release_json}" \
   INFEROPS_CONFIGMAP_JSON="${configured}" \
   INFEROPS_STAGE_DIR="$(inferops::native_path "${stage_dir}")" \
@@ -1090,8 +1157,7 @@ for name in ORDER:
     stages.append(json.loads(path.read_text(encoding="utf-8")))
 
 release = json.loads(fact("RELEASE_JSON") or "[]") or [{}]
-configmaps = json.loads(fact("CONFIGMAP_JSON") or "{}").get("items", [])
-data = configmaps[0].get("data", {}) if configmaps else {}
+data = json.loads(fact("CONFIGMAP_JSON") or "{}").get("data", {})
 
 document = {
     "cluster": {
@@ -1104,7 +1170,7 @@ document = {
     "tooling": {"helm": fact("HELM"), "kubectl": fact("KUBECTL")},
     "release": {
         "name": fact("RELEASE_NAME_FACT"),
-        "namespace": fact("NAMESPACE"),
+        "namespace": fact("NAMESPACE_FACT"),
         "chart": release[0].get("chart", ""),
         "profile": data.get("INFEROPS_SERVING_ADAPTER", ""),
     },
@@ -1154,26 +1220,47 @@ inferops::section "Uninstalling"
 stop_background
 
 uninstall_started="$(now_ms)"
-inferops::helm uninstall "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm uninstall "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --wait \
   --timeout "$((uninstall_budget_ms / 1000))s"
 uninstall_ms=$(($(now_ms) - uninstall_started))
 
-remaining="$(inferops::kubectl get \
-  deployments,replicasets,services,configmaps,serviceaccounts,pods,pvc \
-  -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o name)" ||
-  inferops::fail "could not ask what survived the uninstall. An unanswered query is not an empty result."
-remaining_count="$(printf '%s' "${remaining}" | grep -c . || true)"
+# Asked repeatedly inside the uninstall budget rather than once, for the reason
+# both certification scripts already state beside their own residue checks:
+# `helm uninstall --wait` waits for the objects Helm deleted itself, and a
+# Deployment's pods are not among them -- they are removed afterwards by the
+# garbage collector, on the controller manager's schedule. Asking the instant
+# Helm returns reports terminating pods as residue, which is what the first
+# complete run of this experiment did: two objects, gone moments later, after
+# every other stage had already passed.
+#
+# The budget is the uninstall budget, reused rather than invented. Nothing is
+# waived -- what changes is when the question is final, not what counts as an
+# answer.
+residue_deadline=$((SECONDS + uninstall_budget_ms / 1000))
+while :; do
+  remaining="$(inferops::target_kubectl get \
+    deployments,replicasets,services,configmaps,serviceaccounts,pods,pvc \
+    -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o name)" ||
+    inferops::fail "could not ask what survived the uninstall. An unanswered query is not an empty result."
+  remaining_count="$(printf '%s' "${remaining}" | grep -c . || true)"
+  [ "${remaining_count}" != "0" ] || break
+  if [ "${SECONDS}" -ge "${residue_deadline}" ]; then
+    printf '%s\n' "${remaining}"
+    break
+  fi
+  sleep 2
+done
 
 helm_present=false
-if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
+if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   helm_present=true
 fi
 
 namespace_present=false
-if inferops::kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
+if inferops::target_kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   namespace_present=true
 fi
 
