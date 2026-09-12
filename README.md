@@ -94,7 +94,7 @@ by a real runtime.
 | Cost method | [docs/cost/README.md](docs/cost/README.md) | Method accepted and machine-checked; the only rate card is synthetic and nothing in this repository computes a cost record |
 | Worked cost example | [docs/cost/worked-example.md](docs/cost/worked-example.md) | Every figure synthetic and recomputed by the suite; confidence `none` and no figure for what anything costs |
 | Threat model and security baseline | [docs/security/README.md](docs/security/README.md) | Baseline accepted and machine-checked; nothing here defends a running system, and twelve risks are carried rather than reduced |
-| Deferred security risks | [docs/security/deferred-risks.md](docs/security/deferred-risks.md) | Twelve risks and four accepted exceptions; ten of the twelve block production use |
+| Deferred security risks | [docs/security/deferred-risks.md](docs/security/deferred-risks.md) | Twelve risks and six accepted exceptions; ten of the twelve block production use |
 | Evidence records and templates | [docs/proof/README.md](docs/proof/README.md) | Four templates published, two of which have produced records; the full record index is in [docs/proof/README.md](docs/proof/README.md) |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published, which is a gap the baseline records |

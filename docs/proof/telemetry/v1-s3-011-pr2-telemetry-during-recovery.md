@@ -98,7 +98,7 @@ Not established, and stated rather than implied:
   reading the workload's init-container exit status through the Kubernetes API,
   not through a metric;
 - **any alerting.** No alerting rule, no receiver, no runbook link, and no
-  notification path exists. `V1-S4-008` is where that would live;
+  notification path exists, and nothing in this sprint creates one;
 - **any dashboard.** Nothing renders these series;
 - **any latency, throughput, or capacity figure.** Six requests across the whole
   run, sent to move counters off zero;

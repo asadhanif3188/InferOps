@@ -61,20 +61,18 @@ paragraph above it.
 Twenty-nine of thirty-eight controls are enforced by something. Nine are not, and the
 register says why for each.
 
-`enforced-over-manifests` is the status that needs its own sentence. Every manifest
-this repository publishes is smoke or trial apparatus; none is a serving path this
-platform deploys. The eight pod-security assertions and the digest pin hold over five
-YAML files, which is a property of a repository and not of a cluster. `EX-04` records
-that, and `DR-05` carries the gap.
+`enforced-over-manifests` is the status that needs its own sentence. Every manifest this repository publishes is smoke or trial apparatus; the one serving path this platform deploys is its own release, and nothing here reads a pod it produced. The eight pod-security assertions and the digest pin hold over five YAML files, which is a property of a repository and not of a cluster. `EX-04` records that, and `DR-05` carries the gap.
 
 Five of those fifteen arrived with V1-S3-004 and act over
 [the chart's committed renders](../../charts/inferops-llm/ci/rendered/) through
 [the workload policy](workload-policy.md). One of them — the network policy — moved
 out of `specified-only`, which is the whole of the movement in the table above, and
 what moved is the policy rather than its enforcement: a NetworkPolicy is applied by
-the cluster's network plugin and not by the object, no cluster has installed this
-chart, and whether the accepted local cluster's plugin applies one has never been
-tested here. `DR-04` is narrowed to that half and `EX-05` records it.
+the cluster's network plugin and not by the object. A cluster has since installed
+this chart and created the objects, and whether the accepted local cluster's plugin
+applies one **has been tested — and it does not**, which is a worse position than
+untested rather than a better one. `DR-04` is narrowed to that half and `EX-05`
+records it.
 
 ## What is claimed, and at what level
 

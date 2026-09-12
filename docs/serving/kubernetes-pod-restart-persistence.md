@@ -78,8 +78,9 @@ baseline    install the real profile, wait for both rollouts, run the release's
 
 deletion    delete exactly one pod, by the name the cluster gave it
 
-replacement sample the serving Deployment's ready replica count until a pod that
-            is not the deleted one is ready, then wait for the rollout
+replacement wait until the replacement pod -- the serving-runtime pod that is not
+            the deleted one -- reports Ready itself, sampling the Deployment's
+            ready replica count throughout, then wait for the rollout
 
 recovery    read the replacement's identity and the artifact's four facts again,
             and take one real completion

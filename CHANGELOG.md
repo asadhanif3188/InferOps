@@ -91,8 +91,9 @@ once versioned releases begin.
 
 ### Fixed
 
-Five defects, each found by running something that had only ever been read, and four of
-them now have a guard test.
+Six defects, each found by running something that had only ever been read, and four of
+them now have a guard test. Two more were found by independent review of this change
+and are listed with them.
 
 - **The model acquisition hook deleted an artifact it could not replace.** An artifact
   that did not match its pins was removed *before* anything had been acquired to replace
@@ -125,10 +126,23 @@ them now have a guard test.
   defect both certification scripts had already been fixed for, in a workflow that had
   never been run. It now asks repeatedly inside the uninstall budget.
 
-  The impact prober also sampled every 5 000 ms against a failure detected in about
-  7 000 ms, so it could not reach the three probes the descriptor requires. The interval
-  is now 2 000 ms: the requirement is unchanged and the sampling is denser, which is more
-  evidence rather than less.
+- **The impact prober was slower than the failure it sampled.** It asked every
+  5 000 ms against a failure detected in about 7 000 ms, so it could not reach the three
+  probes the descriptor requires. The interval is now 2 000 ms: the requirement is
+  unchanged and the sampling is denser, which is more evidence rather than less.
+
+- **A recovery figure was stamped before the thing it timed.** Found by review, not by
+  a run. The pod-restart experiment stamped "deletion to a served completion" when its
+  port-forward accepted a connection — which is earlier, and would not have moved if the
+  model had taken another minute to load. The origin now comes from the operating script
+  and the end is stamped by the tool, at the moment it has a completion in hand.
+
+- **The replacement loop broke on the wrong readiness.** Also found by review. It read
+  the Deployment's aggregate `readyReplicas`, which still counts a deleted pod inside its
+  termination grace period, while its own comment claimed it was reading the
+  replacement's. It now asks the replacement pod for its own `Ready` condition; the
+  aggregate is still sampled, because that is the right signal for whether the Deployment
+  noticed.
 
 - **The Kubernetes paved road is certified on Docker Desktop, end to end, for the first
   time.** V1-S3-011-PR1 executes the post-S3-010 path on the V1 reference provider rather

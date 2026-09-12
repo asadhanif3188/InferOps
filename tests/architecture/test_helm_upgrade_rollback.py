@@ -1577,6 +1577,20 @@ def test_an_unscoped_fault_is_refused(tmp_path: Path) -> None:
     """The scoping is a rule, not a convention the script happens to follow."""
     document = mutated(faultInjection={"scopedToWorkloadByValuesPath": "model.cache"})
     assert "scoped to the serving runtime" in refused(document, tmp_path)
+
+
+def test_each_values_path_is_compared_against_the_one_literal_it_may_be() -> None:
+    """Three `--set` paths, and each held to exactly one literal at its use site.
+
+    These assertions used to sit at the end of the test above, where an inserted
+    test left them documented by the wrong docstring.
+    """
+    assert '[ "${candidate_values_path}" = "telemetry.serviceVersion" ]' in SCRIPT_TEXT
+    assert '[ "${fault_values_path}" = "model.artifact.sizeBytes" ]' in SCRIPT_TEXT
+    assert '[ "${fault_scope_values_path}" = "model.acquisition.enabled" ]' in (
+        SCRIPT_TEXT
+    )
+    assert '[ "${fault_scope_value}" = "false" ]' in SCRIPT_TEXT
     assert '[ "${candidate_values_path}" = "telemetry.serviceVersion" ]' in SCRIPT_TEXT
     assert '[ "${fault_values_path}" = "model.artifact.sizeBytes" ]' in SCRIPT_TEXT
 

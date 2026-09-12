@@ -203,7 +203,7 @@ if ! descriptor_fields="$(read_descriptor \
   modelCache.claimName modelCache.verificationInitContainer \
   readiness.installBudgetMs readiness.runtimeRolloutBudgetMs \
   readiness.apiRolloutBudgetMs readiness.releaseTestBudgetMs \
-  readiness.forwardBudgetMs readiness.deletionBudgetMs \
+  readiness.forwardBudgetMs \
   readiness.replacementBudgetMs readiness.uninstallBudgetMs \
   observation.pollIntervalMs request.host request.readinessPath \
   evidence.lifecycleFile evidence.readinessFile evidence.cleanupFile)"; then
@@ -227,7 +227,6 @@ fi
   read -r api_rollout_budget_ms
   read -r release_test_budget_ms
   read -r forward_budget_ms
-  read -r deletion_budget_ms
   read -r replacement_budget_ms
   read -r uninstall_budget_ms
   read -r poll_interval_ms
@@ -243,7 +242,7 @@ for field in descriptor_release descriptor_namespace descriptor_api_service \
   descriptor_configmap descriptor_runtime_component \
   descriptor_acquisition_component descriptor_claim descriptor_init_container \
   install_budget_ms runtime_rollout_budget_ms api_rollout_budget_ms \
-  release_test_budget_ms forward_budget_ms deletion_budget_ms \
+  release_test_budget_ms forward_budget_ms \
   replacement_budget_ms uninstall_budget_ms poll_interval_ms descriptor_host \
   readiness_path lifecycle_rel readiness_rel cleanup_rel; do
   [ -n "${!field}" ] ||
@@ -256,8 +255,7 @@ done
 # the order two programs run in is a guard waiting to be reordered.
 for number in descriptor_api_port install_budget_ms runtime_rollout_budget_ms \
   api_rollout_budget_ms release_test_budget_ms forward_budget_ms \
-  deletion_budget_ms replacement_budget_ms uninstall_budget_ms \
-  poll_interval_ms; do
+  replacement_budget_ms uninstall_budget_ms poll_interval_ms; do
   case "${!number}" in
     '' | *[!0-9]*)
       inferops::fail "the experiment descriptor's '${number}' is not a number. Nothing was installed."
@@ -283,6 +281,17 @@ for name in descriptor_runtime_component descriptor_acquisition_component \
     *[!a-z0-9-]*) inferops::fail "the descriptor's '${name}' is '${!name}', which contains a character a DNS-1123 label may not. Nothing was installed." ;;
   esac
 done
+
+# The address the forward binds. The descriptor supplies it, the descriptor is a
+# committed file, and neither of those makes it loopback -- so it is checked
+# here, where it is about to be handed to `kubectl port-forward --address`. The
+# API this forwards to carries no authentication and no authorization; binding it
+# to anything but loopback would publish an unauthenticated LLM endpoint on every
+# interface of the host, and every other guard in this file would still pass.
+case "${descriptor_host}" in
+  127.0.0.1 | ::1) ;;
+  *) inferops::fail "the descriptor's request host is '${descriptor_host}'. This forward binds loopback only, because the API behind it is unauthenticated. Nothing was installed." ;;
+esac
 
 # Four records name one target, and they are compared rather than assumed. The
 # first two compare the descriptor's entry for the selected provider against the
@@ -314,6 +323,9 @@ diag_dir="${INFEROPS_ARTIFACT_DIR}/kubernetes-pod-restart"
 lifecycle_file="${INFEROPS_ROOT}/${lifecycle_rel}"
 readiness_file="${INFEROPS_ROOT}/${readiness_rel}"
 cleanup_file="${INFEROPS_ROOT}/${cleanup_rel}"
+# Appended to, not truncated: this workflow opens a forward twice -- once for
+# the baseline completion and once after the replacement -- and a failure in
+# the second one used to erase the first one's output.
 forward_log="${diag_dir}/forward.log"
 
 base_url="http://${descriptor_host}:${forward_port}"
@@ -545,10 +557,17 @@ print(
             "ownerKind": owner.get("kind", ""),
             "ownerName": owner.get("name", ""),
             "nodeName": pod["spec"].get("nodeName", ""),
-            "claimName": claim_name if volume is not None else "",
+            # What the pod carries, not what the descriptor says. Echoing the
+            # descriptor back would make the comparison in
+            # tools/kubernetes_pod_restart compare a document with itself.
+            "claimName": (
+                volume["persistentVolumeClaim"]["claimName"]
+                if volume is not None
+                else ""
+            ),
             "claimReadOnly": bool(mount and mount.get("readOnly") is True),
             "boundVolumeName": volume["name"] if volume is not None else "",
-            "initContainer": init_name,
+            "initContainer": init_state.get("name", ""),
             "initExitCode": int(terminated.get("exitCode", -1)),
             "initFinished": bool(terminated),
             "artifactPath": path,
@@ -619,7 +638,7 @@ acquisition_log="$(inferops::target_kubectl logs -n "${INFEROPS_RELEASE_NAMESPAC
 open_forward() {
   inferops::target_kubectl port-forward "service/${descriptor_api_service}" \
     "${forward_port}:${descriptor_api_port}" \
-    -n "${INFEROPS_RELEASE_NAMESPACE}" --address "${descriptor_host}" >"${forward_log}" 2>&1 &
+    -n "${INFEROPS_RELEASE_NAMESPACE}" --address "${descriptor_host}" >>"${forward_log}" 2>&1 &
   forward_pid="$!"
 
   local deadline=$((SECONDS + forward_budget_ms / 1000))
@@ -648,8 +667,8 @@ except OSError:
 # after the replacement with everything else. The second write is the record's.
 write_lifecycle_facts() {
   local after_json="$1" jobs_after="$2" job_uid_after="$3" revision_after="$4"
-  local deleted_ms="$5" scheduled_ms="$6" ready_ms="$7" recovered_ms="$8"
-  local claim_after_json="$9"
+  local deleted_epoch_ms="$5" scheduled_ms="$6" ready_ms="$7"
+  local claim_after_json="$8"
 
   mkdir -p "$(dirname "${lifecycle_file}")"
   INFEROPS_PROVIDER_FACT="${INFEROPS_TARGET_PROVIDER}" \
@@ -674,10 +693,9 @@ write_lifecycle_facts() {
     INFEROPS_ACQUISITION_LOG="${acquisition_log}" \
     INFEROPS_REVISION_BEFORE="${revision_before}" \
     INFEROPS_REVISION_AFTER="${revision_after}" \
-    INFEROPS_DELETED_MS="${deleted_ms}" \
+    INFEROPS_DELETED_EPOCH_MS="${deleted_epoch_ms}" \
     INFEROPS_SCHEDULED_MS="${scheduled_ms}" \
     INFEROPS_READY_MS="${ready_ms}" \
-    INFEROPS_RECOVERED_MS="${recovered_ms}" \
     python - "$(inferops::native_path "${lifecycle_file}")" <<'LIFECYCLE_PYTHON'
 import json
 import os
@@ -734,11 +752,19 @@ document = {
         "jobUidAfter": fact("JOB_UID_AFTER"),
         "installLog": fact("ACQUISITION_LOG"),
     },
+    # deletedAtMs is the origin every other offset is measured from, so it is
+    # zero by construction. deletedAtEpochMs is the same instant in absolute
+    # terms, and it is here because the recovery is stamped by
+    # tools/kubernetes_pod_restart at the moment a completion comes back rather
+    # than here at the moment a port-forward opens -- which is a different and
+    # shorter interval, and was published as the longer one until V1-S3-011-PR2
+    # was reviewed.
     "timings": {
-        "deletedAtMs": number("DELETED_MS"),
+        "deletedAtMs": 0,
+        "deletedAtEpochMs": number("DELETED_EPOCH_MS"),
         "replacementScheduledAtMs": number("SCHEDULED_MS"),
         "replacementReadyAtMs": number("READY_MS"),
-        "recoveredAtMs": number("RECOVERED_MS"),
+        "recoveredAtMs": 0,
     },
 }
 
@@ -805,11 +831,11 @@ read_claim() {
 claim_json="$(require_query "the model cache claim" read_claim)"
 
 # Written once with the baseline in place, so the probe below reads the model
-# identifier out of the cluster rather than out of an argument. The "after"
-# members are the baseline's own until the replacement overwrites them; nothing
-# reads them before then.
+# identifier out of the cluster rather than out of an argument. The deletion has
+# not happened yet, so its epoch is this moment; nothing reads the timings until
+# the second write replaces them.
 write_lifecycle_facts "${before_json}" "${jobs_before}" "${job_uid_before}" \
-  "${revision_before}" 0 0 0 0 "${claim_json}"
+  "${revision_before}" "$(now_ms)" 0 0 "${claim_json}"
 
 inferops::section "One real completion before anything is deleted"
 
@@ -833,9 +859,17 @@ inferops::section "Deleting one serving runtime pod"
 inferops::log "deleting pod '${baseline_pod}'. This changes no Deployment, no claim, and no release revision: the Deployment controller creates the replacement."
 
 deleted_at_ms="$(now_ms)"
+# The same instant, absolutely. Every other figure is an offset from the
+# relative origin; this one exists so the Python can stamp the recovery from
+# its own completion rather than from anything this script observes.
+deleted_at_epoch_ms="${deleted_at_ms}"
+# `--wait=false` on purpose: the clock above starts at the request, and the
+# replacement is watched below rather than waited for here. No `--timeout` goes
+# with it, because `--timeout` only means something while kubectl is waiting --
+# one was passed until V1-S3-011-PR2's review pointed out that it bounded
+# nothing.
 inferops::target_kubectl delete pod "${baseline_pod}" \
-  -n "${INFEROPS_RELEASE_NAMESPACE}" --wait=false \
-  --timeout="$((deletion_budget_ms / 1000))s"
+  -n "${INFEROPS_RELEASE_NAMESPACE}" --wait=false
 
 # --- watching the replacement ------------------------------------------------
 
@@ -861,11 +895,34 @@ while :; do
     -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)"
   [ -n "${ready_replicas}" ] || ready_replicas=0
 
+  # The replacement, by exclusion: every serving-runtime pod that is not the one
+  # that was deleted. A terminating pod keeps its name until it is gone, so this
+  # is the only way to name the new one without guessing.
   current_pod="$(inferops::target_kubectl get pods \
     -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -l "${INFEROPS_RELEASE_SELECTOR},app.kubernetes.io/component=${descriptor_runtime_component}" \
     -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null |
     grep -v "^${baseline_pod}\$" | head -1 || true)"
+
+  # And its own readiness, read off that pod rather than off the Deployment.
+  #
+  # An earlier version broke the loop on the Deployment's `.status.readyReplicas`
+  # while its comment claimed it was reading the replacement's, and the two are
+  # not the same: `readyReplicas` is an aggregate that still counts the deleted
+  # pod for as long as it is Ready inside its termination grace period. The loop
+  # could therefore end at "a replacement object exists" AND "the *old* pod is
+  # still ready", and the figure it stamped would have measured nothing. The
+  # aggregate is still sampled below -- it is the right signal for "did the
+  # Deployment notice" -- but it no longer decides when to stop.
+  current_pod_ready=false
+  if [ -n "${current_pod}" ]; then
+    if [ "$(inferops::target_kubectl get pod "${current_pod}" \
+      -n "${INFEROPS_RELEASE_NAMESPACE}" \
+      -o 'jsonpath={.status.conditions[?(@.type=="Ready")].status}' \
+      2>/dev/null || true)" = "True" ]; then
+      current_pod_ready=true
+    fi
+  fi
 
   readiness_samples="$(INFEROPS_SAMPLES="${readiness_samples}" \
     INFEROPS_AT_MS="${sample_at}" \
@@ -891,10 +948,7 @@ print(json.dumps(samples))
     inferops::log "a replacement pod exists: ${replacement_pod}"
   fi
 
-  if [ -n "${replacement_pod}" ] && [ "${ready_replicas}" -gt 0 ]; then
-    # Ready, and ready *for the replacement* rather than for a pod that has not
-    # finished terminating: the deleted pod is excluded from the lookup above,
-    # so a non-empty name here is always the new one.
+  if [ -n "${replacement_pod}" ] && [ "${current_pod_ready}" = "true" ]; then
     ready_at_ms=$(($(now_ms) - deleted_at_ms))
     inferops::log "the replacement became ready ${ready_at_ms} ms after the deletion."
     break
@@ -930,7 +984,24 @@ inferops::target_kubectl rollout status "deployment/${descriptor_runtime_deploym
 
 inferops::section "Reading the replacement pod"
 
-after_pod="$(require_query "the serving runtime pod after the replacement" serving_pod_name)"
+# Asked until the deleted pod has gone, not once. `rollout status` returns when
+# the Deployment reports its replicas ready, which can be true while the pod that
+# was deleted is still terminating -- and `serving_pod_name` refuses unless
+# exactly one pod matches. A complete, successful run would then abort here with
+# "expected exactly one serving-runtime pod and found 2". This is the same
+# garbage-collector race the residue checks already wait out, in the one place it
+# had not been applied.
+settle_deadline=$((SECONDS + replacement_budget_ms / 1000))
+while :; do
+  if after_pod="$(serving_pod_name 2>/dev/null)" && [ -n "${after_pod}" ]; then
+    break
+  fi
+  if [ "${SECONDS}" -ge "${settle_deadline}" ]; then
+    after_pod="$(require_query "the serving runtime pod after the replacement" serving_pod_name)"
+    break
+  fi
+  sleep 2
+done
 [ "${after_pod}" != "${baseline_pod}" ] ||
   inferops::fail "the pod after the deletion carries the same name as the one that was deleted. Nothing was replaced."
 after_json="$(require_query "the replacement pod's facts" pod_facts "${after_pod}")"
@@ -946,14 +1017,19 @@ revision_after="$(require_query "the release revision after the replacement" rel
 inferops::section "Asking the release for a completion again"
 
 open_forward
-recovered_at_ms=$(($(now_ms) - deleted_at_ms))
 
 claim_after_json="$(require_query "the model cache claim after the replacement" \
   read_claim)"
 
+# No recovery stamp here. A forward accepting a connection is not a served
+# completion, and stamping it as one is the defect this workflow's review
+# found: the record published "deletion to a served completion" for an
+# interval that ended before the request was sent. The origin goes in; the end
+# is stamped by tools/kubernetes_pod_restart, at the moment it has a
+# completion in hand.
 write_lifecycle_facts "${after_json}" "${jobs_after}" "${job_uid_after}" \
-  "${revision_after}" 0 "${scheduled_at_ms}" "${ready_at_ms}" "${recovered_at_ms}" \
-  "${claim_after_json}"
+  "${revision_after}" "${deleted_at_epoch_ms}" "${scheduled_at_ms}" \
+  "${ready_at_ms}" "${claim_after_json}"
 
 (cd "${INFEROPS_ROOT}" && python -m "${INFEROPS_EXPERIMENT_MODULE}" evaluate \
   --confirm-real-kubernetes \

@@ -66,7 +66,7 @@ import json
 import os
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -257,7 +257,6 @@ class ExperimentBudgets:
     release_test_ms: int
     forward_ms: int
     uninstall_ms: int
-    deletion_ms: int
     replacement_ms: int
     recovery_ms: int
 
@@ -644,7 +643,6 @@ def _read_budgets(readiness: Mapping[str, Any]) -> ExperimentBudgets:
             "apiRolloutBudgetMs",
             "releaseTestBudgetMs",
             "forwardBudgetMs",
-            "deletionBudgetMs",
             "replacementBudgetMs",
             "recoveryBudgetMs",
             "uninstallBudgetMs",
@@ -674,9 +672,6 @@ def _read_budgets(readiness: Mapping[str, Any]) -> ExperimentBudgets:
         ),
         uninstall_ms=_integer(
             readiness.get("uninstallBudgetMs"), "readiness.uninstallBudgetMs"
-        ),
-        deletion_ms=_integer(
-            readiness.get("deletionBudgetMs"), "readiness.deletionBudgetMs"
         ),
         replacement_ms=_integer(
             readiness.get("replacementBudgetMs"), "readiness.replacementBudgetMs"
@@ -1152,8 +1147,6 @@ def _validate_budgets(experiment: Experiment) -> None:
         raise ExperimentError(
             "the recovery budget must exceed the replacement budget it contains"
         )
-    if budgets.deletion_ms < 1000:
-        raise ExperimentError("the deletion budget must be at least one second")
 
 
 def _validate_observation(experiment: Experiment) -> None:
@@ -1323,9 +1316,18 @@ class TimingFacts:
     Differences only. The record carries no timestamp, and what it does carry is
     one run on one host: `docs/architecture/decisions/ADR-0005-evidence-and-measurement.md`
     is why none of it is published as a benchmark.
+
+    `deleted_at_epoch_ms` is the one absolute value, and it is here for a reason
+    worth stating. The operating script cannot stamp "a completion came back",
+    because the completion is this module's: an earlier version had the script
+    stamp the moment its port-forward accepted a connection and the record then
+    published that as *deletion to a served completion*, which is a different and
+    shorter interval. The origin comes from the script and the end comes from the
+    call, so the figure measures what it is labelled.
     """
 
     deleted_at_ms: int
+    deleted_at_epoch_ms: int
     replacement_scheduled_at_ms: int
     replacement_ready_at_ms: int
     recovered_at_ms: int
@@ -1337,6 +1339,16 @@ class TimingFacts:
     @property
     def recovery_ms(self) -> int:
         return self.recovered_at_ms - self.deleted_at_ms
+
+    def recovered_at(self, epoch_ms: int) -> TimingFacts:
+        """The same facts, with the recovery stamped from a served completion."""
+        return TimingFacts(
+            deleted_at_ms=self.deleted_at_ms,
+            deleted_at_epoch_ms=self.deleted_at_epoch_ms,
+            replacement_scheduled_at_ms=self.replacement_scheduled_at_ms,
+            replacement_ready_at_ms=self.replacement_ready_at_ms,
+            recovered_at_ms=epoch_ms - self.deleted_at_epoch_ms,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1365,6 +1377,9 @@ class LifecycleFacts:
     after: PodFacts
     acquisition: AcquisitionFacts
     timings: TimingFacts
+
+    def with_timings(self, timings: TimingFacts) -> LifecycleFacts:
+        return replace(self, timings=timings)
 
 
 def _pod(reader: _Facts, record: Mapping[str, Any], field: str) -> PodFacts:
@@ -1489,6 +1504,11 @@ def load_lifecycle_facts(
         timings=TimingFacts(
             deleted_at_ms=reader.integer(
                 timings.get("deletedAtMs"), "timings.deletedAtMs"
+            ),
+            deleted_at_epoch_ms=reader.integer(
+                timings.get("deletedAtEpochMs"),
+                "timings.deletedAtEpochMs",
+                minimum=1,
             ),
             replacement_scheduled_at_ms=reader.integer(
                 timings.get("replacementScheduledAtMs"),
@@ -1709,6 +1729,18 @@ def _check_baseline(experiment: Experiment, facts: LifecycleFacts) -> None:
         raise ExperimentFailed(
             "the collected facts name an integrity init container the chart does "
             "not render",
+            STAGE_BASELINE,
+        )
+    # Asserted for the baseline pod as well as the replacement. The record
+    # publishes "ran, exit 0" for both, and until this existed only one of them
+    # was behind an assertion.
+    if experiment.replacement.require_integrity_init_container_succeeded and (
+        not before.init_finished or before.init_exit_code != 0
+    ):
+        raise ExperimentFailed(
+            "the baseline pod's integrity init container did not run to a zero "
+            "exit, so nothing compared the artifact against its pins before the "
+            "deletion",
             STAGE_BASELINE,
         )
     manifest = load_manifest()
@@ -1937,6 +1969,12 @@ def _check_acquisition(experiment: Experiment, facts: LifecycleFacts) -> None:
 
 def _check_timings(experiment: Experiment, facts: LifecycleFacts) -> None:
     timings = facts.timings
+    if experiment.require_recovery_recorded and not timings.recovered_at_ms:
+        raise ExperimentFailed(
+            "no recovery was recorded. The figure is stamped when a completion "
+            "comes back, so an unset one means no completion was observed",
+            STAGE_RECOVERY,
+        )
     ordered = (
         timings.deleted_at_ms,
         timings.replacement_scheduled_at_ms,
@@ -1981,6 +2019,18 @@ def _check_readiness(
             "readiness was never observed above zero after the deletion",
             STAGE_REPLACEMENT,
         )
+    if experiment.require_every_replica_ready:
+        # The Deployment's own count, not the replacement pod's condition -- those
+        # are different questions and this is the aggregate one. A run whose final
+        # sample shows fewer ready replicas than the release declares has a tier
+        # that did not come all the way back, whatever one pod says.
+        final = observations.samples[-1] if observations.samples else None
+        if final is None or final.ready_replicas < experiment.release.replicas:
+            raise ExperimentFailed(
+                "the serving Deployment does not report every replica ready after "
+                "the replacement",
+                STAGE_REPLACEMENT,
+            )
 
 
 def _check_cleanup(experiment: Experiment, cleanup: CleanupFacts) -> None:
@@ -2297,6 +2347,7 @@ def evaluate(
     get: ApiGet = api_get,
     post: ApiPost = api_post,
     clock: Callable[[], float] = time.monotonic,
+    epoch_ms: Callable[[], int] = lambda: int(time.time() * 1000),
 ) -> ExperimentResult:
     """Hold one collected run to the descriptor, or raise naming the stage."""
     if not confirmed:
@@ -2317,7 +2368,6 @@ def evaluate(
     _check_persistence(experiment, facts)
     _check_acquisition(experiment, facts)
     _check_readiness(experiment, readiness)
-    _check_timings(experiment, facts)
     observe_readiness(experiment, base_url=url, get=get, stage=STAGE_RECOVERY)
     identity = observe_identity(
         experiment, facts, base_url=url, get=get, stage=STAGE_RECOVERY
@@ -2325,6 +2375,13 @@ def evaluate(
     completion = observe_completion(
         experiment, facts, base_url=url, post=post, stage=STAGE_RECOVERY, clock=clock
     )
+    # Stamped here, and deliberately not by the operating script: the thing being
+    # timed is a served completion, and this is the first moment one exists. The
+    # timings are checked afterwards for the same reason -- a recovery that took
+    # longer than its budget is a failure, and it cannot be known to have until
+    # the completion has come back.
+    facts = facts.with_timings(facts.timings.recovered_at(epoch_ms()))
+    _check_timings(experiment, facts)
     return ExperimentResult(
         experiment=experiment,
         facts=facts,
@@ -2478,7 +2535,14 @@ def result_document(result: ExperimentResult) -> dict[str, Any]:
             "artifactMtimeUnchanged": (
                 facts.after.artifact_mtime_epoch == facts.before.artifact_mtime_epoch
             ),
-            "repeatedForPodReplacement": False,
+            # Derived, not asserted. It is only reachable once _check_acquisition
+            # has passed, so the literal `False` would always have been right --
+            # and a record field that cannot express the other value is not a
+            # measurement of anything.
+            "repeatedForPodReplacement": (
+                facts.after.artifact_inode != facts.before.artifact_inode
+                or facts.after.artifact_mtime_epoch != facts.before.artifact_mtime_epoch
+            ),
         },
         "readiness": {
             "samples": len(result.readiness.samples),
@@ -2490,7 +2554,10 @@ def result_document(result: ExperimentResult) -> dict[str, Any]:
             "recoveryMs": facts.timings.recovery_ms,
             "note": (
                 "One replacement, on one host, at one moment. Not a benchmark, a "
-                "service-level objective, or an availability figure."
+                "service-level objective, or an availability figure. replacementMs "
+                "runs from the deletion to the replacement reporting itself ready; "
+                "recoveryMs runs from the deletion to a real completion coming "
+                "back, stamped when that completion arrived."
             ),
         },
         "identity": {
@@ -2622,8 +2689,7 @@ def summary_lines(experiment: Experiment) -> Sequence[str]:
         "readiness observed false then true, init container exit 0",
         "acquisition   no new job, unchanged job identity, and the same inode "
         "and modification time on the artifact either side of the replacement",
-        f"budgets       deletion {experiment.budgets.deletion_ms} ms; replacement "
-        f"{experiment.budgets.replacement_ms} ms; recovery "
+        f"budgets       replacement {experiment.budgets.replacement_ms} ms; recovery "
         f"{experiment.budgets.recovery_ms} ms; uninstall "
         f"{experiment.budgets.uninstall_ms} ms",
         f"request       POST {experiment.request_path}; identity GET "

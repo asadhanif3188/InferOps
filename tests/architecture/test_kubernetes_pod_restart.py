@@ -56,6 +56,11 @@ SCRIPT_LINES = SCRIPT_TEXT.splitlines()
 ]
 
 BASE_URL = "http://127.0.0.1:18092"
+
+# A fixed origin and a fixed stamp, so that the recovery figure a run produces
+# is a known number rather than whatever the wall clock says.
+DELETED_AT_EPOCH_MS = 1_760_000_000_000
+RECOVERED_AT_EPOCH_MS = DELETED_AT_EPOCH_MS + 25_000
 SUB_PATH = f"Qwen--Qwen3-1.7B-GGUF/{MANIFEST.revision}"
 
 
@@ -154,11 +159,15 @@ def lifecycle_document(
             "jobUidAfter": "",
             "installLog": "",
         },
+        # The recovery is deliberately left at zero. The operating script cannot
+        # stamp "a completion came back" -- that is the tool's -- so it writes the
+        # absolute origin and `evaluate` fills the rest in from its own clock.
         "timings": {
             "deletedAtMs": 0,
+            "deletedAtEpochMs": DELETED_AT_EPOCH_MS,
             "replacementScheduledAtMs": 1_000,
             "replacementReadyAtMs": 20_000,
-            "recoveredAtMs": 25_000,
+            "recoveredAtMs": 0,
         },
     }
     for name, members in sections.items():
@@ -276,6 +285,7 @@ def artifact_root(
 
 def run(tmp_path: Path, **kwargs: Any) -> Any:
     get, post = kwargs.pop("seams", None) or seams()
+    epoch_ms = kwargs.pop("epoch_ms", RECOVERED_AT_EPOCH_MS)
     return evaluate(
         EXPERIMENT,
         confirmed=True,
@@ -284,6 +294,7 @@ def run(tmp_path: Path, **kwargs: Any) -> Any:
         baseline=CERTIFICATION,
         get=get,
         post=post,
+        epoch_ms=lambda: epoch_ms,
     )
 
 
@@ -550,6 +561,16 @@ def test_an_acquisition_job_with_a_new_identity_stops_the_run(
     assert "the hook ran again" in stopped(tmp_path, lifecycle=facts)
 
 
+def test_a_baseline_init_container_that_did_not_run_stops_the_run(
+    tmp_path: Path,
+) -> None:
+    """The record publishes "ran, exit 0" for both pods; both are now asserted."""
+    facts = lifecycle_document(before={"initFinished": False, "initExitCode": -1})
+    assert "baseline pod's integrity init container" in stopped(
+        tmp_path, lifecycle=facts
+    )
+
+
 def test_an_init_container_that_did_not_run_stops_the_run(tmp_path: Path) -> None:
     """Nothing compared the surviving bytes against the pins inside the cluster."""
     facts = lifecycle_document(after={"initFinished": False, "initExitCode": -1})
@@ -571,6 +592,25 @@ def test_readiness_that_never_dropped_stops_the_run(tmp_path: Path) -> None:
         ]
     )
     assert "never observed at zero" in stopped(tmp_path, readiness=samples)
+
+
+def test_a_tier_that_did_not_come_all_the_way_back_stops_the_run(
+    tmp_path: Path,
+) -> None:
+    """`requireEveryReplicaReady` was declared and enforced by nothing.
+
+    One replacement pod reporting Ready is not the serving tier being whole. The
+    Deployment's own count is the aggregate question, and the final sample is
+    where it is asked.
+    """
+    samples = readiness_document(
+        [
+            {"atMs": 0, "readyReplicas": 1, "podName": ""},
+            {"atMs": 2_000, "readyReplicas": 0, "podName": "inferops-runtime-bbb"},
+            {"atMs": 20_000, "readyReplicas": 0, "podName": "inferops-runtime-bbb"},
+        ]
+    )
+    assert "every replica ready" in stopped(tmp_path, readiness=samples)
 
 
 def test_too_few_readiness_samples_stop_the_run(tmp_path: Path) -> None:
@@ -611,17 +651,43 @@ def test_a_mount_that_is_not_revision_scoped_stops_the_run(tmp_path: Path) -> No
 
 
 def test_timings_out_of_order_stop_the_run(tmp_path: Path) -> None:
-    facts = lifecycle_document(
-        timings={"replacementReadyAtMs": 30_000, "recoveredAtMs": 25_000}
-    )
+    """A replacement that became ready after the completion came back."""
+    facts = lifecycle_document(timings={"replacementReadyAtMs": 30_000})
     assert "not in the order" in stopped(tmp_path, lifecycle=facts)
 
 
+def test_a_recovery_that_was_never_stamped_stops_the_run(tmp_path: Path) -> None:
+    """V1-S3-011-PR2, found by an independent review of this change.
+
+    The recovery figure used to be stamped by the operating script when its
+    port-forward accepted a connection, and published as "deletion to a served
+    completion" -- an interval that ended before the request was sent, and that
+    would not have moved if the model had taken another minute to load. The stamp
+    now happens in `evaluate`, after the completion. A stamp that never happened
+    leaves the figure at zero, and that is a refusal rather than a fast recovery.
+    """
+    assert "no recovery was recorded" in stopped(tmp_path, epoch_ms=DELETED_AT_EPOCH_MS)
+
+
 def test_a_replacement_beyond_its_budget_stops_the_run(tmp_path: Path) -> None:
-    facts = lifecycle_document(
-        timings={"replacementReadyAtMs": 1_000_000, "recoveredAtMs": 1_100_000}
+    facts = lifecycle_document(timings={"replacementReadyAtMs": 1_000_000})
+    assert "longer than its budget" in stopped(
+        tmp_path, lifecycle=facts, epoch_ms=DELETED_AT_EPOCH_MS + 1_100_000
     )
-    assert "longer than its budget" in stopped(tmp_path, lifecycle=facts)
+
+
+def test_a_recovery_beyond_its_budget_stops_the_run(tmp_path: Path) -> None:
+    """Measured from the stamp, which is the point of moving the stamp."""
+    assert "longer than its budget" in stopped(
+        tmp_path, epoch_ms=DELETED_AT_EPOCH_MS + 2_000_000
+    )
+
+
+def test_the_recovery_is_measured_from_the_completion(tmp_path: Path) -> None:
+    """The figure is the tool's stamp minus the script's origin, and nothing else."""
+    result = run(tmp_path, epoch_ms=DELETED_AT_EPOCH_MS + 31_415)
+    assert result.facts.timings.recovery_ms == 31_415
+    assert result.facts.timings.replacement_ms == 20_000
 
 
 def test_a_mock_answer_after_the_replacement_stops_the_run(tmp_path: Path) -> None:
@@ -817,3 +883,43 @@ def test_the_procedure_document_states_every_limitation() -> None:
     assert "scripts/environment/kubernetes-pod-restart.sh" in procedure
     for limitation in EXPERIMENT.limitations:
         assert " ".join(limitation.split()) in procedure, limitation
+
+
+def test_the_script_does_not_stamp_the_recovery_itself() -> None:
+    """V1-S3-011-PR2, found by an independent review of this change.
+
+    The figure published as "deletion to a served completion" was stamped when the
+    port-forward accepted a connection -- before the request was sent. The script
+    now supplies only the origin; `evaluate` stamps the end from its own clock,
+    after the completion. Asserting the absence is the only way to catch a
+    re-introduction, because a re-introduced stamp would pass every other test.
+    """
+    assert "recovered_at_ms" not in SCRIPT_TEXT
+    assert "RECOVERED_MS" not in SCRIPT_TEXT
+    assert 'deleted_at_epoch_ms="${deleted_at_ms}"' in SCRIPT_TEXT
+    assert '"deletedAtEpochMs": number("DELETED_EPOCH_MS")' in SCRIPT_TEXT
+
+
+def test_the_script_breaks_on_the_replacement_pods_own_readiness() -> None:
+    """Also found by review. The Deployment's aggregate is not the pod's condition.
+
+    `.status.readyReplicas` still counts a deleted pod inside its termination
+    grace period, so a loop that broke on it could end while the *old* pod was the
+    ready one -- and the figure it stamped would have measured nothing.
+    """
+    assert 'conditions[?(@.type=="Ready")]' in SCRIPT_TEXT
+    assert '[ "${current_pod_ready}" = "true" ]' in SCRIPT_TEXT
+    assert '[ "${ready_replicas}" -gt 0 ]' not in SCRIPT_TEXT
+
+
+def test_the_script_refuses_a_forward_address_that_is_not_loopback() -> None:
+    """The API behind the forward carries no authentication and no authorization.
+
+    The descriptor supplies the address, the descriptor is a committed file, and
+    neither of those makes it loopback. A one-line edit to `0.0.0.0` would publish
+    an unauthenticated LLM endpoint on every interface of the host.
+    """
+    guard = SCRIPT_TEXT.index('case "${descriptor_host}" in')
+    assert "127.0.0.1 | ::1" in SCRIPT_TEXT[guard : guard + 300]
+    assert guard < SCRIPT_TEXT.index("inferops::target_kubectl port-forward")
+    assert EXPERIMENT.request_host in ("127.0.0.1", "::1")

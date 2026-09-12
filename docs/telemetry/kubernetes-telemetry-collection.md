@@ -335,8 +335,8 @@ control on an endpoint that carries **no authentication at all**
   nothing evaluates and nobody is paged for.
 - **A job name that does not collide is not a composition that works.** Job names are
   release-qualified so that two releases' fragments *can* be merged into one collector
-  configuration. Nothing here merges them, and no collector has loaded either
-  fragment.
+  configuration. One collector has loaded both fragments **of one release**; nothing
+  has ever merged two.
 
 ## What could then be asked
 

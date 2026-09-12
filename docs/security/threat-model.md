@@ -201,7 +201,7 @@ cluster credential already in the filesystem.
 Every manifest here sets all eight properties, and a test parses them rather than
 trusting the habit. The exact wording of what that establishes matters, and `EX-04`
 carries it: these are properties of **five committed YAML files**, all of them smoke
-or trial apparatus. This platform deploys none of them as a serving path, so nothing
+or trial apparatus. This platform deploys one of them as a serving path — its own release — and nothing verifies the pods that result, so nothing
 here constrains a pod it deployed, and no admission control exists to constrain one
 it does not own.
 

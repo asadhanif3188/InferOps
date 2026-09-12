@@ -14,7 +14,6 @@ at.
 
 | Field | Value |
 |---|---|
-| Planning revision | `971e79e04beec4c2f96e7af52b44485e5585acb6` (private planning repository) |
 | Implementation revision at branch point | `c702b984ffcdd6abacd20743699e3786b4ee846c` (`main`, the merge of `V1-S3-011-PR1`) |
 | Branch | `test/v1-s3-011-lifecycle-cleanup-evidence-reconciliation` |
 | Stories reviewed | `V1-S3-001` through `V1-S3-011` |
@@ -29,7 +28,7 @@ at.
 | **S3-001** | A local cluster is created and destroyed without residue | [cluster lifecycle](v1-s3-001-pr1-cluster-lifecycle.md) | **PASS, historical** | `kind` only, and its ownership assumption is superseded by S3-010. Kept as history, not rewritten |
 | **S3-002** | Helm installs, upgrades, and uninstalls the release without manual manifests or residue | [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md), [upgrade/rollback](v1-s3-011-pr2-upgrade-rollback.md), [scoped cleanup](v1-s3-011-pr2-scoped-cleanup.md) | **PASS** | `docker-desktop` only; one replica of each tier |
 | **S3-003** | Model artifacts survive a pod restart on the Terraform-owned claim | [Kubernetes pod restart](../serving/v1-s3-003-pr2-kubernetes-pod-restart.md), with [the container-level measurement](../serving/v1-s3-003-pr1-restart-reload.md) beside it | **PASS** | One pod, deleted once. The claim's underlying storage durability is untested |
-| **S3-004** | Kubernetes workload security defaults are explicit and rendered | [security validation](../security/v1-s3-004-pr1-validation.md), [NetworkPolicy enforcement](../security/v1-s3-004-pr1-network-policy-enforcement.md) | **PASS within documented local security limits** | NetworkPolicy objects are created and **not enforced**: the local plugin ignores them. No admission control exists |
+| **S3-004** | Kubernetes workload security defaults are explicit and rendered | [security validation](../security/v1-s3-004-pr1-validation.md), [NetworkPolicy enforcement](../security/v1-s3-004-pr1-network-policy-enforcement.md) | **PASS within documented local security limits** | NetworkPolicy objects are created. Enforcement was tested on `kindnetd` and **does not happen**; both providers' clusters were observed running that plugin, and Docker Desktop's was not itself tested. No admission control exists |
 | **S3-005** | Terraform provisions prerequisites, re-applies cleanly, and destroys safely | [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md), [scoped cleanup](v1-s3-011-pr2-scoped-cleanup.md) | **PASS** | `docker-desktop` only; `rancher.io/local-path` storage only |
 | **S3-006** | Real LLM inference through Kubernetes, single and multi replica | [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md) | **PASS for single-replica C2; multi-replica correctly recorded as capacity-refused** | See §E. No multi-replica claim exists anywhere |
 | **S3-007** | API and runtime telemetry is actually collected and correlated | [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md), [telemetry during recovery](../telemetry/v1-s3-011-pr2-telemetry-during-recovery.md) | **PASS** | Collected into an `emptyDir` that goes with the collector pod. No dashboard, no alerting, no durable store |
@@ -38,25 +37,27 @@ at.
 | **S3-010** | Cluster lifecycle is external; both providers select explicitly and verify | [ADR 0011](../../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md), [provider contract](../../environment/local-cluster-provider-contract.md), [S3-010-PR1 validation](../architecture/v1-s3-010-pr1-validation.md) | **PASS** | Identity residual risks accepted as `EX-06` |
 | **S3-011** | The whole paved road re-certified on the reference provider, with cleanup and reconciliation | all four records above, plus this one | **PASS** | Everything is `docker-desktop`'s |
 
-## C. Exit-gate matrix
+## C. What each Sprint 3 exit criterion asked for, and what answers it
 
-Every amended Sprint 3 exit-gate item, evaluated.
+Restated as evidence claims in this record's own words, each pointing at what
+established it. A gate met on a document is marked as such; a gate met by a run
+names the run.
 
-| # | Exit gate | Verdict | On what |
-|---|---|---|---|
-| 1 | Cluster lifecycle ownership is outside InferOps and documented consistently | **MET** | ADR 0011; no workflow creates, enables, resets, or deletes a cluster, and a test refuses a script that acquires the ability |
-| 2 | `kind` and `docker-desktop` have explicit selection and safe verification | **MET** | Both guards exist, selection has no default, and every mutating workflow re-verifies before acting |
-| 3 | Docker Desktop reference-provider verification is executed | **MET** | Verified at the start of every run in this PR, and again after the teardown |
-| 4 | Real LLM inference works through local Kubernetes on the reference provider | **MET** | A real model-generated completion through the release's own Service |
-| 5 | Single-replica serving is C2-certified on the reference provider | **MET** | `outcome: certified` |
-| 6 | Multi-replica certified when capacity permits; otherwise the refusal is evidenced and no stronger claim is made | **MET — as a refusal** | See §E |
-| 7 | Helm owns workloads and Terraform owns only in-cluster prerequisites | **MET** | `helm uninstall` left the namespace and claim; `terraform destroy` removed exactly those two |
-| 8 | Probes represent model-load behaviour | **MET** | The runtime becomes ready only after the model loads; the `verify-model` init container gates the start |
-| 9 | Security and resource defaults are explicit | **MET within local limits** | Rendered and applied; NetworkPolicy not enforced (gate 12 and §J) |
-| 10 | Telemetry is actually collected on the reference provider | **MET** | A real Prometheus scraped both jobs and evaluated every accepted query, at rest and across a pod replacement |
-| 11 | Upgrade/rollback and scoped cleanup workflows pass | **MET** | Both executed |
-| 12 | Cleanup leaves the externally owned Kubernetes cluster intact | **MET** | See §H |
-| 13 | Evidence records identify the provider and do not generalize across providers | **MET** | Every record names `docker-desktop`; the ownership rows cite the run that moved them |
+| Criterion | Answered by |
+|---|---|
+| Cluster lifecycle is external, and every document agrees | [ADR 0011](../../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md), and `tests/architecture/test_cluster_lifecycle_safety.py`, which refuses a platform script that acquires the ability to create, reset, or delete a cluster |
+| Both providers are selected explicitly and verified before any mutation | `inferops::resolve_target`, called by every mutating workflow; selection has no default, and `tests/architecture/test_target_verification.py` drives both providers' guards against fake tools |
+| The reference provider was verified in practice, not only in principle | Verified at the start of every run in this PR, and again after the teardown had finished |
+| A real model answers through Kubernetes on the reference provider | A real model-generated completion through the release's own Service — [paved road](v1-s3-011-pr1-docker-desktop-paved-road.md) |
+| Single-replica serving is certified at `C2` there | `outcome: certified`, same record |
+| Multi-replica is either certified or refused, with no stronger claim made | Refused at the capacity gate; see §E |
+| Helm owns workloads and Terraform owns only in-cluster prerequisites | `helm uninstall` left the namespace and the claim standing; `terraform destroy` removed exactly those two — [scoped cleanup](v1-s3-011-pr2-scoped-cleanup.md) |
+| Readiness reflects model load rather than process start | The runtime becomes ready only after the model loads, and the `verify-model` init container gates the start; both observed across four revisions and one pod replacement |
+| Security and resource defaults are explicit | Rendered and applied. **Enforcement is a separate question and §J item 5 is the answer** |
+| Telemetry is collected there, not merely configured | A real Prometheus scraped both jobs and evaluated every accepted query, at rest and across a pod replacement — [telemetry during recovery](../telemetry/v1-s3-011-pr2-telemetry-during-recovery.md) |
+| A release change can be reversed, and the teardown is scoped | [upgrade/rollback](v1-s3-011-pr2-upgrade-rollback.md) and [scoped cleanup](v1-s3-011-pr2-scoped-cleanup.md), both executed |
+| The externally owned cluster survives the teardown | §H |
+| Every record names its provider and generalizes to no other | Each of the four records above names `docker-desktop` in its own provenance, and every promoted ownership row cites the run that moved it |
 
 ## D. Provider boundary
 
@@ -117,11 +118,11 @@ One serving pod deleted; the Deployment replaced it.
 
 | | before | after |
 |---|---|---|
-| Pod name | `…-runtime-75d47d6578-nfgxx` | `…-runtime-75d47d6578-vc7lk` |
-| Pod UID | `4dca867e-…` | `e58792c0-…` |
-| Claim / bound volume | `inferops-model-cache` / `pvc-646749a3-…` | the same |
+| Pod name | `…-runtime-75d47d6578-9xlwb` | `…-runtime-75d47d6578-qt5dv` |
+| Pod UID | `a8476f3e-…` | `a91c05f2-…` |
+| Claim / bound volume | `inferops-model-cache` / `pvc-1ffaeb65-…` | the same |
 | Artifact bytes / SHA-256 | 1 834 426 016 / `061b54da…` | the same |
-| Artifact **inode / mtime** | `2118398` / `1789203832` | **the same** |
+| Artifact **inode / mtime** | `2125290` / `1789210492` | **the same** |
 | `verify-model` init container | exit `0` | exit `0` |
 | Real completion | HTTP 200, 53 tokens, adapter `real` | HTTP 200, 53 tokens, adapter `real` |
 
@@ -132,9 +133,11 @@ The inode and modification time are what separate "the same file survived" from
 "an identical file was put back": a re-acquired artifact reproduces the byte count
 and the digest, and cannot reproduce the file's identity.
 
-Timings — `2 070` ms to a replacement pod, `14 533` ms to ready, `19 952` ms to a
-served completion — are **one observation on one host** and are published as such.
-They are not a restart benchmark.
+Timings — `13 119` ms from the deletion to the replacement pod reporting itself
+`Ready`, and `21 634` ms to a real completion coming back — are **one observation
+on one host** and are published as such. They are not a restart benchmark. Each
+end of each interval is stamped by whichever component can actually observe it,
+which is a correction this change's review forced and the record explains.
 
 ## G. S3-008 rollback result
 
@@ -227,8 +230,15 @@ nothing about whether a target was discovered.
    certification has **not** been re-executed under the provider model.
 3. **CPU only. No GPU evidence of any kind.**
 4. **Multi-replica serving is not certified.** The capacity gate refused.
-5. **NetworkPolicy is rendered and created, not enforced.** The local network
-   plugin ignores it; no admission control exists. `DR-04`, `DR-05`, `EX-05`.
+5. **NetworkPolicy is rendered and created; enforcement was tested and
+   refuted.** [The enforcement experiment](../security/v1-s3-004-pr1-network-policy-enforcement.md)
+   ran on a `kind` cluster and established that `kindnetd` does not apply
+   one. Both providers' clusters were **observed** running a `kindnetd`
+   image — the reference provider's is recorded in
+   [the paved road](v1-s3-011-pr1-docker-desktop-paved-road.md) — but
+   Docker Desktop's plugin was not itself put through that experiment, so
+   that is an observation and not a second result. No admission control
+   exists either way. `DR-04`, `DR-05`, `EX-05`.
 6. **No production HA.** One replica of each tier, one node, no anti-affinity, no
    disruption budget.
 7. **No production network exposure.** ClusterIP only, no Ingress, no load
@@ -248,8 +258,8 @@ nothing about whether a target was discovered.
     error state when the serving pod was deleted; `up` means "the scrape
     succeeded", not "the workload is ready". The detection in the rollback
     experiment came from the Kubernetes API, not from a metric.
-12. **No CI service is selected.** Every gate above was run by hand. `V1-S4-001`
-    is where that would change.
+12. **No CI service is selected.** Every gate above was run by hand, and nothing
+    in this sprint creates one.
 13. **Storage durability is untested.** The claim survived a pod replacement on
     `rancher.io/local-path`; nothing says what survives a host failure, another
     provisioner, or a Docker Desktop reset — and what a reset reclaims is still

@@ -64,8 +64,8 @@ install -> baseline completion -> delete one pod -> replacement -> completion ag
 
 | | before | after |
 |---|---|---|
-| Pod name | `…-runtime-75d47d6578-nfgxx` | `…-runtime-75d47d6578-vc7lk` |
-| Pod UID | `4dca867e-0139-4d1e-a7ff-4e64273bd71e` | `e58792c0-1e9c-47d5-9927-8f4c7591faf4` |
+| Pod name | `…-runtime-75d47d6578-9xlwb` | `…-runtime-75d47d6578-qt5dv` |
+| Pod UID | `a8476f3e-37d2-495a-b062-bf9174356bea` | `a91c05f2-3c3d-400f-b2b4-e6405a76085c` |
 | Owner | ReplicaSet `…-runtime-75d47d6578` | the same ReplicaSet |
 | Node | `desktop-control-plane` | `desktop-control-plane` |
 | Ready | yes | yes |
@@ -84,13 +84,13 @@ had happened.
 | Fact | Value | Same either side |
 |---|---|---|
 | Claim | `inferops-model-cache`, Terraform-owned | yes |
-| Claim UID | `646749a3-f0b8-40d9-949d-cc5b6e5a919e` | yes |
-| Bound PersistentVolume | `pvc-646749a3-f0b8-40d9-949d-cc5b6e5a919e` | yes |
+| Claim UID | `1ffaeb65-6faf-4d5c-842f-0a6e535d3e2d` | yes |
+| Bound PersistentVolume | `pvc-1ffaeb65-6faf-4d5c-842f-0a6e535d3e2d` | yes, read off the claim either side |
 | Mount | read-only, `subPath` `Qwen--Qwen3-1.7B-GGUF/90862c4b…` | yes |
 | Artifact byte count | 1 834 426 016 | yes |
 | Artifact SHA-256 | `061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a` | yes |
-| Artifact **inode** | `2118398` | yes |
-| Artifact **mtime** | `1789203832` | yes |
+| Artifact **inode** | `2125290` | yes |
+| Artifact **mtime** | `1789210492` | yes |
 | `verify-model` init container | ran, exit `0` | both pods |
 
 The byte count and the digest were computed **inside the cluster**, by running
@@ -136,7 +136,7 @@ the first sample is taken before any wait.
 
 | | before the deletion | after the replacement |
 |---|---|---|
-| HTTP | 200 | 200 |
+| HTTP | 200 | 200, in 3 421 ms |
 | Adapter kind | `real` | `real` |
 | Prompt / completion / total tokens | 24 / 29 / 53 | 24 / 29 / 53 |
 | Runtime | `llama.cpp llama-server` at the pinned digest | the same |
@@ -152,15 +152,28 @@ requests through the same loopback forward.
 
 | | ms |
 |---|---:|
-| Deletion to a replacement pod existing | 2 070 |
-| Deletion to the replacement ready | 14 533 |
-| Deletion to a served completion | 19 952 |
+| Deletion to the replacement reporting itself Ready | 13 119 |
+| Deletion to a real completion coming back | 21 634 |
 
-**These are not a benchmark.** One pod, deleted once, on one Windows host, at one
-moment, with a host file cache in whatever state the preceding run left it. They
-are not a restart benchmark, a service-level objective, an availability figure, or
-a number anything may be compared against. [ADR 0005](../../architecture/decisions/ADR-0005-evidence-and-measurement.md)
-is why they are published as a single observation rather than as a measurement.
+**Where each end of those intervals comes from.** The origin is the moment the
+delete was issued, stamped by the operating script. The first figure ends when the
+*replacement pod itself* reports `Ready` — not when the Deployment's aggregate
+`readyReplicas` rises, which still counts the deleted pod inside its termination
+grace period. The second ends when a real completion came back, stamped by the
+evaluating tool at the moment it had one.
+
+Both of those are corrections an independent review of this change forced, and
+both mattered: an earlier version broke its loop on the aggregate and stamped the
+recovery when its port-forward accepted a connection, which is an interval that
+ends *before* the request is sent and would not have moved if the model had taken
+another minute to load. The figures above are from a run of the corrected code.
+
+**They are still not a benchmark.** One pod, deleted once, on one Windows host, at
+one moment, with a host file cache in whatever state the preceding run left it.
+They are not a restart benchmark, a service-level objective, an availability
+figure, or a number anything may be compared against.
+[ADR 0005](../../architecture/decisions/ADR-0005-evidence-and-measurement.md) is
+why they are published as a single observation rather than as a measurement.
 
 ### Cleanup
 
@@ -169,9 +182,13 @@ remaining — and the Terraform-owned namespace and claim both survived, which i
 the boundary [the ownership inventory](../../architecture/resource-ownership.md)
 states.
 
-## Defects this run found
+## Defects found while building and reviewing this experiment
 
-Two, both in this change's own new tooling and both invisible to a test:
+Two were found by running it, and two more by an independent review of the change
+afterwards. All four were in this change's own new tooling, and none of them would
+have been caught by a render, a lint, or a schema check.
+
+Found by running it:
 
 1. **The bound-volume comparison compared two different things.** `boundVolumeName`
    is the handle the *pod* gives the volume in its own spec; the claim's bound
@@ -185,6 +202,27 @@ Two, both in this change's own new tooling and both invisible to a test:
    which carries none of the fields the record needs. It is now read by the name
    the descriptor gives it. The same defect existed in the upgrade/rollback
    experiment, which had never been run either.
+
+Found by review, and both of them defects in a *published figure* rather than in a
+run that failed — which is why running it did not find them:
+
+3. **The recovery was stamped before the thing it timed.** The operating script
+   stamped it when its port-forward accepted a connection and the record published
+   that as "deletion to a served completion". The stamp now happens in the
+   evaluating tool, after the completion, and a run that never gets one now fails
+   rather than reporting a fast recovery.
+4. **The replacement loop broke on the wrong readiness.** It read the Deployment's
+   aggregate `readyReplicas`, which still counts a deleted pod inside its
+   termination grace period, while its own comment claimed it was reading the
+   replacement's. The loop could therefore have ended while the *old* pod was the
+   ready one. It now asks the replacement pod for its own `Ready` condition.
+
+Three smaller things were corrected in the same pass: two baseline comparisons
+echoed the descriptor back at itself and now report what the pod carries; the
+baseline pod's integrity init container is asserted as well as the replacement's,
+because the table above publishes "exit 0" for both; and a `deletionBudgetMs` that
+bounded nothing — `--timeout` is a no-op beside `--wait=false` — was removed rather
+than left looking like a control.
 
 ## Limitations
 

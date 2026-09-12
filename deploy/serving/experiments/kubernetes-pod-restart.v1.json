@@ -111,7 +111,6 @@
     "apiRolloutBudgetMs": 300000,
     "releaseTestBudgetMs": 300000,
     "forwardBudgetMs": 30000,
-    "deletionBudgetMs": 300000,
     "replacementBudgetMs": 900000,
     "recoveryBudgetMs": 1500000,
     "uninstallBudgetMs": 600000
