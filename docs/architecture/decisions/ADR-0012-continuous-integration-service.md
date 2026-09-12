@@ -35,7 +35,7 @@
 | D1 | GitHub Actions runs the `default-checks` lane | **Accepted** | A committed workflow, and a test that the lane may claim automation only by naming one that exists |
 | D2 | The normal lane is cluster-free and model-free, and both are checked rather than promised | **Accepted**, and enforced | Two checks that read the workflow's own text and refuse a cluster or model token |
 | D3 | Every third-party action is pinned by commit SHA, and every pin is recorded beside it | **Accepted**, and enforced | A check that refuses a `uses:` reference that is not forty hexadecimal characters, plus a recorded pin per action |
-| D4 | A published gate matrix, compared to the workflows in both directions | **Accepted**, and executed | The matrix is committed as data and a suite compares it to the committed jobs both ways |
+| D4 | A published gate matrix, compared to the workflows in both directions | **Accepted**, and executed | The matrix is committed as data and a suite compares it to the committed jobs both ways, and to the programs each job invokes |
 | D5 | Automating a lane does not raise what it may certify | **Accepted** as a rule, and enforced | Every gate's ceiling is inherited from the strategy's evidence class rather than restated |
 | D6 | Whether a required-status-check rule protects `main` | **Not decided** | Nothing. It is a repository setting, not a committed file, and no evidence of it can live here |
 
@@ -159,6 +159,12 @@ afternoon and stays dropped, and the table still reads well. Every rule in it is
 therefore derived from a file rather than asserted: the ceiling from the strategy's
 evidence class, the lane's model and cluster properties from the strategy's lane row,
 the job list from the workflow, the action pins from the workflow.
+
+That check has already earned itself. In the change that introduced both, the
+`distribution-build` row documented `unzip -l dist/*.whl` while the job inspected the
+wheel with Python's `zipfile` — harmless, and exactly the drift described above,
+present from the first commit and found by review rather than by the suite. The suite
+now refuses a gate that names a program its job does not invoke.
 
 One rule in it is about honesty rather than drift. A gate either names the claims it
 defends or records **why it defends none**, and a row that does neither fails. The

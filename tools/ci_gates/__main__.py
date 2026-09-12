@@ -75,6 +75,17 @@ def main(argv: list[str] | None = None) -> int:
                 f"expected exit {result.control.expected_exit}, "
                 f"got {result.actual_exit}"
             )
+            # Only for a control that went the wrong way. A gate that reports
+            # nothing but two numbers is a gate somebody has to reproduce by
+            # hand before they can begin to read it.
+            if not result.passed:
+                print(f"  command: {result.control.published_command}")
+                for stream, text in (
+                    ("stdout", result.stdout),
+                    ("stderr", result.stderr),
+                ):
+                    for line in text.splitlines():
+                        print(f"  {stream}: {line}")
 
     failed = [result for result in results if not result.passed]
     if failed:

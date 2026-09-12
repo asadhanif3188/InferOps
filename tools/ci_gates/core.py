@@ -43,19 +43,31 @@ class Control:
     expected_exit: int
 
     @property
+    def relative_target(self) -> str:
+        return self.target.relative_to(REPO_ROOT).as_posix()
+
+    @property
     def argv(self) -> list[str]:
-        return [
-            sys.executable,
-            "-m",
-            self.module,
-            str(self.target.relative_to(REPO_ROOT).as_posix()),
-        ]
+        return [sys.executable, "-m", self.module, self.relative_target]
+
+    @property
+    def published_command(self) -> str:
+        """The command as a reader would run it, with no interpreter path.
+
+        `argv` names the interpreter absolutely, because that is the one the
+        gate must actually invoke. Printing it would put a contributor's own
+        filesystem path into a diagnostic, which is the one thing every record
+        in this repository is redacted for.
+        """
+        return f"python -m {self.module} {self.relative_target}"
 
 
 @dataclass(frozen=True)
 class Result:
     control: Control
     actual_exit: int
+    stdout: str
+    stderr: str
 
     @property
     def passed(self) -> bool:
@@ -149,4 +161,9 @@ def run(found: Sequence[Control]) -> Iterator[Result]:
             text=True,
             check=False,
         )
-        yield Result(control=control, actual_exit=completed.returncode)
+        yield Result(
+            control=control,
+            actual_exit=completed.returncode,
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+        )

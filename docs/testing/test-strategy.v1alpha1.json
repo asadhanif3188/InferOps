@@ -476,7 +476,7 @@
       "publishable": true,
       "v1Status": "implemented",
       "evidenceRef": "docs/proof/testing/v1-s4-001-pr1-validation.md",
-      "notes": "Implemented as of V1-S4-001-PR1, which is the change that first ran the secret scanner. It found that the committed configuration did not parse at all - its allowlist patterns were declared as tables where the tool requires strings - so the scanner had been refusing the whole file and scanning nothing. The configuration is fixed and the run is clean over 134 commits. None of the three scans runs continuously: all are gates in the committed default-lane workflow and no job in it has executed on the selected service, so a finding here is current only as of the day it was produced."
+      "notes": "Implemented as of V1-S4-001-PR1, which is the change that first ran the secret scanner. It found that the committed configuration did not parse at all - its allowlist patterns were declared as tables where the tool requires strings - so the scanner had been refusing the whole file and scanning nothing. The configuration is fixed and the run is clean over 134 commits - made from the scanner's published container image rather than from the pinned release archive the workflow installs, so the gate as committed has still never run. None of the three scans runs continuously: all are gates in the committed default-lane workflow and no job in it has executed on the selected service, so a finding here is current only as of the day it was produced."
     },
     {
       "layerId": "documentation",

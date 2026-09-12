@@ -53,18 +53,18 @@ installs the binary from the same release and checks it against a committed SHA-
 
 ```text
 python -m pytest tests/testing -q
-1541 passed
+1551 passed
 ```
 
-Before this change the same command reported `1512 passed`. The twenty-nine new
+Before this change the same command reported `1512 passed`. The thirty-nine new
 results are `tests/testing/test_ci_gate_matrix.py`, parametrised across nine gates,
-one workflow, and four prohibitions.
+one workflow, and five prohibitions.
 
 ### The full default lane
 
 ```text
 uv run --locked python -m pytest -q
-8291 passed, 30 skipped, 14 deselected in 439.00s
+8301 passed, 30 skipped, 14 deselected in 370.66s
 ```
 
 The Sprint 3 completion review recorded `7876 passed, 30 skipped, 14 deselected` for
@@ -91,9 +91,9 @@ exit 0
 
 | Group | Controls | Required exit | Observed |
 |---|---|---|---|
-| `contract-refused` | 17 | non-zero | all 1 |
+| `contract-refused` | 16 | non-zero | all 1 |
 | `contract-accepted` | 3 | zero | all 0 |
-| `manifest-refused` | 8 | non-zero | all 1 |
+| `manifest-refused` | 9 | non-zero | all 1 |
 | `manifest-accepted` | 2 | zero | all 0 |
 
 Both negative groups were confirmed at the command level before the runner existed:
@@ -282,6 +282,31 @@ matrix document are compared against the data, the thirty expected-failure contr
 are counted by the runner, and the four control groups are read out of the runner
 rather than retyped beside it. One count was found wrong while writing this change and
 corrected: the allowlist exempts **eleven** published placeholder patterns, not twelve.
+
+## Independent review, and what it changed
+
+The change was reviewed independently before it was finished. Nothing critical or
+high was found; four medium findings were, and all four are fixed in the change
+rather than deferred.
+
+| Finding | What was wrong | What changed |
+|---|---|---|
+| The matrix named a command its job does not run | `distribution-build` documented `unzip -l dist/*.whl`; the job inspects the wheel with Python's `zipfile`. Harmless that time, and precisely the drift the matrix exists to prevent — present at introduction, undetected | The row now names what the job runs, and a new check requires every program a gate documents to be invoked by its job. It was verified by reintroducing the drift: `AssertionError: {'documented but never invoked by the job': ['unzip']}` |
+| Two gates could pass with a real finding in front of them | `if git ls-files -z '*.md' \| xargs -0 grep -n ...; then` reads `xargs`'s exit status, and `xargs` reports 123 rather than grep's 0 or 1 as soon as the file list needs a second invocation — which `if` reads as "no match". 163 files at 7.3 KB is nowhere near that boundary, which is why the failure would have arrived unannounced | Both gates capture the output and decide on whether it is empty |
+| The promoted layer's own notes omitted the install-path caveat | The one clean scanner run used the published container image; the committed gate installs a release archive and has never run. That was in the gate matrix and the proof record but not in the layer `notes`, which is the field other documents point readers to | The caveat is in the layer's notes |
+| A historical record was edited with no marker inside it | The whitespace fix is disclosed here and in the changelog, but a reader opening that record alone had no signal it had been touched | An amendment note at the top of the record, naming the date, the PR, and that no content changed |
+
+Two low findings were also acted on. The expected-failure runner now prints the
+command and the captured output for a control that went the wrong way — through a
+`published_command` property that names the module rather than the interpreter, so a
+diagnostic cannot carry a contributor's filesystem path. And `"kind create"` was
+removed from the cluster-token list, where `"kind "` already covered it.
+
+The review also caught a counting error in this record. The control table read
+`contract-refused | 17` and `manifest-refused | 8`; the runner's own JSON report
+gives 16 and 9. The total of 30 was right, because the two errors cancelled — which
+is the reason the table is now taken from the report rather than from a directory
+listing read by eye.
 
 ## Acceptance criteria
 

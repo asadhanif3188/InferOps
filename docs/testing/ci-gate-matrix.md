@@ -72,7 +72,7 @@ touching the strategy the suite checks.
 
 ## What the normal lane may not do
 
-Four prohibitions are checked rather than reviewed. Each is one plausible line away
+Five prohibitions are checked rather than reviewed. Each is one plausible line away
 from being broken.
 
 | Prohibition | Why |
@@ -81,6 +81,7 @@ from being broken.
 | No job downloads the pinned model artifact | ADR 0005 D2's premise is that the lane every change goes through costs nothing. The artifact is 1.71 GiB |
 | Every action is pinned by commit SHA | A tag is a name somebody can move. It is the argument this repository already makes for pinning a container image by digest |
 | Every workflow declares its token permissions | The default grant is a repository-wide setting a workflow file cannot see. Declaring `contents: read` makes the grant reviewable in the diff that asks for it |
+| Every program a gate documents is run by its job | This table is the thing most likely to be written once and then outlive the job it describes. The `distribution-build` row named `unzip` while the job used Python's `zipfile`, in the change that introduced both — harmless, and the exact drift the matrix exists to prevent. The check runs one way: a program the job runs and the matrix does not document is not reported |
 
 Two more properties are checked for the same reason: every job declares a timeout
 inside its lane's budget, because an unbounded job is a six-hour job; and every job

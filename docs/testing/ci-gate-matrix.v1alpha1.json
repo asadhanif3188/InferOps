@@ -156,7 +156,7 @@
       "commands": [
         "uv build",
         "tar -tzf dist/*.tar.gz",
-        "unzip -l dist/*.whl"
+        "python3 -c \"import sys, zipfile; print(chr(10).join(zipfile.ZipFile(sys.argv[1]).namelist()))\" dist/*.whl"
       ],
       "layers": [],
       "claims": [],
@@ -314,6 +314,12 @@
       "statement": "Every committed workflow declares its `permissions` explicitly.",
       "why": "The default token permission set is a repository-wide setting this file cannot see. Declaring the set the workflow needs makes the grant reviewable in the diff that asks for it.",
       "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
+    },
+    {
+      "prohibitionId": "a-documented-command-is-a-command-the-job-runs",
+      "statement": "Every program a gate's command list names is invoked by the job that gate describes.",
+      "why": "The matrix said the wheel was inspected with `unzip` while the job used Python's zipfile. Harmless that time, and it is the exact failure the matrix exists to prevent: the table reads well after the job has changed underneath it.",
+      "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
     }
   ],
   "outOfScope": [
@@ -345,6 +351,7 @@
     "Every gate here reads files, drives the mock, or scans what is pinned. None of them can support a claim above C1, and the two claims about a real runtime take no support from this workflow at all.",
     "The secret scanner has been run once, by hand, from its published container image rather than from the pinned release archive this workflow installs. The tool and version are the same; the installation path is not.",
     "The whitespace and hard-tab checks are the forms CONTRIBUTING publishes, copied rather than read from it. Nothing compares the two, so they can drift.",
-    "The image-scan gate pulls the pinned runtime image, which carries 392 operating system packages. That pull has never been timed on a hosted runner and shares the lane's fifteen-minute budget with the scan itself."
+    "The image-scan gate pulls the pinned runtime image, which carries 392 operating system packages. That pull has never been timed on a hosted runner and shares the lane's fifteen-minute budget with the scan itself.",
+    "The command check runs one way. Every program a gate documents must be invoked by its job; a program the job invokes and the matrix does not document - a setup step's curl, say - is not reported."
   ]
 }

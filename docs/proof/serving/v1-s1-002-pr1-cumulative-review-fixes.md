@@ -1,5 +1,11 @@
 # V1-S1-002-PR1: Cumulative Review Fixes
 
+> **Amended 2026-09-12 by `V1-S4-001-PR1`.** Three runs of metadata lines used
+> Markdown's trailing-two-space hard break, which the whitespace check
+> `CONTRIBUTING` publishes had been reporting as twelve matches under a claim
+> that it returns none. They are lists now. No statement, result, command, or
+> claim below is altered.
+
 - **Status:** Validation complete
 - **Date:** 2026-08-29
 - **Classification:** Local static testing, no model execution

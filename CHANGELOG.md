@@ -82,6 +82,13 @@ once versioned releases begin.
   document that said a scanner had never run is corrected, and every document that
   implied the configuration was doing something now says what it was actually doing.
 
+- **Two documentation gates that could have passed with a finding in front of them.**
+  `if git ls-files -z '*.md' | xargs -0 grep -n ...; then` reads `xargs`'s exit
+  status, and `xargs` reports `123` rather than grep's own `0` or `1` the moment the
+  file list is long enough to need a second invocation — which `if` reads as "no
+  match". This repository is nowhere near that boundary, which is exactly why the
+  failure would have arrived unannounced. Both gates now capture the output and
+  decide on whether it is empty.
 - **Twelve lines of trailing whitespace that a published check said were not there.**
   `CONTRIBUTING` has stated since Sprint 0 that
   `git ls-files -z '*.md' | xargs -0 grep -n '[[:blank:]]$'` returns no matches. It

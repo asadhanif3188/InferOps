@@ -94,7 +94,6 @@ CLUSTER_TOKENS = (
     "helm ",
     "terraform ",
     "kind ",
-    "kind create",
     "INFEROPS_PROVIDER",
     "KUBECONFIG",
     "kubeconfig",
@@ -546,3 +545,56 @@ def test_the_document_publishes_the_gate_count_the_data_produces() -> None:
     )
     expected = f"{words[len(GATES)].capitalize()} gates run on every change."
     assert expected in " ".join(matrix_document().split()), expected
+
+
+# --- The commands a gate documents are commands its job actually runs -------
+
+#: Shell words that introduce a command without being one.
+_NOT_A_PROGRAM = frozenset({"", "sudo", "then", "do", "if", "!"})
+
+
+def programs_in(command: str) -> list[str]:
+    """Every program a command line invokes: the first word of each pipe stage.
+
+    Deliberately coarse. It is not trying to parse a shell; it is trying to
+    catch a matrix row that names a tool its job does not run, which is what
+    happened once already - the wheel inspection was documented as ``unzip``
+    while the job used Python's ``zipfile``.
+    """
+    found: list[str] = []
+    for stage in command.split("|"):
+        words = stage.strip().split()
+        while words and words[0] in _NOT_A_PROGRAM:
+            words = words[1:]
+        if words:
+            found.append(words[0])
+    return found
+
+
+@pytest.mark.parametrize("gate", GATES, ids=lambda gate: gate["gateId"])
+def test_every_program_a_gate_documents_is_run_by_its_job(gate: dict) -> None:
+    """A documented command is a command the job runs.
+
+    The check is one-directional on purpose: a program the job runs and the
+    matrix does not document - a setup step's curl - is not reported, because
+    listing every one of those would make the matrix a transcript rather than a
+    map. The direction that matters is the one that goes stale.
+    """
+    entry = next(row for row in WORKFLOWS if row["workflowId"] == gate["workflowId"])
+    job = workflow_document(entry)["jobs"][gate["jobId"]]
+    ran = "\n".join(
+        str(step[key])
+        for step in job.get("steps", [])
+        for key in ("run", "uses")
+        if key in step
+    )
+    missing = [
+        program
+        for command in gate["commands"]
+        for program in programs_in(command)
+        if program not in ran
+    ]
+    assert not missing, {
+        "gate": gate["gateId"],
+        "documented but never invoked by the job": missing,
+    }

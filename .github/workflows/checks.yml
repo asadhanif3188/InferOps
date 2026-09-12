@@ -116,9 +116,18 @@ jobs:
         run: uv sync --locked
       - name: Every relative link resolves
         run: uv run --locked python -m pytest tests/testing/test_document_links.py -q
+      # The verdict is taken from the output, not from the exit status. `xargs`
+      # reports 123 rather than grep's own 0 or 1 the moment the file list is
+      # long enough to need a second invocation, and `if ...; then` reads 123 as
+      # "no match" - so a real finding in one batch would pass the gate in
+      # silence. This repository is nowhere near that boundary today, which is
+      # exactly why the failure would arrive unannounced.
       - name: No trailing whitespace in a published document
         run: |
-          if git ls-files -z '*.md' | xargs -0 grep -n '[[:blank:]]$'; then
+          set -uo pipefail
+          found=$(git ls-files -z '*.md' | xargs -0 grep -n '[[:blank:]]$' || true)
+          if [ -n "${found}" ]; then
+            echo "${found}"
             echo "::error::a published document carries trailing whitespace"
             exit 1
           fi
@@ -128,7 +137,10 @@ jobs:
       # CONTRIBUTING publishes, so the gate and the document run one check.
       - name: No hard tab in a published document
         run: |
-          if git ls-files -z '*.md' | xargs -0 grep -n "$(printf '\t')"; then
+          set -uo pipefail
+          found=$(git ls-files -z '*.md' | xargs -0 grep -n "$(printf '\t')" || true)
+          if [ -n "${found}" ]; then
+            echo "${found}"
             echo "::error::a published document carries a hard tab"
             exit 1
           fi
