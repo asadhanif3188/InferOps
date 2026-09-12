@@ -235,6 +235,31 @@ inferops::require_cmd() {
     inferops::fail "'$1' is not on PATH. See docs/environment/local-cluster.md."
 }
 
+# Runs an embedded Python reader and hands back exactly the characters it meant
+# to print.
+#
+# A Windows Python writes CRLF from `print`, and every value these readers
+# produce goes straight into a shell variable: a path carrying a trailing
+# carriage return is a path that does not exist, a port carrying one is not a
+# number, and a digest carrying one matches nothing. Only the last field of a
+# multi-line read escapes it, because command substitution strips the final
+# newline and nothing else -- so the failure is not "the reader is broken" but
+# "the fourth field is not a number", which reads like a descriptor defect and
+# is not one. V1-S3-011 found it by executing these workflows on Windows for the
+# first time; model-seed-image.sh had already met it and stripped the carriage
+# returns locally.
+#
+# Stripping through a pipe is safe for a caller that tests the exit status,
+# because this file sets `pipefail`: a Python that exits non-zero still fails
+# the pipeline.
+#
+# Not used for the readers that answer with an exit status and print nothing --
+# the loopback socket probes. There is nothing there to strip, and routing them
+# through a pipe would say this file cared about output they do not produce.
+inferops::python() {
+  python "$@" | tr -d '\r'
+}
+
 # kubectl is only ever invoked through this wrapper, so no invocation can reach
 # a context this project does not own by inheriting an ambient KUBECONFIG.
 inferops::kubectl() {
@@ -490,20 +515,66 @@ inferops::_kind_target_problem() {
   return 0
 }
 
-# Docker Desktop's two implemented identity checks: the operator's kubeconfig
-# holds a context literally named `docker-desktop`, and every node the reachable
-# API server reports matches the one shape this project has observed and
-# recorded -- a single node named `desktop-control-plane`. A node set of any
-# other shape is refused until it has been observed and recorded, rather than
-# accepted because it might be legitimate.
+# The Docker Desktop cluster's own kind cluster name, as observed on the V1
+# reference host: Docker Desktop provisions its Kubernetes with kind and labels
+# the node container `io.x-k8s.kind.cluster=desktop`. It is not InferOps's
+# cluster and InferOps never names it to kind; it is read back off the container
+# to bind an API-server node to a local engine container, and nothing else.
+readonly INFEROPS_DOCKER_DESKTOP_KIND_CLUSTER="desktop"
+
+# The one node shape this project has observed Docker Desktop produce, named once
+# so that the shape check and the port binding below cannot drift apart.
+readonly INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER="desktop-control-plane"
+
+# Docker Desktop's identity checks: the operator's kubeconfig holds a context
+# literally named `docker-desktop`; every node the reachable API server reports
+# matches the one shape this project has observed and recorded -- a single node
+# named `desktop-control-plane`; that node is a container on the engine this
+# `docker` CLI talks to, carrying the kind labels Docker Desktop gave it; and
+# that container publishes the very API server port the verified kubeconfig
+# connects to. A node set of any other shape is refused until it has been
+# observed and recorded, rather than accepted because it might be legitimate.
 #
-# What this does not check: whether those nodes are actually bound to this
-# machine's Docker Desktop virtual machine, the way the kind check above binds
-# nodes to containers kind itself labelled. Whether that is even observable has
-# not been established (docs/environment/local-cluster-provider-contract.md,
-# `the-nodes-are-bound-to-the-local-engine`), so this guard is a name-and-shape
-# check rather than kind's stronger one, and is recorded as a security exception
-# rather than presented as equal to it.
+# The last two are what V1-S3-011 established and the contract previously
+# recorded as `undecided`. It was not known whether Docker Desktop's nodes were
+# observable from the local engine at all. They are: Docker Desktop provisions
+# its Kubernetes with kind, and `desktop-control-plane` is an ordinary container
+# on the same engine the operator's `docker` CLI already talks to.
+#
+# It is read with `docker inspect <name>` rather than kind's `docker ps --filter
+# label=...`, and that difference is the whole reason this check took a story to
+# write. Docker Desktop's API proxy hides its own system containers from
+# `docker ps`, so the filter kind's check uses returns nothing here and would
+# make every node look unmatched. `docker inspect` by name is not filtered.
+#
+# Why the port comparison carries most of the weight. The labels alone are *not*
+# distinguishing: `io.x-k8s.kind.cluster=desktop` and
+# `io.x-k8s.kind.role=control-plane` are kind's own generic labels, and an
+# ordinary `kind create cluster --name desktop` produces a container named
+# `desktop-control-plane` carrying exactly those values. Docker Desktop does add
+# labels of its own under `desktop.docker.io/`, and they would settle it -- but
+# its API proxy strips them from what `docker inspect` returns, so nothing here
+# can read them. The port is the binding that survives: the container's published
+# 6443 must be the address the project-scoped kubeconfig -- the one this function
+# just wrote from the operator's own -- actually dials. That ties the *connection
+# being verified* to the *container being inspected*, rather than correlating two
+# names and hoping.
+#
+# What it still does not establish, recorded in the contract's `gap` and in
+# docs/security/deferred-risks.md rather than left for a reader to notice:
+#
+#   - A kind cluster the operator themselves named `desktop`, reached through a
+#     context they named `docker-desktop`, satisfies every check here including
+#     the port, because then it *is* the cluster being dialled. This guard
+#     refuses a kind cluster under any other name; it cannot refuse that one.
+#   - "This machine" is really "the engine this `docker` CLI is configured to
+#     reach". Nothing here pins DOCKER_HOST or the active docker context, so a
+#     CLI pointed at another engine would compare a loopback address there with
+#     a loopback address here and find them equal as strings.
+#
+# Asking by name is also a weaker question than asking kind for its list -- it
+# cannot detect a node the API server did not report -- so the node-count and
+# node-name checks above it stay, and this check binds the names they fixed.
 inferops::_docker_desktop_target_problem() {
   local expected_context="docker-desktop"
 
@@ -541,11 +612,77 @@ inferops::_docker_desktop_target_problem() {
   fi
 
   node_count="$(printf '%s\n' "${api_nodes}" | grep -c . || true)"
-  if [ "${node_count}" -ne 1 ] || [ "${api_nodes}" != "desktop-control-plane" ]; then
+  if [ "${node_count}" -ne 1 ] ||
+    [ "${api_nodes}" != "${INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER}" ]; then
     printf "provider-mismatch: this project has only observed a single 'desktop-control-plane' node as Docker Desktop's shape; the reachable cluster reports: %s" \
       "$(printf '%s' "${api_nodes}" | tr '\n' ' ')"
     return 1
   fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    printf 'target-unreachable: the container engine CLI is needed to confirm the cluster identity.'
+    return 1
+  fi
+
+  # Every node the API server named, bound to a container on this engine. The
+  # loop is over `api_nodes` rather than over a single hard-coded name because
+  # the node-set check above is the thing that fixes the shape; if a future
+  # observed shape widens it, this stays correct without being rewritten.
+  local node node_cluster node_role
+  while IFS= read -r node; do
+    [ -n "${node}" ] || continue
+    node_cluster="$(docker inspect "${node}" \
+      --format '{{index .Config.Labels "io.x-k8s.kind.cluster"}}' 2>/dev/null || true)"
+    if [ -z "${node_cluster}" ]; then
+      printf "provider-mismatch: the API server reports node '%s' and this engine has no container of that name carrying a kind cluster label. A reachable cluster whose nodes are not containers on this engine is not this machine's Docker Desktop." \
+        "${node}"
+      return 1
+    fi
+    if [ "${node_cluster}" != "${INFEROPS_DOCKER_DESKTOP_KIND_CLUSTER}" ]; then
+      printf "provider-mismatch: node '%s' is a container belonging to kind cluster '%s'; Docker Desktop names its own '%s'. A kind cluster under any other name is selected as provider 'kind', by name." \
+        "${node}" "${node_cluster}" "${INFEROPS_DOCKER_DESKTOP_KIND_CLUSTER}"
+      return 1
+    fi
+    node_role="$(docker inspect "${node}" \
+      --format '{{index .Config.Labels "io.x-k8s.kind.role"}}' 2>/dev/null || true)"
+    if [ "${node_role}" != "control-plane" ]; then
+      printf "provider-mismatch: node '%s' carries kind role '%s'; the observed Docker Desktop shape is a single control-plane node." \
+        "${node}" "${node_role:-none}"
+      return 1
+    fi
+  done <<<"${api_nodes}"
+
+  # The binding the labels cannot give: the container that must answer is the one
+  # the verified kubeconfig actually dials. Both sides are read here rather than
+  # assumed -- the server URL out of the project-scoped kubeconfig this function
+  # just wrote, and the published port off the control-plane container -- and a
+  # mismatch means the cluster being talked to is not the container being
+  # inspected, whatever the two of them are called.
+  local server_url server_port published
+  server_url="$(kubectl --kubeconfig "${target_kubeconfig_native}" \
+    --context "${expected_context}" config view --minify \
+    -o 'jsonpath={.clusters[0].cluster.server}' 2>/dev/null || true)"
+  server_port="${server_url##*:}"
+  case "${server_port}" in
+    '' | *[!0-9]*)
+      printf "target-unreachable: the verified kubeconfig names API server '%s', which carries no port to compare against the node container." \
+        "${server_url:-none}"
+      return 1
+      ;;
+  esac
+
+  published="$(docker inspect "${INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER}" \
+    --format '{{range $binding := index .NetworkSettings.Ports "6443/tcp"}}{{$binding.HostPort}} {{end}}' \
+    2>/dev/null || true)"
+  case " ${published} " in
+    *" ${server_port} "*) ;;
+    *)
+      printf "provider-mismatch: the verified kubeconfig dials port %s, and container '%s' publishes the API server on port(s) '%s'. The cluster being talked to is not the container being inspected." \
+        "${server_port}" "${INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER}" \
+        "$(printf '%s' "${published:-none}" | tr -s ' ')"
+      return 1
+      ;;
+  esac
 
   return 0
 }
@@ -584,6 +721,110 @@ inferops::target_helm() {
   helm --kubeconfig "${INFEROPS_TARGET_KUBECONFIG}" --kube-context "${INFEROPS_TARGET_CONTEXT}" "$@"
 }
 
+# Runs a command inside the verified target's control-plane node container.
+#
+# Both supported providers put their node in a container on the operator's own
+# engine, so one wrapper serves both -- but only after `inferops::resolve_target`
+# has bound INFEROPS_TARGET_NODE_CONTAINER to a node it verified. Calling it
+# before that would `docker exec` into a name nothing checked.
+inferops::target_node_exec() {
+  [ -n "${INFEROPS_TARGET_NODE_CONTAINER:-}" ] ||
+    inferops::fail "no verified target node container; inferops::resolve_target has not run."
+  docker exec "${INFEROPS_TARGET_NODE_CONTAINER}" "$@"
+}
+
+# The same as inferops::target_node_exec, with the caller's stdin attached --
+# which `docker exec` does not do without -i, and which an image import is
+# entirely made of.
+inferops::target_node_exec_stdin() {
+  [ -n "${INFEROPS_TARGET_NODE_CONTAINER:-}" ] ||
+    inferops::fail "no verified target node container; inferops::resolve_target has not run."
+  docker exec -i "${INFEROPS_TARGET_NODE_CONTAINER}" "$@"
+}
+
+# The repository digest of the image the verified target's control-plane node is
+# running, or nothing when the engine cannot tell us.
+#
+# The provider-neutral counterpart of inferops::running_node_digest above, which
+# is the kind helper's own and is pinned to this repository's fixed cluster. Both
+# read the repository digest rather than the container's image ID, for the reason
+# stated there. Both supported providers run a `kindest/node` image, because
+# Docker Desktop provisions its Kubernetes with kind.
+inferops::target_node_digest() {
+  local node_image
+  node_image="$(docker inspect "${INFEROPS_TARGET_NODE_CONTAINER}" \
+    --format '{{.Config.Image}}' 2>/dev/null || true)"
+  [ -n "${node_image}" ] || return 0
+  docker image inspect "${node_image}" \
+    --format '{{range .RepoDigests}}{{.}}{{"\n"}}{{end}}' 2>/dev/null |
+    sed -n 's|^kindest/node@||p' | head -1 || true
+}
+
+# Makes a locally built image resolvable inside the verified target's node by the
+# `repository@digest` reference the chart pins, and proves it resolved.
+#
+# One function for both providers because the claim is the same for both: not
+# "the load command exited zero" but "the reference the chart will ask containerd
+# for resolves inside the node". A load that succeeded and a reference that does
+# not resolve is ErrImageNeverPull at schedule time, long after the build looked
+# fine, and catching it here costs one command instead of a rollout that never
+# starts.
+#
+# The two providers differ only in how the bytes get in:
+#
+#   kind-load        `kind load docker-image`, which names a cluster. It finds
+#                    that cluster's nodes through `docker ps --filter`.
+#   node-ctr-import  `docker save` piped into the node's own containerd. This is
+#                    Docker Desktop's path, because `docker ps` there is filtered
+#                    by Docker Desktop's API proxy and hides the very node this
+#                    would have to find -- so `kind load` reports no nodes and
+#                    does nothing. `docker exec` by name is not filtered.
+#
+# Why the explicit tag step on the import path. `ctr images import` stores the
+# image under the names the archive carries, which is the tag and nothing else.
+# containerd resolves `repository@digest` by looking for a *name* of that form,
+# and CRI creates one when it pulls; an import does not. Without the tag the
+# bytes are present, the digest is right, and the reference the chart uses still
+# does not resolve -- which looks exactly like a failed load and is not one.
+inferops::target_load_image() {
+  local image_ref="$1" repository="$2" digest="$3"
+
+  case "${INFEROPS_TARGET_IMAGE_PREPARATION}" in
+    kind-load)
+      inferops::section "kind load docker-image"
+      inferops::require_cmd kind
+      kind load docker-image "${image_ref}" --name "${INFEROPS_TARGET_CLUSTER_NAME}"
+      ;;
+
+    node-ctr-import)
+      inferops::section "import into ${INFEROPS_TARGET_NODE_CONTAINER}'s containerd"
+      # --all-platforms so that the archive's every manifest lands, rather than
+      # only the one matching the node's platform as ctr would otherwise pick:
+      # the index digest the chart pins covers all of them, and an index whose
+      # children are partly absent does not resolve.
+      docker save "${image_ref}" |
+        inferops::target_node_exec_stdin ctr --namespace=k8s.io images import \
+          --all-platforms - ||
+        inferops::fail "the image could not be imported into '${INFEROPS_TARGET_NODE_CONTAINER}'."
+
+      inferops::target_node_exec ctr --namespace=k8s.io images tag --force \
+        "${image_ref}" "${repository}@${digest}" >/dev/null ||
+        inferops::fail "the image imported and could not be named '${repository}@${digest}' inside the node."
+      ;;
+
+    *)
+      inferops::fail "refusing: capability-unknown-or-insufficient: this workflow needs 'imagePreparation' to be a mechanism it implements; provider '${INFEROPS_TARGET_PROVIDER}' reports '${INFEROPS_TARGET_IMAGE_PREPARATION}'. See docs/environment/local-cluster-provider-contract.md."
+      ;;
+  esac
+
+  inferops::section "verify the reference the chart will use"
+  if ! inferops::target_node_exec crictl inspecti "${repository}@${digest}" >/dev/null 2>&1; then
+    inferops::fail "the image was prepared and '${repository}@${digest}' does not resolve inside '${INFEROPS_TARGET_NODE_CONTAINER}'. Deploying it would fail as ErrImageNeverPull. Do not write this digest into any values file."
+  fi
+
+  inferops::log "prepared for provider '${INFEROPS_TARGET_PROVIDER}' by '${INFEROPS_TARGET_IMAGE_PREPARATION}'; '${repository}@${digest}' resolves inside '${INFEROPS_TARGET_NODE_CONTAINER}'."
+}
+
 # Refuses before any mutation when the target cannot supply a capability a
 # workflow depends on -- including a capability this contract records as
 # `unknown` for the selected provider, which is refused rather than assumed.
@@ -617,15 +858,22 @@ inferops::resolve_target() {
       INFEROPS_TARGET_CLUSTER_NAME="${INFEROPS_KIND_CLUSTER_NAME}"
       INFEROPS_TARGET_CONTEXT="kind-${INFEROPS_KIND_CLUSTER_NAME}"
       INFEROPS_TARGET_IMAGE_PREPARATION="kind-load"
+      INFEROPS_TARGET_NODE_CONTAINER="${INFEROPS_KIND_CLUSTER_NAME}-control-plane"
       ;;
     docker-desktop)
       INFEROPS_TARGET_PROVIDER="docker-desktop"
       INFEROPS_TARGET_CLUSTER_NAME="docker-desktop"
       INFEROPS_TARGET_CONTEXT="docker-desktop"
-      # Not established (docs/environment/local-cluster-provider-contract.md):
-      # whether a locally built image is visible to this cluster without a load
-      # step has not been observed, and `kind load` is not assumed to apply.
-      INFEROPS_TARGET_IMAGE_PREPARATION="not-established"
+      # Established by V1-S3-011 and recorded in
+      # docs/environment/local-cluster-provider-contract.md. This cluster does
+      # not share the local engine's image store: an image the engine holds --
+      # built here or pulled from a registry -- is invisible to the node's
+      # containerd, by tag and by digest alike. A load step is required, and
+      # `kind load` is not it: the kind CLI finds its nodes through
+      # `docker ps --filter`, which Docker Desktop's API proxy filters its own
+      # containers out of. What works is the import the node itself can do.
+      INFEROPS_TARGET_IMAGE_PREPARATION="node-ctr-import"
+      INFEROPS_TARGET_NODE_CONTAINER="${INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER}"
       ;;
   esac
 
@@ -671,6 +919,26 @@ inferops::resolve_target() {
   engine_cpus="$(docker info --format '{{.NCPU}}' 2>/dev/null || true)"
   engine_mem="$(docker info --format '{{.MemTotal}}' 2>/dev/null || true)"
   INFEROPS_TARGET_ENGINE_CAPACITY="cpus=${engine_cpus:-unknown} memoryBytes=${engine_mem:-unknown}"
+
+  # What the scheduler will actually place against, which is not the engine's
+  # allocation above. The contract recorded this as `unknown` for
+  # docker-desktop and owed it to V1-S3-011: the node shares the Docker Desktop
+  # virtual machine with the engine and with whatever else that cluster already
+  # hosts, so a capacity gate reading the engine's figure would be reading the
+  # wrong number. `allocatable` is the node's own answer, and `requested` is
+  # what is already spoken for on it, so a gate can ask about headroom rather
+  # than about a total nobody is free to use.
+  INFEROPS_TARGET_NODE_ALLOCATABLE_CPU="$(inferops::target_kubectl get nodes \
+    -o jsonpath='{.items[0].status.allocatable.cpu}' 2>/dev/null || true)"
+  INFEROPS_TARGET_NODE_ALLOCATABLE_MEMORY="$(inferops::target_kubectl get nodes \
+    -o jsonpath='{.items[0].status.allocatable.memory}' 2>/dev/null || true)"
+  INFEROPS_TARGET_NODE_CAPACITY="allocatableCpu=${INFEROPS_TARGET_NODE_ALLOCATABLE_CPU:-unknown} allocatableMemory=${INFEROPS_TARGET_NODE_ALLOCATABLE_MEMORY:-unknown}"
+
+  # The repository digest of the image the target's control-plane node is
+  # running. Provider-neutral because a C2 record names the cluster it ran on by
+  # digest for either provider; empty when the engine cannot tell us, which a
+  # caller must distinguish from a mismatch.
+  INFEROPS_TARGET_NODE_IMAGE_DIGEST="$(inferops::target_node_digest)"
 
   INFEROPS_TARGET_VERIFIED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   INFEROPS_TARGET_VERIFIED_REVISION="$(cd "${INFEROPS_ROOT}" && git rev-parse HEAD 2>/dev/null || echo unknown)"

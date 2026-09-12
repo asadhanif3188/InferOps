@@ -71,6 +71,7 @@ ENTRY_POINTS = (
     "kubernetes-certification.sh",
     "kubernetes-multi-replica-certification.sh",
     "helm-upgrade-rollback.sh",
+    "telemetry-collection-verify.sh",
     "target-detect.sh",
 )
 
@@ -332,7 +333,9 @@ def test_a_mutating_helm_call_goes_through_the_wrapper() -> None:
     `target_helm` on its own, so the pattern has to look for the optional
     `target_` prefix explicitly to see either wrapper's calls at all.
     """
-    bare = re.compile(rf"(?<!::)\b(?:target_)?helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b")
+    bare = re.compile(
+        rf"(?<!::)\b(?:target_)?helm\s+({'|'.join(MUTATING_HELM_VERBS)})\b"
+    )
     offenders = [
         f"{name}:{number}: {line.strip()}"
         for name, number, line in all_code_lines()
@@ -493,7 +496,9 @@ def test_nothing_that_changes_state_crosses_every_namespace() -> None:
     ADR 0001 (D6) forbids is acting outside this project's own namespace, so that
     is what this refuses, rather than every appearance of the flag.
     """
-    mutating = re.compile(rf"(?:target_)?kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b")
+    mutating = re.compile(
+        rf"(?:target_)?kubectl\s+({'|'.join(MUTATING_KUBECTL_VERBS)})\b"
+    )
     offenders = [
         f"{name}:{number}: {line.strip()}"
         for name, number, line in all_code_lines()

@@ -2,7 +2,7 @@
 
 Status: **accepted register**, in
 [ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). Twelve risks
-V1 carries rather than reduces, and five weaknesses it accepts with a compensating
+V1 carries rather than reduces, and six weaknesses it accepts with a compensating
 control. Ten of the twelve block production use.
 
 This is the document that makes the rest of the security baseline honest. A control
@@ -308,7 +308,7 @@ present cannot be demonstrated in operation.
 
 ## Accepted exceptions
 
-Five weaknesses this project accepts rather than fixes. Each names where it was
+Six weaknesses this project accepts rather than fixes. Each names where it was
 accepted, the compensating control that makes it tolerable, what remains undefended
 anyway, and the condition under which it should be revisited. A test refuses an
 exception missing any of them, and refuses one whose compensating control is not a
@@ -321,6 +321,7 @@ control the baseline declares.
 | EX-03 | The secret-scan allowlist covers two directories wholesale | `no-credential-or-artifact-in-public-history` | DR-11 |
 | EX-04 | The pod-security properties are enforced over apparatus, not over a serving path | `run-as-non-root` | DR-05 |
 | EX-05 | The local network plugin was measured not to enforce the rendered network policy | `least-exposure-no-manifest-publishes-a-service` | DR-04 |
+| EX-06 | The Docker Desktop identity guard is satisfied by a kind cluster the operator named `desktop` | `refuse-to-act-on-a-cluster-this-project-did-not-create` | — |
 
 ### EX-01 — The transport is not authenticated
 
@@ -401,6 +402,46 @@ in the namespace, nothing is defended at all.**
 **Revisit when** the accepted cluster runs a plugin that enforces policy, at which
 point the connection test is worth repeating and can succeed. It was run on
 `kindnetd` and nothing was refused.
+
+### EX-06 — Docker Desktop's guard cannot tell its own kind cluster from yours
+
+Accepted in
+[ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md).
+
+**Residual risk.** Docker Desktop provisions its Kubernetes *with kind*, and the
+labels the guard is able to read are kind's own generic ones. An ordinary
+`kind create cluster --name desktop` produces a container named
+`desktop-control-plane` carrying `io.x-k8s.kind.cluster=desktop` and
+`io.x-k8s.kind.role=control-plane` — byte for byte what the guard requires. Docker
+Desktop *does* add labels of its own under `desktop.docker.io/`, and they would
+settle the question, but its API proxy strips them from what `docker inspect`
+returns, so nothing in these scripts can read them.
+
+`V1-S3-011-PR1` added the strongest binding that is readable: the container must
+publish the very API server port the verified kubeconfig dials. That refuses a
+remote or foreign API server, and refuses a kind cluster under any name other than
+`desktop`. It cannot refuse the same-name case, because there the operator's kind
+cluster genuinely *is* the cluster being dialled — the guard is not being deceived
+about which cluster it reached, only about who provisioned it.
+
+This is the same shape as [EX-02](#ex-02--the-identity-guard-defends-against-a-mistake-not-against-intent)
+and is accepted for the same reason: the threat it exists for is a stale context
+and a mistyped command on a contributor's own machine, and it takes deliberate
+effort — naming a kind cluster `desktop` *and* naming a context `docker-desktop` —
+to reach the collision.
+
+**A second thing this guard does not establish**, recorded here rather than left
+for a reader to infer: "this machine's engine" is really "the engine this `docker`
+CLI is configured to reach". Nothing pins `DOCKER_HOST` or the active docker
+context, so a CLI pointed at another engine would compare a loopback address there
+against a loopback address here and find the two strings equal. Pinning it is not
+free — Docker Desktop's own engine is itself reached through a non-default context —
+so it is written down rather than guessed at.
+
+**Revisit when** Docker Desktop exposes a label, field, or endpoint through its own
+API proxy that distinguishes its cluster from any other kind cluster, or when the
+scripts act on a cluster somebody other than the contributor owns, which V1 does
+not do.
 
 ## What this register does not do
 

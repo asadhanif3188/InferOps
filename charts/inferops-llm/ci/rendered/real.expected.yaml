@@ -838,7 +838,7 @@ spec:
         inferops.io/workload: support-assistant
         app.kubernetes.io/component: platform-api
       annotations:
-        inferops.io/configuration-checksum: 8d854584f630232bf0cf2c37904b9223a2a7ce51017b4898e0432bcc18860072
+        inferops.io/configuration-checksum: 9e5b5c320271d6896044b3bae8d771c24d5c891c2ecdf188845bb03b4051fb47
         prometheus.io/scrape: "true"
         prometheus.io/port: "8090"
         prometheus.io/path: "/metrics"
@@ -962,7 +962,7 @@ spec:
         inferops.io/workload: support-assistant
         app.kubernetes.io/component: serving-runtime
       annotations:
-        inferops.io/configuration-checksum: 8d854584f630232bf0cf2c37904b9223a2a7ce51017b4898e0432bcc18860072
+        inferops.io/configuration-checksum: 9e5b5c320271d6896044b3bae8d771c24d5c891c2ecdf188845bb03b4051fb47
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
@@ -1145,7 +1145,7 @@ spec:
         inferops.io/workload: support-assistant
         app.kubernetes.io/component: telemetry-collector
       annotations:
-        inferops.io/configuration-checksum: 603e247121e7c1700e608307c0e288fcfc64893d416f2743150caa7161bd28f5
+        inferops.io/configuration-checksum: 0c0e5b31fd3bb86205a34e0dec951aae5ec590910547700026be9d409f96523b
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
@@ -1170,7 +1170,8 @@ spec:
             - --storage.tsdb.retention.time=2h
             - --storage.tsdb.retention.size=512MB
             - --web.listen-address=0.0.0.0:9090
-            - --web.enable-lifecycle=false
+            - --no-web.enable-lifecycle
+            - --no-web.enable-admin-api
           ports:
             - name: http
               containerPort: 9090
@@ -1248,6 +1249,32 @@ spec:
                     - path: namespace
                       fieldRef:
                         fieldPath: metadata.namespace
+---
+# Source: inferops-llm/templates/model-acquisition-job.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inferops-inferops-llm-model-acquisition
+  namespace: inferops-platform
+  labels:
+    helm.sh/chart: inferops-llm-0.3.0
+    app.kubernetes.io/name: inferops-llm
+    app.kubernetes.io/instance: inferops
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: inferops
+    inferops.io/lifecycle: release
+    inferops.io/profile: real
+    inferops.io/owner: team-platform-demo
+    inferops.io/workload: support-assistant
+    app.kubernetes.io/component: model-acquisition
+  annotations:
+    inferops.io/cost-center: demo-cost-center
+    inferops.io/tenant: demo
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+automountServiceAccountToken: false
 ---
 # Source: inferops-llm/templates/tests/connection.yaml
 apiVersion: v1
@@ -1374,7 +1401,7 @@ spec:
         app.kubernetes.io/component: model-acquisition
     spec:
       restartPolicy: Never
-      serviceAccountName: inferops-inferops-llm-runtime
+      serviceAccountName: inferops-inferops-llm-model-acquisition
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

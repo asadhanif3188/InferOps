@@ -10,9 +10,26 @@
   "procedureRef": "docs/environment/helm-upgrade-rollback.md",
   "baselineCertificationRef": "deploy/serving/certification/k8s-real-inference.v1.json",
   "cluster": {
-    "name": "inferops-dev",
-    "context": "kind-inferops-dev",
-    "nodeImageDigest": "sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256"
+    "providers": [
+      {
+        "providerId": "kind",
+        "name": "inferops-dev",
+        "context": "kind-inferops-dev",
+        "nodeImage": {
+          "pinned": true,
+          "digest": "sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256"
+        }
+      },
+      {
+        "providerId": "docker-desktop",
+        "name": "docker-desktop",
+        "context": "docker-desktop",
+        "nodeImage": {
+          "pinned": false,
+          "digest": null
+        }
+      }
+    ]
   },
   "release": {
     "name": "inferops",

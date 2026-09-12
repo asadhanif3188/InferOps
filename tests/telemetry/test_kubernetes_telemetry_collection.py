@@ -141,26 +141,35 @@ def test_the_record_the_document_and_both_renders_were_found() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_the_record_states_that_nothing_collects() -> None:
-    """The one sentence this whole record would be dishonest without.
+def test_the_record_separates_what_was_scraped_from_what_was_measured() -> None:
+    """The sentence this record would be dishonest without, in its third form.
 
-    Configuration for a collector and a collector are different things, and a
-    document describing the first in the present tense is how the second gets
-    assumed. `collected` is a boolean rather than prose so that it cannot be
-    softened by editing a paragraph.
+    It has been three different sentences and the distinction it draws has never
+    moved. Configuration for a collector and a collector are different things;
+    a collector selected and a collector running are different things; and now a
+    collector that has scraped and a figure that has been measured are different
+    things. Each time, the risk is the same: a record describing the weaker fact
+    in the present tense is how the stronger one gets assumed.
+
+    `collected` and `everInstalled` are booleans rather than prose so that they
+    cannot be softened by editing a paragraph -- and so that turning them true,
+    which V1-S3-011-PR1 did, is a deliberate act with a record behind it rather
+    than a rewording.
     """
     status = RECORD["collectionStatus"]
-    assert status["collected"] is False
-    assert status["everInstalled"] is False
-    assert status["configurationRendered"] is True
-    assert "nothing has scraped" in status["note"].lower()
-    assert "none has run" in status["note"].lower()
-    assert "**Nothing has been collected" in DOCUMENT
 
-    # A collector is selected now, which is the one thing that changed. The two
-    # booleans above are what this test exists for and they are unchanged:
-    # selecting a collector and running one are different things, and a record
-    # describing the first in the present tense is how the second gets assumed.
+    assert status["collected"] is True
+    assert status["everInstalled"] is True
+    assert status["configurationRendered"] is True
+    # Turning the booleans true requires naming the run that did it.
+    assert (REPO_ROOT / status["realCollectionRef"]).is_file()
+
+    # What a scrape still does not make true, kept in both files.
+    assert "not a series having been retained" in status["note"]
+    assert "arithmetic over declared values" in status["note"]
+    assert "nothing here became a measurement" in DOCUMENT
+
+    # A collector is selected; dashboards and alert routing are not.
     assert "selected." in status["collector"]
     assert "deferred" in status["collector"], (
         "the collector is decided; dashboards and alert routing are not, and the "

@@ -25,9 +25,10 @@
     ],
     "mountedBy": "the telemetry collector this release installs, and nothing else. No workload Deployment references it: a workload publishes metrics and does not collect them, and a ConfigMap mounted into the pod it describes would install the wrong mental model beside the right file.",
     "collector": "selected. ADR 0004 D7, amended 2026-09-09, makes the collector Helm-owned and release-scoped; telemetry-collector in the ownership inventory carries it. Prometheus, pinned by digest, reading this ConfigMap rather than a copy of it. Dashboards and an alert routing path remain unowned and deferred, and ADR 0006 D8 still selects no SDK, exporter or tracer.",
-    "collected": false,
-    "everInstalled": false,
-    "note": "A collector is selected and rendered; none has run. No release has installed this chart, nothing has scraped either endpoint, and every count, bound and multiplier below is arithmetic over declared values rather than a measurement of a store. The configuration has been checked by the pinned collector's own promtool, which establishes that it loads and not that anything was collected."
+    "collected": true,
+    "everInstalled": true,
+    "note": "A collector is selected, rendered, installed, and has run. V1-S3-011-PR1 installed this chart into Docker Desktop's Kubernetes and watched the collector discover and scrape both InferOps jobs -- one target each, both up -- so the two booleans above are true and this record says so rather than softening it in prose. What that does not make true is the rest of this record: every count, bound and multiplier below is still arithmetic over declared values rather than a measurement of a store, and a scrape having happened is not a series having been retained, aggregated, or measured. The configuration is also still checked by the pinned collector's own promtool, which establishes that it loads.",
+    "realCollectionRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
   },
   "discovery": {
     "mechanism": "prometheus kubernetes_sd_configs, role: pod",

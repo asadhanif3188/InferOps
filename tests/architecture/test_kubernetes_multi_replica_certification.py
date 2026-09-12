@@ -206,6 +206,7 @@ def facts_document() -> dict[str, Any]:
     manifest = load_manifest()
     return {
         "cluster": {
+            "provider": "kind",
             "name": lib_constant("INFEROPS_CLUSTER_NAME"),
             "context": kube_context(),
             "serverVersion": "v1.34.8",
@@ -501,7 +502,6 @@ def test_the_two_certifications_describe_one_release(tmp_path: Path) -> None:
         ("release", "namespace", "other-release", "a release the single-replica"),
         ("release", "profile", "mock", "a release the single-replica"),
         ("release", "name", "somethingelse", "a release the single-replica"),
-        ("cluster", "name", "someone-elses", "a cluster the single-replica"),
         ("distribution", "mechanism", "response-header", "correlation mechanism"),
         ("distribution", "minimumDistinctReplicas", 3, "more replicas than it"),
         ("distribution", "driverImage", "busybox:1.37.0", "named by digest"),
@@ -793,12 +793,27 @@ def test_the_engine_minimum_is_never_below_the_tier_or_below_this_profile() -> N
 
 def test_the_cluster_target_is_the_one_these_scripts_operate() -> None:
     certification = loaded()
+    (kind_target,) = [
+        entry for entry in certification.clusters if entry.provider_id == "kind"
+    ]
 
-    assert certification.cluster_name == lib_constant("INFEROPS_CLUSTER_NAME")
-    assert certification.cluster_context == kube_context()
-    assert certification.node_image_digest == lib_constant("INFEROPS_NODE_IMAGE_DIGEST")
+    assert kind_target.name == lib_constant("INFEROPS_CLUSTER_NAME")
+    assert kind_target.context == kube_context()
+    assert kind_target.node_image_digest == lib_constant("INFEROPS_NODE_IMAGE_DIGEST")
     assert certification.release.name == lib_constant("INFEROPS_RELEASE_NAME")
     assert certification.release.namespace == lib_constant("INFEROPS_RELEASE_NAMESPACE")
+
+
+def test_the_two_descriptors_describe_the_same_providers_on_the_same_terms(
+    tmp_path: Path,
+) -> None:
+    """A target certified at one replica and a target certified at two must be
+    the same target. Renaming one provider's cluster in this descriptor and not
+    in the single-replica one would make them two targets wearing one name."""
+    document = mutated()
+    document["cluster"]["providers"][0]["name"] = "someone-elses"
+
+    assert "cluster targets the single-replica" in refused(document, tmp_path)
 
 
 def test_the_request_driver_reuses_the_pin_the_chart_already_carries() -> None:
@@ -2210,6 +2225,27 @@ def test_the_embedded_capacity_writer_produces_what_the_reader_accepts(
     assert facts.free_cpu_millis == 7500
 
 
+def test_every_collected_fact_is_exported_to_the_writer() -> None:
+    """A fact the script assigns and does not export is a fact the writer reads
+    as empty.
+
+    The same check test_kubernetes_certification.py makes, for the same reason
+    and against the same failure: the writer is a separate process reading
+    `INFEROPS_FACT_*` out of the environment, and the round trip below supplies
+    that environment itself rather than inheriting what the script exports, so it
+    cannot see a variable the script forgot. The cost of finding out at runtime
+    is a release installed and a model loaded before anything reports it.
+    """
+    assigned = set(re.findall(r"^(INFEROPS_FACT_\w+)=", SCRIPT_TEXT, re.M))
+    assert assigned, "no collected facts were found; this check read nothing"
+
+    start = SCRIPT_TEXT.index("export INFEROPS_FACT_")
+    statement = SCRIPT_TEXT[start : SCRIPT_TEXT.index("\n\n", start)]
+    exported = set(re.findall(r"INFEROPS_FACT_\w+", statement))
+
+    assert assigned <= exported, assigned - exported
+
+
 def test_the_embedded_facts_writer_produces_what_the_reader_accepts(
     tmp_path: Path,
 ) -> None:
@@ -2306,6 +2342,7 @@ def test_the_embedded_facts_writer_produces_what_the_reader_accepts(
         ]
     }
     environment = {
+        "INFEROPS_FACT_PROVIDER": "kind",
         "INFEROPS_FACT_CLUSTER_NAME": lib_constant("INFEROPS_CLUSTER_NAME"),
         "INFEROPS_FACT_CONTEXT": kube_context(),
         "INFEROPS_FACT_SERVER_VERSION": "v1.34.8",
@@ -2538,8 +2575,15 @@ def descriptor_reads() -> tuple[list[str], list[str], list[str]]:
     arguments = SCRIPT_TEXT[start : SCRIPT_TEXT.index(')"; then', start)]
     fields = [word for word in arguments.replace("\\", " ").split() if "." in word]
 
+    # Scoped to the block that destructures `descriptor_fields`, for the reason
+    # test_kubernetes_certification.py states beside its own copy: the
+    # provider-target lookup above it is a second `read -r` block with its own
+    # two fields.
     block_end = SCRIPT_TEXT.index('} <<<"${descriptor_fields}"')
-    variables = re.findall(r"^  read -r (\w+)$", SCRIPT_TEXT[:block_end], re.M)
+    block_start = SCRIPT_TEXT.rindex("\n{\n", 0, block_end)
+    variables = re.findall(
+        r"^  read -r (\w+)$", SCRIPT_TEXT[block_start:block_end], re.M
+    )
 
     loop_start = SCRIPT_TEXT.index("for field in ")
     guard = (
@@ -2562,7 +2606,15 @@ def test_the_descriptor_read_and_the_assignment_agree() -> None:
     fields, variables, guard = descriptor_reads()
 
     assert len(fields) == len(variables), list(zip(fields, variables, strict=False))
-    assert set(guard) == set(variables), set(guard).symmetric_difference(variables)
+    expected = set(variables) | set(provider_reads())
+    assert set(guard) == expected, set(guard).symmetric_difference(expected)
+
+
+def provider_reads() -> list[str]:
+    """The variables the provider-target lookup assigns, in order."""
+    block_end = SCRIPT_TEXT.index('} <<<"${provider_target}"')
+    block_start = SCRIPT_TEXT.rindex("\n{\n", 0, block_end)
+    return re.findall(r"^  read -r (\w+)$", SCRIPT_TEXT[block_start:block_end], re.M)
 
 
 def test_the_script_holds_every_number_it_computes_with_to_being_a_number() -> None:
@@ -2584,7 +2636,7 @@ def test_the_capacity_preflight_happens_before_anything_is_installed() -> None:
     preflight, prerequisites, install = script_positions(
         'python -m "${INFEROPS_MULTI_MODULE}" preflight',
         'bash "${INFEROPS_ROOT}/scripts/environment/terraform-prerequisites.sh"',
-        "inferops::helm install",
+        "inferops::target_helm install",
     )
 
     assert preflight < prerequisites < install
@@ -2595,7 +2647,7 @@ def test_the_assertions_happen_before_the_teardown() -> None:
     certify, remove_driver, uninstall = script_positions(
         'python -m "${INFEROPS_MULTI_MODULE}" certify',
         'inferops::section "Removing the request driver"',
-        "inferops::helm uninstall",
+        "inferops::target_helm uninstall",
     )
 
     assert certify < remove_driver < uninstall
@@ -2670,7 +2722,7 @@ def test_the_serving_pod_list_comes_from_the_facts_this_run_already_wrote() -> N
 
 
 def test_the_install_creates_no_namespace_and_does_not_wait() -> None:
-    install = re.search(r"inferops::helm install.*?--timeout", SCRIPT_TEXT, re.S)
+    install = re.search(r"inferops::target_helm install.*?--timeout", SCRIPT_TEXT, re.S)
     assert install is not None
 
     assert "--create-namespace" not in install.group(0)

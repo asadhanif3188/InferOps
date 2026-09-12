@@ -52,5 +52,5 @@ annotations:
     workload-service-account,workload-network-policy,platform-api-deployment,
     platform-api-service,serving-runtime-deployment,serving-runtime-service,
     runtime-configuration,telemetry-scrape-configuration,model-acquisition-job,
-    telemetry-collector
+    model-acquisition-service-account,telemetry-collector
   inferops.io/deferred-resources: ""

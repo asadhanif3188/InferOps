@@ -199,8 +199,25 @@ spec:
             - --web.listen-address=0.0.0.0:{{ .Values.telemetry.collection.collector.port }}
             {{- /* No admin API and no lifecycle endpoint. Both accept unauthenticated
                    requests that delete series or reload configuration, and neither is
-                   needed to read what this release publishes. */}}
-            - --web.enable-lifecycle=false
+                   needed to read what this release publishes.
+
+                   Spelled `--no-<flag>` and not `--<flag>=false`. Prometheus parses
+                   its command line with kingpin, where a boolean flag takes no
+                   value and the negative form is a separate flag: `=false` is read
+                   as a positional argument and the process exits immediately with
+                   `unexpected false`, before it opens a port. Every probe on this
+                   container then fails, the Deployment never becomes ready, and the
+                   release's own connection test reports a refused connection to the
+                   collector Service -- which names the symptom three steps from the
+                   cause. V1-S3-011 found it by installing this chart into a real
+                   cluster; a render check cannot, because the argument is
+                   well-formed YAML and only Prometheus rejects it.
+
+                   Both are already false by default. They are passed anyway so that
+                   the refusal is visible in the rendered manifest rather than
+                   resting on a default that a future image could change. */}}
+            - --no-web.enable-lifecycle
+            - --no-web.enable-admin-api
           ports:
             - name: http
               containerPort: {{ .Values.telemetry.collection.collector.port }}

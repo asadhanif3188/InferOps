@@ -99,10 +99,13 @@ def _print_check(certification: Certification) -> None:
         f"read-only, verified by the '"
         f"{certification.model_cache.verification_init_container}' init container"
     )
-    print(
-        f"cluster       {certification.cluster.name} on the pinned node image "
-        f"{certification.cluster.node_image_digest}"
-    )
+    for target in certification.clusters:
+        pin = (
+            f"the pinned node image {target.node_image_digest}"
+            if target.node_image_pinned
+            else "a node image the provider chooses, recorded but not pinned"
+        )
+        print(f"cluster       {target.provider_id}: {target.name} on {pin}")
     print(
         "assertions    real adapter kind, pinned model revision, digest-pinned "
         "images, pinned node image, every replica ready, artifact hash compared "
@@ -129,7 +132,8 @@ def _print_certified(result: KubernetesCertificationResult, record: str) -> None
     )
     print(f"evidence      labelled {result.evidence_label}")
     print(
-        f"cluster       {facts.cluster_name} on {facts.server_version}; "
+        f"cluster       {facts.provider}: {facts.cluster_name} on "
+        f"{facts.server_version}; "
         f"release revision {facts.release_revision} of {facts.chart_version}"
     )
     print(

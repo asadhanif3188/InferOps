@@ -158,10 +158,27 @@ class CertificationFailed(CertificationError):
 
 @dataclass(frozen=True, slots=True)
 class ClusterTarget:
-    """The one cluster, by name, context, and node image digest."""
+    """One provider's cluster, by name, context, and node image digest.
 
+    A descriptor carries one of these per supported provider, and a run matches
+    exactly one of them -- the provider the target verification in `lib.sh`
+    established. Before V1-S3-011 there was a single unnamed target here and the
+    kind cluster this repository pins was it.
+
+    `node_image_pinned` is what separates the two providers rather than a
+    difference in rigour. InferOps chooses kind's node image and pins it by
+    digest, so a kind run that reports a different one is certifying a cluster
+    that is not the pinned one and must fail. Docker Desktop chooses its own:
+    the digest is still read and still written into the record, because a C2
+    record names the cluster it ran on, but comparing it to a digest InferOps
+    never selected would be checking Docker Desktop's release notes, not this
+    project's pin. `digest` is empty exactly when `pinned` is false.
+    """
+
+    provider_id: str
     name: str
     context: str
+    node_image_pinned: bool
     node_image_digest: str
 
 
@@ -243,7 +260,7 @@ class Certification:
     chart_ref: str
     certification_ref: str
     procedure_ref: str
-    cluster: ClusterTarget
+    clusters: tuple[ClusterTarget, ...]
     release: ReleaseTarget
     model_cache: ModelCacheExpectation
     budgets: ReadinessBudgets
@@ -326,6 +343,7 @@ class ClusterFacts:
     hand over freely and none of them belong in a committed record.
     """
 
+    provider: str
     cluster_name: str
     kube_context: str
     server_version: str
@@ -451,14 +469,60 @@ def _require_keys(record: Mapping[str, Any], field: str, expected: set[str]) -> 
         )
 
 
-def _read_cluster(cluster: Mapping[str, Any]) -> ClusterTarget:
+#: The providers `lib.sh` supports. A descriptor naming any other one would
+#: describe a target no verification in this repository can establish.
+SUPPORTED_PROVIDERS = ("kind", "docker-desktop")
+
+
+def _read_cluster(provider: Mapping[str, Any]) -> ClusterTarget:
+    node_image = _object(provider.get("nodeImage"), "cluster.providers[].nodeImage")
+    _require_keys(node_image, "cluster.providers[].nodeImage", {"pinned", "digest"})
+    pinned = _boolean(node_image.get("pinned"), "cluster.providers[].nodeImage.pinned")
+    raw_digest = node_image.get("digest")
+    if pinned:
+        digest = _string(raw_digest, "cluster.providers[].nodeImage.digest")
+    else:
+        # Not merely permitted to be absent: required to be. A digest written
+        # beside `pinned: false` reads as a pin to everyone who does not also
+        # read the flag, and nothing would ever compare it.
+        if raw_digest is not None:
+            raise CertificationError(
+                "an unpinned node image must not carry a digest; the digest the "
+                "run observes is written into the record, not into the descriptor"
+            )
+        digest = ""
     return ClusterTarget(
-        name=_string(cluster.get("name"), "cluster.name"),
-        context=_string(cluster.get("context"), "cluster.context"),
-        node_image_digest=_string(
-            cluster.get("nodeImageDigest"), "cluster.nodeImageDigest"
+        provider_id=_string(
+            provider.get("providerId"), "cluster.providers[].providerId"
         ),
+        name=_string(provider.get("name"), "cluster.providers[].name"),
+        context=_string(provider.get("context"), "cluster.providers[].context"),
+        node_image_pinned=pinned,
+        node_image_digest=digest,
     )
+
+
+def _read_clusters(cluster: Mapping[str, Any]) -> tuple[ClusterTarget, ...]:
+    providers = cluster.get("providers")
+    if not isinstance(providers, list) or not providers:
+        raise CertificationError(
+            "certification field 'cluster.providers' must be a non-empty list"
+        )
+    targets = tuple(
+        _read_cluster(_object(entry, "cluster.providers[]")) for entry in providers
+    )
+    identifiers = [target.provider_id for target in targets]
+    if len(set(identifiers)) != len(identifiers):
+        raise CertificationError(
+            "certification field 'cluster.providers' names a provider twice"
+        )
+    unsupported = sorted(set(identifiers) - set(SUPPORTED_PROVIDERS))
+    if unsupported:
+        raise CertificationError(
+            f"certification field 'cluster.providers' names unsupported "
+            f"provider(s): {', '.join(unsupported)}"
+        )
+    return targets
 
 
 def _read_release(release: Mapping[str, Any]) -> ReleaseTarget:
@@ -581,7 +645,7 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
             "cleanup",
         },
     )
-    _require_keys(cluster, "cluster", {"name", "context", "nodeImageDigest"})
+    _require_keys(cluster, "cluster", {"providers"})
     _require_keys(
         release,
         "release",
@@ -694,7 +758,7 @@ def load_certification(path: Path = CERTIFICATION_PATH) -> Certification:
         chart_ref=_string(record.get("chartRef"), "chartRef"),
         certification_ref=_string(record.get("certificationRef"), "certificationRef"),
         procedure_ref=_string(record.get("procedureRef"), "procedureRef"),
-        cluster=_read_cluster(cluster),
+        clusters=_read_clusters(cluster),
         release=_read_release(release),
         model_cache=_read_model_cache(model_cache),
         budgets=_read_budgets(readiness),
@@ -834,8 +898,11 @@ def _validate(certification: Certification) -> None:
         raise CertificationError(
             "the API Service is not one this release's name could produce"
         )
-    if not certification.cluster.node_image_digest.startswith("sha256:"):
-        raise CertificationError("the pinned node image must be named by digest")
+    for target in certification.clusters:
+        if target.node_image_pinned and not target.node_image_digest.startswith(
+            "sha256:"
+        ):
+            raise CertificationError("the pinned node image must be named by digest")
     # The chart's own rule, restated where this workflow's budgets live: the
     # kubelet must not give up before the adapter would. A startup budget under
     # the adapter's makes the adapter's budget unreachable.
@@ -1054,6 +1121,7 @@ def load_cluster_facts(
         raise CertificationFailed("the cluster facts name no workload", STAGE_READINESS)
 
     facts = ClusterFacts(
+        provider=_facts_string(cluster.get("provider"), "cluster.provider"),
         cluster_name=_facts_string(cluster.get("name"), "cluster.name"),
         kube_context=_facts_string(cluster.get("context"), "cluster.context"),
         server_version=_facts_string(
@@ -1110,19 +1178,47 @@ def load_cluster_facts(
 
 
 def _check_cluster(certification: Certification, facts: ClusterFacts) -> None:
-    target = certification.cluster
+    # The provider comes first, because it selects which target the rest of this
+    # is checked against. A run that named a provider the descriptor does not
+    # support would otherwise fall through to a name comparison and be reported
+    # as the wrong cluster, which is a true statement about the wrong thing.
+    matches = [
+        target
+        for target in certification.clusters
+        if target.provider_id == facts.provider
+    ]
+    if not matches:
+        raise CertificationFailed(
+            "the facts name an environment provider this certification does "
+            "not describe",
+            STAGE_PREREQUISITES,
+        )
+    target = matches[0]
     if facts.cluster_name != target.name or facts.kube_context != target.context:
         raise CertificationFailed(
             "the facts describe a cluster this certification does not name",
             STAGE_PREREQUISITES,
         )
+    # A record must always name the node image it ran on, whoever chose it: a
+    # blank digest is an unanswered question, not an unpinned one.
+    if not facts.node_image_digest:
+        raise CertificationFailed(
+            "the facts do not name the node image the run used",
+            STAGE_PREREQUISITES,
+        )
     if (
         certification.require_pinned_node_image
+        and target.node_image_pinned
         and facts.node_image_digest != target.node_image_digest
     ):
         # `lib.sh` states the rule this enforces: a pin checked one way at
         # creation and another way afterwards is two pins. A C2 record may not
         # name a node image that is not the one the cluster was pinned to.
+        #
+        # Only where InferOps chose the image. Docker Desktop's node image is
+        # bound to the Docker Desktop release; comparing it to a digest this
+        # project never selected would refuse every run after any Docker Desktop
+        # update, and would be enforcing somebody else's pin.
         raise CertificationFailed(
             "the cluster is running a node image that is not the pinned one",
             STAGE_PREREQUISITES,
@@ -1629,6 +1725,7 @@ def _workloads_document(workloads: Sequence[WorkloadFacts]) -> list[dict[str, ob
 def _facts_document(facts: ClusterFacts) -> dict[str, object]:
     return {
         "cluster": {
+            "provider": facts.provider,
             "name": facts.cluster_name,
             "context": facts.kube_context,
             "serverVersion": facts.server_version,

@@ -345,9 +345,12 @@ def test_the_chart_and_its_committed_inputs_were_found() -> None:
         "network policies. It renders no runtime policy because it renders no "
         "runtime"
     )
-    assert len(HOOKS["real"]) == 2, (
-        "two hooks under real: the release test, and the acquisition job that "
-        "fills the claim before the runtime is created to read it"
+    assert len(HOOKS["real"]) == 3, (
+        "three hooks under real: the release test, the acquisition job that fills "
+        "the claim before the runtime is created to read it, and the ServiceAccount "
+        "that job names. The account has to be a hook itself, because Helm applies "
+        "a phase's hooks before the release manifest, so an account rendered in the "
+        "manifest does not exist yet when the hook Job is created"
     )
     assert len(HOOKS["mock"]) == 1, "a mock fills no claim, so it has only its test"
     assert len(ALL_CONTAINERS) == 8, (
@@ -1559,7 +1562,13 @@ def test_every_hook_deletes_itself_and_does_not_retry(profile: str) -> None:
         restart = _dig(document, "spec.restartPolicy")
         if restart is ABSENT:
             restart = _dig(document, "spec.template.spec.restartPolicy")
-        assert restart == "Never", document["kind"]
+        # A hook that runs something has to say it will not be run again. A hook
+        # that runs nothing -- the acquisition job's ServiceAccount, which exists
+        # only so that the Job has an identity to name at hook time -- has no
+        # restart policy to state, and demanding one would be demanding a field
+        # its kind does not have.
+        if restart is not ABSENT or document["kind"] != "ServiceAccount":
+            assert restart == "Never", document["kind"]
         events[document["kind"]] = event
 
     assert events.get("Pod") == "test", "the release test is not a test hook"

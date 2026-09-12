@@ -131,25 +131,13 @@ inferops::require_engine
 # no default, re-verified now rather than trusted from an earlier run.
 inferops::resolve_target
 
-# This certification's own descriptor and evidence tooling below are still
-# specific to the kind cluster this repository pins; porting them to a
-# provider-neutral target is V1-S3-011. Re-verifying through
-# inferops::resolve_target above closes `selection-is-explicit` for this
-# workflow; this closes the rest of the gap honestly rather than silently: a
-# Docker Desktop target passes the check above and is refused here instead of
-# being certified against a descriptor that does not describe it.
-if [ "${INFEROPS_TARGET_PROVIDER}" != "kind" ] ||
-  [ "${INFEROPS_TARGET_CLUSTER_NAME}" != "${INFEROPS_CLUSTER_NAME}" ]; then
-  inferops::fail "refusing: capability-unknown-or-insufficient: this certification's descriptor and evidence tooling are still specific to provider 'kind', cluster '${INFEROPS_CLUSTER_NAME}'. The selected target is provider '${INFEROPS_TARGET_PROVIDER}', cluster '${INFEROPS_TARGET_CLUSTER_NAME}'. Porting this workflow to a provider-neutral target is V1-S3-011."
-fi
-
 inferops::section "Certification descriptor"
 (cd "${INFEROPS_ROOT}" && python -m tools.kubernetes_certification check)
 
 # The descriptor's own values, read only after the tool above accepted it. A
 # field read from a document nothing validated is a threshold with no authority.
 read_descriptor() {
-  python -c '
+  inferops::python -c '
 import json, sys
 from pathlib import Path
 
@@ -162,12 +150,44 @@ for path in sys.argv[2:]:
 ' "$(inferops::native_path "${certification_file}")" "$@"
 }
 
+# The descriptor's entry for the provider that was actually verified. It is read
+# separately from the flat fields below because selecting it is a lookup, not a
+# path: the descriptor describes every provider this certification supports, and
+# a run is certified against the one it is on. A provider the descriptor does
+# not describe stops here rather than being certified against somebody else's
+# entry.
+read_provider_target() {
+  inferops::python -c '
+import json, sys
+from pathlib import Path
+
+record = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+wanted = sys.argv[2]
+for provider in record["cluster"]["providers"]:
+    if provider["providerId"] == wanted:
+        print(provider["name"])
+        print(provider["context"])
+        break
+else:
+    raise SystemExit(
+        f"the certification descriptor does not describe provider {wanted!r}"
+    )
+' "$(inferops::native_path "${certification_file}")" "$1"
+}
+
+if ! provider_target="$(read_provider_target "${INFEROPS_TARGET_PROVIDER}")"; then
+  inferops::fail "this certification's descriptor does not describe provider '${INFEROPS_TARGET_PROVIDER}'. Nothing was installed."
+fi
+{
+  read -r descriptor_cluster
+  read -r descriptor_context
+} <<<"${provider_target}"
+
 # Read into a variable first and check the status, rather than through a process
 # substitution: a reader whose producer failed sees empty fields and no error,
 # and an empty budget below becomes an arithmetic expression rather than a
 # refusal.
 if ! descriptor_fields="$(read_descriptor \
-  cluster.name cluster.context \
   release.name release.namespace release.apiServiceName release.apiServicePort \
   release.apiDeploymentName release.runtimeDeploymentName release.configMapName \
   readiness.installBudgetMs readiness.runtimeRolloutBudgetMs \
@@ -178,8 +198,6 @@ if ! descriptor_fields="$(read_descriptor \
 fi
 
 {
-  read -r descriptor_cluster
-  read -r descriptor_context
   read -r descriptor_release
   read -r descriptor_namespace
   read -r descriptor_api_service
@@ -226,10 +244,10 @@ done
 # lib.sh is what every script here acts through; the descriptor is what the
 # record is written from. A run where they disagree would install one release
 # and certify another, or describe a cluster it did not act on.
-[ "${descriptor_cluster}" = "${INFEROPS_CLUSTER_NAME}" ] ||
-  inferops::fail "the descriptor names cluster '${descriptor_cluster}' and these scripts operate '${INFEROPS_CLUSTER_NAME}'."
-[ "${descriptor_context}" = "${INFEROPS_KUBE_CONTEXT}" ] ||
-  inferops::fail "the descriptor names context '${descriptor_context}' and these scripts operate '${INFEROPS_KUBE_CONTEXT}'."
+[ "${descriptor_cluster}" = "${INFEROPS_TARGET_CLUSTER_NAME}" ] ||
+  inferops::fail "for provider '${INFEROPS_TARGET_PROVIDER}' the descriptor names cluster '${descriptor_cluster}' and the verified target is '${INFEROPS_TARGET_CLUSTER_NAME}'."
+[ "${descriptor_context}" = "${INFEROPS_TARGET_CONTEXT}" ] ||
+  inferops::fail "for provider '${INFEROPS_TARGET_PROVIDER}' the descriptor names context '${descriptor_context}' and the verified target is '${INFEROPS_TARGET_CONTEXT}'."
 [ "${descriptor_release}" = "${INFEROPS_RELEASE_NAME}" ] ||
   inferops::fail "the descriptor names release '${descriptor_release}' and these scripts operate '${INFEROPS_RELEASE_NAME}'."
 [ "${descriptor_namespace}" = "${INFEROPS_RELEASE_NAMESPACE}" ] ||
@@ -259,20 +277,20 @@ now_ms() { printf '%s' "$(($(date +%s%N) / 1000000))"; }
 collect_diagnostics() {
   mkdir -p "${diag_dir}"
   inferops::warn "collecting diagnostics into .artifacts/kubernetes-certification/"
-  inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/releases.txt" 2>&1 || true
-  inferops::helm history "${INFEROPS_RELEASE_NAME}" \
+  inferops::target_helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/releases.txt" 2>&1 || true
+  inferops::target_helm history "${INFEROPS_RELEASE_NAME}" \
     --namespace "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/history.txt" 2>&1 || true
-  inferops::kubectl get all,configmap,serviceaccount,pvc,endpointslices \
+  inferops::target_kubectl get all,configmap,serviceaccount,pvc,endpointslices \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -o wide >"${diag_dir}/get-all.txt" 2>&1 || true
-  inferops::kubectl describe pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/describe-pods.txt" 2>&1 || true
-  inferops::kubectl get events -n "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_kubectl describe pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/describe-pods.txt" 2>&1 || true
+  inferops::target_kubectl get events -n "${INFEROPS_RELEASE_NAMESPACE}" \
     --sort-by=.lastTimestamp >"${diag_dir}/events.txt" 2>&1 || true
   # Container logs, tail-bounded. The runtime prints its own load progress and
   # the API prints its structured records; both are the first place to look and
   # neither carries a prompt or a completion.
-  inferops::kubectl logs -n "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_kubectl logs -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -l "${INFEROPS_RELEASE_SELECTOR}" --all-containers --tail="${INFEROPS_LOG_TAIL}" >"${diag_dir}/release.log" 2>&1 || true
-  inferops::kubectl top pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/top-pods.txt" 2>&1 || true
+  inferops::target_kubectl top pods -n "${INFEROPS_RELEASE_NAMESPACE}" >"${diag_dir}/top-pods.txt" 2>&1 || true
 }
 
 close_forward() {
@@ -303,7 +321,7 @@ trap on_exit INT TERM EXIT
 
 # --- refuse to certify over an existing release ------------------------------
 
-if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
+if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   # Upgrading an existing release would make this record mean something other
   # than what it says: it reports on an install of a known-good chart into a
@@ -330,7 +348,7 @@ inferops::log "prerequisites applied in ${prerequisites_ms} ms."
 # answered.
 inferops::claim_count() {
   local output
-  if ! output="$(inferops::kubectl get pvc \
+  if ! output="$(inferops::target_kubectl get pvc \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -o name)"; then
     return 1
   fi
@@ -356,7 +374,7 @@ inferops::section "Installing the release"
 # Terraform's, and Helm creating it would make this release's uninstall delete a
 # prerequisite.
 install_started="$(now_ms)"
-inferops::helm install "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
+inferops::target_helm install "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --values "${values_path}" \
   --timeout "$((install_budget_ms / 1000))s"
@@ -372,7 +390,7 @@ inferops::section "Waiting for the serving runtime to load the model"
 # the image pull, the init container's hash read of a 1.83 GB artifact, and the
 # load itself. A timeout here is a failure with a place to look, not a hang.
 runtime_started="$(now_ms)"
-inferops::kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
+inferops::target_kubectl rollout status "deployment/${descriptor_runtime_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((runtime_rollout_budget_ms / 1000))s"
 runtime_ready_ms=$(($(now_ms) - runtime_started))
 inferops::log "the serving runtime became ready in ${runtime_ready_ms} ms."
@@ -380,12 +398,12 @@ inferops::log "the serving runtime became ready in ${runtime_ready_ms} ms."
 inferops::section "Waiting for the platform API"
 
 api_started="$(now_ms)"
-inferops::kubectl rollout status "deployment/${descriptor_api_deployment}" \
+inferops::target_kubectl rollout status "deployment/${descriptor_api_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((api_rollout_budget_ms / 1000))s"
 api_ready_ms=$(($(now_ms) - api_started))
 inferops::log "the platform API became ready in ${api_ready_ms} ms."
 
-inferops::kubectl get deployments,services,pods,endpointslices \
+inferops::target_kubectl get deployments,services,pods,endpointslices \
   -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o wide
 
 # --- the release's own in-cluster check --------------------------------------
@@ -397,10 +415,23 @@ inferops::section "Running the release's connection test"
 # establish: that the Service names resolve, that the Services select something,
 # and that what is behind them answers. The completion assertion below is the
 # other half, and neither substitutes for the other.
+#
+# Without `--logs`, and that is not an oversight. The chart deletes a test pod
+# that succeeded -- `hook-delete-policy: hook-succeeded`, so that a passing test
+# leaves no residue -- and keeps one that failed, because its logs are the only
+# record of what did not answer. `helm test --logs` fetches the pod's logs after
+# the test completes, by which time Helm has already deleted the pod it is
+# asking about, and the command fails with `unable to get pod logs ... not
+# found`. A test that passed is then reported as a failed certification.
+#
+# So the two settings were in direct contradiction and only an execution could
+# show it: V1-S3-011 hit it on the first run that got this far. The logs are not
+# lost. The failure path is where they are wanted, the pod is still there on
+# that path, and collect_diagnostics above reads every pod carrying the release
+# selector -- the test pod included.
 release_test_started="$(now_ms)"
-inferops::helm test "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
-  --logs \
   --timeout "$((release_test_budget_ms / 1000))s"
 release_test_ms=$(($(now_ms) - release_test_started))
 release_test_passed="true"
@@ -427,12 +458,12 @@ require_query() {
 }
 
 deployment_field() {
-  inferops::kubectl get "deployment/$1" -n "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_kubectl get "deployment/$1" -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -o "jsonpath=$2"
 }
 
 configmap_field() {
-  inferops::kubectl get "configmap/${descriptor_configmap}" \
+  inferops::target_kubectl get "configmap/${descriptor_configmap}" \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -o "jsonpath=$1"
 }
 
@@ -441,7 +472,7 @@ configmap_field() {
 # which is also the only form that reports both the client and the server in one
 # call.
 kube_versions() {
-  inferops::kubectl version -o json 2>/dev/null | python -c '
+  inferops::target_kubectl version -o json 2>/dev/null | inferops::python -c '
 import json, sys
 
 document = json.load(sys.stdin)
@@ -461,22 +492,23 @@ fi
 [ -n "${kubectl_version}" ] && [ -n "${server_version}" ] ||
   inferops::fail "the kubectl or API server version came back empty. A certification record names the environment it ran in."
 
-node_image_digest="$(inferops::running_node_digest)"
+node_image_digest="${INFEROPS_TARGET_NODE_IMAGE_DIGEST}"
 [ -n "${node_image_digest}" ] ||
   inferops::fail "the control-plane node's image digest could not be established. A C2 record names the cluster it ran on by digest, and a node image with no repository digest -- one built or loaded locally -- cannot be named that way."
 
-INFEROPS_FACT_CLUSTER_NAME="${INFEROPS_CLUSTER_NAME}"
-INFEROPS_FACT_CONTEXT="${INFEROPS_KUBE_CONTEXT}"
+INFEROPS_FACT_PROVIDER="${INFEROPS_TARGET_PROVIDER}"
+INFEROPS_FACT_CLUSTER_NAME="${INFEROPS_TARGET_CLUSTER_NAME}"
+INFEROPS_FACT_CONTEXT="${INFEROPS_TARGET_CONTEXT}"
 INFEROPS_FACT_SERVER_VERSION="${server_version}"
 INFEROPS_FACT_NODE_DIGEST="${node_image_digest}"
 INFEROPS_FACT_KUBECTL="${kubectl_version}"
-INFEROPS_FACT_HELM="$(require_query "the helm version" inferops::helm version --short)"
+INFEROPS_FACT_HELM="$(require_query "the helm version" inferops::target_helm version --short)"
 INFEROPS_FACT_TERRAFORM="$(require_query "the terraform version" \
   terraform version -json)"
 INFEROPS_FACT_RELEASE_NAME="${INFEROPS_RELEASE_NAME}"
 INFEROPS_FACT_NAMESPACE="${INFEROPS_RELEASE_NAMESPACE}"
 INFEROPS_FACT_RELEASE_JSON="$(require_query "the installed release's own metadata" \
-  inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
+  inferops::target_helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --filter "^${INFEROPS_RELEASE_NAME}\$" -o json)"
 INFEROPS_FACT_PROFILE="$(require_query "the rendered serving profile" \
   configmap_field '{.metadata.labels.inferops\.io/profile}')"
@@ -540,7 +572,7 @@ INFEROPS_FACT_API_READY_MS="${api_ready_ms}"
 INFEROPS_FACT_RUNTIME_READY_MS="${runtime_ready_ms}"
 INFEROPS_FACT_RELEASE_TEST_MS="${release_test_ms}"
 INFEROPS_FACT_RELEASE_TEST_PASSED="${release_test_passed}"
-INFEROPS_FACT_MODEL_SHA256="$(require_query "the pinned model hash" python -c '
+INFEROPS_FACT_MODEL_SHA256="$(require_query "the pinned model hash" inferops::python -c '
 import sys
 sys.path.insert(0, sys.argv[1])
 from tools.model_acquisition import load_manifest
@@ -548,7 +580,8 @@ from tools.model_acquisition import load_manifest
 print(load_manifest().sha256)
 ' "$(inferops::native_path "${INFEROPS_ROOT}")")"
 
-export INFEROPS_FACT_CLUSTER_NAME INFEROPS_FACT_CONTEXT INFEROPS_FACT_SERVER_VERSION \
+export INFEROPS_FACT_PROVIDER \
+  INFEROPS_FACT_CLUSTER_NAME INFEROPS_FACT_CONTEXT INFEROPS_FACT_SERVER_VERSION \
   INFEROPS_FACT_NODE_DIGEST INFEROPS_FACT_HELM INFEROPS_FACT_KUBECTL \
   INFEROPS_FACT_TERRAFORM INFEROPS_FACT_RELEASE_NAME INFEROPS_FACT_NAMESPACE \
   INFEROPS_FACT_RELEASE_JSON INFEROPS_FACT_PROFILE INFEROPS_FACT_SERVICE_VERSION \
@@ -616,6 +649,7 @@ terraform = json.loads(fact("TERRAFORM")) if fact("TERRAFORM") else {}
 # in what helm reports.
 document = {
     "cluster": {
+        "provider": fact("PROVIDER"),
         "name": fact("CLUSTER_NAME"),
         "context": fact("CONTEXT"),
         "serverVersion": fact("SERVER_VERSION"),
@@ -697,7 +731,7 @@ inferops::section "Forwarding the API Service"
 # and it is not covered by the release's own NetworkPolicy -- which is why the
 # in-cluster connection test above is run as well rather than instead.
 mkdir -p "${diag_dir}"
-inferops::kubectl port-forward "service/${descriptor_api_service}" \
+inferops::target_kubectl port-forward "service/${descriptor_api_service}" \
   "${forward_port}:${descriptor_api_port}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --address "${descriptor_host}" >"${forward_log}" 2>&1 &
 forward_pid="$!"
@@ -742,7 +776,7 @@ close_forward
 
 inferops::section "Uninstalling the release"
 
-inferops::helm uninstall "${INFEROPS_RELEASE_NAME}" \
+inferops::target_helm uninstall "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --wait \
   --timeout "$((uninstall_budget_ms / 1000))s"
@@ -754,22 +788,40 @@ inferops::section "Residue"
 # of Helm's own bookkeeping. `pvc` is in the list on purpose: a chart that
 # created a claim would show up here, and this chart must neither create one nor
 # delete one.
-if ! remaining="$(inferops::kubectl get \
-  deployments,replicasets,services,configmaps,serviceaccounts,pods,networkpolicies,pvc \
-  -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o name)"; then
-  inferops::fail "could not ask what survived the uninstall. An unanswered query is not an empty result."
-fi
-if [ -n "${remaining}" ]; then
-  printf '%s\n' "${remaining}"
-  inferops::fail "objects labelled '${INFEROPS_RELEASE_SELECTOR}' survived the uninstall."
-fi
+#
+# Asked repeatedly inside a budget rather than once, because `helm uninstall
+# --wait` does not answer it. Helm waits for the objects it deleted itself --
+# the Deployments, the Services -- and a Deployment's pods are not among them:
+# they are removed by the garbage collector once their owner is gone, on the
+# controller manager's schedule and not on Helm's. Asking the instant Helm
+# returns therefore reports three terminating pods as residue, which is what
+# V1-S3-011's first uninstall did. They were gone moments later.
+#
+# The budget is the uninstall budget, reused rather than invented: the same
+# descriptor field bounds how long the removal may take, and a pod still present
+# at that deadline is residue by any reading. Nothing here is waived -- what
+# changes is when the question is final, not what counts as an answer.
+residue_deadline=$((SECONDS + uninstall_budget_ms / 1000))
+while :; do
+  if ! remaining="$(inferops::target_kubectl get \
+    deployments,replicasets,services,configmaps,serviceaccounts,pods,networkpolicies,pvc \
+    -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o name)"; then
+    inferops::fail "could not ask what survived the uninstall. An unanswered query is not an empty result."
+  fi
+  [ -n "${remaining}" ] || break
+  if [ "${SECONDS}" -ge "${residue_deadline}" ]; then
+    printf '%s\n' "${remaining}"
+    inferops::fail "objects labelled '${INFEROPS_RELEASE_SELECTOR}' survived the uninstall by more than the ${uninstall_budget_ms} ms this certification allows it."
+  fi
+  sleep 2
+done
 
-if inferops::helm status "${INFEROPS_RELEASE_NAME}" \
+if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
   inferops::fail "helm still reports a release named '${INFEROPS_RELEASE_NAME}' after the uninstall."
 fi
 
-inferops::kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1 ||
+inferops::target_kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1 ||
   inferops::fail "namespace '${INFEROPS_RELEASE_NAMESPACE}' was removed by an uninstall. It is a Terraform prerequisite and must outlive the release."
 
 if ! claims_after="$(inferops::claim_count)"; then

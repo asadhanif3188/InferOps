@@ -10,6 +10,76 @@ once versioned releases begin.
 
 ### Added
 
+- **The Kubernetes paved road is certified on Docker Desktop, end to end, for the first
+  time.** V1-S3-011-PR1 executes the post-S3-010 path on the V1 reference provider rather
+  than rendering it: the target is verified, the API and model-seed images are prepared,
+  Terraform applies and re-applies the prerequisites with no changes, Helm installs the
+  real profile, the runtime loads the pinned weights from the claim, and one real
+  completion returns through the release's own Service — HTTP 200, 43 tokens, content not
+  retained, adapter kind `real`, artifact hash compared inside the cluster. The record
+  names its provider (`kubernetes.cluster.provider: docker-desktop`) and may not be read
+  as a kind result.
+  [The full record is here](docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md).
+
+  **The two capabilities the contract owed this story are established, by measurement.**
+  Docker Desktop's Kubernetes does *not* share the local engine's image store — an image
+  the engine holds is invisible to the node by tag and by digest alike, and so is one the
+  engine pulled from a registry. `kind load` is not the mechanism either, because the kind
+  CLI finds nodes through `docker ps --filter` and Docker Desktop's API proxy filters its
+  own containers out of `docker ps`. What works is importing into the node's own
+  containerd and then creating the `repository@digest` *name* containerd resolves by —
+  without that tag step the bytes are present, the digest is right, and the reference the
+  chart pins still does not resolve. `inferops::target_load_image` now owns that choice
+  for both providers, and `api-image.sh` and `model-seed-image.sh` no longer name a
+  mechanism at all. Capacity is recorded too: the node is given effectively the whole
+  Docker Desktop virtual machine, so a gate must read the node's own allocatable and what
+  is already requested on it rather than the engine's total.
+
+  **Docker Desktop's identity guard is no longer weaker in the way ADR 0011 left open.**
+  The check the contract carried as `undecided` — binding the API server's nodes to
+  containers on this machine's engine — is implemented: Docker Desktop provisions its
+  Kubernetes with kind, and `desktop-control-plane` carries
+  `io.x-k8s.kind.cluster=desktop`. Those labels are kind's own generic ones and settle
+  nothing on their own — an ordinary `kind create cluster --name desktop` reproduces them
+  exactly — so the check that carries the weight is a port: the container must publish
+  the very API server port the verified kubeconfig dials, which ties the connection being
+  verified to the container being inspected. That refuses a remote or foreign API server,
+  and refuses a kind cluster under any name other than `desktop`. It **cannot** refuse a
+  kind cluster the operator themselves named `desktop` reached through a context they
+  named `docker-desktop`, because there that cluster genuinely is the one being dialled;
+  nor does it pin `DOCKER_HOST`, so "this machine's engine" is really "the engine this
+  `docker` CLI is configured to reach". Both are recorded in the check's own `gap` and
+  accepted as **EX-06** in
+  [the deferred-risk register](docs/security/deferred-risks.md) rather than left for a
+  reader to notice. Asking *by name* instead of enumerating, which is what Docker
+  Desktop's API proxy forces, is why the node-count and node-name checks are relied on
+  together with it.
+
+  **The certification workflows are provider-neutral.** `kubernetes-certification.sh` and
+  `kubernetes-multi-replica-certification.sh` no longer refuse every target but the one
+  kind cluster their descriptors named: both descriptors now describe every supported
+  provider, a run is certified against the entry for the provider it verified, and the
+  node image is a *pin* only where InferOps chose it — Docker Desktop's is recorded and
+  not enforced, because comparing it to a digest this project never selected would be
+  enforcing somebody else's. Every collected fact names the provider it was collected on.
+
+  **Multi-replica certification refused at the capacity gate, and the refusal is the
+  evidence.** The reference host is short by about 165 MiB of uncommitted cluster memory,
+  held by an unrelated project's workloads that are not InferOps's to remove. The gate was
+  not weakened, the replica count was not reduced to fit, and no multi-replica claim is
+  made anywhere in this change. The refusal now *writes a record*: it previously printed
+  to a terminal and left whatever diagnostics file an older run had put on disk as the
+  only artefact, describing a different run on a different day.
+
+  **The telemetry collector is proved to collect.** A new
+  `scripts/environment/telemetry-collection-verify.sh` installs the release, sends a small
+  number of real requests so that counters are non-zero, and asks the running collector
+  whether it discovered and scraped both InferOps jobs and whether it can evaluate every
+  accepted correlation query. Until now the query record's own `verificationStatus` said
+  `collected: false` and "No Prometheus has parsed, loaded, or evaluated any expression in
+  this record." Requests sent at this stage are not a measurement and no latency,
+  throughput, or capacity figure is published from them.
+
 - **Provider-aware cluster verification is implemented, for both `kind` and Docker
   Desktop.** V1-S3-010-PR2 builds the mechanism
   [ADR 0011](docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
@@ -654,6 +724,55 @@ once versioned releases begin.
   silently accepted.
 
 ### Fixed
+
+- **Five defects that only an execution could find, and one the tests could not see.**
+  Each was invisible to a render, a lint, or a schema check, and each was found by
+  V1-S3-011-PR1 installing this chart into a real cluster for the first time.
+
+  1. **Embedded Python readers returned a trailing carriage return on Windows.** A Windows
+     Python writes CRLF from `print`, and every value these readers produce goes straight
+     into a shell variable; only the last field of a multi-line read escapes it. The
+     symptom was "the certification descriptor's `descriptor_api_port` is not a number",
+     which reads like a descriptor defect and is not one. Fixed once, in
+     `inferops::python`, and routed through it at every reader that produces a value. The
+     loopback socket probes are deliberately left alone: they answer with an exit status
+     and print nothing.
+  2. **The chart's `pre-install` hook named a ServiceAccount that did not exist yet.** Helm
+     applies a phase's hooks before the release manifest, so the runtime account the model
+     acquisition Job named had not been created when the Job was: the API server refused
+     the Job outright and the install failed reporting only `failed pre-install: timed out
+     waiting for the condition`. **On a cluster with no prior release this chart could not
+     install at all.** The Job now has its own account, created by the same hook phase at
+     a lower weight and removed by the same delete policy, so its lifetime is the hook's
+     and `helm uninstall` has nothing of it left to remove.
+  3. **The telemetry collector could never start.** It was passed
+     `--web.enable-lifecycle=false`; Prometheus parses its command line with kingpin,
+     where a boolean flag takes no value, so the process exited with `unexpected false`
+     before it opened a port. Every probe failed and the release's connection test reported
+     a refused connection to the collector Service — three steps from the cause. Both
+     refusals are now spelled `--no-<flag>`, checked against the pinned image.
+  4. **`helm test --logs` reported a passing test as a failure.** The chart deletes a test
+     pod that succeeded, so `--logs` then failed fetching logs from a pod that was gone.
+     The two settings contradicted each other directly. `--logs` is dropped from all seven
+     call sites; a failed test pod is still kept, and the diagnostics collector reads it.
+  5. **The residue check raced Kubernetes' garbage collector.** `helm uninstall --wait`
+     waits for the objects Helm deleted itself, and a Deployment's pods are removed
+     afterwards by the garbage collector on its own schedule — so asking the instant Helm
+     returned counted three terminating pods as residue. Both certification scripts now
+     ask repeatedly inside the uninstall budget their descriptors already state; anything
+     present at that deadline is still residue.
+  6. **A collected fact that was assigned and not exported reached the writer as empty.**
+     The existing round-trip test could not see it, because it supplies the writer's
+     environment itself rather than inheriting what the script exports. Both certification
+     test files now assert that every `INFEROPS_FACT_*` a script assigns is also exported.
+
+- **`test_no_state_and_no_plan_was_committed` failed on any machine that had actually run
+  Terraform.** It globbed the filesystem for `*.tfstate`, which exists — ignored and
+  untracked — the moment somebody applies the prerequisites locally, so it passed on the
+  machines that had not done the thing this repository is trying to get done. It now asks
+  `git ls-files`, which is the question its name always claimed to ask, and additionally
+  asserts that the ignore rules keeping a careless `git add` from tracking one are in
+  place.
 
 - **The network policy this release renders is not enforced, and now the register
   says so.** `DR-04` had carried one question since it was written: does the local

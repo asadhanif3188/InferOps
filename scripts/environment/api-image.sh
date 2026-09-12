@@ -85,12 +85,12 @@ case "${action}" in
   load)
     inferops::require_engine
     # The provider-aware target this project consumes rather than creates
-    # (docs/environment/local-cluster-provider-contract.md). `kind load` names a
-    # cluster and would happily name somebody else's, so this re-verifies the
-    # explicitly selected target before touching it.
+    # (docs/environment/local-cluster-provider-contract.md). Every mechanism
+    # that puts an image into a node names the node it puts it into, and would
+    # happily name somebody else's, so this re-verifies the explicitly selected
+    # target before touching it. Which mechanism that is belongs to the verified
+    # target rather than to this script: see inferops::target_load_image.
     inferops::resolve_target
-    inferops::require_target_capability imagePreparation kind-load \
-      "${INFEROPS_TARGET_IMAGE_PREPARATION}"
 
     inferops::api_image_digest >/dev/null ||
       inferops::fail "no image at ${INFEROPS_API_IMAGE_REF}. Build it first: scripts/environment/api-image.sh build"
@@ -98,22 +98,17 @@ case "${action}" in
     digest="$(inferops::api_image_digest)" ||
       inferops::fail "no manifest digest for ${INFEROPS_API_IMAGE_REF}; build it again"
 
-    inferops::section "kind load docker-image"
-    kind load docker-image "${INFEROPS_API_IMAGE_REF}" \
-      --name "${INFEROPS_TARGET_CLUSTER_NAME}"
-
     # The load is not the claim. What the chart asks containerd for is
-    # `repository@digest`, so that exact reference is resolved inside the node
-    # before anything reports the image available. A load that succeeded and a
-    # reference that does not resolve is the failure this catches, and catching
-    # it here costs one command instead of a rollout that never schedules.
-    inferops::section "verify the reference the chart will use"
-    if ! docker exec "${INFEROPS_TARGET_CLUSTER_NAME}-control-plane" \
-      crictl inspecti "${INFEROPS_API_IMAGE_REPOSITORY}@${digest}" >/dev/null 2>&1; then
-      inferops::fail "the image loaded and '${INFEROPS_API_IMAGE_REPOSITORY}@${digest}' does not resolve inside the node. Deploying it would fail as ErrImageNeverPull. Do not write this digest into any values file."
-    fi
+    # `repository@digest`, and inferops::target_load_image resolves that exact
+    # reference inside the node before reporting the image available -- by
+    # whichever mechanism the verified provider implements. A load that
+    # succeeded and a reference that does not resolve is the failure it catches,
+    # and catching it there costs one command instead of a rollout that never
+    # schedules.
+    inferops::target_load_image "${INFEROPS_API_IMAGE_REF}" \
+      "${INFEROPS_API_IMAGE_REPOSITORY}" "${digest}"
 
-    inferops::log "loaded into '${INFEROPS_TARGET_CLUSTER_NAME}'; the digest reference resolves inside the node. The real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched."
+    inferops::log "the real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched."
     ;;
 
   digest)

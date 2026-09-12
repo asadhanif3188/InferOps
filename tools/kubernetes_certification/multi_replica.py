@@ -106,6 +106,7 @@ from .core import (
     Certification,
     CertificationError,
     CertificationFailed,
+    ClusterTarget,
     EvidenceUnwritable,
     ModelCacheExpectation,
     ModelCacheFacts,
@@ -114,6 +115,7 @@ from .core import (
     _integer,
     _model_cache,
     _object,
+    _read_clusters,
     _require_keys,
     _string,
     _workload,
@@ -411,9 +413,7 @@ class MultiReplicaCertification:
     certification_ref: str
     procedure_ref: str
     single_replica_certification_ref: str
-    cluster_name: str
-    cluster_context: str
-    node_image_digest: str
+    clusters: tuple[ClusterTarget, ...]
     release: MultiReplicaRelease
     model_cache: ModelCacheExpectation
     capacity: CapacityRequirement
@@ -675,7 +675,7 @@ def load_multi_replica_certification(
             "limitations",
         },
     )
-    _require_keys(cluster, "cluster", {"name", "context", "nodeImageDigest"})
+    _require_keys(cluster, "cluster", {"providers"})
     _require_keys(
         release,
         "release",
@@ -834,11 +834,7 @@ def load_multi_replica_certification(
             record.get("singleReplicaCertificationRef"),
             "singleReplicaCertificationRef",
         ),
-        cluster_name=_string(cluster.get("name"), "cluster.name"),
-        cluster_context=_string(cluster.get("context"), "cluster.context"),
-        node_image_digest=_string(
-            cluster.get("nodeImageDigest"), "cluster.nodeImageDigest"
-        ),
+        clusters=_read_clusters(cluster),
         release=_read_release(release),
         model_cache=ModelCacheExpectation(
             claim_name=_string(model_cache.get("claimName"), "modelCache.claimName"),
@@ -989,14 +985,13 @@ def _validate_against_single_replica(
     """
     release = certification.release
     budgets = certification.budgets
-    if (
-        certification.cluster_name != single.cluster.name
-        or certification.cluster_context != single.cluster.context
-        or certification.node_image_digest != single.cluster.node_image_digest
-    ):
+    # Compared as a whole set rather than field by field: the two descriptors
+    # must describe the same providers on the same terms, so that a target
+    # certified at one replica and a target certified at two are the same target.
+    if certification.clusters != single.clusters:
         raise CertificationError(
-            "the multi-replica descriptor names a cluster the single-replica "
-            "certification does not"
+            "the multi-replica descriptor names cluster targets the "
+            "single-replica certification does not"
         )
     if (
         release.name != single.release.name
@@ -1145,8 +1140,11 @@ def _validate(certification: MultiReplicaCertification, single: Certification) -
         raise CertificationError("the request driver image must be named by digest")
     if any(character in plan.prompt for character in "\r\n"):
         raise CertificationError("the certification prompt must be one line")
-    if not certification.node_image_digest.startswith("sha256:"):
-        raise CertificationError("the pinned node image must be named by digest")
+    for entry in certification.clusters:
+        if entry.node_image_pinned and not entry.node_image_digest.startswith(
+            "sha256:"
+        ):
+            raise CertificationError("the pinned node image must be named by digest")
     if budgets.runtime_startup_ms < package.startup_budget_ms:
         raise CertificationError(
             "the runtime startup budget is below the adapter's own startup budget"
@@ -1450,6 +1448,7 @@ class ReplicaFacts:
 class MultiReplicaClusterFacts:
     """What the operating script measured, after this module has checked it."""
 
+    provider: str
     cluster_name: str
     kube_context: str
     server_version: str
@@ -1512,6 +1511,7 @@ def load_cluster_facts(
         )
 
     facts = MultiReplicaClusterFacts(
+        provider=reader.string(cluster.get("provider"), "cluster.provider"),
         cluster_name=reader.string(cluster.get("name"), "cluster.name"),
         kube_context=reader.string(cluster.get("context"), "cluster.context"),
         server_version=reader.string(
@@ -1707,17 +1707,37 @@ def _check_facts(
     manifest = load_manifest()
     target = certification.release
     budgets = certification.budgets
+    # The same three questions core.py's single-replica check asks, in the same
+    # order and for the same reasons: which provider, then which cluster on it,
+    # then whether the node image is one InferOps pinned rather than one the
+    # provider chose for itself.
+    matches = [
+        entry for entry in certification.clusters if entry.provider_id == facts.provider
+    ]
+    if not matches:
+        raise CertificationFailed(
+            "the facts name an environment provider this certification does "
+            "not describe",
+            STAGE_PREREQUISITES,
+        )
+    cluster_target = matches[0]
     if (
-        facts.cluster_name != certification.cluster_name
-        or facts.kube_context != certification.cluster_context
+        facts.cluster_name != cluster_target.name
+        or facts.kube_context != cluster_target.context
     ):
         raise CertificationFailed(
             "the facts describe a cluster this certification does not name",
             STAGE_PREREQUISITES,
         )
+    if not facts.node_image_digest:
+        raise CertificationFailed(
+            "the facts do not name the node image the run used",
+            STAGE_PREREQUISITES,
+        )
     if (
         certification.require_pinned_node_image
-        and facts.node_image_digest != certification.node_image_digest
+        and cluster_target.node_image_pinned
+        and facts.node_image_digest != cluster_target.node_image_digest
     ):
         raise CertificationFailed(
             "the cluster is running a node image that is not the pinned one",
@@ -2652,6 +2672,7 @@ def result_document(result: MultiReplicaResult) -> dict[str, object]:
         },
         "kubernetes": {
             "cluster": {
+                "provider": facts.provider,
                 "name": facts.cluster_name,
                 "context": facts.kube_context,
                 "serverVersion": facts.server_version,

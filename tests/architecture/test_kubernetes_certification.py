@@ -136,7 +136,13 @@ def rendered(kind: str, component: str) -> dict[str, Any]:
     return matches[0]
 
 
-def _mutated(path: tuple[str, ...], value: object) -> dict[str, Any]:
+def _mutated(path: tuple[str | int, ...], value: object) -> dict[str, Any]:
+    """A copy of the descriptor with one member replaced.
+
+    An `int` in the path indexes a list, which the descriptor's
+    `cluster.providers` is: a member is addressed the same way whether the
+    container it lives in is keyed by name or by position.
+    """
     document = copy.deepcopy(CERTIFICATION_DOCUMENT)
     cursor: Any = document
     for member in path[:-1]:
@@ -163,6 +169,7 @@ def facts_document(**overrides: Any) -> dict[str, Any]:
     """
     document: dict[str, Any] = {
         "cluster": {
+            "provider": "kind",
             "name": lib_constant("INFEROPS_CLUSTER_NAME"),
             "context": kube_context(),
             "serverVersion": "v1.34.8",
@@ -387,19 +394,54 @@ def test_the_evidence_label_is_published_and_the_class_is_not_a_new_one() -> Non
     assert certification.evidence_label in boundary
 
 
+def kind_target(certification: core.Certification) -> core.ClusterTarget:
+    """The descriptor's kind entry, which is the one `lib.sh` pins by name."""
+    (target,) = [
+        entry for entry in certification.clusters if entry.provider_id == "kind"
+    ]
+    return target
+
+
 def test_the_descriptor_names_the_cluster_these_scripts_operate() -> None:
+    target = kind_target(core.load_certification())
+
+    assert target.name == lib_constant("INFEROPS_CLUSTER_NAME")
+    assert target.context == kube_context()
+
+
+def test_the_descriptor_describes_every_provider_lib_supports() -> None:
+    """A provider a mutating workflow can verify and a descriptor cannot name is
+    a target that passes verification and is then refused for describing
+    nothing. The two lists are the same list."""
     certification = core.load_certification()
 
-    assert certification.cluster.name == lib_constant("INFEROPS_CLUSTER_NAME")
-    assert certification.cluster.context == kube_context()
+    assert {entry.provider_id for entry in certification.clusters} == set(
+        lib_constant("INFEROPS_SUPPORTED_PROVIDERS").split()
+    )
 
 
 def test_the_descriptor_names_the_pinned_node_image() -> None:
     """`lib.sh` states the rule: a pin checked one way at creation and another
     way afterwards is two pins."""
-    assert core.load_certification().cluster.node_image_digest == lib_constant(
+    assert kind_target(core.load_certification()).node_image_digest == lib_constant(
         "INFEROPS_NODE_IMAGE_DIGEST"
     )
+
+
+def test_only_the_provider_inferops_chooses_the_node_image_for_is_pinned() -> None:
+    """Docker Desktop's node image is bound to the Docker Desktop release.
+    Comparing it to a digest this project never selected would refuse every run
+    after any Docker Desktop update, and would be enforcing somebody else's pin.
+    The digest is still read and still written into the record."""
+    certification = core.load_certification()
+    pinned = {
+        entry.provider_id for entry in certification.clusters if entry.node_image_pinned
+    }
+
+    assert pinned == {"kind"}
+    for entry in certification.clusters:
+        if not entry.node_image_pinned:
+            assert entry.node_image_digest == ""
 
 
 def test_the_descriptor_names_the_release_these_scripts_operate() -> None:
@@ -655,9 +697,44 @@ def test_an_api_service_the_release_name_cannot_produce_is_refused(
 
 
 def test_a_node_image_named_by_tag_is_refused(tmp_path: Path) -> None:
-    document = _mutated(("cluster", "nodeImageDigest"), "kindest/node:v1.34.8")
+    document = _mutated(
+        ("cluster", "providers", 0, "nodeImage", "digest"), "kindest/node:v1.34.8"
+    )
 
     with pytest.raises(core.CertificationError, match="named by digest"):
+        core.load_certification(_written(tmp_path, document))
+
+
+def test_an_unpinned_node_image_carrying_a_digest_is_refused(
+    tmp_path: Path,
+) -> None:
+    """A digest written beside `pinned: false` reads as a pin to everyone who
+    does not also read the flag, and nothing would ever compare it."""
+    document = _mutated(
+        ("cluster", "providers", 1, "nodeImage", "digest"),
+        "sha256:" + "0" * 64,
+    )
+
+    with pytest.raises(core.CertificationError, match="must not carry a digest"):
+        core.load_certification(_written(tmp_path, document))
+
+
+def test_a_provider_no_verification_can_establish_is_refused(
+    tmp_path: Path,
+) -> None:
+    """A descriptor naming a provider `lib.sh` does not support would describe a
+    target nothing in this repository can verify."""
+    document = _mutated(("cluster", "providers", 1, "providerId"), "minikube")
+
+    with pytest.raises(core.CertificationError, match="unsupported"):
+        core.load_certification(_written(tmp_path, document))
+
+
+def test_the_same_provider_named_twice_is_refused(tmp_path: Path) -> None:
+    """Two entries for one provider make the lookup's answer depend on order."""
+    document = _mutated(("cluster", "providers", 1, "providerId"), "kind")
+
+    with pytest.raises(core.CertificationError, match="names a provider twice"):
         core.load_certification(_written(tmp_path, document))
 
 
@@ -1095,6 +1172,29 @@ def embedded_facts_writer() -> str:
     return SCRIPT_TEXT[start : SCRIPT_TEXT.index("\nPYTHON\n", start)]
 
 
+def test_every_collected_fact_is_exported_to_the_writer() -> None:
+    """A fact the script assigns and does not export is a fact the writer reads
+    as empty.
+
+    The writer runs as a separate process and reads `INFEROPS_FACT_*` out of the
+    environment, so a variable that is merely assigned in the shell never reaches
+    it. The round trip below cannot see this: it supplies the environment itself
+    rather than inheriting whatever the script chose to export, so it passes on a
+    variable the script forgot. V1-S3-011 added `INFEROPS_FACT_PROVIDER`, missed
+    it out of the export list, and the run failed four stages later with
+    `cluster.provider is not a non-empty string` -- after installing a release
+    and loading a model.
+    """
+    assigned = set(re.findall(r"^(INFEROPS_FACT_\w+)=", SCRIPT_TEXT, re.M))
+    assert assigned, "no collected facts were found; this check read nothing"
+
+    start = SCRIPT_TEXT.index("export INFEROPS_FACT_")
+    statement = SCRIPT_TEXT[start : SCRIPT_TEXT.index("\n\n", start)]
+    exported = set(re.findall(r"INFEROPS_FACT_\w+", statement))
+
+    assert assigned <= exported, assigned - exported
+
+
 def collected_environment(**overrides: str) -> dict[str, str]:
     """What the script's own queries would have put in the environment."""
     manifest = load_manifest()
@@ -1106,6 +1206,7 @@ def collected_environment(**overrides: str) -> dict[str, str]:
     )
     environment = {
         "CLUSTER_NAME": lib_constant("INFEROPS_CLUSTER_NAME"),
+        "PROVIDER": "kind",
         "CONTEXT": kube_context(),
         "SERVER_VERSION": "v1.34.8",
         "NODE_DIGEST": lib_constant("INFEROPS_NODE_IMAGE_DIGEST"),
@@ -1622,8 +1723,15 @@ def descriptor_reads() -> tuple[list[str], list[str], list[str]]:
     arguments = SCRIPT_TEXT[start : SCRIPT_TEXT.index(')"; then', start)]
     fields = [word for word in arguments.replace("\\", " ").split() if "." in word]
 
+    # Scoped to the block that destructures `descriptor_fields`, not to
+    # everything before it: the provider-target lookup above it is a second
+    # `read -r` block, with its own two fields, and counting both against one
+    # field list would compare a list of sixteen with a list of eighteen.
     block_end = SCRIPT_TEXT.index('} <<<"${descriptor_fields}"')
-    variables = re.findall(r"^  read -r (\w+)$", SCRIPT_TEXT[:block_end], re.M)
+    block_start = SCRIPT_TEXT.rindex("\n{\n", 0, block_end)
+    variables = re.findall(
+        r"^  read -r (\w+)$", SCRIPT_TEXT[block_start:block_end], re.M
+    )
 
     loop_start = SCRIPT_TEXT.index("for field in ")
     guard = (
@@ -1646,7 +1754,30 @@ def test_the_script_assigns_every_descriptor_field_to_the_variable_it_named() ->
     fields, variables, guard = descriptor_reads()
 
     assert len(fields) == len(variables), list(zip(fields, variables, strict=False))
-    assert set(guard) == set(variables), set(guard).symmetric_difference(variables)
+    assert set(guard) == set(variables) | set(provider_reads()), set(
+        guard
+    ).symmetric_difference(set(variables) | set(provider_reads()))
+
+
+def provider_reads() -> list[str]:
+    """The variables the provider-target lookup assigns, in order."""
+    block_end = SCRIPT_TEXT.index('} <<<"${provider_target}"')
+    block_start = SCRIPT_TEXT.rindex("\n{\n", 0, block_end)
+    return re.findall(r"^  read -r (\w+)$", SCRIPT_TEXT[block_start:block_end], re.M)
+
+
+def test_the_provider_lookup_prints_exactly_what_it_assigns() -> None:
+    """The same positional property as the descriptor read below, applied to the
+    two-field lookup that selects the verified provider's target. The Python it
+    embeds prints one line per variable, in order."""
+    start = SCRIPT_TEXT.index("read_provider_target() {")
+    body = SCRIPT_TEXT[start : SCRIPT_TEXT.index("\n}\n", start)]
+    printed = re.findall(r'print\(provider\["(\w+)"\]\)', body)
+    variables = provider_reads()
+
+    assert len(printed) == len(variables)
+    assert [f"descriptor_{name}" for name in ("cluster", "context")] == variables
+    assert printed == ["name", "context"]
 
 
 def test_the_script_holds_every_number_it_computes_with_to_being_a_number() -> None:
@@ -1714,7 +1845,7 @@ def test_the_script_asks_kubectl_for_a_version_in_a_form_it_supports() -> None:
 
 def test_the_script_validates_the_descriptor_before_it_reaches_a_cluster() -> None:
     validated = SCRIPT_TEXT.index("tools.kubernetes_certification check")
-    installed = SCRIPT_TEXT.index("inferops::helm install")
+    installed = SCRIPT_TEXT.index("inferops::target_helm install")
 
     assert validated < installed
 
@@ -1728,14 +1859,14 @@ def test_the_script_asserts_the_target_cluster_before_installing() -> None:
     """V1-S3-010-PR2: the provider-aware inferops::resolve_target replaces the
     kind-pinned inferops::assert_target_cluster here."""
     asserted = SCRIPT_TEXT.index("inferops::resolve_target")
-    installed = SCRIPT_TEXT.index("inferops::helm install")
+    installed = SCRIPT_TEXT.index("inferops::target_helm install")
 
     assert asserted < installed
 
 
 def test_the_script_applies_the_prerequisites_before_installing() -> None:
     applied = SCRIPT_TEXT.index('terraform-prerequisites.sh" apply')
-    installed = SCRIPT_TEXT.index("inferops::helm install")
+    installed = SCRIPT_TEXT.index("inferops::target_helm install")
 
     assert applied < installed
 
@@ -1744,8 +1875,8 @@ def test_the_script_compares_the_descriptor_with_the_shared_target() -> None:
     """One cluster and one release named by two records, compared rather than
     assumed."""
     for comparison in (
-        'descriptor_cluster}" = "${INFEROPS_CLUSTER_NAME}',
-        'descriptor_context}" = "${INFEROPS_KUBE_CONTEXT}',
+        'descriptor_cluster}" = "${INFEROPS_TARGET_CLUSTER_NAME}',
+        'descriptor_context}" = "${INFEROPS_TARGET_CONTEXT}',
         'descriptor_release}" = "${INFEROPS_RELEASE_NAME}',
         'descriptor_namespace}" = "${INFEROPS_RELEASE_NAMESPACE}',
     ):
@@ -1772,7 +1903,7 @@ def test_the_script_counts_the_claims_on_both_sides_of_the_release() -> None:
     named. `helm-lifecycle.sh` already does this; the workflow that writes the
     C2 record may not be weaker than the one that does not."""
     before = SCRIPT_TEXT.index("claims_before=")
-    installed = SCRIPT_TEXT.index("inferops::helm install")
+    installed = SCRIPT_TEXT.index("inferops::target_helm install")
     after = SCRIPT_TEXT.index("claims_after=")
 
     assert before < installed < after

@@ -4,7 +4,7 @@ Status: verified against fixtures. **Nothing has been collected.** No collector,
 store, dashboard, or alerting path is selected — [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
 D8 leaves that to the open question [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 carries — nothing scrapes either InferOps endpoint, this chart has never been
-installed, and **no Prometheus has parsed, loaded, or evaluated any expression on this
+installed, and **until V1-S3-011-PR1 no Prometheus had parsed, loaded, or evaluated any expression on this
 page**.
 
 [The collection document](kubernetes-telemetry-collection.md) says what a collector

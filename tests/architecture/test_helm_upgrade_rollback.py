@@ -89,6 +89,12 @@ PROCEDURE_PATH = REPO_ROOT / "docs" / "environment" / "helm-upgrade-rollback.md"
 
 EXPERIMENT = load_experiment()
 CERTIFICATION = load_certification()
+
+# The kind entry of the experiment's provider list. This experiment's own script
+# is still pinned to kind -- porting its execution to a verified provider-neutral
+# target is V1-S3-011-PR2 -- so the facts a run of it produces name kind, and the
+# fixtures below are built from the entry that describes it.
+(KIND_TARGET,) = [entry for entry in EXPERIMENT.clusters if entry.provider_id == "kind"]
 MANIFEST = load_manifest()
 SCRIPT_TEXT = SCRIPT_PATH.read_text(encoding="utf-8")
 LIB_TEXT = LIB_PATH.read_text(encoding="utf-8")
@@ -184,7 +190,7 @@ def test_the_experiment_and_the_certification_describe_one_release() -> None:
     forwarded to a Service, the certified workflow does not know about, and then
     reported a rollback of "the release".
     """
-    assert EXPERIMENT.cluster == CERTIFICATION.cluster
+    assert EXPERIMENT.clusters == CERTIFICATION.clusters
     assert EXPERIMENT.release == CERTIFICATION.release
     assert EXPERIMENT.request_host == CERTIFICATION.request_host
     assert EXPERIMENT.request_path == CERTIFICATION.request_path
@@ -211,11 +217,9 @@ def test_a_shared_budget_is_the_certifications(member: str) -> None:
 
 
 def test_the_descriptor_names_the_cluster_the_scripts_operate() -> None:
-    assert EXPERIMENT.cluster.name == lib_constant("INFEROPS_CLUSTER_NAME")
-    assert EXPERIMENT.cluster.context == lib_constant("INFEROPS_KUBE_CONTEXT")
-    assert EXPERIMENT.cluster.node_image_digest == lib_constant(
-        "INFEROPS_NODE_IMAGE_DIGEST"
-    )
+    assert KIND_TARGET.name == lib_constant("INFEROPS_CLUSTER_NAME")
+    assert KIND_TARGET.context == lib_constant("INFEROPS_KUBE_CONTEXT")
+    assert KIND_TARGET.node_image_digest == lib_constant("INFEROPS_NODE_IMAGE_DIGEST")
     assert EXPERIMENT.release.name == lib_constant("INFEROPS_RELEASE_NAME")
     assert EXPERIMENT.release.namespace == lib_constant("INFEROPS_RELEASE_NAMESPACE")
 
@@ -532,10 +536,11 @@ def lifecycle_document(
 ) -> dict[str, Any]:
     document: dict[str, Any] = {
         "cluster": {
-            "name": EXPERIMENT.cluster.name,
-            "context": EXPERIMENT.cluster.context,
+            "provider": KIND_TARGET.provider_id,
+            "name": KIND_TARGET.name,
+            "context": KIND_TARGET.context,
             "serverVersion": "v1.34.8",
-            "nodeImageDigest": EXPERIMENT.cluster.node_image_digest,
+            "nodeImageDigest": KIND_TARGET.node_image_digest,
         },
         "tooling": {"helm": "v3.16.3+g1234567", "kubectl": "v1.34.1"},
         "release": {

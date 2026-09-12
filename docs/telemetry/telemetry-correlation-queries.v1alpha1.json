@@ -13,12 +13,13 @@
   "evidenceRef": "docs/proof/telemetry/v1-s3-007-pr2-validation.md",
   "queryEvidenceRef": "docs/proof/telemetry/v1-s3-007-pr2-query-evaluation.md",
   "verificationStatus": {
-    "collected": false,
-    "everInstalled": false,
-    "collector": "not selected. ADR 0004 carries the open question and ADR 0006 D8 leaves it there. Nothing scrapes either InferOps endpoint.",
-    "engine": "none. Every result recorded here was produced by the declared PromQL subset evaluator in tools/telemetry_correlation/evaluate.py, over fixture stores written by hand. No Prometheus has parsed, loaded, or evaluated any expression in this record.",
-    "evidenceClass": "local-static",
-    "note": "A query this record calls verified is a query whose expression parses, whose every label is one the catalog permits and the collection record says something attaches, whose every series is one this release would produce, whose joins match on keys both sides carry, and which returns the declared result over the declared fixture. It is not a query that has ever returned a measurement."
+    "collected": true,
+    "everInstalled": true,
+    "collector": "selected and installed. The chart renders a Prometheus the release owns, and V1-S3-011-PR1 installed it into Docker Desktop's Kubernetes and watched it discover and scrape both InferOps jobs -- one target each, both up. ADR 0004 D7 was resolved for this and nothing else: no dashboard, no alert receiver, no routing tree, and a store in an emptyDir that goes with the pod.",
+    "engine": "prometheus 3.5.0, and also the declared PromQL subset evaluator in tools/telemetry_correlation/evaluate.py. The two answer different questions and both are kept. The evaluator runs in the default lane over fixture stores written by hand, on a machine with no cluster, and is what holds every expression to the catalog. Prometheus ran once, on the V1 reference host, over series a real release actually published: 21 of the 23 queries publish an expression, all 21 were parsed and evaluated, and 5 returned samples. The other 2 are `no-source` and publish no expression to evaluate.",
+    "evidenceClass": "local-real-cpu",
+    "note": "Two different claims, and they are not interchangeable. A query this record calls verified is a query whose expression parses, whose every label is one the catalog permits and the collection record says something attaches, whose every series is one this release would produce, whose joins match on keys both sides carry, and which returns the declared result over the declared fixture -- all of that is still established statically and still runs in the default lane. Separately, V1-S3-011-PR1 established that a real Prometheus accepts every one of those expressions over a real scrape of a real release. Neither is a measurement. A query that returned samples returned them over three requests sent to move counters off zero, and this record publishes no latency, throughput, or capacity figure.",
+    "realCollectionRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
   },
   "subset": {
     "statement": "The queries are written in a declared subset of PromQL, and an expression outside it is refused rather than published unchecked.",

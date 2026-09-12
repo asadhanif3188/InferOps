@@ -215,9 +215,12 @@ inferops::target_kubectl get deployments,services,configmaps,serviceaccounts,pod
 
 inferops::section "Testing the installed release"
 
+# Without `--logs`: the chart deletes a test pod that succeeded, and
+# `helm test --logs` then fails fetching logs from a pod that is gone,
+# reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
+# states the whole of it beside its own call.
 inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
-  --logs \
   --timeout 5m
 
 # --- upgrade ----------------------------------------------------------------
@@ -231,9 +234,12 @@ inferops::target_helm upgrade "${INFEROPS_RELEASE_NAME}" "${chart_path}" \
   --wait \
   --timeout 15m
 
+# Without `--logs`: the chart deletes a test pod that succeeded, and
+# `helm test --logs` then fails fetching logs from a pod that is gone,
+# reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
+# states the whole of it beside its own call.
 inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
-  --logs \
   --timeout 5m
 
 configured="$(inferops::target_kubectl get configmap \
@@ -255,9 +261,12 @@ inferops::target_helm rollback "${INFEROPS_RELEASE_NAME}" 1 \
   --wait \
   --timeout 15m
 
+# Without `--logs`: the chart deletes a test pod that succeeded, and
+# `helm test --logs` then fails fetching logs from a pod that is gone,
+# reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
+# states the whole of it beside its own call.
 inferops::target_helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
-  --logs \
   --timeout 5m
 
 configured="$(inferops::target_kubectl get configmap \

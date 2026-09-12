@@ -46,6 +46,43 @@ its own script, and does nothing else. It removes nothing but its own temporary
 file and an artifact that failed verification, and it never touches another
 revision's directory.
 */}}
+{{- if .Values.security.serviceAccount.create }}
+{{/*
+The identity the hook below presents, created by the same hook phase and at a
+lower weight so that it exists before the Job that names it. See
+`inferops-llm.acquisition.serviceAccountName` for why a hook cannot name one of
+the release's own ServiceAccounts.
+
+Its delete policy matches the Job's exactly, so the account's lifetime is the
+hook's lifetime: removed when the hook succeeds, kept for inspection when it
+fails, and replaced before the next attempt. `helm uninstall` therefore has
+nothing of it left to remove, which is the same thing the Job can say.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "inferops-llm.acquisition.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "inferops-llm.labels" . | nindent 4 }}
+    {{- /* `model-acquisition` and not `workload-identity`, which is what the
+           release's own two accounts carry. The component says which thing an
+           object belongs to, and this one belongs to the hook: it is created by
+           the hook phase, removed with the hook, and never outlives it. Labelling
+           it as a workload identity would put a hook-lifetime object into the
+           group the release owns, which is the partition
+           docs/architecture/resource-ownership.md rests on. */}}
+    app.kubernetes.io/component: model-acquisition
+  annotations:
+    {{- with (include "inferops-llm.annotations" . | fromYaml) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+automountServiceAccountToken: false
+---
+{{- end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -84,16 +121,22 @@ spec:
         app.kubernetes.io/component: model-acquisition
     spec:
       restartPolicy: Never
-      {{- /* The runtime's account rather than one of its own, and the token is
-             not mounted. The chart splits the API and runtime identities so that
-             a RoleBinding added for one is not silently granted to the other;
-             this is a third workload and by that argument deserves a third
-             account. It does not have one because it needs no Kubernetes API
-             access at all -- it writes a volume and, under `download`, opens one
-             outbound connection -- so the account it names is never used for
-             anything. If this job ever needs an API permission, it needs its own
-             account first, and this comment is where that decision starts. */}}
-      serviceAccountName: {{ include "inferops-llm.runtime.serviceAccountName" . }}
+      {{- /* Its own account, and the token is not mounted. The chart splits the
+             API and runtime identities so that a RoleBinding added for one is
+             not silently granted to the other; this is a third workload and by
+             that argument deserves a third account.
+
+             Until V1-S3-011 it named the runtime's instead, on the argument that
+             it needs no Kubernetes API access at all -- it writes a volume and,
+             under `download`, opens one outbound connection -- so the account it
+             names is never used for anything. That argument was sound about
+             permissions and wrong about existence: this is a `pre-install` hook,
+             and the runtime's account does not exist yet when the hook runs. The
+             API server refuses the Job, the hook times out, and the install
+             reports `failed pre-install: timed out waiting for the condition`.
+             The account above is created by the same hook phase at a lower
+             weight, which is what makes naming one possible at all. */}}
+      serviceAccountName: {{ include "inferops-llm.acquisition.serviceAccountName" . }}
       automountServiceAccountToken: false
       securityContext:
         {{- include "inferops-llm.podSecurityContext" . | nindent 8 }}

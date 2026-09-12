@@ -143,15 +143,31 @@ def test_every_reference_the_record_makes_resolves() -> None:
         assert (REPO_ROOT / scenario["fixtureRef"]).is_file()
 
 
-def test_the_record_states_that_nothing_has_been_collected_or_evaluated() -> None:
-    """The one claim this whole PR must not be read as making."""
+def test_the_record_states_what_a_real_collector_established_and_what_it_did_not() -> (
+    None
+):
+    """V1-S3-007-PR2 could not make this claim and said so. V1-S3-011-PR1 made it,
+    and must not be read as making a larger one.
+
+    A collector exists, it scraped, and a real engine evaluated every expression
+    that has one. None of that is a measurement, and the static evaluation this
+    suite performs is not retired by it: the two answer different questions, so
+    the record has to keep saying both.
+    """
     status = RECORD["verificationStatus"]
-    assert status["collected"] is False
-    assert status["everInstalled"] is False
-    assert "not selected" in status["collector"]
-    assert "No Prometheus has parsed, loaded, or evaluated" in status["engine"]
-    assert status["evidenceClass"] == "local-static"
-    assert "no Prometheus has parsed, loaded, or evaluated any expression" in DOCUMENT
+
+    assert status["collected"] is True
+    assert status["everInstalled"] is True
+    assert "prometheus" in status["engine"].lower()
+    # The static evaluator is not replaced by the engine, and the record says so.
+    assert "tools/telemetry_correlation/evaluate.py" in status["engine"]
+    assert status["evidenceClass"] == "local-real-cpu"
+    # The record points at the run, and the run is a committed record.
+    assert (REPO_ROOT / status["realCollectionRef"]).is_file()
+    # The ceiling, restated where a reader of this record will meet it.
+    assert "Neither is a measurement." in status["note"]
+    assert "publishes no latency, throughput, or capacity figure" in status["note"]
+    assert "until V1-S3-011-PR1 no Prometheus had parsed" in DOCUMENT
 
 
 # --------------------------------------------------------------------------
