@@ -199,17 +199,52 @@ passing and refusing.
 `the-nodes-are-bound-to-the-local-engine` is now **implemented**. Docker Desktop
 provisions its Kubernetes *with kind*: `desktop-control-plane` is an ordinary
 container on the same engine the operator's own `docker` CLI talks to, carrying
-`io.x-k8s.kind.cluster=desktop` and `io.x-k8s.kind.role=control-plane`. The guard
-reads those labels, refuses a node this engine does not hold, and refuses a node
-belonging to any kind cluster other than Docker Desktop's own.
+`io.x-k8s.kind.cluster=desktop` and `io.x-k8s.kind.role=control-plane`.
 
-The residual difference from `kind`'s check is recorded rather than glossed:
-`kind` asks the engine to *enumerate* the containers it labelled and can
-therefore notice a node it was not told about; here the same question can only be
-asked *by name*, because of the `docker ps` filtering above. The node-count and
-node-name checks that precede it are what fix the names it then binds, and the
-two are relied on together. That remaining difference is owed a security review,
-not more code, and the contract says so.
+**The labels alone settle nothing, and it is worth saying why before saying what
+the guard does.** Those are kind's own generic labels. An ordinary
+`kind create cluster --name desktop` produces a container named
+`desktop-control-plane` carrying exactly those two values — byte for byte what a
+label-only check would require. Docker Desktop *does* add labels of its own under
+`desktop.docker.io/` (observed on this host: `desktop.docker.io/ports.scheme`,
+`desktop.docker.io/ports/6443/tcp`, several `desktop.docker.io/binds/...`), and
+they would distinguish it — but its API proxy strips them from what
+`docker inspect` returns on the endpoint these scripts use. Measured both ways on
+this host: through the default endpoint `docker inspect` returns only
+`io.kubernetes.pod.namespace`, `io.x-k8s.kind.cluster` and `io.x-k8s.kind.role`;
+through Docker Desktop's unfiltered engine endpoint it returns the
+`desktop.docker.io/` set as well. Nothing in these scripts can read the latter.
+
+So the check that carries the weight is a **port**. The container must publish the
+very API server port the project-scoped kubeconfig dials — both sides read at
+verification time, the server URL out of the kubeconfig the guard itself just
+wrote, and the published `6443/tcp` binding off the container. Observed here:
+container `desktop-control-plane` publishes `127.0.0.1:50351`, and the verified
+kubeconfig names `https://127.0.0.1:50351`. That ties the *connection being
+verified* to the *container being inspected* rather than correlating two names.
+
+What the guard therefore refuses: a node this engine does not hold; a node
+belonging to a kind cluster under any name other than `desktop`; and an API
+server answering anywhere other than the port that container publishes.
+
+What it **cannot** refuse, recorded here, in the contract's `gap`, and accepted as
+`EX-06` in [the deferred-risk register](../../security/deferred-risks.md):
+
+- a kind cluster the operator themselves named `desktop`, reached through a
+  context they named `docker-desktop`. The port matches in that case because that
+  cluster genuinely *is* the one being dialled; the guard is not deceived about
+  which cluster it reached, only about who provisioned it;
+- a `docker` CLI pointed at another engine. "This machine's engine" is really
+  "the engine this CLI is configured to reach"; nothing here pins `DOCKER_HOST`
+  or the active docker context, and pinning it is not free because Docker
+  Desktop's own engine is itself reached through a non-default context.
+
+And the difference from `kind`'s check that remains by construction: `kind` asks
+the engine to *enumerate* the containers it labelled and can therefore notice a
+node it was not told about, whereas here the same question can only be asked *by
+name*, because of the `docker ps` filtering above. The node-count and node-name
+checks that precede it are what fix the names it then binds, and the two are
+relied on together.
 
 ### Terraform prerequisites
 

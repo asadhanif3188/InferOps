@@ -16,9 +16,19 @@ canned answer to a recognised argument shape and fails closed on anything else.
 Every refusal `inferops::resolve_target` can produce is exercised at least once
 for `kind`, and every one both providers can produce is exercised for
 `docker-desktop` too, alongside one positive (successfully verified) case per
-provider. `capability-unknown-or-insufficient` is exercised directly against
-`inferops::require_target_capability`, which is how api-image.sh and
-model-seed-image.sh refuse to load an image into Docker Desktop.
+provider. `capability-unknown-or-insufficient` is exercised against
+`inferops::target_load_image`, which dispatches on the verified provider's
+image-preparation mechanism and must refuse one it does not implement rather than
+fall through to whichever branch happens to be last.
+
+The Docker Desktop cases are worth reading with the guard's own limits in mind.
+V1-S3-011-PR1 established that the kind labels a check can read here are *not*
+distinguishing -- an ordinary `kind create cluster --name desktop` reproduces
+them exactly -- so the binding that carries the weight, and that the tests below
+exercise in both directions, is that the node container must publish the very API
+server port the verified kubeconfig dials. The residual same-name collision is
+accepted as `EX-06` in docs/security/deferred-risks.md and is deliberately not
+asserted here as though it were refused.
 """
 
 from __future__ import annotations
@@ -108,6 +118,10 @@ FAKE_KUBECTL = textwrap.dedent(
       exit 0
     fi
     case "$joined" in
+      *"cluster.server"*)
+        printf '%s\\n' "${FAKE_API_SERVER_URL-https://127.0.0.1:50351}"
+        exit 0
+        ;;
       *" config current-context"*)
         printf '%s\\n' "${FAKE_TARGET_CONTEXT:-}"
         exit 0
@@ -170,6 +184,11 @@ FAKE_DOCKER = textwrap.dedent(
         [ -n "$entry" ] || exit 1
         value="${entry#*=}"
         case "$joined" in
+          *"NetworkSettings.Ports"*)
+            # One host port per published binding, space separated, the shape
+            # the real `{{range}}` format produces.
+            printf '%s\\n' "${FAKE_NODE_PUBLISHED_PORTS-50351 }"
+            ;;
           *"io.x-k8s.kind.cluster"*) printf '%s\\n' "${value%%:*}" ;;
           *"io.x-k8s.kind.role"*) printf '%s\\n' "${value#*:}" ;;
           *) printf '%s\\n' "$value" ;;
@@ -530,7 +549,13 @@ def test_an_operators_own_kind_node_is_not_accepted_as_docker_desktops(
 ) -> None:
     """Selecting `docker-desktop` must not reach a kind cluster the operator
     created themselves, even one whose node they named `desktop-control-plane`.
-    That cluster is selected as provider `kind`, by name."""
+    That cluster is selected as provider `kind`, by name.
+
+    This refuses a kind cluster under any name *other* than Docker Desktop's own
+    `desktop`. The same-name collision is not refusable from these labels and is
+    recorded as EX-06 in docs/security/deferred-risks.md; the test below pins the
+    binding that does the remaining work.
+    """
     env = dict(DOCKER_DESKTOP_GOOD_ENV)
     env["FAKE_NODE_CONTAINER_LABELS"] = (
         "desktop-control-plane=somebody-elses:control-plane"
@@ -539,6 +564,53 @@ def test_an_operators_own_kind_node_is_not_accepted_as_docker_desktops(
 
     assert result.returncode != 0
     assert "provider-mismatch" in result.stderr
+
+
+def test_a_cluster_reached_on_a_port_the_node_does_not_publish_is_refused(
+    fake_bin: Path, tmp_path: Path
+) -> None:
+    """The binding the labels cannot give.
+
+    `io.x-k8s.kind.cluster=desktop` is kind's own generic label and an ordinary
+    `kind create cluster --name desktop` reproduces it exactly, so the labels
+    alone cannot say which cluster is being talked to. The port can: the
+    container that must answer is the one the verified kubeconfig actually
+    dials. A reachable API server somewhere else -- remote, another engine, a
+    second local cluster -- fails here even with a perfectly shaped node.
+    """
+    env = dict(DOCKER_DESKTOP_GOOD_ENV)
+    env["FAKE_API_SERVER_URL"] = "https://127.0.0.1:6443"
+    env["FAKE_NODE_PUBLISHED_PORTS"] = "50351 "
+    result = run_target(fake_bin, tmp_path, env)
+
+    assert result.returncode != 0
+    assert "provider-mismatch" in result.stderr
+    assert "not the container being inspected" in result.stderr
+
+
+def test_a_node_publishing_no_api_server_port_is_refused(
+    fake_bin: Path, tmp_path: Path
+) -> None:
+    """A container that publishes nothing cannot be the thing answering on the
+    port the kubeconfig names, and an unpublished port is not an empty match."""
+    env = dict(DOCKER_DESKTOP_GOOD_ENV)
+    env["FAKE_NODE_PUBLISHED_PORTS"] = ""
+    result = run_target(fake_bin, tmp_path, env)
+
+    assert result.returncode != 0
+    assert "provider-mismatch" in result.stderr
+
+
+def test_a_kubeconfig_naming_no_port_is_refused(fake_bin: Path, tmp_path: Path) -> None:
+    """An unanswered question is not a passing comparison: with no port to read,
+    the binding cannot be established and the target is refused rather than
+    accepted on the labels alone."""
+    env = dict(DOCKER_DESKTOP_GOOD_ENV)
+    env["FAKE_API_SERVER_URL"] = ""
+    result = run_target(fake_bin, tmp_path, env)
+
+    assert result.returncode != 0
+    assert "target-unreachable" in result.stderr
 
 
 def test_kind_has_the_image_preparation_capability_certification_needs(

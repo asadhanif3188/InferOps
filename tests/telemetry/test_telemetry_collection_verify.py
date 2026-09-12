@@ -417,6 +417,17 @@ def test_the_script_never_creates_a_namespace_or_removes_a_prerequisite() -> Non
     assert 'terraform-prerequisites.sh" destroy' not in commands
 
 
+def test_the_script_refuses_to_run_over_a_release_it_did_not_install() -> None:
+    """The question this workflow asks -- did *this* release's collector discover
+    *these* jobs -- has no meaning over a release installed with values nobody
+    here read. The two certification workflows make the same refusal."""
+    status = SCRIPT_TEXT.index("inferops::target_helm status")
+    install_index = SCRIPT_TEXT.index("inferops::target_helm install")
+
+    assert status < install_index
+    assert "already exists" in SCRIPT_TEXT
+
+
 def test_the_script_uninstalls_what_it_installed() -> None:
     install_index = SCRIPT_TEXT.index("inferops::target_helm install")
     uninstall = SCRIPT_TEXT.index("inferops::target_helm uninstall")

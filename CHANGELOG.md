@@ -39,11 +39,21 @@ once versioned releases begin.
   The check the contract carried as `undecided` — binding the API server's nodes to
   containers on this machine's engine — is implemented: Docker Desktop provisions its
   Kubernetes with kind, and `desktop-control-plane` carries
-  `io.x-k8s.kind.cluster=desktop`. Selecting `docker-desktop` can no longer reach a kind
-  cluster the operator created themselves. One difference from kind's check remains and is
-  recorded rather than glossed: kind *enumerates* its node containers and this must ask
-  *by name*, so the node-count and node-name checks are relied on together with it. That
-  residue is owed a security review, not more code.
+  `io.x-k8s.kind.cluster=desktop`. Those labels are kind's own generic ones and settle
+  nothing on their own — an ordinary `kind create cluster --name desktop` reproduces them
+  exactly — so the check that carries the weight is a port: the container must publish
+  the very API server port the verified kubeconfig dials, which ties the connection being
+  verified to the container being inspected. That refuses a remote or foreign API server,
+  and refuses a kind cluster under any name other than `desktop`. It **cannot** refuse a
+  kind cluster the operator themselves named `desktop` reached through a context they
+  named `docker-desktop`, because there that cluster genuinely is the one being dialled;
+  nor does it pin `DOCKER_HOST`, so "this machine's engine" is really "the engine this
+  `docker` CLI is configured to reach". Both are recorded in the check's own `gap` and
+  accepted as **EX-06** in
+  [the deferred-risk register](docs/security/deferred-risks.md) rather than left for a
+  reader to notice. Asking *by name* instead of enumerating, which is what Docker
+  Desktop's API proxy forces, is why the node-count and node-name checks are relied on
+  together with it.
 
   **The certification workflows are provider-neutral.** `kubernetes-certification.sh` and
   `kubernetes-multi-replica-certification.sh` no longer refuse every target but the one

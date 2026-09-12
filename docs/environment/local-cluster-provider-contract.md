@@ -3,7 +3,7 @@
 Status: **accepted** as the V1 environment contract, in
 [ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md),
 and **implemented for target selection and identification on both providers**,
-by every mutating workflow except three. The authoritative form is data:
+by every mutating workflow except one. The authoritative form is data:
 [`local-cluster-provider-contract.v1alpha1.json`](local-cluster-provider-contract.v1alpha1.json).
 This page explains it, and
 [`tests/architecture/test_local_cluster_provider_contract.py`](../../tests/architecture/test_local_cluster_provider_contract.py)
@@ -14,14 +14,21 @@ explicit `INFEROPS_PROVIDER` -- `kind` or `docker-desktop`, with no default --
 and, for `kind`, an explicit `INFEROPS_KIND_CLUSTER_NAME`, and re-verifies that
 selection itself before its first mutation through
 [`inferops::resolve_target`](../../scripts/environment/lib.sh). Both providers
-now have a positive identity check. Docker Desktop's is narrower than kind's: it
-confirms a context named `docker-desktop` exists and that its nodes match the one
-shape this project has observed, and it does not confirm those nodes are bound to
-this machine's engine the way kind's containers are, because whether that is even
-observable has not been established. `kubernetes-certification.sh`,
-`kubernetes-multi-replica-certification.sh`, and `helm-upgrade-rollback.sh` re-verify
-the same way and then refuse anything but the pinned kind target their descriptors
-still describe -- porting those three to a provider-neutral target is V1-S3-011.
+now have a positive identity check. Docker Desktop's is still narrower than
+kind's, and V1-S3-011 narrowed the difference rather than closing it: it confirms
+a context named `docker-desktop` exists, that its nodes match the one shape this
+project has observed, that the node is a container on the engine this `docker`
+CLI talks to carrying kind's labels, and that the container publishes the very
+API server port the verified kubeconfig dials. What it still cannot refuse is a
+kind cluster the operator themselves named `desktop`, reached through a context
+they named `docker-desktop`; that case is recorded in the check's own `gap` and
+as an accepted exception in
+[the deferred-risk register](../security/deferred-risks.md). Of the three
+workflows that used to re-verify and then refuse anything but the pinned kind
+target, two -- `kubernetes-certification.sh` and
+`kubernetes-multi-replica-certification.sh` -- were ported by V1-S3-011-PR1 and
+now certify whichever supported provider they verified.
+`helm-upgrade-rollback.sh` still refuses, and porting it is V1-S3-011-PR2.
 Every row below that nothing enforces says so, and says who owes it.
 
 ## What InferOps does and does not do to a cluster

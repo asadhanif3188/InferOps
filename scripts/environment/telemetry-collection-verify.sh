@@ -196,6 +196,21 @@ except OSError:
 
 # --- prerequisites and release ----------------------------------------------
 
+# --- refuse to verify over an existing release -------------------------------
+
+# The same refusal the two certification workflows make, for a reason that is the
+# same in substance and different in detail. They refuse because a record of an
+# upgrade would say it was a record of an install. This refuses because the
+# question it asks -- did *this* release's collector discover *these* jobs -- has
+# no meaning over a release somebody else installed with values nobody here read.
+# Helm would refuse the name collision anyway; it would do it with its own message
+# rather than this one, and the operator would be left to work out which of the
+# two tools cared.
+if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" \
+  --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
+  inferops::fail "release '${INFEROPS_RELEASE_NAME}' already exists in '${INFEROPS_RELEASE_NAMESPACE}'. This workflow verifies the collector its own install renders, so it will not run over one it did not install. Remove it first: helm uninstall ${INFEROPS_RELEASE_NAME} --namespace ${INFEROPS_RELEASE_NAMESPACE}"
+fi
+
 inferops::section "Applying the Terraform prerequisites"
 bash "${INFEROPS_ROOT}/scripts/environment/terraform-prerequisites.sh" apply
 

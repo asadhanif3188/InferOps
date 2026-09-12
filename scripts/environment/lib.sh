@@ -522,15 +522,20 @@ inferops::_kind_target_problem() {
 # to bind an API-server node to a local engine container, and nothing else.
 readonly INFEROPS_DOCKER_DESKTOP_KIND_CLUSTER="desktop"
 
-# Docker Desktop's three implemented identity checks: the operator's kubeconfig
-# holds a context literally named `docker-desktop`, every node the reachable API
-# server reports matches the one shape this project has observed and recorded --
-# a single node named `desktop-control-plane` -- and that node is a container on
-# this machine's own engine carrying the kind labels Docker Desktop gave it. A
-# node set of any other shape is refused until it has been observed and recorded,
-# rather than accepted because it might be legitimate.
+# The one node shape this project has observed Docker Desktop produce, named once
+# so that the shape check and the port binding below cannot drift apart.
+readonly INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER="desktop-control-plane"
+
+# Docker Desktop's identity checks: the operator's kubeconfig holds a context
+# literally named `docker-desktop`; every node the reachable API server reports
+# matches the one shape this project has observed and recorded -- a single node
+# named `desktop-control-plane`; that node is a container on the engine this
+# `docker` CLI talks to, carrying the kind labels Docker Desktop gave it; and
+# that container publishes the very API server port the verified kubeconfig
+# connects to. A node set of any other shape is refused until it has been
+# observed and recorded, rather than accepted because it might be legitimate.
 #
-# The third check is what V1-S3-011 established and the contract previously
+# The last two are what V1-S3-011 established and the contract previously
 # recorded as `undecided`. It was not known whether Docker Desktop's nodes were
 # observable from the local engine at all. They are: Docker Desktop provisions
 # its Kubernetes with kind, and `desktop-control-plane` is an ordinary container
@@ -541,9 +546,35 @@ readonly INFEROPS_DOCKER_DESKTOP_KIND_CLUSTER="desktop"
 # write. Docker Desktop's API proxy hides its own system containers from
 # `docker ps`, so the filter kind's check uses returns nothing here and would
 # make every node look unmatched. `docker inspect` by name is not filtered.
-# Asking by name is a weaker question than asking kind for its list -- it cannot
-# detect a node the API server did not report -- so the node-count and node-name
-# checks above it stay, and this check binds the names they already fixed.
+#
+# Why the port comparison carries most of the weight. The labels alone are *not*
+# distinguishing: `io.x-k8s.kind.cluster=desktop` and
+# `io.x-k8s.kind.role=control-plane` are kind's own generic labels, and an
+# ordinary `kind create cluster --name desktop` produces a container named
+# `desktop-control-plane` carrying exactly those values. Docker Desktop does add
+# labels of its own under `desktop.docker.io/`, and they would settle it -- but
+# its API proxy strips them from what `docker inspect` returns, so nothing here
+# can read them. The port is the binding that survives: the container's published
+# 6443 must be the address the project-scoped kubeconfig -- the one this function
+# just wrote from the operator's own -- actually dials. That ties the *connection
+# being verified* to the *container being inspected*, rather than correlating two
+# names and hoping.
+#
+# What it still does not establish, recorded in the contract's `gap` and in
+# docs/security/deferred-risks.md rather than left for a reader to notice:
+#
+#   - A kind cluster the operator themselves named `desktop`, reached through a
+#     context they named `docker-desktop`, satisfies every check here including
+#     the port, because then it *is* the cluster being dialled. This guard
+#     refuses a kind cluster under any other name; it cannot refuse that one.
+#   - "This machine" is really "the engine this `docker` CLI is configured to
+#     reach". Nothing here pins DOCKER_HOST or the active docker context, so a
+#     CLI pointed at another engine would compare a loopback address there with
+#     a loopback address here and find them equal as strings.
+#
+# Asking by name is also a weaker question than asking kind for its list -- it
+# cannot detect a node the API server did not report -- so the node-count and
+# node-name checks above it stay, and this check binds the names they fixed.
 inferops::_docker_desktop_target_problem() {
   local expected_context="docker-desktop"
 
@@ -581,7 +612,8 @@ inferops::_docker_desktop_target_problem() {
   fi
 
   node_count="$(printf '%s\n' "${api_nodes}" | grep -c . || true)"
-  if [ "${node_count}" -ne 1 ] || [ "${api_nodes}" != "desktop-control-plane" ]; then
+  if [ "${node_count}" -ne 1 ] ||
+    [ "${api_nodes}" != "${INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER}" ]; then
     printf "provider-mismatch: this project has only observed a single 'desktop-control-plane' node as Docker Desktop's shape; the reachable cluster reports: %s" \
       "$(printf '%s' "${api_nodes}" | tr '\n' ' ')"
     return 1
@@ -602,12 +634,12 @@ inferops::_docker_desktop_target_problem() {
     node_cluster="$(docker inspect "${node}" \
       --format '{{index .Config.Labels "io.x-k8s.kind.cluster"}}' 2>/dev/null || true)"
     if [ -z "${node_cluster}" ]; then
-      printf "provider-mismatch: the API server reports node '%s' and this engine has no container of that name carrying a kind cluster label. A reachable cluster whose nodes are not containers on this machine is not this machine's Docker Desktop." \
+      printf "provider-mismatch: the API server reports node '%s' and this engine has no container of that name carrying a kind cluster label. A reachable cluster whose nodes are not containers on this engine is not this machine's Docker Desktop." \
         "${node}"
       return 1
     fi
     if [ "${node_cluster}" != "${INFEROPS_DOCKER_DESKTOP_KIND_CLUSTER}" ]; then
-      printf "provider-mismatch: node '%s' is a container belonging to kind cluster '%s'; Docker Desktop's own cluster is '%s'. Selecting 'docker-desktop' must not reach a kind cluster the operator created themselves -- that one is selected as provider 'kind', by name." \
+      printf "provider-mismatch: node '%s' is a container belonging to kind cluster '%s'; Docker Desktop names its own '%s'. A kind cluster under any other name is selected as provider 'kind', by name." \
         "${node}" "${node_cluster}" "${INFEROPS_DOCKER_DESKTOP_KIND_CLUSTER}"
       return 1
     fi
@@ -619,6 +651,38 @@ inferops::_docker_desktop_target_problem() {
       return 1
     fi
   done <<<"${api_nodes}"
+
+  # The binding the labels cannot give: the container that must answer is the one
+  # the verified kubeconfig actually dials. Both sides are read here rather than
+  # assumed -- the server URL out of the project-scoped kubeconfig this function
+  # just wrote, and the published port off the control-plane container -- and a
+  # mismatch means the cluster being talked to is not the container being
+  # inspected, whatever the two of them are called.
+  local server_url server_port published
+  server_url="$(kubectl --kubeconfig "${target_kubeconfig_native}" \
+    --context "${expected_context}" config view --minify \
+    -o 'jsonpath={.clusters[0].cluster.server}' 2>/dev/null || true)"
+  server_port="${server_url##*:}"
+  case "${server_port}" in
+    '' | *[!0-9]*)
+      printf "target-unreachable: the verified kubeconfig names API server '%s', which carries no port to compare against the node container." \
+        "${server_url:-none}"
+      return 1
+      ;;
+  esac
+
+  published="$(docker inspect "${INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER}" \
+    --format '{{range $binding := index .NetworkSettings.Ports "6443/tcp"}}{{$binding.HostPort}} {{end}}' \
+    2>/dev/null || true)"
+  case " ${published} " in
+    *" ${server_port} "*) ;;
+    *)
+      printf "provider-mismatch: the verified kubeconfig dials port %s, and container '%s' publishes the API server on port(s) '%s'. The cluster being talked to is not the container being inspected." \
+        "${server_port}" "${INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER}" \
+        "$(printf '%s' "${published:-none}" | tr -s ' ')"
+      return 1
+      ;;
+  esac
 
   return 0
 }
@@ -809,7 +873,7 @@ inferops::resolve_target() {
       # `docker ps --filter`, which Docker Desktop's API proxy filters its own
       # containers out of. What works is the import the node itself can do.
       INFEROPS_TARGET_IMAGE_PREPARATION="node-ctr-import"
-      INFEROPS_TARGET_NODE_CONTAINER="desktop-control-plane"
+      INFEROPS_TARGET_NODE_CONTAINER="${INFEROPS_DOCKER_DESKTOP_NODE_CONTAINER}"
       ;;
   esac
 

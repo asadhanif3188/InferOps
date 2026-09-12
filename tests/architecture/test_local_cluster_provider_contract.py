@@ -5,21 +5,26 @@ no cluster, no container engine, no clock, no randomness. Nothing is executed:
 the scripts are read as text.
 
 ADR 0011 moved the cluster out of InferOps's ownership and wrote down how an
-existing one is selected, identified, handed on, and refused. Most of that
-contract is implemented by nothing yet -- on the Docker Desktop side, all of it --
-and the contract says so row by row. What this suite checks is that it keeps
-saying so accurately: a check, refusal, or rule claimed as enforced names a guard
-or a test that exists, and one claimed as unenforced says who owes it; every
-capability answer states how it is known and cites a record about the provider it
-describes; Terraform and Helm are handed an address rather than a provider; the
-contract, its document, and the ownership inventory publish the same identifiers;
-and no platform workflow creates or deletes a cluster.
+existing one is selected, identified, handed on, and refused. Much of that
+contract is now implemented on both providers, and the parts that are not say so
+row by row. What this suite checks is that it keeps saying so accurately: a
+check, refusal, or rule claimed as enforced names a guard or a test that exists,
+and one claimed as unenforced says who owes it; every capability answer states
+how it is known and cites a record about the provider it describes; Terraform and
+Helm are handed an address rather than a provider; the contract, its document,
+and the ownership inventory publish the same identifiers; and no platform
+workflow creates or deletes a cluster.
 
-It also pins the gaps. The Terraform environment root still accepts only kind
-contexts, nothing identifies a Docker Desktop cluster, and three Docker Desktop
-capabilities are unknown. Tests below assert that each of those is still true, so
-the change that closes one has to update the contract in the same commit rather
-than leave it describing the past.
+It also pins what is still open, so that the change which closes one has to
+update the contract in the same commit rather than leave it describing the past.
+That set shrinks as stories land and these tests move with it: V1-S3-010-PR2
+gave both providers an identity guard, and V1-S3-011-PR1 established Docker
+Desktop's image-preparation and capacity answers, bound its nodes to containers
+on the local engine, and ported two of the three kind-pinned workflows. What the
+tests below still pin as open: `wholeClusterCleanup` is unknown for Docker
+Desktop and owed by nothing, `helm-upgrade-rollback.sh` is still kind-pinned
+until V1-S3-011-PR2, and the ownership inventory's `docker-desktop-cluster` row
+is still `planned` and may cite only evidence about its own provider.
 
 What it establishes about whether any cluster is correctly identified or refused:
 nothing. That is a runtime question, and reading a guard is not running it against
@@ -103,11 +108,12 @@ PLATFORM_WORKFLOWS = (
     "target-detect.sh",
 )
 
-# The seven platform workflows that mutate a target, as distinct from
-# target-detect.sh, which only ever reports. Every one of these must call the
-# provider-aware guard before its first mutation, and every certification or
-# experiment script relies on the front-door check even though its own descriptor
-# and evidence tooling remain kind-pinned (V1-S3-011 ports them).
+# The platform workflows that mutate a target, as distinct from target-detect.sh,
+# which only ever reports. Every one of these must call the provider-aware guard
+# before its first mutation. Both certifications now act on whichever provider
+# that guard verified; helm-upgrade-rollback.sh still relies on the front-door
+# check and then refuses anything but the kind cluster its descriptor describes,
+# until V1-S3-011-PR2 ports it.
 MUTATING_PLATFORM_WORKFLOWS = (
     "terraform-prerequisites.sh",
     "helm-lifecycle.sh",
@@ -923,15 +929,40 @@ def test_the_inventory_gives_every_cluster_to_its_operator() -> None:
     assert not tool_owned & set(clusters)
 
 
-def test_the_docker_desktop_cluster_is_planned_rather_than_implemented() -> None:
-    """A pinned gap: the inventory must not average the two providers' evidence."""
+def test_the_docker_desktop_cluster_cites_only_its_own_evidence() -> None:
+    """A pinned gap: the inventory must not average the two providers' evidence.
+
+    This row carried no evidence at all until V1-S3-011-PR1, because nothing had
+    been installed through this provider. Something has now, so the question the
+    test asks changes shape: not "is this row still empty" -- which would fail the
+    moment the story it was waiting for delivered -- but "does whatever it cites
+    describe *this* provider". Borrowing kind's record is what must stay
+    impossible.
+
+    The status stays `planned`. Promoting the release layer to what that
+    certification installed is V1-S3-011-PR2's reconciliation, and promoting one
+    row ahead of its siblings would make the inventory disagree with itself.
+    """
     inventory = load_json(OWNERSHIP_PATH)
-    status = {
-        resource["resourceId"]: (resource["v1Status"], resource["evidenceRef"])
-        for resource in inventory["resources"]
-    }
-    assert status["kind-cluster"][0] == "implemented"
-    assert status["docker-desktop-cluster"] == ("planned", None)
+    rows = {resource["resourceId"]: resource for resource in inventory["resources"]}
+
+    assert rows["kind-cluster"]["v1Status"] == "implemented"
+
+    desktop = rows["docker-desktop-cluster"]
+    assert desktop["v1Status"] == "planned"
+
+    reference = desktop["evidenceRef"]
+    if reference is not None:
+        record = REPO_ROOT / reference
+        assert record.is_file(), reference
+        text = record.read_text(encoding="utf-8")
+        assert any(marker in text for marker in PROVIDER_MARKERS["docker-desktop"]), (
+            f"{reference} is not a record about docker-desktop"
+        )
+        assert all(
+            marker not in text.split("## Limitations")[0]
+            for marker in PROVIDER_MARKERS["kind"]
+        ), f"{reference} rests a docker-desktop row on a kind result"
 
 
 # --------------------------------------------------------------------------

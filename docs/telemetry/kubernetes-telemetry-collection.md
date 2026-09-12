@@ -15,11 +15,14 @@ alert routing path are still unowned and still deferred**, and
 [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md) `D8`
 still selects no SDK, exporter or tracer.
 
-**Nothing has been collected.** No release has installed this chart, no collector
-has run, and nothing has scraped either endpoint. The configuration has been
-checked by the pinned collector's own `promtool` — which establishes that it loads,
-and nothing about whether a series was ever written. Every count, bound and
-multiplier in this document is arithmetic over declared values.
+**Something has now been collected, and it is worth being exact about how little
+that changes.** V1-S3-011-PR1 installed this chart into Docker Desktop's
+Kubernetes, and a real Prometheus loaded this configuration and scraped both
+endpoints — one target each, both up. The configuration is also still checked by
+the pinned collector's own `promtool`, which establishes that it loads. What a
+scrape does *not* establish is that a series was retained, aggregated, or
+measured: every count, bound and multiplier in this document remains arithmetic
+over declared values, and nothing here became a measurement.
 
 The authoritative form is
 [`kubernetes-telemetry-collection.v1alpha1.json`](kubernetes-telemetry-collection.v1alpha1.json).
@@ -314,12 +317,15 @@ control on an endpoint that carries **no authentication at all**
 
 ## 9. What this does not establish
 
-- **Nothing collects.** No collector, store, dashboard, or alerting path is selected.
-  This ConfigMap is read by nothing, and nothing scrapes either endpoint.
-- **Nothing has been installed.** No InferOps API image is published, this chart has
-  never been installed, and no Prometheus has ever loaded this configuration. Every
-  job, label, and rule here has been rendered, parsed, and compared against committed
-  records; none has been pointed at a running pod.
+- **No dashboard and no alerting path is selected.** A collector is, and it reads
+  this ConfigMap. Where the series go afterwards, and what would page anybody, are
+  still unowned and still deferred.
+- **One installation is not a claim about installation.** V1-S3-011-PR1 installed
+  this chart on one host, on one provider, once, and a real Prometheus loaded this
+  configuration and scraped both jobs there. Every job, label, and rule here has
+  also been rendered, parsed, and compared against committed records. Neither of
+  those is evidence about any other host, any other provider, or any later
+  revision.
 - **The multiplier is arithmetic.** Series ceilings are declared bounds multiplied by
   a replica count, not a measurement of a store.
 - **The runtime mapping was measured once**, on one host, on one day, from one image
