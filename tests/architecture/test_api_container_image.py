@@ -359,20 +359,43 @@ def test_the_image_script_derives_the_digest_rather_than_declaring_one() -> None
 
 
 def test_the_image_script_establishes_cluster_identity_before_it_loads() -> None:
-    """`kind load` names a cluster, and would happily name somebody else's.
+    """A load names a cluster, and would happily name somebody else's.
 
-    V1-S3-010-PR2: the provider-aware inferops::resolve_target and its
-    imagePreparation capability check replace the kind-pinned
-    inferops::assert_target_cluster here.
+    V1-S3-010-PR2 replaced the kind-pinned inferops::assert_target_cluster here
+    with the provider-aware inferops::resolve_target. V1-S3-011 then established
+    Docker Desktop's own image-preparation mechanism, so the capability check
+    that used to refuse every provider but kind moved inside
+    inferops::target_load_image, which dispatches on the verified provider's
+    mechanism and refuses one it does not implement. What this test asserts is
+    unchanged: nothing reaches a node before a target is verified.
     """
-    assert "inferops::resolve_target" in IMAGE_SCRIPT
-    assert "inferops::require_target_capability" in IMAGE_SCRIPT
-    identity = IMAGE_SCRIPT.index("inferops::resolve_target")
-    capability = IMAGE_SCRIPT.index("inferops::require_target_capability")
-    load = IMAGE_SCRIPT.index("kind load docker-image")
-    assert identity < capability < load, (
-        "the load happens before the target and its capability are established"
+    identity = _called(IMAGE_SCRIPT, "inferops::resolve_target")
+    load = _called(IMAGE_SCRIPT, "inferops::target_load_image")
+    assert identity < load, "the load happens before the target is established"
+
+
+def _called(script: str, function: str) -> int:
+    """Where `function` is actually invoked, not where prose first mentions it.
+
+    The comments here name the functions they explain, and a plain `.index()`
+    would find the comment rather than the call -- which puts the two in the
+    wrong order and fails a script that is correct.
+    """
+    match = re.search(rf"^\s*{re.escape(function)}\b", script, re.M)
+    assert match is not None, f"{function} is never called"
+    return match.start()
+
+
+def test_the_image_script_names_no_provider_mechanism_itself() -> None:
+    """Which mechanism puts an image into a node is the verified target's
+    property, not this script's. A `kind load` spelled here would be a second
+    place that has to learn about every provider."""
+    commands = "\n".join(
+        line for line in IMAGE_SCRIPT.splitlines() if not line.lstrip().startswith("#")
     )
+
+    assert "kind load" not in commands
+    assert "ctr --namespace" not in commands
 
 
 def test_the_image_script_pushes_to_no_registry() -> None:
@@ -496,11 +519,25 @@ def test_the_digest_is_the_manifest_digest_and_not_the_config_digest() -> None:
 
 
 def test_the_load_resolves_the_reference_the_chart_will_actually_use() -> None:
-    """A successful load is not a resolvable reference, and only one of them matters."""
-    assert "crictl inspecti" in IMAGE_SCRIPT
-    load = IMAGE_SCRIPT.index("kind load docker-image")
-    verify = IMAGE_SCRIPT.index("crictl inspecti")
-    assert load < verify, "the reference is checked before it is loaded"
+    """A successful load is not a resolvable reference, and only one of them matters.
+
+    The check itself now lives in inferops::target_load_image, because it is the
+    same claim for both providers -- not "the load command exited zero" but "the
+    reference the chart will ask containerd for resolves inside the node". This
+    asserts the script hands it the repository and the digest that reference is
+    built from, and that lib.sh makes the claim after the bytes are in.
+    """
+    lib = (REPO_ROOT / "scripts/environment/lib.sh").read_text(encoding="utf-8")
+
+    assert "crictl inspecti" in lib
+    assert 'inferops::target_load_image "${INFEROPS_API_IMAGE_REF}"' in IMAGE_SCRIPT
+    assert '"${INFEROPS_API_IMAGE_REPOSITORY}" "${digest}"' in IMAGE_SCRIPT
+
+    body = lib[lib.index("inferops::target_load_image() {") :]
+    for mechanism in ("kind load docker-image", "ctr --namespace=k8s.io images import"):
+        assert body.index(mechanism) < body.index("crictl inspecti"), (
+            f"{mechanism} is not checked after it runs"
+        )
 
 
 @pytest.mark.parametrize(

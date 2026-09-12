@@ -166,7 +166,7 @@ inferops::section "Experiment descriptor"
 # The descriptor's own values, read only after the tool above accepted it. A
 # field read from a document nothing validated is a threshold with no authority.
 read_descriptor() {
-  python -c '
+  inferops::python -c '
 import json, sys
 from pathlib import Path
 
@@ -481,7 +481,7 @@ ready_pod_of() {
     -n "${INFEROPS_RELEASE_NAMESPACE}" \
     -l "${INFEROPS_RELEASE_SELECTOR},app.kubernetes.io/component=${component}" \
     -o json)" || return 1
-  INFEROPS_PODS_JSON="${pods}" python -c '
+  INFEROPS_PODS_JSON="${pods}" inferops::python -c '
 import json, os
 
 pods = json.loads(os.environ["INFEROPS_PODS_JSON"]).get("items", [])
@@ -606,9 +606,12 @@ inferops::kubectl rollout status "deployment/${descriptor_api_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((api_rollout_budget_ms / 1000))s"
 baseline_ready_ms=$(($(now_ms) - baseline_ready_started))
 
+# Without `--logs`: the chart deletes a test pod that succeeded, and
+# `helm test --logs` then fails fetching logs from a pod that is gone,
+# reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
+# states the whole of it beside its own call.
 inferops::helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
-  --logs \
   --timeout "$((release_test_budget_ms / 1000))s"
 
 baseline_ms=$(($(now_ms) - baseline_started))
@@ -636,9 +639,12 @@ inferops::kubectl rollout status "deployment/${descriptor_api_deployment}" \
   -n "${INFEROPS_RELEASE_NAMESPACE}" --timeout="$((api_rollout_budget_ms / 1000))s"
 candidate_ready_ms=$(($(now_ms) - candidate_ready_started))
 
+# Without `--logs`: the chart deletes a test pod that succeeded, and
+# `helm test --logs` then fails fetching logs from a pod that is gone,
+# reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
+# states the whole of it beside its own call.
 inferops::helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
-  --logs \
   --timeout "$((release_test_budget_ms / 1000))s"
 
 candidate_ms=$(($(now_ms) - candidate_started))
@@ -653,7 +659,7 @@ record_stage candidate healthy "${candidate_ms}" "${candidate_ready_ms}" true
 candidate_release_json="$(require_query "the known-good revision to roll back to" \
   inferops::helm list --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --filter "^${INFEROPS_RELEASE_NAME}\$" -o json)"
-candidate_revision="$(INFEROPS_RELEASE_JSON="${candidate_release_json}" python -c '
+candidate_revision="$(INFEROPS_RELEASE_JSON="${candidate_release_json}" inferops::python -c '
 import json, os
 
 print(json.loads(os.environ["INFEROPS_RELEASE_JSON"])[0]["revision"])
@@ -928,7 +934,7 @@ DETECT_PYTHON
     # backgrounded `helm upgrade` is still writing to the release -- so a failure
     # here that aborted the script mid-loop is exactly the case the cleanup path
     # has to survive.
-    if ! finding_fields="$(INFEROPS_FINDING="${finding}" python -c '
+    if ! finding_fields="$(INFEROPS_FINDING="${finding}" inferops::python -c '
 import json, os
 
 finding = json.loads(os.environ["INFEROPS_FINDING"])
@@ -989,9 +995,12 @@ inferops::kubectl rollout status "deployment/${descriptor_api_deployment}" \
 rollback_ready_ms=$(($(now_ms) - rollback_ready_started))
 rollback_finished_at_ms=$(($(now_ms) - fault_started))
 
+# Without `--logs`: the chart deletes a test pod that succeeded, and
+# `helm test --logs` then fails fetching logs from a pod that is gone,
+# reporting a passing test as a failure. scripts/environment/kubernetes-certification.sh
+# states the whole of it beside its own call.
 inferops::helm test "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
-  --logs \
   --timeout "$((release_test_budget_ms / 1000))s"
 
 rollback_ms=$(($(now_ms) - rollback_started))
@@ -1007,7 +1016,7 @@ inferops::section "Collecting lifecycle facts"
 
 server_version_json="$(require_query "the API server's version" \
   inferops::kubectl version -o json)"
-server_version="$(INFEROPS_VERSION_JSON="${server_version_json}" python -c '
+server_version="$(INFEROPS_VERSION_JSON="${server_version_json}" inferops::python -c '
 import json, os
 
 print(json.loads(os.environ["INFEROPS_VERSION_JSON"])["serverVersion"]["gitVersion"])
@@ -1016,7 +1025,7 @@ helm_version="$(require_query "the helm version" \
   inferops::helm version --short)"
 kubectl_version_json="$(require_query "the kubectl version" \
   inferops::kubectl version --client -o json)"
-kubectl_version="$(INFEROPS_VERSION_JSON="${kubectl_version_json}" python -c '
+kubectl_version="$(INFEROPS_VERSION_JSON="${kubectl_version_json}" inferops::python -c '
 import json, os
 
 print(json.loads(os.environ["INFEROPS_VERSION_JSON"])["clientVersion"]["gitVersion"])
@@ -1031,7 +1040,8 @@ release_json="$(require_query "the release's own status" \
 
 mkdir -p "$(dirname "${lifecycle_file}")"
 
-INFEROPS_CLUSTER_NAME_FACT="${INFEROPS_CLUSTER_NAME}" \
+INFEROPS_PROVIDER_FACT="${INFEROPS_TARGET_PROVIDER}" \
+  INFEROPS_CLUSTER_NAME_FACT="${INFEROPS_CLUSTER_NAME}" \
   INFEROPS_CONTEXT="${INFEROPS_KUBE_CONTEXT}" \
   INFEROPS_SERVER_VERSION="${server_version}" \
   INFEROPS_NODE_DIGEST="${node_digest}" \
@@ -1085,6 +1095,7 @@ data = configmaps[0].get("data", {}) if configmaps else {}
 
 document = {
     "cluster": {
+        "provider": fact("PROVIDER_FACT"),
         "name": fact("CLUSTER_NAME_FACT"),
         "context": fact("CONTEXT"),
         "serverVersion": fact("SERVER_VERSION"),

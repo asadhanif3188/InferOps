@@ -81,6 +81,7 @@ from tools.kubernetes_certification.core import (
     CertificationError,
     ClusterTarget,
     ReleaseTarget,
+    _read_clusters,
     api_get,
     api_post,
     load_certification,
@@ -348,7 +349,7 @@ class Experiment:
     certification_ref: str
     procedure_ref: str
     baseline_certification_ref: str
-    cluster: ClusterTarget
+    clusters: tuple[ClusterTarget, ...]
     release: ReleaseTarget
     declared_stages: tuple[str, ...]
     requires_terraform_prerequisites: bool
@@ -457,15 +458,16 @@ def _require_keys(record: Mapping[str, Any], field: str, expected: set[str]) -> 
         )
 
 
-def _read_cluster(cluster: Mapping[str, Any]) -> ClusterTarget:
-    _require_keys(cluster, "cluster", {"name", "context", "nodeImageDigest"})
-    return ClusterTarget(
-        name=_string(cluster.get("name"), "cluster.name"),
-        context=_string(cluster.get("context"), "cluster.context"),
-        node_image_digest=_string(
-            cluster.get("nodeImageDigest"), "cluster.nodeImageDigest"
-        ),
-    )
+def _read_cluster(cluster: Mapping[str, Any]) -> tuple[ClusterTarget, ...]:
+    """The supported providers' targets, in the certification descriptor's shape.
+
+    Delegated rather than reimplemented: this experiment must describe exactly
+    the targets the Kubernetes certification describes -- `_check_baseline`
+    below compares them -- and two readers of one shape would eventually read
+    it two ways.
+    """
+    _require_keys(cluster, "cluster", {"providers"})
+    return _read_clusters(cluster)
 
 
 def _read_release(release: Mapping[str, Any]) -> ReleaseTarget:
@@ -896,7 +898,7 @@ def load_experiment(
         baseline_certification_ref=_string(
             document.get("baselineCertificationRef"), "baselineCertificationRef"
         ),
-        cluster=_read_cluster(_object(document.get("cluster"), "cluster")),
+        clusters=_read_cluster(_object(document.get("cluster"), "cluster")),
         release=_read_release(_object(document.get("release"), "release")),
         declared_stages=_strings(document.get("stages"), "stages"),
         requires_terraform_prerequisites=_boolean(
@@ -1028,7 +1030,7 @@ def _validate_against_baseline(experiment: Experiment, baseline: Certification) 
     certified workflow does not know about — and then reported a rollback of
     "the release".
     """
-    if experiment.cluster != baseline.cluster:
+    if experiment.clusters != baseline.clusters:
         raise ExperimentError(
             "the experiment and the Kubernetes certification describe different "
             "clusters"
@@ -1434,6 +1436,7 @@ class RecoveryFacts:
 class LifecycleFacts:
     """Everything the operating script measured, after this module checked it."""
 
+    provider: str
     cluster_name: str
     kube_context: str
     server_version: str
@@ -1513,6 +1516,7 @@ def load_lifecycle_facts(
         for index, entry in enumerate(reader.entries(document.get("stages"), "stages"))
     )
     return LifecycleFacts(
+        provider=reader.string(cluster.get("provider"), "cluster.provider"),
         cluster_name=reader.string(cluster.get("name"), "cluster.name"),
         kube_context=reader.string(cluster.get("context"), "cluster.context"),
         server_version=reader.string(
@@ -1680,18 +1684,31 @@ def load_cleanup_facts(
 
 
 def _check_environment(experiment: Experiment, facts: LifecycleFacts) -> None:
-    if (
-        facts.cluster_name != experiment.cluster.name
-        or facts.kube_context != experiment.cluster.context
-    ):
+    matches = [
+        entry for entry in experiment.clusters if entry.provider_id == facts.provider
+    ]
+    if not matches:
+        raise ExperimentFailed(
+            f"the collected facts name environment provider '{facts.provider}', "
+            "which this experiment does not describe",
+            STAGE_PREREQUISITES,
+        )
+    target = matches[0]
+    if facts.cluster_name != target.name or facts.kube_context != target.context:
         raise ExperimentFailed(
             f"the collected facts describe cluster '{facts.cluster_name}' on "
             f"context '{facts.kube_context}', not this project's",
             STAGE_PREREQUISITES,
         )
+    if not facts.node_image_digest:
+        raise ExperimentFailed(
+            "the collected facts do not name the node image the run used",
+            STAGE_PREREQUISITES,
+        )
     if (
         experiment.require_pinned_node_image
-        and facts.node_image_digest != experiment.cluster.node_image_digest
+        and target.node_image_pinned
+        and facts.node_image_digest != target.node_image_digest
     ):
         raise ExperimentFailed(
             "the cluster is not running the pinned node image, so the environment "

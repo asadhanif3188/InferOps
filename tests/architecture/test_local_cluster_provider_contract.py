@@ -97,6 +97,7 @@ PLATFORM_WORKFLOWS = (
     "kubernetes-certification.sh",
     "kubernetes-multi-replica-certification.sh",
     "helm-upgrade-rollback.sh",
+    "telemetry-collection-verify.sh",
     "api-image.sh",
     "model-seed-image.sh",
     "target-detect.sh",
@@ -113,6 +114,7 @@ MUTATING_PLATFORM_WORKFLOWS = (
     "kubernetes-certification.sh",
     "kubernetes-multi-replica-certification.sh",
     "helm-upgrade-rollback.sh",
+    "telemetry-collection-verify.sh",
     "api-image.sh",
     "model-seed-image.sh",
 )
@@ -451,23 +453,42 @@ def test_no_provider_is_identified_by_a_context_name_alone() -> None:
         assert other, provider["providerId"]
 
 
-def test_docker_desktop_has_two_implemented_checks_and_one_undecided() -> None:
-    """V1-S3-010-PR2 closed two of the three Docker Desktop identity checks.
+def test_docker_desktop_has_three_implemented_checks() -> None:
+    """V1-S3-010-PR2 closed two of the three; V1-S3-011 closed the third.
 
-    The third, binding the reachable nodes to this machine's engine, stays
-    undecided on purpose: whether that is even observable has not been
-    established, and the other two are implemented without pretending to answer
-    it. A guard that is a name-and-shape check is weaker than kind's, and this
-    pins that it is described as such rather than as complete.
+    The third binds the reachable nodes to this machine's engine, and ADR 0011
+    left it undecided because whether that was observable at all had not been
+    established. It is: Docker Desktop provisions its Kubernetes with kind, and
+    the node is an ordinary container on the operator's own engine carrying
+    kind's labels.
+
+    What the closure does not claim is that the two providers' guards became
+    identical, and the check's `gap` is where that is written down. kind asks the
+    engine to enumerate the containers it labelled; Docker Desktop's API proxy
+    filters its own containers out of `docker ps`, so here the same question can
+    only be asked of a name. That is weaker, it is recorded, and it is owed a
+    security review rather than more code.
     """
-    statuses = {
-        check["checkId"]: check["status"]
+    checks = {
+        check["checkId"]: check
         for check in PROVIDER_BY_ID["docker-desktop"]["identityChecks"]
     }
-    assert statuses["the-docker-desktop-context-exists"] == "implemented"
-    assert statuses["every-node-has-an-observed-docker-desktop-shape"] == "implemented"
-    assert statuses["the-nodes-are-bound-to-the-local-engine"] == "undecided"
-    assert "docker-desktop" in LIB_PATH.read_text(encoding="utf-8")
+    assert all(check["status"] == "implemented" for check in checks.values()), {
+        identifier: check["status"] for identifier, check in checks.items()
+    }
+
+    binding = checks["the-nodes-are-bound-to-the-local-engine"]
+    assert binding["enforcedBy"] == "inferops::_docker_desktop_target_problem"
+    assert binding["gap"], "the residual difference from kind's check is not recorded"
+    assert binding["owedBy"], "a recorded gap has to say who owes closing it"
+
+    lib = LIB_PATH.read_text(encoding="utf-8")
+    assert "docker-desktop" in lib
+    # The mechanism, not just the intent: `docker ps --filter` is what kind's
+    # check uses and what cannot work here, so a future edit that "unified" the
+    # two guards onto it would silently stop binding anything.
+    assert "io.x-k8s.kind.cluster" in lib
+    assert "docker inspect" in lib
 
 
 # --------------------------------------------------------------------------
@@ -584,7 +605,12 @@ def test_the_docker_desktop_unknowns_are_still_unknown() -> None:
         for question, answer in capabilities.items()
         if answer["evidence"] == "unknown"
     )
-    assert unknown == ["capacity", "imagePreparation", "wholeClusterCleanup"], unknown
+    # `imagePreparation` and `capacity` were owed by V1-S3-011 and were
+    # established by executing the paved road on this provider.
+    # `wholeClusterCleanup` is not owed by anything: no V1 workflow resets or
+    # disables this cluster, so nothing here has cause to observe what that
+    # would remove.
+    assert unknown == ["wholeClusterCleanup"], unknown
 
 
 # --------------------------------------------------------------------------

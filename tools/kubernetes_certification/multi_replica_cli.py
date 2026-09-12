@@ -48,6 +48,7 @@ from .multi_replica import (
     load_capacity_facts,
     load_cleanup_facts,
     load_multi_replica_certification,
+    require_capacity,
     result_document,
 )
 
@@ -141,10 +142,13 @@ def _print_check(certification: MultiReplicaCertification) -> None:
         f"read-only, verified by the '"
         f"{certification.model_cache.verification_init_container}' init container"
     )
-    print(
-        f"cluster       {certification.cluster_name} on the pinned node image "
-        f"{certification.node_image_digest}"
-    )
+    for entry in certification.clusters:
+        pin = (
+            f"the pinned node image {entry.node_image_digest}"
+            if entry.node_image_pinned
+            else "a node image the provider chooses, recorded but not pinned"
+        )
+        print(f"cluster       {entry.provider_id}: {entry.name} on {pin}")
     print(
         "assertions    every expected replica ready, every request successful "
         "with runtime-derived counts, one completion record per request, no "
@@ -197,7 +201,8 @@ def _print_certified(result: MultiReplicaResult, record: str) -> None:
     )
     print(f"evidence      labelled {certification.evidence_label}")
     print(
-        f"cluster       {facts.cluster_name} on {facts.server_version}; "
+        f"cluster       {facts.provider}: {facts.cluster_name} on "
+        f"{facts.server_version}; "
         f"release revision {facts.release_revision} of {facts.chart_version}"
     )
     ready = len(facts.ready_pods(release.api_component))
@@ -279,7 +284,19 @@ def _run(args: argparse.Namespace, certification: MultiReplicaCertification) -> 
                 "not this certification.",
                 file=sys.stderr,
             )
-            return EXIT_CAPACITY
+            # Raised rather than returned, so that this refusal writes the same
+            # diagnostics record every other refusal writes. A capacity refusal
+            # is evidence -- it is the bounded answer a host that cannot hold the
+            # profile is allowed to produce -- and until V1-S3-011 it produced
+            # none: the detail above went to a terminal, and whatever
+            # diagnostics file an earlier run had left behind stayed on disk as
+            # the only record, describing a different run on a different day.
+            #
+            # `require_capacity` is what raises, rather than a second
+            # construction of the same exception here, so that the refusal a
+            # preflight reports and the refusal a certify run reports cannot
+            # drift apart.
+            require_capacity(certification, facts)
         print("capacity      sufficient; nothing has been installed")
         return EXIT_OK
 

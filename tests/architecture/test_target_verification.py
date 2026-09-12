@@ -141,13 +141,39 @@ FAKE_KIND = textwrap.dedent(
 FAKE_DOCKER = textwrap.dedent(
     """\
     #!/usr/bin/env bash
-    # Fake docker. Understands `docker ps` (kind node containers), and answers
-    # `info`/`version` with fixed values nothing here asserts on.
+    # Fake docker. Understands `docker ps` (kind's node-container lookup) and
+    # `docker inspect` (Docker Desktop's, which has to ask by name because
+    # Docker Desktop's API proxy filters its own containers out of `docker ps`),
+    # and answers `info`/`version` with fixed values nothing here asserts on.
+    #
+    # FAKE_NODE_CONTAINER_LABELS maps a container name to its kind cluster and
+    # role, one `name=cluster:role` per line. A name absent from it is a name
+    # this engine has no container for, which is what `docker inspect` reports
+    # by failing.
     set -eu
     joined=" $* "
     case "$joined" in
       *" ps "*)
         printf '%s\\n' "${FAKE_KIND_NODE_CONTAINERS:-}"
+        exit 0
+        ;;
+      *" inspect "*)
+        wanted=""
+        for argument in "$@"; do
+          case "$argument" in
+            inspect | --format | -f | *'{{'*) ;;
+            *) [ -n "$wanted" ] || wanted="$argument" ;;
+          esac
+        done
+        entry="$(printf '%s\\n' "${FAKE_NODE_CONTAINER_LABELS:-}" |
+          grep "^${wanted}=" || true)"
+        [ -n "$entry" ] || exit 1
+        value="${entry#*=}"
+        case "$joined" in
+          *"io.x-k8s.kind.cluster"*) printf '%s\\n' "${value%%:*}" ;;
+          *"io.x-k8s.kind.role"*) printf '%s\\n' "${value#*:}" ;;
+          *) printf '%s\\n' "$value" ;;
+        esac
         exit 0
         ;;
       *" info "*)
@@ -240,6 +266,11 @@ DOCKER_DESKTOP_GOOD_ENV = {
     "INFEROPS_PROVIDER": "docker-desktop",
     "FAKE_OPERATOR_CONTEXTS": "docker-desktop",
     "FAKE_NODES": "node/desktop-control-plane",
+    # Docker Desktop provisions its Kubernetes with kind and labels the node
+    # container for its own cluster, `desktop`. V1-S3-011 established that this
+    # is observable from the operator's own engine, which is what closed
+    # `the-nodes-are-bound-to-the-local-engine`.
+    "FAKE_NODE_CONTAINER_LABELS": "desktop-control-plane=desktop:control-plane",
 }
 
 
@@ -315,9 +346,7 @@ def test_unsupported_provider_refuses(fake_bin: Path, tmp_path: Path) -> None:
     assert "unsupported-provider" in result.stderr
 
 
-def test_kind_with_no_cluster_name_is_ambiguous(
-    fake_bin: Path, tmp_path: Path
-) -> None:
+def test_kind_with_no_cluster_name_is_ambiguous(fake_bin: Path, tmp_path: Path) -> None:
     result = run_target(fake_bin, tmp_path, {"INFEROPS_PROVIDER": "kind"})
     assert result.returncode != 0
     assert "ambiguous-target" in result.stderr
@@ -333,9 +362,7 @@ def test_kind_cluster_kind_does_not_list_is_missing(
     assert "target-missing" in result.stderr
 
 
-def test_kind_named_twice_by_kind_is_ambiguous(
-    fake_bin: Path, tmp_path: Path
-) -> None:
+def test_kind_named_twice_by_kind_is_ambiguous(fake_bin: Path, tmp_path: Path) -> None:
     """Defensive: kind cluster names are unique by construction, and this pins
     that a duplicate is still refused rather than silently accepted as one."""
     env = dict(KIND_GOOD_ENV)
@@ -440,22 +467,78 @@ def test_client_outside_skew_refuses_for_both_providers(
 # --------------------------------------------------------------------------
 
 
-def test_docker_desktop_refuses_a_capability_it_does_not_have(
+def test_each_provider_reports_the_image_preparation_it_actually_has(
     fake_bin: Path, tmp_path: Path
 ) -> None:
-    """What api-image.sh and model-seed-image.sh's `load` action does: resolve
-    a target, then refuse before ever calling `kind load` because Docker
-    Desktop's imagePreparation is `not-established`, not `kind-load`."""
+    """Before V1-S3-011 Docker Desktop's imagePreparation was
+    `not-established` and `load` refused on it. The story established what the
+    mechanism is: this cluster does not share the local engine's image store, so
+    a load step is required, and `kind load` is not it -- Docker Desktop's API
+    proxy filters the very node container `kind load` would have to find out of
+    `docker ps`. The two providers now report two different implemented
+    mechanisms rather than one mechanism and one gap."""
+    command = "inferops::resolve_target && "
+    command += 'printf "%s\\n" "$INFEROPS_TARGET_IMAGE_PREPARATION"'
+
+    kind = run_target(fake_bin, tmp_path, dict(KIND_GOOD_ENV), command=command)
+    desktop = run_target(
+        fake_bin, tmp_path, dict(DOCKER_DESKTOP_GOOD_ENV), command=command
+    )
+
+    assert kind.returncode == 0, kind.stderr
+    assert "kind-load" in kind.stdout
+    assert desktop.returncode == 0, desktop.stderr
+    assert "node-ctr-import" in desktop.stdout
+
+
+def test_a_mechanism_this_project_does_not_implement_refuses_before_loading(
+    fake_bin: Path, tmp_path: Path
+) -> None:
+    """inferops::target_load_image dispatches on the verified provider's
+    mechanism, and a mechanism it has no branch for must refuse rather than fall
+    through to whichever branch happened to be last."""
     command = (
         "inferops::resolve_target && "
-        'inferops::require_target_capability imagePreparation kind-load '
-        '"$INFEROPS_TARGET_IMAGE_PREPARATION"'
+        'INFEROPS_TARGET_IMAGE_PREPARATION="not-established" '
+        "inferops::target_load_image localhost/x:dev localhost/x sha256:0"
     )
     result = run_target(
         fake_bin, tmp_path, dict(DOCKER_DESKTOP_GOOD_ENV), command=command
     )
+
     assert result.returncode != 0
     assert "capability-unknown-or-insufficient" in result.stderr
+
+
+def test_a_node_the_local_engine_does_not_hold_is_refused(
+    fake_bin: Path, tmp_path: Path
+) -> None:
+    """the-nodes-are-bound-to-the-local-engine, in the refusing direction. A
+    reachable API server reporting a correctly named and shaped node that is not
+    a container on this machine is not this machine's Docker Desktop, and a name
+    and a shape alone must not certify it."""
+    env = dict(DOCKER_DESKTOP_GOOD_ENV)
+    env["FAKE_NODE_CONTAINER_LABELS"] = ""
+    result = run_target(fake_bin, tmp_path, env)
+
+    assert result.returncode != 0
+    assert "provider-mismatch" in result.stderr
+
+
+def test_an_operators_own_kind_node_is_not_accepted_as_docker_desktops(
+    fake_bin: Path, tmp_path: Path
+) -> None:
+    """Selecting `docker-desktop` must not reach a kind cluster the operator
+    created themselves, even one whose node they named `desktop-control-plane`.
+    That cluster is selected as provider `kind`, by name."""
+    env = dict(DOCKER_DESKTOP_GOOD_ENV)
+    env["FAKE_NODE_CONTAINER_LABELS"] = (
+        "desktop-control-plane=somebody-elses:control-plane"
+    )
+    result = run_target(fake_bin, tmp_path, env)
+
+    assert result.returncode != 0
+    assert "provider-mismatch" in result.stderr
 
 
 def test_kind_has_the_image_preparation_capability_certification_needs(
@@ -463,7 +546,7 @@ def test_kind_has_the_image_preparation_capability_certification_needs(
 ) -> None:
     command = (
         "inferops::resolve_target && "
-        'inferops::require_target_capability imagePreparation kind-load '
+        "inferops::require_target_capability imagePreparation kind-load "
         '"$INFEROPS_TARGET_IMAGE_PREPARATION" && echo CAPABILITY_OK'
     )
     result = run_target(fake_bin, tmp_path, dict(KIND_GOOD_ENV), command=command)

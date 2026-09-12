@@ -106,6 +106,7 @@ naming it.
 | `networkPolicyEnforcement` | | | | Yes | Yes |
 | `defaultStorageClass` | | | | Yes | Yes |
 | `imagePreparation` | | | Yes | Yes | Yes |
+| `nodeContainer` | | | Yes | Yes | Yes |
 | `engineCapacity` | | | | Yes | Yes |
 | `verifiedAt` | | | | Yes | Yes |
 | `verifiedRevision` | | | | | Yes |
@@ -138,24 +139,41 @@ whether anything performs it.
 | `kind-reports-the-selected-cluster` | `kind` | Implemented; called by `inferops::resolve_target`, the helper, and `cluster-verify.sh` | `inferops::_kind_cluster_matches` |
 | `the-docker-desktop-context-exists` | `docker-desktop` | Implemented | `inferops::_docker_desktop_target_problem` |
 | `every-node-has-an-observed-docker-desktop-shape` | `docker-desktop` | Implemented, for the one shape observed | `inferops::_docker_desktop_target_problem` |
-| `the-nodes-are-bound-to-the-local-engine` | `docker-desktop` | **Undecided** | — |
+| `the-nodes-are-bound-to-the-local-engine` | `docker-desktop` | Implemented, by name rather than by filter | `inferops::_docker_desktop_target_problem` |
 
 The `kind` check is the one [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md)
 D5 describes and that was attacked with a real foreign cluster wearing this
 project's context name. It binds every node the API server reports to a container
 `kind` labelled on the local engine. **That binding is what makes it more than a
-name check**, and it is the part the Docker Desktop side does not yet have.
+name check.**
 
-The Docker Desktop checks are deliberately narrow. The node shape accepted is the
-one this project has observed — a single node, `desktop-control-plane`, running
-`kindest/kindnetd` — and any other shape is refused until somebody observes and
-records it. Whether Docker Desktop's nodes can be bound to the local engine the
-way `kind`'s can has not been established, and this implementation does not
-attempt it. **The Docker Desktop guard is therefore a name-and-shape check,
-weaker than `kind`'s.** `docs/security/deferred-risks.md` does not yet carry an
-accepted exception recording that difference; until it does, this page and the
-contract data are where the gap is written down, not a claim that the two guards
-are equivalent.
+Docker Desktop now has that binding too. V1-S3-011 established what had been
+recorded here as undecided: Docker Desktop provisions its Kubernetes *with kind*,
+and `desktop-control-plane` is an ordinary container on the same engine the
+operator's own `docker` CLI talks to, carrying
+`io.x-k8s.kind.cluster=desktop` and `io.x-k8s.kind.role=control-plane`. The guard
+reads those labels and refuses a node the local engine does not hold, and refuses
+a node belonging to any kind cluster other than Docker Desktop's own — so
+selecting `docker-desktop` cannot reach a kind cluster the operator created
+themselves, even one whose node they named `desktop-control-plane`.
+
+**The two guards are still not identical, and the difference is how the question
+is asked.** `kind` asks the engine for a list — `docker ps --filter
+label=io.x-k8s.kind.cluster=<name>` — and can therefore notice a node it was not
+told about. Docker Desktop's API proxy filters its own containers out of
+`docker ps`, so that filter returns nothing here and the same question has to be
+asked by name, with `docker inspect <node>`. Asking by name can only confirm the
+names the API server already reported. What fixes those names is the node-count
+and node-name check above it, which accepts one node called
+`desktop-control-plane` and nothing else; the two checks are relied on together
+rather than either alone.
+
+The node shape accepted is still only the one this project has observed — a
+single node, `desktop-control-plane`, running `kindest/kindnetd` — and any other
+shape is refused until somebody observes and records it. The cluster label value
+is likewise Docker Desktop's own, `desktop`, observed on the V1 reference host; a
+Docker Desktop release naming its cluster otherwise is refused rather than
+accepted because it might be legitimate.
 
 ## When a workflow must refuse
 
@@ -178,9 +196,13 @@ Six of the nine are performed by one dispatcher, `inferops::_target_problem`,
 which validates the provider itself and then hands off to
 `inferops::_kind_target_problem` or `inferops::_docker_desktop_target_problem`.
 `capability-unknown-or-insufficient` is `inferops::require_target_capability`,
-called by a workflow that depends on a specific capability -- today,
-`api-image.sh load` and `model-seed-image.sh load` refusing on Docker Desktop's
-`imagePreparation`, which this contract records as `not-established`.
+called by a workflow that depends on a specific capability, and
+`inferops::target_load_image`, which dispatches on the verified provider's
+`imagePreparation` mechanism and refuses a value it has no branch for rather than
+falling through to whichever branch happens to be last. Before V1-S3-011 that
+refusal was what `api-image.sh load` and `model-seed-image.sh load` did on Docker
+Desktop, because its `imagePreparation` was `not-established`; both providers now
+have an implemented mechanism and the refusal is reserved for a third.
 `client-outside-skew` is checked inside `inferops::resolve_target` itself,
 against the version the *selected* cluster's server actually reports rather than
 against a pin: `preflight.sh`'s own skew check, unaffected by this contract,
@@ -204,10 +226,10 @@ column.
 
 | Question | `kind` | `docker-desktop` |
 |---|---|---|
-| `imagePreparation` | `kind load docker-image --name <cluster>`, then resolved in the node with `crictl inspecti`. *Implemented, not executed* | *Unknown.* Whether an engine-built image is visible without a load step has not been observed, and `kind load` is not assumed to apply |
+| `imagePreparation` | `kind load docker-image --name <cluster>`, then resolved in the node with `crictl inspecti`. *Implemented, not executed* | `docker save` piped into `ctr --namespace=k8s.io images import --all-platforms -` inside `desktop-control-plane`, then `ctr images tag` for the `repository@digest` name, then resolved with `crictl inspecti`. The engine's image store is **not** shared with this cluster, by tag or by digest; `kind load` does nothing here because the kind CLI finds nodes through the filtered `docker ps`. *Observed* |
 | `defaultStorage` | kind's local-path StorageClass; the helper's node declares no `extraMounts`, so bytes live in the node container. *Documented* | A local-path provisioner under `/var/local-path-provisioner/`, reclaiming on delete. Class name not recorded. *Observed once* |
 | `networkPolicyEnforcement` | Not enforced by kindnetd. *Inferred* from the Docker Desktop measurement, which ran the same plugin | Not enforced by the kindnetd build tested. *Observed* |
-| `capacity` | The node shares the engine VM; preflight measures it. *Observed* | *Unknown.* The node's allocatable share of the Docker Desktop VM has not been recorded |
+| `capacity` | The node shares the engine VM; preflight measures it. *Observed* | The node is given effectively the whole VM: allocatable 12 cpu and 10188020Ki against an engine allocation of 12 processors and 10432532480 bytes on the V1 reference host. A gate must read the node's own allocatable and what is already requested on it, not the engine total, because the engine figure counts memory other workloads in the same cluster already hold. *Observed* |
 | `wholeClusterCleanup` | `kind delete cluster --name <cluster>` removes the node and its volumes; the `kind` network and node image survive. *Observed* | *Unknown.* What a reset or disable removes has not been observed, and no V1 workflow performs either |
 | `kubernetesVersion` | Chosen by the node image; the helper pins 1.34.8. *Observed* | Bound to the Docker Desktop release, not pinnable. `v1.34.3` both times it was read. *Observed* |
 | `nodeTopology` | `<cluster>-control-plane`, one node in the helper's definition. *Observed* | One node, `desktop-control-plane`, running kindest/kindnetd. *Observed* |

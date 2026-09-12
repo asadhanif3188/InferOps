@@ -256,7 +256,7 @@
       "marker": "architecture",
       "protects": "Every module under src/inferops/ is read for its imports, and the platform domain acquiring a Kubernetes client, a Helm library, a runtime SDK, or an HTTP framework is a failure.",
       "claims": [],
-      "note": "No published claim covers the dependency rule. It is an architecture decision rather than a claim about the product, and the claim matrix names none — but the rule is what makes the unit layer possible at all, so the check is here rather than deferred until a claim needs it."
+      "note": "No published claim covers the dependency rule. It is an architecture decision rather than a claim about the product, and the claim matrix names none \u2014 but the rule is what makes the unit layer possible at all, so the check is here rather than deferred until a claim needs it."
     },
     {
       "module": "tests/architecture/test_helm_chart.py",
@@ -598,6 +598,16 @@
       "layer": "documentation",
       "marker": "docs",
       "protects": "The rendered Kubernetes scrape configuration: it attaches no label the telemetry catalog bars from a metric, drops every one of them, maps only runtime series that were actually observed, and leaves no scrape job whose absence a query could not see.",
+      "claims": [
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+      ],
+      "note": null
+    },
+    {
+      "module": "tests/telemetry/test_telemetry_collection_verify.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The verifier that asks a running collector what it actually collected: a job that discovered no target and a target that never answered are kept apart from each other and from a query that simply returned nothing; a collector still completing its first scrape is waited for inside a budget rather than reported as broken; every accepted correlation query that publishes an expression is asked, and only the `no-source` class may publish none; a query the catalog says reads nothing this release emits may not return samples; and the evidence carries counts, names and booleans rather than a label value or a request timing.",
       "claims": [
         "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
       ],

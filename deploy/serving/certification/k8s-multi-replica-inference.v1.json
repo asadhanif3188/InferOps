@@ -10,9 +10,26 @@
   "procedureRef": "docs/serving/kubernetes-multi-replica-certification.md",
   "singleReplicaCertificationRef": "deploy/serving/certification/k8s-real-inference.v1.json",
   "cluster": {
-    "name": "inferops-dev",
-    "context": "kind-inferops-dev",
-    "nodeImageDigest": "sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256"
+    "providers": [
+      {
+        "providerId": "kind",
+        "name": "inferops-dev",
+        "context": "kind-inferops-dev",
+        "nodeImage": {
+          "pinned": true,
+          "digest": "sha256:02722c2dedddcfc00febf5d27fbeb9b7b2c14294c82109ff4a85d89ac9ba3256"
+        }
+      },
+      {
+        "providerId": "docker-desktop",
+        "name": "docker-desktop",
+        "context": "docker-desktop",
+        "nodeImage": {
+          "pinned": false,
+          "digest": null
+        }
+      }
+    ]
   },
   "release": {
     "name": "inferops",
@@ -116,7 +133,7 @@
     "removesCluster": false
   },
   "limitations": [
-    "The evidence is local real Kubernetes on a single-node kind cluster and implies nothing about production high availability.",
+    "The evidence is local real Kubernetes on a single-node local cluster provisioned by the environment provider the record names, and implies nothing about production high availability. Evidence produced on one provider certifies that provider only.",
     "The two tiers are certified by different evidence and the claims are not interchangeable. The platform API tier is certified per request: each successful request is joined to the replica that logged it. The serving runtime tier is certified per replica over a window: each serving replica's own decode counter is read before and after the request set, and every one of them must have advanced.",
     "No request is attributed to a serving runtime replica, and this record must not be read as though one were. The API reaches the runtime through a ClusterIP Service, and a client socket keeps the address it connected to rather than the endpoint kube-proxy translated it to, so the API cannot observe which runtime pod answered any individual request. llama-server publishes no per-instance identity in a completion either.",
     "The runtime counter window is bounded by the two reads around the request set, and an advance inside it is attributed to this request set by an argument from what else was running rather than by a per-request measurement. Two things carry that argument and they do not have the same standing. Established: the namespace holds only what this workflow installed, because it refuses to run over an existing release. Assumed: that llama-server's /health, which the probes ask, produces no token and so cannot advance the decode counter. That is an assumption about the pinned image rather than something this project has measured, and the first real run is where it is checked.",

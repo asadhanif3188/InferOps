@@ -542,6 +542,20 @@
       "evidenceRef": null
     },
     {
+      "resourceId": "model-acquisition-service-account",
+      "name": "The model acquisition job's service account",
+      "kind": "v1/ServiceAccount",
+      "owner": "helm",
+      "lifecycle": "release",
+      "v1Status": "planned",
+      "createdBy": "helm install or helm upgrade",
+      "destroyedBy": "helm uninstall",
+      "survives": [],
+      "referencedBy": [],
+      "handoff": "A third account, separate from the two workload accounts, and it exists for a sequencing reason rather than a permissions one. Helm applies a phase's hooks before the release manifest, so the runtime account the acquisition job used to name does not exist when the job is created: the API server refuses the Job, the hook times out, and the install fails reporting only 'failed pre-install: timed out waiting for the condition'. V1-S3-011 found that by installing this chart into a real cluster for the first time. The account is created by the same hook phase at a lower weight and carries the same delete policy as the job, so createdBy and destroyedBy above describe the release the way every other Helm-owned row does, while the object's actual lifetime is the hook's: removed when the hook succeeds, kept beside a failed job for inspection, replaced before the next attempt. Helm removes no hook on uninstall, so hook-succeeded is what keeps it from becoming residue -- the same sentence the acquisition job's row has to say. Granted nothing, and no pod mounts a token. Labelled app.kubernetes.io/component=model-acquisition rather than workload-identity, because it belongs to the hook and not to the set of identities the release owns. Still 'planned' for the same reason its siblings are: promoting the release layer's status to what the Sprint 3 re-certification actually installed is V1-S3-011-PR2's reconciliation, and promoting one row ahead of the rest would make the inventory disagree with itself.",
+      "evidenceRef": null
+    },
+    {
       "resourceId": "workload-network-policy",
       "name": "The workload network policy",
       "kind": "networking.k8s.io/v1 NetworkPolicy",

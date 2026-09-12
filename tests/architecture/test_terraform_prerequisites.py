@@ -703,8 +703,52 @@ def test_the_lock_file_is_not_ignored() -> None:
 
 
 def test_no_state_and_no_plan_was_committed() -> None:
-    assert not list(TERRAFORM_ROOT.rglob("*.tfstate")), "state was committed"
-    assert not list(TERRAFORM_ROOT.rglob("*.tfplan")), "a plan was committed"
+    """Asked of git rather than of the filesystem, which is the difference
+    between "committed" and "present".
+
+    Terraform writes `terraform.tfstate` beside its configuration, so the moment
+    somebody actually runs `terraform apply` against a local cluster the file
+    exists in this tree -- ignored, untracked, and entirely correct. A check that
+    globbed the directory failed on exactly the machines that had done the thing
+    this repository is trying to get done, and passed on the ones that had not.
+    V1-S3-011 was the first story to apply these prerequisites for real and the
+    first to hit it.
+
+    What must never happen is committing one: state carries resource ids and, for
+    some providers, secrets. `git ls-files` answers that question directly.
+    """
+    tracked = subprocess.run(
+        ["git", "ls-files", "--", "infra/terraform"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert tracked.returncode == 0, tracked.stderr
+    committed = tracked.stdout.split()
+
+    assert not [name for name in committed if name.endswith(".tfstate")], (
+        "state was committed"
+    )
+    assert not [name for name in committed if name.endswith(".tfstate.backup")], (
+        "a state backup was committed"
+    )
+    assert not [name for name in committed if name.endswith(".tfplan")], (
+        "a plan was committed"
+    )
+    # The check above is only as good as the ignore rules that keep a careless
+    # `git add` from tracking one in the first place.
+    for pattern in ("*.tfstate", "*.tfplan"):
+        ignored = subprocess.run(
+            ["git", "check-ignore", "-q", f"infra/terraform/x{pattern[1:]}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert ignored.returncode == 0, (
+            f"{pattern} under infra/terraform is not ignored"
+        )
 
 
 # --------------------------------------------------------------------------

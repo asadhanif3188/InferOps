@@ -234,6 +234,34 @@ gives up the separation above.
 {{- end -}}
 {{- end -}}
 
+{{/*
+The model acquisition job's own account.
+
+It exists because the job is a `pre-install` hook and the ServiceAccounts above
+are not. Helm applies a phase's hooks before the release manifest, so at the
+moment the hook Job is created the runtime's account has not been rendered yet,
+and the API server refuses the Job outright: `error looking up service account
+... not found`. The Job never schedules, the hook times out, and the install
+fails with `failed pre-install: timed out waiting for the condition` -- which
+names the symptom and not the cause. V1-S3-011 found this by installing the
+chart into a real cluster for the first time.
+
+So the account a hook names has to be created by the same phase that creates the
+hook. This one is, at a lower weight, and it is removed with the hook rather than
+left behind: the hook owns it for the length of the hook and nothing else.
+
+When the operator turns account creation off, this falls back to whatever the
+runtime resolves to -- their own account, or `default` -- because in that case
+nothing here is creating an account for the hook to wait for.
+*/}}
+{{- define "inferops-llm.acquisition.serviceAccountName" -}}
+{{- if .Values.security.serviceAccount.create -}}
+{{- printf "%s-model-acquisition" (include "inferops-llm.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- include "inferops-llm.runtime.serviceAccountName" . -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "inferops-llm.configMapName" -}}
 {{- printf "%s-configuration" (include "inferops-llm.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

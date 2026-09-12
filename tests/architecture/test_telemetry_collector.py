@@ -201,11 +201,20 @@ def test_the_collectors_storage_is_ephemeral_and_bounded() -> None:
     assert "--storage.tsdb.retention.size=" in args, (
         "a retention window without a size bound can fill the volume it lives in"
     )
-    assert "--web.enable-lifecycle=false" in args, (
+    # `--no-<flag>` and not `--<flag>=false`. Prometheus parses its command line
+    # with kingpin, where a boolean flag takes no value: `=false` is read as a
+    # positional argument and the process exits with `unexpected false` before it
+    # opens a port, so every probe fails and the Deployment never becomes ready.
+    # The rendered manifest is well-formed YAML either way, which is why only an
+    # install could tell the two apart -- V1-S3-011's first one did.
+    assert "--no-web.enable-lifecycle" in args, (
         "the lifecycle endpoint reloads configuration for anyone who can reach it"
     )
-    assert "--web.enable-admin-api" not in args, (
+    assert "--no-web.enable-admin-api" in args, (
         "the admin API deletes series for anyone who can reach it"
+    )
+    assert "=false" not in args, (
+        "a boolean passed as '=false' is rejected by Prometheus before it starts"
     )
 
 

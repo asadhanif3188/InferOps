@@ -147,19 +147,19 @@
         },
         {
           "checkId": "the-nodes-are-bound-to-the-local-engine",
-          "statement": "The nodes are shown to belong to this machine's Docker Desktop virtual machine, in the way kind's check binds nodes to containers kind labelled. This is what would make the check more than a name and a shape.",
-          "status": "undecided",
-          "enforcedBy": null,
-          "gap": "No mechanism is chosen, because whether Docker Desktop's nodes are observable from the local engine has not been established. The other two Docker Desktop checks are implemented without it, so this guard is a name-and-shape check, weaker than kind's. docs/security/deferred-risks.md does not yet carry an accepted exception for this difference; until it does, this row is where the gap is recorded, not a claim that the two providers' guards are equally strong.",
-          "owedBy": "an ADR deciding whether Docker Desktop's nodes are observable from the local engine at all, and a security review recording the interim gap as an accepted exception"
+          "statement": "Every node the API server reports is a container on this machine's own engine carrying the kind labels Docker Desktop gave it: `io.x-k8s.kind.cluster=desktop` and `io.x-k8s.kind.role=control-plane`. Docker Desktop provisions its Kubernetes with kind, so its node is an ordinary container on the engine the operator's `docker` CLI already talks to.",
+          "status": "implemented",
+          "enforcedBy": "inferops::_docker_desktop_target_problem",
+          "gap": "Asked with `docker inspect <name>` rather than kind's `docker ps --filter label=...`, because Docker Desktop's API proxy filters its own containers out of `docker ps` and the filter kind uses returns nothing here. Asking by name is weaker than asking for a list: it binds the node names the API server reported and cannot detect a node it did not report. The node-count and node-name checks above are what fix those names, so the two are relied on together. The label value is Docker Desktop's own cluster name, `desktop`, observed on the V1 reference host; a Docker Desktop release naming it otherwise is refused until it has been observed and recorded.",
+          "owedBy": "a security review recording the residual difference -- a node looked up by name rather than enumerated from the engine, because Docker Desktop's API proxy filters its own containers out of `docker ps` -- as an accepted exception in docs/security/deferred-risks.md. The mechanism question ADR 0011 left open is answered; what is left is whether the weaker form of the question is acceptable, and that is a review rather than an implementation."
         }
       ],
       "capabilities": {
         "imagePreparation": {
-          "value": "Not established. Whether an image built by the local engine is visible to this cluster's container runtime without a load step depends on how Docker Desktop provisions the cluster, and nothing here has observed it. `kind load` is not assumed to apply.",
-          "evidence": "unknown",
-          "source": null,
-          "owedBy": "V1-S3-011"
+          "value": "A locally built image is invisible to the node until it is imported into the node's own containerd: `docker save <ref>` piped into `ctr --namespace=k8s.io images import --all-platforms -` inside `desktop-control-plane`, then `ctr images tag` to create the `repository@digest` name, because an import stores only the names the archive carries and containerd resolves a digest reference by name. The reference is then resolved inside the node with `crictl inspecti` before anything depends on it. This cluster does not share the local engine's image store: an image the engine holds is invisible to the node by tag and by digest alike, and an image the engine pulled from a registry is invisible too. `kind load` is not the mechanism even though this is a kind cluster -- the kind CLI finds a cluster's nodes through `docker ps --filter`, and Docker Desktop's API proxy filters its own containers out of `docker ps`, so `kind load` finds no nodes and does nothing. `docker exec` and `docker inspect` by name are not filtered.",
+          "evidence": "observed",
+          "source": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+          "owedBy": null
         },
         "defaultStorage": {
           "value": "A local-path provisioner that kept volumes under /var/local-path-provisioner/ on the node and reclaimed them on delete, observed in one trial. The class's name was not recorded, and whether resetting or disabling Kubernetes in Docker Desktop removes those bytes has not been observed.",
@@ -174,10 +174,10 @@
           "owedBy": null
         },
         "capacity": {
-          "value": "Not established. The node runs inside the Docker Desktop virtual machine and shares it with the engine and with whatever else that cluster already hosts. Its allocatable processors and memory have never been recorded against the engine's allocation, and the one trial here found whole-machine memory contaminated by unrelated workloads in the same cluster.",
-          "evidence": "unknown",
-          "source": null,
-          "owedBy": "V1-S3-011"
+          "value": "The node is a container on the local engine and shares the Docker Desktop virtual machine with the engine and with whatever else that cluster already hosts. On the V1 reference host the node reported allocatable 12 cpu and 10188020Ki against an engine allocation of 12 processors and 10432532480 bytes -- the node is given effectively the whole virtual machine, not a partition of it. That is why a gate must read the node's own allocatable and what is already requested on it rather than the engine's total: the engine figure counts memory that other workloads in the same cluster have already spoken for.",
+          "evidence": "observed",
+          "source": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+          "owedBy": null
         },
         "wholeClusterCleanup": {
           "value": "Not established. Resetting or disabling Kubernetes in Docker Desktop's settings is the operator's operation, never InferOps's. What it removes -- volumes, loaded images, the context -- has not been observed, and kind's answer is not borrowed for it.",
@@ -205,98 +205,156 @@
       "factId": "provider",
       "statement": "The provider the operator selected, after its identity checks passed.",
       "source": "selection",
-      "consumers": ["kubectl-workflows", "certification", "evidence"],
+      "consumers": [
+        "kubectl-workflows",
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "clusterName",
       "statement": "The identity the provider gives the cluster: the selected kind cluster name, or `docker-desktop`.",
       "source": "selection",
-      "consumers": ["kubectl-workflows", "certification", "evidence"],
+      "consumers": [
+        "kubectl-workflows",
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "kubeconfigPath",
       "statement": "The project-scoped kubeconfig verification wrote, holding exactly one context. It is a host path and holds a client credential, so the path never enters a record and the file never enters the repository.",
       "source": "verification",
-      "consumers": ["terraform", "helm", "kubectl-workflows", "certification"],
+      "consumers": [
+        "terraform",
+        "helm",
+        "kubectl-workflows",
+        "certification"
+      ],
       "recordedInEvidence": false
     },
     {
       "factId": "kubeContext",
       "statement": "The one context in that file.",
       "source": "verification",
-      "consumers": ["terraform", "helm", "kubectl-workflows", "certification", "evidence"],
+      "consumers": [
+        "terraform",
+        "helm",
+        "kubectl-workflows",
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "serverVersion",
       "statement": "The version the API server reports, not the version a pin was expected to produce.",
       "source": "verification",
-      "consumers": ["certification", "evidence"],
+      "consumers": [
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "nodeNames",
       "statement": "Every node the API server reports, as the identity checks saw them.",
       "source": "verification",
-      "consumers": ["certification", "evidence"],
+      "consumers": [
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "containerRuntime",
       "statement": "The runtime the nodes report.",
       "source": "verification",
-      "consumers": ["evidence"],
+      "consumers": [
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "networkPlugin",
       "statement": "The network plugin the cluster runs, identified by its image.",
       "source": "verification",
-      "consumers": ["evidence"],
+      "consumers": [
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "networkPolicyEnforcement",
       "statement": "`not-enforced` or `unknown`, taken from this contract for the selected provider. Never `enforced` unless an enforcement experiment on that provider has said so.",
       "source": "verification",
-      "consumers": ["certification", "evidence"],
+      "consumers": [
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "defaultStorageClass",
       "statement": "The default StorageClass and its provisioner, which the model cache claim will take because it names none.",
       "source": "verification",
-      "consumers": ["certification", "evidence"],
+      "consumers": [
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "imagePreparation",
-      "statement": "How a locally built image reaches this cluster: `kind-load`, or `not-established`. A workflow that needs a local image refuses on `not-established`.",
+      "statement": "How a locally built image reaches this cluster: `kind-load` for kind, `node-ctr-import` for docker-desktop. Neither provider shares the local engine's image store, so both need a load step and they do not use the same one. A workflow that needs a local image refuses on any value it has no mechanism for, rather than falling through to whichever it implements last.",
       "source": "verification",
-      "consumers": ["kubectl-workflows", "certification", "evidence"],
+      "consumers": [
+        "kubectl-workflows",
+        "certification",
+        "evidence"
+      ],
+      "recordedInEvidence": true
+    },
+    {
+      "factId": "nodeContainer",
+      "statement": "The name of the control-plane node's container on the local engine: `<cluster>-control-plane` for kind, `desktop-control-plane` for docker-desktop. Both providers put their node in a container on the operator's own engine, which is what makes one image-preparation check and one node-image digest read serve both.",
+      "source": "verification",
+      "consumers": [
+        "kubectl-workflows",
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "engineCapacity",
       "statement": "The processors and memory reaching the engine's virtual machine, as the capacity gates read them.",
       "source": "verification",
-      "consumers": ["certification", "evidence"],
+      "consumers": [
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "verifiedAt",
       "statement": "When the identity checks passed, in UTC. A mutation re-verifies rather than trusting it.",
       "source": "verification",
-      "consumers": ["certification", "evidence"],
+      "consumers": [
+        "certification",
+        "evidence"
+      ],
       "recordedInEvidence": true
     },
     {
       "factId": "verifiedRevision",
       "statement": "The repository revision whose checks performed the verification.",
       "source": "verification",
-      "consumers": ["evidence"],
+      "consumers": [
+        "evidence"
+      ],
       "recordedInEvidence": true
     }
   ],
@@ -311,35 +369,50 @@
     {
       "refusalId": "no-provider-selected",
       "when": "A mutating workflow is invoked without a provider. There is no default and no inference from whichever cluster answers.",
-      "implementedFor": ["kind", "docker-desktop"],
+      "implementedFor": [
+        "kind",
+        "docker-desktop"
+      ],
       "enforcedBy": "inferops::_target_problem",
       "owedBy": null
     },
     {
       "refusalId": "unsupported-provider",
       "when": "The selected provider is neither `kind` nor `docker-desktop`.",
-      "implementedFor": ["kind", "docker-desktop"],
+      "implementedFor": [
+        "kind",
+        "docker-desktop"
+      ],
       "enforcedBy": "inferops::_target_problem",
       "owedBy": null
     },
     {
       "refusalId": "ambiguous-target",
       "when": "The selection does not resolve to exactly one cluster: `kind` without a cluster name, a name kind does not list exactly once, or a project kubeconfig holding more than one context.",
-      "implementedFor": ["kind", "docker-desktop"],
+      "implementedFor": [
+        "kind",
+        "docker-desktop"
+      ],
       "enforcedBy": "inferops::_target_problem",
       "owedBy": null
     },
     {
       "refusalId": "target-missing",
       "when": "The selected cluster is not there: no project kubeconfig, kind does not list the name, or no `docker-desktop` context exists.",
-      "implementedFor": ["kind", "docker-desktop"],
+      "implementedFor": [
+        "kind",
+        "docker-desktop"
+      ],
       "enforcedBy": "inferops::_target_problem",
       "owedBy": null
     },
     {
       "refusalId": "target-unreachable",
       "when": "The API server does not answer, or answers with no nodes.",
-      "implementedFor": ["kind", "docker-desktop"],
+      "implementedFor": [
+        "kind",
+        "docker-desktop"
+      ],
       "enforcedBy": "inferops::_target_problem",
       "owedBy": null
     },
@@ -353,21 +426,30 @@
     {
       "refusalId": "provider-mismatch",
       "when": "The reachable cluster fails the selected provider's identity checks, including when it is a cluster of the other supported provider.",
-      "implementedFor": ["kind", "docker-desktop"],
+      "implementedFor": [
+        "kind",
+        "docker-desktop"
+      ],
       "enforcedBy": "inferops::_target_problem",
       "owedBy": null
     },
     {
       "refusalId": "capability-unknown-or-insufficient",
       "when": "The workflow depends on a capability the target lacks, or on one this contract records as `unknown` for the selected provider.",
-      "implementedFor": ["kind", "docker-desktop"],
+      "implementedFor": [
+        "kind",
+        "docker-desktop"
+      ],
       "enforcedBy": "inferops::require_target_capability",
       "owedBy": null
     },
     {
       "refusalId": "client-outside-skew",
       "when": "kubectl is more than one minor version from the version the selected cluster's server reports.",
-      "implementedFor": ["kind", "docker-desktop"],
+      "implementedFor": [
+        "kind",
+        "docker-desktop"
+      ],
       "enforcedBy": "inferops::resolve_target",
       "owedBy": null
     }
