@@ -5,6 +5,7 @@
 | Status | **Accepted in part** |
 | Date proposed | 2026-09-12 |
 | Date accepted | 2026-09-12, for D1 through D5 only |
+| Date amended | 2026-09-13, by `V1-S4-001-PR2`: D2 narrowed to what reaches a cluster, and D7 added |
 | Decision owner | Unassigned; no public maintainer roster exists yet |
 | Supersedes | [ADR 0005](ADR-0005-test-ci-and-certification-strategy.md) D6, in part |
 | Superseded by | None |
@@ -15,15 +16,19 @@
 > D6 — *which continuous-integration service runs the lanes*. The other half — *what
 > labels a capable runner* — stays **not decided**, and D6 stays open for it.
 >
-> **No run of the committed workflow has passed on the service.** Every command in
-> it was executed by hand on one Windows host before it was written down. The first
-> hosted run, on the pull request that introduced it, failed three of nine jobs on two
-> defects no Windows run could show; both are fixed, and the fixes have not yet run.
-> A committed workflow is a configuration, and this record does not claim it is a
-> result. Running the scanner by hand, which this change did, is a different thing
-> from the gate running: it moved the `security-scan` layer to `implemented` and left
-> the two claims resting on it uncertified, because one run on one host is not a
-> property of every change.
+> **The nine jobs this record introduced have passed on the service; the two
+> `V1-S4-001-PR2` added have not run there.** The first hosted run, on the pull
+> request that introduced the workflow, failed three of nine jobs on two defects no
+> Windows run could show. Both were fixed, and all nine passed on 2026-09-13 — on the
+> pull-request run for `0c84d79` and on the push to `main` at `f212090`. Those runs are
+> observed, not recorded: no log is promoted, and a passing run is still not evidence
+> for a claim until it is. Running the scanner by hand, which this record's change did,
+> is a different thing from the gate running: it moved the `security-scan` layer to
+> `implemented` and left the two claims resting on it uncertified.
+>
+> The original text of this banner said no run had passed. That was true when it was
+> written, and the amendment corrects it here rather than leaving a limitation that has
+> stopped being one.
 >
 > D6 here is **not decided**. No policy is set for whether a required-status-check
 > rule protects `main`, because that is a repository setting this repository cannot
@@ -34,11 +39,12 @@
 | ID | Decision | Status | What supports it |
 |---|---|---|---|
 | D1 | GitHub Actions runs the `default-checks` lane | **Accepted** | A committed workflow, and a test that the lane may claim automation only by naming one that exists |
-| D2 | The normal lane is cluster-free and model-free, and both are checked rather than promised | **Accepted**, and enforced | Two checks that read the workflow's own text and refuse a cluster or model token |
+| D2 | The normal lane is cluster-free and model-free, and both are checked rather than promised | **Accepted**, and enforced; **amended** by `V1-S4-001-PR2` | A checker that reads the workflow's own text and refuses anything that reaches a cluster — any Helm or Terraform subcommand outside the offline set, kubectl, kind, a kubeconfig, a provider selection, an environment script — and any model token, with twenty-one fixtures it must refuse |
 | D3 | Every third-party action is pinned by commit SHA, and every pin is recorded beside it | **Accepted**, and enforced | A check that refuses a `uses:` reference that is not forty hexadecimal characters, plus a recorded pin per action |
 | D4 | A published gate matrix, compared to the workflows in both directions | **Accepted**, and executed | The matrix is committed as data and a suite compares it to the committed jobs both ways, and to the programs each job invokes |
 | D5 | Automating a lane does not raise what it may certify | **Accepted** as a rule, and enforced | Every gate's ceiling is inherited from the strategy's evidence class rather than restated |
 | D6 | Whether a required-status-check rule protects `main` | **Not decided** | Nothing. It is a repository setting, not a committed file, and no evidence of it can live here |
+| D7 | A workflow for a lane that needs a cluster is dispatched, provider-selected, and guarded — and none is committed | **Accepted** as a rule, and enforced against fixtures | The same checker applies eleven dispatch rules to any workflow whose lane requires a cluster; two valid shapes and the fixtures that break each rule are committed. No such workflow is, because what labels a capable runner is still ADR 0005 D6's open half |
 
 ## Context
 
@@ -101,22 +107,45 @@ A self-hosted runner was not considered for this lane and is not needed for it:
 nothing in `default-checks` requires a capable host, which is the property that makes
 this the half of D6 that can be decided cheaply.
 
-Nine jobs make up the lane. What each runs, which layer it belongs to, which claim it
-defends, and what it does not prove are in
+Nine jobs made up the lane when this record was accepted, and `V1-S4-001-PR2` added
+two — `helm-chart` and `terraform` — under the amended D2 below. What each runs, which
+layer it belongs to, which claim it defends, and what it does not prove are in
 [the gate matrix](../../testing/ci-gate-matrix.md).
 
 ## D2 — The normal lane is cluster-free and model-free, and it is checked
 
-The workflow may not invoke `kubectl`, `helm`, `terraform`, or `kind`, may not select
-a cluster provider, may not name a kubeconfig, and may not invoke the model
-acquisition tooling or fetch the pinned artifact.
+> **Amended by `V1-S4-001-PR2`.** As accepted, D2 forbade the workflow to invoke
+> `helm` or `terraform` at all, and enforced that by refusing the text `helm ` and
+> `terraform `. That was the right rule while neither tool had a job in the lane, and
+> it could not survive the change that gave them one: `helm template` and
+> `terraform validate` read files, and a rule that refused them would have kept the
+> chart and the configuration out of the lane that exists to check them. The
+> amendment narrows **what is named**, not **what is protected** — the lane still
+> cannot reach a cluster.
 
-This is enforced by reading the workflow's own text and refusing a token from either
-list. Reading the text rather than the parsed steps is deliberate: a cluster can be
-reached from a script block, from an action input, or from an environment variable,
-and only the text sees all three. Comment lines are stripped first, so this record's
-own prohibitions can be written into the file as comments without tripping the check
-that enforces them.
+The workflow may not reach a Kubernetes cluster. Helm may run only `lint`, `template`,
+and `version`; Terraform only `fmt`, `init` with `-backend=false`, `validate`, and
+`version`. It may not invoke `kubectl` or `kind`, name a kubeconfig or a kube context,
+select a cluster provider, or run any environment script — even an offline action of
+one, because a script's other actions reach a cluster and a check of the workflow
+cannot read inside it. It may not invoke the model acquisition tooling or fetch the
+pinned artifact.
+
+This is enforced by reading the workflow's own text, in
+[`tools/ci_gates/workflow_boundary.py`](../../../tools/ci_gates/workflow_boundary.py),
+which both the gate-matrix suite and the expected-failure gate call. Reading the text
+rather than the parsed steps is deliberate: a cluster can be reached from a script
+block, from an action input, or from an environment variable, and only the text sees
+all three. Comment lines are stripped first, so this record's own prohibitions can be
+written into the file as comments without tripping the check that enforces them. A
+subcommand is read at a command position only, so a path ending in `/helm` is not a
+call, and a dynamic subcommand such as `helm $SUBCOMMAND` is refused because it cannot
+be shown to be offline.
+
+The narrower rule is held to what it must refuse: installs, upgrades, tests, lists,
+plans, applies, destroys, imports, state reads, an `init` that configures a backend,
+kubectl, kind, a kubeconfig, a provider selection, and an environment script — each
+in a fixture the checker must refuse, alongside the offline forms it must accept.
 
 The alternative — stating the rule in this document and reviewing for it — is what
 the equivalent rule for shell scripts looked like before
@@ -201,6 +230,45 @@ unverifiable from inside the repository — which is the same reason
 [ADR 0005](ADR-0005-test-ci-and-certification-strategy.md) D6 was left open rather
 than filled with a plausible default.
 
+## D7 — A lane that needs a cluster is dispatched, provider-selected, and guarded
+
+> **Added by `V1-S4-001-PR2`.** It decides the rules a workflow for the
+> `cluster-smoke` or `real-runtime` lane must satisfy. It commits no such workflow and
+> labels no runner.
+
+A workflow whose lane requires a cluster is triggered only by `workflow_dispatch`. It
+takes a required `provider` input of type `choice`, offering exactly the providers
+[the provider contract](../../environment/local-cluster-provider-contract.v1alpha1.json)
+admits, with no default, and hands it to every job as `INFEROPS_PROVIDER`. Every job
+runs on a `self-hosted` runner and on no hosted image. It reaches the cluster only
+through environment scripts that call `inferops::resolve_target` — never through
+kubectl or a direct Helm or Terraform subcommand that reaches a cluster, and never
+through `cluster-up.sh` or `cluster-down.sh`, because the lane consumes an externally
+owned cluster. A model-free lane installs no real profile, since a real release runs an
+acquisition job. A lane that requires authorization declares a required boolean
+`authorize` input defaulting to false, and every job waits on it. The rules every
+workflow meets — a read-only token, timeouts within the lane's budget, actions pinned by
+commit SHA — apply too.
+
+These are the Sprint 4 amendment's words — opt-in, provider-selected, target-verified,
+consuming an externally owned cluster — made into eleven checks. The same checker as
+D2 applies them to any workflow the gate matrix places in such a lane, and to fixtures:
+two valid shapes and a fixture for each rule that breaks it and nothing else.
+
+**Why no workflow is committed.** A committed workflow would name a runner label, and
+what labels a capable runner is the half of ADR 0005 D6 that is still open. Committing
+one anyway would decide that by accident, which is the failure the record exists to
+avoid. So the lanes stay `manual`, and the first workflow for either meets a check
+rather than a paragraph.
+
+**What writing the rules found.** The cluster-smoke lane is built from `smoke.sh`,
+`cluster-verify.sh`, `preflight.sh`, and `verify-clean.sh`, and none of them calls the
+provider guard: `smoke.sh` still calls the older kind-only identity check. A dispatched
+cluster-smoke workflow could not use them under these rules. The gap is not closed
+here, because moving them onto the guard is environment-script work outside a CI
+change; a test asserts it still exists, so the change that closes it has to correct
+the gate matrix too.
+
 ## Consequences
 
 - `CONTRIBUTING`'s statement that every check is run by hand is no longer true for
@@ -223,7 +291,13 @@ than filled with a plausible default.
   daily and the two scanning gates block on `CRITICAL` and `HIGH`, so a green result
   dates rather than proves. That is the gate working, and the response is an
   exception recorded by hand in the security baseline, never a lowered threshold.
-- The lane is not hermetic. Three gates consume the network.
+- The lane is not hermetic. Three gates consumed the network when this record was
+  accepted; five do since `V1-S4-001-PR2`, which downloads four pinned archives, the
+  pinned Terraform provider, and Kubernetes schemas from a pinned commit.
+- Since the D2 amendment, adding a Helm or Terraform step means choosing an offline
+  subcommand, and adding a downloaded tool means adding a committed digest and a pin
+  row. A cluster workflow, whenever one arrives, meets D7 on the pull request that
+  introduces it.
 
 ## Compatibility impact
 
@@ -232,6 +306,12 @@ location changes. No committed command changes its behaviour, and every command 
 workflow runs is one CONTRIBUTING already published. One new command is added,
 `python -m tools.ci_gates expected-failures`, and it only runs commands that already
 existed.
+
+The amendment is compatible on the same terms. It adds four commands —
+`python -m tools.ci_gates kubernetes-failures`, `terraform-failures`, `no-skips`, and
+the two checkers `tools.ci_gates.workflow_boundary` and
+`tools.ci_gates.ownership_overlap` — and one committed tflint configuration. No chart
+value, template, render, Terraform resource, or environment script changes.
 
 The `default-checks` lane's `automated`, `workflowRef`, and `v1Status` fields change
 in the strategy data, which is the change the suite there was written to require.
@@ -267,19 +347,28 @@ It also records the first run of the secret scanner this repository has ever mad
 which is what moved the `security-scan` layer from `planned` to `implemented` — and
 what found that the committed scan configuration had never parsed.
 
-It is **not** evidence that any job passes on GitHub Actions, because none has run
-there. It is not evidence that a scan is clean on a hosted runner, it is not evidence
-that the next change will be scanned at all, and it is not evidence for any claim
-about a runtime, a cluster, or a model.
+It was **not** evidence that any job passes on GitHub Actions, because none had run
+there when it was written. It is not evidence that a scan is clean on a hosted runner,
+it is not evidence that the next change will be scanned at all, and it is not evidence
+for any claim about a runtime, a cluster, or a model.
+
+The amendment's change validation is
+[the V1-S4-001-PR2 validation record](../../proof/testing/v1-s4-001-pr2-validation.md).
+It is local static evidence for the infrastructure gates, the controls, and the lane
+rules, produced on one Windows host with Windows builds of the pinned tool versions. It
+also records the job-level results of the two hosted runs that passed the original
+nine gates, as read from the service's public API, and says what that observation is
+not.
 
 ## Risks, assumptions, and open questions
 
-- **The workflow has not yet passed.** Every command in it was run locally on
-  Windows, and "close to what the runner will do" proved not close enough: the first
-  hosted run found three scripts refused with `Permission denied`, which Git Bash
-  never asks about, and Helm renders whose checksums depended on the checkout's line
-  endings. Both are fixed and each is now checked; the next run is the first test of
-  the fixes.
+- **The two amended-in gates have not yet passed.** Every command in them was run
+  locally on Windows, and "close to what the runner will do" has already proved not
+  close enough once: the first hosted run of this workflow found three scripts refused
+  with `Permission denied`, which Git Bash never asks about, and Helm renders whose
+  checksums depended on the checkout's line endings. Both were fixed, and the nine
+  original gates passed on the next two runs. The two new gates carry the same risk
+  until they run.
 - **A vendor is now a dependency.** The lane is expressed in one service's workflow
   syntax. Moving it would mean rewriting the file; nothing else in the repository
   would change, because every gate is a command that already ran by hand.

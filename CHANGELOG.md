@@ -10,6 +10,54 @@ once versioned releases begin.
 
 ### Added
 
+- **The chart and the Terraform configuration are gates now, and the normal lane
+  still cannot reach a cluster.** Two jobs join
+  [`.github/workflows/checks.yml`](.github/workflows/checks.yml). `helm-chart` lints the
+  chart under both fixtures, renders both and validates them with kubeconform against
+  Kubernetes schemas pinned to one commit, validates the smoke manifests, runs
+  eighteen controls through the real tools, and runs the chart suite with its render
+  drift check **required** to run. `terraform` checks format, initialises with no
+  backend, validates, lints with a committed tflint configuration, runs six controls,
+  and runs the prerequisite suite with its format and validation checks required to
+  run. Helm, kubeconform, Terraform, and TFLint are downloaded and checked against
+  committed SHA-256 digests. Evidence:
+  [the V1-S4-001-PR2 validation record](docs/proof/testing/v1-s4-001-pr2-validation.md).
+
+  **Neither new gate has run on the service.** The nine gates `V1-S4-001-PR1` added
+  have — on the pull-request run for `0c84d79` and the push to `main` at `f212090` —
+  and the documents this change edits stop saying no run has passed. No run is
+  promoted into a record, and no claim moves.
+
+- **A negative control must refuse for the reason it was written for.** The
+  infrastructure controls refuse to start unless every tool is on `PATH` at the pinned
+  version — a missing tool refuses every input — and a refusal passes only if its
+  output carries the text its fixture records. Writing that rule caught this change's
+  own runner: tflint refused all three lint fixtures on a Windows host for a
+  path-resolution error, and only the reason check said so.
+
+- **Rules for a workflow that needs a cluster, and no such workflow.**
+  [ADR 0012](docs/architecture/decisions/ADR-0012-continuous-integration-service.md)
+  D7 publishes what a `cluster-smoke` or `real-runtime` workflow must satisfy: dispatch
+  only, a required provider choice with no default handed to every job, a self-hosted
+  runner, the cluster reached only through scripts that call the provider guard, no
+  cluster creation, no real profile in a model-free lane, and an explicit authorization
+  input where the lane requires one. One checker applies them, against two valid shapes
+  and twenty-one broken fixtures. No workflow is committed, because naming a runner is
+  ADR 0005 D6's open half.
+
+- **An ownership-overlap check between a chart render and a Terraform
+  configuration**, as a command: a kind the inventory gives Terraform or the control
+  plane in a render, or Helm or the control plane in Terraform, or any kind on both
+  sides, is refused. Six fixtures must be refused and the committed pair accepted.
+
+- **Recorded, and not adopted: a Trivy misconfiguration gate over the renders or the
+  Terraform configuration.**
+  Measured at `HIGH` and `CRITICAL`: no check covers the `kubernetes_*` Terraform types
+  — a privileged, host-network pod declared in Terraform scanned clean — and over the
+  renders it refuses both committed renders on a false positive (`KSV-0109`, reading
+  `INFEROPS_MAX_OUTPUT_TOKENS` as a secret) while passing eight of nine insecure policy
+  fixtures.
+
 - **The default lane now runs on a continuous-integration service, and that changes
   nothing about what it may certify.**
   [ADR 0012](docs/architecture/decisions/ADR-0012-continuous-integration-service.md)
@@ -62,6 +110,10 @@ once versioned releases begin.
 
 ### Fixed
 
+- **CONTRIBUTING said a `helm lint` of the shipped defaults "is expected to fail".** It
+  passes: Helm 3.19 reports the chart's guards as `[INFO]` and exits 0. The section now
+  says so, and the guards are enforced by `helm template` in the controls.
+
 - **The secret-scan configuration had never parsed, and nothing could have noticed.**
   The first run of `gitleaks` this repository has ever made refused
   [`.gitleaks.toml`](.gitleaks.toml) outright with eleven decoding errors and scanned
@@ -105,6 +157,12 @@ once versioned releases begin.
   returns closes rather than reopening.
 
 ### Changed
+
+- **ADR 0012 D2 is narrowed to what reaches a cluster.** It refused the text `helm `
+  and `terraform ` outright, which could not survive giving either tool a gate. It now
+  admits only `helm lint`, `template`, and `version`, and `terraform fmt`,
+  `init -backend=false`, `validate`, and `version`, and still refuses kubectl, kind, a
+  kubeconfig or kube context, a provider selection, and every environment script.
 
 - **The statement that every check is run by hand is no longer true for nine of
   them, and is corrected.** `CONTRIBUTING`, the test strategy, ADR 0005's status

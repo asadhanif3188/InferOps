@@ -1,0 +1,176 @@
+{
+  "$comment": "Which rules each deliberately broken workflow must produce. tests/testing/test_infrastructure_gates.py compares the checker's output against this in both directions, so a fixture refused for a different rule is a failure rather than a pass. Every fixture declares its lane in an  header, because a workflow file has no field for one and a fixture is not in the gate matrix.",
+  "checkerRef": "tools/ci_gates/workflow_boundary.py",
+  "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
+  "providerContractRef": "docs/environment/local-cluster-provider-contract.v1alpha1.json",
+  "fixtures": [
+    {
+      "fixture": "action-on-a-movable-tag.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the commit-SHA pin on an action",
+      "rules": [
+        "actions-pinned-by-commit-sha"
+      ]
+    },
+    {
+      "fixture": "creates-its-own-cluster.yaml",
+      "lane": "cluster-smoke",
+      "drops": "consuming an externally owned cluster, by creating one",
+      "rules": [
+        "consumes-an-external-cluster"
+      ]
+    },
+    {
+      "fixture": "default-lane-environment-script.yaml",
+      "lane": "default-checks",
+      "drops": "the default lane's refusal of any environment script",
+      "rules": [
+        "cluster-free-lane-reaches-no-cluster"
+      ]
+    },
+    {
+      "fixture": "default-lane-helm-install.yaml",
+      "lane": "default-checks",
+      "drops": "the default lane's offline-only Helm subcommands",
+      "rules": [
+        "cluster-free-lane-reaches-no-cluster"
+      ]
+    },
+    {
+      "fixture": "default-lane-kubeconfig.yaml",
+      "lane": "default-checks",
+      "drops": "the default lane's refusal of any cluster credential",
+      "rules": [
+        "cluster-free-lane-reaches-no-cluster"
+      ]
+    },
+    {
+      "fixture": "default-lane-on-a-moving-runner.yaml",
+      "lane": "default-checks",
+      "drops": "the pinned hosted runner image",
+      "rules": [
+        "cluster-free-lane-runs-on-the-pinned-hosted-image"
+      ]
+    },
+    {
+      "fixture": "default-lane-terraform-init-with-a-backend.yaml",
+      "lane": "default-checks",
+      "drops": "init -backend=false",
+      "rules": [
+        "cluster-free-lane-reaches-no-cluster"
+      ]
+    },
+    {
+      "fixture": "default-lane-terraform-plan.yaml",
+      "lane": "default-checks",
+      "drops": "the default lane's offline-only Terraform subcommands",
+      "rules": [
+        "cluster-free-lane-reaches-no-cluster"
+      ]
+    },
+    {
+      "fixture": "helm-install-outside-the-scripts.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the provider guard, by installing a release directly",
+      "rules": [
+        "cluster-reached-only-through-the-provider-guard"
+      ]
+    },
+    {
+      "fixture": "hosted-runner.yaml",
+      "lane": "cluster-smoke",
+      "drops": "a runner that can reach the external cluster",
+      "rules": [
+        "runs-where-the-external-cluster-is"
+      ]
+    },
+    {
+      "fixture": "provider-as-free-text.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the provider choice the contract admits",
+      "rules": [
+        "provider-is-a-required-choice-with-no-default"
+      ]
+    },
+    {
+      "fixture": "provider-not-handed-to-the-scripts.yaml",
+      "lane": "cluster-smoke",
+      "drops": "INFEROPS_PROVIDER, set from the input",
+      "rules": [
+        "provider-handed-to-every-job"
+      ]
+    },
+    {
+      "fixture": "provider-with-a-default.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the absence of a default provider",
+      "rules": [
+        "provider-is-a-required-choice-with-no-default"
+      ]
+    },
+    {
+      "fixture": "raw-kubectl.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the provider guard, by calling kubectl directly",
+      "rules": [
+        "cluster-reached-only-through-the-provider-guard"
+      ]
+    },
+    {
+      "fixture": "real-profile-in-a-model-free-lane.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the model-free property of the cluster-smoke lane",
+      "rules": [
+        "model-free-lane-downloads-nothing"
+      ]
+    },
+    {
+      "fixture": "real-runtime-without-authorization.yaml",
+      "lane": "real-runtime",
+      "drops": "the explicit authorization input",
+      "rules": [
+        "authorization-is-an-explicit-input"
+      ]
+    },
+    {
+      "fixture": "timeout-beyond-the-lane-budget.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the lane's timeout budget",
+      "rules": [
+        "timeout-within-the-lane-budget"
+      ]
+    },
+    {
+      "fixture": "triggered-by-a-pull-request.yaml",
+      "lane": "cluster-smoke",
+      "drops": "dispatch as the only trigger",
+      "rules": [
+        "dispatch-only"
+      ]
+    },
+    {
+      "fixture": "triggered-on-a-schedule.yaml",
+      "lane": "cluster-smoke",
+      "drops": "dispatch as the only trigger",
+      "rules": [
+        "dispatch-only"
+      ]
+    },
+    {
+      "fixture": "unguarded-environment-script.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the provider guard, through a script that does not call it",
+      "rules": [
+        "cluster-reached-only-through-the-provider-guard"
+      ]
+    },
+    {
+      "fixture": "write-token.yaml",
+      "lane": "cluster-smoke",
+      "drops": "the read-only token",
+      "rules": [
+        "read-only-token"
+      ]
+    }
+  ]
+}

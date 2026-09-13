@@ -1,0 +1,4 @@
+# Refused by the values schema: a resource block states both halves.
+api:
+  resources:
+    limits: null

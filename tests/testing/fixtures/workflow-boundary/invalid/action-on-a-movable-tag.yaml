@@ -1,0 +1,31 @@
+# inferops-lane: cluster-smoke
+#
+# Refused: a tag is a name somebody can move, and the action runs with the job's token.
+
+name: cluster-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: The externally owned cluster to verify and consume.
+        required: true
+        type: choice
+        options: [kind, docker-desktop]
+
+permissions:
+  contents: read
+
+env:
+  INFEROPS_PROVIDER: ${{ inputs.provider }}
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Identify the target the provider guard resolves
+        run: scripts/environment/target-detect.sh
+      - name: Install, test, and uninstall the mock release
+        run: scripts/environment/helm-lifecycle.sh --values charts/inferops-llm/ci/mock-values.yaml

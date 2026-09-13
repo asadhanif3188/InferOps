@@ -1,0 +1,4 @@
+# Refused by the values schema: the root object admits no member it does not
+# name, so a misspelled or invented key fails rather than being ignored.
+image:
+  repository: localhost/inferops-api

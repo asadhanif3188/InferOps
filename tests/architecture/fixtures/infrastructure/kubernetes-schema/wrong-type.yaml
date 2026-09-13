@@ -1,0 +1,19 @@
+# Refused by the schema: replicas is an integer.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inferops-api
+  namespace: inferops-platform
+spec:
+  replicas: "two"
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: inferops-api
+    spec:
+      containers:
+        - name: api
+          image: localhost/inferops-api@sha256:7961c9f9ce773095461498774bc2f25053bcba6d01c40d8448da65e217091e50

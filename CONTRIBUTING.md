@@ -74,13 +74,14 @@ implemented outcome without overstating it.
 ## Validation
 
 Run the smallest complete check set available for the changed files. **Run them by
-hand before opening a change**, and expect nine of them to run again on the pull
+hand before opening a change**, and expect eleven gates to run again on the pull
 request: [ADR 0012](docs/architecture/decisions/ADR-0012-continuous-integration-service.md)
 selects GitHub Actions for the `default-checks` lane and commits
 [`.github/workflows/checks.yml`](.github/workflows/checks.yml), and
 [the gate matrix](docs/testing/ci-gate-matrix.md) says which job runs what and which
-claim each one defends. **No job in it has run on that service yet**, and a workflow
-that has not run is a configuration rather than a result.
+claim each one defends. Nine of those gates have passed on the service; the two that
+lint, render, and validate the chart and the Terraform configuration arrived with
+`V1-S4-001-PR2` and have not run there yet. A passing run is still not a record.
 
 The three lanes that need a cluster or the pinned model are still run entirely by
 hand. No runner is labelled capable and
@@ -90,9 +91,13 @@ is settled rather than open —
 [ADR 0009](docs/architecture/decisions/ADR-0009-python-toolchain.md) D7 rejects one,
 so the list below is the list.
 
-Two of the commands below are not in the workflow and are not automated anywhere:
-the `helm`, `kubeconform`, and `terraform` checks, and `shellcheck` over `scripts/`.
-The first set is `V1-S4-001-PR2`'s boundary; the second is not scheduled.
+One set of commands below is not in the workflow and is not automated anywhere:
+`bash -n` and `shellcheck` over `scripts/`, which is not scheduled. The `helm`,
+`kubeconform`, `terraform`, and `tflint` checks are gates now, and they reach no
+cluster: the workflow may run Helm only as `lint` and `template` and Terraform only as
+`fmt`, `init -backend=false`, and `validate`, and a check refuses anything else.
+Anything that installs, plans, applies, or destroys still runs by hand, through the
+environment scripts.
 
 ### The toolchain, and how to get it
 
@@ -1002,17 +1007,35 @@ python -m pytest tests/architecture/test_helm_chart.py -q
 ```
 
 `helm` itself is not vendored, for the same reason `shellcheck` and `kubeconform`
-are not. Where it is installed, four more commands apply and the suite's drift
-check stops skipping. All of them take a values file: the chart's shipped
-defaults select no serving profile and are refused on purpose, so a lint with no
-`--values` is expected to fail with that refusal rather than to pass.
+are not. Where it is installed, the commands below apply and the suite's drift
+check stops skipping. The `helm-chart` gate runs them on every change with
+Helm v3.19.0 and kubeconform v0.8.0.
+
+All of them take a values file. The chart's shipped defaults select no serving
+profile and the chart's own guards refuse them — but **`helm lint` does not report
+that refusal as a failure**. Measured under Helm 3.19, lint prints each guard's
+message as `[INFO]` and exits 0 on the shipped defaults; only a values-schema
+violation fails lint. An earlier version of this section said a lint with no
+`--values` "is expected to fail", and it was never true. `helm template` is what
+enforces the guards, which is why the values controls render rather than lint.
+
+kubeconform reads its schemas from a moving branch unless it is told otherwise, so
+every call here names one commit of the schema repository:
 
 ```sh
+KUBECONFORM_SCHEMA_LOCATION='https://raw.githubusercontent.com/yannh/kubernetes-json-schema/970cc70507e1880a7a3b64184b6aad417a1d8d85/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json'
 helm lint charts/inferops-llm --strict --namespace inferops-platform   --values charts/inferops-llm/ci/real-values.yaml
 helm lint charts/inferops-llm --strict --namespace inferops-platform   --values charts/inferops-llm/ci/mock-values.yaml
-helm template inferops charts/inferops-llm --namespace inferops-platform   --values charts/inferops-llm/ci/real-values.yaml   | kubeconform -strict -summary -kubernetes-version 1.34.0 -
-helm template inferops charts/inferops-llm --namespace inferops-platform   --values charts/inferops-llm/ci/mock-values.yaml   | kubeconform -strict -summary -kubernetes-version 1.34.0 -
+helm template inferops charts/inferops-llm --namespace inferops-platform   --values charts/inferops-llm/ci/real-values.yaml   | kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location "${KUBECONFORM_SCHEMA_LOCATION}" -
+helm template inferops charts/inferops-llm --namespace inferops-platform   --values charts/inferops-llm/ci/mock-values.yaml   | kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location "${KUBECONFORM_SCHEMA_LOCATION}" -
+python -m tools.ci_gates kubernetes-failures
+python -m tools.ci_gates no-skips helm
 ```
+
+The last two are the gate's controls and its suite run. `kubernetes-failures` refuses
+to start unless both tools are on `PATH` at the pinned versions, because a negative
+control run without the tool passes by failing to start; `no-skips helm` fails if the
+drift check skipped.
 
 A change to a template or to the values contract also regenerates the committed
 renders under [`charts/inferops-llm/ci/rendered/`](charts/inferops-llm/ci/rendered/),
@@ -1057,6 +1080,23 @@ scripts/environment/terraform-prerequisites.sh check
 
 That is `terraform fmt -check -recursive`, `terraform init -backend=false`, and
 `terraform validate`. It contacts no cluster and reads no state.
+
+The `terraform` gate runs the same three commands with Terraform 1.15.8 — typed into
+the workflow rather than through the wrapper, because the normal lane runs no
+environment script and a suite keeps the two in step — and adds a lint, the controls,
+and the suite with no skip allowed:
+
+```sh
+tflint --recursive --chdir=infra/terraform --config="$(pwd)/infra/terraform/.tflint.hcl" --format=compact
+python -m tools.ci_gates terraform-failures
+python -m tools.ci_gates no-skips terraform
+```
+
+Pass tflint's configuration **by absolute path**. Measured with tflint 0.64.0: under
+`--recursive`, a [`.tflint.hcl`](infra/terraform/.tflint.hcl) merely present in the
+`--chdir` directory is not applied, and the lint passes on tflint's defaults instead.
+One of the lint controls fails only under the committed configuration's preset, so a
+run that silently fell back fails that control.
 
 A change to the provider pin also regenerates the lock file for every platform
 rather than for the one you are on, because `terraform init` records only its own

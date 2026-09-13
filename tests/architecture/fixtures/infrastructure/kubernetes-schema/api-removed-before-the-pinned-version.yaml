@@ -1,0 +1,14 @@
+# Refused: policy/v1beta1 PodDisruptionBudget was removed in Kubernetes 1.25,
+# so no schema for it exists at the pinned 1.34.0. kubeconform reports a missing
+# schema as an error rather than a pass unless -ignore-missing-schemas is given,
+# and that flag is deliberately absent.
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: inferops-api
+  namespace: inferops-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-api

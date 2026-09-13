@@ -1,0 +1,114 @@
+{
+  "$comment": "Why each deliberately broken infrastructure fixture must be refused. Read by tools/ci_gates/infrastructure.py: a control passes only when the named stage refuses AND its output contains `reason`, so a fixture refused for some other reason - a misspelled base values path, a tool that failed to start - fails the gate rather than passing it. tests/testing/test_infrastructure_gates.py compares this file to the fixture directories in both directions.",
+  "gateRef": "docs/testing/ci-gate-matrix.md",
+  "runnerRef": "tools/ci_gates/infrastructure.py",
+  "groups": {
+    "values-refused": [
+      {
+        "fixture": "api-image-tag-instead-of-digest.yaml",
+        "tool": "helm template",
+        "reason": "at '/api/image/digest': 'latest' does not match pattern"
+      },
+      {
+        "fixture": "profile-empty.yaml",
+        "tool": "helm template",
+        "reason": "profile is required and has no default"
+      },
+      {
+        "fixture": "profile-omitted.yaml",
+        "tool": "helm template",
+        "reason": "missing property 'profile'"
+      },
+      {
+        "fixture": "profile-outside-the-enum.yaml",
+        "tool": "helm template",
+        "reason": "at '/profile': value must be one of"
+      },
+      {
+        "fixture": "real-profile-without-a-revision.yaml",
+        "tool": "helm template",
+        "reason": "at '/model': missing property 'revision'"
+      },
+      {
+        "fixture": "resource-limits-omitted.yaml",
+        "tool": "helm template",
+        "reason": "at '/api/resources': missing property 'limits'"
+      },
+      {
+        "fixture": "root-user.yaml",
+        "tool": "helm template",
+        "reason": "at '/security/runAsUser': minimum: got 0, want 1"
+      },
+      {
+        "fixture": "source-url-reaching-a-shell.yaml",
+        "tool": "helm template",
+        "reason": "at '/model/artifact/sourceUrl'"
+      },
+      {
+        "fixture": "unknown-top-level-member.yaml",
+        "tool": "helm template",
+        "reason": "additional properties 'image' not allowed"
+      }
+    ],
+    "render-refused-by-policy": [
+      {
+        "fixture": "network-policy-disabled.yaml",
+        "tool": "python -m tools.workload_policy",
+        "reason": "network-policy-in-the-release-namespace"
+      }
+    ],
+    "schema-refused": [
+      {
+        "fixture": "api-removed-before-the-pinned-version.yaml",
+        "tool": "kubeconform",
+        "reason": "could not find schema for PodDisruptionBudget"
+      },
+      {
+        "fixture": "container-without-a-name.yaml",
+        "tool": "kubeconform",
+        "reason": "at '/spec/containers/0': missing property 'name'"
+      },
+      {
+        "fixture": "unknown-field-under-strict.yaml",
+        "tool": "kubeconform",
+        "reason": "additional properties 'exposure' not allowed"
+      },
+      {
+        "fixture": "wrong-type.yaml",
+        "tool": "kubeconform",
+        "reason": "at '/spec/replicas': got string, want null or integer"
+      }
+    ],
+    "terraform-format-refused": [
+      {
+        "fixture": "misformatted",
+        "tool": "terraform fmt",
+        "reason": "main.tf"
+      }
+    ],
+    "terraform-validate-refused": [
+      {
+        "fixture": "undeclared-reference",
+        "tool": "terraform validate",
+        "reason": "Reference to undeclared input variable"
+      }
+    ],
+    "terraform-lint-refused": [
+      {
+        "fixture": "lint-no-version-floor",
+        "tool": "tflint",
+        "reason": "terraform_required_version"
+      },
+      {
+        "fixture": "lint-undocumented-variable",
+        "tool": "tflint",
+        "reason": "terraform_documented_variables"
+      },
+      {
+        "fixture": "lint-unused-declaration",
+        "tool": "tflint",
+        "reason": "terraform_unused_declarations"
+      }
+    ]
+  }
+}

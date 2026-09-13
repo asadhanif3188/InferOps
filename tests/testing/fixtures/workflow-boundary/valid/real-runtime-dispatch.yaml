@@ -1,0 +1,36 @@
+# inferops-lane: real-runtime
+#
+# A fixture, not a workflow. The shape a real-runtime workflow must have: everything the
+# cluster-smoke shape needs, plus an explicit authorization input every job waits on.
+
+name: real-runtime
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: The externally owned cluster to verify and consume.
+        required: true
+        type: choice
+        options: [kind, docker-desktop]
+      authorize:
+        description: Spend the time, and download the pinned model artifact inside the cluster.
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  INFEROPS_PROVIDER: ${{ inputs.provider }}
+
+jobs:
+  certify:
+    if: ${{ inputs.authorize }}
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Certify real inference on the resolved target
+        run: scripts/environment/kubernetes-certification.sh certify --values charts/inferops-llm/ci/real-values.yaml --confirm-real-kubernetes

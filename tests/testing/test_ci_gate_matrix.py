@@ -28,7 +28,13 @@ from typing import Any
 import pytest
 import yaml
 
+from tools.ci_gates import workflow_boundary
 from tools.ci_gates.core import MINIMUM_CONTROLS
+from tools.ci_gates.infrastructure import (
+    KUBECONFORM_SCHEMA_LOCATION,
+    MINIMUM_TOOL_CONTROLS,
+    PINNED_VERSIONS,
+)
 
 pytestmark = pytest.mark.docs
 
@@ -88,26 +94,10 @@ WORKFLOW_FIELDS = (
 USES = re.compile(r"^(?P<action>[^@\s]+)@(?P<ref>\S+)$")
 FORTY_HEX = re.compile(r"^[0-9a-f]{40}$")
 
-#: What a cluster-free workflow may not invoke. Each of these is one line away
-#: from turning the normal lane into something that can reach an operator's
-#: cluster, which is the failure ADR 0011 and the Sprint 4 amendment both name.
-CLUSTER_TOKENS = (
-    "kubectl",
-    "helm ",
-    "terraform ",
-    "kind ",
-    "INFEROPS_PROVIDER",
-    "KUBECONFIG",
-    "kubeconfig",
-)
-
-#: What a model-free workflow may not invoke.
-MODEL_TOKENS = (
-    "tools.model_acquisition",
-    "tools.model_lifecycle",
-    "--confirm-real-runtime",
-    "huggingface.co",
-)
+#: What a model-free workflow may not invoke. The authoritative list lives with
+#: the rest of the lane rules and is imported rather than copied, so the gate and
+#: this suite cannot disagree about what a download looks like.
+MODEL_TOKENS = workflow_boundary.MODEL_TOKENS
 
 
 def workflow_document(entry: dict[str, Any]) -> dict[str, Any]:
@@ -387,23 +377,31 @@ def test_a_gate_naming_a_planned_claim_says_the_claim_is_still_planned(
 
 
 @pytest.mark.parametrize("entry", WORKFLOWS, ids=lambda entry: entry["workflowId"])
-def test_a_cluster_free_workflow_cannot_reach_a_cluster(entry: dict) -> None:
+def test_every_workflow_satisfies_the_rules_of_its_lane(entry: dict) -> None:
     """The Sprint 4 amendment as a check rather than a sentence.
 
     A normal lane that can discover an ambient cluster is a normal lane that can
-    mutate somebody's cluster from a pull request. The tokens are read out of
-    the file's text rather than out of its parsed steps, because a cluster can
-    be reached from a script block, an action input, or an environment variable,
-    and only the text sees all three.
+    mutate somebody's cluster from a pull request. Until V1-S4-001-PR2 this read
+    the workflow's text for `helm ` and `terraform ` and refused both outright.
+    That was right while neither tool had a job here, and it could not survive
+    the change that gave them one: `helm template` and `terraform validate` read
+    files, and a rule that refused them would have kept the chart and the
+    configuration out of the lane that exists to check them.
+
+    The rule now refuses what reaches a cluster rather than the program names:
+    any Helm or Terraform subcommand outside the offline set, `init` without
+    `-backend=false`, kubectl, kind, a kubeconfig, a provider selection, and any
+    environment script. It still reads text, because a cluster can be reached
+    from a script block, an action input, or an environment variable, and only
+    the text sees all three. A lane that needs a cluster is held to the dispatch
+    rules instead, by the same function.
     """
-    if entry["requiresCluster"]:
-        return
-    text = workflow_text(entry)
-    prose = "\n".join(
-        line for line in text.splitlines() if not line.lstrip().startswith("#")
-    )
-    found = [token for token in CLUSTER_TOKENS if token in prose]
-    assert not found, {"workflow": entry["path"], "cluster tokens": found}
+    found = workflow_boundary.problems(workflow_text(entry), entry["lane"])
+    assert not found, {
+        "workflow": entry["path"],
+        "lane": entry["lane"],
+        "problems": [str(problem) for problem in found],
+    }
 
 
 @pytest.mark.parametrize("entry", WORKFLOWS, ids=lambda entry: entry["workflowId"])
@@ -510,22 +508,49 @@ def matrix_document() -> str:
     return (REPO_ROOT / MATRIX["documentRef"]).read_text(encoding="utf-8")
 
 
+BOUNDARY_RULE = re.compile(r'Problem\(\s*"(?P<rule>[a-z0-9-]+)"')
+
+#: Rules that guard against malformed input rather than a lane's boundary.
+INPUT_RULES = frozenset({"lane-is-declared", "workflow-parses"})
+
+
+def boundary_rules() -> set[str]:
+    """Every lane rule the workflow checker can raise, read from its source."""
+    source = Path(workflow_boundary.__file__).read_text(encoding="utf-8")
+    return set(BOUNDARY_RULE.findall(source)) - INPUT_RULES
+
+
+def test_the_document_publishes_every_lane_rule_the_checker_raises() -> None:
+    """A rule the checker enforces and the matrix does not name is a rule a
+    reviewer of the first cluster workflow cannot find."""
+    document = matrix_document()
+    missing = sorted(rule for rule in boundary_rules() if f"`{rule}`" not in document)
+    assert not missing, missing
+
+
 def test_the_document_publishes_every_gate_and_only_gates() -> None:
     published = set(FIRST_TABLE_COLUMN.findall(matrix_document()))
     expected = {gate["gateId"] for gate in GATES}
-    allowed = expected | {row["tool"] for row in TOOL_PINS} | set(MINIMUM_CONTROLS)
+    allowed = (
+        expected
+        | {row["tool"] for row in TOOL_PINS}
+        | set(MINIMUM_CONTROLS)
+        | set(MINIMUM_TOOL_CONTROLS)
+        | boundary_rules()
+    )
     assert not expected - published, sorted(expected - published)
     assert not published - allowed, sorted(published - allowed)
 
 
 def test_the_document_publishes_every_expected_failure_control_group() -> None:
-    """The four groups are read from the tool, not retyped beside it.
+    """The groups are read from the runners, not retyped beside them.
 
-    A group added to the runner and not to the document would otherwise be a
+    A group added to a runner and not to the document would otherwise be a
     control nobody reviewing the matrix knows runs.
     """
     published = set(FIRST_TABLE_COLUMN.findall(matrix_document()))
-    assert set(MINIMUM_CONTROLS) <= published, sorted(set(MINIMUM_CONTROLS) - published)
+    groups = set(MINIMUM_CONTROLS) | set(MINIMUM_TOOL_CONTROLS)
+    assert groups <= published, sorted(groups - published)
 
 
 def test_the_document_publishes_the_gate_count_the_data_produces() -> None:
@@ -547,6 +572,59 @@ def test_the_document_publishes_the_gate_count_the_data_produces() -> None:
     )
     expected = f"{words[len(GATES)].capitalize()} gates run on every change."
     assert expected in " ".join(matrix_document().split()), expected
+
+
+def _number_word(value: int) -> str:
+    ones = [
+        "zero",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "ten",
+        "eleven",
+        "twelve",
+        "thirteen",
+        "fourteen",
+        "fifteen",
+        "sixteen",
+        "seventeen",
+        "eighteen",
+        "nineteen",
+    ]
+    tens = {2: "twenty", 3: "thirty", 4: "forty", 5: "fifty", 6: "sixty", 7: "seventy"}
+    if value < 20:
+        return ones[value]
+    ten, one = divmod(value, 10)
+    return tens[ten] if one == 0 else f"{tens[ten]}-{ones[one]}"
+
+
+def test_the_document_publishes_the_control_counts_the_runners_produce() -> None:
+    """Three counts, each read from the runner that produces it."""
+    from tools.ci_gates import core, infrastructure
+
+    document = " ".join(matrix_document().split())
+    counts = {
+        "expected-failures": (len(core.controls()), len(MINIMUM_CONTROLS)),
+        **{
+            family: (
+                len(infrastructure.controls(family)),
+                len(infrastructure.GROUPS_BY_FAMILY[family]),
+            )
+            for family in infrastructure.FAMILIES
+        },
+    }
+    for runner, (controls, groups) in counts.items():
+        sentence = (
+            f"{_number_word(controls).capitalize()} controls run, in "
+            f"{_number_word(groups)} groups."
+        )
+        assert sentence in document, (runner, sentence)
 
 
 # --- The commands a gate documents are commands its job actually runs -------
@@ -660,3 +738,152 @@ def test_every_script_a_job_runs_by_path_is_stored_executable(entry: dict) -> No
         "workflow": entry["path"],
         "run by path but not stored executable": not_executable,
     }
+
+
+# --- A downloaded binary is a pinned binary ---------------------------------
+
+#: A job environment variable holding a tool's release version or archive digest.
+PIN_VARIABLE = re.compile(r"^(?P<tool>[A-Z]+)_(?P<kind>VERSION|SHA256)$")
+
+
+def pinned_environment() -> dict[str, dict[str, str]]:
+    """Every ``<TOOL>_VERSION`` and ``<TOOL>_SHA256`` a job declares, by tool."""
+    found: dict[str, dict[str, str]] = {}
+    for entry in WORKFLOWS:
+        for job in workflow_document(entry)["jobs"].values():
+            for name, value in (job.get("env") or {}).items():
+                matched = PIN_VARIABLE.match(name)
+                if matched is None:
+                    continue
+                tool = matched.group("tool").lower()
+                kind = matched.group("kind")
+                previous = found.setdefault(tool, {}).get(kind)
+                assert previous in (None, str(value)), {
+                    "tool": tool,
+                    "pinned twice, differently": (previous, value),
+                }
+                found[tool][kind] = str(value)
+    return found
+
+
+def test_every_downloaded_tool_is_recorded_in_the_tool_pins() -> None:
+    """A digest in the workflow and a digest in the matrix are the same digest."""
+    pins = {row["tool"]: row for row in TOOL_PINS}
+    environment = pinned_environment()
+    assert environment, "no job pins a downloaded tool; the check is vacuous"
+    for tool, declared in environment.items():
+        assert tool in pins, f"{tool} is downloaded but has no toolPins row"
+        assert declared.get("SHA256") == pins[tool]["pin"], {
+            "tool": tool,
+            "workflow digest": declared.get("SHA256"),
+            "matrix pin": pins[tool]["pin"],
+        }
+        human = pins[tool]["humanVersion"].lstrip("v")
+        assert declared.get("VERSION", "").lstrip("v") == human, (
+            tool,
+            declared.get("VERSION"),
+            pins[tool]["humanVersion"],
+        )
+
+
+def test_the_installed_versions_are_the_versions_the_controls_require() -> None:
+    """The runner refuses a tool at any other version, so the two must agree.
+
+    Without this a bump to the workflow's download would install a binary the
+    control runner then refuses - loudly, but on the service rather than here.
+    """
+    environment = pinned_environment()
+    for tool, version in PINNED_VERSIONS.items():
+        assert tool in environment, f"{tool} is required and never installed"
+        installed = environment[tool]["VERSION"].lstrip("v")
+        assert installed == version.lstrip("v"), (tool, installed, version)
+
+
+def test_the_schema_source_the_job_reads_is_the_pinned_commit() -> None:
+    declared = {
+        job.get("env", {}).get("KUBECONFORM_SCHEMA_LOCATION")
+        for entry in WORKFLOWS
+        for job in workflow_document(entry)["jobs"].values()
+    } - {None}
+    assert declared == {KUBECONFORM_SCHEMA_LOCATION}, declared
+    pins = {row["tool"]: row["pin"] for row in TOOL_PINS}
+    assert pins["kubernetes-json-schema"] in KUBECONFORM_SCHEMA_LOCATION
+
+
+KUBECONFORM_CALL = re.compile(r"(?:^|\|)\s*kubeconform\s+-")
+
+
+def test_every_kubeconform_call_reads_the_pinned_schema_source() -> None:
+    """kubeconform's default is a moving branch, and a call that forgets the
+    flag reads it without saying so."""
+    calls = 0
+    for entry in WORKFLOWS:
+        for name, job in workflow_document(entry)["jobs"].items():
+            for step in job.get("steps", []):
+                for line in str(step.get("run", "")).splitlines():
+                    # `kubeconform -v` prints a version and validates nothing.
+                    if (
+                        KUBECONFORM_CALL.search(line)
+                        and line.strip() != "kubeconform -v"
+                    ):
+                        calls += 1
+                        assert "-schema-location" in line, (name, line)
+    assert calls >= 2, calls
+
+
+def test_every_download_is_checked_against_a_committed_digest() -> None:
+    """A `curl` with no `sha256sum --check` after it is a binary nobody pinned."""
+    checked = 0
+    for entry in WORKFLOWS:
+        for name, job in workflow_document(entry)["jobs"].items():
+            for step in job.get("steps", []):
+                script = str(step.get("run", ""))
+                if "curl " not in script:
+                    continue
+                assert "sha256sum --check --strict" in script, (name, step.get("name"))
+                assert script.index("curl ") < script.index("sha256sum --check"), name
+                checked += 1
+    assert checked >= 5, checked
+
+
+# --- The local equivalents are the commands the jobs run --------------------
+
+
+def _job_runs(job_id: str) -> str:
+    entry = next(row for row in WORKFLOWS if row["workflowId"] == "checks")
+    job = workflow_document(entry)["jobs"][job_id]
+    return "\n".join(str(step.get("run", "")) for step in job["steps"])
+
+
+def test_the_terraform_job_runs_what_the_wrapper_check_action_runs() -> None:
+    """CONTRIBUTING publishes the wrapper's `check` action as a local equivalent.
+
+    The job cannot call the wrapper - it is an environment script, and the lane
+    refuses every one of those - so it types the same three commands, and this
+    keeps the two from drifting apart.
+    """
+    wrapper = (
+        REPO_ROOT / "scripts" / "environment" / "terraform-prerequisites.sh"
+    ).read_text(encoding="utf-8")
+    check_block = wrapper[wrapper.index('if [ "${action}" = "check" ]') :]
+    check_block = check_block[: check_block.index("\nfi\n")]
+    runs = _job_runs("terraform")
+    for fragment in (
+        "fmt -check -recursive",
+        "init -backend=false -input=false",
+        "validate",
+    ):
+        assert fragment in check_block, fragment
+        assert fragment in runs, fragment
+
+
+def test_the_helm_job_runs_the_lint_commands_contributing_publishes() -> None:
+    contributing = (REPO_ROOT / MATRIX["contributingRef"]).read_text(encoding="utf-8")
+    runs = _job_runs("helm-chart")
+    for profile in ("real", "mock"):
+        command = (
+            "helm lint charts/inferops-llm --strict --namespace inferops-platform "
+            f"--values charts/inferops-llm/ci/{profile}-values.yaml"
+        )
+        assert command in " ".join(contributing.split()), command
+        assert command in runs, command

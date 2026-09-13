@@ -1,0 +1,15 @@
+# Refused under -strict: `exposure` is not a Service field. Without -strict an
+# unknown field is ignored, which is how a misspelled one ships.
+apiVersion: v1
+kind: Service
+metadata:
+  name: inferops-api
+  namespace: inferops-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: inferops-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+  exposure: internal

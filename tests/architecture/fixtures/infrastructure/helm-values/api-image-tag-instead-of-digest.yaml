@@ -1,0 +1,5 @@
+# Refused by the values schema: a tag where a digest belongs. Layered over
+# charts/inferops-llm/ci/real-values.yaml, so this is the only difference.
+api:
+  image:
+    digest: latest

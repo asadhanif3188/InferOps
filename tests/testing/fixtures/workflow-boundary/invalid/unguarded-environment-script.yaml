@@ -1,0 +1,30 @@
+# inferops-lane: cluster-smoke
+#
+# Refused: smoke.sh still calls the older kind-only identity check rather than
+# inferops::resolve_target, so it is not provider-aware.
+
+name: cluster-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: The externally owned cluster to verify and consume.
+        required: true
+        type: choice
+        options: [kind, docker-desktop]
+
+permissions:
+  contents: read
+
+env:
+  INFEROPS_PROVIDER: ${{ inputs.provider }}
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Run the smoke workload
+        run: scripts/environment/smoke.sh

@@ -1,0 +1,30 @@
+# inferops-lane: cluster-smoke
+#
+# Refused: a release rendered from the real fixture runs an acquisition job, which
+# downloads the model artifact inside the cluster. The cluster-smoke lane downloads nothing.
+
+name: cluster-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: The externally owned cluster to verify and consume.
+        required: true
+        type: choice
+        options: [kind, docker-desktop]
+
+permissions:
+  contents: read
+
+env:
+  INFEROPS_PROVIDER: ${{ inputs.provider }}
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Install the real release
+        run: scripts/environment/helm-lifecycle.sh --values charts/inferops-llm/ci/real-values.yaml

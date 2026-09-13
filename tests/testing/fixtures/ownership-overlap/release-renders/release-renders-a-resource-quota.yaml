@@ -1,0 +1,11 @@
+# Refused: the inventory gives a ResourceQuota to Terraform even though that row
+# is deferred and Terraform declares none. A deferred row still has an owner, so
+# the kind cannot arrive through the chart instead.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: inferops-platform-quota
+  namespace: inferops-platform
+spec:
+  hard:
+    pods: "10"

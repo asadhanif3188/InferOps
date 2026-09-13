@@ -358,11 +358,12 @@ certified on the strength of a layer nobody has written.
 ## What this strategy does not do
 
 - **It automates one lane of four, and proves nothing by doing so.** `default-checks`
-  runs on GitHub Actions since ADR 0012; the other three are still run by hand. No job
-  in the committed workflow has executed on the service, so the file is a
-  configuration rather than a result — and even a green run of all nine gates would
-  raise no ceiling, because automating a mock lane does not make a mock certify a
-  runtime.
+  runs on GitHub Actions since ADR 0012; the other three are still run by hand, and no
+  workflow for them is committed — only the rules one would have to satisfy, in ADR
+  0012 D7. Nine of the lane's eleven gates have passed on the service and the two
+  infrastructure gates have not run there, and even a green run of all eleven raises
+  no ceiling, because automating a mock lane does not make a mock certify a runtime
+  and rendering a chart does not make it install.
 - **It does not certify anything by existing.** Two of eleven layers have no code.
   The suite that checks this document cannot tell an honestly planned layer from one
   that will never be written.

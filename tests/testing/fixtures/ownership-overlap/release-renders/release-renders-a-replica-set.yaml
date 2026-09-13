@@ -1,0 +1,20 @@
+# Refused: a ReplicaSet is derived by the control plane from a Deployment. A
+# release that renders one is adopting an object a controller keeps rewriting.
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: inferops-inferops-llm-api
+  namespace: inferops-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inferops-llm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: inferops-llm
+    spec:
+      containers:
+        - name: api
+          image: localhost/inferops-api@sha256:7961c9f9ce773095461498774bc2f25053bcba6d01c40d8448da65e217091e50
