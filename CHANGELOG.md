@@ -42,7 +42,8 @@ once versioned releases begin.
   runner, the cluster reached only through scripts that call the provider guard, no
   cluster creation, no real profile in a model-free lane, and an explicit authorization
   input where the lane requires one. One checker applies them, against two valid shapes
-  and twenty-one broken fixtures. No workflow is committed, because naming a runner is
+  and fifteen broken fixtures, beside the six that break the default lane's rules. No
+  workflow is committed, because naming a runner is
   ADR 0005 D6's open half.
 
 - **An ownership-overlap check between a chart render and a Terraform
@@ -158,7 +159,10 @@ once versioned releases begin.
 
 ### Changed
 
-- **ADR 0012 D2 is narrowed to what reaches a cluster.** It refused the text `helm `
+- **ADR 0012 D2 is narrowed to what reaches a cluster, and reads every occurrence of
+  a tool name.** Review found the first version read one only at a command position,
+  so quoted, path-invoked, and `${IFS}`-separated calls walked past it; the rule was
+  rewritten before merging. It refused the text `helm `
   and `terraform ` outright, which could not survive giving either tool a gate. It now
   admits only `helm lint`, `template`, and `version`, and `terraform fmt`,
   `init -backend=false`, `validate`, and `version`, and still refuses kubectl, kind, a

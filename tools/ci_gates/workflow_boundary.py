@@ -56,19 +56,29 @@ LANE_HEADER = re.compile(
 OFFLINE_HELM_SUBCOMMANDS = frozenset({"lint", "template", "version"})
 OFFLINE_TERRAFORM_SUBCOMMANDS = frozenset({"fmt", "init", "validate", "version"})
 
-#: `helm` or `terraform` at a command position: the start of a line, or after a
-#: space, a pipe, a separator, or an opening bracket. A path that merely ends in
-#: the name (`linux-amd64/helm`, `./terraform`) is preceded by a slash and is not
-#: a call. Only spaces and tabs may separate the program from its subcommand,
-#: because `\s` would read the first word of the next line as one.
-_COMMAND_START = r"(?:^|(?<=[\s|;&(`]))"
-HELM_CALL = re.compile(_COMMAND_START + r"helm[ \t]+(?P<sub>\S+)", re.MULTILINE)
-TERRAFORM_CALL = re.compile(
-    _COMMAND_START
-    + r"terraform(?:[ \t]+-chdir=\S+)*[ \t]+(?P<sub>\S+)(?P<rest>[^\n]*)",
-    re.MULTILINE,
+#: Every occurrence of a tool name as a word, wherever it sits: after a space, a
+#: quote, a slash, a bracket, or a `$(`. The first version of this check matched
+#: only at a command position - after a space or a separator - and review found
+#: that `"helm" install`, `sh -c 'helm install'`, `$(which helm) install`,
+#: `/usr/local/bin/helm install`, and `terraform${IFS}apply` all walked past it.
+#: So every occurrence is now read, and one that cannot be shown to be harmless
+#: is refused rather than ignored. A name fused to a letter, digit, `.`, `_`, or
+#: `-` (`helm-v3.19.0`, `get.helm.sh`, `terraform_1.15.8`) is part of another
+#: word and is not read.
+TOOL_WORD = re.compile(
+    r"(?<![A-Za-z0-9_.-])(?P<tool>helm|terraform|kind)(?![A-Za-z0-9_-])"
 )
-KIND_CALL = re.compile(_COMMAND_START + r"kind[ \t]+[a-z]", re.MULTILINE)
+
+#: The offline subcommands each tool may run. `kind` has none: a kind subcommand
+#: creates, deletes, or reads a cluster.
+OFFLINE_SUBCOMMANDS = {
+    "helm": OFFLINE_HELM_SUBCOMMANDS,
+    "terraform": OFFLINE_TERRAFORM_SUBCOMMANDS,
+    "kind": frozenset(),
+}
+
+#: `eval` runs a string this check cannot read.
+EVAL_CALL = re.compile(r"(?<![A-Za-z0-9_.-])eval[ \t]")
 
 #: What names a cluster, a credential for one, or a way to select one. None of
 #: them has an offline form.
@@ -249,6 +259,43 @@ def _model_problems(text: str, lane: dict[str, Any]) -> Iterable[Problem]:
 # --------------------------------------------------------------------------
 
 
+def _tool_occurrence(tool: str, after: str) -> str | None:
+    """Why one occurrence of a tool name could reach a cluster, or None.
+
+    ``after`` is the text following the name. The occurrence is harmless when it
+    is a directory in a path (`infra/terraform/`), a YAML key (`terraform:`) or
+    list member, a bare word ending its line
+    (`no-skips helm`, `tar ... linux-amd64/helm`), a value in a list
+    (`[kind, docker-desktop]`), or a program followed only by flags or by a path
+    argument (`install ... linux-amd64/helm /usr/local/bin/helm`). It is a call
+    when words follow it, and the first word that is not a flag must be an
+    offline subcommand. Anything else - a quote, a `)`, a `$` - is refused,
+    because it is how a call is hidden from a reader.
+    """
+    line = after.split("\n", 1)[0]
+    if tool == "kind":
+        # `kind` is also a provider name and an ordinary word. It is refused only
+        # where it is followed, perhaps after a closing quote, by a subcommand.
+        if re.match(r"""["']?[ \t]+[a-z]""", line):
+            return f"runs kind: {('kind' + line).strip()!r}"
+        return None
+    if line == "" or line[0] in "/.:,]":
+        return None
+    if line[0] not in " \t":
+        return (
+            f"uses {tool} in a form this check cannot read: {(tool + line).strip()!r}"
+        )
+    words = [word for word in line.split() if not word.startswith("-")]
+    if not words or words[0].startswith("/"):
+        return None
+    sub = words[0]
+    if sub not in OFFLINE_SUBCOMMANDS[tool]:
+        return f"runs {tool} {sub}"
+    if tool == "terraform" and sub == "init" and "-backend=false" not in line:
+        return "runs terraform init without -backend=false"
+    return None
+
+
 def cluster_calls(text: str) -> list[str]:
     """Every call in executable text that could reach a cluster, as a finding.
 
@@ -257,23 +304,12 @@ def cluster_calls(text: str) -> list[str]:
     """
     found: list[str] = []
     found += [f"names {token}" for token in CLUSTER_TOKENS if token in text]
-    found += [
-        f"runs kind: {match.group(0).strip()!r}" for match in KIND_CALL.finditer(text)
-    ]
-    for match in HELM_CALL.finditer(text):
-        sub = match.group("sub")
-        if sub.startswith(("/", "./")):
-            continue
-        if sub not in OFFLINE_HELM_SUBCOMMANDS:
-            found.append(f"runs helm {sub}")
-    for match in TERRAFORM_CALL.finditer(text):
-        sub, rest = match.group("sub"), match.group("rest")
-        if sub.startswith(("/", "./")):
-            continue
-        if sub not in OFFLINE_TERRAFORM_SUBCOMMANDS:
-            found.append(f"runs terraform {sub}")
-        elif sub == "init" and "-backend=false" not in rest:
-            found.append("runs terraform init without -backend=false")
+    for match in TOOL_WORD.finditer(text):
+        finding = _tool_occurrence(match.group("tool"), text[match.end() :])
+        if finding is not None:
+            found.append(finding)
+    if EVAL_CALL.search(text):
+        found.append("runs eval, whose command this check cannot read")
     found += [
         f"runs scripts/environment/{match.group('name')}"
         for match in ENVIRONMENT_SCRIPT_CALL.finditer(text)

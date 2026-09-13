@@ -54,7 +54,15 @@ class SuiteReport:
 
 
 def _report(junit: Path, exit_status: int) -> SuiteReport:
-    root = ElementTree.parse(junit).getroot()
+    try:
+        root = ElementTree.parse(junit).getroot()
+    except (FileNotFoundError, ElementTree.ParseError):
+        # pytest can fail before it writes a report - a plugin or an import that
+        # breaks collection. That is a failed gate with nothing to count, and it
+        # is reported as one rather than as a traceback.
+        return SuiteReport(
+            tests=0, failures=0, errors=1, skipped=(), exit_status=exit_status or 1
+        )
     suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
     skipped: list[str] = []
     for case in root.iter("testcase"):

@@ -12,8 +12,8 @@
 # here:
 #
 #   * no step reaches a Kubernetes cluster. Helm and Terraform run here only as
-#     the subcommands that read files - lint and template, fmt, init with no
-#     backend, and validate - and there is no kubectl, no kind, no kubeconfig,
+#     the subcommands that read files - lint, template, fmt, init with no
+#     backend, validate, and version - and there is no kubectl, no kind, no kubeconfig,
 #     no provider selection, and no environment script. A check refuses any of
 #     them arriving later (tools/ci_gates/workflow_boundary.py). Real Kubernetes
 #     work is opt-in, provider-selected and target-verified, and it does not

@@ -12,8 +12,9 @@ through the real tools.
 | [`kubernetes-schema/`](kubernetes-schema/) | `kubeconform -strict` against the pinned schemas | manifests with an unknown field, a wrong type, a missing name, and an API removed before Kubernetes 1.34 |
 | [`terraform/`](terraform/) | `terraform fmt`, `terraform validate`, or `tflint` | small modules in the standard three-file layout, so that the one rule each breaks is the only rule that fires |
 
-Nothing here is installed, applied, rendered into a committed file, or referenced by any
-chart, script, or document outside this directory and the runner. They live under
+Nothing here is installed, applied, or rendered into a committed file, and no chart,
+script, or configuration outside this directory refers to it; the runner, its tests,
+the gate matrix, and CONTRIBUTING name it only to describe it. They live under
 `tests/` rather than beside the chart or the configuration so that no command pointed
 at `charts/` or `infra/terraform/` can pick one up.
 

@@ -69,8 +69,12 @@ one; the consequence for the default lane is recorded under its result.
 
 ```text
 uv run --locked python -m pytest tests/testing -q
-1740 passed in 11.09s
+1762 passed in 3.17s
 ```
+
+The first commit of this change reported `1740 passed`. The twenty-two added since are the
+hidden call shapes and accepted forms the independent review produced, and the missing
+report case.
 
 `tests/testing/test_infrastructure_gates.py` is new. `tests/testing/test_ci_gate_matrix.py`
 is extended with checks that every downloaded tool is pinned in the matrix at the
@@ -83,8 +87,11 @@ the control counts each runner produces.
 
 ```text
 uv run --locked python -m pytest -q
-8493 passed, 31 skipped, 14 deselected in 217.23s
+8515 passed, 31 skipped, 14 deselected in 319.12s
 ```
+
+The first commit reported `8493 passed` with the same skips; the difference is the
+twenty-two tests above.
 
 PR1's record reported `8301 passed, 30 skipped, 14 deselected` for the same command. The
 one additional skip is not this change: the telemetry collector suite skips its engine
@@ -244,7 +251,7 @@ on 2026-09-13. Job names and conclusions only; no log was retrieved.
 
 That corrects a limitation several documents still published — "no run has passed" —
 in the documents this change edits: the gate matrix, ADR 0012, ADR 0005, the strategy
-data and document, CONTRIBUTING, and both READMEs. It does **not** certify a claim. The
+data and document, CONTRIBUTING, the root README, and the architecture decision index. It does **not** certify a claim. The
 observation is of job conclusions through an API, no log or artifact is promoted, and
 ADR 0005 D5 still requires a promoted record before a lane result is evidence. The
 security records that make the same statement are named in the gate matrix as a
@@ -275,12 +282,50 @@ leaves it, and a test requires that no published command carries the repository'
 path. The one kubeconfig path any fixture names is the project-scoped relative path the
 environment scripts already publish.
 
-Counts published in prose are derived rather than typed: the eleven gates, the sixty-two,
-eighteen, and six controls, and the lane rules the matrix names are each compared to
-the data or the runner by a test. Two counts were found wrong while writing this change
+Some counts published in prose are derived rather than typed: the eleven gates, the
+sixty-two, eighteen, and six controls, and the lane rules the matrix names are each
+compared to the data or the runner by a test. Others are typed and checked by nobody —
+the fixture counts in ADR 0012, the CHANGELOG, and this record, and the matrix's
+prohibition count — and three of those were wrong in the first commit; see below. Two counts were found wrong while writing this change
 and corrected — the document first said sixty controls, before two workflow fixtures
 were added for the two rules no fixture had yet broken, and the first draft of the
 minimums set `values-refused` to eight when nine fixtures exist.
+
+## Independent review, and what it changed
+
+The first commit of this change was reviewed independently from three directions —
+correctness and Linux-runner risk, published claims against the code, and the security
+of the lane boundary — before it was pushed. The fixes are a separate commit, so the
+first draft stays visible.
+
+| Severity | Finding | What the first commit got wrong | What changed |
+|---|---|---|---|
+| High | The cluster-free rule could be walked past | It read a tool name only at a command position. `"helm" install`, `sh -c 'helm install ...'`, `eval "helm install ..."`, `$(which helm) install`, `./helm install`, `/usr/local/bin/helm install`, `bin/terraform apply`, and `terraform${IFS}apply` each returned no finding — confirmed by two reviewers against the shipped function. ADR 0012 D2 also presented "a path ending in `/helm` is not a call" as correct behaviour | Every occurrence of a tool name is read; one followed by words is a call whose first non-flag word must be offline, and one in a form that hides its call is refused. `eval` is refused outright. Each shape above is a test case. What no text rule can see — a raw API request, an image carrying its own client, a renamed or decoded binary — is now a stated limitation in the matrix, ADR 0012, and here |
+| High | The strategy data still said no job had run on the service | The `security-scan` layer notes said "the gate as committed has still never run", while this record and the CHANGELOG said the strategy data had been reconciled | The notes say the three scans passed as gates on the service and that no run is promoted |
+| Medium | Two stale sentences in the gate matrix data | `dependency-and-image-scan` said nothing makes the scans recur "until a job executes on the selected service", and a limitation said the secret scanner "has been run once, by hand" | Both corrected |
+| Medium | ADR 0012 kept two statements the amended banner contradicts | "the nine gates in this lane" and "no job has executed on the service" in Consequences | Both marked as true when accepted, with the current state beside them |
+| Medium | A fixture count attached to the wrong rules | ADR 0012's D2 row said D2 was held to "twenty-one fixtures", and the CHANGELOG said D7 was. Six fixtures break the default lane's rules and fifteen break the cluster lanes' | Each count is attached to its own rules |
+| Medium | A miscount | ADR 0012 said the amendment "adds four commands" and listed five | Five |
+| Medium | A prohibition count one short, and an overclaim about counts | The matrix said "Eight prohibitions" while its data holds nine, and this record said counts in prose "are derived rather than typed" when several are typed and checked by nobody | The document says eight about the normal lane and points to the ninth; this record names which counts are derived and which are not |
+| Low | Network use understated | "Five gates consume the network" ignored the locked toolchain every Python job installs and the API image's base image | Qualified |
+| Low | `version` missing from the offline lists | CONTRIBUTING and the workflow header listed the offline subcommands without `version`, which the workflow runs and the checker admits | Added |
+| Low | "each in a fixture" | ADR 0012 said every refused form had a fixture; most are test cases | "each as a test case, and five of them also as fixture workflows" |
+| Low | Small documentation defects | The workflow manifest's comment had lost its `# inferops-lane:` text to shell quoting; the infrastructure fixture README said no document refers to the fixtures; CONTRIBUTING said the old `helm lint` sentence "was never true" on evidence from one Helm version; CONTRIBUTING's older "Nothing has ever applied this" contradicted the recorded `docker-desktop` apply; this record said "both READMEs" | Each corrected; the apply sentence now cites the paved road record and says `kind` has not run it |
+| Low | Terraform flags before a subcommand were misread | `terraform -input=false init` took `-input=false` as the subcommand. It failed closed, so it could not pass a call it should refuse | Flags are skipped generically |
+| Low | A missing test report crashed the no-skip gate | If pytest failed before writing its report, the gate raised a traceback. It still exited non-zero | It reports a failed run with nothing to count, and a test covers it |
+
+Two reviewer notes were accepted without change. The Kubernetes schemas are fetched
+from a pinned commit over TLS with no digest of their own; a commit on that host is
+effectively immutable, and the residual risk is recorded rather than engineered away.
+And `setup-uv`'s cache is enabled for fork pull requests, as it already was for every
+Python job in this lane; `uv sync --locked` checks what it restores against the
+lockfile's hashes.
+
+Confirmed without change: the four archive layouts the install steps extract match the
+published releases, the extraction happens only after the digest check, the committed
+lock file carries `linux_amd64` hashes for the provider, the tflint ruleset is the
+bundled one so no plugin is downloaded, the kubeconform template's `{{...}}` is not
+GitHub's `${{ }}` expression syntax, and no negative control can pass vacuously.
 
 ## Acceptance criteria
 
@@ -298,15 +343,17 @@ minimums set `values-refused` to eight when nine fixtures exist.
   host, with Windows builds of the pinned releases. The nine older gates have passed
   there; that says nothing about two jobs that download four archives and run tools no
   Windows run can stand in for exactly.
-- **The lane rules read text.** A workflow can hand a cluster to a script. The
-  cluster-free rule refuses every environment script, and the dispatch rules admit only
-  scripts whose text calls `inferops::resolve_target` — a property of the text, not a
-  proof of what the script does.
+- **The lane rules read text, through a fixed vocabulary.** A raw request to an API
+  server, a container image carrying its own client, a renamed binary, or a command
+  decoded at run time is refused by nothing. The dispatch rules admit only scripts whose
+  text calls `inferops::resolve_target` — a property of the text, not a proof of what
+  the script does.
 - **The ownership check compares kinds and reads Terraform as text.** It would not see
   two owners of a kind the inventory does not name, and it resolves no module or
   variable.
-- **Five gates now consume the network.** Two new ones download pinned archives, read
-  schemas from a pinned commit, and fetch the provider the lock file pins.
+- **Five gates now consume the network beyond the toolchain and the base image.** Two
+  new ones download pinned archives, read schemas from a pinned commit, and fetch the
+  provider the lock file pins.
 - **The dispatch rules have never met a real workflow.** They are held to fixtures
   written alongside them, by the same hand. The first committed cluster workflow is the
   first independent test of whether they are the right rules.

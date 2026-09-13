@@ -1,5 +1,5 @@
 {
-  "$comment": "Which rules each deliberately broken workflow must produce. tests/testing/test_infrastructure_gates.py compares the checker's output against this in both directions, so a fixture refused for a different rule is a failure rather than a pass. Every fixture declares its lane in an  header, because a workflow file has no field for one and a fixture is not in the gate matrix.",
+  "$comment": "Which rules each deliberately broken workflow must produce. tests/testing/test_infrastructure_gates.py compares the checker's output against this in both directions, so a fixture refused for a different rule is a failure rather than a pass. Every fixture declares its lane in an `# inferops-lane:` header, because a workflow file has no field for one and a fixture is not in the gate matrix.",
   "checkerRef": "tools/ci_gates/workflow_boundary.py",
   "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
   "providerContractRef": "docs/environment/local-cluster-provider-contract.v1alpha1.json",

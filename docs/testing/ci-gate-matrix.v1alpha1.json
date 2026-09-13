@@ -259,7 +259,7 @@
       "evidenceClass": "local-static",
       "maxCertification": "C0",
       "blocking": true,
-      "defendsNoClaimBecause": "No published claim is about a vulnerability. The scans are recorded once each, by hand, and nothing makes them recur until a job executes on the selected service.",
+      "defendsNoClaimBecause": "No published claim is about a vulnerability. The scans were recorded once each, by hand, and have since passed on the selected service as gates; a passing gate on one day is still not a record, and nothing is promoted.",
       "whatItDoesNotProve": "That the lockfile or the image is free of vulnerabilities. A scan reports what its database knew on the day it ran, so a green result is current as of that run and a new advisory can turn an unchanged commit red tomorrow. It also says nothing about a vulnerability nobody has published.",
       "claimStatusNote": null
     },
@@ -301,7 +301,7 @@
       "blocking": true,
       "defendsNoClaimBecause": null,
       "whatItDoesNotProve": "That no credential was ever committed. A scanner finds what its rules recognise; a short, low-entropy secret has the shape of a name and passes, and the two allowlisted directories and eleven published placeholder patterns are exempt by construction.",
-      "claimStatusNote": "The claim is planned and stays planned. One run by hand, on one host, moved the security-scan layer to implemented and is recorded; it says nothing about the next change. The claim becomes certifiable when a run on the selected service is promoted into a record."
+      "claimStatusNote": "The claim is planned and stays planned. One run by hand, on one host, moved the security-scan layer to implemented and is recorded, and the gate has since passed on the selected service. The claim becomes certifiable when such a run is promoted into a record."
     }
   ],
   "toolPins": [
@@ -469,12 +469,12 @@
   "limitations": [
     "The nine gates V1-S4-001-PR1 introduced passed on the service on 2026-09-13, on the pull-request run for commit 0c84d79 and on the push to main at f212090, observed through the public Actions API. No log or artifact from those runs is promoted into a record, and the logs expire. The two gates V1-S4-001-PR2 adds have not run on the service; every command in them was run locally on one Windows host, with Windows builds of the same tool versions.",
     "A vulnerability scan is not deterministic. Its database changes daily, so an unchanged commit can pass today and fail tomorrow, and a green result dates rather than proves.",
-    "Five gates consume the network: the two scanning gates pull a vulnerability database and a container image, the secret-scan gate downloads a pinned archive, the helm-chart gate downloads two archives and reads Kubernetes schemas from a pinned commit, and the terraform gate downloads two archives and the pinned provider. The lane is cheap and reproducible rather than hermetic.",
+    "Beyond the locked toolchain every Python job installs and the base image the API image build pulls, five gates consume the network: the two scanning gates pull a vulnerability database and a container image, the secret-scan gate downloads a pinned archive, the helm-chart gate downloads two archives and reads Kubernetes schemas from a pinned commit, and the terraform gate downloads two archives and the pinned provider. The lane is cheap and reproducible rather than hermetic.",
     "Every gate here reads files, drives the mock, or scans what is pinned. None of them can support a claim above C1, and the claims about a real runtime and a real cluster take no support from this workflow at all. A chart that renders and a configuration that validates are not a chart that installs or a configuration that applies.",
-    "The secret scanner has been run once, by hand, from its published container image rather than from the pinned release archive this workflow installs. The tool and version are the same; the installation path is not.",
+    "The secret scanner's recorded run was made by hand from its published container image. The gate that installs the pinned release archive has since passed on the service, but that run is observed rather than recorded.",
     "The whitespace and hard-tab checks are the forms CONTRIBUTING publishes, copied rather than read from it. Nothing compares the two, so they can drift.",
     "The command check runs one way. Every program a gate documents must be invoked by its job; a program the job invokes and the matrix does not document - a setup step's curl, say - is not reported.",
-    "The lane rules read text. A workflow can hand a cluster to a script, and the cluster-free rule answers that by refusing every environment script and the dispatch rules by admitting only scripts that call the provider guard - a property read from each script's text, not proved of its behaviour.",
+    "The lane rules read text, and they recognise a cluster only through a fixed vocabulary: Helm, Terraform, kind, kubectl, a kubeconfig or kube context, a provider selection, eval, and environment scripts. Every occurrence of a tool name is read, including quoted, path-invoked, and substituted forms, and one that cannot be shown to be offline is refused. What the vocabulary cannot see is refused by nothing: a raw request to an API server, a container image that carries its own client, a renamed binary, or a command decoded at run time. The dispatch rules admit only scripts whose text calls the provider guard - a property of the text, not a proof of the script's behaviour.",
     "`helm lint` does not enforce the chart's guards. Under Helm 3.19 a template `fail` is reported as [INFO] and lint exits 0, so a lint of the shipped defaults passes. The guards are enforced by `helm template`, which is what the values controls run.",
     "tflint applies a configuration under `--recursive` only when it is passed by absolute path. A `.tflint.hcl` merely present in the `--chdir` directory was not applied in a measured run, and the lint passed on tflint's defaults. One lint fixture fails only under the committed configuration's preset, so a run that silently fell back would fail that control.",
     "The ownership-overlap check compares kinds, not names, and reads Terraform resource blocks as text. It would not notice an object two tools own under a kind the inventory does not name, and it resolves no module and no variable.",

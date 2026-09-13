@@ -154,6 +154,21 @@ REFUSED_IN_THE_DEFAULT_LANE = (
     "bash scripts/environment/terraform-prerequisites.sh check",
     "echo ready && helm install x charts/inferops-llm",
     "cat render.yaml | helm upgrade x charts/inferops-llm",
+    # The shapes the independent review of V1-S4-001-PR2 found walking past the
+    # first version of this rule, which read a tool name only at a command
+    # position. Each one is now refused.
+    '"helm" install foo bar',
+    "$(which helm) install foo bar",
+    'sh -c "helm install foo bar"',
+    "sh -c 'helm install release chart'",
+    'eval "$CMD"',
+    'printf "helm install foo bar" | sh',
+    "./helm install foo bar",
+    "sudo /usr/local/bin/helm install x charts/inferops-llm",
+    "bin/terraform apply",
+    "terraform${IFS}apply",
+    "terraform -input=false apply",
+    '"kind" create cluster',
 )
 
 ACCEPTED_IN_THE_DEFAULT_LANE = (
@@ -170,6 +185,11 @@ ACCEPTED_IN_THE_DEFAULT_LANE = (
     'archive="terraform_${TERRAFORM_VERSION}_linux_amd64.zip"',
     "tflint --recursive --chdir=infra/terraform --format=compact",
     "kubeconform -strict -summary -kubernetes-version 1.34.0 -",
+    "terraform -input=false init -backend=false",
+    "uv run --locked python -m tools.ci_gates no-skips helm",
+    "  terraform:",
+    "options: [kind, docker-desktop]",
+    'tflint --recursive --chdir=infra/terraform --config="${GITHUB_WORKSPACE}/infra/terraform/.tflint.hcl"',
 )
 
 
@@ -586,6 +606,13 @@ def test_an_empty_run_fails_the_no_skip_gate(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert suites._report(junit, exit_status=0).passed is False
+
+
+def test_a_run_that_wrote_no_report_fails_the_no_skip_gate(tmp_path: Path) -> None:
+    """pytest can fail before it writes a report; that is a failure, not a crash."""
+    report = suites._report(tmp_path / "never-written.xml", exit_status=4)
+    assert report.passed is False
+    assert report.errors == 1
 
 
 def test_the_no_skip_gate_points_only_at_modules_that_exist() -> None:

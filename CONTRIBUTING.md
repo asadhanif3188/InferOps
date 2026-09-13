@@ -94,8 +94,9 @@ so the list below is the list.
 One set of commands below is not in the workflow and is not automated anywhere:
 `bash -n` and `shellcheck` over `scripts/`, which is not scheduled. The `helm`,
 `kubeconform`, `terraform`, and `tflint` checks are gates now, and they reach no
-cluster: the workflow may run Helm only as `lint` and `template` and Terraform only as
-`fmt`, `init -backend=false`, and `validate`, and a check refuses anything else.
+cluster: the workflow may run Helm only as `lint`, `template`, and `version` and
+Terraform only as `fmt`, `init -backend=false`, `validate`, and `version`, and a check
+refuses anything else it can recognise.
 Anything that installs, plans, applies, or destroys still runs by hand, through the
 environment scripts.
 
@@ -1016,7 +1017,8 @@ profile and the chart's own guards refuse them — but **`helm lint` does not re
 that refusal as a failure**. Measured under Helm 3.19, lint prints each guard's
 message as `[INFO]` and exits 0 on the shipped defaults; only a values-schema
 violation fails lint. An earlier version of this section said a lint with no
-`--values` "is expected to fail", and it was never true. `helm template` is what
+`--values` "is expected to fail", and under Helm 3.19, the version the gate pins, it
+is not true. `helm template` is what
 enforces the guards, which is why the values controls render rather than lint.
 
 kubeconform reads its schemas from a moving branch unless it is told otherwise, so
@@ -1116,9 +1118,11 @@ state and in a chart is reconciled by both, and the loser is whichever ran last.
 
 `plan`, `apply`, and `destroy` reach a cluster and go through the wrapper, which
 establishes cluster identity before Terraform is invoked and hands it the
-kubeconfig and context explicitly. **Nothing has ever applied this**, so do not
-cite anything under `infra/terraform/` as evidence that a namespace or a claim
-exists. `destroy` deletes the namespace, cascades over anything still inside it,
+kubeconfig and context explicitly. It has been applied, re-applied, and destroyed
+on `docker-desktop` and not on `kind`; cite
+[the paved road record](docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)
+for that, and do not cite anything under `infra/terraform/` — a configuration that
+validates — as evidence that a namespace or a claim exists. `destroy` deletes the namespace, cascades over anything still inside it,
 and is the only operation here that reclaims the model weights without also
 destroying the cluster — deleting the cluster reclaims them too, because the claim
 is backed by storage inside the node container. It requires `--confirm`, requires

@@ -103,12 +103,13 @@ Three details carry more weight than they appear to.
 
 ## What the normal lane may not do
 
-Eight prohibitions are checked rather than reviewed. Each is one plausible line away
-from being broken.
+Eight prohibitions about the normal lane are checked rather than reviewed — a ninth,
+about a lane that needs a cluster, is [below](#a-lane-that-needs-a-cluster). Each is one
+plausible line away from being broken.
 
 | Prohibition | Why |
 |---|---|
-| No job reaches a Kubernetes cluster | A normal lane that can discover an ambient cluster can mutate an operator's cluster from a pull request. Helm runs only `lint`, `template`, and `version`; Terraform only `fmt`, `init -backend=false`, `validate`, and `version`; and there is no kubectl, no kind, no kubeconfig or kube context, no provider selection, and no environment script. The check reads the file's text rather than its parsed steps, because a cluster can be reached from a script block, an action input, or an environment variable, and only the text sees all three |
+| No job reaches a Kubernetes cluster | A normal lane that can discover an ambient cluster can mutate an operator's cluster from a pull request. Helm runs only `lint`, `template`, and `version`; Terraform only `fmt`, `init -backend=false`, `validate`, and `version`; and there is no kubectl, no kind, no kubeconfig or kube context, no provider selection, and no environment script. The check reads the file's text rather than its parsed steps, because a cluster can be reached from a script block, an action input, or an environment variable, and only the text sees all three. Every occurrence of a tool name is read, so a quoted, path-invoked, or `${IFS}`-separated call is refused too — the first version of this rule missed all three, and review found it |
 | No job downloads the pinned model artifact | ADR 0005 D2's premise is that the lane every change goes through costs nothing. The artifact is 1.71 GiB |
 | Every action is pinned by commit SHA | A tag is a name somebody can move. It is the argument this repository already makes for pinning a container image by digest |
 | Every workflow declares its token permissions | The default grant is a repository-wide setting a workflow file cannot see. Declaring `contents: read` makes the grant reviewable in the diff that asks for it |
@@ -292,14 +293,18 @@ hand in `V1-S2-006`; this gate does not regenerate or replace them.
 - **A vulnerability scan is not deterministic.** Its database changes daily, so an
   unchanged commit can pass today and fail tomorrow. A green result dates rather
   than proves, and a new advisory turning `main` red is the gate working.
-- **The lane is not hermetic.** Five gates consume the network: the two scanning gates
+- **The lane is not hermetic.** Beyond the locked toolchain every Python job installs
+  and the API image's base image, five gates consume the network: the two scanning gates
   pull a database and an image, and the secret-scan, `helm-chart`, and `terraform`
   gates download pinned archives — the last two also read schemas from a pinned commit
   and a provider checked against the lock file.
-- **The lane rules read text.** A workflow can hand a cluster to a script; the
-  cluster-free rule refuses every environment script, and the dispatch rules admit
-  only scripts whose text calls the provider guard. That is a property of the scripts'
-  text, not a proof of their behaviour.
+- **The lane rules read text, through a fixed vocabulary.** Every occurrence of Helm,
+  Terraform, or kind is read — quoted, path-invoked, and substituted forms included —
+  along with kubectl, a kubeconfig or kube context, a provider selection, `eval`, and
+  environment scripts. A raw request to an API server, a container image that carries
+  its own client, a renamed binary, or a command decoded at run time is refused by
+  nothing. The dispatch rules admit only scripts whose text calls the provider guard,
+  which is a property of the text, not a proof of the script's behaviour.
 - **The ownership check compares kinds and reads Terraform as text.** It would not see
   two owners of a kind the inventory does not name, and it resolves no module and no
   variable.

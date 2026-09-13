@@ -39,7 +39,7 @@
 | ID | Decision | Status | What supports it |
 |---|---|---|---|
 | D1 | GitHub Actions runs the `default-checks` lane | **Accepted** | A committed workflow, and a test that the lane may claim automation only by naming one that exists |
-| D2 | The normal lane is cluster-free and model-free, and both are checked rather than promised | **Accepted**, and enforced; **amended** by `V1-S4-001-PR2` | A checker that reads the workflow's own text and refuses anything that reaches a cluster — any Helm or Terraform subcommand outside the offline set, kubectl, kind, a kubeconfig, a provider selection, an environment script — and any model token, with twenty-one fixtures it must refuse |
+| D2 | The normal lane is cluster-free and model-free, and both are checked rather than promised | **Accepted**, and enforced; **amended** by `V1-S4-001-PR2` | A checker that reads the workflow's own text and refuses anything that reaches a cluster — any Helm or Terraform subcommand outside the offline set, kubectl, kind, a kubeconfig, a provider selection, an environment script, eval — and any model token, held to six default-lane fixture workflows and to test cases for every refused and accepted form |
 | D3 | Every third-party action is pinned by commit SHA, and every pin is recorded beside it | **Accepted**, and enforced | A check that refuses a `uses:` reference that is not forty hexadecimal characters, plus a recorded pin per action |
 | D4 | A published gate matrix, compared to the workflows in both directions | **Accepted**, and executed | The matrix is committed as data and a suite compares it to the committed jobs both ways, and to the programs each job invokes |
 | D5 | Automating a lane does not raise what it may certify | **Accepted** as a rule, and enforced | Every gate's ceiling is inherited from the strategy's evidence class rather than restated |
@@ -138,14 +138,31 @@ rather than the parsed steps is deliberate: a cluster can be reached from a scri
 block, from an action input, or from an environment variable, and only the text sees
 all three. Comment lines are stripped first, so this record's own prohibitions can be
 written into the file as comments without tripping the check that enforces them. A
-subcommand is read at a command position only, so a path ending in `/helm` is not a
-call, and a dynamic subcommand such as `helm $SUBCOMMAND` is refused because it cannot
-be shown to be offline.
+Every occurrence of a tool name is read, wherever it sits: after a space, a quote, a
+slash, or a `$(`. A path segment, a YAML key, a bare word that ends its line, or a
+program followed only by flags or a path argument is harmless; a name followed by
+words is a call, and its first non-flag word must be an offline subcommand; anything
+else — a closing quote, a `)`, a `${IFS}` — is refused, because that is how a call is
+hidden from a reader. A dynamic subcommand such as `helm $SUBCOMMAND` is refused
+because it cannot be shown to be offline, and `eval` is refused outright.
+
+The first version of the amended rule read a tool name only at a command position.
+The independent review of `V1-S4-001-PR2` found that `"helm" install`,
+`sh -c 'helm install'`, `$(which helm) install`, `/usr/local/bin/helm install`,
+`./helm install`, and `terraform${IFS}apply` all walked past it, and the rule was
+rewritten before it merged. Each of those shapes is now a test case.
+
+What the rule still cannot see is named rather than implied: it recognises a cluster
+only through its vocabulary. A raw request to an API server, a container image that
+carries its own client, a renamed binary, or a command decoded at run time is refused
+by nothing here. On the hosted, read-only runners this lane uses there is no cluster
+to reach; D7's self-hosted lanes are where that residue would matter.
 
 The narrower rule is held to what it must refuse: installs, upgrades, tests, lists,
 plans, applies, destroys, imports, state reads, an `init` that configures a backend,
-kubectl, kind, a kubeconfig, a provider selection, and an environment script — each
-in a fixture the checker must refuse, alongside the offline forms it must accept.
+kubectl, kind, a kubeconfig, a provider selection, an environment script, and the
+hidden forms above — each as a test case, and five of them also as fixture workflows
+the expected-failure gate runs — alongside the offline forms it must accept.
 
 The alternative — stating the rule in this document and reviewing for it — is what
 the equivalent rule for shell scripts looked like before
@@ -272,7 +289,8 @@ the gate matrix too.
 ## Consequences
 
 - `CONTRIBUTING`'s statement that every check is run by hand is no longer true for
-  the nine gates in this lane, and is corrected. The commands remain the local
+  the gates in this lane — nine when this record was accepted, eleven since the D2
+  amendment — and is corrected. The commands remain the local
   equivalents and a contributor still runs them before opening a change; what changes
   is that forgetting is now caught.
 - Adding a job means adding a gate row, and adding a row means naming the claims it
@@ -286,13 +304,14 @@ the gate matrix too.
   way: the run found that the committed scan configuration had never parsed, so the
   scanner had been refusing all of it since `V1-S0-009`. The two claims resting on that
   layer stay uncertified — one run on one host says nothing about the next change, and
-  no job has executed on the service.
+  when this record was accepted no job had executed on the service. The gates have
+  passed there since; no run is promoted into a record.
 - A new advisory can turn an unchanged `main` red. A vulnerability database moves
   daily and the two scanning gates block on `CRITICAL` and `HIGH`, so a green result
   dates rather than proves. That is the gate working, and the response is an
   exception recorded by hand in the security baseline, never a lowered threshold.
-- The lane is not hermetic. Three gates consumed the network when this record was
-  accepted; five do since `V1-S4-001-PR2`, which downloads four pinned archives, the
+- The lane is not hermetic. Beyond the locked toolchain and the API image's base image,
+  three gates consumed the network when this record was accepted; five do since `V1-S4-001-PR2`, which downloads four pinned archives, the
   pinned Terraform provider, and Kubernetes schemas from a pinned commit.
 - Since the D2 amendment, adding a Helm or Terraform step means choosing an offline
   subcommand, and adding a downloaded tool means adding a committed digest and a pin
@@ -307,7 +326,7 @@ workflow runs is one CONTRIBUTING already published. One new command is added,
 `python -m tools.ci_gates expected-failures`, and it only runs commands that already
 existed.
 
-The amendment is compatible on the same terms. It adds four commands —
+The amendment is compatible on the same terms. It adds five commands —
 `python -m tools.ci_gates kubernetes-failures`, `terraform-failures`, `no-skips`, and
 the two checkers `tools.ci_gates.workflow_boundary` and
 `tools.ci_gates.ownership_overlap` — and one committed tflint configuration. No chart
