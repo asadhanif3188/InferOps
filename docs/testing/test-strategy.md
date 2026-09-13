@@ -3,9 +3,12 @@
 Status: **accepted strategy**, in
 [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md),
 effective for changes merged after this document is merged. It configures pytest and
-publishes a machine-checked strategy. It does **not** configure a
-continuous-integration service: there is no workflow file in this repository, and
-nothing here claims one runs.
+publishes a machine-checked strategy. Since
+[ADR 0012](../architecture/decisions/ADR-0012-continuous-integration-service.md) it
+also names the service that runs the default lane: one workflow file is committed,
+and [the gate matrix](ci-gate-matrix.md) is where its jobs are published. **No job in
+it has run on that service yet** — the commands were executed by hand and the file is
+a configuration until the first pull request opens.
 
 It exists because a test suite acquires its meaning from what it is allowed to
 certify, and that is a decision, not a consequence. Left undecided, the decision
@@ -39,15 +42,21 @@ is allowed to mean.
 
 | Lane | Trigger | Environment | Model | Cluster | Timeout | Artifacts kept |
 |---|---|---|---|---|---|---|
-| `default-checks` | every change, before review | a checkout and an interpreter | none | no | 15 min | 30 days |
+| `default-checks` | every pull request, every push to `main`, manual dispatch | a checkout and an interpreter | none | no | 15 min | 30 days |
 | `cluster-smoke` | opt-in, on environment or manifest changes | local kind cluster | none | yes | 30 min | 30 days |
 | `real-runtime` | manual, or a labelled authorized runner | capable host | full, hash-verified | yes | 90 min | 90 days |
 | `capacity` | not triggered in V1 | capable host | full | yes | 240 min | 90 days |
 
-None of these is automated. Every one is `manual` today except `capacity`, which is
-`deferred`. A lane may only be marked automated once it names a workflow file that
-exists, and a test enforces that — which is the mechanism that keeps this table
-honest as CI arrives.
+One of these is automated. `default-checks` is `automated` and names
+[`.github/workflows/checks.yml`](../../.github/workflows/checks.yml);
+`cluster-smoke` and `real-runtime` are still `manual`, and `capacity` is `deferred`.
+A lane may only be marked automated once it names a workflow file that exists, and a
+test enforces that — which is the mechanism that kept this table honest while CI was
+absent and is the mechanism that makes the claim checkable now it is not.
+
+Automation changed where that lane runs. It changed nothing about what the lane may
+certify: every gate's ceiling is inherited from the evidence class its layers already
+carried, and a fully green run establishes nothing about a runtime.
 
 ### Why four rather than two
 
@@ -104,7 +113,7 @@ support a C2 claim no matter how thorough it is, and
 [the certification document](certification.md) argues why that is a property of what
 the layer runs against rather than of how well it is written.
 
-Eight of eleven layers exist. Registering the other three now is deliberate: a
+Nine of eleven layers exist. Registering the other two now is deliberate: a
 marker that exists is a marker the first test of that kind gets written under, and a
 marker that does not exist is a test that ends up in whichever suite was already
 open.
@@ -348,11 +357,13 @@ certified on the strength of a layer nobody has written.
 
 ## What this strategy does not do
 
-- **It configures no continuous integration.** There is no workflow file, no runner,
-  and no automated lane. Every lane is run by hand today. The strategy is written so
-  that adding CI is a matter of pointing a workflow at a marker expression that
-  already exists.
-- **It does not certify anything by existing.** Three of eleven layers have no code.
+- **It automates one lane of four, and proves nothing by doing so.** `default-checks`
+  runs on GitHub Actions since ADR 0012; the other three are still run by hand. No job
+  in the committed workflow has executed on the service, so the file is a
+  configuration rather than a result — and even a green run of all nine gates would
+  raise no ceiling, because automating a mock lane does not make a mock certify a
+  runtime.
+- **It does not certify anything by existing.** Two of eleven layers have no code.
   The suite that checks this document cannot tell an honestly planned layer from one
   that will never be written.
 - **It does not select a task runner, a packaging tool, or a linter.** Those remain
@@ -360,7 +371,8 @@ certified on the strength of a layer nobody has written.
 - **It labels no runner as capable.** The `real-runtime` lane's only reproducible
   path today is
   [the manual feasibility workflow](../serving/feasibility-workflow.md), which has
-  been executed once.
+  been executed once. ADR 0012 decided the service and deliberately left that half of
+  ADR 0005 D6 open.
 
 ## Related records
 
@@ -370,6 +382,10 @@ certified on the strength of a layer nobody has written.
   stops at C1.
 - [The claim/test matrix](claim-test-matrix.md) — every public claim, with its layer,
   environment, and owner.
+- [The gate matrix](ci-gate-matrix.md) — every automated gate, the claims it defends,
+  and what a passing result may not be used to say.
+- [ADR 0012](../architecture/decisions/ADR-0012-continuous-integration-service.md)
+  — the service that runs the default lane, and what it deliberately does not decide.
 - [The mock and real serving boundary](../serving/mock-and-real-boundary.md) — the
   accepted rule this strategy makes mechanical.
 - [Project boundaries](../architecture/project-boundaries.md) — the rule that defers

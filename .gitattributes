@@ -11,3 +11,20 @@
 # checkout receives CRLF and the next `uv lock` rewrites the whole file, which
 # turns a no-op into a diff.
 uv.lock text eol=lf
+
+# A workflow's `run:` blocks are shell scripts that a Linux runner executes, and
+# a CRLF line ending inside one becomes a literal carriage return in the command
+# — the same failure `*.sh` above is protected from, in a file that does not look
+# like a script. `text=auto` already normalises what is stored; this pins what is
+# checked out, so a runner cannot receive CRLF whatever the checkout did.
+.github/workflows/*.yml text eol=lf
+.github/workflows/*.yaml text eol=lf
+
+# The chart hashes its own rendered configuration into a pod annotation
+# (`inferops.io/configuration-checksum`), so the bytes of every template and
+# values file are part of the output. A CRLF checkout renders a different
+# checksum from an LF one, and the committed renders under ci/rendered/ can
+# only match one of them. Pinning the checkout makes the render the same on
+# every platform: before this, the committed renders carried checksums derived
+# from a Windows working tree, and the first hosted Linux run failed both.
+charts/** text eol=lf

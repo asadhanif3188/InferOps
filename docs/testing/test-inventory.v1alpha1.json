@@ -634,6 +634,17 @@
       "note": null
     },
     {
+      "module": "tests/testing/test_ci_gate_matrix.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The published gate matrix and the committed continuous-integration workflows agree in both directions, every gate names the claims it defends or records why it defends none, no gate certifies above the ceiling its evidence class allows, and the normal lane cannot reach a cluster, download the model, or name a third-party action by a movable tag.",
+      "claims": [
+        "the-published-strategy-and-its-data-cannot-drift-apart",
+        "the-default-lane-cannot-execute-a-real-model"
+      ],
+      "note": "It reads committed files. It runs no workflow and contacts no service, so it says nothing about whether any of the jobs it describes has ever passed."
+    },
+    {
       "module": "tests/testing/test_document_links.py",
       "layer": "documentation",
       "marker": "docs",
@@ -727,8 +738,8 @@
     },
     {
       "claimId": "no-credential-or-model-artifact-enters-public-history",
-      "reason": "The security-scan layer is planned. A scan configuration and an allowlist are committed and no recorded run of a scanner exists, so there is nothing to inventory.",
-      "coveredBy": null
+      "reason": "No pytest module scans history for a credential. The security-scan layer declares no test paths: what proves this claim is a scanner run from a shell, and tests/security/test_security_baseline.py checks only that the configuration it reads is committed, parses, and exempts things that exist.",
+      "coveredBy": "gitleaks, run by hand over the committed history and wired into the default-lane workflow as the secret-scan gate, with the run recorded in docs/proof/testing/v1-s4-001-pr1-validation.md"
     },
     {
       "claimId": "a-helm-release-installs-and-uninstalls-without-residue",

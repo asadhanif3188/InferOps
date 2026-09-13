@@ -12,12 +12,12 @@ below have no control at all.
 > chart renders, and that establishes nothing about whether the running platform is
 > defended: no check here reads a pod back, no admission control constrains one,
 > and the network policy the release creates was measured not to be enforced by the
-> plugin the observed clusters run. No secret scanner has been run
-> and recorded. An image scanner and a dependency auditor have each been run
-> once, by hand, against the pinned runtime image and the committed dependency
-> lockfile; neither runs continuously, because no continuous-integration service
-> is selected. No assessment by an outside party has ever been performed, and a
-> document review is not one.
+> plugin the observed clusters run. A secret scanner, an image scanner, and a
+> dependency auditor have each been run once, by hand, against the committed
+> history, the pinned runtime image, and the committed dependency lockfile. None of
+> the three runs continuously: the default-lane workflow carries all three as gates
+> and no job in it has executed on the selected service. No assessment by an outside
+> party has ever been performed, and a document review is not one.
 >
 > What is really enforced is enforced over committed files, over five YAML
 > manifests, over the chart's two committed renders, and by four shell functions.
@@ -253,10 +253,13 @@ either.
 
 Four properties are tested: ignored paths are ignored and nothing is committed under
 them, no file carries a personal filesystem path, no file carries a model artifact
-extension, and the secret-scan configuration's allowlist resolves. The fifth thing a
-reader will assume is tested is not: **no run of the scanner is recorded**, the
-security-scan layer of [the test strategy](../testing/test-strategy.md) is `planned`
-for that reason, and `DR-11` carries it. A configuration file is not a result.
+extension, and the secret-scan configuration parses and exempts only things that
+exist. The fifth thing a reader will assume is tested is not: **no test here runs the
+scanner**, and `DR-11` carries that. A configuration file is not a result —
+`V1-S4-001-PR1` proved the point by running the scanner for the first time and finding
+that this configuration had never parsed at all. One clean run is now recorded, the
+security-scan layer of [the test strategy](../testing/test-strategy.md) is
+`implemented`, and nothing makes the run recur.
 
 ## What this model does not do
 

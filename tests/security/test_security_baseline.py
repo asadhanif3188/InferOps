@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import json
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -862,12 +863,27 @@ def test_a_control_that_rests_on_a_configuration_says_what_it_does_not_verify() 
             f"{row['controlId']} rests on a configuration and does not say that a "
             "configuration is not a result"
         )
+    # The layer's status is derived from the recorded-run count rather than
+    # asserted against a constant. It read `== 0` and `== "planned"` until
+    # V1-S4-001-PR1 ran the scanner for the first time; a test that hardcodes
+    # the answer stops being a check the moment the answer changes, and would
+    # have had to be edited in either direction anyway.
     layer = next(row for row in STRATEGY["layers"] if row["layerId"] == "security-scan")
-    assert layer["v1Status"] == "planned", (
-        "a scan configuration is committed and no run of the scanner is recorded, "
-        "so the security-scan layer stays planned"
-    )
-    assert BASELINE["securityStatus"]["secretScannerRunsRecorded"] == 0
+    runs = BASELINE["securityStatus"]["secretScannerRunsRecorded"]
+    if runs == 0:
+        assert layer["v1Status"] == "planned", (
+            "a scan configuration is committed and no run of the scanner is "
+            "recorded, so the security-scan layer stays planned"
+        )
+        assert layer["evidenceRef"] is None, layer["evidenceRef"]
+    else:
+        assert layer["v1Status"] == "implemented", (
+            f"{runs} scanner run(s) are recorded, so the security-scan layer is "
+            "implemented rather than planned"
+        )
+        assert layer["evidenceRef"], (
+            "a recorded run is recorded somewhere; the layer names no record"
+        )
 
 
 def test_the_control_that_reads_the_scan_configuration_is_the_one_that_declares_it() -> (
@@ -1122,15 +1138,50 @@ def test_no_committed_file_is_a_model_artifact() -> None:
 def test_the_secret_scan_configuration_is_committed_and_its_allowlist_resolves() -> (
     None
 ):
+    """The configuration parses, and everything it exempts is real.
+
+    This read the file with a regular expression until `V1-S4-001-PR1` ran the
+    scanner for the first time and found that the configuration did not parse at
+    all: `regexes` is a list of strings and the file declared it as a list of
+    tables, so gitleaks refused all of it and scanned nothing. A check that reads
+    a configuration with a regular expression cannot find that, because it never
+    asks the question the tool asks. So it is parsed here, the way the tool
+    parses it.
+    """
     assert GITLEAKS_PATH.exists()
-    body = GITLEAKS_PATH.read_text(encoding="utf-8")
-    assert "[allowlist]" in body
-    paths = re.findall(r'^\s*"([^"]+)",\s*$', body, flags=re.MULTILINE)
+    # A TOML error here is the finding, not an error in the test.
+    config = tomllib.loads(GITLEAKS_PATH.read_text(encoding="utf-8"))
+
+    allowlists = config.get("allowlists", [])
+    assert allowlists, "the configuration declares no allowlist"
+
+    paths: list[str] = []
+    patterns: list[str] = []
+    for allowlist in allowlists:
+        assert allowlist.get("description"), (
+            "an allowlist exempts something without saying what or why"
+        )
+        for key, values in (("paths", paths), ("regexes", patterns)):
+            declared = allowlist.get(key, [])
+            assert isinstance(declared, list), f"{key} is not a list"
+            for value in declared:
+                assert isinstance(value, str), (
+                    f"{key} carries {value!r}; gitleaks requires a list of strings "
+                    "and refuses the whole configuration otherwise"
+                )
+                values.append(value)
+
     assert paths, "the allowlist declares no paths"
     for entry in paths:
         assert (REPO_ROOT / entry).exists(), (
             f"the allowlist names {entry}, which does not exist"
         )
+
+    assert patterns, "the allowlist declares no published placeholder pattern"
+    for pattern in patterns:
+        # A pattern the scanner cannot compile is an exemption that does nothing.
+        re.compile(pattern)
+
     exception = next(row for row in EXCEPTIONS if row["exceptionId"] == "EX-03")
     assert (
         str(len(paths)) in exception["statement"]
@@ -1643,7 +1694,7 @@ def test_the_baseline_declares_a_limitation_for_every_gap_it_admits() -> None:
     statements = " ".join(row["statement"] for row in LIMITATIONS).lower()
     for phrase in (
         "no control here has ever acted inside a system serving a request",
-        "no secret scanner",
+        "secret scanner",
         "no security assessment",
         "apparatus",
         "review alone",

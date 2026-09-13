@@ -10,12 +10,12 @@ decisions are accepted; two are explicitly not made.
 > settings the chart renders, and that establishes nothing about whether the
 > running platform is defended: no check here reads a pod back, no admission
 > control constrains one, and the network policy the release creates was measured
-> not to be enforced by the plugin the observed clusters run. No secret scanner
-> has been run and recorded. An image scanner and a dependency auditor have each
-> been run once, by hand, against the pinned runtime image and the committed
-> dependency lockfile;
-> neither runs continuously, because no continuous-integration service is
-> selected. No assessment by an outside party has ever been performed.
+> not to be enforced by the plugin the observed clusters run. A secret scanner, an
+> image scanner, and a dependency auditor have each been run once, by hand, against
+> the committed history, the pinned runtime image, and the committed dependency
+> lockfile. None of the three runs continuously: the default-lane workflow carries
+> all three as gates and no job in it has executed on the selected service. No
+> assessment by an outside party has ever been performed.
 >
 > What is enforced is enforced over committed files, over five YAML manifests and
 > two committed chart renders, and by four shell functions. Every one of those

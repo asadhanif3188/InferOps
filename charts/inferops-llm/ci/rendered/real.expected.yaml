@@ -838,7 +838,7 @@ spec:
         inferops.io/workload: support-assistant
         app.kubernetes.io/component: platform-api
       annotations:
-        inferops.io/configuration-checksum: 9e5b5c320271d6896044b3bae8d771c24d5c891c2ecdf188845bb03b4051fb47
+        inferops.io/configuration-checksum: 8d854584f630232bf0cf2c37904b9223a2a7ce51017b4898e0432bcc18860072
         prometheus.io/scrape: "true"
         prometheus.io/port: "8090"
         prometheus.io/path: "/metrics"
@@ -962,7 +962,7 @@ spec:
         inferops.io/workload: support-assistant
         app.kubernetes.io/component: serving-runtime
       annotations:
-        inferops.io/configuration-checksum: 9e5b5c320271d6896044b3bae8d771c24d5c891c2ecdf188845bb03b4051fb47
+        inferops.io/configuration-checksum: 8d854584f630232bf0cf2c37904b9223a2a7ce51017b4898e0432bcc18860072
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
@@ -1145,7 +1145,7 @@ spec:
         inferops.io/workload: support-assistant
         app.kubernetes.io/component: telemetry-collector
       annotations:
-        inferops.io/configuration-checksum: 0c0e5b31fd3bb86205a34e0dec951aae5ec590910547700026be9d409f96523b
+        inferops.io/configuration-checksum: 603e247121e7c1700e608307c0e288fcfc64893d416f2743150caa7161bd28f5
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
