@@ -36,12 +36,14 @@ GRID_WIDTH: Final = 24
 PANELS_PER_LINE: Final = 4
 HEIGHT: Final[dict[str, int]] = {"stat": 5, "text": 5, "timeseries": 8, "table": 8}
 
-#: Columns a table panel hides. ``__name__`` and ``job`` are hidden because a job
+#: Columns every table panel hides. ``__name__`` and ``job`` are hidden because a job
 #: name is release-qualified and the record's scoping rule is that no panel shows or
-#: reads one; ``Time`` and ``Value`` because an identity row's value is always 1.
+#: reads one; ``Time`` because a table here is an instant read. ``Value`` is hidden
+#: only where the record says so -- an identity row, whose value is always 1.
+#: Independent review found the first version hiding it from every table, including
+#: the runtime identity table whose value is the count it exists to show.
 TABLE_HIDDEN: Final[dict[str, bool]] = {
     "Time": True,
-    "Value": True,
     "__name__": True,
     "job": True,
 }
@@ -138,8 +140,11 @@ def _panel(
     rendered["options"] = _options(kind)
     rendered["targets"] = _targets(panel)
     if kind == "table":
+        hidden = dict(TABLE_HIDDEN)
+        if panel.get("hideValueColumn") is True:
+            hidden["Value"] = True
         rendered["transformations"] = [
-            {"id": "organize", "options": {"excludeByName": dict(TABLE_HIDDEN)}}
+            {"id": "organize", "options": {"excludeByName": hidden}}
         ]
     return rendered
 

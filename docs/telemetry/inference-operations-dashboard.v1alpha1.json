@@ -22,7 +22,7 @@
     "kind": "prometheus",
     "grafanaVariable": "datasource",
     "statement": "One data source is one release's collector. The collector the chart installs is release-scoped, so selecting it selects the release; the dashboard carries no namespace or job variable and no expression names a job.",
-    "notSupported": "A store holding two releases' series at once. The chart's recording rules name their own release's jobs, but a panel such as the request rate sums every API series in the store, and would add two releases together."
+    "notSupported": "A store holding two releases' series at once. The chart's recording rules name their own release's jobs, but a panel such as the requests count sums every API series in the store, and would add two releases together."
   },
   "renderer": {
     "format": "grafana-dashboard-json",
@@ -33,7 +33,7 @@
   "states": [
     {
       "stateId": "zero",
-      "meaning": "A number, and the number is 0. A zero-filled expression is only ever published by a panel that declares zeroMeans, and each fills its zero from something that proves a reading happened: a per-second count only where an API process published its identity in the window, and a share only where requests were finished in it. A zero says something was read and counted nothing, never that nothing was read.",
+      "meaning": "A number, and the number is 0. A zero-filled expression is only ever published by a panel that declares zeroMeans, and each fills its zero from something that proves a reading happened: a since-start count only while an API process is publishing its identity, and a share only where requests have been counted. A zero says something was read and counted nothing, never that nothing was read. Zero fills are counts, not rates, because a counter series first appears already at 1 and a rate cannot see that first event.",
       "howShown": "The value 0, in the panel's unit."
     },
     {
@@ -59,7 +59,7 @@
     },
     {
       "signalId": "scrape-reachability",
-      "meaning": "Whether the collector reached a target. It is not readiness and not health: the recovery run recorded a deleted serving pod still reading up for fifteen seconds, and a target that is up can be serving nothing. A panel reading up or an inferops:scrape_ recorded series must carry this signal, and its title may not use a readiness or health word."
+      "meaning": "Whether the collector reached a target. It is not readiness and not health: the recovery run recorded a deleted serving pod still reading up for fifteen seconds, and a target that is up can be serving nothing. A panel reading up or an inferops:scrape_ recorded series must carry this signal, and its title may not use a word from the checker's readiness and health list -- which is a list, and misses a synonym it was not given."
     },
     {
       "signalId": "not-emitted",
@@ -176,18 +176,18 @@
       "wouldRequire": null
     },
     {
-      "panelId": "api-target-answered-without-identity",
+      "panelId": "api-identity-not-published",
       "questionId": "is-anything-collected",
-      "title": "API target answered without publishing an identity",
+      "title": "API identity not published",
       "kind": "stat",
       "signal": "value",
       "perReplica": false,
       "unit": "none",
-      "description": "An API target that answers a scrape and publishes no inferops_build_info. The per-second counts fill their zero from a published identity, so while this reads 1 and no other API process publishes one, those counts show missing rather than zero.",
+      "description": "Reads 1 whenever no API process in this release's namespace publishes inferops_build_info. That is a target answering without one, but it is also every API target down and a job that discovered nothing, because the recorded absence does not read up: read it beside the two scrape panels. The accepted query this repeats is named for the first case only, and that name says more than the expression does. While it reads 1, the since-start counts show missing rather than zero.",
       "whenMissing": "No absence recorded: an API process in this release published its identity.",
       "zeroMeans": null,
       "valueText": {
-        "1": "answered, no identity"
+        "1": "no identity published"
       },
       "queries": [
         {
@@ -205,22 +205,22 @@
       "wouldRequire": null
     },
     {
-      "panelId": "readiness-refusals-per-second",
+      "panelId": "readiness-checks-failed-since-start",
       "questionId": "is-it-ready",
-      "title": "Readiness checks failed per second",
+      "title": "Readiness checks failed since the API processes started",
       "kind": "stat",
       "signal": "value",
       "perReplica": false,
-      "unit": "cps",
-      "description": "The API's own readiness refusals, summed across replicas: the only readiness signal the platform emits. It rose by one while a serving pod was replaced in the recovery run.",
-      "whenMissing": "Missing: no API process published an identity in the window, so there is nothing to count against. See the collection row. This is not a zero.",
-      "zeroMeans": "An API process published its identity and counted no failed readiness check in the last five minutes.",
+      "unit": "short",
+      "description": "The API's own readiness refusals, counted since each API process that is publishing now started, summed across replicas: the only readiness signal the platform emits. A count rather than a rate, because a rate cannot see the first refusal of a new component -- the recovery run's single refusal would have read 0 per second. A restarted process starts its count again.",
+      "whenMissing": "Missing: no API process is publishing its identity right now, so there is nothing to count against. See the collection row. This is not a zero.",
+      "zeroMeans": "An API process is publishing its identity right now, and no publishing API process has counted a failed readiness check since it started.",
       "valueText": {},
       "queries": [
         {
           "refId": "A",
           "queryRef": null,
-          "expr": "sum(rate(inferops_readiness_check_failures_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "expr": "sum(inferops_readiness_check_failures_total) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
           "legend": "failed checks",
           "answerability": "answerable-once-collected",
           "profiles": [
@@ -239,8 +239,8 @@
       "signal": "value",
       "perReplica": false,
       "unit": "cps",
-      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier.",
-      "whenMissing": "Missing: no readiness check has failed since the API process started, or no API target is scraped. The stat beside this one separates the two.",
+      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "whenMissing": "Missing: no readiness check has failed since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
       "zeroMeans": null,
       "valueText": {},
       "queries": [
@@ -264,7 +264,7 @@
       "title": "Model readiness (not emitted)",
       "kind": "stat",
       "signal": "not-emitted",
-      "perReplica": false,
+      "perReplica": true,
       "unit": "none",
       "description": "inferops_model_ready is specified, assigned to the serving-runtime adapter, and emitted by nothing. The recorded absence reads 1 to say so rather than leaving an empty panel that reads as a ready model.",
       "whenMissing": "Not emitted: the serving-runtime adapter that owns inferops_model_ready is not instrumented, and no collector is evaluating the recorded absence either.",
@@ -314,22 +314,22 @@
       "wouldRequire": "kube-state-metrics for pod phase and container readiness, and an instrumented serving-runtime adapter for runtime readiness"
     },
     {
-      "panelId": "request-rate",
+      "panelId": "requests-since-start",
       "questionId": "what-traffic",
-      "title": "Requests per second",
+      "title": "Requests finished since the API processes started",
       "kind": "stat",
       "signal": "value",
       "perReplica": false,
-      "unit": "reqps",
-      "description": "Every request the API finished, every outcome, summed across replicas.",
-      "whenMissing": "Missing: no API process published an identity in the window. See the collection row. This is not a zero.",
-      "zeroMeans": "An API process published its identity and finished no request in the last five minutes.",
+      "unit": "short",
+      "description": "Every request the API finished, every outcome, since each API process that is publishing now started, summed across replicas. A count rather than a rate, so the first request of a process is counted; the per-second view is the timeseries beside it.",
+      "whenMissing": "Missing: no API process is publishing its identity right now, so there is nothing to count against. See the collection row. This is not a zero.",
+      "zeroMeans": "An API process is publishing its identity right now, and no publishing API process has finished a request since it started.",
       "valueText": {},
       "queries": [
         {
           "refId": "A",
           "queryRef": null,
-          "expr": "sum(rate(inferops_inference_requests_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "expr": "sum(inferops_inference_requests_total) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
           "legend": "requests",
           "answerability": "answerable-once-collected",
           "profiles": [
@@ -348,8 +348,8 @@
       "signal": "value",
       "perReplica": false,
       "unit": "reqps",
-      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod.",
-      "whenMissing": "Missing: no request has been finished since the API process started, or no API target is scraped. The stat beside this one separates the two.",
+      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "whenMissing": "Missing: no request has been finished since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
       "zeroMeans": null,
       "valueText": {},
       "queries": [
@@ -376,7 +376,7 @@
       "perReplica": true,
       "unit": "short",
       "description": "Requests each API replica has accepted and not yet answered. instance is the pod name and the one unbounded label this dashboard shows; this panel is what it is paid for.",
-      "whenMissing": "Missing: no API target is scraped. A replica with nothing in flight reads 0 and is present.",
+      "whenMissing": "Missing: no API replica has had a request since it started, or no API target is scraped. The in-flight series is created by a replica's first request; after that a replica with nothing in flight reads 0 and is present.",
       "zeroMeans": null,
       "valueText": {},
       "queries": [
@@ -438,8 +438,8 @@
       "signal": "value",
       "perReplica": false,
       "unit": "s",
-      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark.",
-      "whenMissing": "Missing: no request finished in the window, or no API target is scraped. A histogram with no +Inf bucket shows NaN, which is a different state from this one.",
+      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark. Once the bucket series exist, a five-minute window with no request makes every quantile NaN, which draws as a gap in a line that is still present -- not as this panel's missing text.",
+      "whenMissing": "Missing: no request has been finished since the API process started, so no bucket series exists, or no API target is scraped. An idle window after that shows gaps instead.",
       "zeroMeans": null,
       "valueText": {},
       "queries": [
@@ -487,8 +487,8 @@
       "signal": "value",
       "perReplica": false,
       "unit": "reqps",
-      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row.",
-      "whenMissing": "Missing: no request has succeeded since the API process started, or no API target is scraped. The request rate in the traffic row separates the two.",
+      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "whenMissing": "Missing: no request has succeeded since the API process started, so no series exists, or no API target is scraped. The requests count separates the two.",
       "zeroMeans": null,
       "valueText": {},
       "queries": [
@@ -534,22 +534,22 @@
       "wouldRequire": null
     },
     {
-      "panelId": "error-rate",
+      "panelId": "errors-since-start",
       "questionId": "what-errors",
-      "title": "Errors per second",
+      "title": "Errors counted since the API processes started",
       "kind": "stat",
       "signal": "value",
       "perReplica": false,
-      "unit": "reqps",
-      "description": "Every canonical error the API counted, summed across replicas.",
-      "whenMissing": "Missing: no API process published an identity in the window. See the collection row. This is not a zero.",
-      "zeroMeans": "An API process published its identity and counted no error in the last five minutes.",
+      "unit": "short",
+      "description": "Every canonical error the API counted since each API process that is publishing now started, summed across replicas. A count rather than a rate, so a first error is never read as none.",
+      "whenMissing": "Missing: no API process is publishing its identity right now, so there is nothing to count against. See the collection row. This is not a zero.",
+      "zeroMeans": "An API process is publishing its identity right now, and no publishing API process has counted an error since it started.",
       "valueText": {},
       "queries": [
         {
           "refId": "A",
           "queryRef": null,
-          "expr": "sum(rate(inferops_inference_errors_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "expr": "sum(inferops_inference_errors_total) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
           "legend": "errors",
           "answerability": "answerable-once-collected",
           "profiles": [
@@ -563,20 +563,20 @@
     {
       "panelId": "unsuccessful-request-ratio",
       "questionId": "what-errors",
-      "title": "Share of requests that did not succeed",
+      "title": "Share of requests that did not succeed, since the API processes started",
       "kind": "stat",
       "signal": "value",
       "perReplica": false,
       "unit": "percentunit",
-      "description": "Requests with an outcome other than success, over all requests, in the last five minutes.",
-      "whenMissing": "Missing: no request finished in the window, and a share of no traffic is undefined rather than zero. The request rate shows whether traffic was zero or not collected.",
-      "zeroMeans": "Requests finished in the last five minutes and every one of them succeeded.",
+      "description": "Requests with an outcome other than success, over all requests, counted since each publishing API process started. Cumulative for the same reason as the counts: a rate would miss the first failure of a new outcome.",
+      "whenMissing": "Missing: no request has been finished since the API processes started, and a share of no traffic is undefined rather than zero, or no API target is scraped. The requests count shows which.",
+      "zeroMeans": "Requests have been finished since the API processes started and every one of them succeeded. This zero rests on requests having been counted, not on an identity being published.",
       "valueText": {},
       "queries": [
         {
           "refId": "A",
           "queryRef": null,
-          "expr": "(sum(rate(inferops_inference_requests_total{inferops_outcome!=\"success\"}[5m])) or sum(rate(inferops_inference_requests_total[5m])) * 0) / (sum(rate(inferops_inference_requests_total[5m])) > 0)",
+          "expr": "(sum(inferops_inference_requests_total{inferops_outcome!=\"success\"}) or sum(inferops_inference_requests_total) * 0) / (sum(inferops_inference_requests_total) > 0)",
           "legend": "not successful",
           "answerability": "answerable-once-collected",
           "profiles": [
@@ -595,8 +595,8 @@
       "signal": "value",
       "perReplica": false,
       "unit": "reqps",
-      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in.",
-      "whenMissing": "Missing: no error has been counted since the API process started, or no API target is scraped. The errors-per-second stat separates the two.",
+      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "whenMissing": "Missing: no error has been counted since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
       "zeroMeans": null,
       "valueText": {},
       "queries": [
@@ -649,7 +649,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "none",
-      "description": "The recovery signal the API tier emits: a lost pod's identity series goes stale and its replacement publishes a new one, under a new instance in the identity table. It counts processes the collector has read, not desired replicas, and it can lag a deletion.",
+      "description": "The recovery signal the API tier emits: a lost pod's identity series stops being returned once its target is marked stale, and its replacement publishes a new one under a new instance in the identity table. It counts processes the collector has read, not desired replicas, and it can lag a deletion by the discovery and scrape interval.",
       "whenMissing": "Missing: no API process published an identity. This is not a zero.",
       "zeroMeans": null,
       "valueText": {},
@@ -804,7 +804,8 @@
           ]
         }
       ],
-      "wouldRequire": null
+      "wouldRequire": null,
+      "hideValueColumn": true
     },
     {
       "panelId": "runtime-operating-identity",
@@ -830,7 +831,8 @@
           ]
         }
       ],
-      "wouldRequire": null
+      "wouldRequire": null,
+      "hideValueColumn": false
     },
     {
       "panelId": "cluster-provider",
@@ -855,7 +857,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "short",
-      "description": "Input and output tokens as the API counts them, at the API's boundary.",
+      "description": "Input and output tokens as the API counts them, at the API's boundary. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "whenMissing": "Missing: no completion has been counted since the API process started, or no API target is scraped.",
       "zeroMeans": null,
       "valueText": {},
@@ -930,7 +932,7 @@
     },
     {
       "limitationId": "a-zero-is-only-as-good-as-what-it-rests-on",
-      "statement": "A per-second count fills its zero where any API process published inferops_build_info, and a share fills its zero where any request was finished. Neither is per replica: with two replicas and one of them not publishing, the figure is the publishing replica's alone and still reads as a number. And the share does not depend on identity at all, so it reads 0 beside an API target that answered without one. The collection row is what shows either gap."
+      "statement": "A since-start count fills its zero while any API process publishes inferops_build_info, and a share fills its zero where any request was counted. Neither is per replica: with two replicas and one of them not publishing, the figure is the publishing replica's alone and still reads as a number. The share does not depend on identity at all, so it reads 0 beside an API that publishes none. And a since-start count starts again when a process restarts. The collection row is what shows each gap. Nothing checks what a zero fill is keyed to: the rule only requires that a panel filling one says what its zero means."
     },
     {
       "limitationId": "one-release-per-data-source",
@@ -938,7 +940,15 @@
     },
     {
       "limitationId": "scrape-state-lags",
-      "statement": "Scrape reachability and the identity count are read from series that go stale rather than vanish, and a deleted pod has been observed reading up for fifteen seconds. Neither is a timely failure signal."
+      "statement": "Scrape reachability and the identity count follow discovery and scrape timing, and a deleted pod has been observed reading up for fifteen seconds. Neither is a timely failure signal."
+    },
+    {
+      "limitationId": "rates-miss-first-events-and-outlive-an-outage",
+      "statement": "Every rate panel inherits two properties of a real Prometheus that the fixture evaluator does not model. A labelled counter series first appears at 1, so a rate never counts its first event. And after every target stops answering, a rate over a five-minute window keeps returning the pre-outage figure for up to five minutes, while the since-start counts disappear at once."
+    },
+    {
+      "limitationId": "the-grafana-json-is-not-profile-aware",
+      "statement": "Profiles decide which queries the fixture evaluator runs. The Grafana JSON sends every query whatever the release's profile, and a real-only query against a mock release returns an empty result."
     }
   ]
 }

@@ -17,14 +17,16 @@ single query cannot break and a panel can:
     name.
 
 ``scrape-signal-presented-as-readiness``
-    A panel reading ``up`` or an ``inferops:scrape_`` recorded series without
-    declaring the ``scrape-reachability`` signal, or one that declares it under a
-    title using a readiness or health word. Scrape reachability says a process
+    A panel reading ``up`` or an ``inferops:scrape_`` recorded series -- by name or
+    through a ``__name__`` matcher -- without declaring the ``scrape-reachability``
+    signal, or one that declares it under a title using a word from
+    :data:`READINESS_WORDS`, which is a list and has a list's limit. Scrape reachability says a process
     answered; a deleted pod has been observed reading ``up`` after it was gone.
 
 ``panel-state-contradicts-its-queries``
     A panel whose declared signal the queries under it cannot support: a value panel
-    reading a metric nothing emits, a not-emitted panel reading nothing not emitted,
+    reading a metric nothing emits, a not-emitted panel reading nothing not emitted
+    or carrying anything but that metric and its recorded absence,
     a not-answerable panel carrying a query or not saying what would answer it, a
     title that does not say which of those it is, or a zero-filled expression with
     no statement of what its zero means.
@@ -36,7 +38,10 @@ single query cannot break and a panel can:
 
 ``panel-reads-a-per-replica-label-without-declaring-it``
     ``instance`` is the pod name and the one unbounded label the collection record
-    accepts. A panel may show it only by declaring ``perReplica``.
+    accepts. A panel may show it only by declaring ``perReplica``. It is found where
+    a query names it, a legend shows it, or the result's label set can be derived
+    and carries it; a result whose labels cannot be derived statically is covered by
+    the suite's check over the evaluated scenarios, not by this rule.
 
 ``legend-names-a-label-outside-the-query-vocabulary``
     A legend placeholder naming a label no published query may name.
@@ -75,8 +80,18 @@ from tools.telemetry_correlation import (
     parse,
     permitted_query_labels,
 )
-from tools.telemetry_correlation.core import SAFE_MESSAGE_CHARACTERS, SUBSTITUTE
-from tools.telemetry_correlation.promql import Binary, NumberLiteral, walk
+from tools.telemetry_correlation.core import (
+    SAFE_MESSAGE_CHARACTERS,
+    SUBSTITUTE,
+    _static_labels,
+)
+from tools.telemetry_correlation.promql import (
+    Binary,
+    Expr,
+    NumberLiteral,
+    Selector,
+    walk,
+)
 
 __all__ = [
     "DASHBOARD_RECORD_PATH",
@@ -115,8 +130,17 @@ KINDS: Final = frozenset({"stat", "timeseries", "table", "text"})
 
 #: Words a scrape-reachability title may not use. Each is a claim about the process
 #: being able to serve, which a scrape cannot make.
+#:
+#: **A list, and so a list's limit.** Independent review renamed a scrape panel
+#: "operational" and the first version of this list, which stopped at readiness and
+#: health words, accepted it. The list now covers the words a reviewer and the
+#: suite could think of, prefixes included -- ``health`` catches ``healthcheck`` --
+#: and the suite commits a synonym it still accepts, so the gap stays visible
+#: rather than assumed closed. Meaning is not something a regular expression reads.
 READINESS_WORDS: Final = re.compile(
-    r"\b(ready|readiness|health|healthy|available|availability|up|alive|live)\b",
+    r"\b(ready\w*|readiness|health\w*|avail\w*|up|alive|live\w*|online|"
+    r"operational|functional|functioning|responsive|serving|working|ok|okay|"
+    r"green|good|normal|status)\b",
     re.IGNORECASE,
 )
 
@@ -125,13 +149,19 @@ READINESS_WORDS: Final = re.compile(
 SCRAPE_SERIES_PREFIX: Final = "inferops:scrape_"
 SCRAPE_SERIES: Final = frozenset({"up", "scrape_duration_seconds"})
 
+#: A recorded absence: ``inferops:<what>_absent:<tier>``. The one kind of answerable
+#: series a not-emitted panel may carry beside the metric it reports as absent.
+RECORDED_ABSENCE: Final = re.compile(r"^inferops:[a-z_]+_absent:[a-z_]+$")
+
 REF_ID: Final = re.compile(r"[A-Z]")
 PER_REPLICA_LABEL: Final = "instance"
 LEGEND_PLACEHOLDER: Final = re.compile(r"\{\{\s*([^}\s]*)\s*\}\}")
 LOOKS_NUMERIC: Final = re.compile(r"^\s*[-+]?(\d|\.\d|nan\b|inf\b)", re.IGNORECASE)
 
 #: A zero-filled expression multiplies a presence vector by zero. It is recognised
-#: from the parsed tree rather than from the text, so spacing cannot hide one.
+#: from the parsed tree, with constant operands folded, so neither spacing nor a
+#: spelling such as ``-0`` or ``(1 - 1)`` hides one. Independent review found the
+#: first version reading only a bare literal, which ``* -0`` walked straight past.
 ZERO: Final = 0.0
 
 
@@ -207,8 +237,26 @@ def evaluate_dashboard(
 # --------------------------------------------------------------------------
 
 
+def _constant(node: Expr) -> float | None:
+    """The value of a subexpression built only from number literals, or ``None``."""
+    if isinstance(node, NumberLiteral):
+        return node.value
+    if isinstance(node, Binary) and node.operator in {"+", "-", "*", "/"}:
+        left, right = _constant(node.left), _constant(node.right)
+        if left is None or right is None:
+            return None
+        if node.operator == "+":
+            return left + right
+        if node.operator == "-":
+            return left - right
+        if node.operator == "*":
+            return left * right
+        return None if right == ZERO else left / right
+    return None
+
+
 def _is_zero_fill(expression: str) -> bool:
-    """Whether an expression multiplies something by the literal zero."""
+    """Whether an expression multiplies something by a constant that folds to zero."""
     try:
         tree = parse(expression)
     except PromQLError:
@@ -217,7 +265,7 @@ def _is_zero_fill(expression: str) -> bool:
         if not isinstance(node, Binary) or node.operator != "*":
             continue
         for side in (node.left, node.right):
-            if isinstance(side, NumberLiteral) and side.value == ZERO:
+            if _constant(side) == ZERO:
                 return True
     return False
 
@@ -242,14 +290,76 @@ def _policy_refusals(
     )
 
 
+def _series_named(tree: Expr) -> frozenset[str]:
+    """Every series name an expression selects, including through ``__name__``."""
+    names = set(metrics_read(tree))
+    for node in walk(tree):
+        if isinstance(node, Selector):
+            names.update(
+                matcher.value
+                for matcher in node.matchers
+                if matcher.label == "__name__" and matcher.operator == "="
+            )
+    return frozenset(names)
+
+
 def _reads_scrape_signal(expression: str) -> bool:
     try:
-        read = metrics_read(parse(expression))
+        read = _series_named(parse(expression))
     except PromQLError:
         return False
     return any(
         name in SCRAPE_SERIES or name.startswith(SCRAPE_SERIES_PREFIX) for name in read
     )
+
+
+def _shape(record: Mapping[str, Any]) -> list[Finding]:
+    """Refusals for a record whose shape the rules cannot read at all.
+
+    The rules below assume lists of objects. A wrong-typed field used to raise an
+    ``AttributeError`` out of the gate instead of a finding -- independent review
+    drove ``{"panels": [null]}`` and a string ``queries`` through it -- so the shape
+    is checked first, and a record that fails it is refused and read no further.
+    """
+    findings: list[Finding] = []
+    for collection, rule in (
+        ("questions", "operational-question-has-no-panel"),
+        ("panels", "panel-identifier-is-malformed-or-repeated"),
+    ):
+        entries = record.get(collection)
+        if entries is None:
+            continue
+        if not isinstance(entries, list) or not all(
+            isinstance(entry, Mapping) for entry in entries
+        ):
+            findings.append(
+                Finding(
+                    rule=rule,
+                    subject=collection,
+                    field=collection,
+                    message=f"{collection} must be a list of objects",
+                )
+            )
+    panels = record.get("panels")
+    if isinstance(panels, list):
+        for panel in panels:
+            if not isinstance(panel, Mapping):
+                continue
+            queries = panel.get("queries")
+            if queries is None:
+                continue
+            if not isinstance(queries, list) or not all(
+                isinstance(query, Mapping) for query in queries
+            ):
+                findings.append(
+                    Finding(
+                        rule="panel-state-contradicts-its-queries",
+                        subject=_safe(str(panel.get("panelId", ""))) or "<unnamed>",
+                        field="queries",
+                        message="queries must be a list of objects",
+                    )
+                )
+    return findings
 
 
 def _identifiers(record: Mapping[str, Any]) -> Iterator[Finding]:
@@ -388,6 +498,24 @@ def _panel(
 
     classes = {str(query.get("answerability")) for query in queries}
     if signal == "not-emitted":
+        for query in queries:
+            if query.get("answerability") == "not-answerable-nothing-emits":
+                continue
+            try:
+                read = _series_named(parse(str(query.get("expr"))))
+            except PromQLError:
+                read = frozenset()
+            if not read or not all(RECORDED_ABSENCE.match(name) for name in read):
+                yield Finding(
+                    rule="panel-state-contradicts-its-queries",
+                    subject=subject,
+                    field=f"queries[{_safe(str(query.get('refId', '?')))}]",
+                    message=(
+                        "a not-emitted panel carries only the metric that is not "
+                        "emitted and the recorded absence of it. A live figure under "
+                        "a not-emitted title is the contradiction this refuses"
+                    ),
+                )
         if "not-answerable-nothing-emits" not in classes:
             yield Finding(
                 rule="panel-state-contradicts-its-queries",
@@ -483,13 +611,20 @@ def _panel(
             )
 
         try:
-            named = labels_read(parse(expression))
+            tree = parse(expression)
+            named = labels_read(tree)
+            # The labels the result can carry, where they can be derived. A bare
+            # selector returns every label on the series, `instance` included, and
+            # names none of them: independent review showed a table over
+            # `inferops_build_info` passing as not per replica. Where the set cannot
+            # be derived statically, the suite checks the evaluated results instead.
+            carried = _static_labels(tree, profile) or frozenset()
         except PromQLError:
-            named = frozenset()
+            named = carried = frozenset()
         legend_labels = frozenset(
             LEGEND_PLACEHOLDER.findall(str(query.get("legend") or ""))
         )
-        if PER_REPLICA_LABEL in (named | legend_labels) and not per_replica:
+        if PER_REPLICA_LABEL in (named | legend_labels | carried) and not per_replica:
             yield Finding(
                 rule="panel-reads-a-per-replica-label-without-declaring-it",
                 subject=subject,
@@ -541,6 +676,9 @@ def check_dashboard(record: Mapping[str, Any] | None = None) -> list[Finding]:
         str(query["queryId"]): query for query in load_query_record()["queries"]
     }
     permitted = permitted_query_labels()
+    shape = _shape(document)
+    if shape:
+        return sorted(shape, key=lambda f: (f.rule, f.subject, f.field, f.message))
     findings: list[Finding] = [*_identifiers(document), *_questions(document)]
     for panel in document.get("panels") or []:
         if isinstance(panel, Mapping):

@@ -288,7 +288,9 @@ limitation and it is stated rather than designed around.
 
 - dashboards and an alert routing path — a dashboard needs somebody to read it,
   and an alert needs a receiver, a routing tree, and somebody on the other end;
-  none of the three is chosen, and `telemetry-backend` carries that;
+  none of the three is chosen, and `telemetry-backend` carries that (narrowed
+  again by the 2026-09-13 amendment below, which assigns the dashboard definition
+  and leaves a dashboard server and alert routing here);
 - an ingress controller and a load-balancer implementation — the accepted local
   cluster ships neither, and installing them was recorded as an open cost.
 

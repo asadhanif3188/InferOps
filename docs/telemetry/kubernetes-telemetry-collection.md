@@ -13,8 +13,9 @@ That is the part that changed.
 [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 `D7` left collector ownership undecided, and for two sprints the consequence was a
 scrape configuration nothing consumed. The amendment makes the collector Helm-owned
-and release-scoped: `telemetry-collector` in the inventory. **Dashboards and an
-alert routing path are still unowned and still deferred**, and
+and release-scoped: `telemetry-collector` in the inventory. **A dashboard server
+and an alert routing path are still unowned and still deferred** — the dashboard
+*definition* has been a repository artifact since the 2026-09-13 amendment — and
 [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md) `D8`
 still selects no SDK, exporter or tracer.
 

@@ -437,8 +437,9 @@ document should be read:
   installed one that scraped both InferOps jobs —
   [what it finds, and what it costs](kubernetes-telemetry-collection.md). Its series
   live in an `emptyDir` and go with its pod, so nothing it collected outlives the
-  release. Who owns a dashboard and an alert routing path is still open, and
-  `telemetry-backend` is still deferred.
+  release. Who runs a dashboard server and owns an alert routing path is still
+  open, and `telemetry-backend` is still deferred; the dashboard definition is a
+  repository artifact that nothing has imported.
 - **Records go to a stream and no further.** No log store, shipper, retention window,
   or access rule is selected, so the retention this catalog requires to be stated
   before content of any kind is written is still unstated.

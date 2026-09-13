@@ -174,7 +174,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "An API target that answers a scrape and publishes no inferops_build_info. The per-second counts fill their zero from a published identity, so while this reads 1 and no other API process publishes one, those counts show missing rather than zero.",
+      "description": "Reads 1 whenever no API process in this release's namespace publishes inferops_build_info. That is a target answering without one, but it is also every API target down and a job that discovered nothing, because the recorded absence does not read up: read it beside the two scrape panels. The accepted query this repeats is named for the first case only, and that name says more than the expression does. While it reads 1, the since-start counts show missing rather than zero.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -186,7 +186,7 @@
               "options": {
                 "1": {
                   "index": 0,
-                  "text": "answered, no identity"
+                  "text": "no identity published"
                 }
               },
               "type": "value"
@@ -240,7 +240,7 @@
           "refId": "A"
         }
       ],
-      "title": "API target answered without publishing an identity",
+      "title": "API identity not published",
       "type": "stat"
     },
     {
@@ -261,7 +261,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The API's own readiness refusals, summed across replicas: the only readiness signal the platform emits. It rose by one while a serving pod was replaced in the recovery run.",
+      "description": "The API's own readiness refusals, counted since each API process that is publishing now started, summed across replicas: the only readiness signal the platform emits. A count rather than a rate, because a rate cannot see the first refusal of a new component -- the recovery run's single refusal would have read 0 per second. A restarted process starts its count again.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -269,7 +269,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no API process published an identity in the window, so there is nothing to count against. See the collection row. This is not a zero.",
+          "noValue": "Missing: no API process is publishing its identity right now, so there is nothing to count against. See the collection row. This is not a zero.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -279,7 +279,7 @@
               }
             ]
           },
-          "unit": "cps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -310,14 +310,14 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(inferops_readiness_check_failures_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "expr": "sum(inferops_readiness_check_failures_total) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
           "instant": true,
           "legendFormat": "failed checks",
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Readiness checks failed per second",
+      "title": "Readiness checks failed since the API processes started",
       "type": "stat"
     },
     {
@@ -325,7 +325,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier.",
+      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -333,7 +333,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no readiness check has failed since the API process started, or no API target is scraped. The stat beside this one separates the two.",
+          "noValue": "Missing: no readiness check has failed since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -500,7 +500,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Every request the API finished, every outcome, summed across replicas.",
+      "description": "Every request the API finished, every outcome, since each API process that is publishing now started, summed across replicas. A count rather than a rate, so the first request of a process is counted; the per-second view is the timeseries beside it.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -508,7 +508,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no API process published an identity in the window. See the collection row. This is not a zero.",
+          "noValue": "Missing: no API process is publishing its identity right now, so there is nothing to count against. See the collection row. This is not a zero.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -518,7 +518,7 @@
               }
             ]
           },
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -549,14 +549,14 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(inferops_inference_requests_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "expr": "sum(inferops_inference_requests_total) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
           "instant": true,
           "legendFormat": "requests",
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Requests per second",
+      "title": "Requests finished since the API processes started",
       "type": "stat"
     },
     {
@@ -564,7 +564,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod.",
+      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -572,7 +572,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no request has been finished since the API process started, or no API target is scraped. The stat beside this one separates the two.",
+          "noValue": "Missing: no request has been finished since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -633,7 +633,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no API target is scraped. A replica with nothing in flight reads 0 and is present.",
+          "noValue": "Missing: no API replica has had a request since it started, or no API target is scraped. The in-flight series is created by a replica's first request; after that a replica with nothing in flight reads 0 and is present.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -771,7 +771,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark.",
+      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark. Once the bucket series exist, a five-minute window with no request makes every quantile NaN, which draws as a gap in a line that is still present -- not as this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -779,7 +779,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no request finished in the window, or no API target is scraped. A histogram with no +Inf bucket shows NaN, which is a different state from this one.",
+          "noValue": "Missing: no request has been finished since the API process started, so no bucket series exists, or no API target is scraped. An idle window after that shows gaps instead.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -854,7 +854,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row.",
+      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -862,7 +862,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no request has succeeded since the API process started, or no API target is scraped. The request rate in the traffic row separates the two.",
+          "noValue": "Missing: no request has succeeded since the API process started, so no series exists, or no API target is scraped. The requests count separates the two.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -992,7 +992,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Every canonical error the API counted, summed across replicas.",
+      "description": "Every canonical error the API counted since each API process that is publishing now started, summed across replicas. A count rather than a rate, so a first error is never read as none.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1000,7 +1000,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no API process published an identity in the window. See the collection row. This is not a zero.",
+          "noValue": "Missing: no API process is publishing its identity right now, so there is nothing to count against. See the collection row. This is not a zero.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1010,7 +1010,7 @@
               }
             ]
           },
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -1041,14 +1041,14 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(inferops_inference_errors_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "expr": "sum(inferops_inference_errors_total) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
           "instant": true,
           "legendFormat": "errors",
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Errors per second",
+      "title": "Errors counted since the API processes started",
       "type": "stat"
     },
     {
@@ -1056,7 +1056,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Requests with an outcome other than success, over all requests, in the last five minutes.",
+      "description": "Requests with an outcome other than success, over all requests, counted since each publishing API process started. Cumulative for the same reason as the counts: a rate would miss the first failure of a new outcome.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1064,7 +1064,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no request finished in the window, and a share of no traffic is undefined rather than zero. The request rate shows whether traffic was zero or not collected.",
+          "noValue": "Missing: no request has been finished since the API processes started, and a share of no traffic is undefined rather than zero, or no API target is scraped. The requests count shows which.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1105,14 +1105,14 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum(rate(inferops_inference_requests_total{inferops_outcome!=\"success\"}[5m])) or sum(rate(inferops_inference_requests_total[5m])) * 0) / (sum(rate(inferops_inference_requests_total[5m])) > 0)",
+          "expr": "(sum(inferops_inference_requests_total{inferops_outcome!=\"success\"}) or sum(inferops_inference_requests_total) * 0) / (sum(inferops_inference_requests_total) > 0)",
           "instant": true,
           "legendFormat": "not successful",
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Share of requests that did not succeed",
+      "title": "Share of requests that did not succeed, since the API processes started",
       "type": "stat"
     },
     {
@@ -1120,7 +1120,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in.",
+      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1128,7 +1128,7 @@
             "mode": "fixed"
           },
           "mappings": [],
-          "noValue": "Missing: no error has been counted since the API process started, or no API target is scraped. The errors-per-second stat separates the two.",
+          "noValue": "Missing: no error has been counted since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1258,7 +1258,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The recovery signal the API tier emits: a lost pod's identity series goes stale and its replacement publishes a new one, under a new instance in the identity table. It counts processes the collector has read, not desired replicas, and it can lag a deletion.",
+      "description": "The recovery signal the API tier emits: a lost pod's identity series stops being returned once its target is marked stale, and its replacement publishes a new one under a new instance in the identity table. It counts processes the collector has read, not desired replicas, and it can lag a deletion by the discovery and scrape interval.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1687,7 +1687,6 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "Value": true,
               "__name__": true,
               "job": true
             }
@@ -1730,7 +1729,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Input and output tokens as the API counts them, at the API's boundary.",
+      "description": "Input and output tokens as the API counts them, at the API's boundary. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {

@@ -189,8 +189,20 @@ def test_the_published_counts_are_the_counts_the_record_has() -> None:
         if entry["limitationId"] == "new-expressions-evaluated-by-fixtures-only"
     )
     assert limitation["statement"].lower().startswith(f"{words[len(new)]} panel")
-    assert f"{len(RECORD['panels'])} panels" in DOCUMENT
-    assert f"{len(queries)} expressions" in DOCUMENT
+    per_replica = [panel for panel in RECORD["panels"] if panel["perReplica"]]
+    evidence = (REPO_ROOT / RECORD["evidenceRef"]).read_text(encoding="utf-8")
+    changelog = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    for text in (DOCUMENT, evidence, changelog):
+        assert f"{len(RECORD['panels'])} panels" in text
+        assert f"{len(queries)} expressions" in text
+    for text in (
+        " ".join(DOCUMENT.lower().split()),
+        " ".join(evidence.lower().split()),
+    ):
+        assert f"{words[len(referenced)]} of the expressions" in text
+        assert f"{words[len(new)]} are new" in text
+    numbers = {5: "five"}
+    assert f"the {numbers[len(per_replica)]} panels declared per replica" in evidence
 
 
 # --------------------------------------------------------------------------
@@ -237,7 +249,7 @@ def _not_emitted_as_value(record: dict[str, Any]) -> None:
 
 def _not_answerable_with_a_query(record: dict[str, Any]) -> None:
     _panel(record, "cluster-provider")["queries"] = [
-        copy.deepcopy(_panel(record, "request-rate")["queries"][0])
+        copy.deepcopy(_panel(record, "requests-since-start")["queries"][0])
     ]
 
 
@@ -246,11 +258,11 @@ def _not_answerable_without_requirement(record: dict[str, Any]) -> None:
 
 
 def _zero_without_meaning(record: dict[str, Any]) -> None:
-    _panel(record, "error-rate")["zeroMeans"] = None
+    _panel(record, "errors-since-start")["zeroMeans"] = None
 
 
 def _missing_as_zero(record: dict[str, Any]) -> None:
-    _panel(record, "error-rate")["whenMissing"] = "0"
+    _panel(record, "errors-since-start")["whenMissing"] = "0"
 
 
 def _missing_as_nothing(record: dict[str, Any]) -> None:
@@ -285,7 +297,65 @@ def _refused_by_correlation(record: dict[str, Any]) -> None:
     )
 
 
+def _zero_fill_spelled_negative(record: dict[str, Any]) -> None:
+    """Review found `* -0` walking past a detector that read only a bare literal."""
+    panel = _panel(record, "errors-since-start")
+    panel["queries"][0]["expr"] = panel["queries"][0]["expr"].replace("* 0", "* -0")
+    panel["zeroMeans"] = None
+
+
+def _zero_fill_spelled_as_arithmetic(record: dict[str, Any]) -> None:
+    panel = _panel(record, "errors-since-start")
+    panel["queries"][0]["expr"] = panel["queries"][0]["expr"].replace(
+        "* 0", "* (1 - 1)"
+    )
+    panel["zeroMeans"] = None
+
+
+def _live_figure_under_not_emitted(record: dict[str, Any]) -> None:
+    """Review appended a live query to a not-emitted panel and nothing refused it."""
+    live = copy.deepcopy(_panel(record, "successful-requests-per-second")["queries"][0])
+    live["refId"] = "Z"
+    _panel(record, "queue-wait-p95")["queries"].append(live)
+
+
+def _scrape_title_with_a_synonym(record: dict[str, Any]) -> None:
+    _panel(record, "scrape-targets-answering-by-tier")["title"] = (
+        "Scrape targets operational, by tier"
+    )
+
+
+def _bare_selector_undeclared(record: dict[str, Any]) -> None:
+    """A bare selector returns `instance` without naming it."""
+    _panel(record, "build-identity-per-replica")["perReplica"] = False
+
+
 CORRUPTIONS: list[tuple[str, Callable[[dict[str, Any]], None], str]] = [
+    (
+        "zero-fill-negative",
+        _zero_fill_spelled_negative,
+        "panel-state-contradicts-its-queries",
+    ),
+    (
+        "zero-fill-arithmetic",
+        _zero_fill_spelled_as_arithmetic,
+        "panel-state-contradicts-its-queries",
+    ),
+    (
+        "live-under-not-emitted",
+        _live_figure_under_not_emitted,
+        "panel-state-contradicts-its-queries",
+    ),
+    (
+        "scrape-title-synonym",
+        _scrape_title_with_a_synonym,
+        "scrape-signal-presented-as-readiness",
+    ),
+    (
+        "bare-selector-per-replica",
+        _bare_selector_undeclared,
+        "panel-reads-a-per-replica-label-without-declaring-it",
+    ),
     ("drift", _drift, "panel-query-drifted-from-the-accepted-query"),
     (
         "drift-answerability",
@@ -351,6 +421,44 @@ def test_every_rule_has_a_corruption_that_proves_it_fires() -> None:
     assert {rule for _, _, rule in CORRUPTIONS} == set(RULE_IDS)
 
 
+def test_a_readiness_synonym_the_list_was_not_given_is_still_accepted() -> None:
+    """The word list is a list. This pins one synonym it misses, so the gap is a
+    committed fact rather than an assumption that it was closed."""
+
+    def synonym(record: dict[str, Any]) -> None:
+        _panel(record, "scrape-targets-answering-by-tier")["title"] = (
+            "Scrape targets fine, by tier"
+        )
+
+    assert "scrape-signal-presented-as-readiness" not in _rules(_mutate(synonym))
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    [
+        {"panels": [None]},
+        {"panels": "not-a-list"},
+        {"questions": [1, 2]},
+        {"panels": [{"panelId": "a", "queries": "not-a-list"}]},
+        {"panels": [{"panelId": "a", "queries": [None]}]},
+    ],
+    ids=[
+        "null-panel",
+        "string-panels",
+        "number-questions",
+        "string-queries",
+        "null-query",
+    ],
+)
+def test_a_malformed_record_is_refused_rather_than_crashing(
+    malformed: dict[str, Any],
+) -> None:
+    """The checker is a gate; a traceback is not a refusal anybody can read."""
+    findings = check_dashboard(malformed)
+    assert findings
+    assert {finding.rule for finding in findings} <= set(RULE_IDS)
+
+
 def test_a_finding_never_echoes_a_hostile_identifier_or_expression() -> None:
     def hostile(record: dict[str, Any]) -> None:
         panel = _panel(record, "request-rate-by-outcome")
@@ -373,27 +481,48 @@ def test_a_finding_never_echoes_a_hostile_identifier_or_expression() -> None:
 
 def test_a_count_reads_zero_when_the_api_was_read_and_counted_nothing() -> None:
     """The mock scenario publishes an identity and no error series at all."""
-    assert RESULTS["mock-single-replica"]["error-rate/A"] == ["{} 0"]
-    assert RESULTS["mock-single-replica"]["readiness-refusals-per-second/A"] == ["{} 0"]
+    assert RESULTS["mock-single-replica"]["errors-since-start/A"] == ["{} 0"]
+    assert RESULTS["mock-single-replica"]["readiness-checks-failed-since-start/A"] == [
+        "{} 0"
+    ]
+
+
+def test_no_zero_filled_expression_takes_a_rate() -> None:
+    """A labelled counter series is born at 1, so a rate never sees its first event.
+    A zero filled over a rate would read 0 after a real first failure."""
+    for panel in RECORD["panels"]:
+        if panel["zeroMeans"] is None:
+            continue
+        for query in panel["queries"]:
+            assert "rate(" not in query["expr"], panel["panelId"]
+            assert "increase(" not in query["expr"], panel["panelId"]
 
 
 def test_a_count_is_missing_rather_than_zero_when_nothing_was_read() -> None:
     down = RESULTS["every-target-down"]
     for key in (
-        "error-rate/A",
-        "request-rate/A",
-        "readiness-refusals-per-second/A",
+        "errors-since-start/A",
+        "requests-since-start/A",
+        "readiness-checks-failed-since-start/A",
         "unsuccessful-request-ratio/A",
     ):
         assert down[key] == [], key
 
 
-def test_a_count_is_missing_when_the_api_answered_without_an_identity() -> None:
-    """Requests are counted here, and a zero error rate would still be a guess."""
+def test_a_count_is_missing_while_no_identity_is_published() -> None:
+    """The count's zero fill is keyed to a published identity and nothing else, so
+    it stays missing here even though requests are counted."""
     results = RESULTS["api-target-up-without-identity"]
-    assert results["request-rate/A"] != []
-    assert results["error-rate/A"] == []
-    assert results["api-target-answered-without-identity/A"] != []
+    assert results["requests-since-start/A"] != []
+    assert results["errors-since-start/A"] == []
+    assert results["api-identity-not-published/A"] != []
+
+
+def test_identity_absence_also_reads_when_every_target_is_down() -> None:
+    """The recorded absence does not read up. Review found the first title claiming
+    a target had answered; this scenario is the one where none did."""
+    assert RESULTS["every-target-down"]["api-identity-not-published/A"] != []
+    assert "answer" not in PANELS["api-identity-not-published"]["title"].lower()
 
 
 def test_a_share_reads_zero_only_when_requests_were_finished() -> None:
@@ -464,6 +593,18 @@ def test_the_quantiles_are_ordered_in_the_healthy_scenario() -> None:
         for ref in ("A", "B", "C")
     ]
     assert values == sorted(values)
+
+
+def test_only_a_per_replica_panel_returns_the_pod_name_in_any_scenario() -> None:
+    """The rule reads what it can derive statically; this reads what came back."""
+    for scenario, results in RESULTS.items():
+        for panel in RECORD["panels"]:
+            if panel["perReplica"]:
+                continue
+            for query in panel["queries"]:
+                key = f"{panel['panelId']}/{query['refId']}"
+                for row in results.get(key, []):
+                    assert 'instance="' not in row, (scenario, key)
 
 
 def test_no_panel_result_carries_a_label_the_catalog_bars() -> None:
@@ -582,6 +723,16 @@ def test_every_query_panel_shows_its_missing_text_rather_than_a_default() -> Non
         )
 
 
+def test_a_table_hides_its_value_only_where_the_value_is_always_one() -> None:
+    by_title = {panel["title"]: panel for panel in RECORD["panels"]}
+    for panel in RENDERED_PANELS:
+        if panel["type"] != "table":
+            continue
+        hidden = panel["transformations"][0]["options"]["excludeByName"]
+        assert hidden.get("Value", False) is by_title[panel["title"]]["hideValueColumn"]
+    assert PANELS["runtime-operating-identity"]["hideValueColumn"] is False
+
+
 def test_no_panel_colours_a_value_as_health() -> None:
     for panel in RENDERED_PANELS:
         if panel["type"] == "text":
@@ -614,5 +765,6 @@ def test_the_document_names_no_panel_the_record_lacks() -> None:
 
 
 def test_the_document_says_what_has_not_been_done() -> None:
-    assert "No Grafana has imported" in DOCUMENT
-    assert "no Prometheus has evaluated" in DOCUMENT
+    flat = " ".join(DOCUMENT.lower().split())
+    assert "no grafana has imported" in flat
+    assert "no prometheus has evaluated a panel" in flat

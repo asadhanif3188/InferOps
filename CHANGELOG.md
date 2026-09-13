@@ -17,7 +17,8 @@ once versioned releases begin.
   replicas, identity, and tokens — and
   [`deploy/grafana/inferops-inference-operations.json`](deploy/grafana/inferops-inference-operations.json)
   is generated from it. Every panel is in one of four states that look different:
-  a zero, which is only filled from something proving a reading happened; missing,
+  a zero, which is only filled from something proving a reading happened and is
+  always a count since the API processes started, never a rate; missing,
   shown as text that says what the empty result can mean; not emitted; and not
   answerable, a text panel with no query. Scrape reachability is never shown as
   readiness. `python -m tools.inference_dashboard` holds all 30 expressions to the

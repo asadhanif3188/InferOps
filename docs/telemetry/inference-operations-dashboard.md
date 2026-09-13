@@ -6,7 +6,7 @@ query policy and evaluated over the committed synthetic scenarios, and a Grafana
 dashboard JSON generated from it. No Grafana has imported that JSON, and no
 Prometheus has evaluated a panel from it. Nineteen of the expressions are accepted
 correlation queries that a real Prometheus has evaluated on one provider; eleven are
-new here and have been evaluated by nothing but this repository's fixture evaluator.
+new and have been evaluated by nothing but this repository's fixture evaluator.
 
 The authoritative form is
 [`inference-operations-dashboard.v1alpha1.json`](inference-operations-dashboard.v1alpha1.json).
@@ -31,7 +31,7 @@ So every panel here says which of four states it is in, and the four look differ
 
 | State | What the panel shows |
 |---|---|
-| `zero` | The number 0. Only a panel that declares what its zero means may fill one, and it fills it only from something that proves a reading happened: a per-second count from an API process having published its identity, a share from requests having been finished |
+| `zero` | The number 0. Only a panel that declares what its zero means may fill one, and it fills it only from something that proves a reading happened: a since-start count while an API process is publishing its identity, a share where requests have been counted. Every zero fill is a count, never a rate — see below |
 | `missing` | The panel's own no-value text, saying what an empty result from *that* expression can mean. Never a number |
 | `not-emitted` | A title saying "not emitted", and a no-value text naming the component that is not instrumented |
 | `not-answerable` | A text panel with no query, titled "not answerable", saying what would have to exist first |
@@ -41,7 +41,17 @@ readiness.** `up` says the collector reached a process. [The recovery
 run](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md) recorded a
 deleted serving pod still reading up for fifteen seconds, and a target can answer a
 scrape while serving nothing. A panel reading `up` or an `inferops:scrape_` series
-must say `scrape` in its title and may not say ready, health, or available.
+must say `scrape` in its title and may not use a word from the checker's readiness
+and health list. That is a list, and a list misses synonyms it was not given: the
+suite pins one it still accepts.
+
+**Why the zeros are counts and not rates.** The API creates a labelled counter series
+on its first event, so the series first appears already at 1. A rate never sees that
+first event: the recovery run's single readiness refusal would have read `0` per
+second. A zero filled over a rate would therefore read `0` beside a real failure. So
+the four panels that fill a zero are counts since the API processes started, which do
+see the first event and disappear at once when a target stops answering. The rate
+timeseries remain, and each says what a rate cannot see.
 
 ## Where it reads from
 
@@ -66,20 +76,20 @@ comes first on purpose: until it reads, every other panel is missing.
 |---|---|---|---|
 | `scrape-targets-answering-by-tier` | is-anything-collected | scrape-reachability | accepted `scrape-target-health-by-job` |
 | `scrape-jobs-that-discovered-no-pod` | is-anything-collected | scrape-reachability | accepted `platform-api-scrape-job-absent`, `serving-runtime-scrape-job-absent` |
-| `api-target-answered-without-identity` | is-anything-collected | value | accepted `identity-absent-on-a-target-that-answered` |
-| `readiness-refusals-per-second` | is-it-ready | value | new: failed readiness checks summed, zero-filled from a published identity |
+| `api-identity-not-published` | is-anything-collected | value | accepted `identity-absent-on-a-target-that-answered` |
+| `readiness-checks-failed-since-start` | is-it-ready | value | new: failed readiness checks since start, summed, zero-filled from a published identity |
 | `readiness-refusals-by-component` | is-it-ready | value | accepted `readiness-check-failures-by-component` |
-| `model-readiness` | is-it-ready | not-emitted | accepted `model-readiness-by-workload`, `model-readiness-absent` |
+| `model-readiness` | is-it-ready | not-emitted, per replica | accepted `model-readiness-by-workload`, `model-readiness-absent` |
 | `pod-container-and-runtime-readiness` | is-it-ready | not-answerable | nothing: needs kube-state-metrics and an instrumented adapter |
-| `request-rate` | what-traffic | value | new: requests summed, zero-filled from a published identity |
+| `requests-since-start` | what-traffic | value | new: requests since start, summed, zero-filled from a published identity |
 | `request-rate-by-outcome` | what-traffic | value | accepted `request-throughput-by-workload-model-and-outcome` |
 | `api-in-flight-by-replica` | what-traffic | value, per replica | accepted `in-flight-requests-by-replica` |
 | `runtime-processing-and-deferred` | what-traffic | value | new: runtime in-flight by workload and model; accepted `runtime-deferred-requests` |
 | `request-latency-quantiles` | latency-and-throughput | value | new: P50 and P99; accepted `request-latency-p95-by-workload-and-model` |
 | `successful-requests-per-second` | latency-and-throughput | value | new: requests with outcome success, by workload and model |
 | `queue-wait-p95` | latency-and-throughput | not-emitted | accepted `queue-wait-p95` |
-| `error-rate` | what-errors | value | new: errors summed, zero-filled from a published identity |
-| `unsuccessful-request-ratio` | what-errors | value | new: non-success over all requests, zero-filled only where requests were finished |
+| `errors-since-start` | what-errors | value | new: errors since start, summed, zero-filled from a published identity |
+| `unsuccessful-request-ratio` | what-errors | value | new: non-success over all requests since start, zero-filled only where requests were counted |
 | `errors-by-code` | what-errors | value | accepted `error-rate-by-workload-and-code` |
 | `model-load-duration-p95` | model-load-and-recovery | not-emitted | accepted `model-load-duration-p95` |
 | `api-processes-publishing-identity` | model-load-and-recovery | value | new: identity series counted by tier |
@@ -96,6 +106,14 @@ comes first on purpose: until it reads, every other panel is missing.
 
 Three things in that table are worth reading twice.
 
+**The identity-absence panel does not say a target answered.** It repeats the
+accepted query `identity-absent-on-a-target-that-answered`, whose recorded absence
+does not read `up`: it reads `1` when a target answered without an identity, and
+equally when every API target is down or none was discovered. The first draft of this
+dashboard titled it as though a target had answered. It is now titled for what it
+reads, and it is meant to be read beside the two scrape panels. The accepted query's
+name, and the chart's rule comment, still say more than the expression does.
+
 **There is no readiness panel that reads a number about the model.** The platform
 emits one readiness signal — the API's own refusals — and the model's readiness is
 specified, assigned to the serving-runtime adapter, and emitted by nothing. The panel
@@ -104,7 +122,7 @@ reads the recorded absence, which is `1`, and shows *not emitted*.
 **The replica figures are not replica counts.** `scrape-targets-discovered-by-tier` is
 the pods the collector found with a metrics port, and `api-processes-publishing-identity`
 is the API processes it has read. Neither is the desired count or the ready count, and
-both go stale rather than vanish, so both can lag a deletion.
+both follow discovery and scrape timing, so both can lag a deletion.
 
 **Provider is not answerable from telemetry.** The provider a run used is verified and
 recorded in its evidence record. No series carries it, and a label set from
@@ -132,13 +150,13 @@ one over a record corrupted to break it.
 |---|---|
 | `panel-query-refused-by-the-correlation-policy` | An expression any correlation rule refuses — a barred or uncarried label, a series nothing produces, a claim a signal nothing emits cannot give, a join key one side lacks, a form outside the subset |
 | `panel-query-drifted-from-the-accepted-query` | A query naming an accepted correlation query that is not its expression and answerability, verbatim |
-| `scrape-signal-presented-as-readiness` | A panel reading a scrape signal without declaring scrape reachability, or declaring it under a readiness or health word |
-| `panel-state-contradicts-its-queries` | A value panel reading a metric nothing emits, a not-emitted panel that does not, a not-answerable panel with a query or no requirement, a title that does not say its state, and a zero fill with no stated meaning |
+| `scrape-signal-presented-as-readiness` | A panel reading a scrape signal, by name or through `__name__`, without declaring scrape reachability, or declaring it under a word from the readiness and health list |
+| `panel-state-contradicts-its-queries` | A value panel reading a metric nothing emits, a not-emitted panel that does not or that carries anything but that metric and its recorded absence, a not-answerable panel with a query or no requirement, a title that does not say its state, a zero fill with no stated meaning — found with constant operands folded, so `* -0` is one — and a record whose shape the rules cannot read |
 | `panel-shows-missing-as-a-number` | A query panel with no missing text, or one that reads as a number |
-| `panel-reads-a-per-replica-label-without-declaring-it` | `instance` — the pod name, unbounded over retention — in a panel not declared per replica |
+| `panel-reads-a-per-replica-label-without-declaring-it` | `instance` — the pod name, unbounded over retention — named, shown in a legend, or carried by a result whose labels can be derived, in a panel not declared per replica. Where a result's labels cannot be derived, the suite checks what every scenario returned instead |
 | `legend-names-a-label-outside-the-query-vocabulary` | A legend placeholder naming a label no published query may name |
 | `operational-question-has-no-panel` | A declared question with no panel, or a panel naming an undeclared one |
-| `panel-identifier-is-malformed-or-repeated` | A non-kebab-case or repeated identifier, or a malformed query reference |
+| `panel-identifier-is-malformed-or-repeated` | A non-kebab-case or repeated identifier, a malformed query reference, or a panel list that is not a list of objects |
 
 Sensitive content has no rule of its own because it has nowhere to come from: every
 label a panel may name is derived from the catalog on every run, and a prompt, a
@@ -151,17 +169,20 @@ commits. The suite asserts the separations the states promise, not merely that
 queries parse:
 
 - **zero** — in `mock-single-replica` the API publishes an identity and no error
-  series exists, and `error-rate` reads `0`;
+  series exists, and `errors-since-start` reads `0`;
 - **missing** — in `every-target-down` the same panel is empty, and so is
-  `request-rate`, while `scrape-targets-answering-by-tier` reads a present `0` for
-  both tiers;
-- **missing, not a guess** — in `api-target-up-without-identity` requests are
-  counted and `error-rate` is still empty, because a zero there would rest on
-  nothing;
+  `requests-since-start`, while `scrape-targets-answering-by-tier` reads a present
+  `0` for both tiers;
+- **missing while no identity is published** — in `api-target-up-without-identity`
+  requests are counted and `errors-since-start` is still empty. The requests prove
+  the API was read; the count's zero fill is keyed to a published identity and
+  nothing else, and it does not guess;
 - **not emitted** — every not-emitted query is empty in every scenario, and
   `model-readiness` reads its recorded absence in every one;
-- **not rendered** — under the mock profile the runtime queries are absent from the
-  result rather than empty in it.
+- **not run under a profile** — under the mock profile the fixture evaluator does not
+  run the runtime queries. That is the evaluator's profile filter: the Grafana JSON
+  sends every query whatever the profile, and a runtime query against a mock
+  release returns an empty result.
 
 `python -m tools.inference_dashboard --evaluate` prints every result.
 
@@ -183,13 +204,21 @@ cluster, or queries a Prometheus.
   this repository writes — unique ids, a non-overlapping grid, one data-source
   variable, the record's queries and no-value texts — and not against Grafana's own
   schema or a running server.
-- **no Prometheus has evaluated a panel from this record.** Eleven expressions are new
-  and have been evaluated only by the declared PromQL subset evaluator over
-  hand-written fixtures.
-- **A zero is only as good as what it rests on.** Neither zero fill is per replica,
-  and the share of unsuccessful requests does not depend on identity at all, so it
-  reads `0` beside an API target that answered without one.
-- **Scrape state and identity counts lag.** Both are read from series that go stale
-  rather than vanish.
+- **No Prometheus has evaluated a panel from this record.** Eleven expressions are
+  new and have been evaluated only by the declared PromQL subset evaluator over
+  hand-written fixtures, which does not model a counter being born at 1 or a rate
+  outliving an outage. Those two properties were found by review, not by that
+  evaluator.
+- **Rates miss first events and outlive an outage.** A rate never counts a series'
+  first event, and after every target stops answering a five-minute rate keeps
+  returning the pre-outage figure for up to five minutes.
+- **An idle latency window is NaN, not missing.** Once the bucket series exist, a
+  window with no request draws gaps rather than the missing text.
+- **A zero is only as good as what it rests on.** Neither zero fill is per replica, a
+  since-start count starts again when a process restarts, and the share of
+  unsuccessful requests does not depend on identity at all, so it reads `0` beside an
+  API that publishes none. Nothing checks what a fill is keyed to — only that a panel
+  filling one says what its zero means.
+- **Scrape state and identity counts lag.** Both follow discovery and scrape timing.
 - **No alert is defined.** A panel that nobody is watching tells nobody anything, and
   alert routing is still undecided.
