@@ -62,14 +62,15 @@ local engine through its node container and the API server port the verified
 kubeconfig dials, with the two residual impersonation gaps recorded as `EX-06`. In
 0004, six decisions are accepted and the seventh is decided in part — the telemetry
 collector is Helm-owned and release-scoped since the 2026-09-09 amendment, while an
-ingress or load-balancer implementation, a durable store, dashboards and an alert
-routing path are explicitly not assigned. In 0005, five decisions are accepted and
+ingress or load-balancer implementation, a durable store, a dashboard server and an
+alert routing path are explicitly not assigned, and since the 2026-09-13 amendment the
+dashboard definition is a repository artifact. In 0005, five decisions are accepted and
 one — which continuous-integration service runs the lanes, and what labels a capable
 runner — is explicitly not made. In 0006, six decisions are accepted, one — what would
 allow prompt and response capture — is explicitly not made, and one — the telemetry
 toolchain, exporter and store — is deliberately left to 0004 rather than answered in
-passing; 0004 has since assigned the collector and left the store, dashboards and
-alerting open. In 0007, eleven decisions are accepted and two —
+passing; 0004 has since assigned the collector and the dashboard definition and left
+the store, a dashboard server and alerting open. In 0007, eleven decisions are accepted and two —
 which provider rate cards a comparison would use, and which component computes a cost
 record — are not. In 0008, twelve decisions are accepted and two — who signs off a
 control, and whether a renderer or an admission policy enforces a pod-security
@@ -106,8 +107,9 @@ control, and states where this project stops. The ownership half is committed as
 data and checked by a test; the decomposition it draws still has no check of its own.
 **One decision inside it is deliberately not made**: nobody owns an ingress
 implementation. The telemetry collector was the other half of that deferral, and
-`D7` was amended on 2026-09-09 to make it Helm-owned and release-scoped; a durable
-store, dashboards and alert routing stay deferred as `telemetry-backend`.
+`D7` was amended on 2026-09-09 to make it Helm-owned and release-scoped, and on
+2026-09-13 to make the dashboard definition a repository artifact; a durable store, a
+dashboard server and alert routing stay deferred as `telemetry-backend`.
 
 0006 decides what a running V1 would say about itself: correlation over W3C Trace
 Context assigned at the edge, a field registry in which every attribute declares a
@@ -124,7 +126,8 @@ The InferOps API now emits eight catalog metrics and structured request records 
 the ASGI application is exercised. No component emits a span. A release-scoped
 Prometheus collector is now Helm-owned and has scraped both InferOps jobs on
 `docker-desktop`; it writes to an `emptyDir` that goes with its pod, so no durable
-store, dashboard, or alerting path exists. The selected serving runtime's own signals
+store, dashboard server, or alerting path exists. A dashboard definition does, checked
+against the query policy, and nothing has imported it. The selected serving runtime's own signals
 were observed in one trial, on one host; the API's committed evidence is local and
 mock-backed rather than evidence of a deployed network service. Two of ADR 0006's
 eighteen rules remain marked as enforced by review alone rather than promoted to

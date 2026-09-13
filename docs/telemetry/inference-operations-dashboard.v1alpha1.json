@@ -1,0 +1,944 @@
+{
+  "$id": "https://inferops.io/telemetry/inference-operations-dashboard.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "InferOps inference operations dashboard, v1alpha1",
+  "description": "The operational dashboard for one InferOps release, as data: the questions an operator asks in the first thirty seconds, the panel that answers each, the PromQL every panel runs, and what the panel shows when there is no number to show. Every expression is held to the correlation query policy in tools/telemetry_correlation and evaluated against the committed synthetic scenarios. The Grafana dashboard JSON under deploy/grafana/ is generated from this file and compared against it. No Grafana has imported it and no Prometheus has evaluated a panel from it.",
+  "decisionRef": "docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md",
+  "documentRef": "docs/telemetry/inference-operations-dashboard.md",
+  "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "queryRecordRef": "docs/telemetry/telemetry-correlation-queries.v1alpha1.json",
+  "renderRef": "deploy/grafana/inferops-inference-operations.json",
+  "fixtureDir": "tests/telemetry/fixtures/correlation",
+  "evidenceRef": "docs/proof/telemetry/v1-s4-002-pr1-validation.md",
+  "verificationStatus": {
+    "checkedByQueryPolicy": true,
+    "evaluatedAgainstFixtures": true,
+    "importedIntoGrafana": false,
+    "evaluatedByPrometheus": false,
+    "evidenceClass": "local-static",
+    "note": "Two things are established and two are not. Every panel expression is parsed by the declared PromQL subset, refused if it names a label the catalog bars or nothing carries, reads a series nothing produces, or claims an answer a signal nothing emits cannot give; and every expression is evaluated over the six committed synthetic scenarios. What is not established: that Grafana accepts the generated JSON, and that any panel returns what the fixture evaluator returned when a real Prometheus is asked. Nineteen of the thirty expressions here are accepted correlation queries, repeated verbatim, which a real Prometheus has evaluated on one provider; the other eleven are new in this record and have been evaluated by nothing but the fixture evaluator."
+  },
+  "dataSource": {
+    "kind": "prometheus",
+    "grafanaVariable": "datasource",
+    "statement": "One data source is one release's collector. The collector the chart installs is release-scoped, so selecting it selects the release; the dashboard carries no namespace or job variable and no expression names a job.",
+    "notSupported": "A store holding two releases' series at once. The chart's recording rules name their own release's jobs, but a panel such as the request rate sums every API series in the store, and would add two releases together."
+  },
+  "renderer": {
+    "format": "grafana-dashboard-json",
+    "schemaVersion": 39,
+    "uid": "inferops-inference-operations",
+    "statement": "The format a dashboard is written in, not a service this project runs. ADR 0004 D7 was amended to make the definition a repository artifact; a Grafana server, who runs it, and where it is exposed remain undecided under telemetry-backend."
+  },
+  "states": [
+    {
+      "stateId": "zero",
+      "meaning": "A number, and the number is 0. A zero-filled expression is only ever published by a panel that declares zeroMeans, and each fills its zero from something that proves a reading happened: a per-second count only where an API process published its identity in the window, and a share only where requests were finished in it. A zero says something was read and counted nothing, never that nothing was read.",
+      "howShown": "The value 0, in the panel's unit."
+    },
+    {
+      "stateId": "missing",
+      "meaning": "The panel's expression returned no series. That is a scrape that found nothing, a collector not running, a recording rule not evaluated, or a window with nothing in it, and the panel says which of those its expression can mean.",
+      "howShown": "The panel's whenMissing text, which Grafana shows as its no-value text. It is never a number and a test refuses one that could be read as one."
+    },
+    {
+      "stateId": "not-emitted",
+      "meaning": "The panel reads a metric the telemetry catalog declares and marks not emitted. Waiting changes nothing, because no component puts the series on any endpoint.",
+      "howShown": "The title carries 'not emitted', and the panel's whenMissing text names the emitter that is not instrumented."
+    },
+    {
+      "stateId": "not-answerable",
+      "meaning": "No series exists that could answer the question in the accepted telemetry, so no expression is published for it.",
+      "howShown": "A text panel whose title carries 'not answerable', stating what would have to exist first. It has no query, so it cannot be mistaken for an empty one."
+    }
+  ],
+  "signals": [
+    {
+      "signalId": "value",
+      "meaning": "An operational figure read from a series the accepted telemetry emits."
+    },
+    {
+      "signalId": "scrape-reachability",
+      "meaning": "Whether the collector reached a target. It is not readiness and not health: the recovery run recorded a deleted serving pod still reading up for fifteen seconds, and a target that is up can be serving nothing. A panel reading up or an inferops:scrape_ recorded series must carry this signal, and its title may not use a readiness or health word."
+    },
+    {
+      "signalId": "not-emitted",
+      "meaning": "The panel exists to show that a specified signal is absent."
+    },
+    {
+      "signalId": "not-answerable",
+      "meaning": "The panel exists to show that a question has no source."
+    }
+  ],
+  "questions": [
+    {
+      "questionId": "is-anything-collected",
+      "question": "Is this release's collector reaching anything, before any number below is read?"
+    },
+    {
+      "questionId": "is-it-ready",
+      "question": "Is the API, the serving runtime, and the model ready?"
+    },
+    {
+      "questionId": "what-traffic",
+      "question": "What traffic and concurrency are observable?"
+    },
+    {
+      "questionId": "latency-and-throughput",
+      "question": "What P50, P95, P99, and throughput can be derived from emitted metrics?"
+    },
+    {
+      "questionId": "what-errors",
+      "question": "What errors are observable?"
+    },
+    {
+      "questionId": "model-load-and-recovery",
+      "question": "What model-load and recovery signals are emitted?"
+    },
+    {
+      "questionId": "resources-and-replicas",
+      "question": "What CPU, memory, and replica state exist?"
+    },
+    {
+      "questionId": "what-is-running",
+      "question": "Which model, runtime, workload, environment, and provider is running?"
+    },
+    {
+      "questionId": "what-tokens",
+      "question": "What token data is available?"
+    }
+  ],
+  "panels": [
+    {
+      "panelId": "scrape-targets-answering-by-tier",
+      "questionId": "is-anything-collected",
+      "title": "Scrape targets answering, by tier",
+      "kind": "stat",
+      "signal": "scrape-reachability",
+      "perReplica": false,
+      "unit": "percentunit",
+      "description": "The fraction of each tier's discovered targets that answered the last scrape. It says the collector reached a process, and nothing about whether that process can serve: a deleted pod has been observed reading up for fifteen seconds after deletion.",
+      "whenMissing": "Missing: no target was discovered for any tier, or no collector is evaluating this release's recording rules. Every other panel is missing too until this one reads.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "scrape-target-health-by-job",
+          "expr": "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
+          "legend": "{{k8s_component}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "scrape-jobs-that-discovered-no-pod",
+      "questionId": "is-anything-collected",
+      "title": "Scrape jobs that discovered no pod",
+      "kind": "stat",
+      "signal": "scrape-reachability",
+      "perReplica": false,
+      "unit": "none",
+      "description": "A job whose selector matched no pod publishes no up series at all, so it is invisible in the panel beside this one. These read 1 in exactly that case.",
+      "whenMissing": "No absence recorded: each job this profile renders has at least one target.",
+      "zeroMeans": null,
+      "valueText": {
+        "1": "discovered no pod"
+      },
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "platform-api-scrape-job-absent",
+          "expr": "inferops:scrape_job_absent:platform_api",
+          "legend": "platform-api",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        },
+        {
+          "refId": "B",
+          "queryRef": "serving-runtime-scrape-job-absent",
+          "expr": "inferops:scrape_job_absent:serving_runtime",
+          "legend": "serving-runtime",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "api-target-answered-without-identity",
+      "questionId": "is-anything-collected",
+      "title": "API target answered without publishing an identity",
+      "kind": "stat",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "none",
+      "description": "An API target that answers a scrape and publishes no inferops_build_info. The per-second counts fill their zero from a published identity, so while this reads 1 and no other API process publishes one, those counts show missing rather than zero.",
+      "whenMissing": "No absence recorded: an API process in this release published its identity.",
+      "zeroMeans": null,
+      "valueText": {
+        "1": "answered, no identity"
+      },
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "identity-absent-on-a-target-that-answered",
+          "expr": "inferops:build_info_absent:platform_api",
+          "legend": "platform-api",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "readiness-refusals-per-second",
+      "questionId": "is-it-ready",
+      "title": "Readiness checks failed per second",
+      "kind": "stat",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "cps",
+      "description": "The API's own readiness refusals, summed across replicas: the only readiness signal the platform emits. It rose by one while a serving pod was replaced in the recovery run.",
+      "whenMissing": "Missing: no API process published an identity in the window, so there is nothing to count against. See the collection row. This is not a zero.",
+      "zeroMeans": "An API process published its identity and counted no failed readiness check in the last five minutes.",
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "sum(rate(inferops_readiness_check_failures_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "legend": "failed checks",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "readiness-refusals-by-component",
+      "questionId": "is-it-ready",
+      "title": "Readiness checks failed, by component",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "cps",
+      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier.",
+      "whenMissing": "Missing: no readiness check has failed since the API process started, or no API target is scraped. The stat beside this one separates the two.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "readiness-check-failures-by-component",
+          "expr": "sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m]))",
+          "legend": "{{inferops_workload_id}} {{inferops_component}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "model-readiness",
+      "questionId": "is-it-ready",
+      "title": "Model readiness (not emitted)",
+      "kind": "stat",
+      "signal": "not-emitted",
+      "perReplica": false,
+      "unit": "none",
+      "description": "inferops_model_ready is specified, assigned to the serving-runtime adapter, and emitted by nothing. The recorded absence reads 1 to say so rather than leaving an empty panel that reads as a ready model.",
+      "whenMissing": "Not emitted: the serving-runtime adapter that owns inferops_model_ready is not instrumented, and no collector is evaluating the recorded absence either.",
+      "zeroMeans": null,
+      "valueText": {
+        "1": "not emitted"
+      },
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "model-readiness-by-workload",
+          "expr": "inferops_model_ready",
+          "legend": "{{inferops_workload_id}} {{inferops_model_id}}",
+          "answerability": "not-answerable-nothing-emits",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        },
+        {
+          "refId": "B",
+          "queryRef": "model-readiness-absent",
+          "expr": "inferops:model_ready_absent:platform_api",
+          "legend": "model readiness",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "pod-container-and-runtime-readiness",
+      "questionId": "is-it-ready",
+      "title": "Pod, container, and runtime readiness (not answerable)",
+      "kind": "text",
+      "signal": "not-answerable",
+      "perReplica": false,
+      "unit": null,
+      "description": "The kubelet sees the probes the chart renders, and the result reaches no series. llama-server's health endpoint is a probe target, not a metric. Scrape reachability, in the first row, is a different question.",
+      "whenMissing": null,
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [],
+      "wouldRequire": "kube-state-metrics for pod phase and container readiness, and an instrumented serving-runtime adapter for runtime readiness"
+    },
+    {
+      "panelId": "request-rate",
+      "questionId": "what-traffic",
+      "title": "Requests per second",
+      "kind": "stat",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "reqps",
+      "description": "Every request the API finished, every outcome, summed across replicas.",
+      "whenMissing": "Missing: no API process published an identity in the window. See the collection row. This is not a zero.",
+      "zeroMeans": "An API process published its identity and finished no request in the last five minutes.",
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "sum(rate(inferops_inference_requests_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "legend": "requests",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "request-rate-by-outcome",
+      "questionId": "what-traffic",
+      "title": "Requests per second, by workload, model, and outcome",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "reqps",
+      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod.",
+      "whenMissing": "Missing: no request has been finished since the API process started, or no API target is scraped. The stat beside this one separates the two.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "request-throughput-by-workload-model-and-outcome",
+          "expr": "sum by (inferops_workload_id, inferops_model_id, inferops_outcome) (rate(inferops_inference_requests_total[5m]))",
+          "legend": "{{inferops_workload_id}} {{inferops_model_id}} {{inferops_outcome}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "api-in-flight-by-replica",
+      "questionId": "what-traffic",
+      "title": "Requests in flight at the API, per replica",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": true,
+      "unit": "short",
+      "description": "Requests each API replica has accepted and not yet answered. instance is the pod name and the one unbounded label this dashboard shows; this panel is what it is paid for.",
+      "whenMissing": "Missing: no API target is scraped. A replica with nothing in flight reads 0 and is present.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "in-flight-requests-by-replica",
+          "expr": "sum by (k8s_namespace, k8s_component, instance, inferops_workload_id, inferops_model_id) (inferops_inference_requests_in_flight)",
+          "legend": "{{instance}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "runtime-processing-and-deferred",
+      "questionId": "what-traffic",
+      "title": "Serving runtime: requests processing and deferred",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "short",
+      "description": "The runtime's own view, through the chart's recording rules. It counts slots, not the API's accepted requests, and is not expected to match the API panel. Deferred says queueing happened and never how long anything waited.",
+      "whenMissing": "Missing: the serving-runtime job discovered nothing, no collector is evaluating the recording rules, or this is the mock profile, which runs no serving runtime.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "sum by (inferops_workload_id, inferops_model_id) (inferops:inference_requests_in_flight:runtime)",
+          "legend": "processing {{inferops_model_id}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "real"
+          ]
+        },
+        {
+          "refId": "B",
+          "queryRef": "runtime-deferred-requests",
+          "expr": "sum by (inferops_workload_id, inferops_model_id) (inferops:inference_requests_deferred:runtime)",
+          "legend": "deferred {{inferops_model_id}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "request-latency-quantiles",
+      "questionId": "latency-and-throughput",
+      "title": "Request duration P50, P95, and P99",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "s",
+      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark.",
+      "whenMissing": "Missing: no request finished in the window, or no API target is scraped. A histogram with no +Inf bucket shows NaN, which is a different state from this one.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "histogram_quantile(0.5, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_request_duration_seconds_bucket[5m])))",
+          "legend": "P50 {{inferops_model_id}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        },
+        {
+          "refId": "B",
+          "queryRef": "request-latency-p95-by-workload-and-model",
+          "expr": "histogram_quantile(0.95, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_request_duration_seconds_bucket[5m])))",
+          "legend": "P95 {{inferops_model_id}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        },
+        {
+          "refId": "C",
+          "queryRef": null,
+          "expr": "histogram_quantile(0.99, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_request_duration_seconds_bucket[5m])))",
+          "legend": "P99 {{inferops_model_id}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "successful-requests-per-second",
+      "questionId": "latency-and-throughput",
+      "title": "Successful requests per second, by model",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "reqps",
+      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row.",
+      "whenMissing": "Missing: no request has succeeded since the API process started, or no API target is scraped. The request rate in the traffic row separates the two.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "sum by (inferops_workload_id, inferops_model_id) (rate(inferops_inference_requests_total{inferops_outcome=\"success\"}[5m]))",
+          "legend": "{{inferops_workload_id}} {{inferops_model_id}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "queue-wait-p95",
+      "questionId": "latency-and-throughput",
+      "title": "Queue wait P95 (not emitted)",
+      "kind": "stat",
+      "signal": "not-emitted",
+      "perReplica": false,
+      "unit": "s",
+      "description": "How long a request waits before the runtime starts on it. The deferred count in the traffic row is the partial substitute: it shows that queueing happened and never for how long.",
+      "whenMissing": "Not emitted: inferops_inference_queue_duration_seconds is the serving-runtime adapter's measurement, and the adapter is not instrumented.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "queue-wait-p95",
+          "expr": "histogram_quantile(0.95, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_queue_duration_seconds_bucket[5m])))",
+          "legend": "P95 {{inferops_model_id}}",
+          "answerability": "not-answerable-nothing-emits",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "error-rate",
+      "questionId": "what-errors",
+      "title": "Errors per second",
+      "kind": "stat",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "reqps",
+      "description": "Every canonical error the API counted, summed across replicas.",
+      "whenMissing": "Missing: no API process published an identity in the window. See the collection row. This is not a zero.",
+      "zeroMeans": "An API process published its identity and counted no error in the last five minutes.",
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "sum(rate(inferops_inference_errors_total[5m])) or count(inferops_build_info{k8s_component=\"platform-api\"}) * 0",
+          "legend": "errors",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "unsuccessful-request-ratio",
+      "questionId": "what-errors",
+      "title": "Share of requests that did not succeed",
+      "kind": "stat",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "percentunit",
+      "description": "Requests with an outcome other than success, over all requests, in the last five minutes.",
+      "whenMissing": "Missing: no request finished in the window, and a share of no traffic is undefined rather than zero. The request rate shows whether traffic was zero or not collected.",
+      "zeroMeans": "Requests finished in the last five minutes and every one of them succeeded.",
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "(sum(rate(inferops_inference_requests_total{inferops_outcome!=\"success\"}[5m])) or sum(rate(inferops_inference_requests_total[5m])) * 0) / (sum(rate(inferops_inference_requests_total[5m])) > 0)",
+          "legend": "not successful",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "errors-by-code",
+      "questionId": "what-errors",
+      "title": "Errors per second, by workload and canonical code",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "reqps",
+      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in.",
+      "whenMissing": "Missing: no error has been counted since the API process started, or no API target is scraped. The errors-per-second stat separates the two.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "error-rate-by-workload-and-code",
+          "expr": "sum by (inferops_workload_id, inferops_error_code) (rate(inferops_inference_errors_total[5m]))",
+          "legend": "{{inferops_workload_id}} {{inferops_error_code}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "model-load-duration-p95",
+      "questionId": "model-load-and-recovery",
+      "title": "Model load duration P95 (not emitted)",
+      "kind": "stat",
+      "signal": "not-emitted",
+      "perReplica": false,
+      "unit": "s",
+      "description": "The load durations this project has are stopwatch figures in evidence records, not series.",
+      "whenMissing": "Not emitted: inferops_model_load_duration_seconds is assigned to the serving-runtime adapter, which is not instrumented, and llama-server publishes no load duration either.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "model-load-duration-p95",
+          "expr": "histogram_quantile(0.95, sum by (inferops_model_id, inferops_runtime_id, le) (rate(inferops_model_load_duration_seconds_bucket[5m])))",
+          "legend": "P95 {{inferops_model_id}}",
+          "answerability": "not-answerable-nothing-emits",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "api-processes-publishing-identity",
+      "questionId": "model-load-and-recovery",
+      "title": "API processes publishing an identity",
+      "kind": "stat",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "none",
+      "description": "The recovery signal the API tier emits: a lost pod's identity series goes stale and its replacement publishes a new one, under a new instance in the identity table. It counts processes the collector has read, not desired replicas, and it can lag a deletion.",
+      "whenMissing": "Missing: no API process published an identity. This is not a zero.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "count by (k8s_component) (inferops_build_info)",
+          "legend": "{{k8s_component}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "restarts-and-pod-phase",
+      "questionId": "model-load-and-recovery",
+      "title": "Restarts and pod phase (not answerable)",
+      "kind": "text",
+      "signal": "not-answerable",
+      "perReplica": false,
+      "unit": null,
+      "description": "The recovery run asked for kube_pod_container_status_restarts_total and received no series. A restart is visible here only indirectly, as an identity replaced under a new instance.",
+      "whenMissing": null,
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [],
+      "wouldRequire": "kube-state-metrics"
+    },
+    {
+      "panelId": "api-process-cpu-by-replica",
+      "questionId": "resources-and-replicas",
+      "title": "API process CPU, per replica",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": true,
+      "unit": "short",
+      "description": "CPU seconds per second from the API process's own counter. It is the process, not the container: a cgroup limit, throttling, and working set are all elsewhere and none has a source.",
+      "whenMissing": "Missing: no API target is scraped.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "api-process-cpu-by-replica",
+          "expr": "sum by (k8s_namespace, k8s_component, instance) (rate(inferops_process_cpu_seconds_total[5m]))",
+          "legend": "{{instance}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "api-process-memory",
+      "questionId": "resources-and-replicas",
+      "title": "API process memory (not emitted)",
+      "kind": "stat",
+      "signal": "not-emitted",
+      "perReplica": true,
+      "unit": "bytes",
+      "description": "The catalog declares inferops_process_resident_memory_bytes, assigns it to the API, and marks it not emitted.",
+      "whenMissing": "Not emitted: the only per-process memory figure the standard library exposes is a file, and a module under src/inferops may not read one.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "api-process-memory-by-replica",
+          "expr": "sum by (k8s_namespace, k8s_component, instance) (inferops_process_resident_memory_bytes)",
+          "legend": "{{instance}}",
+          "answerability": "not-answerable-nothing-emits",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "container-and-pod-resource-use",
+      "questionId": "resources-and-replicas",
+      "title": "Container and pod CPU and memory (not answerable)",
+      "kind": "text",
+      "signal": "not-answerable",
+      "perReplica": false,
+      "unit": null,
+      "description": "Neither the serving runtime's consumption nor any container's use against its declared request and limit reaches a series in the accepted cluster.",
+      "whenMissing": null,
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [],
+      "wouldRequire": "a kubelet cAdvisor scrape job, metrics-server, or kube-state-metrics, each a cluster add-on this chart does not own"
+    },
+    {
+      "panelId": "scrape-targets-discovered-by-tier",
+      "questionId": "resources-and-replicas",
+      "title": "Scrape targets discovered, by tier",
+      "kind": "stat",
+      "signal": "scrape-reachability",
+      "perReplica": false,
+      "unit": "none",
+      "description": "Pods with a metrics port the collector found in each tier. The nearest thing to a replica count this telemetry has, and not the same thing: it is neither the desired count nor the ready count, and during a replacement it has been observed to include the pod being removed.",
+      "whenMissing": "Missing: no collector is evaluating this release's recording rules, or neither job has ever discovered a pod.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "inferops:scrape_targets:count",
+          "legend": "{{k8s_component}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "build-identity-per-replica",
+      "questionId": "what-is-running",
+      "title": "Build, model, and runtime identity, per API replica",
+      "kind": "table",
+      "signal": "value",
+      "perReplica": true,
+      "unit": null,
+      "description": "One row per API process: service version, capability, release, environment, adapter kind, model and revision, runtime and image digest. inferops_adapter_kind reads mock or real, so a mock result stays visibly a mock. The chart's default leaves service_version empty, and an empty label value is shown as absent.",
+      "whenMissing": "Missing: no API process published an identity. The collection row says whether a target answered without one.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "build-identity-per-replica",
+          "expr": "inferops_build_info",
+          "legend": "",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "runtime-operating-identity",
+      "questionId": "what-is-running",
+      "title": "Serving runtime operating identity",
+      "kind": "table",
+      "signal": "value",
+      "perReplica": false,
+      "unit": null,
+      "description": "The environment, workload, model, and runtime the collector attaches to the runtime's series, and how many runtime processes carry them. The immutable identity -- revision, image digest -- is not reachable from a runtime series, because a runtime series cannot be joined to the API's identity series.",
+      "whenMissing": "Missing: the serving-runtime job discovered nothing, no collector is evaluating the recording rules, or this is the mock profile, which runs no serving runtime.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": null,
+          "expr": "count by (deployment_environment, inferops_workload_id, inferops_model_id, inferops_runtime_id) (inferops:inference_requests_in_flight:runtime)",
+          "legend": "",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "cluster-provider",
+      "questionId": "what-is-running",
+      "title": "Cluster provider (not answerable)",
+      "kind": "text",
+      "signal": "not-answerable",
+      "perReplica": false,
+      "unit": null,
+      "description": "No telemetry attribute names the Kubernetes provider a release runs on. The provider is recorded in each evidence record, where the run that produced it was verified, and nowhere in a series.",
+      "whenMissing": null,
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [],
+      "wouldRequire": "a provider attribute in the telemetry catalog with a permitted metric or identity placement, and an emitter that sets it from the verified target rather than from configuration"
+    },
+    {
+      "panelId": "tokens-per-second-at-the-api",
+      "questionId": "what-tokens",
+      "title": "Tokens per second at the API, by model and direction",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "short",
+      "description": "Input and output tokens as the API counts them, at the API's boundary.",
+      "whenMissing": "Missing: no completion has been counted since the API process started, or no API target is scraped.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "tokens-by-direction-from-the-api",
+          "expr": "sum by (inferops_model_id, inferops_token_direction) (rate(inferops_inference_tokens_total[5m]))",
+          "legend": "{{inferops_model_id}} {{inferops_token_direction}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "mock",
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    },
+    {
+      "panelId": "tokens-per-second-at-the-runtime",
+      "questionId": "what-tokens",
+      "title": "Tokens per second at the serving runtime, by model and direction",
+      "kind": "timeseries",
+      "signal": "value",
+      "perReplica": false,
+      "unit": "short",
+      "description": "The runtime's own counters, mapped by the chart's recording rules. A different measurement from the API's, and not expected to match it.",
+      "whenMissing": "Missing: the serving-runtime job discovered nothing, no collector is evaluating the recording rules, or this is the mock profile, which runs no serving runtime.",
+      "zeroMeans": null,
+      "valueText": {},
+      "queries": [
+        {
+          "refId": "A",
+          "queryRef": "tokens-by-direction-from-the-runtime",
+          "expr": "sum by (inferops_model_id, inferops_token_direction) (rate(inferops:inference_tokens:runtime_total[5m]))",
+          "legend": "{{inferops_model_id}} {{inferops_token_direction}}",
+          "answerability": "answerable-once-collected",
+          "profiles": [
+            "real"
+          ]
+        }
+      ],
+      "wouldRequire": null
+    }
+  ],
+  "notPanelled": [
+    {
+      "metric": "inferops_inference_time_to_first_token_seconds",
+      "reason": "Deferred out of V1 by the catalog. There is no streaming path, so a panel would show request duration a second time under another name."
+    },
+    {
+      "metric": "inferops_inference_retries_total",
+      "reason": "Deferred out of V1 by the catalog. There is no retry path, and a panel that can only read zero reads as a healthy system rather than an absent feature."
+    },
+    {
+      "metric": "inferops_cost_records_total",
+      "reason": "Deferred out of V1 by the catalog. No component computes or emits a cost record."
+    },
+    {
+      "metric": "inferops_workload_document_rejections_total",
+      "reason": "Its emitter is the contract validator, a library and a command rather than a running service, so there is no endpoint to scrape."
+    }
+  ],
+  "limitations": [
+    {
+      "limitationId": "never-imported",
+      "statement": "No Grafana has imported the generated JSON. Its structure is checked here against the fields this repository writes, not against Grafana's own schema or a running server."
+    },
+    {
+      "limitationId": "new-expressions-evaluated-by-fixtures-only",
+      "statement": "Eleven panel expressions are new in this record and have been evaluated only by the declared PromQL subset evaluator over hand-written fixtures. No Prometheus has run them."
+    },
+    {
+      "limitationId": "a-zero-is-only-as-good-as-what-it-rests-on",
+      "statement": "A per-second count fills its zero where any API process published inferops_build_info, and a share fills its zero where any request was finished. Neither is per replica: with two replicas and one of them not publishing, the figure is the publishing replica's alone and still reads as a number. And the share does not depend on identity at all, so it reads 0 beside an API target that answered without one. The collection row is what shows either gap."
+    },
+    {
+      "limitationId": "one-release-per-data-source",
+      "statement": "Totals sum every series in the selected store. A store holding two releases would add them together."
+    },
+    {
+      "limitationId": "scrape-state-lags",
+      "statement": "Scrape reachability and the identity count are read from series that go stale rather than vanish, and a deleted pod has been observed reading up for fifteen seconds. Neither is a timely failure signal."
+    }
+  ]
+}

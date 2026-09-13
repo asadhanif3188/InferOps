@@ -222,6 +222,7 @@ inside one.
 |---|---|---|
 | `workload-contract-schema` | `repository` | The input to every layer, produced by none of them |
 | `evidence-records` | `repository` | Written by a reviewed change. Nothing in a cluster writes here |
+| `inference-operations-dashboard` | `repository` | The dashboard's panels, queries and empty-state texts as a committed record, and the Grafana JSON generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-13. `implemented` means the definition exists and is checked against the query policy and synthetic scenarios; no Grafana has imported it and nothing here runs one |
 | `workload-contract-document` | `workload-owner` | The platform reads it and never writes it back |
 | `workload-secret-material` | `workload-owner` | Referenced by name. This project never creates, rotates, or reads it |
 | `serving-runtime-container-image` | `external-publisher` | Pinned by digest. Availability is not this project's to guarantee |
@@ -237,7 +238,7 @@ inside one.
 
 | `resourceId` | Why it has no owner |
 |---|---|
-| `telemetry-backend` | Dashboards and an alert routing path. Narrowed by the Sprint 3 remediation: this row used to cover the collector as well, and the collector is now decided and owned. What is left is genuinely open -- a dashboard needs somebody to read it, and an alert needs a receiver, a routing tree and somebody on the other end |
+| `telemetry-backend` | A dashboard server and an alert routing path. Narrowed twice: the Sprint 3 remediation took the collector out of it, and the `ADR 0004` `D7` amendment of 2026-09-13 took the dashboard *definition* out of it, as `inference-operations-dashboard`. What is left is genuinely open -- a Grafana server needs an owner, somewhere to run and an exposure decision, and an alert needs a receiver, a routing tree and somebody on the other end |
 | `ingress-and-load-balancing` | `kind` ships neither, and installing them was recorded as an open cost; what Docker Desktop provides has not been examined here. Until one is chosen, every service is ClusterIP |
 
 ## Teardown, and why the order is not a preference

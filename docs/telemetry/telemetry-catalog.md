@@ -8,7 +8,7 @@ writes the records in section 10; the serving-runtime adapter's four metrics, th
 contract validator's one, and one metric assigned to the API itself are not
 emitted, and no component produces a span. A release-scoped collector is selected
 and has scraped this endpoint on the `docker-desktop` reference provider; its series
-are ephemeral, and no durable store, dashboard, or alert path is selected.
+are ephemeral, and no durable store, dashboard server, or alert path is selected.
 
 The authoritative form is
 [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json). This document
@@ -431,7 +431,7 @@ document should be read:
 - **Only part of this emits.** The API emits eight metrics and writes seven kinds of
   record. The adapter's four metrics, the validator's one, and one of the API's own
   are specifications for behaviour that does not exist, and nothing produces a span.
-- **A collector is selected; no durable store, dashboard, or alert path is.**
+- **A collector is selected; no durable store, dashboard server, or alert path is.**
   [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
   `D7` was amended to make the collector Helm-owned and release-scoped, and a release
   installed one that scraped both InferOps jobs —

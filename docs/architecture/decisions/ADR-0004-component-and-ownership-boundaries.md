@@ -33,11 +33,13 @@
 > otherwise.
 >
 > D7 is **decided in part**. Amended 2026-09-09: the telemetry collector is
-> Helm-owned and release-scoped, and a release has installed one. An ingress
-> controller, a load-balancer implementation, a durable store, dashboards and an
-> alert routing path remain **not decided** — two resources still carry an
-> `undecided` owner, are recorded as unowned, and are deferred out of V1 rather than
-> assigned to a tool for tidiness.
+> Helm-owned and release-scoped, and a release has installed one. Amended
+> 2026-09-13: the dashboard *definition* is a repository artifact, and nothing
+> installs a dashboard server. An ingress controller, a load-balancer
+> implementation, a durable store, a dashboard server and an alert routing path
+> remain **not decided** — two resources still carry an `undecided` owner, are
+> recorded as unowned, and are deferred out of V1 rather than assigned to a tool for
+> tidiness.
 
 ## Decision status
 
@@ -49,7 +51,7 @@
 | D4 | The model cache is a prerequisite, not a release resource | **Accepted** | The teardown finding in the feasibility record: a cache inside the release's own scope was destroyed and cost a full re-download |
 | D5 | The trust boundary map | **Accepted as a map only** | Every control it names is unimplemented. It records where controls would go and who owns deciding them |
 | D6 | Two serving capabilities, and no gateway or deep-serving work | **Accepted** as a scope rule | Review only |
-| D7 | Who owns a telemetry collector, and an ingress or load-balancer implementation | **Amended 2026-09-09.** The collector is Helm-owned and release-scoped; ingress and load balancing remain not decided | The Sprint 3 review: a scrape configuration was rendered for two sprints and nothing read it, so the sprint's own collection requirement could not be met |
+| D7 | Who owns a telemetry collector, a dashboard, and an ingress or load-balancer implementation | **Amended 2026-09-09 and 2026-09-13.** The collector is Helm-owned and release-scoped; the dashboard definition is a repository artifact; a dashboard server, alert routing, ingress and load balancing remain not decided | The Sprint 3 review, for the collector. For the dashboard, `V1-S4-002` required one, and a first panel built without a decision would have made the rendering tool its owner by default |
 
 ## Context
 
@@ -299,8 +301,40 @@ owner now.
 log pipeline — `ADR 0006` `D8` still leaves those open. It makes no claim that
 the platform is observable. A release has since installed the collector and a real
 Prometheus scraped both InferOps jobs through it, so `telemetry-collector` is
-`implemented` — and its series are ephemeral, nothing is dashboarded, and nobody is
-paged.
+`implemented` — and its series are ephemeral and nobody is paged.
+
+### Amended 2026-09-13: the dashboard definition is a repository artifact
+
+`V1-S4-002` requires an inference operations dashboard, and `telemetry-backend`
+said this row existed "so that the question is answered deliberately rather than
+by whoever builds the first panel". Building the first panel is exactly the moment
+that sentence was written for, so it is answered here rather than in a chart.
+
+**Decided.** The dashboard's panels, the query each runs, and what each shows when
+there is no number are a **committed record**, and a Grafana dashboard JSON is
+generated from it and compared against it. Both are owned by the repository and
+change by a reviewed pull request, as the workload contract schema does.
+`inference-operations-dashboard` in the inventory carries that ownership. The
+record is [`inference-operations-dashboard.v1alpha1.json`](../../telemetry/inference-operations-dashboard.v1alpha1.json).
+
+Why a repository artifact rather than a release resource. A dashboard delivered
+as a ConfigMap for a Grafana sidecar to discover would presuppose a Grafana, an
+owner for it, and a discovery convention, which is three decisions this amendment
+does not have the evidence to take. A file whose every query is held to the
+correlation policy is useful to any Grafana an operator already runs, and costs
+nothing to move into a release later.
+
+Why Grafana's format. It is the format the collector's own ecosystem reads, it
+is plain JSON that can be generated and compared, and choosing a *format* commits
+nothing about a server. The record, not the JSON, is authoritative: a second
+renderer would be a second projection of it.
+
+**Still not decided**, and `telemetry-backend` is narrowed to carry exactly this:
+which Grafana shows the dashboard, who owns and upgrades that server, where it
+runs, and how it is exposed and authenticated; and alert routing. No chart, no
+Terraform module, and no script in this repository installs a dashboard server or
+imports the dashboard, and nothing may start doing so without deciding those
+first.
 
 ## Consequences
 
@@ -397,7 +431,7 @@ and the day an implementation exists this suite will not be sufficient.
 | R2 | The scoped teardown could delete a Terraform-owned prerequisite if it is generalised to match the accepted cleanup wording | Open, on the sweep side | Two destroyers for one resource. The lifecycle label is no longer only specified: Terraform sets `inferops.io/lifecycle: prerequisite` on the namespace and the claim and a test enforces it. The scoped sweep still does not exclude it, so the mitigation is half-built |
 | R3 | The adapter interface has one real implementation | Open | It will encode that runtime's assumptions, and the cost surfaces when a second runtime is attempted rather than now |
 | R4 | `helm uninstall` leaves roughly 1.7 GiB occupied, and removing it does not return host disk | **Partly closed** | The reclamation path has been executed rather than only specified: `terraform destroy` removed the namespace, its metadata and the model cache claim, in the documented release-first order. What stays open is the layer below — the container engine's virtual disk grows to hold this and does not shrink when it is removed (ADR 0001 R11), so reclaiming host space needs an engine maintenance operation this project must not perform for a contributor |
-| R5 | No collector exists for the metrics these components will expose | **Closed** (D7, amended 2026-09-09) | An owner was chosen, a collector was rendered, a release installed it, and a real Prometheus scraped both InferOps jobs with the accepted correlation queries evaluated against what it held. `telemetry-collector` is `implemented`. A claim that the platform is *observable* stays unsupported: the series live in an `emptyDir` and go with the pod, no durable backend, dashboard or alert routing path exists, and this is one run on `docker-desktop` with one replica of each tier |
+| R5 | No collector exists for the metrics these components will expose | **Closed** (D7, amended 2026-09-09) | An owner was chosen, a collector was rendered, a release installed it, and a real Prometheus scraped both InferOps jobs with the accepted correlation queries evaluated against what it held. `telemetry-collector` is `implemented`. A claim that the platform is *observable* stays unsupported: the series live in an `emptyDir` and go with the pod, no durable backend, dashboard server or alert routing path exists — a dashboard definition does, and nothing has imported it — and this is one run on `docker-desktop` with one replica of each tier |
 | R6 | Every service is ClusterIP, because the accepted cluster ships no ingress or load balancer | Open | External access is a port-forward. The contracts InferOps most needs to exercise remain unexercised |
 | R7 | The release's network policy is **not** enforced by the network plugin the observed clusters run | **Open, and now measured** | An executed experiment established that `kindnetd` does not apply one. The objects are created and inert. A policy that is not enforced is a comment, and this is a worse position than untested rather than a better one (`DR-04`, `EX-05`) |
 | R8 | No public maintainer roster exists | Open | This record has no named decision owner and cannot be formally approved by one |
@@ -408,5 +442,6 @@ Terraform layer once the environment is less memory-constrained; what the lifecy
 label must be named so that it does not collide with the existing project label
 selector; whether the acquisition job belongs in the release at all, or whether
 model acquisition is a prerequisite operation with the claim it fills; and who owns a
-durable telemetry store, a dashboard, and an alert routing path, which D7 still
-leaves open on purpose now that the collector itself is assigned.
+durable telemetry store, a dashboard server, and an alert routing path, which D7
+still leaves open on purpose now that the collector and the dashboard definition
+are assigned.

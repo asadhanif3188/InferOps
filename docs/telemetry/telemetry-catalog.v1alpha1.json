@@ -16,7 +16,7 @@
     "meaning": "The InferOps API emits the eight metrics marked emitted below and writes the structured log records this catalog specifies. Nothing else emits: the serving-runtime adapter's four metrics and the contract validator's one are specifications for components that are not instrumented, no span is produced by anything, and one metric assigned to the API has no source it is permitted to read. Every metric carries an emission field, so which is which is read from this record rather than inferred from a scrape. The only signals ever observed from another component are the serving runtime's own, in one recorded trial, listed under runtimeNativeSeries.",
     "emitters": ["inferops-api"],
     "transport": "A pull endpoint and a process stream. Metrics are rendered on GET /metrics in the Prometheus text exposition format when something scrapes it, and log records are written one JSON object per line to the stream the composition point supplies. Nothing is pushed anywhere.",
-    "collector": "selected and Helm-owned since ADR 0004 D7 was amended; a release-scoped Prometheus has scraped this endpoint and both InferOps jobs on the docker-desktop reference provider. Its series live in an emptyDir and go with its pod, so it is not a store anything may depend on. No durable store, dashboard, or alerting path is selected, and nothing collects the log stream."
+    "collector": "selected and Helm-owned since ADR 0004 D7 was amended; a release-scoped Prometheus has scraped this endpoint and both InferOps jobs on the docker-desktop reference provider. Its series live in an emptyDir and go with its pod, so it is not a store anything may depend on. No durable store, dashboard server, or alerting path is selected, and nothing collects the log stream."
   },
 
   "cardinalityBudget": {
@@ -1382,7 +1382,7 @@
     },
     {
       "limitationId": "no-collector",
-      "statement": "No durable store, dashboard, or alerting path is selected. A collector is: ADR 0004 D7 was amended to make it Helm-owned and release-scoped, and it has scraped this endpoint. Its series are ephemeral - an emptyDir that goes with the collector pod - so nothing here is a store anything may depend on."
+      "statement": "No durable store, dashboard server, or alerting path is selected. A collector is: ADR 0004 D7 was amended to make it Helm-owned and release-scoped, and it has scraped this endpoint. Its series are ephemeral - an emptyDir that goes with the collector pod - so nothing here is a store anything may depend on."
     },
     {
       "limitationId": "no-tracer",

@@ -7,7 +7,8 @@ The InferOps API emits eight of the thirteen active metrics and writes the speci
 log records; the serving-runtime adapter, the contract validator, and every span do
 not. A release-scoped collector now exists and has scraped both InferOps jobs on the
 `docker-desktop` reference provider; its series are ephemeral, and no durable
-backend, dashboard, or alerting path is selected.
+backend, dashboard server, or alerting path is selected. The dashboard exists as a
+checked definition that nothing has imported.
 
 This directory answers a question that is easy to answer by accumulation: which
 signals a system should emit. The failure mode is not emitting too few — it is
@@ -28,6 +29,8 @@ and never a key. None of those is a convention anybody has to remember.
 | [API instrumentation](api-instrumentation.md) | What the API actually emits: the eight metrics, a scrape, a record, the variables a deployment states its identity in, and what is still absent |
 | [Collecting telemetry in Kubernetes](kubernetes-telemetry-collection.md) | What the collector scrapes from an installed release: two jobs, the labels it attaches and the ones it deliberately does not, what `instance` costs, the native runtime mapping, and the signals that have no source |
 | [`kubernetes-telemetry-collection.v1alpha1.json`](kubernetes-telemetry-collection.v1alpha1.json) | The authoritative form of that document, compared against the committed chart renders by [`tests/telemetry/`](../../tests/telemetry/) |
+| [The inference operations dashboard](inference-operations-dashboard.md) | Twenty-nine panels for the V1 operational questions, what each shows when there is no number — zero, missing, not emitted, or not answerable — the nine rules that refuse a misleading panel, and the Grafana JSON generated from it |
+| [`inference-operations-dashboard.v1alpha1.json`](inference-operations-dashboard.v1alpha1.json) | The authoritative form of that document, held to the correlation query policy and evaluated against fixtures by [`tests/telemetry/`](../../tests/telemetry/) |
 | [Correlated telemetry queries](telemetry-correlation-queries.md) | What an operator can ask of the release's own collector, and what a durable store would add: twenty-three questions, the vocabulary a query may use, the identity join, ten deliberately wrong queries and the rule that refuses each, and the six questions with no answer |
 | [`telemetry-correlation-queries.v1alpha1.json`](telemetry-correlation-queries.v1alpha1.json) | The authoritative form of that document, checked against the catalog and the collection record and evaluated against fixtures by [`tests/telemetry/`](../../tests/telemetry/) |
 | [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json) | The authoritative form of both, validated by [`tests/telemetry/`](../../tests/telemetry/) |
@@ -64,12 +67,15 @@ It reads only files in this repository and needs `pytest` alone.
 
 ## What is not here
 
-No exporter, no durable store, no dashboard, and no alert. No tracer and no
+No exporter, no durable store, no dashboard server, and no alert. No tracer and no
 propagator. A logger and a redacting sink now exist, and they write to a stream:
 nothing collects that stream, and no retention window, shipper, or access rule is
 selected. The ownership inventory
 [records what is still missing](../architecture/resource-ownership.md) — a durable
-`telemetry-backend`, deferred — rather than assigning it to a tool by accident.
+`telemetry-backend`, deferred — rather than assigning it to a tool by accident. The
+dashboard *definition* was taken out of that row on purpose, as a repository artifact:
+[the dashboard document](inference-operations-dashboard.md) says what it shows and
+what it has not been run against.
 
 A collector, by contrast, is no longer missing. The chart renders the scrape
 configuration **and** owns the release-scoped Prometheus that reads it, and
@@ -85,8 +91,8 @@ repository's own evaluator, and a real Prometheus has since parsed, loaded, and
 evaluated every one against a real scrape — on one provider, on one host.
 [The query document](telemetry-correlation-queries.md) publishes what each returns,
 what an empty result would mean, and the four things that cannot be correlated at
-all. Nobody is told when an answer changes: there is no dashboard and no alerting
-path.
+all. Nobody is told when an answer changes: there is a dashboard definition nothing
+has imported, and no alerting path.
 
 The one thing here that was measured rather than specified is the list of series the
 selected serving runtime exposes. That came from

@@ -10,6 +10,27 @@ once versioned releases begin.
 
 ### Added
 
+- **An inference operations dashboard, as code, that tells zero from missing.**
+  [The dashboard record](docs/telemetry/inference-operations-dashboard.v1alpha1.json)
+  defines 29 panels across nine operational questions — collection, readiness,
+  traffic, latency and throughput, errors, model load and recovery, resources and
+  replicas, identity, and tokens — and
+  [`deploy/grafana/inferops-inference-operations.json`](deploy/grafana/inferops-inference-operations.json)
+  is generated from it. Every panel is in one of four states that look different:
+  a zero, which is only filled from something proving a reading happened; missing,
+  shown as text that says what the empty result can mean; not emitted; and not
+  answerable, a text panel with no query. Scrape reachability is never shown as
+  readiness. `python -m tools.inference_dashboard` holds all 30 expressions to the
+  correlation query policy and nine dashboard rules, and the suite evaluates every
+  panel over the six synthetic scenarios. Evidence:
+  [the V1-S4-002-PR1 validation record](docs/proof/telemetry/v1-s4-002-pr1-validation.md).
+
+  **No Grafana has imported it and no Prometheus has evaluated a panel from it.**
+  Eleven expressions are new and have been evaluated only by the fixture evaluator.
+  Model readiness, model load duration, queue wait, and API process memory are shown
+  as not emitted; pod and container readiness, restarts, container resource use, and
+  the cluster provider as not answerable.
+
 - **The chart and the Terraform configuration are gates now, and the normal lane
   still cannot reach a cluster.** Two jobs join
   [`.github/workflows/checks.yml`](.github/workflows/checks.yml). `helm-chart` lints the
@@ -158,6 +179,12 @@ once versioned releases begin.
   returns closes rather than reopening.
 
 ### Changed
+
+- **ADR 0004 D7 amended: the dashboard definition is a repository artifact.**
+  `inference-operations-dashboard` joins the ownership inventory as
+  repository-owned, and `telemetry-backend` narrows to a dashboard server and alert
+  routing, which stay undecided and deferred. Documents that said no dashboard
+  exists now say no dashboard server does.
 
 - **ADR 0012 D2 is narrowed to what reaches a cluster, and reads every occurrence of
   a tool name.** Review found the first version read one only at a command position,

@@ -10,8 +10,8 @@ on fixtures somebody wrote to look like a scrape. [`V1-S3-011-PR2`](../proof/tel
 asked the same expressions before, during, and after a real serving pod was
 replaced.
 
-What is still **not** selected is a durable store, a dashboard, or an alerting
-path — [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
+What is still **not** selected is a durable store, a dashboard server, or an
+alerting path — [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md)
 D8 leaves that to the open question [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 carries. The collector's series live in an `emptyDir` and go with its pod, so
 nothing here is a store anything may depend on, and an expression being

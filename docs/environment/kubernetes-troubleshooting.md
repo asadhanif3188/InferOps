@@ -476,8 +476,9 @@ when `telemetry.collection.collector.deploy` is on — a release-scoped collecto
 that reads it. With it off, nothing reads that ConfigMap and there is no collector
 to restart. With it on, the collector is an ordinary pod: restart it like any
 other, and note that its series live in an `emptyDir`, so a restart discards what
-it collected. No durable store, dashboard, or alerting path is selected either
-way, so a missing dashboard is not a fault.
+it collected. No durable store, dashboard server, or alerting path is selected
+either way, so a missing dashboard is not a fault: the dashboard is a definition in
+this repository that nothing installs.
 
 What can be wrong is the configuration itself, and it is checkable without a
 cluster:
