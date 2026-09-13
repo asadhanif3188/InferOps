@@ -1,0 +1,4 @@
+# Refused by the values schema: a real release names the model revision it
+# serves.
+model:
+  revision: null

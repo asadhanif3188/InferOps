@@ -1,0 +1,3 @@
+# Refused by the values schema: `null` deletes the key the real fixture sets,
+# and `profile` is required.
+profile: null

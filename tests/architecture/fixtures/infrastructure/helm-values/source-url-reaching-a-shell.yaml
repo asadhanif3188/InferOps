@@ -1,0 +1,5 @@
+# Refused by the values schema: the acquisition job hands this URL to a
+# downloader, and a character that could reach a shell is not a URL character.
+model:
+  artifact:
+    sourceUrl: "https://example.com/$(id)"

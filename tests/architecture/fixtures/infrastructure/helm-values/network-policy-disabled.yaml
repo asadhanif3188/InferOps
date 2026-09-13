@@ -1,0 +1,6 @@
+# Accepted by the chart and refused by the workload policy. Switching the
+# network policy off is a real choice the chart allows; what it gives up is the
+# default-deny, and the policy refuses the render for it once per workload.
+security:
+  networkPolicy:
+    enabled: false

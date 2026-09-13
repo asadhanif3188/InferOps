@@ -1,0 +1,12 @@
+# Refused: the chart renders the Namespace Terraform already owns. This is the
+# state `helm install --create-namespace` produces without any template saying so.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inferops-platform
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inferops-inferops-llm-api
+  namespace: inferops-platform

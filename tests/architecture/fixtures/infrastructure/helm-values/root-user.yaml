@@ -1,0 +1,3 @@
+# Refused by the values schema: uid 0 is not a non-root identity.
+security:
+  runAsUser: 0

@@ -4,7 +4,7 @@ Status: entry point established; the strategy is accepted in part — five of th
 decisions in [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md),
 with the choice of continuous-integration service and capable runner explicitly not
 made. Nine of eleven test layers exist, and one continuous-integration lane is
-configured.
+configured, with eleven gates that reach no cluster.
 
 This directory answers four questions that are easy to answer badly: what kinds of
 test this project runs, where each one runs, what a passing result is allowed to be

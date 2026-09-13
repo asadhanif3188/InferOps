@@ -1,0 +1,5 @@
+# Refused by the chart's own guard, not by the schema. The schema admits an
+# empty profile so that the shipped defaults validate; the template refuses it
+# at render time. `helm lint` reports this refusal as [INFO] and exits 0, which
+# is why these controls run `helm template`.
+profile: ""

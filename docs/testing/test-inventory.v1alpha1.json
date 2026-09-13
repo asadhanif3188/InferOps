@@ -645,6 +645,17 @@
       "note": "It reads committed files. It runs no workflow and contacts no service, so it says nothing about whether any of the jobs it describes has ever passed."
     },
     {
+      "module": "tests/testing/test_infrastructure_gates.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The rules the infrastructure gates apply are held to fixtures in both directions: every workflow fixture breaks exactly the lane rules it records and every lane rule is broken by some fixture, the cluster-free rule refuses cluster-reaching commands and accepts offline ones, the ownership-overlap check refuses renders and Terraform configurations that cross the inventory, and the tool-control runner passes a negative control only for the recorded stage and reason and refuses to run with a tool missing or at another version.",
+      "claims": [
+        "the-published-strategy-and-its-data-cannot-drift-apart",
+        "the-default-lane-cannot-execute-a-real-model"
+      ],
+      "note": "It needs no Helm, no Terraform, and no network. It checks the machinery that decides whether a tool control passed, not the tools: those run in the helm-chart and terraform gates. One test asserts a gap still exists - four cluster-smoke scripts do not call the provider guard - so that closing the gap has to correct the matrix."
+    },
+    {
       "module": "tests/testing/test_document_links.py",
       "layer": "documentation",
       "marker": "docs",

@@ -32,6 +32,21 @@ INSECURE_MANIFEST_DIR = (
 )
 RENDERED_MANIFEST_DIR = REPO_ROOT / "charts" / "inferops-llm" / "ci" / "rendered"
 
+#: Workflows the dispatch and cluster-free rules must refuse, and the ones they
+#: must accept. The committed workflows are accepted too: a rule that refused
+#: the file this repository actually runs would be a rule nobody could merge.
+WORKFLOW_FIXTURE_DIR = (
+    REPO_ROOT / "tests" / "testing" / "fixtures" / "workflow-boundary"
+)
+COMMITTED_WORKFLOW_DIR = REPO_ROOT / ".github" / "workflows"
+
+#: Renders and Terraform configurations that reach across the ownership
+#: boundary, and the committed pair that does not.
+OWNERSHIP_FIXTURE_DIR = (
+    REPO_ROOT / "tests" / "testing" / "fixtures" / "ownership-overlap"
+)
+TERRAFORM_ROOT = REPO_ROOT / "infra" / "terraform"
+
 
 @dataclass(frozen=True)
 class Control:
@@ -41,6 +56,8 @@ class Control:
     module: str
     target: Path
     expected_exit: int
+    #: Arguments that precede the target, as repository-relative strings.
+    arguments: tuple[str, ...] = ()
 
     @property
     def relative_target(self) -> str:
@@ -48,7 +65,13 @@ class Control:
 
     @property
     def argv(self) -> list[str]:
-        return [sys.executable, "-m", self.module, self.relative_target]
+        return [
+            sys.executable,
+            "-m",
+            self.module,
+            *self.arguments,
+            self.relative_target,
+        ]
 
     @property
     def published_command(self) -> str:
@@ -59,7 +82,9 @@ class Control:
         filesystem path into a diagnostic, which is the one thing every record
         in this repository is redacted for.
         """
-        return f"python -m {self.module} {self.relative_target}"
+        return " ".join(
+            ["python", "-m", self.module, *self.arguments, self.relative_target]
+        )
 
 
 @dataclass(frozen=True)
@@ -81,10 +106,14 @@ def _yaml_files(directory: Path) -> list[Path]:
 def controls() -> list[Control]:
     """Every control this gate runs, in a stable order.
 
-    The four groups are deliberately two negatives and two positives. The
+    The groups come in pairs, a negative and a positive. The first two
     negatives are the acceptance criterion — an invalid contract document and an
-    insecure manifest must fail — and the positives are what stops the gate
-    being satisfied by a command that refuses everything it is handed.
+    insecure manifest must fail — and every positive is what stops the gate
+    being satisfied by a command that refuses everything it is handed. The
+    workflow and ownership pairs were added by V1-S4-001-PR2: a workflow that
+    reaches across its lane's boundary, and a render or Terraform configuration
+    that reaches across the ownership inventory's, are refused by the same
+    reading of an exit status.
     """
     found: list[Control] = []
     for target in _yaml_files(INVALID_CONTRACT_DIR):
@@ -123,6 +152,69 @@ def controls() -> list[Control]:
                 expected_exit=0,
             )
         )
+    for target in _yaml_files(WORKFLOW_FIXTURE_DIR / "invalid"):
+        found.append(
+            Control(
+                controlId=f"workflow-refused/{target.name}",
+                module="tools.ci_gates.workflow_boundary",
+                target=target,
+                expected_exit=1,
+            )
+        )
+    for target in [
+        *_yaml_files(WORKFLOW_FIXTURE_DIR / "valid"),
+        *sorted(COMMITTED_WORKFLOW_DIR.glob("*.yml")),
+    ]:
+        found.append(
+            Control(
+                controlId=f"workflow-accepted/{target.name}",
+                module="tools.ci_gates.workflow_boundary",
+                target=target,
+                expected_exit=0,
+            )
+        )
+    committed_terraform = (
+        "--terraform",
+        TERRAFORM_ROOT.relative_to(REPO_ROOT).as_posix(),
+    )
+    for target in _yaml_files(OWNERSHIP_FIXTURE_DIR / "release-renders"):
+        found.append(
+            Control(
+                controlId=f"ownership-refused/{target.name}",
+                module="tools.ci_gates.ownership_overlap",
+                target=target,
+                expected_exit=1,
+                arguments=committed_terraform,
+            )
+        )
+    real_render = RENDERED_MANIFEST_DIR / "real.expected.yaml"
+    for directory in sorted(
+        path
+        for path in (OWNERSHIP_FIXTURE_DIR / "terraform-declares").iterdir()
+        if path.is_dir()
+    ):
+        found.append(
+            Control(
+                controlId=f"ownership-refused/{directory.name}",
+                module="tools.ci_gates.ownership_overlap",
+                target=real_render,
+                expected_exit=1,
+                arguments=(
+                    "--terraform",
+                    directory.relative_to(REPO_ROOT).as_posix(),
+                ),
+            )
+        )
+    for target in sorted(RENDERED_MANIFEST_DIR.glob("*.expected.yaml")):
+        found.append(
+            Control(
+                controlId=f"ownership-accepted/{target.name}",
+                module="tools.ci_gates.ownership_overlap",
+                target=target,
+                expected_exit=0,
+                arguments=committed_terraform,
+            )
+        )
     return found
 
 
@@ -134,6 +226,10 @@ MINIMUM_CONTROLS = {
     "contract-accepted": 3,
     "manifest-refused": 8,
     "manifest-accepted": 2,
+    "workflow-refused": 21,
+    "workflow-accepted": 3,
+    "ownership-refused": 6,
+    "ownership-accepted": 2,
 }
 
 

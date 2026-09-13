@@ -1,0 +1,34 @@
+# inferops-lane: cluster-smoke
+#
+# A fixture, not a workflow. The shape a cluster-smoke workflow must have: dispatched
+# by hand, given a provider with no default, and reaching the cluster only through
+# scripts that call the provider guard. Nothing runs it; it is not under
+# .github/workflows, and no runner is labelled to run it.
+
+name: cluster-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: The externally owned cluster to verify and consume.
+        required: true
+        type: choice
+        options: [kind, docker-desktop]
+
+permissions:
+  contents: read
+
+env:
+  INFEROPS_PROVIDER: ${{ inputs.provider }}
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Identify the target the provider guard resolves
+        run: scripts/environment/target-detect.sh
+      - name: Install, test, and uninstall the mock release
+        run: scripts/environment/helm-lifecycle.sh --values charts/inferops-llm/ci/mock-values.yaml

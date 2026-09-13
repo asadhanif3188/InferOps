@@ -1,0 +1,9 @@
+# Refused by the schema: every container is named.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: inferops-probe
+  namespace: inferops-platform
+spec:
+  containers:
+    - image: localhost/inferops-api@sha256:7961c9f9ce773095461498774bc2f25053bcba6d01c40d8448da65e217091e50

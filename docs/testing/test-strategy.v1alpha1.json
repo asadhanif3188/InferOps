@@ -110,7 +110,9 @@
         "git",
         "uv, for the locked toolchain the accepted record names",
         "a container engine, for the API image build",
-        "trivy and gitleaks, for the scanning gates"
+        "trivy and gitleaks, for the scanning gates",
+        "helm and kubeconform, for the chart gate, at the versions the gate matrix pins",
+        "terraform and tflint, for the Terraform gate, at the versions the gate matrix pins"
       ],
       "artifacts": [
         "test session output",
@@ -123,7 +125,7 @@
       "automated": true,
       "workflowRef": ".github/workflows/checks.yml",
       "v1Status": "automated",
-      "notes": "Automated on GitHub Actions by ADR 0012, as nine gates published in docs/testing/ci-gate-matrix.md. No job has run on the service yet: the workflow is committed and every command in it was executed by hand on one Windows host. Those commands remain the local equivalents and CONTRIBUTING publishes them."
+      "notes": "Automated on GitHub Actions by ADR 0012, as eleven gates published in docs/testing/ci-gate-matrix.md. The nine gates V1-S4-001-PR1 introduced passed on the service on 2026-09-13; the helm-chart and terraform gates V1-S4-001-PR2 added have not run there, and every command in them was executed by hand on one Windows host. Helm and Terraform run in this lane only as subcommands that read files, and a checker refuses anything that reaches a cluster. Those commands remain the local equivalents and CONTRIBUTING publishes them."
     },
     {
       "laneId": "cluster-smoke",
@@ -151,7 +153,7 @@
       "automated": false,
       "workflowRef": null,
       "v1Status": "manual",
-      "notes": "Executed once end to end on one Windows host by the environment scripts."
+      "notes": "Executed once end to end on one Windows host by the environment scripts. No workflow automates it: ADR 0012 D7 publishes the rules one must satisfy and commits none, because what labels a capable runner is still undecided. Its own scripts - smoke.sh, cluster-verify.sh, preflight.sh, and verify-clean.sh - do not call the provider guard, so a dispatched workflow could not use them under those rules today."
     },
     {
       "laneId": "real-runtime",
@@ -182,7 +184,7 @@
       "automated": false,
       "workflowRef": null,
       "v1Status": "manual",
-      "notes": "The documented manual procedure is the feasibility workflow, which has been executed once. No labelled runner exists."
+      "notes": "The documented manual procedure is the feasibility workflow, which has been executed once. No labelled runner exists. ADR 0012 D7 publishes the rules a dispatched workflow for this lane must satisfy, including an explicit authorization input, and commits none."
     },
     {
       "laneId": "capacity",
@@ -417,7 +419,7 @@
     {
       "layerId": "failure-and-resilience",
       "name": "Failure and resilience",
-      "purpose": "Provoke the failures the architecture names as canonical errors \u2014 model not ready, runtime unreachable, timeout \u2014 against the real runtime rather than against an anticipated mock.",
+      "purpose": "Provoke the failures the architecture names as canonical errors — model not ready, runtime unreachable, timeout — against the real runtime rather than against an anticipated mock.",
       "lane": "real-runtime",
       "environment": "capable-host",
       "marker": "failure",
@@ -432,7 +434,7 @@
       "publishable": true,
       "v1Status": "planned",
       "evidenceRef": null,
-      "notes": "Full C3 failure certification \u2014 denial, retry, and recovery proven exhaustively \u2014 is out of V1 scope. What V1 needs from this layer is that each canonical error is produced by the condition it names."
+      "notes": "Full C3 failure certification — denial, retry, and recovery proven exhaustively — is out of V1 scope. What V1 needs from this layer is that each canonical error is produced by the condition it names."
     },
     {
       "layerId": "capacity-and-load",
@@ -476,7 +478,7 @@
       "publishable": true,
       "v1Status": "implemented",
       "evidenceRef": "docs/proof/testing/v1-s4-001-pr1-validation.md",
-      "notes": "Implemented as of V1-S4-001-PR1, which is the change that first ran the secret scanner. It found that the committed configuration did not parse at all - its allowlist patterns were declared as tables where the tool requires strings - so the scanner had been refusing the whole file and scanning nothing. The configuration is fixed and the run is clean over 134 commits - made from the scanner's published container image rather than from the pinned release archive the workflow installs, so the gate as committed has still never run. None of the three scans runs continuously: all are gates in the committed default-lane workflow and no job in it has executed on the selected service, so a finding here is current only as of the day it was produced."
+      "notes": "Implemented as of V1-S4-001-PR1, which is the change that first ran the secret scanner. It found that the committed configuration did not parse at all - its allowlist patterns were declared as tables where the tool requires strings - so the scanner had been refusing the whole file and scanning nothing. The configuration is fixed, and the recorded run was clean over 134 commits, made from the scanner's published container image. All three scans are gates in the committed default-lane workflow, and all three passed on the selected service on 2026-09-13 as part of the nine gates observed there; no log from those runs is promoted into a record, so the claims resting on this layer stay uncertified and a finding here is current only as of the day it was produced."
     },
     {
       "layerId": "documentation",

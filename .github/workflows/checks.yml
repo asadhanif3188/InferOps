@@ -11,10 +11,13 @@
 # Three properties of this file are enforced by that suite rather than promised
 # here:
 #
-#   * no step reaches a Kubernetes cluster. There is no kubectl, no helm, no
-#     terraform, no kind, and no provider selection anywhere in this workflow,
-#     and a check refuses one arriving later. Real Kubernetes work is opt-in,
-#     provider-selected and target-verified, and it does not live in this lane.
+#   * no step reaches a Kubernetes cluster. Helm and Terraform run here only as
+#     the subcommands that read files - lint, template, fmt, init with no
+#     backend, validate, and version - and there is no kubectl, no kind, no kubeconfig,
+#     no provider selection, and no environment script. A check refuses any of
+#     them arriving later (tools/ci_gates/workflow_boundary.py). Real Kubernetes
+#     work is opt-in, provider-selected and target-verified, and it does not
+#     live in this lane.
 #   * no step downloads the pinned model artifact. The lane's whole premise is
 #     that it costs nothing to run on every change, and 1.71 GiB of weights on
 #     every push is the cost nobody pays twice.
@@ -24,7 +27,8 @@
 #
 # What this lane may certify is C0 and C1 and nothing above it: every job reads
 # files in this repository or drives the deterministic mock. A green run here is
-# not evidence that a runtime serves anything.
+# not evidence that a runtime serves anything, and a chart that renders and a
+# configuration that validates are not evidence that either installs.
 
 name: checks
 
@@ -102,6 +106,140 @@ jobs:
       # same run are what stops a validator that refused everything passing it.
       - name: Invalid contracts and insecure manifests are refused
         run: uv run --locked python -m tools.ci_gates expected-failures
+
+  helm-chart:
+    name: Helm chart and rendered manifests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      HELM_VERSION: v3.19.0
+      HELM_SHA256: a7f81ce08007091b86d8bd696eb4d86b8d0f2e1b9f6c714be62f82f96a594496
+      KUBECONFORM_VERSION: v0.8.0
+      KUBECONFORM_SHA256: 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
+      # kubeconform's default schema source is the `master` branch of the schema
+      # repository, which moves. This is one commit of it, so a result is about a
+      # fixed set of schemas rather than about the day the job ran.
+      KUBECONFORM_SCHEMA_LOCATION: "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/970cc70507e1880a7a3b64184b6aad417a1d8d85/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json"
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+      - name: Install the locked toolchain
+        run: uv sync --locked
+      # Both binaries are checked against a digest committed here, for the reason
+      # the secret-scan job gives: a checksum served beside the archive proves the
+      # download was not corrupted and nothing else.
+      - name: Install the pinned chart tool
+        run: |
+          set -euo pipefail
+          archive="helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl -fsSL -o "${archive}" "https://get.helm.sh/${archive}"
+          echo "${HELM_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "${archive}" linux-amd64/helm
+          sudo install -m 0755 linux-amd64/helm /usr/local/bin/helm
+          rm -rf linux-amd64 "${archive}"
+          helm version --short
+      - name: Install the pinned schema validator
+        run: |
+          set -euo pipefail
+          archive="kubeconform-linux-amd64.tar.gz"
+          curl -fsSL -o "${archive}" "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/${archive}"
+          echo "${KUBECONFORM_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "${archive}" kubeconform
+          sudo install -m 0755 kubeconform /usr/local/bin/kubeconform
+          rm -f kubeconform "${archive}"
+          kubeconform -v
+      # `--strict` turns lint warnings into failures. It does not make lint read
+      # the chart's own guards: under Helm 3.19 a template `fail` is reported as
+      # [INFO] and lint exits 0, so the values that the guards refuse are put
+      # through `helm template` by the controls below rather than trusted to lint.
+      - name: Lint the chart under both fixtures
+        run: |
+          set -euo pipefail
+          helm lint charts/inferops-llm --strict --namespace inferops-platform --values charts/inferops-llm/ci/real-values.yaml
+          helm lint charts/inferops-llm --strict --namespace inferops-platform --values charts/inferops-llm/ci/mock-values.yaml
+      # `pipefail` is what makes a render that failed fail the step. Without it
+      # the exit status is kubeconform's, and kubeconform given empty input
+      # validates zero resources and exits 0.
+      - name: Render both fixtures and validate against the pinned Kubernetes schemas
+        run: |
+          set -euo pipefail
+          for profile in real mock; do
+            helm template inferops charts/inferops-llm --namespace inferops-platform --values "charts/inferops-llm/ci/${profile}-values.yaml" | kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location "${KUBECONFORM_SCHEMA_LOCATION}" -
+          done
+      - name: Validate the smoke manifests against the same schemas
+        run: kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location "${KUBECONFORM_SCHEMA_LOCATION}" deploy/smoke/hello-world.yaml deploy/smoke/verify-job.yaml
+      # Invalid values refused by the schema and by the chart's guards, a render
+      # the workload policy refuses, manifests the schemas refuse, and both
+      # fixtures rendered, validated, and accepted by the policy. Every refusal
+      # must also carry the reason its fixture was written for.
+      - name: Values, schema, and policy controls
+        run: uv run --locked python -m tools.ci_gates kubernetes-failures
+      # The chart suite compares the committed renders to a fresh render, and
+      # skips that comparison where helm is absent. It is present here, so a skip
+      # fails the step instead of passing it.
+      - name: The chart suite, with the render drift check required to run
+        run: uv run --locked python -m tools.ci_gates no-skips helm
+
+  terraform:
+    name: Terraform format, validation, and lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TERRAFORM_VERSION: 1.15.8
+      TERRAFORM_SHA256: d25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d
+      TFLINT_VERSION: 0.64.0
+      TFLINT_SHA256: cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+      - name: Install the locked toolchain
+        run: uv sync --locked
+      - name: Install the pinned Terraform binary
+        run: |
+          set -euo pipefail
+          archive="terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          curl -fsSL -o "${archive}" "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/${archive}"
+          echo "${TERRAFORM_SHA256}  ${archive}" | sha256sum --check --strict
+          unzip -o -q "${archive}" -d terraform-bin
+          sudo install -m 0755 terraform-bin/terraform /usr/local/bin/terraform
+          rm -rf terraform-bin "${archive}"
+          terraform version
+      - name: Install the pinned Terraform linter
+        run: |
+          set -euo pipefail
+          archive="tflint_linux_amd64.zip"
+          curl -fsSL -o "${archive}" "https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/${archive}"
+          echo "${TFLINT_SHA256}  ${archive}" | sha256sum --check --strict
+          unzip -o -q "${archive}" -d tflint-bin
+          sudo install -m 0755 tflint-bin/tflint /usr/local/bin/tflint
+          rm -rf tflint-bin "${archive}"
+          tflint --version
+      - name: Format
+        run: terraform fmt -check -recursive infra/terraform
+      # `-backend=false` is what keeps this offline in the sense that matters: no
+      # backend is configured, no state is read, and no cluster is contacted. The
+      # provider is still downloaded from the registry and checked against the
+      # committed lock file.
+      - name: Initialise with no backend
+        run: terraform -chdir=infra/terraform/environments/local init -backend=false -input=false
+      - name: Validate
+        run: terraform -chdir=infra/terraform/environments/local validate
+      # The configuration is passed by absolute path. Under `--recursive`, a
+      # `.tflint.hcl` that is only present in the `--chdir` directory is not
+      # applied, and the lint passes with tflint's defaults instead.
+      - name: Lint with the committed configuration
+        run: tflint --recursive --chdir=infra/terraform --config="${GITHUB_WORKSPACE}/infra/terraform/.tflint.hcl" --format=compact
+      # A misformatted module, an undeclared reference, and three lint findings,
+      # one of which only the committed configuration's preset raises, plus the
+      # committed configuration accepted by the same runner.
+      - name: Format, validation, and lint controls
+        run: uv run --locked python -m tools.ci_gates terraform-failures
+      - name: The prerequisite suite, with format and validation required to run
+        run: uv run --locked python -m tools.ci_gates no-skips terraform
 
   documentation:
     name: documentation links and whitespace

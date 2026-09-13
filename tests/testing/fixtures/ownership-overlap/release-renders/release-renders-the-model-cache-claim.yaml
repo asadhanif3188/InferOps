@@ -1,0 +1,13 @@
+# Refused: the chart renders the model cache claim Terraform owns. A claim in the
+# release is a claim `helm uninstall` deletes, with the weights inside it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: inferops-model-cache
+  namespace: inferops-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi

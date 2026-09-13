@@ -14,7 +14,7 @@
     "name": "GitHub Actions",
     "decidedIn": "ADR 0012",
     "decides": "ADR 0005 D6, first half",
-    "stillUndecided": "What labels a capable runner. No runner is labelled, no hosted runner is authorized to hold the pinned model artifact, and the second half of ADR 0005 D6 stays open.",
+    "stillUndecided": "What labels a capable runner. No runner is labelled, no hosted runner is authorized to hold the pinned model artifact, and the second half of ADR 0005 D6 stays open. V1-S4-001-PR2 publishes the rules a dispatched cluster workflow must satisfy and commits no such workflow.",
     "runner": "ubuntu-24.04",
     "runnerRationale": "Pinned rather than `ubuntu-latest`, because a lane whose runner image moves underneath it is a lane whose failures cannot be attributed to a change."
   },
@@ -34,7 +34,7 @@
       "requiresCluster": false,
       "requiresAuthorization": false,
       "permissions": "contents: read",
-      "notes": "The normal lane. It reads this repository, drives the deterministic mock, builds a distribution and an image, and scans what is pinned. It reaches no Kubernetes cluster and downloads no model, and both are checked rather than asserted."
+      "notes": "The normal lane. It reads this repository, drives the deterministic mock, lints and renders the chart, validates the Terraform configuration without a backend, builds a distribution and an image, and scans what is pinned. It reaches no Kubernetes cluster and downloads no model, and both are checked rather than asserted: Helm and Terraform run here only as subcommands that read files."
     }
   ],
   "gates": [
@@ -104,25 +104,83 @@
       "gateId": "expected-failures",
       "workflowId": "checks",
       "jobId": "expected-failures",
-      "purpose": "The published validation commands, run from a shell against the documents this repository requires them to refuse and the documents it requires them to accept, with the exit status read rather than the return value.",
+      "purpose": "The published validation commands, run from a shell against the documents this repository requires them to refuse and the documents it requires them to accept, with the exit status read rather than the return value. Since V1-S4-001-PR2 that includes workflows that break their lane's rules and renders or Terraform configurations that reach across the ownership inventory.",
       "commands": [
         "uv sync --locked",
         "uv run --locked python -m tools.ci_gates expected-failures"
       ],
       "layers": [
         "contract-and-schema",
+        "architecture-inventory",
         "documentation"
       ],
       "claims": [
         "an-invalid-workload-document-is-refused-with-a-published-reason",
         "the-rejection-interface-cannot-change-without-a-failing-build",
+        "no-resource-in-the-architecture-has-two-owners",
         "a-workload-manifest-that-omits-a-required-security-control-is-refused"
       ],
       "evidenceClass": "local-static",
       "maxCertification": "C0",
       "blocking": true,
       "defendsNoClaimBecause": null,
-      "whatItDoesNotProve": "That a refusal carries the right rule identifier or field location. That is the contract suite's work and it runs in the gate above; this one reads an exit status, which is all a workflow can read.",
+      "whatItDoesNotProve": "That a refusal carries the right rule identifier or field location. That is the contract suite's work and it runs in the default-lane gate; this one reads an exit status, which is all a workflow can read. The ownership controls compare kinds, not names, and read Terraform as text; the workflow controls read text and cannot see inside a script a workflow calls.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "helm-chart",
+      "workflowId": "checks",
+      "jobId": "helm-chart",
+      "purpose": "The chart is linted under both fixtures, rendered under both and validated against the Kubernetes schemas at a pinned commit, and the smoke manifests are validated against the same schemas. Values the schema or the chart's own guards must refuse are rendered and required to fail for their recorded reason, a render the workload policy must refuse is required to be refused, and the chart suite is run with its render drift check required to execute.",
+      "commands": [
+        "uv sync --locked",
+        "helm lint charts/inferops-llm --strict --namespace inferops-platform --values charts/inferops-llm/ci/real-values.yaml",
+        "helm lint charts/inferops-llm --strict --namespace inferops-platform --values charts/inferops-llm/ci/mock-values.yaml",
+        "helm template inferops charts/inferops-llm --namespace inferops-platform --values charts/inferops-llm/ci/real-values.yaml | kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location \"${KUBECONFORM_SCHEMA_LOCATION}\" -",
+        "kubeconform -strict -summary -kubernetes-version 1.34.0 -schema-location \"${KUBECONFORM_SCHEMA_LOCATION}\" deploy/smoke/hello-world.yaml deploy/smoke/verify-job.yaml",
+        "uv run --locked python -m tools.ci_gates kubernetes-failures",
+        "uv run --locked python -m tools.ci_gates no-skips helm"
+      ],
+      "layers": [
+        "architecture-inventory",
+        "documentation"
+      ],
+      "claims": [
+        "no-resource-in-the-architecture-has-two-owners",
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": null,
+      "whatItDoesNotProve": "That the chart installs, that a pod schedules, or that a rendered NetworkPolicy is enforced. Nothing here reaches a cluster: a render is a file, and schema validation says the file is well formed for Kubernetes 1.34.0 and nothing about a server. `helm lint` does not enforce the chart's own guards - Helm 3.19 reports a template `fail` as [INFO] and exits 0 - so those refusals rest on `helm template` in the controls, not on lint.",
+      "claimStatusNote": null
+    },
+    {
+      "gateId": "terraform",
+      "workflowId": "checks",
+      "jobId": "terraform",
+      "purpose": "The prerequisite configuration is format-checked, initialised with no backend, validated, and linted with the committed tflint configuration. A misformatted module, an undeclared reference, and three lint findings are required to be refused for their recorded reasons, and the prerequisite suite is run with its format and validation checks required to execute.",
+      "commands": [
+        "uv sync --locked",
+        "terraform fmt -check -recursive infra/terraform",
+        "terraform -chdir=infra/terraform/environments/local init -backend=false -input=false",
+        "terraform -chdir=infra/terraform/environments/local validate",
+        "tflint --recursive --chdir=infra/terraform --config=\"${GITHUB_WORKSPACE}/infra/terraform/.tflint.hcl\" --format=compact",
+        "uv run --locked python -m tools.ci_gates terraform-failures",
+        "uv run --locked python -m tools.ci_gates no-skips terraform"
+      ],
+      "layers": [
+        "architecture-inventory"
+      ],
+      "claims": [
+        "no-resource-in-the-architecture-has-two-owners"
+      ],
+      "evidenceClass": "local-static",
+      "maxCertification": "C0",
+      "blocking": true,
+      "defendsNoClaimBecause": null,
+      "whatItDoesNotProve": "That the configuration applies, or that anything it declares exists. No plan is made, no state is read, and no cluster is contacted. It is not a security scan: measured with Trivy v0.74.0, no misconfiguration check covers the `kubernetes_*` resource types this configuration declares - a privileged, host-network `kubernetes_pod_v1` scanned clean - so a Trivy gate here could not fail, and the Terraform security rules that do exist are the prerequisite suite's forbidden providers, forbidden resource types, and secret-material checks.",
       "claimStatusNote": null
     },
     {
@@ -201,7 +259,7 @@
       "evidenceClass": "local-static",
       "maxCertification": "C0",
       "blocking": true,
-      "defendsNoClaimBecause": "No published claim is about a vulnerability. The scans are recorded once each, by hand, and nothing makes them recur until a job executes on the selected service.",
+      "defendsNoClaimBecause": "No published claim is about a vulnerability. The scans were recorded once each, by hand, and have since passed on the selected service as gates; a passing gate on one day is still not a record, and nothing is promoted.",
       "whatItDoesNotProve": "That the lockfile or the image is free of vulnerabilities. A scan reports what its database knew on the day it ran, so a green result is current as of that run and a new advisory can turn an unchanged commit red tomorrow. It also says nothing about a vulnerability nobody has published.",
       "claimStatusNote": null
     },
@@ -243,7 +301,7 @@
       "blocking": true,
       "defendsNoClaimBecause": null,
       "whatItDoesNotProve": "That no credential was ever committed. A scanner finds what its rules recognise; a short, low-entropy secret has the shape of a name and passes, and the two allowlisted directories and eleven published placeholder patterns are exempt by construction.",
-      "claimStatusNote": "The claim is planned and stays planned. One run by hand, on one host, moved the security-scan layer to implemented and is recorded; it says nothing about the next change. The claim becomes certifiable when a run on the selected service is promoted into a record."
+      "claimStatusNote": "The claim is planned and stays planned. One run by hand, on one host, moved the security-scan layer to implemented and is recorded, and the gate has since passed on the selected service. The claim becomes certifiable when such a run is promoted into a record."
     }
   ],
   "toolPins": [
@@ -288,14 +346,44 @@
       "pin": "ubuntu-24.04",
       "humanVersion": "ubuntu-24.04",
       "pinnedBy": "runner label"
+    },
+    {
+      "tool": "helm",
+      "pin": "a7f81ce08007091b86d8bd696eb4d86b8d0f2e1b9f6c714be62f82f96a594496",
+      "humanVersion": "v3.19.0",
+      "pinnedBy": "SHA-256 of the release archive, checked after download"
+    },
+    {
+      "tool": "kubeconform",
+      "pin": "9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883",
+      "humanVersion": "v0.8.0",
+      "pinnedBy": "SHA-256 of the release archive, checked after download"
+    },
+    {
+      "tool": "kubernetes-json-schema",
+      "pin": "970cc70507e1880a7a3b64184b6aad417a1d8d85",
+      "humanVersion": "Kubernetes 1.34.0 standalone-strict schemas",
+      "pinnedBy": "commit SHA of the schema repository, in the schema location"
+    },
+    {
+      "tool": "terraform",
+      "pin": "d25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d",
+      "humanVersion": "1.15.8",
+      "pinnedBy": "SHA-256 of the release archive, checked after download"
+    },
+    {
+      "tool": "tflint",
+      "pin": "cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537",
+      "humanVersion": "0.64.0",
+      "pinnedBy": "SHA-256 of the release archive, checked after download"
     }
   ],
   "prohibitions": [
     {
       "prohibitionId": "no-cluster-in-the-normal-lane",
-      "statement": "No job in a workflow declared cluster-free may invoke kubectl, helm, terraform, or kind, or select a cluster provider.",
-      "why": "A normal lane that can discover an ambient cluster is a normal lane that can mutate somebody's cluster on a pull request from a fork.",
-      "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
+      "statement": "No job in a workflow declared cluster-free may reach a cluster: Helm may run only `lint`, `template`, and `version`; Terraform only `fmt`, `init` with `-backend=false`, `validate`, and `version`; and nothing may invoke kubectl or kind, name a kubeconfig or a kube context, select a provider, or run an environment script.",
+      "why": "A normal lane that can discover an ambient cluster is a normal lane that can mutate somebody's cluster on a pull request from a fork. Until V1-S4-001-PR2 the rule refused the program names outright; that could not survive the change that gave the chart and the configuration a gate, so it now refuses what reaches a cluster rather than the names of the tools that sometimes do.",
+      "enforcedBy": "tools/ci_gates/workflow_boundary.py"
     },
     {
       "prohibitionId": "no-model-download-in-the-normal-lane",
@@ -320,18 +408,47 @@
       "statement": "Every program a gate's command list names is invoked by the job that gate describes.",
       "why": "The matrix said the wheel was inspected with `unzip` while the job used Python's zipfile. Harmless that time, and it is the exact failure the matrix exists to prevent: the table reads well after the job has changed underneath it.",
       "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
+    },
+    {
+      "prohibitionId": "every-downloaded-binary-checked-against-a-committed-digest",
+      "statement": "Every `curl` in a workflow step is followed, in the same step, by `sha256sum --check --strict` against a digest the job declares, and every declared digest is the one recorded in the tool pins.",
+      "why": "A binary fetched by version alone is a binary whose release somebody can replace. A checksum published beside the archive proves the download was not corrupted and nothing else.",
+      "enforcedBy": "tests/testing/test_ci_gate_matrix.py"
+    },
+    {
+      "prohibitionId": "a-tool-backed-check-may-not-skip-where-the-tool-is-installed",
+      "statement": "Where a job installs Helm or Terraform, the suite whose checks skip without that tool is run through `python -m tools.ci_gates no-skips`, which fails on any skipped test.",
+      "why": "The chart suite's drift check and the prerequisite suite's format and validation checks skip, loudly, where the tool is absent. That is right on a contributor's host and wrong in the one job that installed the tool on purpose: a skipped check there is a green gate that checked nothing.",
+      "enforcedBy": "tools/ci_gates/suites.py"
+    },
+    {
+      "prohibitionId": "a-negative-control-must-refuse-for-its-recorded-reason",
+      "statement": "An infrastructure control that must be refused passes only when the stage it names refuses, every earlier stage succeeds, the output contains the reason its fixture records, and every tool the family needs was found at the pinned version before anything ran.",
+      "why": "A tool that is missing refuses every input, and a fixture refused because a base values path was misspelled is refused for nobody's reason. Measured once already: tflint refused all three lint fixtures on a Windows host for a path-resolution error, and only the reason check reported it.",
+      "enforcedBy": "tools/ci_gates/infrastructure.py"
+    },
+    {
+      "prohibitionId": "a-cluster-lane-is-dispatched-provider-selected-and-guarded",
+      "statement": "A workflow for a lane that needs a cluster is triggered only by `workflow_dispatch`, takes a required `provider` choice with exactly the providers the provider contract admits and no default, hands it to every job as `INFEROPS_PROVIDER`, runs on a self-hosted runner, reaches the cluster only through environment scripts that call `inferops::resolve_target`, never runs `cluster-up.sh` or `cluster-down.sh`, installs no real profile in a model-free lane, and waits on a required boolean `authorize` input in a lane that requires authorization.",
+      "why": "The Sprint 4 amendment requires real Kubernetes work to be opt-in, provider-selected, target-verified, and to consume an already available externally owned cluster. No such workflow is committed, because what labels a capable runner is still undecided; the rules are held to fixtures so that the first one meets a check rather than a paragraph.",
+      "enforcedBy": "tools/ci_gates/workflow_boundary.py"
     }
   ],
   "outOfScope": [
     {
-      "item": "Helm, rendered-manifest, and Terraform gates",
-      "where": "V1-S4-001-PR2",
-      "note": "Chart lint and template, rendered-manifest schema and policy validation, Terraform format, validate and security checks, and the ownership-overlap check are that PR's boundary. The `helm`, `kubeconform`, and `terraform` commands CONTRIBUTING publishes are run by hand until then."
+      "item": "A committed capable-runner workflow for the cluster-smoke and real-runtime lanes",
+      "where": "not scheduled; blocked on ADR 0005 D6",
+      "note": "V1-S4-001-PR2 documents the dispatch boundary and enforces it against fixtures, and commits no workflow. Committing one would name a runner label, which is the half of D6 that is still open. Both lanes stay `manual` in the strategy data."
     },
     {
-      "item": "A capable-runner workflow for the real-runtime and cluster-smoke lanes",
-      "where": "V1-S4-001-PR2",
-      "note": "Both lanes stay `manual` in the strategy data. No runner is labelled capable, no hosted runner is authorized to hold the pinned model artifact, and the second half of ADR 0005 D6 stays open."
+      "item": "Moving the cluster-smoke scripts onto the provider guard",
+      "where": "not scheduled",
+      "note": "`smoke.sh` still calls the kind-only identity check, and `cluster-verify.sh`, `preflight.sh`, and `verify-clean.sh` call neither guard. A dispatched cluster-smoke workflow could not use them under the dispatch rules, and a test asserts the gap still exists so that closing it has to update this row."
+    },
+    {
+      "item": "A Trivy misconfiguration gate over the chart renders or the Terraform configuration",
+      "where": "not adopted",
+      "note": "Measured with Trivy v0.74.0 at HIGH and CRITICAL. Over the renders it refuses both committed renders on one finding, KSV-0109, which reads the environment name INFEROPS_MAX_OUTPUT_TOKENS as a stored secret, and it refuses only one of the nine insecure workload-policy fixtures. Over Terraform it has no check for any `kubernetes_*` resource type. The accepted workload policy is the rendered-manifest policy here; adopting a second engine would be a second severity policy nobody agreed to."
     },
     {
       "item": "Shell script parsing and static analysis",
@@ -339,19 +456,28 @@
       "note": "CONTRIBUTING publishes `bash -n` and `shellcheck -x -S style` over scripts/. Neither runs here: the scripts belong to the cluster and host lanes, and adding their gate to this lane without their lane would suggest the lane covers them."
     },
     {
-      "item": "Certification of the two claims the scanning gates touch",
-      "where": "after a recorded run on the selected service",
-      "note": "One run of the secret scanner by hand moved the security-scan layer to implemented and found that the committed configuration had never parsed. It does not certify a claim: nothing makes that run recur until a job executes on the service."
+      "item": "Certification of the claims the scanning gates touch",
+      "where": "after a run on the service is promoted into a record",
+      "note": "The nine default-lane gates have passed on the service, but no run has been promoted into a record, and a job log expires. One run of the secret scanner by hand moved the security-scan layer to implemented; it does not certify a claim."
+    },
+    {
+      "item": "Reconciling the security records' statement that no job has executed on the service",
+      "where": "not scheduled",
+      "note": "SECURITY.md, the security README, the threat model, DR-11, ADR 0008, and the security baseline data still say no job has executed on the selected service. That was true when written and is not now. They carry their own suites and residual-risk wording, so they are named here rather than edited inside a CI change."
     }
   ],
   "limitations": [
-    "No run of this workflow has passed on the service. The commands were run locally on one Windows host; the first hosted run failed three of nine jobs on two defects no Windows run could show (scripts stored without the executable bit, and committed Helm renders whose checksums came from CRLF input). Both are fixed and checked, and the fixes have not yet run on the service.",
+    "The nine gates V1-S4-001-PR1 introduced passed on the service on 2026-09-13, on the pull-request run for commit 0c84d79 and on the push to main at f212090, observed through the public Actions API. No log or artifact from those runs is promoted into a record, and the logs expire. The two gates V1-S4-001-PR2 adds have not run on the service; every command in them was run locally on one Windows host, with Windows builds of the same tool versions.",
     "A vulnerability scan is not deterministic. Its database changes daily, so an unchanged commit can pass today and fail tomorrow, and a green result dates rather than proves.",
-    "Three gates consume the network: the two scanning gates pull a vulnerability database and a container image, and the secret-scan gate downloads a pinned archive. The lane is therefore cheap and reproducible rather than hermetic.",
-    "Every gate here reads files, drives the mock, or scans what is pinned. None of them can support a claim above C1, and the two claims about a real runtime take no support from this workflow at all.",
-    "The secret scanner has been run once, by hand, from its published container image rather than from the pinned release archive this workflow installs. The tool and version are the same; the installation path is not.",
+    "Beyond the locked toolchain every Python job installs and the base image the API image build pulls, five gates consume the network: the two scanning gates pull a vulnerability database and a container image, the secret-scan gate downloads a pinned archive, the helm-chart gate downloads two archives and reads Kubernetes schemas from a pinned commit, and the terraform gate downloads two archives and the pinned provider. The lane is cheap and reproducible rather than hermetic.",
+    "Every gate here reads files, drives the mock, or scans what is pinned. None of them can support a claim above C1, and the claims about a real runtime and a real cluster take no support from this workflow at all. A chart that renders and a configuration that validates are not a chart that installs or a configuration that applies.",
+    "The secret scanner's recorded run was made by hand from its published container image. The gate that installs the pinned release archive has since passed on the service, but that run is observed rather than recorded.",
     "The whitespace and hard-tab checks are the forms CONTRIBUTING publishes, copied rather than read from it. Nothing compares the two, so they can drift.",
-    "The image-scan gate pulls the pinned runtime image, which carries 392 operating system packages. That pull has never been timed on a hosted runner and shares the lane's fifteen-minute budget with the scan itself.",
-    "The command check runs one way. Every program a gate documents must be invoked by its job; a program the job invokes and the matrix does not document - a setup step's curl, say - is not reported."
+    "The command check runs one way. Every program a gate documents must be invoked by its job; a program the job invokes and the matrix does not document - a setup step's curl, say - is not reported.",
+    "The lane rules read text, and they recognise a cluster only through a fixed vocabulary: Helm, Terraform, kind, kubectl, a kubeconfig or kube context, a provider selection, eval, and environment scripts. Every occurrence of a tool name is read, including quoted, path-invoked, and substituted forms, and one that cannot be shown to be offline is refused. What the vocabulary cannot see is refused by nothing: a raw request to an API server, a container image that carries its own client, a renamed binary, or a command decoded at run time. The dispatch rules admit only scripts whose text calls the provider guard - a property of the text, not a proof of the script's behaviour.",
+    "`helm lint` does not enforce the chart's guards. Under Helm 3.19 a template `fail` is reported as [INFO] and lint exits 0, so a lint of the shipped defaults passes. The guards are enforced by `helm template`, which is what the values controls run.",
+    "tflint applies a configuration under `--recursive` only when it is passed by absolute path. A `.tflint.hcl` merely present in the `--chdir` directory was not applied in a measured run, and the lint passed on tflint's defaults. One lint fixture fails only under the committed configuration's preset, so a run that silently fell back would fail that control.",
+    "The ownership-overlap check compares kinds, not names, and reads Terraform resource blocks as text. It would not notice an object two tools own under a kind the inventory does not name, and it resolves no module and no variable.",
+    "The image-scan gate pulls the pinned runtime image, which carries 392 operating system packages. On the service it completed inside the lane's fifteen-minute budget; one run is not a distribution of runs."
   ]
 }
