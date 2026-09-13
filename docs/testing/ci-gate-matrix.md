@@ -18,9 +18,10 @@ Layer names, lane names, and what each layer may certify are in
 [the certification document](certification.md).
 
 > [!IMPORTANT]
-> **No job below has ever run on GitHub Actions.** The workflow is committed, every
-> command in it was run by hand on one Windows host, and what a hosted Ubuntu runner
-> does with them is untested until the first pull request opens. A committed
+> **No run of the jobs below has passed on GitHub Actions yet.** Every command was run
+> by hand on one Windows host. The first hosted run failed three of the nine jobs on
+> two defects a Windows host could not show; both are fixed, and the fixes are
+> untested on the service until the next run. A committed
 > workflow is a configuration; a configuration is not a result. That distinction is
 > the same one [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
 > D5 makes about evidence, and it is why the two claims the scanning gates touch are
@@ -155,8 +156,11 @@ hand in `V1-S2-006`; this gate does not regenerate or replace them.
 
 ## Limitations
 
-- **No job here has run on the service.** Every command was executed locally on one
-  Windows host; the runner behaviour is untested.
+- **No run on the service has passed.** Every command was executed locally on one
+  Windows host. One hosted run exists, and it failed three jobs: two because the
+  scan scripts were stored without the executable bit, one because the committed
+  Helm renders carried checksums rendered from `CRLF` input. Both are fixed and
+  guarded; neither fix has run on the service.
 - **A vulnerability scan is not deterministic.** Its database changes daily, so an
   unchanged commit can pass today and fail tomorrow. A green result dates rather
   than proves, and a new advisory turning `main` red is the gate working.

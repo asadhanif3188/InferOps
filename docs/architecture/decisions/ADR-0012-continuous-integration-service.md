@@ -15,9 +15,10 @@
 > D6 — *which continuous-integration service runs the lanes*. The other half — *what
 > labels a capable runner* — stays **not decided**, and D6 stays open for it.
 >
-> **No job in the committed workflow has ever run on the service.** Every command in
-> it was executed by hand on one Windows host before it was written down, and what a
-> hosted Ubuntu runner does with them is untested until the first pull request opens.
+> **No run of the committed workflow has passed on the service.** Every command in
+> it was executed by hand on one Windows host before it was written down. The first
+> hosted run, on the pull request that introduced it, failed three of nine jobs on two
+> defects no Windows run could show; both are fixed, and the fixes have not yet run.
 > A committed workflow is a configuration, and this record does not claim it is a
 > result. Running the scanner by hand, which this change did, is a different thing
 > from the gate running: it moved the `security-scan` layer to `implemented` and left
@@ -273,10 +274,12 @@ about a runtime, a cluster, or a model.
 
 ## Risks, assumptions, and open questions
 
-- **The workflow has never run.** Every command in it was run locally on Windows;
-  three gates — the container build, and the two that need Trivy on a Linux runner —
-  were exercised on this host in a form close to, but not identical to, what the
-  runner will do. The first pull request is the first execution.
+- **The workflow has not yet passed.** Every command in it was run locally on
+  Windows, and "close to what the runner will do" proved not close enough: the first
+  hosted run found three scripts refused with `Permission denied`, which Git Bash
+  never asks about, and Helm renders whose checksums depended on the checkout's line
+  endings. Both are fixed and each is now checked; the next run is the first test of
+  the fixes.
 - **A vendor is now a dependency.** The lane is expressed in one service's workflow
   syntax. Moving it would mean rewriting the file; nothing else in the repository
   would change, because every gate is a command that already ran by hand.

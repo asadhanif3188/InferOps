@@ -23,10 +23,14 @@ once versioned releases begin.
   D6; the half that would label a capable runner stays open, and the three lanes that
   need one are still run by hand.
 
-  **No job in it has run on the service.** Every command was executed by hand on one
-  Windows host before it was written down. A committed workflow is a configuration,
-  a configuration is not a result, and that is why the `security-scan` layer is still
-  `planned` and the two claims resting on it are still uncertified.
+  **No run on the service has passed yet.** Every command was executed by hand on one
+  Windows host before it was written down. The first hosted run, on this change's own
+  pull request, failed three of nine jobs on two defects that no Windows run could
+  show — scripts stored without the executable bit, and committed Helm renders whose
+  checksums came from a `CRLF` working tree. Both are fixed here, and the fixes have
+  not yet run on the service. A committed workflow is a configuration, a configuration
+  is not a result, and that is why the two claims resting on the `security-scan`
+  layer are still uncertified.
 
 - **A gate matrix that cannot outlive the workflow it describes.**
   [The matrix](docs/testing/ci-gate-matrix.md) is committed as data and as a document,

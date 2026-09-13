@@ -41,3 +41,10 @@ done
 
 The release name and the namespace are part of the output, so both have to stay
 exactly as they are above.
+
+Normalising the output is not enough on its own. Each workload hashes its
+rendered configuration into `inferops.io/configuration-checksum`, so the line
+endings of the chart's *input* change the output too. `.gitattributes` checks
+the chart out with `LF` on every platform for that reason. Until it did, these
+files carried checksums rendered from a Windows `CRLF` working tree, and the first
+hosted Linux run of the suite failed both profiles.

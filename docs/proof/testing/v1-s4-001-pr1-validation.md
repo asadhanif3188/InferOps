@@ -19,8 +19,9 @@ model and neither is asserted, every action is pinned by commit SHA, and every
 command the workflow runs produced the result recorded below **on this host**.
 
 **What this record does not establish.** It is not evidence that any job passes on a
-hosted Ubuntu runner; none has run there, and the first pull request is the first
-execution. It is not evidence that the repository is free of vulnerabilities or
+hosted Ubuntu runner. One hosted run exists, and it failed three jobs; what it found
+and what changed is recorded [below](#the-first-run-on-the-service-and-what-it-found),
+and the fixes have not yet run there. It is not evidence that the repository is free of vulnerabilities or
 credentials — a scan reports what its database and rules knew on the day it ran. It
 is not evidence for any claim about a runtime, a cluster, or a model, and it raises no
 certification ceiling: automating the mock lane leaves a mock at `C1`.
@@ -308,6 +309,31 @@ gives 16 and 9. The total of 30 was right, because the two errors cancelled — 
 is the reason the table is now taken from the report rather than from a directory
 listing read by eye.
 
+## The first run on the service, and what it found
+
+The pull request's own run on `ubuntu-24.04` (runner `2.337.0`, image
+`20260907.300.1`) failed three of the nine jobs. Neither cause could appear on the
+host every result above came from.
+
+| Job | Failure | Cause |
+|---|---|---|
+| `dependency-and-image-scan` | `scripts/security/scan-dependencies.sh: Permission denied`, exit `126` | The three scan scripts were stored as `100644`. A Windows filesystem has no executable bit to lose, and Git Bash runs a script by path without asking for one |
+| `software-bill-of-materials` | `scripts/security/generate-sbom.sh: Permission denied`, exit `126` | The same |
+| `default-lane-tests` | `test_the_committed_render_matches_what_helm_produces[mock]` and `[real]` | The runner image has `helm`, so the test ran instead of skipping. Each workload hashes its rendered configuration into `inferops.io/configuration-checksum`, the committed renders had been produced from a `CRLF` working tree, and the regeneration command normalises the output's line endings but not the input's. The defect predates this change: an `LF` export of `main` renders the same two checksums the runner did |
+
+What changed:
+
+- The three scripts are stored as `100755`, and
+  `test_every_script_a_job_runs_by_path_is_stored_executable` reads each script a
+  job runs by path out of the workflow and asks git — not the filesystem — for its
+  stored mode. It was verified by reverting one script to `100644`:
+  `AssertionError: {'run by path but not stored executable': {'scripts/security/generate-sbom.sh': '100644'}, ...}`.
+- `.gitattributes` checks the chart out with `LF` on every platform, and both
+  renders were regenerated from that checkout with the published command. The only
+  lines that change are the four `configuration-checksum` values, and the two the
+  runner printed — `8a490a13…` for `mock`, `8d854584…` for `real` — are the ones
+  now committed.
+
 ## Acceptance criteria
 
 | Criterion | Status |
@@ -320,9 +346,10 @@ listing read by eye.
 
 ## Limitations
 
-- **Nothing here ran on the service.** Every result is from one Windows host. The
-  runner's behaviour — particularly `grep -P`, `sudo install`, and the Docker
-  daemon's image inspect output — is untested on `ubuntu-24.04`.
+- **No run on the service has passed.** Every result above the first-run section is
+  from one Windows host. The one hosted run failed three jobs, and the fixes for
+  both causes have not run there; whatever the next run reports is the first
+  evidence about them.
 - **Two gates are not deterministic.** The vulnerability database moves daily, so the
   dependency and image scans date rather than prove.
 - **The secret scan was run from a container image**, not from the pinned release

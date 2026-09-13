@@ -39,7 +39,7 @@
 | D3 | Markers registered in `pytest.ini`, with capable-host markers deselected by default | **Accepted**, and executed | The configuration is committed and the suite runs under it |
 | D4 | Certification levels C0 to C2 for V1, with class ceilings that stop a mock at C1 | **Accepted** | The published integration certification framework, plus three enforcing tests |
 | D5 | Evidence retention: lane artifacts expire, certifying records are committed and do not | **Accepted** as a rule | Review, plus a test that a claim cites a record only when certified |
-| D6 | Which continuous-integration service runs the lanes, and what labels a capable runner | **Superseded in part** by [ADR 0012](ADR-0012-continuous-integration-service.md), which selects the service for `default-checks`. What labels a capable runner is still **not decided** | A committed workflow for one lane, which has not run on the service. Nothing for the runner: none is labelled |
+| D6 | Which continuous-integration service runs the lanes, and what labels a capable runner | **Superseded in part** by [ADR 0012](ADR-0012-continuous-integration-service.md), which selects the service for `default-checks`. What labels a capable runner is still **not decided** | A committed workflow for one lane, which has not yet passed on the service. Nothing for the runner: none is labelled |
 
 ## Context
 

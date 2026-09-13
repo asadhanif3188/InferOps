@@ -19,3 +19,12 @@ uv.lock text eol=lf
 # checked out, so a runner cannot receive CRLF whatever the checkout did.
 .github/workflows/*.yml text eol=lf
 .github/workflows/*.yaml text eol=lf
+
+# The chart hashes its own rendered configuration into a pod annotation
+# (`inferops.io/configuration-checksum`), so the bytes of every template and
+# values file are part of the output. A CRLF checkout renders a different
+# checksum from an LF one, and the committed renders under ci/rendered/ can
+# only match one of them. Pinning the checkout makes the render the same on
+# every platform: before this, the committed renders carried checksums derived
+# from a Windows working tree, and the first hosted Linux run failed both.
+charts/** text eol=lf

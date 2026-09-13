@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -597,4 +599,64 @@ def test_every_program_a_gate_documents_is_run_by_its_job(gate: dict) -> None:
     assert not missing, {
         "gate": gate["gateId"],
         "documented but never invoked by the job": missing,
+    }
+
+
+# --- A script a job runs by path is a script the runner may execute ---------
+
+#: A ``run:`` line whose first word is a repository script, run by path rather
+#: than through an interpreter, with or without a leading ``./``. A script handed
+#: to ``bash`` or ``source`` is deliberately not matched: neither asks for the
+#: executable bit, so neither can fail the way this check exists to prevent.
+SCRIPT_BY_PATH = re.compile(r"^\s*(?:\./)?(?P<path>scripts/\S+\.sh)\b", re.MULTILINE)
+
+
+def index_modes() -> dict[str, str]:
+    """Every tracked path's mode, as git stores it and as a checkout applies it.
+
+    Asked of git rather than of the filesystem, because on Windows the
+    filesystem has no executable bit to report and every file looks runnable.
+    That is how three scripts reached the workflow stored as ``100644``: every
+    local run went through Git Bash, which does not ask, and the first hosted
+    run refused all three with ``Permission denied``.
+    """
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("git is not on PATH; the stored file mode cannot be read")
+    # A fixed argument vector with no shell: `git` is resolved from PATH by
+    # `shutil.which` and every other member is a constant.
+    result = subprocess.run(
+        [git, "ls-files", "--stage", "--", "scripts"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"not a git work tree: {result.stderr.strip()}")
+    modes: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        metadata, _, path = line.partition("\t")
+        modes[path] = metadata.split()[0]
+    return modes
+
+
+@pytest.mark.parametrize("entry", WORKFLOWS, ids=lambda entry: entry["workflowId"])
+def test_every_script_a_job_runs_by_path_is_stored_executable(entry: dict) -> None:
+    modes = index_modes()
+    invoked = {
+        matched.group("path")
+        for job in workflow_document(entry)["jobs"].values()
+        for step in job.get("steps", [])
+        for matched in SCRIPT_BY_PATH.finditer(str(step.get("run", "")))
+    }
+    assert invoked, f"{entry['path']} runs no script by path; the check is vacuous"
+    not_executable = {
+        path: modes.get(path, "untracked")
+        for path in sorted(invoked)
+        if modes.get(path) != "100755"
+    }
+    assert not not_executable, {
+        "workflow": entry["path"],
+        "run by path but not stored executable": not_executable,
     }

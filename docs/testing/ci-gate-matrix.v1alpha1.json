@@ -345,7 +345,7 @@
     }
   ],
   "limitations": [
-    "No job in this workflow has ever run on the service. The file is committed, the commands were run locally on one Windows host, and what a hosted Ubuntu runner does with them is untested until the first pull request opens.",
+    "No run of this workflow has passed on the service. The commands were run locally on one Windows host; the first hosted run failed three of nine jobs on two defects no Windows run could show (scripts stored without the executable bit, and committed Helm renders whose checksums came from CRLF input). Both are fixed and checked, and the fixes have not yet run on the service.",
     "A vulnerability scan is not deterministic. Its database changes daily, so an unchanged commit can pass today and fail tomorrow, and a green result dates rather than proves.",
     "Three gates consume the network: the two scanning gates pull a vulnerability database and a container image, and the secret-scan gate downloads a pinned archive. The lane is therefore cheap and reproducible rather than hermetic.",
     "Every gate here reads files, drives the mock, or scans what is pinned. None of them can support a claim above C1, and the two claims about a real runtime take no support from this workflow at all.",
