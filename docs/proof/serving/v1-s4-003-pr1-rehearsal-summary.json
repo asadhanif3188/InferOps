@@ -1,0 +1,218 @@
+{
+  "accounting": {
+    "dispatched": 39,
+    "outcomes": {
+      "http-error": 4,
+      "identity-refused": 0,
+      "invalid-response": 3,
+      "success": 32,
+      "timeout": 0,
+      "transport-error": 0
+    }
+  },
+  "boundary": "A bounded observation of this one run, on the provider, host, model, runtime, and profile recorded beside it. It is not a portable capacity figure, a production SLO, or a benchmark of Kubernetes, the model, the runtime, or any provider, and no figure in it may be published as one.",
+  "certificationCeiling": "C1",
+  "end": {
+    "reason": null,
+    "state": "completed"
+  },
+  "environment": {
+    "facts": null,
+    "generatorHost": {
+      "architecture": "AMD64",
+      "logicalCpus": 20,
+      "operatingSystem": "Windows",
+      "pythonVersion": "3.12.12",
+      "release": "11",
+      "totalMemoryBytes": 16836890624
+    },
+    "provenance": {
+      "checkedAgainstRepository": [],
+      "declaredOnly": [],
+      "reportedByApi": [
+        "readinessStatus",
+        "adapterKind",
+        "modelId",
+        "modelRevision",
+        "runtimeName",
+        "runtimeVersion"
+      ]
+    },
+    "served": {
+      "adapterKind": "synthetic-stub",
+      "modelId": "qwen3-1-7b-q8-0",
+      "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "readinessStatus": "ready",
+      "runtimeName": "synthetic rehearsal stub",
+      "runtimeVersion": "synthetic"
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "kind": "in-process-stub"
+    }
+  },
+  "evidenceClass": "synthetic",
+  "evidenceLabel": "synthetic rehearsal",
+  "levels": [
+    {
+      "concurrency": 1,
+      "dispatched": 12,
+      "durationSeconds": 20,
+      "httpStatuses": {
+        "200": 11,
+        "503": 1
+      },
+      "latencyOfSuccesses": {
+        "maxMs": 49,
+        "minMs": 24,
+        "p50Ms": 25,
+        "p95Ms": 49,
+        "p99Ms": 49
+      },
+      "levelId": "c1",
+      "outcomes": {
+        "http-error": 1,
+        "identity-refused": 0,
+        "invalid-response": 1,
+        "success": 10,
+        "timeout": 0,
+        "transport-error": 0
+      },
+      "outputTokensPerSecondMilli": 477528,
+      "requestCeiling": 12,
+      "stopReason": "request-ceiling",
+      "successful": 10,
+      "successfulRequestsPerSecondMilli": 28089,
+      "tokens": {
+        "inputTotal": 310,
+        "outputTotal": 170
+      },
+      "unsuccessful": 2,
+      "windowMs": 356
+    },
+    {
+      "concurrency": 2,
+      "dispatched": 12,
+      "durationSeconds": 20,
+      "httpStatuses": {
+        "200": 10,
+        "503": 2
+      },
+      "latencyOfSuccesses": {
+        "maxMs": 32,
+        "minMs": 28,
+        "p50Ms": 29,
+        "p95Ms": 32,
+        "p99Ms": 32
+      },
+      "levelId": "c2",
+      "outcomes": {
+        "http-error": 2,
+        "identity-refused": 0,
+        "invalid-response": 1,
+        "success": 9,
+        "timeout": 0,
+        "transport-error": 0
+      },
+      "outputTokensPerSecondMilli": 864406,
+      "requestCeiling": 12,
+      "stopReason": "request-ceiling",
+      "successful": 9,
+      "successfulRequestsPerSecondMilli": 50847,
+      "tokens": {
+        "inputTotal": 279,
+        "outputTotal": 153
+      },
+      "unsuccessful": 3,
+      "windowMs": 177
+    },
+    {
+      "concurrency": 4,
+      "dispatched": 12,
+      "durationSeconds": 20,
+      "httpStatuses": {
+        "200": 11,
+        "503": 1
+      },
+      "latencyOfSuccesses": {
+        "maxMs": 34,
+        "minMs": 26,
+        "p50Ms": 29,
+        "p95Ms": 34,
+        "p99Ms": 34
+      },
+      "levelId": "c4",
+      "outcomes": {
+        "http-error": 1,
+        "identity-refused": 0,
+        "invalid-response": 1,
+        "success": 10,
+        "timeout": 0,
+        "transport-error": 0
+      },
+      "outputTokensPerSecondMilli": 1847826,
+      "requestCeiling": 12,
+      "stopReason": "request-ceiling",
+      "successful": 10,
+      "successfulRequestsPerSecondMilli": 108695,
+      "tokens": {
+        "inputTotal": 310,
+        "outputTotal": 170
+      },
+      "unsuccessful": 2,
+      "windowMs": 92
+    }
+  ],
+  "mode": "rehearsal",
+  "percentileMethod": "nearest-rank",
+  "portableCapacityClaim": false,
+  "productionBenchmark": false,
+  "profile": {
+    "fixtureId": "llm-load-single-turn-v1",
+    "messageCount": 1,
+    "model": "qwen3-1-7b-q8-0",
+    "profileId": "inferops-llm-load",
+    "profileSha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+    "profileVersion": "1.0.0",
+    "requestPath": "/v1/chat/completions",
+    "stream": false
+  },
+  "runId": "load-20260914T132059Z",
+  "schemaVersion": "inferops.io/v1alpha1",
+  "usable": true,
+  "warmup": {
+    "concurrency": 1,
+    "dispatched": 3,
+    "durationSeconds": null,
+    "httpStatuses": {
+      "200": 3
+    },
+    "latencyOfSuccesses": {
+      "maxMs": 25,
+      "minMs": 25,
+      "p50Ms": 25,
+      "p95Ms": 25,
+      "p99Ms": 25
+    },
+    "levelId": "warmup",
+    "outcomes": {
+      "http-error": 0,
+      "identity-refused": 0,
+      "invalid-response": 0,
+      "success": 3,
+      "timeout": 0,
+      "transport-error": 0
+    },
+    "outputTokensPerSecondMilli": 621951,
+    "requestCeiling": 3,
+    "stopReason": "request-ceiling",
+    "successful": 3,
+    "successfulRequestsPerSecondMilli": 36585,
+    "tokens": {
+      "inputTotal": 93,
+      "outputTotal": 51
+    },
+    "unsuccessful": 0,
+    "windowMs": 82
+  }
+}

@@ -256,7 +256,7 @@
       "marker": "architecture",
       "protects": "Every module under src/inferops/ is read for its imports, and the platform domain acquiring a Kubernetes client, a Helm library, a runtime SDK, or an HTTP framework is a failure.",
       "claims": [],
-      "note": "No published claim covers the dependency rule. It is an architecture decision rather than a claim about the product, and the claim matrix names none \u2014 but the rule is what makes the unit layer possible at all, so the check is here rather than deferred until a claim needs it."
+      "note": "No published claim covers the dependency rule. It is an architecture decision rather than a claim about the product, and the claim matrix names none — but the rule is what makes the unit layer possible at all, so the check is here rather than deferred until a claim needs it."
     },
     {
       "module": "tests/architecture/test_helm_chart.py",
@@ -550,6 +550,14 @@
       "protects": "The registered local serving baseline: descriptor agreement with the composition, profile, package, and model record; refusal of drifted fixtures, generation settings, concurrency, duration bounds, success criteria, and result layout; nearest-rank percentile arithmetic; warm-up exclusion; deterministic summary generation; and the raw result set's round trip, refusals, and absence of prompt or completion text.",
       "claims": [],
       "note": "No serving measurement is certified by this repository-only suite. Every request is answered by an injected seam, so no container, model byte, runtime socket, or real latency is involved; the measured baseline itself remains local-real evidence requiring an authorized run."
+    },
+    {
+      "module": "tests/serving/test_llm_load.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The repeatable LLM load profile: its agreement with the runtime profile, the chart values with the real-profile values layered over them, the API's own request deadline and request parser, the provider contract, the model record, and the runtime pin; refusal of a drifted fixture, generation setting, deadline, level set, execution envelope, success criterion, or result layout, and of any bound above the ceilings in code; refusal of environment facts naming an unpublished provider, another chart, runtime image or model revision, an undigested or placeholder API image, or a short repository revision; the loopback-only target and the identity probe that refuses a mock or a rehearsal stub before any load; the fixed order in which every response is classified; exactly one sequence number and one outcome for every dispatched request under concurrency, at a request ceiling, at a duration stop, after a failed warm-up, at an abort, at an interrupt, and when five transport errors in a row end the run while platform refusals never do; the raw reader's refusal of a gap, a repeat, an unbalanced phase, a misplaced request, tokens on a failure, free text in a token, a benchmark or capacity claim, a real set without a supported provider, and a synthetic set with one; nearest-rank percentiles and integer rates over successes; the HTTP transport's timeout, refusal, redirect, oversized-body, and proxy behaviour on a real loopback socket; a full rehearsal over loopback HTTP; and the committed rehearsal example being the summary of its own raw records.",
+      "claims": [],
+      "note": "No load or serving measurement is certified by this suite. Every request is answered by an injected transport function or by the in-process rehearsal stub, so no latency here describes serving, and the committed rehearsal example is synthetic. The suite contacts no cluster, reads no model byte, and does not run under the deferred load marker: it generates no load against anything real, and the sustained-throughput-and-capacity-under-load claim stays a recorded gap."
     },
     {
       "module": "tests/serving/test_inference_api_implementation_agreement.py",
