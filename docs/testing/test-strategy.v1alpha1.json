@@ -184,7 +184,7 @@
       "automated": false,
       "workflowRef": null,
       "v1Status": "manual",
-      "notes": "The documented manual procedure is the feasibility workflow, which has been executed once. No labelled runner exists. ADR 0012 D7 publishes the rules a dispatched workflow for this lane must satisfy, including an explicit authorization input, and commits none."
+      "notes": "The documented manual procedure is the feasibility workflow, which has been executed once. No labelled runner exists. ADR 0012 D7 publishes the rules a dispatched workflow for this lane must satisfy, including an explicit authorization input, and commits none. Since V1-S4-004-PR1, the performance scenario workflow also runs in this lane, on an authorized host, and produces bounded observations under ADR 0013; it is not the capacity lane."
     },
     {
       "laneId": "capacity",
@@ -861,7 +861,7 @@
       "evidenceOwner": "serving",
       "v1Status": "deferred",
       "evidenceRef": null,
-      "deferralReason": "V1 may publish no throughput, latency, capacity, or benchmark figure. Making one runtime work is not the same as engineering the runtime, and a capacity claim would be a claim about a runtime this project did not write."
+      "deferralReason": "V1 may publish no throughput, latency, capacity, or benchmark figure. Making one runtime work is not the same as engineering the runtime, and a capacity claim would be a claim about a runtime this project did not write. Narrowed by ADR 0013 (2026-09-14): a bounded observation of one declared, authorized local experiment may be published with its setup named; a portable capacity, SLO, or benchmark figure may not. This claim is the portable one and stays deferred."
     }
   ],
   "evidenceRetention": {

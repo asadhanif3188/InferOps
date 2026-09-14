@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import itertools
 import json
+import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -49,6 +50,9 @@ EXPECTED_RESOURCE_SOURCE = "node-cgroup-v1"
 EXPECTED_TIERS = ("virtual-machine", "node", "release-pods")
 RECORD_SCHEMA = "inferops.io/v1alpha1"
 RECORD_KIND = "inferops-performance-scenarios-record"
+
+#: The runtime counter whose zero shows nothing was decoded before the first run.
+RUNTIME_TOKENS_SERIES = "runtime-tokens-predicted"
 
 #: The release tiers a sample reads, by the component label the chart gives them.
 ROLE_COMPONENTS: dict[str, str] = {
@@ -1297,7 +1301,9 @@ def _instant_total(entry: Mapping[str, Any], check: Reconciliation) -> int | Non
     if not rows:
         return None
     total = sum(float(_string(row.get("value"), "value")) for row in rows)
-    if total != int(total):
+    # A counter read is a whole number. NaN and infinity are readings Prometheus can
+    # give, and int() would raise on them rather than refuse.
+    if not math.isfinite(total) or total != int(total):
         raise ScenarioError(
             f"a counter read for '{check.check_id}' is not a whole number"
         )
@@ -1329,6 +1335,8 @@ def build_record(
         (environment_text, "environment"),
         (windows_text, "windows"),
         (telemetry_text, "telemetry"),
+        (samples_text, "resource samples"),
+        *((raw_text, raw_name) for raw_name, raw_text in sorted(raw_texts.items())),
     ):
         refuse_private(text, what)
     environment = _object(
@@ -1373,10 +1381,14 @@ def build_record(
             else "a tier's pod was replaced during the experiment",
         )
     )
-    restarts = sum(
-        pod["restartCount"]
-        for pod in [*environment["podsBefore"], *environment["podsAfter"]]
-    )
+    # restartCount is a pod's lifetime counter, so the before and after readings of an
+    # unchanged pod are not added together: the larger of the two is that pod's count.
+    # A restart during model loading, before any load, still fails the check.
+    restart_counts: dict[tuple[str, str], int] = {}
+    for pod in [*environment["podsBefore"], *environment["podsAfter"]]:
+        key = (pod["role"], pod["uid"])
+        restart_counts[key] = max(restart_counts.get(key, 0), pod["restartCount"])
+    restarts = sum(restart_counts.values())
     checks.append(
         _checks(
             "zero-container-restarts",
@@ -1523,6 +1535,20 @@ def build_record(
                 if record.outcome == load.OUTCOME_SUCCESS
             ),
         }
+        # The workflow sends no inference request before the first run, and the code
+        # cannot see the workflow. What it can see is the runtime's own predicted-token
+        # counter, which exists from the runtime's start: at zero, the runtime has
+        # decoded nothing, so the API has served no completion either.
+        runtime_before = instants.get((repetition, "before", RUNTIME_TOKENS_SERIES))
+        runtime_idle_before_first_run = (
+            runtime_before is not None
+            and runtime_before.get("status") == "success"
+            and [
+                _object(row, "row").get("value")
+                for row in _list(runtime_before.get("rows"), "rows")
+            ]
+            == ["0"]
+        )
         reconciliation = []
         for check in descriptor.reconciliation:
             reads: dict[str, int | None] = {}
@@ -1554,6 +1580,7 @@ def build_record(
                 and answered_empty["before"]
                 and pods_unchanged
                 and restarts == 0
+                and runtime_idle_before_first_run
             )
             if absent_before_read_as_zero:
                 reads["before"] = 0
@@ -1623,7 +1650,10 @@ def build_record(
         1
         for sample in samples
         if windows["idleStartMs"] <= sample["hostEpochMs"] <= last_end
-        and any(sample["pods"][role]["cpuNs"] is None for role in ROLES)
+        and (
+            sample["node"]["cpuNs"] is None
+            or any(sample["pods"][role]["cpuNs"] is None for role in ROLES)
+        )
     )
     sampled = (
         covers

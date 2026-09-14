@@ -82,7 +82,10 @@ smoothed over — so the catalog has to say which signals come from the runtime 
 which the platform must produce itself. And
 [the project boundaries](../project-boundaries.md) forbid V1 publishing any
 throughput, latency, capacity, or benchmark figure, which makes the latency and
-throughput metrics operational instruments rather than material for a claim.
+throughput metrics operational instruments rather than material for a claim. (Since 2026-09-14,
+[ADR 0013](ADR-0013-bounded-local-performance-observations.md) narrows that boundary to
+allow bounded observations of a declared local experiment. This record's decisions are
+unchanged.)
 
 ## Decision criteria
 

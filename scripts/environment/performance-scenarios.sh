@@ -287,10 +287,26 @@ collect_diagnostics() {
     -l "${INFEROPS_RELEASE_SELECTOR}" --all-containers --tail="${INFEROPS_LOG_TAIL}" >"${diag_dir}/release.log" 2>&1 || true
 }
 
+# Waits for a child to exit for at most the given seconds, then kills it. Cleanup runs
+# inside the EXIT trap, and an unbounded wait on a wedged docker exec or port-forward
+# would hang the very path that collects diagnostics.
+wait_bounded() {
+  local pid="$1" seconds="$2"
+  local deadline=$((SECONDS + seconds))
+  while kill -0 "${pid}" 2>/dev/null; do
+    if [ "${SECONDS}" -ge "${deadline}" ]; then
+      kill -9 "${pid}" 2>/dev/null || true
+      break
+    fi
+    sleep 1
+  done
+  wait "${pid}" 2>/dev/null || true
+}
+
 stop_sampler() {
   if [ -n "${sampler_pid}" ]; then
     : >"${stop_file}"
-    wait "${sampler_pid}" 2>/dev/null || true
+    wait_bounded "${sampler_pid}" 30
   fi
   sampler_pid=""
 }
@@ -300,7 +316,7 @@ close_forwards() {
   for pid in "${api_forward_pid}" "${collector_forward_pid}"; do
     if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
       kill "${pid}" 2>/dev/null || true
-      wait "${pid}" 2>/dev/null || true
+      wait_bounded "${pid}" 10
     fi
   done
   api_forward_pid=""
@@ -347,16 +363,16 @@ claim_count() {
 
 # --- prerequisites and the release -------------------------------------------
 
+if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
+  inferops::fail "release '${INFEROPS_RELEASE_NAME}' already exists in '${INFEROPS_RELEASE_NAMESPACE}'. This experiment starts from its own install, so that the environment it records is the one it made. Remove it first: helm uninstall ${INFEROPS_RELEASE_NAME} --namespace ${INFEROPS_RELEASE_NAMESPACE}"
+fi
+
 inferops::section "Applying the Terraform prerequisites"
 
 bash "${INFEROPS_ROOT}/scripts/environment/terraform-prerequisites.sh" apply
 
 if ! claims_before="$(claim_count)"; then
   inferops::fail "could not count the persistent volume claims before installing. An unanswered query is not an empty result."
-fi
-
-if inferops::target_helm status "${INFEROPS_RELEASE_NAME}" --namespace "${INFEROPS_RELEASE_NAMESPACE}" >/dev/null 2>&1; then
-  inferops::fail "release '${INFEROPS_RELEASE_NAME}' already exists in '${INFEROPS_RELEASE_NAMESPACE}'. This experiment starts from its own install, so that the environment it records is the one it made. Remove it first: helm uninstall ${INFEROPS_RELEASE_NAME} --namespace ${INFEROPS_RELEASE_NAMESPACE}"
 fi
 
 inferops::section "Installing the release"
@@ -709,7 +725,7 @@ residue_deadline=$((SECONDS + uninstall_budget_ms / 1000))
 remaining_count=0
 while :; do
   if ! remaining="$(inferops::target_kubectl get \
-    deployments,replicasets,services,configmaps,serviceaccounts,pods,networkpolicies,jobs \
+    deployments,replicasets,services,configmaps,serviceaccounts,pods,networkpolicies,jobs,roles,rolebindings \
     -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o name)"; then
     inferops::fail "could not ask what survived the uninstall. An unanswered query is not an empty result."
   fi

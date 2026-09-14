@@ -274,7 +274,7 @@ def write_cluster(tmp_path: Path, **overrides: Any) -> Path:
                 },
                 "capacity": {"cpu": "12", "memory": "10188024Ki"},
                 "allocatable": {"cpu": "12", "memory": "10188024Ki"},
-                "addresses": [{"type": "InternalIP", "address": "172.23.0.2"}],
+                "addresses": [{"type": "InternalIP", "address": "192.0.2.10"}],
             },
         },
         "engine.json": {
@@ -305,7 +305,7 @@ def write_cluster(tmp_path: Path, **overrides: Any) -> Path:
             "data": {
                 "INFEROPS_MODEL_REVISION": REVISION,
                 "INFEROPS_REQUEST_TIMEOUT_MS": "120000",
-                "INFEROPS_LLAMA_SERVER_ENDPOINT": "http://10.96.0.12:8080",
+                "INFEROPS_LLAMA_SERVER_ENDPOINT": "http://198.51.100.12:8080",
             }
         },
         "pods-before.json": {"items": [*pods, pod("api", "u-hook", phase="Succeeded")]},
@@ -838,7 +838,7 @@ def test_the_environment_keeps_counts_of_other_workloads_and_not_their_names(
     assert "another-project" not in text
     # The endpoint carrying a cluster address is not an allowlisted key.
     assert "INFEROPS_LLAMA_SERVER_ENDPOINT" not in text
-    assert "172.23.0.2" not in text
+    assert "192.0.2.10" not in text
     assert [pod["role"] for pod in environment["podsBefore"]] == [
         "api",
         "runtime",
@@ -857,10 +857,10 @@ HOME_DIRECTORY = "home"
     "value",
     [
         "C:\\" + USER_DIRECTORY + "\\operator\\x",
-        "D:/cache/model.gguf",
+        "Z:/cache/model.gguf",
         "/" + HOME_DIRECTORY + "/operator/.kube",
-        "10.1.0.7:8090",
-        "node at 172.23.0.2",
+        "198.51.100.7:8090",
+        "node at 192.0.2.10",
     ],
 )
 def test_a_private_value_is_refused(value: str) -> None:
@@ -945,6 +945,67 @@ def test_a_container_restart_makes_the_record_unusable(scenario: Scenario) -> No
     )
 
 
+def test_a_restart_before_the_runs_is_counted_once_and_still_fails(
+    scenario: Scenario,
+) -> None:
+    """A lifetime restart counter read twice is one restart, not two."""
+    environment = copy.deepcopy(scenario.environment)
+    environment["podsBefore"][1]["restartCount"] = 1
+    environment["podsAfter"][1]["restartCount"] = 1
+    record = scenario.build(environment_text=dumps(environment))
+    restarts = check(record, "zero-container-restarts")
+    assert restarts["passed"] is False
+    assert restarts["detail"].startswith("1 container restart")
+
+
+def test_a_non_finite_counter_read_is_refused_not_raised(scenario: Scenario) -> None:
+    telemetry = scenario.make_telemetry()
+    telemetry["instants"][1]["rows"][0]["value"] = "NaN"
+    with pytest.raises(ScenarioError, match="whole number"):
+        scenario.build(telemetry_text=dumps(telemetry))
+
+
+def test_an_absent_counter_is_not_read_as_zero_when_the_runtime_had_decoded(
+    scenario: Scenario,
+) -> None:
+    telemetry = empty_api_reads(scenario.make_telemetry(), 1)
+    for entry in telemetry["instants"]:
+        if (
+            entry["repetition"] == 1
+            and entry["position"] == "before"
+            and entry["seriesId"] == "runtime-tokens-predicted"
+        ):
+            entry["rows"] = [{"labels": {}, "value": "17"}]
+    record = scenario.build(telemetry_text=dumps(telemetry))
+    assert record["runs"][0]["reconciliation"][0]["absentBeforeReadAsZero"] is False
+    assert check(record, "counters-reconcile-with-raw-records")["passed"] is False
+
+
+def test_a_private_value_in_a_raw_set_is_refused(scenario: Scenario) -> None:
+    raws = dict(scenario.raws)
+    raws["run-2-raw.jsonl"] = raws["run-2-raw.jsonl"].replace(
+        '"TestOS"', '"198.51.100.4"'
+    )
+    with pytest.raises(ScenarioRefused):
+        scenario.build(raw_texts=raws)
+
+
+def test_a_missing_node_read_fails_coverage(scenario: Scenario) -> None:
+    samples = [json.loads(line) for line in scenario.samples.splitlines()]
+    samples[len(samples) // 2]["node"]["cpuNs"] = None
+    text = "".join(json.dumps(sample, sort_keys=True) + "\n" for sample in samples)
+    record = scenario.build(samples_text=text)
+    assert check(record, "resource-samples-cover-every-phase")["passed"] is False
+
+
+def test_the_script_checks_for_a_release_before_applying_prerequisites() -> None:
+    assert SCRIPT_TEXT.index("inferops::target_helm status") < SCRIPT_TEXT.index(
+        'terraform-prerequisites.sh" apply'
+    )
+    assert "roles,rolebindings" in SCRIPT_TEXT
+    assert "wait_bounded" in SCRIPT_TEXT
+
+
 def test_a_gap_in_the_samples_makes_the_record_unusable(scenario: Scenario) -> None:
     start = scenario.windows["idleBaseline"]["startEpochMs"] - 1000
     gap_start = scenario.origins[0] + 1000
@@ -994,7 +1055,7 @@ def test_a_counter_read_at_another_moment_is_refused(scenario: Scenario) -> None
 def test_a_private_value_in_an_input_is_refused(scenario: Scenario) -> None:
     telemetry = scenario.make_telemetry()
     telemetry["dashboard"] = [
-        {"readings": {"x": {"rows": [{"labels": {"instance": "10.1.0.9:8090"}}]}}}
+        {"readings": {"x": {"rows": [{"labels": {"instance": "198.51.100.9:8090"}}]}}}
     ]
     with pytest.raises(ScenarioRefused):
         scenario.build(telemetry_text=dumps(telemetry))
@@ -1030,7 +1091,7 @@ def test_windows_out_of_order_are_refused(scenario: Scenario) -> None:
         "http://127.0.0.1",
         "http://127.0.0.1:19093/api",
         "http://u:p@127.0.0.1:1",
-        "http://10.0.0.1:9090",
+        "http://198.51.100.1:9090",
     ],
 )
 def test_the_collector_url_must_be_a_loopback_forward(url: str) -> None:

@@ -171,4 +171,6 @@ the prerequisite claim for the rest.
 - It is **not a throughput figure**, and the traffic counts must not be extracted as
   one. They exist to give two divisions a denominator; publishing them as a rate would
   cross [the project boundary](../architecture/project-boundaries.md) that forbids V1
-  publishing any throughput figure.
+  publishing any throughput figure. (ADR 0013 has since narrowed that boundary to allow
+  bounded observations of a declared local experiment; these figures are not one, and
+  ADR 0007 D11 still refuses a real-provider cost figure.)

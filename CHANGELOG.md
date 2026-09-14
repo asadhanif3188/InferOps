@@ -27,18 +27,18 @@ once versioned releases begin.
   [the V1-S4-004-PR1 validation record](docs/proof/serving/v1-s4-004-pr1-validation.md)
   and [its record](docs/proof/serving/v1-s4-004-pr1-performance-record.v1alpha1.json).
 
-  **What the run recorded:** all 366 requests succeeded, and the collector's request
-  and token counters reconcile exactly with the raw sets. P50 latency was about 1.7 s
-  at concurrency 1, 3.4–3.5 s at 2, and 6.8–6.9 s at 4. The successful request rate
-  stayed between 0.554 and 0.575 per second, and the serving runtime used 5.94–5.99 of
-  its 6 CPUs at every level. These are bounded observations of one single-replica
-  release on one host with one prompt. **No saturation is judged here**; that analysis
-  is separate work, and nothing is capacity, an SLO, or a benchmark.
+  **What the run recorded:** all 366 requests succeeded; the collector's request,
+  output-token, and runtime token counters reconcile exactly with the raw sets; and the
+  same pods served throughout with no restart. The per-phase latency, rate, CPU, and
+  memory figures are in the record, as bounded observations of one single-replica
+  release on one host with one prompt. **No saturation is judged and no level is
+  compared here**; that analysis is separate work, and nothing is capacity, an SLO, or a
+  benchmark. CPU throttling was not sampled.
 
   **What the first attempts showed:** a pod's `imageID` names only one of an image's
   digests, so a rebuilt API image imported twice was refused as the wrong image until
-  the binding went through the node's own image record; Prometheus answers a `POST` to
-  its status endpoint with an empty `405`; and the API's labelled counters do not exist
+  the binding went through the node's own image record; the collector, Prometheus
+  3.5.0, answered a `POST` to its build-information endpoint with an empty `405`; and the API's labelled counters do not exist
   before the first request, which the record now reads as zero only where nothing else
   is possible.
 
@@ -270,9 +270,9 @@ once versioned releases begin.
   throughput figure. A figure from a declared, authorized, local experiment may be
   published with its provider, host, model, runtime, configuration, profile, versions,
   and evidence class named. Portable capacity, production SLOs, universal performance,
-  benchmarks, and cross-provider readings stay refused. The refusal is machine-checked
-  in the records the load and performance tools read and write, and review-only in
-  prose. The `capacity` lane and `sustained-throughput-and-capacity-under-load` stay
+  benchmarks, and cross-provider readings stay refused. The load and performance tools
+  check a record's boundary flags and sentence; whether a figure is read as portable is
+  review-only everywhere. The `capacity` lane and `sustained-throughput-and-capacity-under-load` stay
   deferred.
 
 - **ADR 0004 D7 amended: the dashboard definition is a repository artifact.**

@@ -25,15 +25,17 @@ D6 and the project boundaries forbade publishing any latency or throughput figur
 
 ## Claim boundary
 
-Established, on `docker-desktop`, for one single-replica release, on one host, between
-16:16:27 and 16:31:21 UTC on 2026-09-14:
+Established, on `docker-desktop`, for one single-replica release, on one host. The
+measured schedule ran from 16:16:26.980 to 16:31:20.545 UTC on 2026-09-14; the target
+was verified and the release installed from 16:14:57 UTC:
 
 - the scenario matrix ran end to end, unattended, and its record passed all eight of
   its checks;
 - both repetitions completed. Each dispatched 183 requests — 3 warm-up and 60 per
   level — and all 366 were successes;
-- the collector's counters reconcile **exactly** with the raw load sets, per run: the
-  API's request counter, the API's output tokens, and the runtime's predicted tokens;
+- the collector's counters reconcile **exactly** with the raw load sets, per run, for
+  the three counters compared: the API's request counter, the API's output tokens, and
+  the runtime's predicted tokens. Input tokens are not reconciled;
 - the same three pods served throughout, with no container restart;
 - for each phase, the latency distribution of its requests, its request and token
   rates, and the CPU and memory of every tier during the same window.
@@ -159,41 +161,42 @@ seconds and are the least reliable in the table. The record does not require the
 "Absent, read as 0" is marked `absentBeforeReadAsZero` in the record. Before the first
 request, the API's labelled counters have no series at all. The record reads that as
 zero only for the first run, only when the same pods served throughout with no restart,
-and only because the workflow sends no inference request before that run. An absent
+and only when the runtime's own predicted-token counter read exactly `0` at the same
+instant. That last condition is what the code can see of the workflow's property that
+no inference request precedes the first run; the counter read `0` here. An absent
 series in any other position leaves the check unreconciled.
 
 The collector's own gauges, at its 15-second range step, never read more than one
-request processing in the runtime and read at most three deferred, which is what one
-parallel slot and four callers allow.
+request processing in the runtime and read at most three deferred.
 
 ## For V1-S4-004-PR2 to account for
 
-These are facts the record holds. None is a judgement about saturation, and this
-record makes none.
+These are facts the record holds, each stated on its own. None is a comparison between
+levels or a judgement about saturation, and this record makes neither.
 
-1. **The runtime tier's CPU is between 5 944 and 5 994 millicores in every phase,
-   including the warm-up and `c1`,** against a 6-CPU limit and `--threads 6`. It does
-   not rise with concurrency.
-2. **The successful request rate is between 0.554 and 0.575 per second at every level,**
-   while the P50 latency is about 1.7 s at `c1`, 3.4–3.5 s at `c2`, and 6.8–6.9 s at
-   `c4`.
-3. **Every request returned 17 output tokens.** The fixture's answer ends well before
-   the 128-token limit, so latency here is not bounded by that limit, and a different
-   prompt would change every figure.
-4. **Run-to-run spread is visible at `c4`:** P95 7 244 ms and 8 614 ms, P99 7 311 ms and
-   9 311 ms.
-5. **The node and virtual machine were not idle.** At idle, the VM used 353 millicores
-   and the node outside the release 282. Under load, the node outside the release used
-   400–597 millicores, which includes the sampler's own `docker exec` and whatever the
-   12 other pods did.
-6. **The minimum latency at `c2` and `c4` is close to `c1`'s** (1 647–2 320 ms), which
-   is what the first request of a phase, or one that found the slot free, would show.
-   Whether that is so is not established here.
-7. **The sampler's reads slowed under load.** A read took 316 ms at best, 1 171 ms at
-   the median, and 1 874 ms at worst. A sample's placement is its midpoint, so its
-   uncertainty is up to about 0.9 s.
-8. **The collector's panels cover windows wider than a phase.** The dashboard captures
-   at each phase end evaluate five-minute rates, which include earlier phases.
+1. **Runtime tier CPU, per phase,** is in the resource table: 5 944 to 5 994
+   millicores, against a container limit of 6 CPU and `--threads 6`.
+2. **CPU throttling was not captured.** The sampler reads `cpuacct.usage`, not the
+   cgroup's `cpu.stat` throttling counters, so nothing here distinguishes a CPU limit
+   that bound from threads that were busy. That cannot be recovered from these inputs.
+3. **Every request returned 17 output tokens and 35 input tokens.** No request reached
+   the 128-token limit, and a different prompt would change every figure.
+4. **The two repetitions differ most at `c4`:** P95 7 244 ms and 8 614 ms, P99 7 311 ms
+   and 9 311 ms.
+5. **The node and virtual machine were not idle.** At idle the VM used 353 millicores
+   and the node outside the release 282. During the measured levels the node outside
+   the release used 477–541 millicores, which includes the sampler's own `docker exec`
+   and whatever the 12 other pods did.
+6. **In each `c2` and `c4` phase, the fastest request was the first or second
+   dispatched** (positions 0 or 1 within the phase), as the raw sets record.
+7. **The sampler's reads took longer during load.** Inside the idle window a read took
+   358–503 ms (median 427.5 ms, 24 samples); inside the phases, 720–1 874 ms (median
+   1 254 ms, 191 samples). A sample is placed at its midpoint, so its placement is
+   uncertain by up to about 0.9 s.
+8. **The dashboard captures cover windows wider than a phase.** They are evaluated at
+   each phase end and their rates use five-minute windows, which include earlier phases.
+9. **Input tokens were not reconciled** against the collector; only output tokens and
+   requests were.
 
 ## Attempts, and what each found
 
@@ -211,8 +214,9 @@ image carries, and the record keeps that image's config ID. The release was left
 installed for inspection and then uninstalled by hand.
 
 **Attempt 2 completed both load runs and failed while reading the collector.** The
-capture asked Prometheus's build-information endpoint with a form `POST`, which
-Prometheus serves to `GET` only and answers with an empty `405`. The capture now sends
+capture asked Prometheus's build-information endpoint with a form `POST`. This
+collector, Prometheus 3.5.0, answered with an empty `405`; its status endpoints are
+served to `GET`. The capture now sends
 `GET` when it has no parameters. While that release was still installed, the capture
 and the record were run by hand against its collector to exercise them on real data.
 That found the first-run counter behaviour described above: the API's labelled counters
@@ -244,9 +248,10 @@ ignores a dotted quad followed by a hyphen and a letter.
   validation, facts and environment derivation, sample parsing, the collector capture,
   and the record builder with `check`, `fields`, `repository`, `facts`, `telemetry`,
   `record`, and `verify`.
-- `tools.llm_load` writes `startedAtEpochMs` into every raw header, and its reader
-  accepts sets without it. Nothing else in its behaviour changed; the committed
-  rehearsal set still reads.
+- `tools.llm_load` writes `startedAtEpochMs` into every raw header. Its reader accepts
+  sets without the field, and refuses one where it is present and not a whole number of
+  at least 1. Nothing else in its behaviour changed; the committed rehearsal set still
+  reads.
 - [The procedure](../../serving/performance-scenarios.md), and updates to
   [the load guide](../../serving/llm-load-generation.md), the README, CONTRIBUTING, the
   test inventory, and the proof index.
@@ -255,35 +260,116 @@ ignores a dotted quad followed by a hyphen and a letter.
 No chart, template, render, Terraform resource, API behaviour, recording rule, or
 dashboard panel changed.
 
+## Independent review, and what it changed
+
+The first commit was reviewed before push by three independent reviewers: one for the
+workflow's and the tools' code, one for every number and claim against the committed
+evidence, and one for scope, governance, measurement semantics, safety, and leakage.
+Each finding below was checked before it was acted on. No leakage was found.
+
+**What the first commit got wrong in this record.**
+
+- **The full lane result was stale.** It recorded 9 012 passed and 1 failed, run before
+  the failing sample was fixed, and it counted 9 043 tests where that tree held 9 046;
+  only two modules were rerun. The lane is now rerun and recorded below.
+- **"The sampler's reads slowed under load" used all 285 samples.** Its best read,
+  316 ms, was not taken under load. The idle and load figures are now separate.
+- **"Runtime CPU does not rise with concurrency"** was false as written, since `c1` reads
+  about 40–50 millicores below `c2` and `c4`. It was also a comparison between levels,
+  which this record says it does not make. The PR2 list now states each fact on its own,
+  and the sentence tying three gauges to "one parallel slot and four callers" is gone.
+- **"The minimum latency at `c2` and `c4` is close to `c1`'s"** overstated it: 2 320 ms is
+  about 47% above `c1`'s 1 581 ms. It also said the first-request explanation was not
+  established, though the raw sets show the fastest request was at position 0 or 1 in
+  every such phase. The item now states that position.
+- **"Node outside release 400–597 millicores under load"** took both ends from the
+  warm-ups, which this record calls unreliable. The measured levels read 477–541.
+- **CPU throttling was not mentioned.** With runtime CPU near its limit, that gap matters
+  to any later reading. It is now a limitation and a PR2 item.
+- **The residue claim** named the release's instance label, but the query checked eight
+  kinds and not the chart's Role and RoleBinding.
+- **"The review changes below are listed against them"** pointed at a list that did not
+  exist.
+- **The reconciliation claim** implied every counter was compared. Input tokens are not.
+- **The `llm_load` reader** gained a refusal that "nothing else changed" omitted.
+- **"Prometheus answers a POST with an empty 405"** was stated generally. It was observed
+  on 3.5.0's build-information endpoint.
+- **The acceptance criteria** were restated more closely to wording kept outside this
+  repository than needed; they are rephrased.
+
+**What the first commit got wrong in the code.** None of these changes a figure in the
+committed record, which regenerates byte for byte.
+
+- **The restart check added the before and after readings together.** `restartCount` is
+  a pod's lifetime counter, so one restart before the runs read as two. It now takes each
+  pod's larger reading. A restart before the runs still fails the check.
+- **A `NaN` or infinite counter read raised a raw `ValueError`** instead of a refusal.
+- **Reading an absent counter as zero rested on a property of the workflow the code could
+  not see.** It now also requires the runtime's predicted-token counter to read exactly
+  `0` at the same instant.
+- **The private-value refusal covered three of the record's inputs.** The raw sets and
+  the resource samples are now checked too. It still recognizes only drive paths,
+  user-directory paths, and IPv4 addresses, not host names or IPv6.
+- **The coverage check ignored a missing node read.** It now counts one.
+- **The workflow applied the Terraform prerequisites before refusing an existing
+  release.** The refusal now comes first.
+- **Cleanup could hang.** The sampler and the forwards were waited for without a
+  deadline, inside the exit trap. Each wait is now bounded, then the child is killed.
+- **The residue query omitted Roles and RoleBindings,** which the chart renders.
+
+**What the first commit got wrong elsewhere.**
+
+- **Two sentences in the test inventory still counted twenty-six** documentation and
+  claim-free modules, and its row for the new suite said every figure in it was
+  constructed, though the suite regenerates the committed real record.
+- **Accepted documents still stated the old rule without a pointer:** the boundary review
+  checklist, the claim-test matrix, the raw-result template, the claim's deferral reason
+  in the strategy data, ADR 0006, ADR 0007, the telemetry catalog, and the cost worked
+  example. Each now points to ADR 0013. ADR 0013 now says how it leaves ADR 0007's
+  reasoning intact, and no longer says the strategy data is unedited.
+- **ADR 0013 said V1 had published no latency figure until it,** though earlier records
+  hold labelled ones. **It also overstated enforcement:** the tools check the boundary
+  flags and sentence, and whether a figure is read as portable is review-only everywhere.
+  It called the host laptop-class, which nothing recorded.
+- **The procedure** overstated what `check` prints, what `record` reads, what `verify`
+  compares, when a failed record is written, and what the coverage check refuses.
+- **The load guide** said the workflow performs the same steps as its hand-run commands.
+  It installs and removes its own release and uses other ports.
+- **The CHANGELOG** set per-level latency, request rate, and CPU side by side in a
+  headline, which is analysis this change does not make. It now points to the record.
+- **The test fixtures** carried addresses that may have been this cluster's, and a drive
+  letter matching this host's. They now use documentation addresses and `Z:`.
+
+**Not changed.** Throttling counters were not added to the sampler: they would change
+the sample format and need a new run, and PR2 or a later run can add them. The descriptor
+still assigns these runs to the `real-runtime` lane; that lane's strategy notes now say
+so.
+
 ## Checks run on the change
 
 Every command ran from the repository root in Git Bash, inside the locked environment,
-after the committed record was promoted, with no cluster contacted by any of them.
+after the review changes, with no cluster contacted by any of them. The first commit's
+own runs recorded 117, 196, and a lane of 9 012 passed with 1 failed, described above.
+The check commands show the last line each printed.
 
 ```text
-python -m pytest tests/serving/test_performance_scenarios.py -q          117 passed
+python -m pytest tests/serving/test_performance_scenarios.py -q          123 passed
 python -m pytest tests/serving/test_llm_load.py -q                        196 passed
-python -m pytest -q                                                       9012 passed, 1 failed, 30 skipped, 14 deselected
+python -m pytest -q                                                       9022 passed, 30 skipped, 14 deselected
 ruff format --check .                                                     395 files already formatted
 ruff check .                                                              All checks passed!
 python -m mypy                                                            Success: no issues found in 219 source files
-python -m tools.performance_scenarios check                               descriptor validated
+python -m tools.performance_scenarios check                               claim  bounded observations; not capacity, an SLO, or a benchmark; saturation not judged
 python -m tools.performance_scenarios verify --dir docs/proof/serving --prefix v1-s4-004-pr1-
-                                                                          ok; usable=True
-python -m tools.llm_load check                                            not started (offline profile validation only)
-scripts/environment/performance-scenarios.sh check                        the descriptor validated
-python -m tools.inference_dashboard                                       ok  29 panel(s)
+                                                                          ok  the committed record regenerates from its inputs; usable=True
+python -m tools.llm_load check                                            execution  not started (offline profile validation only)
+scripts/environment/performance-scenarios.sh check                        [inferops] the descriptor validated. Nothing was contacted and no release was installed.
+python -m tools.inference_dashboard                                       ok  29 panel(s) satisfy the dashboard policy
 git diff --check                                                          (no output)
 ```
 
-The one failure was `test_no_committed_file_carries_a_personal_filesystem_path` in
-`tests/security/test_security_baseline.py`. It found a home-directory path written out
-as a sample in the new suite's refusal test. The samples are now assembled at run time,
-and the two affected modules then passed together: 863 passed.
-
-The environment-script safety suites, the test strategy suite, and the test inventory
-suite were run after the script was registered and the documents amended, and passed.
-`bash -n scripts/environment/performance-scenarios.sh` passed. `shellcheck` is not installed on this host and was not run, and no CI gate runs it over `scripts/`.
+`bash -n scripts/environment/performance-scenarios.sh` passed. `shellcheck` is not
+installed on this host and was not run, and no CI gate runs it over `scripts/`.
 
 ## What was not run, and why
 
@@ -304,11 +390,11 @@ this PR does for each; the analysis and publication are PR2's.
 
 | Criterion | Status |
 |---|---|
-| At least baseline and higher-load scenarios are compared | **Executed, not compared.** Baseline `c1` and higher-load `c2` and `c4` ran twice with identical capture. The comparison is PR2's |
-| P50/P95/P99, throughput, errors, resource use, and tokens where available | **Captured and recorded** per phase and per run; errors were zero |
-| Saturation statement specific to the provider, host, model, runtime, and profile, naming the experiment boundary | **Not made here, by design.** Every identity it would need is recorded. `saturationJudged` is false |
-| The report refuses portable capacity, production SLO, and universal benchmark interpretations | **Met for this record and ADR 0013.** The published report is PR2's |
-| Raw evidence supports the summary | **Met, and checked.** The record regenerates exactly from the committed raw sets, samples, telemetry, windows, and environment, and every counter reconciles with the raw sets |
+| A baseline and at least one higher load, run under the same capture | **Executed, not compared.** Baseline `c1` and higher-load `c2` and `c4` ran twice with identical capture. The comparison is PR2's |
+| Latency percentiles, throughput, errors, resource use, and token counts | **Captured and recorded** per phase and per run; errors were zero |
+| A degradation statement bound to this provider, host, model, runtime, and profile | **Not made here, by design.** Every identity it would need is recorded. `saturationJudged` is false |
+| No portable capacity, SLO, or benchmark reading | **Met for this record and ADR 0013.** The published report is PR2's |
+| The summary is supported by raw evidence | **Met, and checked.** The record regenerates exactly from the committed raw sets, samples, telemetry, windows, and environment, and every counter reconciles with the raw sets |
 
 ## Limitations
 
@@ -318,9 +404,13 @@ this PR does for each; the analysis and publication are PR2's.
 - The prompt cache serves nearly all of every prompt after the first.
 - Resource samples are about 2–4 s apart and their placement is uncertain by up to
   0.9 s under load. The collector locates events to a 30-second scrape.
+- CPU throttling counters were not sampled.
 - The warm-up phases hold two samples each.
-- The repository was not committed when the run was made. Its file digests are recorded,
-  and the review changes below are listed against them.
+- The repository was not committed when the run was made. Its file digests are recorded
+  and equal the first commit of this change. The review below changed two of those
+  files after the run, `scripts/environment/performance-scenarios.sh` and
+  `tools/performance_scenarios/core.py`; what changed is listed there, and the committed
+  record still regenerates byte for byte under the changed code.
 
 ## Authorisation
 
@@ -330,8 +420,10 @@ counters.
 
 Granted by: the host owner, in the session that ran it, for `docker-desktop`. The
 cluster was not created, reset, or reconfigured, and no workload of another project was
-touched. Each attempt's release was uninstalled; after attempt 3 the workflow found no
-object with the release's instance label and an unchanged claim count. The
+touched. Each attempt's release was uninstalled. After attempt 3 the workflow found no
+Deployment, ReplicaSet, Service, ConfigMap, ServiceAccount, Pod, NetworkPolicy, or Job
+with the release's instance label, and an unchanged claim count. Roles and RoleBindings
+were not in that query when it ran; the review added them. The
 Terraform-owned namespace and model cache claim remain, as after every earlier run.
 
 Sensitive values removed before committing: host name, user account, absolute

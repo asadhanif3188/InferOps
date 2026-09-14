@@ -36,7 +36,9 @@ cluster reported. The first run and its record are in
 | Telemetry | Nine sum-aggregated series over the whole schedule at a 15 s step; three counter reconciliations; the dashboard's panel expressions at each phase end | Aggregated so that no per-target label, such as a pod address, reaches a record |
 | Forwards | API on `127.0.0.1:18093`, collector on `127.0.0.1:19093` | The API behind the forward is unauthenticated; both bind loopback only |
 
-`python -m tools.performance_scenarios check` prints the same values from the file.
+`python -m tools.performance_scenarios check` validates all of them and prints a
+summary: the scenarios, the schedule, the sample interval, and the series and
+reconciliation counts.
 The ceilings that bound them — three repetitions, a 7,200 s worst-case schedule, 20
 series, a sample interval between 1,000 and 10,000 ms — are constants in
 `tools.performance_scenarios.core`, not values read from the descriptor.
@@ -55,7 +57,8 @@ request deadline, the output-token limit, the model revision, and the runtime th
 
 The load facts file that `tools.llm_load run` requires is **derived** from those
 answers by `python -m tools.performance_scenarios facts`, not typed by an operator, and
-then checked by the load tool as before. The digests of the files a run executes are
+then checked by the load tool as before. The environment also keeps each image's
+config ID and every digest it carries. The digests of the files a run executes are
 recorded beside the repository revision, so a record can say which code produced it
 even when the tree was not clean.
 
@@ -70,6 +73,10 @@ it resolves to, and every digest that image carries. A pod whose `imageID` is no
 them is refused, and the record keeps the image's config ID.
 
 ### The resource counters, from inside the node
+
+The sampler reads CPU usage and memory. It does **not** read the cgroup's `cpu.stat`
+throttling counters, so a record cannot tell a CPU limit that bound from threads that
+were simply busy.
 
 The workflow locates each release pod's cgroup directory once, by the pod UID the API
 server reported, and refuses a tier with other than one match. It then runs one
@@ -122,10 +129,12 @@ what everything else on the node used.
 | `telemetry-series-answered` | The collector refused a range query |
 | `run-N-completed` | A load run did not end `completed`, or exited non-zero |
 | `counters-reconcile-with-raw-records` | The API's request counter did not rise by exactly the requests the raw set dispatched, or the API's or runtime's output tokens by exactly the tokens it recorded |
-| `resource-samples-cover-every-phase` | The samples start after the idle window opens or end before the last phase closes, leave a gap above the maximum, miss a tier inside the schedule, or give a measured phase or the idle window fewer than the minimum samples |
+| `resource-samples-cover-every-phase` | The first sample is more than the maximum gap after the idle window opens, the last is before the last phase closes, two samples are further apart than the maximum gap, a read between the idle window's start and the last phase's end is missing the node's or any release pod's CPU counter, or a measured phase or the idle window has fewer than the minimum samples |
 
-A record whose checks fail is still written, with `usable: false`, and the workflow
-exits non-zero. Its `observations` list facts a later analysis must account for: a
+Once the workflow reaches the record, a record whose checks fail is still written, with
+`usable: false`, and the workflow exits non-zero. A load run that does not complete
+stops the workflow before any record is built; its raw set is kept in the run
+directory. Its `observations` list facts a later analysis must account for: a
 phase with non-successful requests, a level stopped by its duration rather than its
 request ceiling, a counter that disagreed.
 
@@ -163,7 +172,7 @@ It verifies the target, applies the Terraform prerequisites, installs the releas
 waits for the runtime, the API, and the collector, records the environment, starts the
 sampler, opens both forwards, waits out the idle baseline, runs each repetition, asks
 the collector, uninstalls the release, checks for residue and an unchanged claim count,
-and builds the record. On the reference host the whole run took 16 min 56 s, by the operator shell's timestamps.
+and builds the record. The run in the validation record took 16 min 56 s, by the operator shell's timestamps.
 
 A run directory that already exists is refused rather than overwritten. On failure the
 sampler and the forwards are stopped, diagnostics go to
@@ -176,8 +185,10 @@ python -m tools.performance_scenarios record --run-dir .cache/inferops/experimen
 python -m tools.performance_scenarios verify --dir docs/proof/serving --prefix v1-s4-004-pr1-
 ```
 
-`record` reads only files in the run directory. `verify` regenerates a committed record
-from its committed inputs and fails if a single byte differs.
+`record` reads the files in the run directory, and from the repository the descriptor,
+the load profile, and the chart values the descriptor is checked against. `verify`
+regenerates a committed record from its committed inputs and fails if it differs in any
+byte after line endings are normalized to LF.
 
 ### Exit codes
 
@@ -199,8 +210,9 @@ workflow exits non-zero whenever any step did not complete.
 
 A record is promoted by copying `record/` into `docs/proof/serving/` under a prefix.
 Every input the record is built from is refused if it carries a value shaped like a
-host path, a user directory, or a network address other than loopback, and no prompt or
-completion text reaches any of them.
+Windows drive path, a user or home directory, or an IPv4 address other than loopback.
+Host names and IPv6 addresses are not recognized and are left to review. No prompt or
+completion text reaches any input.
 
 ## What this cannot establish
 

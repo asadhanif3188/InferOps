@@ -311,8 +311,9 @@ never follows a redirect.
 These hand-run commands are **documented and unexecuted** as written. The tool's
 first real runs were made through
 [`scripts/environment/performance-scenarios.sh`](../../scripts/environment/performance-scenarios.sh),
-which performs the same steps, derives the facts file from the cluster's own answers,
-and records the evidence in
+which installs and removes its own release, uses its own forward ports, derives the
+facts file from the cluster's own answers instead of the readings above, and records
+the evidence in
 [the V1-S4-004-PR1 validation record](../proof/serving/v1-s4-004-pr1-validation.md).
 
 ### Regenerate a summary from a raw record set

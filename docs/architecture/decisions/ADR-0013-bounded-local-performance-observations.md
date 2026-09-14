@@ -11,10 +11,13 @@
 | Superseded by | None |
 
 > [!IMPORTANT]
-> Until this record, V1 published **no** latency, throughput, capacity, or benchmark
-> figure. ADR 0004 D6 said so, the project boundaries said so, and ADR 0005 built the
-> deferred `capacity` lane on top of it. That rule was written when the only such
-> figure this project held came from one sequential request on one CPU host.
+> Until this record, V1's rule was that it publishes **no** latency, throughput,
+> capacity, or benchmark figure. ADR 0004 D6 said so, the project boundaries said so,
+> and ADR 0005 built the deferred `capacity` lane on top of it. The few figures earlier
+> records did carry, such as the runtime feasibility trial's decode rate, were each
+> labelled as not a benchmark and not a claim. The rule was written when that trial,
+> one sequential request on one CPU host, was the only such measurement this project
+> held.
 >
 > This record narrows the rule and keeps its purpose. A figure measured in a
 > **declared, executed, local experiment** may be published when the record carrying
@@ -35,7 +38,7 @@
 | ID | Decision | Status | What supports it |
 |---|---|---|---|
 | D1 | A bounded observation from a declared local experiment may be published | **Accepted** | Review, and two loaders that refuse a record not carrying its boundary (D3) |
-| D2 | Portable capacity, production SLOs, universal performance, benchmarks, and cross-provider readings stay refused | **Accepted** as a rule | Machine-checked in the records the two loaders read and write; **review only** for prose |
+| D2 | Portable capacity, production SLOs, universal performance, benchmarks, and cross-provider readings stay refused | **Accepted** as a rule | The records' boundary flags and sentence are machine-checked by the two loaders; whether a figure is read as portable is **review only**, everywhere |
 | D3 | Such an observation comes from a committed descriptor, an authorized run on an explicitly selected and verified provider, and a record that carries its own boundary | **Accepted** | `tools.llm_load` and `tools.performance_scenarios` refuse a profile, raw set, descriptor, or record whose benchmark or capacity flags are not false or whose boundary sentence is missing |
 | D4 | A saturation or degradation statement names its experiment boundary, and no tool makes one | **Accepted** as a rule | The performance record carries `saturationJudged: false`; a statement about degradation belongs to an analysis document, reviewed |
 | D5 | Nothing earlier is reinterpreted | **Accepted** | Review. The runtime feasibility decode-rate figure stays labelled not a benchmark |
@@ -101,12 +104,14 @@ experiment measured:
 
 `sustained-throughput-and-capacity-under-load` stays deferred. The `capacity` lane
 stays `deferred`, the `capacity-and-load` layer stays `deferred` and unpublishable,
-and nothing here edits the strategy data those rows live in.
+and their status and deferral are unchanged; the strategy data carries a pointer note to
+this record and nothing else.
 
-**Enforcement.** Machine-checked where a record is read or written by the two tools in
-D3. Not machine-checked in prose. A document can still write a portable claim, and
-the only thing that stops it is a reviewer. That gap is stated here rather than
-implied closed.
+**Enforcement.** The two tools in D3 refuse a record whose `productionBenchmark` or
+`portableCapacityClaim` is not `false` or whose boundary sentence is missing. That is
+all they check. Whether a figure is presented as portable is not machine-checked
+anywhere, in a record's surrounding prose or in any other document; a reviewer is the
+only thing that stops it. That gap is stated here rather than implied closed.
 
 ## D3 — Where a publishable observation comes from
 
@@ -132,6 +137,14 @@ Synthetic, mock, and rehearsal output never qualifies, however it is labelled.
 The performance record carries `saturationJudged: false`. A statement that a setup
 degraded at some level is made in an analysis document that names the experiment
 boundary and cites the record, and it is reviewed like any other claim.
+
+### How this leaves ADR 0007 intact
+
+[ADR 0007](ADR-0007-inference-cost-method.md) reasoned that a cost per thousand
+requests divides an hourly reservation by an hour of traffic, so publishing one would
+publish the traffic. This record now permits publishing a bounded traffic rate. It does
+not permit a real-provider cost figure: ADR 0007 D11 is a decision in its own right, not
+only a consequence of the rule narrowed here, and it stands.
 
 ## D5 — Nothing earlier is reinterpreted
 
@@ -161,8 +174,10 @@ row keep their status.
 
 A performance record names a host's processor count, memory, kernel release, and
 container engine version. It must not name a host name, user, filesystem path, or
-network address. `tools.performance_scenarios` refuses a record input carrying a
-value shaped like a host path, a user directory, or an address other than loopback.
+network address. `tools.performance_scenarios` refuses any record input carrying a
+value shaped like a Windows drive path, a user or home directory, or an IPv4 address
+other than loopback. It does not recognize host names or IPv6 addresses; those are left
+to review.
 Counts of unrelated workloads may be kept; their names may not.
 
 ## Evidence
@@ -172,9 +187,9 @@ The change validation, and the first record produced under this decision, is
 
 ## Risks, assumptions, and open questions
 
-- **Prose is the weak point.** D2 is enforced on records and not on sentences. A
+- **Prose is the weak point.** D2's flags are enforced on records and not on sentences. A
   portable claim written into a document passes every test in this repository.
-- **One setup can still look general.** A single-replica release on one laptop-class
+- **One setup can still look general.** A single-replica release on one local
   host is what V1 has. Figures from it are easy to repeat without their boundary,
   and the boundary sentence travels only as far as the reader keeps it.
 - **Assumed:** that the analysis documents citing a record will quote its setup. If
