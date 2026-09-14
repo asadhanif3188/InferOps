@@ -10,6 +10,29 @@ once versioned releases begin.
 
 ### Added
 
+- **The dashboard, asked of a real Prometheus and rendered by a real Grafana, with a
+  thirty-second operator guide.** One single-replica release on `docker-desktop` was
+  driven through nine states — idle, traffic, errors, the serving runtime scaled to
+  zero and restored, an API pod replaced, and the API scaled to zero — and after each,
+  `python -m tools.inference_dashboard --capture` asked the release's collector every
+  one of the 30 panel expressions. Prometheus refused none. Requests, errors, and
+  output tokens reconcile exactly with what clients sent; every latency quantile falls
+  in the client-observed bucket. Grafana 11.6.0 imported the generated JSON and was
+  screenshotted in six states.
+  [The operator guide](docs/telemetry/inference-operations-dashboard-operator-guide.md)
+  names, for every panel, the conclusion it cannot support. Evidence:
+  [the V1-S4-002-PR2 validation record](docs/proof/telemetry/v1-s4-002-pr2-dashboard-validation.md)
+  and [its readings](docs/proof/telemetry/v1-s4-002-pr2-panel-readings.v1alpha1.json).
+
+  **What the run showed that fixtures had not:** a rate misses every event before a
+  series' first scrape — ten `capability-unavailable` failures read `0` per second —
+  and outlives its process; latency quantiles include fast refusals, so an outage
+  reads faster; the runtime's input tokens exclude its prompt cache; and a long
+  missing text in a Grafana stat panel shrinks until it cannot be read. The record's
+  descriptions and limitations were corrected; no query, chart, rule, or API behaviour
+  changed. Not run: `kind`, two replicas, an idle NaN window, and a target that is
+  down while its pod exists.
+
 - **An inference operations dashboard, as code, that tells zero from missing.**
   [The dashboard record](docs/telemetry/inference-operations-dashboard.v1alpha1.json)
   defines 29 panels across nine operational questions — collection, readiness,
@@ -26,8 +49,9 @@ once versioned releases begin.
   panel over the six synthetic scenarios. Evidence:
   [the V1-S4-002-PR1 validation record](docs/proof/telemetry/v1-s4-002-pr1-validation.md).
 
-  **No Grafana has imported it and no Prometheus has evaluated a panel from it.**
-  Eleven expressions are new and have been evaluated only by the fixture evaluator.
+  **When this entry was written no Grafana had imported it and no Prometheus had
+  evaluated a panel from it**; the entry below records the run that since did.
+  Eleven expressions were new and had been evaluated only by the fixture evaluator.
   Model readiness, model load duration, queue wait, and API process memory are shown
   as not emitted; pod and container readiness, restarts, container resource use, and
   the cluster provider as not answerable.

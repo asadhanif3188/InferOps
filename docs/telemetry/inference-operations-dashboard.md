@@ -1,12 +1,13 @@
 # The inference operations dashboard
 
-Status: **defined as code, checked, and never imported.** The dashboard is a
-committed record whose 29 panels run 30 expressions, each held to the correlation
-query policy and evaluated over the committed synthetic scenarios, and a Grafana
-dashboard JSON generated from it. No Grafana has imported that JSON, and no
-Prometheus has evaluated a panel from it. Nineteen of the expressions are accepted
-correlation queries that a real Prometheus has evaluated on one provider; eleven are
-new and have been evaluated by nothing but this repository's fixture evaluator.
+Status: **defined as code, checked, and validated once on one provider.** The
+dashboard is a committed record whose 29 panels run 30 expressions, each held to the
+correlation query policy and evaluated over the committed synthetic scenarios, and a
+Grafana dashboard JSON generated from it. Nineteen of the expressions are accepted
+correlation queries; eleven are new in this record. All 30 have been asked of a real
+Prometheus — the collector of one single-replica release on `docker-desktop` — in
+nine controlled states, and one Grafana has imported the JSON and rendered it. See
+[the V1-S4-002-PR2 validation record](../proof/telemetry/v1-s4-002-pr2-dashboard-validation.md).
 
 The authoritative form is
 [`inference-operations-dashboard.v1alpha1.json`](inference-operations-dashboard.v1alpha1.json).
@@ -16,7 +17,8 @@ and [`tests/telemetry/test_inference_dashboard.py`](../../tests/telemetry/test_i
 regenerates it from the record and fails if a byte differs.
 
 This document describes what the dashboard shows and why. How to read it in thirty
-seconds, with screenshots from a running release, is not here yet.
+seconds, and which conclusions each panel cannot support, is
+[the operator guide](inference-operations-dashboard-operator-guide.md).
 
 ## What it is for, and the failure it is built against
 
@@ -46,9 +48,10 @@ and health list. That is a list, and a list misses synonyms it was not given: th
 suite pins one it still accepts.
 
 **Why the zeros are counts and not rates.** The API creates a labelled counter series
-on its first event, so the series first appears already at 1. A rate never sees that
-first event: the recovery run's single readiness refusal would have read `0` per
-second. A zero filled over a rate would therefore read `0` beside a real failure. So
+on its first event, so the series first appears at whatever it has counted by its
+first scrape — at least 1. A rate never sees those events: the recovery run's single
+readiness refusal would have read `0` per second, and in the validation run ten
+refused requests did. A zero filled over a rate would therefore read `0` beside a real failure. So
 the four panels that fill a zero are counts since the API processes started, which do
 see the first event and disappear at once when a target stops answering. The rate
 timeseries remain, and each says what a rate cannot see.
@@ -193,32 +196,43 @@ python -m pytest tests/telemetry/test_inference_dashboard.py -q
 python -m tools.inference_dashboard
 python -m tools.inference_dashboard --evaluate
 python -m tools.inference_dashboard --grafana
+python -m tools.inference_dashboard --capture http://127.0.0.1:19090
 ```
 
-All four read files in this repository. None of them starts Grafana, contacts a
-cluster, or queries a Prometheus.
+The first four read files in this repository. None of them starts Grafana, contacts a
+cluster, or queries a Prometheus. `--capture` asks the Prometheus at the URL it is
+given every panel expression as an instant query and prints how each reads — empty,
+zero, value, NaN, or refused. It sends no inference request and changes nothing; the
+URL is a loopback forward to a release's collector that the operator opened.
 
 ## What this does not establish
 
-- **No Grafana has imported the JSON.** Its structure is checked against the fields
-  this repository writes — unique ids, a non-overlapping grid, one data-source
-  variable, the record's queries and no-value texts — and not against Grafana's own
-  schema or a running server.
-- **No Prometheus has evaluated a panel from this record.** Eleven expressions are
-  new and have been evaluated only by the declared PromQL subset evaluator over
-  hand-written fixtures, which does not model a counter being born at 1 or a rate
-  outliving an outage. Those two properties were found by review, not by that
-  evaluator.
-- **Rates miss first events and outlive an outage.** A rate never counts a series'
-  first event, and after every target stops answering a five-minute rate keeps
-  returning the pre-outage figure for up to five minutes.
+- **One Grafana, one provider, one release.** The JSON was imported into Grafana
+  11.6.0 and rendered against one single-replica release on `docker-desktop`. It has
+  not been checked against Grafana's own schema validation, another Grafana version,
+  `kind`, or two replicas. Its structure is otherwise checked against the fields this
+  repository writes.
+- **A long missing text does not render legibly.** Grafana's stat panel shrinks its
+  no-value text to fit, and a text longer than about a line was unreadable in the
+  validation screenshots. The panel still draws no number and its title still says
+  what it counts, so zero and missing stay apart; the explanation does not survive.
+- **Rates miss events before a first scrape and outlive an outage.** Observed, not
+  only reasoned: ten refused requests read `0` per second while the since-start count
+  rose by ten, and with no API pod the request rate still read a success rate.
+- **Latency quantiles include refused requests and interpolate inside a bucket.** A
+  release refusing traffic reads faster, and a quantile says which bucket, not a
+  figure.
+- **The runtime's input tokens exclude its prompt cache**, so the two token panels
+  cannot be compared on input.
 - **An idle latency window is NaN, not missing.** Once the bucket series exist, a
-  window with no request draws gaps rather than the missing text.
+  window with no request draws gaps rather than the missing text. The validation run
+  did not observe one.
 - **A zero is only as good as what it rests on.** Neither zero fill is per replica, a
-  since-start count starts again when a process restarts, and the share of
-  unsuccessful requests does not depend on identity at all, so it reads `0` beside an
-  API that publishes none. Nothing checks what a fill is keyed to — only that a panel
-  filling one says what its zero means.
+  since-start count starts again when a process restarts — observed going from 33
+  errors to 0 on a pod replacement — and until a replaced process's series go stale a
+  count also includes it. The share of unsuccessful requests does not depend on
+  identity at all. Nothing checks what a fill is keyed to — only that a panel filling
+  one says what its zero means.
 - **Scrape state and identity counts lag.** Both follow discovery and scrape timing.
 - **No alert is defined.** A panel that nobody is watching tells nobody anything, and
   alert routing is still undecided.

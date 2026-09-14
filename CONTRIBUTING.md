@@ -709,8 +709,8 @@ python -m tools.telemetry_collection charts/inferops-llm/ci/rendered
 That suite checks a configuration and not a collection: it reads a committed render
 and contacts nothing. A release-scoped collector now exists and has scraped both
 endpoints on `docker-desktop`. **What is still absent is a durable store, a
-dashboard server, and an alerting path** — a dashboard definition exists as code and
-nothing has imported it —
+dashboard server, and an alerting path** — a dashboard definition exists as code, and
+one throwaway Grafana has imported it once to validate it —
 [the collection document](docs/telemetry/kubernetes-telemetry-collection.md) is where
 that distance is stated.
 

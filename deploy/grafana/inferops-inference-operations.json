@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "The operational dashboard for one InferOps release, as data: the questions an operator asks in the first thirty seconds, the panel that answers each, the PromQL every panel runs, and what the panel shows when there is no number to show. Every expression is held to the correlation query policy in tools/telemetry_correlation and evaluated against the committed synthetic scenarios. The Grafana dashboard JSON under deploy/grafana/ is generated from this file and compared against it. No Grafana has imported it and no Prometheus has evaluated a panel from it.",
+  "description": "The operational dashboard for one InferOps release, as data: the questions an operator asks in the first thirty seconds, the panel that answers each, the PromQL every panel runs, and what the panel shows when there is no number to show. Every expression is held to the correlation query policy in tools/telemetry_correlation and evaluated against the committed synthetic scenarios. The Grafana dashboard JSON under deploy/grafana/ is generated from this file and compared against it. One Grafana has imported it and one real Prometheus has evaluated every panel expression, on one provider, in the states the realRunEvidenceRef record names.",
   "editable": false,
   "graphTooltip": 1,
   "links": [],
@@ -25,7 +25,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The fraction of each tier's discovered targets that answered the last scrape. It says the collector reached a process, and nothing about whether that process can serve: a deleted pod has been observed reading up for fifteen seconds after deletion.",
+      "description": "The fraction of each tier's discovered targets that answered the last scrape. It says the collector reached a process, and nothing about whether that process can serve: a deleted pod has been observed reading up for fifteen seconds after deletion. A tier whose job discovered no pod has no row here rather than a 0: the absence panel beside it is what says so.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -325,7 +325,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -564,7 +564,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -686,7 +686,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The runtime's own view, through the chart's recording rules. It counts slots, not the API's accepted requests, and is not expected to match the API panel. Deferred says queueing happened and never how long anything waited.",
+      "description": "The runtime's own view, through the chart's recording rules. It counts slots, not the API's accepted requests, and is not expected to match the API panel. Deferred says queueing happened and never how long anything waited. Read through a scrape and a recording rule, so a short burst can finish before either panel moves.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -771,7 +771,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark. Once the bucket series exist, a five-minute window with no request makes every quantile NaN, which draws as a gap in a line that is still present -- not as this panel's missing text.",
+      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark. Once the bucket series exist, a five-minute window with no request makes every quantile NaN, which draws as a gap in a line that is still present -- not as this panel's missing text. Every outcome is in the histogram: a refused request is fast, so a release refusing traffic reads lower here, not higher. A wide bucket makes the interpolation coarse: a quantile can sit most of a bucket width away from what clients observed, so read it as a bucket, not a figure.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -854,7 +854,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1120,7 +1120,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1729,7 +1729,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Input and output tokens as the API counts them, at the API's boundary. A labelled counter series is created by its first event and first appears already at 1, so a rate never sees that first event, and a series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Input and output tokens as the API counts them, at the API's boundary. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1790,7 +1790,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "The runtime's own counters, mapped by the chart's recording rules. A different measurement from the API's, and not expected to match it.",
+      "description": "The runtime's own counters, mapped by the chart's recording rules. A different measurement from the API's, and not expected to match it. Input excludes prompt tokens llama-server served from its prompt cache, so input here is not the API's input; output has been observed to match the API exactly. Read through a scrape and a recording rule, so it can trail the API by a minute.",
       "fieldConfig": {
         "defaults": {
           "color": {

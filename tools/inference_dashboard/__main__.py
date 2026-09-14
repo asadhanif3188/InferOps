@@ -4,6 +4,7 @@
     python -m tools.inference_dashboard --json
     python -m tools.inference_dashboard --evaluate
     python -m tools.inference_dashboard --grafana
+    python -m tools.inference_dashboard --capture URL [--at UNIX_SECONDS]
 
 The first two apply the dashboard policy. Exit status is 0 when nothing is refused
 and 1 when anything is, so the command is usable as a gate. ``--evaluate`` runs every
@@ -12,7 +13,11 @@ panel query against every committed scenario fixture and prints what it returned
 ``deploy/grafana/`` is compared against; nothing is written, and a record the policy
 refuses renders nothing.
 
-**It reads files.** It starts no Grafana and no Prometheus. See
+``--capture`` asks one running Prometheus every panel expression as an instant query
+and prints how each reads; it is the only mode that contacts anything, and it
+contacts only the URL it is given.
+
+**The other modes read files.** None starts a Grafana or a Prometheus. See
 docs/telemetry/inference-operations-dashboard.md.
 """
 
@@ -21,11 +26,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 
 from tools.telemetry_correlation import FIXTURE_DIR, load_fixture, load_query_record
 
 from .core import check_dashboard, evaluate_dashboard, load_dashboard_record
 from .grafana import render_grafana, serialise
+from .live import capture, http_query
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -46,12 +53,28 @@ def main(argv: list[str] | None = None) -> int:
     group.add_argument(
         "--grafana", action="store_true", help="print the Grafana dashboard JSON"
     )
+    group.add_argument(
+        "--capture",
+        metavar="URL",
+        help=(
+            "ask the Prometheus at URL every panel expression and print each "
+            "reading as JSON; sends no inference request and changes nothing"
+        ),
+    )
+    parser.add_argument(
+        "--at",
+        type=float,
+        metavar="UNIX_SECONDS",
+        help="with --capture, evaluate every expression at this one instant",
+    )
     arguments = parser.parse_args(argv)
+    if arguments.at is not None and arguments.capture is None:
+        parser.error("--at is only meaningful with --capture")
 
     record = load_dashboard_record()
     findings = check_dashboard(record)
 
-    if (arguments.evaluate or arguments.grafana) and findings:
+    if (arguments.evaluate or arguments.grafana or arguments.capture) and findings:
         print(
             "REFUSED  the dashboard record does not satisfy the dashboard policy",
             file=sys.stderr,
@@ -60,6 +83,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if arguments.grafana:
         print(serialise(render_grafana(record)), end="")
+        return 0
+
+    if arguments.capture:
+        at = arguments.at if arguments.at is not None else time.time()
+        readings = capture(record, http_query(arguments.capture, at=at))
+        print(json.dumps({"at": round(at, 3), "readings": readings}, indent=2))
         return 0
 
     if arguments.evaluate:

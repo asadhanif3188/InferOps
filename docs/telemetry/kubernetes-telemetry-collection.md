@@ -325,7 +325,8 @@ control on an endpoint that carries **no authentication at all**
 
 - **No dashboard server and no alerting path is selected.** A collector is, and it
   reads this ConfigMap, and [a dashboard definition](inference-operations-dashboard.md)
-  reads the collector's series in a file nothing has imported. Where the series go
+  reads the collector's series in a file no server runs; it was imported once, into a
+  throwaway Grafana, to validate it. Where the series go
   afterwards, what shows them, and what would page anybody, are still unowned and
   still deferred.
 - **One installation is not a claim about installation.** V1-S3-011-PR1 installed
