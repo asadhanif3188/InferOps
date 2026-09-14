@@ -1104,7 +1104,7 @@
       {"seriesName": "llamacpp:tokens_predicted_seconds_total", "instrument": "counter", "mapsTo": null, "note": "Decode time."},
       {"seriesName": "llamacpp:n_decode_total", "instrument": "counter", "mapsTo": null, "note": "Decode steps."},
       {"seriesName": "llamacpp:n_tokens_max", "instrument": "gauge", "mapsTo": null, "note": "Largest context observed."},
-      {"seriesName": "llamacpp:prompt_tokens_seconds", "instrument": "gauge", "mapsTo": null, "note": "A derived rate. V1 may publish no throughput figure, so it is recorded and not surfaced."},
+      {"seriesName": "llamacpp:prompt_tokens_seconds", "instrument": "gauge", "mapsTo": null, "note": "A derived rate. V1 may publish no throughput figure, so it is recorded and not surfaced. ADR 0013 now allows a bounded observation of a declared local experiment; this series is still not surfaced."},
       {"seriesName": "llamacpp:predicted_tokens_seconds", "instrument": "gauge", "mapsTo": null, "note": "A derived rate, with the same restriction."},
       {"seriesName": "llamacpp:requests_processing", "instrument": "gauge", "mapsTo": "inference-requests-in-flight", "note": "Instantaneous in-flight count."},
       {"seriesName": "llamacpp:requests_deferred", "instrument": "gauge", "mapsTo": "inference-queue-duration", "note": "Instantaneous queue depth. It shows that queueing happened, never how long a request waited."},

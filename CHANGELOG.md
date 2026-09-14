@@ -10,6 +10,38 @@ once versioned releases begin.
 
 ### Added
 
+- **The performance scenario matrix, executed on `docker-desktop`, with a record that
+  regenerates from its raw evidence.**
+  [The matrix](deploy/serving/experiments/performance-scenarios.v1.json) pins the load
+  profile by digest and runs its warm-up and levels 1, 2, and 4 twice against a release
+  that [`scripts/environment/performance-scenarios.sh`](scripts/environment/performance-scenarios.sh)
+  installs and removes. Beside the load it samples the node's cgroup counters for the
+  virtual machine, the node, and each release pod, reads the release collector's
+  series and the dashboard at every phase end, and derives the load facts from the
+  cluster's own answers. `python -m tools.performance_scenarios` builds a record that is
+  unusable if a pod changes, a container restarts, a counter disagrees with the raw
+  sets, or the samples leave a gap, and `verify` regenerates a committed record byte
+  for byte. `tools.llm_load` now writes `startedAtEpochMs`, so a phase can be placed on
+  the same clock as the samples. [The procedure](docs/serving/performance-scenarios.md)
+  says what each figure can and cannot support. Evidence:
+  [the V1-S4-004-PR1 validation record](docs/proof/serving/v1-s4-004-pr1-validation.md)
+  and [its record](docs/proof/serving/v1-s4-004-pr1-performance-record.v1alpha1.json).
+
+  **What the run recorded:** all 366 requests succeeded; the collector's request,
+  output-token, and runtime token counters reconcile exactly with the raw sets; and the
+  same pods served throughout with no restart. The per-phase latency, rate, CPU, and
+  memory figures are in the record, as bounded observations of one single-replica
+  release on one host with one prompt. **No saturation is judged and no level is
+  compared here**; that analysis is separate work, and nothing is capacity, an SLO, or a
+  benchmark. CPU throttling was not sampled.
+
+  **What the first attempts showed:** a pod's `imageID` names only one of an image's
+  digests, so a rebuilt API image imported twice was refused as the wrong image until
+  the binding went through the node's own image record; the collector, Prometheus
+  3.5.0, answered a `POST` to its build-information endpoint with an empty `405`; and the API's labelled counters do not exist
+  before the first request, which the record now reads as zero only where nothing else
+  is possible.
+
 - **A repeatable LLM load profile, with every dispatched request accounted for.**
   [The profile](deploy/serving/load/llm-load-profile.v1.json) fixes one fixture, a
   3-request warm-up, levels at concurrency 1, 2, and 4, a bound of 180 s or 60
@@ -231,6 +263,17 @@ once versioned releases begin.
   returns closes rather than reopening.
 
 ### Changed
+
+- **Bounded local performance observations may be published; portable capacity may
+  not.** [ADR 0013](docs/architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
+  narrows ADR 0004 D6 and the third project-boundary rule, which forbade any latency or
+  throughput figure. A figure from a declared, authorized, local experiment may be
+  published with its provider, host, model, runtime, configuration, profile, versions,
+  and evidence class named. Portable capacity, production SLOs, universal performance,
+  benchmarks, and cross-provider readings stay refused. The load and performance tools
+  check a record's boundary flags and sentence; whether a figure is read as portable is
+  review-only everywhere. The `capacity` lane and `sustained-throughput-and-capacity-under-load` stay
+  deferred.
 
 - **ADR 0004 D7 amended: the dashboard definition is a repository artifact.**
   `inference-operations-dashboard` joins the ownership inventory as

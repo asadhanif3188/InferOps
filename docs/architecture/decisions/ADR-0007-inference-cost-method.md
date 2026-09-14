@@ -84,7 +84,10 @@ container or node resource series — which removes measured utilisation from th
 inputs entirely. And [the project boundaries](../project-boundaries.md) forbid V1
 publishing any throughput, latency, capacity, or benchmark figure, which turns out to
 constrain cost directly: a cost per thousand requests is an hourly reservation
-divided by an hour of traffic, so publishing one publishes the traffic.
+divided by an hour of traffic, so publishing one publishes the traffic. (Since 2026-09-14,
+[ADR 0013](ADR-0013-bounded-local-performance-observations.md) narrows that boundary to
+allow bounded observations of a declared local experiment. This record's decisions are
+unchanged.)
 
 ## Decision criteria
 

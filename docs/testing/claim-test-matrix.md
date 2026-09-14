@@ -180,6 +180,9 @@ runtime work is not the same as engineering the runtime, and a capacity claim wo
 be a claim about a runtime this project did not write —
 [the project boundaries document](../architecture/project-boundaries.md) states the
 rule and this row is what it looks like applied.
+[ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
+has since narrowed the rule to allow a bounded observation of one declared, authorized
+local experiment. This claim is the portable one, and it stays deferred.
 
 The claim is written down rather than omitted so that publishing a capacity figure
 means deleting a deferral in public. A test refuses to let any non-deferred claim

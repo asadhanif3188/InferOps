@@ -1750,6 +1750,7 @@ def execute(
     transport: Transport = http_transport,
     clock: Callable[[], float] = time.perf_counter,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
+    epoch_ms: Callable[[], int] = lambda: time.time_ns() // 1_000_000,
     host: HostRecord | None = None,
 ) -> LoadRun:
     """Verify the target, run the warm-up, then run every level in order.
@@ -1757,6 +1758,11 @@ def execute(
     A real run requires confirmation and environment facts; a rehearsal forbids facts,
     because a synthetic record carrying a provider would be one step from being read
     as a run on that provider.
+
+    ``startedAtEpochMs`` is the wall-clock millisecond read beside the performance
+    counter that every phase and request offset is measured from. ``startedAt`` is
+    truncated to the second, which is too coarse to place a phase against samples
+    taken outside this process, such as a cluster's resource counters.
     """
     if mode == MODE_REAL:
         if not confirmed:
@@ -1783,6 +1789,7 @@ def execute(
     )
     stop = StopSignal()
     run_started = clock()
+    header["startedAtEpochMs"] = epoch_ms()
     phases: list[PhaseRecord] = []
     records: list[RequestRecord] = []
     end_state = END_COMPLETED
@@ -2113,6 +2120,10 @@ def _check_header(header: Mapping[str, Any], repo_root: Path) -> None:
     if header.get("boundary") != BOUNDARY_STATEMENT:
         raise LoadError("a raw load record set dropped its boundary statement")
     _percentiles(header.get("reportedPercentiles"), "reportedPercentiles")
+    # Optional, because record sets written before the field existed are committed
+    # evidence and must still read. Present, it must be a plausible whole number.
+    if "startedAtEpochMs" in header:
+        _integer(header.get("startedAtEpochMs"), "startedAtEpochMs", minimum=1)
     if header.get("percentileMethod") != EXPECTED_PERCENTILE_METHOD:
         raise LoadError("a raw load record set uses an unsupported percentile method")
 

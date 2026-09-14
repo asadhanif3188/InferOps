@@ -1,6 +1,8 @@
 # Repeatable LLM load generation
 
-Status: **implemented and rehearsed; never run against a real release.** The
+Status: **implemented, rehearsed, and run against a real release** by
+[the performance scenarios](performance-scenarios.md), which install the release,
+derive the facts file from the cluster, and run this profile twice. The
 versioned profile
 [`llm-load-profile.v1.json`](../../deploy/serving/load/llm-load-profile.v1.json) and
 the [`tools.llm_load`](../../tools/llm_load/) command send a fixed, bounded inference
@@ -306,8 +308,13 @@ refuses and sends nothing. The target must be `http://127.0.0.1:<port>`, with no
 path, query, or credentials. The transport ignores proxy environment variables and
 never follows a redirect.
 
-These real-run commands are **documented and unexecuted**. They name objects the
-committed chart renders. No real load run has been performed with this tool.
+These hand-run commands are **documented and unexecuted** as written. The tool's
+first real runs were made through
+[`scripts/environment/performance-scenarios.sh`](../../scripts/environment/performance-scenarios.sh),
+which installs and removes its own release, uses its own forward ports, derives the
+facts file from the cluster's own answers instead of the readings above, and records
+the evidence in
+[the V1-S4-004-PR1 validation record](../proof/serving/v1-s4-004-pr1-validation.md).
 
 ### Regenerate a summary from a raw record set
 
@@ -346,6 +353,14 @@ A `request` record carries `sequence`, `phase`, `levelId`, `concurrency`,
 `errorCondition`, `finishReason`, `inputTokens`, `outputTokens`, `adapterKind`, and `modelRef`.
 **It never carries the prompt, the completion, or a response header.** The raw
 header records the fixture's identifier and message count, not its text.
+
+The `run` header also carries `startedAtEpochMs`: the wall-clock millisecond read
+beside the performance counter that every `startedOffsetMs` and `dispatchOffsetMs` is
+measured from. `startedAt` is truncated to the second, which is too coarse to place a
+phase against samples taken outside this process, such as a node's resource counters.
+The reader accepts a raw set without it, because record sets written before it existed
+are committed evidence. It was added for
+[the performance scenarios](performance-scenarios.md).
 
 A `phase` record carries its bounds (`requestCeiling`, `durationSeconds`), its
 `startedOffsetMs` and `windowMs`, how many requests it `dispatched`, and its

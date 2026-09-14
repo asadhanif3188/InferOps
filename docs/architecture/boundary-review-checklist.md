@@ -49,7 +49,11 @@ for in writing rather than pass over.
       the model revision and hash, the environment, the exact commands, and the
       results?
 - [ ] **C3.** Does this change publish a throughput, latency, capacity, or benchmark
-      figure? V1 may not.
+      figure? V1 may not. Since
+      [ADR 0013](decisions/ADR-0013-bounded-local-performance-observations.md), a
+      bounded figure from a declared, authorized local experiment may be, with its
+      provider, host, model, runtime, profile, and evidence class named; a portable
+      capacity, SLO, or benchmark figure still may not.
 - [ ] **C4.** Is every new component, resource, or capability marked as implemented,
       planned, or deferred, with evidence cited only where it is implemented?
 - [ ] **C5.** Does anything in a cluster write into `docs/proof/`?

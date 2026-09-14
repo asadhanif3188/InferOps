@@ -50,7 +50,7 @@
 | D3 | Terraform owns prerequisites, Helm owns the release, controllers own derived objects | **Accepted; amended 2026-09-11.** The cluster belongs to its operator, and the third prohibition binds the whole platform path ([ADR 0011](ADR-0011-external-local-cluster-provider-contract.md)) | A committed inventory, with single ownership and disjointness enforced by a test |
 | D4 | The model cache is a prerequisite, not a release resource | **Accepted** | The teardown finding in the feasibility record: a cache inside the release's own scope was destroyed and cost a full re-download |
 | D5 | The trust boundary map | **Accepted as a map only** | Every control it names is unimplemented. It records where controls would go and who owns deciding them |
-| D6 | Two serving capabilities, and no gateway or deep-serving work | **Accepted** as a scope rule | Review only |
+| D6 | Two serving capabilities, and no gateway or deep-serving work | **Accepted** as a scope rule; **amended 2026-09-14** so that a bounded local performance observation may be published and a portable capacity, SLO, or benchmark figure still may not ([ADR 0013](ADR-0013-bounded-local-performance-observations.md)) | Review only, plus the record checks ADR 0013 D3 names |
 | D7 | Who owns a telemetry collector, a dashboard, and an ingress or load-balancer implementation | **Amended 2026-09-09 and 2026-09-13.** The collector is Helm-owned and release-scoped; the dashboard definition is a repository artifact; a dashboard server, alert routing, ingress and load balancing remain not decided | The Sprint 3 review, for the collector. For the dashboard, `V1-S4-002` required one, and a first panel built without a decision would have made the rendering tool its owner by default |
 
 ## Context
@@ -251,6 +251,15 @@ versions, or hardware allocated to demand — that is deeper serving work. And i
 publishes no throughput, latency, capacity, or benchmark figure, because the only such
 number it holds came from a single sequential request on one CPU host and is recorded
 as explicitly not a benchmark.
+
+> **Amended 2026-09-14 by [ADR 0013](ADR-0013-bounded-local-performance-observations.md).**
+> The last sentence above is narrowed, not repealed. A figure measured in a declared,
+> authorized, local experiment may now be published when its record names the
+> provider, host, model, runtime, release configuration, workload profile, versions,
+> and evidence class. A portable capacity figure, a production SLO, universal
+> performance, a benchmark, and a reading of one provider as another stay refused, and
+> `sustained-throughput-and-capacity-under-load` stays deferred. The text above is kept
+> as it was accepted.
 
 This reserves nothing and plans nothing elsewhere. It states where this project
 stops.

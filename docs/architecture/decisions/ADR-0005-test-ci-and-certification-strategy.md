@@ -67,6 +67,10 @@ structurally the default and the strategy must be built around that rather than
 against it. And [the project boundaries](../project-boundaries.md) forbid V1
 publishing any throughput, latency, capacity, or benchmark figure, which makes a
 load-testing layer something to define and defer rather than something to build.
+(Since 2026-09-14, [ADR 0013](ADR-0013-bounded-local-performance-observations.md)
+narrows that constraint to allow bounded observations of a declared local experiment.
+The `capacity` lane and `capacity-and-load` layer this record defers are unchanged,
+because a portable capacity figure is still refused.)
 
 ## Decision criteria
 

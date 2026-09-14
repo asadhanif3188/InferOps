@@ -94,7 +94,11 @@ finding, not a method — say how that was established.
 > [!WARNING]
 > V1 publishes no throughput, latency, capacity, or benchmark figure. A raw result
 > set may be committed; a headline number drawn from it may not be published. See
-> [the project boundaries](../../architecture/project-boundaries.md).
+> [the project boundaries](../../architecture/project-boundaries.md). Since
+> [ADR 0013](../../architecture/decisions/ADR-0013-bounded-local-performance-observations.md),
+> a bounded figure from a declared, authorized local experiment may be published with
+> its provider, host, model, runtime, profile, and evidence class named; a portable
+> capacity, SLO, or benchmark figure may not.
 
 ## Limitations
 
