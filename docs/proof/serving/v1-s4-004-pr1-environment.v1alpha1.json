@@ -1,0 +1,261 @@
+{
+  "background": {
+    "namespacesWithRunningPodsOutsideRelease": 3,
+    "runningPodsOutsideRelease": 12
+  },
+  "cluster": "docker-desktop",
+  "configuration": {
+    "INFEROPS_LLAMA_SERVER_CONTEXT_SIZE": "4096",
+    "INFEROPS_LLAMA_SERVER_METRICS_ENABLED": "true",
+    "INFEROPS_LLAMA_SERVER_THREADS": "6",
+    "INFEROPS_MAX_OUTPUT_TOKENS": "128",
+    "INFEROPS_MODEL_IDENTIFIER": "qwen3-1-7b-q8-0",
+    "INFEROPS_MODEL_REVISION": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "INFEROPS_REQUEST_TIMEOUT_MS": "120000",
+    "INFEROPS_RUNTIME_IMAGE_DIGEST": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "INFEROPS_SERVING_ADAPTER": "real"
+  },
+  "context": "docker-desktop",
+  "engine": {
+    "cpus": 12,
+    "memoryBytes": 10432536576,
+    "serverVersion": "29.7.2"
+  },
+  "images": {
+    "api": {
+      "configId": "sha256:fa912a7e56848652086afcf6807efcc039d1363a0b5e938246eb24015f7b5a21",
+      "podImageIds": [
+        "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63"
+      ],
+      "repoDigests": [
+        "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63",
+        "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087"
+      ],
+      "template": "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087"
+    },
+    "runtime": {
+      "configId": "sha256:5c22bb22018db939b6c099bfb7e7be2a08246152b386691fcd1d2a6362cfeec4",
+      "podImageIds": [
+        "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      ],
+      "repoDigests": [
+        "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      ],
+      "template": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+    }
+  },
+  "kubernetes": {
+    "helmVersion": "v3.19.0+g3d8990f",
+    "kubectlVersion": "v1.34.3",
+    "serverVersion": "v1.34.3"
+  },
+  "node": {
+    "allocatable": {
+      "cpu": "12",
+      "memory": "10188024Ki"
+    },
+    "capacity": {
+      "cpu": "12",
+      "memory": "10188024Ki"
+    },
+    "containerRuntimeVersion": "containerd://2.2.0",
+    "imageDigest": "sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48",
+    "kernelVersion": "5.15.146.1-microsoft-standard-WSL2",
+    "kubeletVersion": "v1.34.3",
+    "name": "desktop-control-plane",
+    "osImage": "Debian GNU/Linux 12 (bookworm)"
+  },
+  "podsAfter": [
+    {
+      "imageIds": [
+        "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63"
+      ],
+      "name": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+      "ready": true,
+      "restartCount": 0,
+      "role": "api",
+      "uid": "e706fc2c-a237-4f95-b5b9-a2a6c2ed8212"
+    },
+    {
+      "imageIds": [
+        "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      ],
+      "name": "inferops-inferops-llm-runtime-56546cfdbd-m4tmk",
+      "ready": true,
+      "restartCount": 0,
+      "role": "runtime",
+      "uid": "2c3ce896-51d6-4b05-8a6e-0212b6f0f5a4"
+    },
+    {
+      "imageIds": [
+        "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+      ],
+      "name": "inferops-inferops-llm-collector-55c95c4b8c-bt9z2",
+      "ready": true,
+      "restartCount": 0,
+      "role": "collector",
+      "uid": "90f56518-4761-445d-9f04-343a0eea37a4"
+    }
+  ],
+  "podsBefore": [
+    {
+      "imageIds": [
+        "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63"
+      ],
+      "name": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+      "ready": true,
+      "restartCount": 0,
+      "role": "api",
+      "uid": "e706fc2c-a237-4f95-b5b9-a2a6c2ed8212"
+    },
+    {
+      "imageIds": [
+        "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      ],
+      "name": "inferops-inferops-llm-runtime-56546cfdbd-m4tmk",
+      "ready": true,
+      "restartCount": 0,
+      "role": "runtime",
+      "uid": "2c3ce896-51d6-4b05-8a6e-0212b6f0f5a4"
+    },
+    {
+      "imageIds": [
+        "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+      ],
+      "name": "inferops-inferops-llm-collector-55c95c4b8c-bt9z2",
+      "ready": true,
+      "restartCount": 0,
+      "role": "collector",
+      "uid": "90f56518-4761-445d-9f04-343a0eea37a4"
+    }
+  ],
+  "provider": "docker-desktop",
+  "release": {
+    "appVersion": "0.1.0",
+    "chart": "inferops-llm-0.3.0",
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "revision": 1,
+    "status": "deployed"
+  },
+  "repository": {
+    "executedFiles": {
+      "charts/inferops-llm/Chart.yaml": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b",
+      "charts/inferops-llm/ci/real-values.yaml": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48",
+      "charts/inferops-llm/values.yaml": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9",
+      "deploy/serving/experiments/performance-scenarios.v1.json": "cae87607cd65fe3152f68fb487e723e0b085148abbabe99252ec0d9c153e4fc1",
+      "deploy/serving/load/llm-load-profile.v1.json": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+      "scripts/environment/lib.sh": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd",
+      "scripts/environment/performance-scenarios.sh": "f6c95f330f152892ef9fab51bae42d6ad2750070dbbb5dee9d0fa1c0e8509d52",
+      "tools/llm_load/__main__.py": "eacfd0172576145febf3a7fba8f12f57543293d79e266d3893f4c3db7d5b833e",
+      "tools/llm_load/core.py": "0fd164d1f4bcd34a64e88ea7ffa6907191b7e0deaaaf32bc5942c46b3d2d52ec",
+      "tools/performance_scenarios/__main__.py": "48d7789606c9b58011d69f44d07a199465369e396d027338deeea08d14edf1cc",
+      "tools/performance_scenarios/core.py": "b790523b384670a00ee357be33837ed91180fd56b56f0b090a631f602e27257c",
+      "tools/performance_scenarios/live.py": "d670a4f0d6fcfadcc4076ef0a1a5e1937b0e7983cbe3d4eb63cd15a0e9a2f462"
+    },
+    "revision": "53492c5ddf20f982690dc3e8c4b0c982e7585c48",
+    "trackedChangesPresent": true,
+    "untrackedFilesPresent": true
+  },
+  "verifiedAt": "2026-09-14T16:14:57Z",
+  "virtualMachine": {
+    "cgroupVersion": 1,
+    "logicalCpus": 12
+  },
+  "workloads": {
+    "api": {
+      "availableReplicas": 1,
+      "containers": [
+        {
+          "args": [],
+          "image": "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087",
+          "name": "api",
+          "resources": {
+            "limits": {
+              "cpu": "1",
+              "memory": "512Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        }
+      ],
+      "deployment": "inferops-inferops-llm",
+      "desiredReplicas": 1
+    },
+    "collector": {
+      "availableReplicas": 1,
+      "containers": [
+        {
+          "args": [
+            "--config.file=/etc/inferops/collector/prometheus.yaml",
+            "--storage.tsdb.path=/prometheus",
+            "--storage.tsdb.retention.time=2h",
+            "--storage.tsdb.retention.size=512MB",
+            "--web.listen-address=0.0.0.0:9090",
+            "--no-web.enable-lifecycle",
+            "--no-web.enable-admin-api"
+          ],
+          "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+          "name": "collector",
+          "resources": {
+            "limits": {
+              "cpu": "1",
+              "memory": "512Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        }
+      ],
+      "deployment": "inferops-inferops-llm-collector",
+      "desiredReplicas": 1
+    },
+    "runtime": {
+      "availableReplicas": 1,
+      "containers": [
+        {
+          "args": [
+            "--model",
+            "/models/Qwen3-1.7B-Q8_0.gguf",
+            "--alias",
+            "qwen3-1.7b-q8_0",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8080",
+            "--ctx-size",
+            "4096",
+            "--threads",
+            "6",
+            "--parallel",
+            "1",
+            "--n-predict",
+            "128",
+            "--temp",
+            "0",
+            "--metrics"
+          ],
+          "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+          "name": "runtime",
+          "resources": {
+            "limits": {
+              "cpu": "6",
+              "memory": "3Gi"
+            },
+            "requests": {
+              "cpu": "1",
+              "memory": "2Gi"
+            }
+          }
+        }
+      ],
+      "deployment": "inferops-inferops-llm-runtime",
+      "desiredReplicas": 1
+    }
+  }
+}

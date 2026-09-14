@@ -1,0 +1,7780 @@
+{
+  "collectorVersion": "3.5.0",
+  "dashboard": [
+    {
+      "atEpochMs": 1789402654516,
+      "readings": {
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.0005867428350446727"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "request-latency-quantiles/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "request-latency-quantiles/C": {
+          "reading": "empty",
+          "rows": []
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "requests-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "empty",
+          "rows": []
+        }
+      },
+      "repetition": 1,
+      "scenarioId": "warmup"
+    },
+    {
+      "atEpochMs": 1789402762762,
+      "readings": {
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.0031214277677568737"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1.776900788968209"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.476111499039597"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "4.277994420641023"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.20574277194347204"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "55"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.20574277194347204"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "7.200997018021522"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "3.497627123039025"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.3116602222222222"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "3.3042685925925928"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "repetition": 1,
+      "scenarioId": "c1"
+    },
+    {
+      "atEpochMs": 1789402870359,
+      "readings": {
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "2"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.005985771067244043"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.2789433495479883"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "4.697759847382305"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "4.939551969476462"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.40493001650265875"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "105"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.40493001650265875"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "14.172550577593055"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "6.883810280545198"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.5094348518518518"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "6.540715999999999"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "repetition": 1,
+      "scenarioId": "c2"
+    },
+    {
+      "atEpochMs": 1789402974547,
+      "readings": {
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "4"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.008330859985627395"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "3.9139344262295084"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "9.229591836734691"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "9.84591836734694"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.5593462686788316"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "174"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "3"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.5593462686788316"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "19.577119403759106"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "9.508886567540138"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.5592592592592592"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "9.507407407407408"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "repetition": 1,
+      "scenarioId": "c4"
+    },
+    {
+      "atEpochMs": 1789403071779,
+      "readings": {
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.006853697783737532"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "5.258620689655173"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "9.525862068965516"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "9.905172413793103"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.4074692823725084"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "183"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.4074692823725084"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "14.261424883037794"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "6.926977800332643"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.3962962962962963"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "6.8"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "repetition": 2,
+      "scenarioId": "warmup"
+    },
+    {
+      "atEpochMs": 1789403176383,
+      "readings": {
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.005520940294416167"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.2966101694915255"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "9.406976744186046"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "9.88139534883721"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.3778365523525882"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "242"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.3778365523525882"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "13.224279332340585"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "6.423221389993999"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.3814814814814815"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "6.548148148148148"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "repetition": 2,
+      "scenarioId": "c1"
+    },
+    {
+      "atEpochMs": 1789403284515,
+      "readings": {
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "2"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.006132208713948096"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.265625"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "4.6931818181818175"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "4.9386363636363635"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.4000622319027405"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "291"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.4000622319027405"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "14.002178116595918"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "6.8010579423465884"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.41481481481481486"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "6.988888888888889"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "repetition": 2,
+      "scenarioId": "c2"
+    },
+    {
+      "atEpochMs": 1789403390181,
+      "readings": {
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "4"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.008521220046155503"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5c4bbb988c-rdsdr",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "3.975409836065573"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "9.254901960784313"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "9.850980392156863"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.5630526343084269"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "360"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "3"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.5630526343084269"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "19.70684220079494"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "9.571894783243257"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.562962962962963"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "9.570370370370371"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        }
+      },
+      "repetition": 2,
+      "scenarioId": "c4"
+    }
+  ],
+  "instants": [
+    {
+      "atEpochMs": 1789402647384,
+      "position": "before",
+      "repetition": 1,
+      "rows": [],
+      "seriesId": "api-requests-by-outcome",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789402647384,
+      "position": "before",
+      "repetition": 1,
+      "rows": [],
+      "seriesId": "api-tokens-by-direction",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789402647384,
+      "position": "before",
+      "repetition": 1,
+      "rows": [
+        {
+          "labels": {},
+          "value": "0"
+        }
+      ],
+      "seriesId": "runtime-tokens-predicted",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403065098,
+      "position": "after",
+      "repetition": 1,
+      "rows": [
+        {
+          "labels": {
+            "inferops_outcome": "success"
+          },
+          "value": "183"
+        }
+      ],
+      "seriesId": "api-requests-by-outcome",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403065098,
+      "position": "after",
+      "repetition": 1,
+      "rows": [
+        {
+          "labels": {
+            "inferops_token_direction": "input"
+          },
+          "value": "6405"
+        },
+        {
+          "labels": {
+            "inferops_token_direction": "output"
+          },
+          "value": "3111"
+        }
+      ],
+      "seriesId": "api-tokens-by-direction",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403065098,
+      "position": "after",
+      "repetition": 1,
+      "rows": [
+        {
+          "labels": {},
+          "value": "3111"
+        }
+      ],
+      "seriesId": "runtime-tokens-predicted",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403065098,
+      "position": "before",
+      "repetition": 2,
+      "rows": [
+        {
+          "labels": {
+            "inferops_outcome": "success"
+          },
+          "value": "183"
+        }
+      ],
+      "seriesId": "api-requests-by-outcome",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403065098,
+      "position": "before",
+      "repetition": 2,
+      "rows": [
+        {
+          "labels": {
+            "inferops_token_direction": "input"
+          },
+          "value": "6405"
+        },
+        {
+          "labels": {
+            "inferops_token_direction": "output"
+          },
+          "value": "3111"
+        }
+      ],
+      "seriesId": "api-tokens-by-direction",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403065098,
+      "position": "before",
+      "repetition": 2,
+      "rows": [
+        {
+          "labels": {},
+          "value": "3111"
+        }
+      ],
+      "seriesId": "runtime-tokens-predicted",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403480545,
+      "position": "after",
+      "repetition": 2,
+      "rows": [
+        {
+          "labels": {
+            "inferops_outcome": "success"
+          },
+          "value": "366"
+        }
+      ],
+      "seriesId": "api-requests-by-outcome",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403480545,
+      "position": "after",
+      "repetition": 2,
+      "rows": [
+        {
+          "labels": {
+            "inferops_token_direction": "input"
+          },
+          "value": "12810"
+        },
+        {
+          "labels": {
+            "inferops_token_direction": "output"
+          },
+          "value": "6222"
+        }
+      ],
+      "seriesId": "api-tokens-by-direction",
+      "status": "success"
+    },
+    {
+      "atEpochMs": 1789403480545,
+      "position": "after",
+      "repetition": 2,
+      "rows": [
+        {
+          "labels": {},
+          "value": "6222"
+        }
+      ],
+      "seriesId": "runtime-tokens-predicted",
+      "status": "success"
+    }
+  ],
+  "range": {
+    "endEpochMs": 1789403480545,
+    "startEpochMs": 1789402556980,
+    "stepSeconds": 15
+  },
+  "series": [
+    {
+      "expr": "sum by (inferops_outcome) (inferops_inference_requests_total)",
+      "result": [
+        {
+          "labels": {
+            "inferops_outcome": "success"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "api-requests-by-outcome",
+      "status": "success"
+    },
+    {
+      "expr": "sum by (inferops_token_direction) (inferops_inference_tokens_total)",
+      "result": [
+        {
+          "labels": {
+            "inferops_token_direction": "input"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "210"
+            ],
+            [
+              1789402676.98,
+              "210"
+            ],
+            [
+              1789402691.98,
+              "805"
+            ],
+            [
+              1789402706.98,
+              "805"
+            ],
+            [
+              1789402721.98,
+              "1365"
+            ],
+            [
+              1789402736.98,
+              "1365"
+            ],
+            [
+              1789402751.98,
+              "1925"
+            ],
+            [
+              1789402766.98,
+              "1925"
+            ],
+            [
+              1789402781.98,
+              "2555"
+            ],
+            [
+              1789402796.98,
+              "2555"
+            ],
+            [
+              1789402811.98,
+              "3150"
+            ],
+            [
+              1789402826.98,
+              "3150"
+            ],
+            [
+              1789402841.98,
+              "3675"
+            ],
+            [
+              1789402856.98,
+              "3675"
+            ],
+            [
+              1789402871.98,
+              "4305"
+            ],
+            [
+              1789402886.98,
+              "4305"
+            ],
+            [
+              1789402901.98,
+              "4900"
+            ],
+            [
+              1789402916.98,
+              "4900"
+            ],
+            [
+              1789402931.98,
+              "5495"
+            ],
+            [
+              1789402946.98,
+              "5495"
+            ],
+            [
+              1789402961.98,
+              "6090"
+            ],
+            [
+              1789402976.98,
+              "6090"
+            ],
+            [
+              1789402991.98,
+              "6405"
+            ],
+            [
+              1789403006.98,
+              "6405"
+            ],
+            [
+              1789403021.98,
+              "6405"
+            ],
+            [
+              1789403036.98,
+              "6405"
+            ],
+            [
+              1789403051.98,
+              "6405"
+            ],
+            [
+              1789403066.98,
+              "6405"
+            ],
+            [
+              1789403081.98,
+              "6685"
+            ],
+            [
+              1789403096.98,
+              "6685"
+            ],
+            [
+              1789403111.98,
+              "7280"
+            ],
+            [
+              1789403126.98,
+              "7280"
+            ],
+            [
+              1789403141.98,
+              "7910"
+            ],
+            [
+              1789403156.98,
+              "7910"
+            ],
+            [
+              1789403171.98,
+              "8470"
+            ],
+            [
+              1789403186.98,
+              "8470"
+            ],
+            [
+              1789403201.98,
+              "8995"
+            ],
+            [
+              1789403216.98,
+              "8995"
+            ],
+            [
+              1789403231.98,
+              "9590"
+            ],
+            [
+              1789403246.98,
+              "9590"
+            ],
+            [
+              1789403261.98,
+              "10185"
+            ],
+            [
+              1789403276.98,
+              "10185"
+            ],
+            [
+              1789403291.98,
+              "10815"
+            ],
+            [
+              1789403306.98,
+              "10815"
+            ],
+            [
+              1789403321.98,
+              "11445"
+            ],
+            [
+              1789403336.98,
+              "11445"
+            ],
+            [
+              1789403351.98,
+              "11970"
+            ],
+            [
+              1789403366.98,
+              "11970"
+            ],
+            [
+              1789403381.98,
+              "12600"
+            ],
+            [
+              1789403396.98,
+              "12600"
+            ],
+            [
+              1789403411.98,
+              "12810"
+            ],
+            [
+              1789403426.98,
+              "12810"
+            ],
+            [
+              1789403441.98,
+              "12810"
+            ],
+            [
+              1789403456.98,
+              "12810"
+            ],
+            [
+              1789403471.98,
+              "12810"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "inferops_token_direction": "output"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "102"
+            ],
+            [
+              1789402676.98,
+              "102"
+            ],
+            [
+              1789402691.98,
+              "391"
+            ],
+            [
+              1789402706.98,
+              "391"
+            ],
+            [
+              1789402721.98,
+              "663"
+            ],
+            [
+              1789402736.98,
+              "663"
+            ],
+            [
+              1789402751.98,
+              "935"
+            ],
+            [
+              1789402766.98,
+              "935"
+            ],
+            [
+              1789402781.98,
+              "1241"
+            ],
+            [
+              1789402796.98,
+              "1241"
+            ],
+            [
+              1789402811.98,
+              "1530"
+            ],
+            [
+              1789402826.98,
+              "1530"
+            ],
+            [
+              1789402841.98,
+              "1785"
+            ],
+            [
+              1789402856.98,
+              "1785"
+            ],
+            [
+              1789402871.98,
+              "2091"
+            ],
+            [
+              1789402886.98,
+              "2091"
+            ],
+            [
+              1789402901.98,
+              "2380"
+            ],
+            [
+              1789402916.98,
+              "2380"
+            ],
+            [
+              1789402931.98,
+              "2669"
+            ],
+            [
+              1789402946.98,
+              "2669"
+            ],
+            [
+              1789402961.98,
+              "2958"
+            ],
+            [
+              1789402976.98,
+              "2958"
+            ],
+            [
+              1789402991.98,
+              "3111"
+            ],
+            [
+              1789403006.98,
+              "3111"
+            ],
+            [
+              1789403021.98,
+              "3111"
+            ],
+            [
+              1789403036.98,
+              "3111"
+            ],
+            [
+              1789403051.98,
+              "3111"
+            ],
+            [
+              1789403066.98,
+              "3111"
+            ],
+            [
+              1789403081.98,
+              "3247"
+            ],
+            [
+              1789403096.98,
+              "3247"
+            ],
+            [
+              1789403111.98,
+              "3536"
+            ],
+            [
+              1789403126.98,
+              "3536"
+            ],
+            [
+              1789403141.98,
+              "3842"
+            ],
+            [
+              1789403156.98,
+              "3842"
+            ],
+            [
+              1789403171.98,
+              "4114"
+            ],
+            [
+              1789403186.98,
+              "4114"
+            ],
+            [
+              1789403201.98,
+              "4369"
+            ],
+            [
+              1789403216.98,
+              "4369"
+            ],
+            [
+              1789403231.98,
+              "4658"
+            ],
+            [
+              1789403246.98,
+              "4658"
+            ],
+            [
+              1789403261.98,
+              "4947"
+            ],
+            [
+              1789403276.98,
+              "4947"
+            ],
+            [
+              1789403291.98,
+              "5253"
+            ],
+            [
+              1789403306.98,
+              "5253"
+            ],
+            [
+              1789403321.98,
+              "5559"
+            ],
+            [
+              1789403336.98,
+              "5559"
+            ],
+            [
+              1789403351.98,
+              "5814"
+            ],
+            [
+              1789403366.98,
+              "5814"
+            ],
+            [
+              1789403381.98,
+              "6120"
+            ],
+            [
+              1789403396.98,
+              "6120"
+            ],
+            [
+              1789403411.98,
+              "6222"
+            ],
+            [
+              1789403426.98,
+              "6222"
+            ],
+            [
+              1789403441.98,
+              "6222"
+            ],
+            [
+              1789403456.98,
+              "6222"
+            ],
+            [
+              1789403471.98,
+              "6222"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "api-tokens-by-direction",
+      "status": "success"
+    },
+    {
+      "expr": "sum(inferops_inference_requests_in_flight)",
+      "result": [
+        {
+          "labels": {},
+          "values": [
+            [
+              1789402661.98,
+              "1"
+            ],
+            [
+              1789402676.98,
+              "1"
+            ],
+            [
+              1789402691.98,
+              "1"
+            ],
+            [
+              1789402706.98,
+              "1"
+            ],
+            [
+              1789402721.98,
+              "1"
+            ],
+            [
+              1789402736.98,
+              "1"
+            ],
+            [
+              1789402751.98,
+              "1"
+            ],
+            [
+              1789402766.98,
+              "1"
+            ],
+            [
+              1789402781.98,
+              "2"
+            ],
+            [
+              1789402796.98,
+              "2"
+            ],
+            [
+              1789402811.98,
+              "2"
+            ],
+            [
+              1789402826.98,
+              "2"
+            ],
+            [
+              1789402841.98,
+              "2"
+            ],
+            [
+              1789402856.98,
+              "2"
+            ],
+            [
+              1789402871.98,
+              "4"
+            ],
+            [
+              1789402886.98,
+              "4"
+            ],
+            [
+              1789402901.98,
+              "4"
+            ],
+            [
+              1789402916.98,
+              "4"
+            ],
+            [
+              1789402931.98,
+              "4"
+            ],
+            [
+              1789402946.98,
+              "4"
+            ],
+            [
+              1789402961.98,
+              "4"
+            ],
+            [
+              1789402976.98,
+              "4"
+            ],
+            [
+              1789402991.98,
+              "0"
+            ],
+            [
+              1789403006.98,
+              "0"
+            ],
+            [
+              1789403021.98,
+              "0"
+            ],
+            [
+              1789403036.98,
+              "0"
+            ],
+            [
+              1789403051.98,
+              "0"
+            ],
+            [
+              1789403066.98,
+              "0"
+            ],
+            [
+              1789403081.98,
+              "1"
+            ],
+            [
+              1789403096.98,
+              "1"
+            ],
+            [
+              1789403111.98,
+              "1"
+            ],
+            [
+              1789403126.98,
+              "1"
+            ],
+            [
+              1789403141.98,
+              "1"
+            ],
+            [
+              1789403156.98,
+              "1"
+            ],
+            [
+              1789403171.98,
+              "1"
+            ],
+            [
+              1789403186.98,
+              "1"
+            ],
+            [
+              1789403201.98,
+              "2"
+            ],
+            [
+              1789403216.98,
+              "2"
+            ],
+            [
+              1789403231.98,
+              "2"
+            ],
+            [
+              1789403246.98,
+              "2"
+            ],
+            [
+              1789403261.98,
+              "2"
+            ],
+            [
+              1789403276.98,
+              "2"
+            ],
+            [
+              1789403291.98,
+              "4"
+            ],
+            [
+              1789403306.98,
+              "4"
+            ],
+            [
+              1789403321.98,
+              "4"
+            ],
+            [
+              1789403336.98,
+              "4"
+            ],
+            [
+              1789403351.98,
+              "4"
+            ],
+            [
+              1789403366.98,
+              "4"
+            ],
+            [
+              1789403381.98,
+              "4"
+            ],
+            [
+              1789403396.98,
+              "4"
+            ],
+            [
+              1789403411.98,
+              "0"
+            ],
+            [
+              1789403426.98,
+              "0"
+            ],
+            [
+              1789403441.98,
+              "0"
+            ],
+            [
+              1789403456.98,
+              "0"
+            ],
+            [
+              1789403471.98,
+              "0"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "api-requests-in-flight",
+      "status": "success"
+    },
+    {
+      "expr": "sum by (le) (inferops_inference_request_duration_seconds_bucket)",
+      "result": [
+        {
+          "labels": {
+            "le": "+Inf"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "0.5"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "0"
+            ],
+            [
+              1789402676.98,
+              "0"
+            ],
+            [
+              1789402691.98,
+              "0"
+            ],
+            [
+              1789402706.98,
+              "0"
+            ],
+            [
+              1789402721.98,
+              "0"
+            ],
+            [
+              1789402736.98,
+              "0"
+            ],
+            [
+              1789402751.98,
+              "0"
+            ],
+            [
+              1789402766.98,
+              "0"
+            ],
+            [
+              1789402781.98,
+              "0"
+            ],
+            [
+              1789402796.98,
+              "0"
+            ],
+            [
+              1789402811.98,
+              "0"
+            ],
+            [
+              1789402826.98,
+              "0"
+            ],
+            [
+              1789402841.98,
+              "0"
+            ],
+            [
+              1789402856.98,
+              "0"
+            ],
+            [
+              1789402871.98,
+              "0"
+            ],
+            [
+              1789402886.98,
+              "0"
+            ],
+            [
+              1789402901.98,
+              "0"
+            ],
+            [
+              1789402916.98,
+              "0"
+            ],
+            [
+              1789402931.98,
+              "0"
+            ],
+            [
+              1789402946.98,
+              "0"
+            ],
+            [
+              1789402961.98,
+              "0"
+            ],
+            [
+              1789402976.98,
+              "0"
+            ],
+            [
+              1789402991.98,
+              "0"
+            ],
+            [
+              1789403006.98,
+              "0"
+            ],
+            [
+              1789403021.98,
+              "0"
+            ],
+            [
+              1789403036.98,
+              "0"
+            ],
+            [
+              1789403051.98,
+              "0"
+            ],
+            [
+              1789403066.98,
+              "0"
+            ],
+            [
+              1789403081.98,
+              "0"
+            ],
+            [
+              1789403096.98,
+              "0"
+            ],
+            [
+              1789403111.98,
+              "0"
+            ],
+            [
+              1789403126.98,
+              "0"
+            ],
+            [
+              1789403141.98,
+              "0"
+            ],
+            [
+              1789403156.98,
+              "0"
+            ],
+            [
+              1789403171.98,
+              "0"
+            ],
+            [
+              1789403186.98,
+              "0"
+            ],
+            [
+              1789403201.98,
+              "0"
+            ],
+            [
+              1789403216.98,
+              "0"
+            ],
+            [
+              1789403231.98,
+              "0"
+            ],
+            [
+              1789403246.98,
+              "0"
+            ],
+            [
+              1789403261.98,
+              "0"
+            ],
+            [
+              1789403276.98,
+              "0"
+            ],
+            [
+              1789403291.98,
+              "0"
+            ],
+            [
+              1789403306.98,
+              "0"
+            ],
+            [
+              1789403321.98,
+              "0"
+            ],
+            [
+              1789403336.98,
+              "0"
+            ],
+            [
+              1789403351.98,
+              "0"
+            ],
+            [
+              1789403366.98,
+              "0"
+            ],
+            [
+              1789403381.98,
+              "0"
+            ],
+            [
+              1789403396.98,
+              "0"
+            ],
+            [
+              1789403411.98,
+              "0"
+            ],
+            [
+              1789403426.98,
+              "0"
+            ],
+            [
+              1789403441.98,
+              "0"
+            ],
+            [
+              1789403456.98,
+              "0"
+            ],
+            [
+              1789403471.98,
+              "0"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "1.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "0"
+            ],
+            [
+              1789402676.98,
+              "0"
+            ],
+            [
+              1789402691.98,
+              "0"
+            ],
+            [
+              1789402706.98,
+              "0"
+            ],
+            [
+              1789402721.98,
+              "0"
+            ],
+            [
+              1789402736.98,
+              "0"
+            ],
+            [
+              1789402751.98,
+              "0"
+            ],
+            [
+              1789402766.98,
+              "0"
+            ],
+            [
+              1789402781.98,
+              "0"
+            ],
+            [
+              1789402796.98,
+              "0"
+            ],
+            [
+              1789402811.98,
+              "0"
+            ],
+            [
+              1789402826.98,
+              "0"
+            ],
+            [
+              1789402841.98,
+              "0"
+            ],
+            [
+              1789402856.98,
+              "0"
+            ],
+            [
+              1789402871.98,
+              "0"
+            ],
+            [
+              1789402886.98,
+              "0"
+            ],
+            [
+              1789402901.98,
+              "0"
+            ],
+            [
+              1789402916.98,
+              "0"
+            ],
+            [
+              1789402931.98,
+              "0"
+            ],
+            [
+              1789402946.98,
+              "0"
+            ],
+            [
+              1789402961.98,
+              "0"
+            ],
+            [
+              1789402976.98,
+              "0"
+            ],
+            [
+              1789402991.98,
+              "0"
+            ],
+            [
+              1789403006.98,
+              "0"
+            ],
+            [
+              1789403021.98,
+              "0"
+            ],
+            [
+              1789403036.98,
+              "0"
+            ],
+            [
+              1789403051.98,
+              "0"
+            ],
+            [
+              1789403066.98,
+              "0"
+            ],
+            [
+              1789403081.98,
+              "0"
+            ],
+            [
+              1789403096.98,
+              "0"
+            ],
+            [
+              1789403111.98,
+              "0"
+            ],
+            [
+              1789403126.98,
+              "0"
+            ],
+            [
+              1789403141.98,
+              "0"
+            ],
+            [
+              1789403156.98,
+              "0"
+            ],
+            [
+              1789403171.98,
+              "0"
+            ],
+            [
+              1789403186.98,
+              "0"
+            ],
+            [
+              1789403201.98,
+              "0"
+            ],
+            [
+              1789403216.98,
+              "0"
+            ],
+            [
+              1789403231.98,
+              "0"
+            ],
+            [
+              1789403246.98,
+              "0"
+            ],
+            [
+              1789403261.98,
+              "0"
+            ],
+            [
+              1789403276.98,
+              "0"
+            ],
+            [
+              1789403291.98,
+              "0"
+            ],
+            [
+              1789403306.98,
+              "0"
+            ],
+            [
+              1789403321.98,
+              "0"
+            ],
+            [
+              1789403336.98,
+              "0"
+            ],
+            [
+              1789403351.98,
+              "0"
+            ],
+            [
+              1789403366.98,
+              "0"
+            ],
+            [
+              1789403381.98,
+              "0"
+            ],
+            [
+              1789403396.98,
+              "0"
+            ],
+            [
+              1789403411.98,
+              "0"
+            ],
+            [
+              1789403426.98,
+              "0"
+            ],
+            [
+              1789403441.98,
+              "0"
+            ],
+            [
+              1789403456.98,
+              "0"
+            ],
+            [
+              1789403471.98,
+              "0"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "10.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "120.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "2.5"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "5"
+            ],
+            [
+              1789402676.98,
+              "5"
+            ],
+            [
+              1789402691.98,
+              "22"
+            ],
+            [
+              1789402706.98,
+              "22"
+            ],
+            [
+              1789402721.98,
+              "37"
+            ],
+            [
+              1789402736.98,
+              "37"
+            ],
+            [
+              1789402751.98,
+              "53"
+            ],
+            [
+              1789402766.98,
+              "53"
+            ],
+            [
+              1789402781.98,
+              "62"
+            ],
+            [
+              1789402796.98,
+              "62"
+            ],
+            [
+              1789402811.98,
+              "62"
+            ],
+            [
+              1789402826.98,
+              "62"
+            ],
+            [
+              1789402841.98,
+              "62"
+            ],
+            [
+              1789402856.98,
+              "62"
+            ],
+            [
+              1789402871.98,
+              "62"
+            ],
+            [
+              1789402886.98,
+              "62"
+            ],
+            [
+              1789402901.98,
+              "63"
+            ],
+            [
+              1789402916.98,
+              "63"
+            ],
+            [
+              1789402931.98,
+              "63"
+            ],
+            [
+              1789402946.98,
+              "63"
+            ],
+            [
+              1789402961.98,
+              "63"
+            ],
+            [
+              1789402976.98,
+              "63"
+            ],
+            [
+              1789402991.98,
+              "63"
+            ],
+            [
+              1789403006.98,
+              "63"
+            ],
+            [
+              1789403021.98,
+              "63"
+            ],
+            [
+              1789403036.98,
+              "63"
+            ],
+            [
+              1789403051.98,
+              "63"
+            ],
+            [
+              1789403066.98,
+              "63"
+            ],
+            [
+              1789403081.98,
+              "71"
+            ],
+            [
+              1789403096.98,
+              "71"
+            ],
+            [
+              1789403111.98,
+              "88"
+            ],
+            [
+              1789403126.98,
+              "88"
+            ],
+            [
+              1789403141.98,
+              "106"
+            ],
+            [
+              1789403156.98,
+              "106"
+            ],
+            [
+              1789403171.98,
+              "122"
+            ],
+            [
+              1789403186.98,
+              "122"
+            ],
+            [
+              1789403201.98,
+              "127"
+            ],
+            [
+              1789403216.98,
+              "127"
+            ],
+            [
+              1789403231.98,
+              "127"
+            ],
+            [
+              1789403246.98,
+              "127"
+            ],
+            [
+              1789403261.98,
+              "127"
+            ],
+            [
+              1789403276.98,
+              "127"
+            ],
+            [
+              1789403291.98,
+              "128"
+            ],
+            [
+              1789403306.98,
+              "128"
+            ],
+            [
+              1789403321.98,
+              "128"
+            ],
+            [
+              1789403336.98,
+              "128"
+            ],
+            [
+              1789403351.98,
+              "128"
+            ],
+            [
+              1789403366.98,
+              "128"
+            ],
+            [
+              1789403381.98,
+              "128"
+            ],
+            [
+              1789403396.98,
+              "128"
+            ],
+            [
+              1789403411.98,
+              "128"
+            ],
+            [
+              1789403426.98,
+              "128"
+            ],
+            [
+              1789403441.98,
+              "128"
+            ],
+            [
+              1789403456.98,
+              "128"
+            ],
+            [
+              1789403471.98,
+              "128"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "20.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "30.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "300.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "45.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "5.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "125"
+            ],
+            [
+              1789402916.98,
+              "125"
+            ],
+            [
+              1789402931.98,
+              "125"
+            ],
+            [
+              1789402946.98,
+              "125"
+            ],
+            [
+              1789402961.98,
+              "125"
+            ],
+            [
+              1789402976.98,
+              "125"
+            ],
+            [
+              1789402991.98,
+              "125"
+            ],
+            [
+              1789403006.98,
+              "125"
+            ],
+            [
+              1789403021.98,
+              "125"
+            ],
+            [
+              1789403036.98,
+              "125"
+            ],
+            [
+              1789403051.98,
+              "125"
+            ],
+            [
+              1789403066.98,
+              "125"
+            ],
+            [
+              1789403081.98,
+              "133"
+            ],
+            [
+              1789403096.98,
+              "133"
+            ],
+            [
+              1789403111.98,
+              "150"
+            ],
+            [
+              1789403126.98,
+              "150"
+            ],
+            [
+              1789403141.98,
+              "168"
+            ],
+            [
+              1789403156.98,
+              "168"
+            ],
+            [
+              1789403171.98,
+              "184"
+            ],
+            [
+              1789403186.98,
+              "184"
+            ],
+            [
+              1789403201.98,
+              "199"
+            ],
+            [
+              1789403216.98,
+              "199"
+            ],
+            [
+              1789403231.98,
+              "216"
+            ],
+            [
+              1789403246.98,
+              "216"
+            ],
+            [
+              1789403261.98,
+              "233"
+            ],
+            [
+              1789403276.98,
+              "233"
+            ],
+            [
+              1789403291.98,
+              "251"
+            ],
+            [
+              1789403306.98,
+              "251"
+            ],
+            [
+              1789403321.98,
+              "251"
+            ],
+            [
+              1789403336.98,
+              "251"
+            ],
+            [
+              1789403351.98,
+              "251"
+            ],
+            [
+              1789403366.98,
+              "251"
+            ],
+            [
+              1789403381.98,
+              "251"
+            ],
+            [
+              1789403396.98,
+              "251"
+            ],
+            [
+              1789403411.98,
+              "251"
+            ],
+            [
+              1789403426.98,
+              "251"
+            ],
+            [
+              1789403441.98,
+              "251"
+            ],
+            [
+              1789403456.98,
+              "251"
+            ],
+            [
+              1789403471.98,
+              "251"
+            ]
+          ]
+        },
+        {
+          "labels": {
+            "le": "60.0"
+          },
+          "values": [
+            [
+              1789402661.98,
+              "6"
+            ],
+            [
+              1789402676.98,
+              "6"
+            ],
+            [
+              1789402691.98,
+              "23"
+            ],
+            [
+              1789402706.98,
+              "23"
+            ],
+            [
+              1789402721.98,
+              "39"
+            ],
+            [
+              1789402736.98,
+              "39"
+            ],
+            [
+              1789402751.98,
+              "55"
+            ],
+            [
+              1789402766.98,
+              "55"
+            ],
+            [
+              1789402781.98,
+              "73"
+            ],
+            [
+              1789402796.98,
+              "73"
+            ],
+            [
+              1789402811.98,
+              "90"
+            ],
+            [
+              1789402826.98,
+              "90"
+            ],
+            [
+              1789402841.98,
+              "105"
+            ],
+            [
+              1789402856.98,
+              "105"
+            ],
+            [
+              1789402871.98,
+              "123"
+            ],
+            [
+              1789402886.98,
+              "123"
+            ],
+            [
+              1789402901.98,
+              "140"
+            ],
+            [
+              1789402916.98,
+              "140"
+            ],
+            [
+              1789402931.98,
+              "157"
+            ],
+            [
+              1789402946.98,
+              "157"
+            ],
+            [
+              1789402961.98,
+              "174"
+            ],
+            [
+              1789402976.98,
+              "174"
+            ],
+            [
+              1789402991.98,
+              "183"
+            ],
+            [
+              1789403006.98,
+              "183"
+            ],
+            [
+              1789403021.98,
+              "183"
+            ],
+            [
+              1789403036.98,
+              "183"
+            ],
+            [
+              1789403051.98,
+              "183"
+            ],
+            [
+              1789403066.98,
+              "183"
+            ],
+            [
+              1789403081.98,
+              "191"
+            ],
+            [
+              1789403096.98,
+              "191"
+            ],
+            [
+              1789403111.98,
+              "208"
+            ],
+            [
+              1789403126.98,
+              "208"
+            ],
+            [
+              1789403141.98,
+              "226"
+            ],
+            [
+              1789403156.98,
+              "226"
+            ],
+            [
+              1789403171.98,
+              "242"
+            ],
+            [
+              1789403186.98,
+              "242"
+            ],
+            [
+              1789403201.98,
+              "257"
+            ],
+            [
+              1789403216.98,
+              "257"
+            ],
+            [
+              1789403231.98,
+              "274"
+            ],
+            [
+              1789403246.98,
+              "274"
+            ],
+            [
+              1789403261.98,
+              "291"
+            ],
+            [
+              1789403276.98,
+              "291"
+            ],
+            [
+              1789403291.98,
+              "309"
+            ],
+            [
+              1789403306.98,
+              "309"
+            ],
+            [
+              1789403321.98,
+              "327"
+            ],
+            [
+              1789403336.98,
+              "327"
+            ],
+            [
+              1789403351.98,
+              "342"
+            ],
+            [
+              1789403366.98,
+              "342"
+            ],
+            [
+              1789403381.98,
+              "360"
+            ],
+            [
+              1789403396.98,
+              "360"
+            ],
+            [
+              1789403411.98,
+              "366"
+            ],
+            [
+              1789403426.98,
+              "366"
+            ],
+            [
+              1789403441.98,
+              "366"
+            ],
+            [
+              1789403456.98,
+              "366"
+            ],
+            [
+              1789403471.98,
+              "366"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "api-request-duration-buckets",
+      "status": "success"
+    },
+    {
+      "expr": "sum(llamacpp:requests_processing)",
+      "result": [
+        {
+          "labels": {},
+          "values": [
+            [
+              1789402586.98,
+              "0"
+            ],
+            [
+              1789402601.98,
+              "0"
+            ],
+            [
+              1789402616.98,
+              "0"
+            ],
+            [
+              1789402631.98,
+              "0"
+            ],
+            [
+              1789402646.98,
+              "0"
+            ],
+            [
+              1789402661.98,
+              "0"
+            ],
+            [
+              1789402676.98,
+              "1"
+            ],
+            [
+              1789402691.98,
+              "1"
+            ],
+            [
+              1789402706.98,
+              "1"
+            ],
+            [
+              1789402721.98,
+              "1"
+            ],
+            [
+              1789402736.98,
+              "1"
+            ],
+            [
+              1789402751.98,
+              "1"
+            ],
+            [
+              1789402766.98,
+              "1"
+            ],
+            [
+              1789402781.98,
+              "1"
+            ],
+            [
+              1789402796.98,
+              "1"
+            ],
+            [
+              1789402811.98,
+              "1"
+            ],
+            [
+              1789402826.98,
+              "1"
+            ],
+            [
+              1789402841.98,
+              "1"
+            ],
+            [
+              1789402856.98,
+              "1"
+            ],
+            [
+              1789402871.98,
+              "1"
+            ],
+            [
+              1789402886.98,
+              "1"
+            ],
+            [
+              1789402901.98,
+              "1"
+            ],
+            [
+              1789402916.98,
+              "1"
+            ],
+            [
+              1789402931.98,
+              "1"
+            ],
+            [
+              1789402946.98,
+              "1"
+            ],
+            [
+              1789402961.98,
+              "1"
+            ],
+            [
+              1789402976.98,
+              "1"
+            ],
+            [
+              1789402991.98,
+              "1"
+            ],
+            [
+              1789403006.98,
+              "0"
+            ],
+            [
+              1789403021.98,
+              "0"
+            ],
+            [
+              1789403036.98,
+              "0"
+            ],
+            [
+              1789403051.98,
+              "0"
+            ],
+            [
+              1789403066.98,
+              "0"
+            ],
+            [
+              1789403081.98,
+              "0"
+            ],
+            [
+              1789403096.98,
+              "1"
+            ],
+            [
+              1789403111.98,
+              "1"
+            ],
+            [
+              1789403126.98,
+              "1"
+            ],
+            [
+              1789403141.98,
+              "1"
+            ],
+            [
+              1789403156.98,
+              "0"
+            ],
+            [
+              1789403171.98,
+              "0"
+            ],
+            [
+              1789403186.98,
+              "1"
+            ],
+            [
+              1789403201.98,
+              "1"
+            ],
+            [
+              1789403216.98,
+              "1"
+            ],
+            [
+              1789403231.98,
+              "1"
+            ],
+            [
+              1789403246.98,
+              "1"
+            ],
+            [
+              1789403261.98,
+              "1"
+            ],
+            [
+              1789403276.98,
+              "1"
+            ],
+            [
+              1789403291.98,
+              "1"
+            ],
+            [
+              1789403306.98,
+              "1"
+            ],
+            [
+              1789403321.98,
+              "1"
+            ],
+            [
+              1789403336.98,
+              "1"
+            ],
+            [
+              1789403351.98,
+              "1"
+            ],
+            [
+              1789403366.98,
+              "1"
+            ],
+            [
+              1789403381.98,
+              "1"
+            ],
+            [
+              1789403396.98,
+              "1"
+            ],
+            [
+              1789403411.98,
+              "1"
+            ],
+            [
+              1789403426.98,
+              "0"
+            ],
+            [
+              1789403441.98,
+              "0"
+            ],
+            [
+              1789403456.98,
+              "0"
+            ],
+            [
+              1789403471.98,
+              "0"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "runtime-requests-processing",
+      "status": "success"
+    },
+    {
+      "expr": "sum(llamacpp:requests_deferred)",
+      "result": [
+        {
+          "labels": {},
+          "values": [
+            [
+              1789402586.98,
+              "0"
+            ],
+            [
+              1789402601.98,
+              "0"
+            ],
+            [
+              1789402616.98,
+              "0"
+            ],
+            [
+              1789402631.98,
+              "0"
+            ],
+            [
+              1789402646.98,
+              "0"
+            ],
+            [
+              1789402661.98,
+              "0"
+            ],
+            [
+              1789402676.98,
+              "0"
+            ],
+            [
+              1789402691.98,
+              "0"
+            ],
+            [
+              1789402706.98,
+              "0"
+            ],
+            [
+              1789402721.98,
+              "0"
+            ],
+            [
+              1789402736.98,
+              "0"
+            ],
+            [
+              1789402751.98,
+              "0"
+            ],
+            [
+              1789402766.98,
+              "0"
+            ],
+            [
+              1789402781.98,
+              "0"
+            ],
+            [
+              1789402796.98,
+              "1"
+            ],
+            [
+              1789402811.98,
+              "1"
+            ],
+            [
+              1789402826.98,
+              "1"
+            ],
+            [
+              1789402841.98,
+              "1"
+            ],
+            [
+              1789402856.98,
+              "1"
+            ],
+            [
+              1789402871.98,
+              "1"
+            ],
+            [
+              1789402886.98,
+              "3"
+            ],
+            [
+              1789402901.98,
+              "3"
+            ],
+            [
+              1789402916.98,
+              "3"
+            ],
+            [
+              1789402931.98,
+              "3"
+            ],
+            [
+              1789402946.98,
+              "3"
+            ],
+            [
+              1789402961.98,
+              "3"
+            ],
+            [
+              1789402976.98,
+              "3"
+            ],
+            [
+              1789402991.98,
+              "3"
+            ],
+            [
+              1789403006.98,
+              "0"
+            ],
+            [
+              1789403021.98,
+              "0"
+            ],
+            [
+              1789403036.98,
+              "0"
+            ],
+            [
+              1789403051.98,
+              "0"
+            ],
+            [
+              1789403066.98,
+              "0"
+            ],
+            [
+              1789403081.98,
+              "0"
+            ],
+            [
+              1789403096.98,
+              "0"
+            ],
+            [
+              1789403111.98,
+              "0"
+            ],
+            [
+              1789403126.98,
+              "0"
+            ],
+            [
+              1789403141.98,
+              "0"
+            ],
+            [
+              1789403156.98,
+              "0"
+            ],
+            [
+              1789403171.98,
+              "0"
+            ],
+            [
+              1789403186.98,
+              "0"
+            ],
+            [
+              1789403201.98,
+              "0"
+            ],
+            [
+              1789403216.98,
+              "1"
+            ],
+            [
+              1789403231.98,
+              "1"
+            ],
+            [
+              1789403246.98,
+              "1"
+            ],
+            [
+              1789403261.98,
+              "1"
+            ],
+            [
+              1789403276.98,
+              "1"
+            ],
+            [
+              1789403291.98,
+              "1"
+            ],
+            [
+              1789403306.98,
+              "3"
+            ],
+            [
+              1789403321.98,
+              "3"
+            ],
+            [
+              1789403336.98,
+              "3"
+            ],
+            [
+              1789403351.98,
+              "3"
+            ],
+            [
+              1789403366.98,
+              "3"
+            ],
+            [
+              1789403381.98,
+              "3"
+            ],
+            [
+              1789403396.98,
+              "3"
+            ],
+            [
+              1789403411.98,
+              "3"
+            ],
+            [
+              1789403426.98,
+              "0"
+            ],
+            [
+              1789403441.98,
+              "0"
+            ],
+            [
+              1789403456.98,
+              "0"
+            ],
+            [
+              1789403471.98,
+              "0"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "runtime-requests-deferred",
+      "status": "success"
+    },
+    {
+      "expr": "sum(llamacpp:tokens_predicted_total)",
+      "result": [
+        {
+          "labels": {},
+          "values": [
+            [
+              1789402586.98,
+              "0"
+            ],
+            [
+              1789402601.98,
+              "0"
+            ],
+            [
+              1789402616.98,
+              "0"
+            ],
+            [
+              1789402631.98,
+              "0"
+            ],
+            [
+              1789402646.98,
+              "0"
+            ],
+            [
+              1789402661.98,
+              "0"
+            ],
+            [
+              1789402676.98,
+              "153"
+            ],
+            [
+              1789402691.98,
+              "153"
+            ],
+            [
+              1789402706.98,
+              "442"
+            ],
+            [
+              1789402721.98,
+              "442"
+            ],
+            [
+              1789402736.98,
+              "697"
+            ],
+            [
+              1789402751.98,
+              "697"
+            ],
+            [
+              1789402766.98,
+              "986"
+            ],
+            [
+              1789402781.98,
+              "986"
+            ],
+            [
+              1789402796.98,
+              "1275"
+            ],
+            [
+              1789402811.98,
+              "1275"
+            ],
+            [
+              1789402826.98,
+              "1564"
+            ],
+            [
+              1789402841.98,
+              "1564"
+            ],
+            [
+              1789402856.98,
+              "1836"
+            ],
+            [
+              1789402871.98,
+              "1836"
+            ],
+            [
+              1789402886.98,
+              "2125"
+            ],
+            [
+              1789402901.98,
+              "2125"
+            ],
+            [
+              1789402916.98,
+              "2431"
+            ],
+            [
+              1789402931.98,
+              "2431"
+            ],
+            [
+              1789402946.98,
+              "2720"
+            ],
+            [
+              1789402961.98,
+              "2720"
+            ],
+            [
+              1789402976.98,
+              "3009"
+            ],
+            [
+              1789402991.98,
+              "3009"
+            ],
+            [
+              1789403006.98,
+              "3111"
+            ],
+            [
+              1789403021.98,
+              "3111"
+            ],
+            [
+              1789403036.98,
+              "3111"
+            ],
+            [
+              1789403051.98,
+              "3111"
+            ],
+            [
+              1789403066.98,
+              "3111"
+            ],
+            [
+              1789403081.98,
+              "3111"
+            ],
+            [
+              1789403096.98,
+              "3281"
+            ],
+            [
+              1789403111.98,
+              "3281"
+            ],
+            [
+              1789403126.98,
+              "3587"
+            ],
+            [
+              1789403141.98,
+              "3587"
+            ],
+            [
+              1789403156.98,
+              "3893"
+            ],
+            [
+              1789403171.98,
+              "3893"
+            ],
+            [
+              1789403186.98,
+              "4165"
+            ],
+            [
+              1789403201.98,
+              "4165"
+            ],
+            [
+              1789403216.98,
+              "4403"
+            ],
+            [
+              1789403231.98,
+              "4403"
+            ],
+            [
+              1789403246.98,
+              "4709"
+            ],
+            [
+              1789403261.98,
+              "4709"
+            ],
+            [
+              1789403276.98,
+              "4998"
+            ],
+            [
+              1789403291.98,
+              "4998"
+            ],
+            [
+              1789403306.98,
+              "5304"
+            ],
+            [
+              1789403321.98,
+              "5304"
+            ],
+            [
+              1789403336.98,
+              "5593"
+            ],
+            [
+              1789403351.98,
+              "5593"
+            ],
+            [
+              1789403366.98,
+              "5865"
+            ],
+            [
+              1789403381.98,
+              "5865"
+            ],
+            [
+              1789403396.98,
+              "6154"
+            ],
+            [
+              1789403411.98,
+              "6154"
+            ],
+            [
+              1789403426.98,
+              "6222"
+            ],
+            [
+              1789403441.98,
+              "6222"
+            ],
+            [
+              1789403456.98,
+              "6222"
+            ],
+            [
+              1789403471.98,
+              "6222"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "runtime-tokens-predicted",
+      "status": "success"
+    },
+    {
+      "expr": "sum(llamacpp:prompt_tokens_total)",
+      "result": [
+        {
+          "labels": {},
+          "values": [
+            [
+              1789402586.98,
+              "0"
+            ],
+            [
+              1789402601.98,
+              "0"
+            ],
+            [
+              1789402616.98,
+              "0"
+            ],
+            [
+              1789402631.98,
+              "0"
+            ],
+            [
+              1789402646.98,
+              "0"
+            ],
+            [
+              1789402661.98,
+              "0"
+            ],
+            [
+              1789402676.98,
+              "43"
+            ],
+            [
+              1789402691.98,
+              "43"
+            ],
+            [
+              1789402706.98,
+              "61"
+            ],
+            [
+              1789402721.98,
+              "61"
+            ],
+            [
+              1789402736.98,
+              "76"
+            ],
+            [
+              1789402751.98,
+              "76"
+            ],
+            [
+              1789402766.98,
+              "93"
+            ],
+            [
+              1789402781.98,
+              "93"
+            ],
+            [
+              1789402796.98,
+              "110"
+            ],
+            [
+              1789402811.98,
+              "110"
+            ],
+            [
+              1789402826.98,
+              "127"
+            ],
+            [
+              1789402841.98,
+              "127"
+            ],
+            [
+              1789402856.98,
+              "143"
+            ],
+            [
+              1789402871.98,
+              "143"
+            ],
+            [
+              1789402886.98,
+              "160"
+            ],
+            [
+              1789402901.98,
+              "160"
+            ],
+            [
+              1789402916.98,
+              "178"
+            ],
+            [
+              1789402931.98,
+              "178"
+            ],
+            [
+              1789402946.98,
+              "195"
+            ],
+            [
+              1789402961.98,
+              "195"
+            ],
+            [
+              1789402976.98,
+              "212"
+            ],
+            [
+              1789402991.98,
+              "212"
+            ],
+            [
+              1789403006.98,
+              "217"
+            ],
+            [
+              1789403021.98,
+              "217"
+            ],
+            [
+              1789403036.98,
+              "217"
+            ],
+            [
+              1789403051.98,
+              "217"
+            ],
+            [
+              1789403066.98,
+              "217"
+            ],
+            [
+              1789403081.98,
+              "217"
+            ],
+            [
+              1789403096.98,
+              "228"
+            ],
+            [
+              1789403111.98,
+              "228"
+            ],
+            [
+              1789403126.98,
+              "246"
+            ],
+            [
+              1789403141.98,
+              "246"
+            ],
+            [
+              1789403156.98,
+              "263"
+            ],
+            [
+              1789403171.98,
+              "263"
+            ],
+            [
+              1789403186.98,
+              "280"
+            ],
+            [
+              1789403201.98,
+              "280"
+            ],
+            [
+              1789403216.98,
+              "294"
+            ],
+            [
+              1789403231.98,
+              "294"
+            ],
+            [
+              1789403246.98,
+              "312"
+            ],
+            [
+              1789403261.98,
+              "312"
+            ],
+            [
+              1789403276.98,
+              "329"
+            ],
+            [
+              1789403291.98,
+              "329"
+            ],
+            [
+              1789403306.98,
+              "347"
+            ],
+            [
+              1789403321.98,
+              "347"
+            ],
+            [
+              1789403336.98,
+              "364"
+            ],
+            [
+              1789403351.98,
+              "364"
+            ],
+            [
+              1789403366.98,
+              "380"
+            ],
+            [
+              1789403381.98,
+              "380"
+            ],
+            [
+              1789403396.98,
+              "397"
+            ],
+            [
+              1789403411.98,
+              "397"
+            ],
+            [
+              1789403426.98,
+              "400"
+            ],
+            [
+              1789403441.98,
+              "400"
+            ],
+            [
+              1789403456.98,
+              "400"
+            ],
+            [
+              1789403471.98,
+              "400"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "runtime-prompt-tokens",
+      "status": "success"
+    },
+    {
+      "expr": "sum(llamacpp:n_decode_total)",
+      "result": [
+        {
+          "labels": {},
+          "values": [
+            [
+              1789402586.98,
+              "0"
+            ],
+            [
+              1789402601.98,
+              "0"
+            ],
+            [
+              1789402616.98,
+              "0"
+            ],
+            [
+              1789402631.98,
+              "0"
+            ],
+            [
+              1789402646.98,
+              "0"
+            ],
+            [
+              1789402661.98,
+              "0"
+            ],
+            [
+              1789402676.98,
+              "153"
+            ],
+            [
+              1789402691.98,
+              "153"
+            ],
+            [
+              1789402706.98,
+              "450"
+            ],
+            [
+              1789402721.98,
+              "450"
+            ],
+            [
+              1789402736.98,
+              "707"
+            ],
+            [
+              1789402751.98,
+              "707"
+            ],
+            [
+              1789402766.98,
+              "995"
+            ],
+            [
+              1789402781.98,
+              "995"
+            ],
+            [
+              1789402796.98,
+              "1283"
+            ],
+            [
+              1789402811.98,
+              "1283"
+            ],
+            [
+              1789402826.98,
+              "1569"
+            ],
+            [
+              1789402841.98,
+              "1569"
+            ],
+            [
+              1789402856.98,
+              "1839"
+            ],
+            [
+              1789402871.98,
+              "1839"
+            ],
+            [
+              1789402886.98,
+              "2135"
+            ],
+            [
+              1789402901.98,
+              "2135"
+            ],
+            [
+              1789402916.98,
+              "2432"
+            ],
+            [
+              1789402931.98,
+              "2432"
+            ],
+            [
+              1789402946.98,
+              "2723"
+            ],
+            [
+              1789402961.98,
+              "2723"
+            ],
+            [
+              1789402976.98,
+              "3014"
+            ],
+            [
+              1789402991.98,
+              "3014"
+            ],
+            [
+              1789403006.98,
+              "3111"
+            ],
+            [
+              1789403021.98,
+              "3111"
+            ],
+            [
+              1789403036.98,
+              "3111"
+            ],
+            [
+              1789403051.98,
+              "3111"
+            ],
+            [
+              1789403066.98,
+              "3111"
+            ],
+            [
+              1789403081.98,
+              "3111"
+            ],
+            [
+              1789403096.98,
+              "3294"
+            ],
+            [
+              1789403111.98,
+              "3294"
+            ],
+            [
+              1789403126.98,
+              "3592"
+            ],
+            [
+              1789403141.98,
+              "3592"
+            ],
+            [
+              1789403156.98,
+              "3893"
+            ],
+            [
+              1789403171.98,
+              "3893"
+            ],
+            [
+              1789403186.98,
+              "4171"
+            ],
+            [
+              1789403201.98,
+              "4171"
+            ],
+            [
+              1789403216.98,
+              "4410"
+            ],
+            [
+              1789403231.98,
+              "4410"
+            ],
+            [
+              1789403246.98,
+              "4710"
+            ],
+            [
+              1789403261.98,
+              "4710"
+            ],
+            [
+              1789403276.98,
+              "5006"
+            ],
+            [
+              1789403291.98,
+              "5006"
+            ],
+            [
+              1789403306.98,
+              "5307"
+            ],
+            [
+              1789403321.98,
+              "5307"
+            ],
+            [
+              1789403336.98,
+              "5606"
+            ],
+            [
+              1789403351.98,
+              "5606"
+            ],
+            [
+              1789403366.98,
+              "5867"
+            ],
+            [
+              1789403381.98,
+              "5867"
+            ],
+            [
+              1789403396.98,
+              "6168"
+            ],
+            [
+              1789403411.98,
+              "6168"
+            ],
+            [
+              1789403426.98,
+              "6222"
+            ],
+            [
+              1789403441.98,
+              "6222"
+            ],
+            [
+              1789403456.98,
+              "6222"
+            ],
+            [
+              1789403471.98,
+              "6222"
+            ]
+          ]
+        }
+      ],
+      "seriesId": "runtime-decode-calls",
+      "status": "success"
+    }
+  ]
+}

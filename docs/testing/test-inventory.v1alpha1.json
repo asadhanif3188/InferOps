@@ -560,6 +560,14 @@
       "note": "No load or serving measurement is certified by this suite. Every request is answered by an injected transport function or by the in-process rehearsal stub, so no latency here describes serving, and the committed rehearsal example is synthetic. The suite contacts no cluster, reads no model byte, and does not run under the deferred load marker: it generates no load against anything real, and the sustained-throughput-and-capacity-under-load claim stays a recorded gap."
     },
     {
+      "module": "tests/serving/test_performance_scenarios.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The performance scenario matrix: the committed descriptor's agreement with the load profile it pins by digest, the chart's collector scrape interval, the provider contract, and ceilings kept in code; refusal of a claimed benchmark or capacity figure, a weakened boundary, a scenario set other than the profile's warm-up and levels, a second replica, an unbounded schedule, a CPU threshold, an unaggregated series, a non-loopback forward, and evidence written outside the cache; the load facts derived from the cluster's own answers, including the binding of each template image to the image its pod runs through the node's own image record; an environment that keeps counts of unrelated workloads and never their names; the refusal of any record input carrying a host path, a user directory, or a network address; the node cgroup sample parser; CPU computed from counter increases over the node clock inside a phase window and nothing outside it; a record that is not usable when a pod is replaced, a container restarts, a collector counter disagrees with the raw sets, a series is refused, or the samples leave a gap; the refusal of a raw set with no millisecond origin, a rehearsal set, or a counter read at another moment than the schedule's; the collector capture's loopback-only URL and its reads at the scheduled moments and phase ends; the load tool's millisecond origin; the shell workflow's order of verification, confirmation, and mutation, its read-only sampler, and what it never removes; and the committed record regenerating exactly from its committed inputs.",
+      "claims": [],
+      "note": "No performance figure is certified by this suite. Every raw set it builds comes from the load tool against an injected transport and a fake clock, every cluster answer is JSON written to a temporary directory, and the collector is a function, so no latency or CPU figure here describes serving. The committed record it regenerates is local real evidence from one authorized run and is bounded by ADR 0013; the sustained-throughput-and-capacity-under-load claim stays a recorded gap."
+    },
+    {
       "module": "tests/serving/test_inference_api_implementation_agreement.py",
       "layer": "documentation",
       "marker": "docs",

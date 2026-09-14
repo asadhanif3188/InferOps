@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are twenty-six, and they are listed in their own section rather than
+empty list. There are twenty-seven, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -202,6 +202,7 @@ matrix is complete needs to see them together.
 | [`tests/serving/test_runtime_certification.py`](../../tests/serving/test_runtime_certification.py) | The C2 certification descriptor, its refusal of a weakened level or waived assertion, the hardware refusal, the mock-identity prohibition, and the record it writes. The `local-real-cpu` label it exercises is truthful only for an authorized run |
 | [`tests/serving/test_serving_baseline.py`](../../tests/serving/test_serving_baseline.py) | The registered baseline's agreement with the composition it measures, its percentile arithmetic, and its deterministic summary. Every request is answered by an injected seam, so no latency here is a serving measurement |
 | [`tests/serving/test_llm_load.py`](../../tests/serving/test_llm_load.py) | The repeatable LLM load profile's agreement with the chart and the runtime profile, the fixed order every response is classified in, exactly one outcome for every dispatched request, the raw reader's refusals, and a rehearsal over loopback HTTP. Every answer comes from an injected function or an in-process stub, so no latency here describes serving and the committed example is synthetic |
+| [`tests/serving/test_performance_scenarios.py`](../../tests/serving/test_performance_scenarios.py) | The performance scenario matrix's agreement with the load profile and chart it pins, the load facts and environment derived from the cluster's own answers, the node cgroup sample parser, CPU placed strictly inside each phase window, a record that is not usable when pods change, counters disagree, or samples leave a gap, and the committed record regenerating from its inputs. Every raw set, cluster answer, and collector reading here is constructed, so no figure in it describes serving |
 | [`tests/serving/test_model_lifecycle.py`](../../tests/serving/test_model_lifecycle.py) | The accepted lifecycle state model against the package, the model record, and the API's drain budget; the rule that liveness passes while readiness is false during a load; and two measurements whose every timing is arithmetic on a fake clock, including the full ordered sequence of probes and artifact reads a restart comparison performs — which is what shows that the start procedure reads the artifact before every start |
 | [`tests/serving/test_local_runtime_troubleshooting.py`](../../tests/serving/test_local_runtime_troubleshooting.py) | The published troubleshooting guide against the tools, descriptors, and records it quotes. It establishes that the guide has not drifted, never that following one of its recoveries repairs a fault |
 | [`tests/serving/test_inference_api_surface.py`](../../tests/serving/test_inference_api_surface.py) | The committed API compatibility surface against its document |

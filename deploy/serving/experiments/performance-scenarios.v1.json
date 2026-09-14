@@ -1,0 +1,191 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "experimentId": "inferops-performance-scenarios",
+  "experimentVersion": "1.0.0",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "certificationCeiling": "C2",
+  "lane": "real-runtime",
+  "productionBenchmark": false,
+  "portableCapacityClaim": false,
+  "boundary": "Bounded observations of one executed scenario matrix, on the provider, host, model, runtime, release, and load profile recorded beside them. They are not a portable capacity figure, a production SLO, or a benchmark of Kubernetes, the model, the runtime, or any provider.",
+  "decisionRef": "docs/architecture/decisions/ADR-0013-bounded-local-performance-observations.md",
+  "procedureRef": "docs/serving/performance-scenarios.md",
+  "chartRef": "charts/inferops-llm",
+  "load": {
+    "profileRef": "deploy/serving/load/llm-load-profile.v1.json",
+    "profileSha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+    "module": "tools.llm_load"
+  },
+  "cluster": {
+    "providers": [
+      {
+        "providerId": "docker-desktop",
+        "name": "docker-desktop",
+        "context": "docker-desktop"
+      }
+    ]
+  },
+  "release": {
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real",
+    "apiServiceName": "inferops-inferops-llm",
+    "apiServicePort": 8090,
+    "apiDeploymentName": "inferops-inferops-llm",
+    "runtimeDeploymentName": "inferops-inferops-llm-runtime",
+    "collectorServiceName": "inferops-inferops-llm-collector",
+    "collectorServicePort": 9090,
+    "collectorDeploymentName": "inferops-inferops-llm-collector",
+    "configMapName": "inferops-inferops-llm-configuration",
+    "apiReplicas": 1,
+    "runtimeReplicas": 1
+  },
+  "scenarios": [
+    {
+      "scenarioId": "warmup",
+      "role": "warm-up",
+      "loadPhase": "warmup",
+      "concurrency": 1
+    },
+    {
+      "scenarioId": "c1",
+      "role": "baseline",
+      "loadPhase": "measured",
+      "concurrency": 1
+    },
+    {
+      "scenarioId": "c2",
+      "role": "higher-load",
+      "loadPhase": "measured",
+      "concurrency": 2
+    },
+    {
+      "scenarioId": "c4",
+      "role": "higher-load",
+      "loadPhase": "measured",
+      "concurrency": 4
+    }
+  ],
+  "schedule": {
+    "repetitions": 2,
+    "idleBaselineSeconds": 60,
+    "settleBetweenRunsSeconds": 90,
+    "settleAfterLastRunSeconds": 90
+  },
+  "stability": {
+    "requireEveryDeploymentAvailable": true,
+    "requireZeroContainerRestarts": true,
+    "requireSamePodsThroughout": true,
+    "requireCompletedLoadRuns": true,
+    "cpuThresholdApplied": false,
+    "note": "No idle CPU threshold is applied. Background use on the node and on the virtual machine is measured and recorded, not gated, because any figure chosen here would be arbitrary."
+  },
+  "resources": {
+    "source": "node-cgroup-v1",
+    "sampleIntervalMs": 2000,
+    "maximumGapMs": 8000,
+    "minimumSamplesPerPhase": 3,
+    "tiers": [
+      "virtual-machine",
+      "node",
+      "release-pods"
+    ]
+  },
+  "telemetry": {
+    "rangeStepSeconds": 15,
+    "scrapeIntervalSeconds": 30,
+    "series": [
+      {
+        "seriesId": "api-requests-by-outcome",
+        "expr": "sum by (inferops_outcome) (inferops_inference_requests_total)"
+      },
+      {
+        "seriesId": "api-tokens-by-direction",
+        "expr": "sum by (inferops_token_direction) (inferops_inference_tokens_total)"
+      },
+      {
+        "seriesId": "api-requests-in-flight",
+        "expr": "sum(inferops_inference_requests_in_flight)"
+      },
+      {
+        "seriesId": "api-request-duration-buckets",
+        "expr": "sum by (le) (inferops_inference_request_duration_seconds_bucket)"
+      },
+      {
+        "seriesId": "runtime-requests-processing",
+        "expr": "sum(llamacpp:requests_processing)"
+      },
+      {
+        "seriesId": "runtime-requests-deferred",
+        "expr": "sum(llamacpp:requests_deferred)"
+      },
+      {
+        "seriesId": "runtime-tokens-predicted",
+        "expr": "sum(llamacpp:tokens_predicted_total)"
+      },
+      {
+        "seriesId": "runtime-prompt-tokens",
+        "expr": "sum(llamacpp:prompt_tokens_total)"
+      },
+      {
+        "seriesId": "runtime-decode-calls",
+        "expr": "sum(llamacpp:n_decode_total)"
+      }
+    ],
+    "reconciliation": [
+      {
+        "checkId": "api-requests-equal-dispatched",
+        "seriesId": "api-requests-by-outcome",
+        "compareWith": "dispatched"
+      },
+      {
+        "checkId": "api-output-tokens-equal-recorded",
+        "seriesId": "api-tokens-by-direction",
+        "label": "inferops_token_direction",
+        "labelValue": "output",
+        "compareWith": "output-tokens"
+      },
+      {
+        "checkId": "runtime-output-tokens-equal-recorded",
+        "seriesId": "runtime-tokens-predicted",
+        "compareWith": "output-tokens"
+      }
+    ],
+    "dashboardCaptureAt": "each-phase-end"
+  },
+  "readiness": {
+    "runtimeRolloutBudgetMs": 900000,
+    "apiRolloutBudgetMs": 300000,
+    "collectorRolloutBudgetMs": 300000,
+    "forwardBudgetMs": 30000,
+    "uninstallBudgetMs": 600000
+  },
+  "forwards": {
+    "host": "127.0.0.1",
+    "apiPort": 18093,
+    "collectorPort": 19093
+  },
+  "evidence": {
+    "directory": ".cache/inferops/experiments/performance-scenarios",
+    "environmentFile": "environment.json",
+    "windowsFile": "windows.json",
+    "samplesFile": "resource-samples.txt",
+    "telemetryFile": "telemetry.json",
+    "recordDirectory": "record",
+    "retainGeneratedText": false
+  },
+  "cleanup": {
+    "uninstallsRelease": true,
+    "removesPrerequisites": false,
+    "removesCluster": false,
+    "removesModelCacheClaim": false
+  },
+  "limitations": [
+    "One provider, one host, one single-replica release, one model, one runtime build, one fixed prompt, and the repetitions recorded. Nothing here is portable to another provider, host, replica count, prompt mix, or runtime configuration.",
+    "Load reaches the API through a loopback port-forward to one pod, so every latency includes the forward and nothing describes how a Service spreads load.",
+    "Resource counters are read from the node's cgroup v1 hierarchy by one docker exec per sample. The sampler itself runs inside the node and is counted in the node and virtual-machine tiers.",
+    "The collector scrapes every 30 seconds, so a telemetry series locates an event to within a scrape and a rule evaluation, not to the request.",
+    "Other workloads on the same node and virtual machine are measured as background and not controlled."
+  ]
+}

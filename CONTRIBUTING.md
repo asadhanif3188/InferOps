@@ -488,6 +488,18 @@ every dispatched request in the record with exactly one outcome, keep the prompt
 the completion out of it, and never publish a figure it produces as capacity, an
 SLO, or a benchmark.
 
+The [performance scenarios](docs/serving/performance-scenarios.md) run that load
+profile against a release the workflow installs, beside the node's resource counters
+and the release collector's readings. Validate the matrix with
+`uv run --locked python -m tools.performance_scenarios check`. Only
+`scripts/environment/performance-scenarios.sh run` touches a cluster, and only with an
+explicit `INFEROPS_PROVIDER`, `--values`, and `--confirm-real-kubernetes`. A committed
+record must regenerate from its committed inputs
+(`python -m tools.performance_scenarios verify`). Publish its figures only as
+[ADR 0013](docs/architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
+allows: with the provider, host, model, runtime, and profile named, and never as
+portable capacity, an SLO, or a benchmark.
+
 The [model lifecycle](docs/serving/model-lifecycle.md) is the ordered state model
 spanning the cache and the runtime, and the one place the answer each probe gives
 in each state is written down. Read the record without touching anything with

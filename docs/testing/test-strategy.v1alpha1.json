@@ -212,7 +212,7 @@
       "automated": false,
       "workflowRef": null,
       "v1Status": "deferred",
-      "notes": "V1 may publish no throughput, latency, capacity, or benchmark figure. This lane exists in the strategy so that adding one is a visible decision rather than an accident."
+      "notes": "V1 may publish no throughput, latency, capacity, or benchmark figure. This lane exists in the strategy so that adding one is a visible decision rather than an accident. Narrowed by ADR 0013 (2026-09-14): a bounded observation of one declared, authorized local experiment may be published with its setup named; a portable capacity, SLO, or benchmark figure may not, and this row is unchanged."
     }
   ],
   "evidenceOwners": [
@@ -454,7 +454,7 @@
       "publishable": false,
       "v1Status": "deferred",
       "evidenceRef": null,
-      "notes": "V1 may publish no throughput, latency, capacity, or benchmark figure. The marker is registered and deselected by default so that a load test cannot arrive quietly in the default lane."
+      "notes": "V1 may publish no throughput, latency, capacity, or benchmark figure. The marker is registered and deselected by default so that a load test cannot arrive quietly in the default lane. Narrowed by ADR 0013 (2026-09-14): a bounded observation of one declared, authorized local experiment may be published with its setup named; a portable capacity, SLO, or benchmark figure may not, and this row is unchanged."
     },
     {
       "layerId": "security-scan",

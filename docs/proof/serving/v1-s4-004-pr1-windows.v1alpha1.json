@@ -1,0 +1,23 @@
+{
+  "idleBaseline": {
+    "endEpochMs": 1789402647134,
+    "startEpochMs": 1789402586980
+  },
+  "runs": [
+    {
+      "exitCode": 0,
+      "exitedEpochMs": 1789402974750,
+      "launchedEpochMs": 1789402647384,
+      "rawFile": "run-1-raw.jsonl",
+      "repetition": 1
+    },
+    {
+      "exitCode": 0,
+      "exitedEpochMs": 1789403390313,
+      "launchedEpochMs": 1789403065098,
+      "rawFile": "run-2-raw.jsonl",
+      "repetition": 2
+    }
+  ],
+  "settledEpochMs": 1789403480545
+}

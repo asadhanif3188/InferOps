@@ -77,6 +77,18 @@ holds was derived from a single sequential request on one CPU host and is record
 as explicitly not a benchmark. Publishing it as one would be the first step across
 this boundary, and it would be a claim about a runtime this project did not write.
 
+**Narrowed on 2026-09-14 by
+[ADR 0013](decisions/ADR-0013-bounded-local-performance-observations.md).** A bounded
+observation from a declared, authorized, local experiment — its latency percentiles,
+request and token rates, errors, resource use, and the point where that one setup
+degraded — may be published when the record carrying it names the provider, host,
+model, runtime, release configuration, workload profile, versions, and evidence class.
+What the rule still forbids is the step it was written against: a portable capacity
+figure, a production SLO, universal performance, a benchmark of Kubernetes, the model,
+the runtime, or any provider, and any reading of one provider's figures as another's.
+The records the load and performance tools write refuse to drop that boundary; a
+sentence in a document can still cross it, and only review stops that.
+
 ## What crosses the boundary, and how
 
 Only two things, and both are already published or already refused:

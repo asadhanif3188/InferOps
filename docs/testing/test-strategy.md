@@ -72,6 +72,14 @@ is waste; the second is the beginning of the failure this whole document is abou
 and a lane whose output is unpublishable should be visibly walled off rather than
 mixed into one that produces evidence.
 
+What that lane would produce is a portable capacity claim, and that stays refused.
+[ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
+allows something narrower: a bounded observation of one declared, authorized
+experiment, recorded with its provider, host, model, runtime, and profile. Those runs
+happen in the `real-runtime` lane, and
+[the performance scenario matrix](../serving/performance-scenarios.md) is the first.
+They do not run the `capacity` lane or certify its claim.
+
 ### Prerequisites, diagnostics, and what a failure has to say
 
 Each lane declares its prerequisites, its artifacts, and what a failure must report;
@@ -286,7 +294,10 @@ what V1 needs is that each canonical error is produced by the condition it names
 
 `capacity-and-load` is defined and deferred. V1 may publish no throughput, latency,
 capacity, or benchmark figure, so this layer exists in order that adding one is a
-visible decision rather than an accident.
+visible decision rather than an accident. Since ADR 0013, that sentence reads "no
+portable capacity, SLO, or benchmark figure": a bounded observation of one declared
+experiment may be published, and this layer, which would certify a portable claim,
+stays deferred.
 
 ## Markers, and how the rule is enforced
 

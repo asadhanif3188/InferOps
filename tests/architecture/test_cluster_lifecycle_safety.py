@@ -72,6 +72,7 @@ ENTRY_POINTS = (
     "kubernetes-multi-replica-certification.sh",
     "helm-upgrade-rollback.sh",
     "kubernetes-pod-restart.sh",
+    "performance-scenarios.sh",
     "telemetry-collection-verify.sh",
     "target-detect.sh",
 )
