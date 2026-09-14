@@ -66,6 +66,7 @@ from inferops.api.errors import RequestRefused
 from inferops.api.surface import (
     CHAT_COMPLETIONS_PATH,
     CORRELATION_ID_HEADER,
+    ERROR_CONDITION_ID,
     EXTENSION_ADAPTER_KIND,
     EXTENSION_MEMBER,
     EXTENSION_MODEL_REF,
@@ -189,13 +190,36 @@ STOP_CEILING = "request-ceiling"
 STOP_DURATION = "duration"
 STOP_ABORTED = "aborted"
 STOP_INTERRUPTED = "interrupted"
-STOP_REASONS = (STOP_CEILING, STOP_DURATION, STOP_ABORTED, STOP_INTERRUPTED)
+STOP_TRANSPORT_LOST = "transport-lost"
+STOP_REASONS = (
+    STOP_CEILING,
+    STOP_DURATION,
+    STOP_ABORTED,
+    STOP_INTERRUPTED,
+    STOP_TRANSPORT_LOST,
+)
 
 END_COMPLETED = "completed"
 END_WARMUP_FAILED = "warmup-failed"
 END_ABORTED = "aborted"
 END_INTERRUPTED = "interrupted"
-END_STATES = (END_COMPLETED, END_WARMUP_FAILED, END_ABORTED, END_INTERRUPTED)
+END_TRANSPORT_LOST = "transport-lost"
+END_STATES = (
+    END_COMPLETED,
+    END_WARMUP_FAILED,
+    END_ABORTED,
+    END_INTERRUPTED,
+    END_TRANSPORT_LOST,
+)
+
+#: How many transport errors in a row end a run. A connection that fails before any
+#: answer is not the platform answering: it is the forward, or the path to it, gone.
+#: Without this, a dead `kubectl port-forward` fails every request in about a
+#: millisecond, each level spends its whole request ceiling in seconds, and the run
+#: ends `completed` with a record made entirely of the load generator's own loss of
+#: its target. Answers the API does give -- a 503 while a model loads, a 504 at its
+#: deadline -- are the platform's behaviour and never stop a run.
+MAXIMUM_CONSECUTIVE_TRANSPORT_ERRORS = 5
 
 #: A token a raw record may keep from a response: an error code, a finish reason, an
 #: adapter kind, or a model reference. Anything outside this alphabet is replaced,
@@ -268,6 +292,7 @@ class Profile:
     certification_ceiling: str
     production_benchmark: bool
     portable_capacity_claim: bool
+    boundary: str
     boundaries_ref: str
     provider_contract_ref: str
     chart_ref: str
@@ -434,6 +459,7 @@ def load_profile(path: Path = PROFILE_PATH, *, repo_root: Path = REPO_ROOT) -> P
             "certificationCeiling",
             "productionBenchmark",
             "portableCapacityClaim",
+            "boundary",
             "boundariesRef",
             "providerContractRef",
             "release",
@@ -518,6 +544,7 @@ def load_profile(path: Path = PROFILE_PATH, *, repo_root: Path = REPO_ROOT) -> P
         portable_capacity_claim=_boolean(
             record.get("portableCapacityClaim"), "portableCapacityClaim"
         ),
+        boundary=_string(record.get("boundary"), "boundary"),
         boundaries_ref=_string(record.get("boundariesRef"), "boundariesRef"),
         provider_contract_ref=_string(
             record.get("providerContractRef"), "providerContractRef"
@@ -654,10 +681,14 @@ def validate_profile(profile: Profile, *, repo_root: Path = REPO_ROOT) -> None:
         or profile.certification_ceiling != CEILING_FOR_CLASS[EVIDENCE_REAL]
     ):
         raise LoadError("the load profile identity is unsupported")
-    if profile.production_benchmark or profile.portable_capacity_claim:
+    if (
+        profile.production_benchmark
+        or profile.portable_capacity_claim
+        or profile.boundary != BOUNDARY_STATEMENT
+    ):
         raise LoadError(
             "the load profile may not declare a production benchmark or a portable "
-            "capacity claim"
+            "capacity claim, and must carry the boundary statement verbatim"
         )
     if (
         profile.boundaries_ref != EXPECTED_BOUNDARIES_REF
@@ -722,9 +753,12 @@ def validate_profile(profile: Profile, *, repo_root: Path = REPO_ROOT) -> None:
     if not isinstance(api_timeout, int) or isinstance(api_timeout, bool):
         raise LoadError("the chart values carry no API request deadline")
     # The client deadline sits above the API's own. Below it, a slow completion is
-    # recorded as a client timeout and the API's canonical `upstream-timeout` answer
-    # is never seen; the record would describe the load generator's patience rather
-    # than the platform's behaviour.
+    # recorded as a client timeout and the platform's own answer at its deadline is
+    # never seen; the record would describe the load generator's patience rather than
+    # the platform's behaviour. In the API container that answer is usually the HTTP
+    # carrier's empty-bodied 504, not the adapter's canonical `upstream-timeout`: both
+    # budgets are the same `requestTimeoutMs`, and the carrier's starts first. The
+    # record keeps the status, and an empty body leaves the error code null.
     if not api_timeout < profile.request_timeout_ms <= MAXIMUM_REQUEST_TIMEOUT_MS:
         raise LoadError(
             "the load request deadline must exceed the API's own deadline and stay "
@@ -858,7 +892,13 @@ FACTS_DECLARED_ONLY = (
     "runtimeReplicas",
     "repositoryRevision",
 )
-IDENTITY_OBSERVED_FROM_API = (
+#: What the target's own readiness and model-list answers report. These are the
+#: API's statements about its configuration, read before any load: `modelRevision`
+#: and `runtimeName` are values the API was built or configured with, and
+#: `runtimeVersion` is the pinned image digest unless something asked the runtime
+#: for its build. None of them is an independent observation of the model file or
+#: the image a pod runs.
+IDENTITY_REPORTED_BY_API = (
     "readinessStatus",
     "adapterKind",
     "modelId",
@@ -1192,6 +1232,7 @@ class Classification:
     outcome: str
     status: int
     error_code: str | None
+    error_condition: str | None
     finish_reason: str | None
     input_tokens: int | None
     output_tokens: int | None
@@ -1230,13 +1271,15 @@ def classify(
     The order is the rule, and it is written once, here:
 
     1. a client timeout is ``timeout``; a connection failure is ``transport-error``;
-    2. an answer that arrived after the client deadline is ``timeout`` whatever it
+    2. an answer naming an adapter other than the required one is
+       ``identity-refused``, whatever its status and however late it arrived, so a
+       late mock answer still stops the run;
+    3. an answer that arrived after the client deadline is ``timeout`` whatever it
        says, because the deadline is part of the profile and a success that broke it
        is not a success the profile describes;
-    3. an answer naming an adapter other than the required one is
-       ``identity-refused``, whatever its status;
     4. a status other than the required one is ``http-error``, with the canonical
-       error code kept only if it is a plain token;
+       error code and the condition identifier from its details kept only if each is
+       a plain token. A body that is not a canonical error leaves both null;
     5. the required status with a body that names another model, has no choice, or
        lacks the required usage counts is ``invalid-response``;
     6. anything left is ``success``.
@@ -1246,7 +1289,7 @@ def classify(
     """
     if failure is not None or answer is None:
         outcome = OUTCOME_TIMEOUT if failure == OUTCOME_TIMEOUT else OUTCOME_TRANSPORT
-        return Classification(outcome, 0, None, None, None, None, None, None)
+        return Classification(outcome, 0, None, None, None, None, None, None, None)
 
     identity = _identity(answer.body)
     adapter_kind = _safe_token(identity.get(EXTENSION_ADAPTER_KIND))
@@ -1254,17 +1297,36 @@ def classify(
     body = answer.body if isinstance(answer.body, dict) else {}
     status = answer.status
 
-    def refused(outcome: str, error_code: str | None = None) -> Classification:
+    details = body.get("details")
+    condition = (
+        _safe_token(details.get(ERROR_CONDITION_ID))
+        if isinstance(details, dict)
+        else None
+    )
+
+    def refused(
+        outcome: str,
+        error_code: str | None = None,
+        error_condition: str | None = None,
+    ) -> Classification:
         return Classification(
-            outcome, status, error_code, None, None, None, adapter_kind, model_ref
+            outcome,
+            status,
+            error_code,
+            error_condition,
+            None,
+            None,
+            None,
+            adapter_kind,
+            model_ref,
         )
 
-    if latency_ms > profile.request_timeout_ms:
-        return refused(OUTCOME_TIMEOUT)
     if adapter_kind is not None and adapter_kind != profile.required_adapter_kind:
         return refused(OUTCOME_IDENTITY)
+    if latency_ms > profile.request_timeout_ms:
+        return refused(OUTCOME_TIMEOUT)
     if status != profile.required_status:
-        return refused(OUTCOME_HTTP_ERROR, _safe_token(body.get("code")))
+        return refused(OUTCOME_HTTP_ERROR, _safe_token(body.get("code")), condition)
     choices = body.get("choices")
     first = choices[0] if isinstance(choices, list) and choices else None
     usage = body.get("usage")
@@ -1288,6 +1350,7 @@ def classify(
     return Classification(
         OUTCOME_SUCCESS,
         status,
+        None,
         None,
         _safe_token(first.get("finish_reason")),
         input_tokens,
@@ -1316,6 +1379,7 @@ class RequestRecord:
     outcome: str
     status: int
     error_code: str | None
+    error_condition: str | None
     finish_reason: str | None
     input_tokens: int | None
     output_tokens: int | None
@@ -1334,6 +1398,7 @@ class RequestRecord:
             "outcome": self.outcome,
             "status": self.status,
             "errorCode": self.error_code,
+            "errorCondition": self.error_condition,
             "finishReason": self.finish_reason,
             "inputTokens": self.input_tokens,
             "outputTokens": self.output_tokens,
@@ -1457,6 +1522,7 @@ def send_one(
         outcome=result.outcome,
         status=result.status,
         error_code=result.error_code,
+        error_condition=result.error_condition,
         finish_reason=result.finish_reason,
         input_tokens=result.input_tokens,
         output_tokens=result.output_tokens,
@@ -1501,6 +1567,7 @@ def run_phase(
         "dispatched": 0,
         "last": 0.0,
         "reason": None,
+        "transportStreak": 0,
     }
     started = clock()
 
@@ -1543,8 +1610,17 @@ def run_phase(
                 with lock:
                     records.append(record)
                     state["last"] = max(state["last"], clock() - started)
+                    if record.outcome == OUTCOME_TRANSPORT:
+                        state["transportStreak"] += 1
+                    else:
+                        state["transportStreak"] = 0
+                    transport_lost = (
+                        state["transportStreak"] >= MAXIMUM_CONSECUTIVE_TRANSPORT_ERRORS
+                    )
                 if record.outcome == OUTCOME_IDENTITY:
                     stop.request(STOP_ABORTED)
+                if transport_lost:
+                    stop.request(STOP_TRANSPORT_LOST)
         except BaseException:
             stop.request(STOP_ABORTED)
             raise
@@ -1658,7 +1734,7 @@ def build_header(
                     list(FACTS_CHECKED_AGAINST_REPOSITORY) if facts else []
                 ),
                 "declaredOnly": list(FACTS_DECLARED_ONLY) if facts else [],
-                "observedFromApi": list(IDENTITY_OBSERVED_FROM_API),
+                "reportedByApi": list(IDENTITY_REPORTED_BY_API),
             },
         },
     }
@@ -1672,7 +1748,7 @@ def execute(
     confirmed: bool,
     facts: EnvironmentFacts | None,
     transport: Transport = http_transport,
-    clock: Callable[[], float] = time.monotonic,
+    clock: Callable[[], float] = time.perf_counter,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
     host: HostRecord | None = None,
 ) -> LoadRun:
@@ -1760,6 +1836,13 @@ def execute(
         end_reason = (
             "an answer named an adapter other than the required one, or a worker "
             "failed; the run stopped and that answer is not counted as a success"
+        )
+    elif stop.reason == STOP_TRANSPORT_LOST:
+        end_state = END_TRANSPORT_LOST
+        end_reason = (
+            f"{MAXIMUM_CONSECUTIVE_TRANSPORT_ERRORS} requests in a row failed before "
+            "any answer; the target was lost, and the run stopped rather than record "
+            "its own loss of the target as the platform's behaviour"
         )
     elif stop.reason == STOP_INTERRUPTED:
         end_state = END_INTERRUPTED
@@ -1915,6 +1998,7 @@ def _request(document: Mapping[str, Any]) -> RequestRecord:
             "outcome",
             "status",
             "errorCode",
+            "errorCondition",
             "finishReason",
             "inputTokens",
             "outputTokens",
@@ -1939,6 +2023,7 @@ def _request(document: Mapping[str, Any]) -> RequestRecord:
         outcome=outcome,
         status=_integer(document.get("status"), "status", minimum=0),
         error_code=_optional_token(document, "errorCode"),
+        error_condition=_optional_token(document, "errorCondition"),
         finish_reason=_optional_token(document, "finishReason"),
         input_tokens=_optional_int(document, "inputTokens"),
         output_tokens=_optional_int(document, "outputTokens"),
@@ -2160,6 +2245,10 @@ def _phase_summary(
             outcome: sum(1 for record in records if record.outcome == outcome)
             for outcome in OUTCOMES
         },
+        "httpStatuses": {
+            str(status): sum(1 for record in records if record.status == status)
+            for status in sorted({record.status for record in records if record.status})
+        },
         "successful": len(successes),
         "unsuccessful": len(records) - len(successes),
         "windowMs": window,
@@ -2221,7 +2310,6 @@ def summarize(raw: RawSet) -> dict[str, Any]:
         "accounting": {
             "dispatched": len(raw.records),
             "outcomes": outcomes,
-            "balanced": sum(outcomes.values()) == len(raw.records),
         },
         "warmup": _phase_summary(
             raw.phases[0], by_phase[(PHASE_WARMUP, WARMUP_LEVEL_ID)], percentiles

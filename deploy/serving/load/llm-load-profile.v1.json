@@ -7,6 +7,7 @@
   "certificationCeiling": "C2",
   "productionBenchmark": false,
   "portableCapacityClaim": false,
+  "boundary": "A bounded observation of this one run, on the provider, host, model, runtime, and profile recorded beside it. It is not a portable capacity figure, a production SLO, or a benchmark of Kubernetes, the model, the runtime, or any provider, and no figure in it may be published as one.",
   "boundariesRef": "docs/architecture/project-boundaries.md",
   "providerContractRef": "docs/environment/local-cluster-provider-contract.v1alpha1.json",
   "release": {

@@ -21,7 +21,10 @@ from tools.runtime_configuration import RuntimeConfigurationError
 from tools.runtime_packaging import RuntimePackagingError
 
 from .core import (
+    END_ABORTED,
     END_COMPLETED,
+    END_INTERRUPTED,
+    END_TRANSPORT_LOST,
     MODE_REAL,
     MODE_REHEARSAL,
     LoadError,
@@ -181,9 +184,9 @@ def main(argv: list[str] | None = None) -> int:
         _report(summary, raw_path, summary_path)
         if run.end_state == END_COMPLETED:
             return EXIT_OK
-        if run.end_state == "interrupted":
+        if run.end_state == END_INTERRUPTED:
             return EXIT_INTERRUPTED
-        if run.end_state == "aborted":
+        if run.end_state in (END_ABORTED, END_TRANSPORT_LOST):
             return EXIT_REFUSED
         return EXIT_NOT_USABLE
     except (
@@ -196,7 +199,9 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_REFUSED
     except KeyboardInterrupt:
         print(
-            "STOPPED llm load: interrupted before a record was written", file=sys.stderr
+            "STOPPED llm load: interrupted outside a running phase; any record "
+            "written before the interrupt may be missing its summary",
+            file=sys.stderr,
         )
         return EXIT_INTERRUPTED
     except Exception:

@@ -36,8 +36,8 @@ cluster, or any provider: no cluster was selected or contacted, no port-forward 
 opened, no model was loaded, and no inference request reached a runtime. The
 real-run commands in the guide are documented and unexecuted. The committed example
 is **synthetic**. Its adapter is `synthetic-stub`, its latencies are a stub's 20 ms
-sleep plus loopback, and none of its figures describes serving, capacity, an SLO,
-or a benchmark. Nothing here certifies
+sleep plus loopback and thread scheduling, and none of its figures, including the
+rates its summary computes, describes serving, capacity, an SLO, or a benchmark. Nothing here certifies
 `sustained-throughput-and-capacity-under-load`, which stays a recorded gap, and the
 `capacity` lane stays unrun.
 
@@ -77,14 +77,15 @@ A raw record set is JSON Lines:
   `portableCapacityClaim: false`, the boundary sentence, the profile identity and
   its LF-normalized SHA-256, generation settings, execution bounds, success
   criteria, and the environment. The environment holds the generator host, the
-  operator's facts, the identity the target served, and a provenance split naming
-  which facts were checked against the repository, which were declared only, and
-  which were observed from the API;
+  operator's facts, the identity the target's API reported, and a provenance split
+  naming which facts were checked against the repository, which were declared only,
+  and which were reported by the API;
 - one `phase` record per warm-up and per level, each followed by its `request`
   records;
 - one `end` record.
 
-A request record keeps the outcome, status, plain-token error code and finish reason,
+A request record keeps the outcome, status, plain-token error code, error condition
+and finish reason,
 token counts for a success only, adapter kind, model reference, worker, dispatch
 offset, and latency. It never keeps the prompt, the completion, or a header. The
 full field list and the reader's refusals are in [the guide](../../serving/llm-load-generation.md#outputs).
@@ -92,7 +93,9 @@ full field list and the reader's refusals are in [the guide](../../serving/llm-l
 ## Commands and results
 
 Every command ran from the repository root in Git Bash, inside the locked environment
-(`uv run --locked`).
+(`uv run --locked`). The results are from the tree after the review fixes described below. The first
+commit recorded 182 tests in this change's suite and 8,865 in the full lane; the 14
+added since are the review's new cases.
 
 ```text
 python -m tools.llm_load check
@@ -105,13 +108,13 @@ python -m tools.llm_load summarize --raw docs/proof/serving/v1-s4-003-pr1-rehear
 exit 0; the regenerated summary is byte-identical to the committed one (cmp)
 
 python -m pytest tests/serving/test_llm_load.py -q
-182 passed
+196 passed
 
 python -m pytest tests/testing -q
 1795 passed
 
 python -m pytest -q
-8865 passed, 30 skipped, 14 deselected
+8879 passed, 30 skipped, 14 deselected
 
 ruff format --check .
 387 files already formatted
@@ -181,6 +184,91 @@ provider.
   rows. Each is corrected in place with a note, and the machine-checked count moves
   to twenty-six. The suite's number-word table stopped at twenty-five and is extended.
 
+## Independent review, and what it changed
+
+The first commit was reviewed before push by three independent reviewers: one for
+the code, one for every claim and count against the code and data, and one reading
+the real InferOps API, its container carrier, and the chart for how a first real run
+would go. Each finding below was checked before it was acted on.
+
+**What the first commit got wrong about the real platform.**
+
+- **It said a platform deadline would surface as `upstream-timeout`.** In the API
+  container, the HTTP carrier's response timer and the adapter's timer share
+  `requestTimeoutMs`, and the carrier's starts first
+  ([`tools/api_carrier/http_server.py`](../../../tools/api_carrier/http_server.py)).
+  It answers `504` with an empty body. The guide and the code comment claimed the
+  opposite. Both are corrected, the summary now counts each HTTP status per level,
+  and a test classifies the empty `504`. This is read from code; no real deadline
+  was provoked.
+- **A dead port-forward would have produced a `completed` run.** Only an identity
+  refusal stopped a run. A lost forward fails each request in about a millisecond,
+  so every level would have spent its whole ceiling on `transport-error` and ended
+  `completed`. Five transport errors in a row now end the run as `transport-lost`,
+  exit `3`. Consecutive platform refusals, such as `503` or `504`, still never stop a
+  run, and a test holds that.
+- **It called three identity fields observed.** The model revision and runtime name
+  the API reports are values it was built or configured with, and its runtime version
+  is the pinned digest unless something asked the runtime. The provenance list was
+  `observedFromApi` and the guide said **Observed**. It is now `reportedByApi`, and
+  the guide says what those fields are not.
+- **Refusals sharing a code were indistinguishable.** A draining API and an
+  unreachable runtime both answer `503 capability-unavailable`. Request records now
+  keep the `conditionId` from a canonical error's details as `errorCondition`.
+
+**What the first commit got wrong about itself.**
+
+- **The guide said the profile carried the boundary sentence and the loader refused
+  one without it.** The profile had no such member and nothing checked it. The
+  profile now carries it, and the loader refuses a profile whose sentence differs.
+- **Its latencies had 15.6 ms resolution on this host.** It timed requests with
+  `time.monotonic`, which ticks every 15.625 ms on Windows. The first committed
+  example held only the values 15, 16, 31, 32, and 47 ms, and ten of its 39 latencies
+  were below the stub's 20 ms sleep, which this record then described as "a 20 ms
+  sleep plus loopback". The tool now uses `time.perf_counter`, and the regenerated
+  example's latencies run from 24 to 49 ms.
+- **The worst case was presented as a bound it is not.** The deadline is a socket
+  timeout, not a wall-clock limit, so a slowly sending server can hold a request past
+  it. The guide now says so.
+- **A late mock answer did not stop the run.** An answer past the deadline was
+  classified `timeout` before its adapter was read. Identity is now read first.
+- **The release install was attributed to the wrong record.** The guide pointed at
+  the Sprint 3 paved-road record, whose certification workflow uninstalls the
+  release it installs. It now points at the dashboard validation run, which
+  installed the release from the three values files and left it running, and it
+  gives the command.
+- **Smaller statements.** Exit code `3` covers refusals after load as well as before.
+  The interrupt message claimed no record was written when one could have been.
+  `accounting.balanced` could never be false once the reader had accepted a set, and
+  it is removed. `summarize` writes under `.cache/inferops/load/`, not beside the file
+  it reads. The success row listed the runtime name, which is checked once, by the
+  identity probe. The CHANGELOG said the tool refuses a target "that is not a
+  loopback forward" and one whose answers "are not the real release"; it can check
+  only for a loopback URL and for the identity the API reports. The CHANGELOG and
+  this record paraphrased the project boundaries as forbidding a "throughput or
+  latency figure"; they name a benchmark, a throughput figure, and a capacity claim.
+  The facts commands gave a string revision and desired rather than ready replicas,
+  without saying so.
+
+**Test coverage the review asked for.** A worker failure under concurrency 4 now
+has a test showing its siblings stop rather than run to the ceiling. The command
+line's exit code is tested for every end state, using the end-state constants
+rather than string literals.
+
+**Reported and not changed.**
+
+- Whether the pinned runtime abandons a job when the API closes the connection at
+  its deadline is unchecked. If it does not, timeouts at the highest level can
+  compound. The guide says so and gives the queueing arithmetic.
+- The environment record does not capture the Docker Desktop VM's resources,
+  container limits, the `kubectl` client version, or the deployed request deadline
+  and output limit. It also does not tie the forward to the release the facts name.
+  Collecting them needs the cluster. The guide lists each as a limitation.
+- Every request repeats one fixture, so the runtime's prompt cache makes prompt
+  processing nearly free after the first. The guide records it.
+- The interrupt test counts calls to the wait function rather than mocking time.
+  It relies on a three-request warm-up finishing inside one 0.25 s poll.
+
 ## Deferred, and why
 
 | Not done here | Why |
@@ -193,13 +281,17 @@ provider.
 
 ## Risks and assumptions
 
-- The public architecture records still say V1 publishes no latency or throughput
-  figure ([the project boundaries](../../architecture/project-boundaries.md), and
-  the `capacity` lane in [the test strategy](../../testing/test-strategy.v1alpha1.json)).
-  This change publishes no such figure, and it does not edit either record. Before
+- The public architecture records still refuse these figures.
+  [The project boundaries](../../architecture/project-boundaries.md) say no
+  benchmark, throughput figure, or capacity claim may be published from V1. The
+  `capacity` lane in [the test strategy](../../testing/test-strategy.v1alpha1.json)
+  says V1 may publish no throughput, latency, capacity, or benchmark figure. This
+  change does not edit either record. The rates in its committed summary describe a
+  synthetic stub and are labelled that way; no figure from a real release is
+  published. Before
   real figures from a load run are published, those records need a governed
   amendment naming the bounded, provider-labelled measurements they may carry.
-- The documented real-run commands name objects the committed chart renders and the
-  paved road installed. They have not been executed as written.
+- The documented real-run commands name objects the committed chart renders. They
+  have not been executed as written.
 - A Service port-forward reaches one selected pod and adds its own cost to every
   latency. A run through one says nothing about how load is spread.

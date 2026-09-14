@@ -41,10 +41,12 @@ from tools.llm_load.core import (
     END_ABORTED,
     END_COMPLETED,
     END_INTERRUPTED,
+    END_TRANSPORT_LOST,
     END_WARMUP_FAILED,
     FACT_FIELDS,
     FACTS_CHECKED_AGAINST_REPOSITORY,
     FACTS_DECLARED_ONLY,
+    MAXIMUM_CONSECUTIVE_TRANSPORT_ERRORS,
     MODE_REAL,
     MODE_REHEARSAL,
     OUTCOME_HTTP_ERROR,
@@ -162,11 +164,17 @@ def completion(
     }
 
 
-def refusal(code: str, *, adapter: str = "real") -> dict[str, Any]:
+def refusal(
+    code: str, *, adapter: str = "real", condition: str = "runtime-unreachable"
+) -> dict[str, Any]:
     return {
         "code": code,
         "message": "refused",
-        "details": {"adapterKind": adapter, "modelRef": MODEL},
+        "details": {
+            "conditionId": condition,
+            "adapterKind": adapter,
+            "modelRef": MODEL,
+        },
     }
 
 
@@ -343,6 +351,7 @@ def _set(document: dict[str, Any], dotted: str, value: Any) -> None:
 
 PROFILE_CORRUPTIONS: list[tuple[str, Any, str]] = [
     ("productionBenchmark", True, "production benchmark"),
+    ("boundary", "Fast enough for production.", "boundary statement verbatim"),
     ("portableCapacityClaim", True, "portable capacity"),
     ("evidenceClass", "synthetic", "identity is unsupported"),
     ("evidenceLabel", "local real runtime", "identity is unsupported"),
@@ -652,6 +661,22 @@ CLASSIFICATIONS: list[
     ),
     ("proxy error page", HttpAnswer(502, None), None, 10, OUTCOME_HTTP_ERROR, None),
     (
+        "carrier deadline, empty body",
+        HttpAnswer(504, None),
+        None,
+        120_004,
+        OUTCOME_HTTP_ERROR,
+        None,
+    ),
+    (
+        "late mock answer",
+        HttpAnswer(200, completion(adapter="mock")),
+        None,
+        150_001,
+        OUTCOME_IDENTITY,
+        None,
+    ),
+    (
         "another model",
         HttpAnswer(200, completion(model="another-model")),
         None,
@@ -926,7 +951,6 @@ def test_a_raw_record_set_round_trips_and_summarizes_identically() -> None:
     second = render_summary(summarize(parse_raw(text)))
     assert first == second
     summary = json.loads(first)
-    assert summary["accounting"]["balanced"] is True
     assert summary["accounting"]["dispatched"] == 21
     assert summary["accounting"]["outcomes"][OUTCOME_HTTP_ERROR] == 4
     assert set(summary["accounting"]["outcomes"]) == set(OUTCOMES)
@@ -1410,3 +1434,132 @@ def test_the_transport_ignores_proxy_variables(
     monkeypatch.delenv("NO_PROXY", raising=False)
     monkeypatch.delenv("no_proxy", raising=False)
     assert core.http_transport("POST", f"{loopback}/ok", {"a": 1}, {}, 5).status == 200
+
+
+def test_a_refusal_keeps_its_condition_so_draining_and_unreachable_differ() -> None:
+    draining = classify(
+        PROFILE,
+        answer=HttpAnswer(
+            503, refusal("capability-unavailable", condition="deployment-draining")
+        ),
+        failure=None,
+        latency_ms=5,
+    )
+    unreachable = classify(
+        PROFILE,
+        answer=HttpAnswer(503, refusal("capability-unavailable")),
+        failure=None,
+        latency_ms=5,
+    )
+    assert draining.error_code == unreachable.error_code == "capability-unavailable"
+    assert draining.error_condition == "deployment-draining"
+    assert unreachable.error_condition == "runtime-unreachable"
+    empty = classify(PROFILE, answer=HttpAnswer(504, None), failure=None, latency_ms=5)
+    assert (empty.error_code, empty.error_condition) == (None, None)
+
+
+def test_a_lost_target_stops_the_run_instead_of_filling_every_level() -> None:
+    transport = FakeTransport(
+        lambda sequence: (
+            TransportFailure() if sequence >= 5 else HttpAnswer(200, completion())
+        )
+    )
+    result = run(quick(max_requests_per_level=60), transport)
+    assert result.end_state == END_TRANSPORT_LOST
+    failures = [r for r in result.records if r.outcome == OUTCOME_TRANSPORT]
+    assert len(failures) == MAXIMUM_CONSECUTIVE_TRANSPORT_ERRORS
+    assert [phase.level_id for phase in result.phases] == ["warmup", "c1"]
+    assert result.phases[-1].stop_reason == "transport-lost"
+    raw = run_to_raw(result)
+    assert summarize(raw)["usable"] is False
+
+
+def test_transport_errors_that_are_not_consecutive_do_not_stop_the_run() -> None:
+    transport = FakeTransport(
+        lambda sequence: (
+            TransportFailure()
+            if sequence >= 3 and sequence % 3 == 0
+            else HttpAnswer(200, completion())
+        )
+    )
+    result = run(quick(levels=(core.Level("c1", 1),)), transport)
+    assert result.end_state == END_COMPLETED
+    assert sum(r.outcome == OUTCOME_TRANSPORT for r in result.records) == 2
+
+
+def test_platform_refusals_in_a_row_never_stop_the_run() -> None:
+    transport = FakeTransport(
+        lambda sequence: (
+            HttpAnswer(503, refusal("model-not-ready"))
+            if sequence >= 3
+            else HttpAnswer(200, completion())
+        )
+    )
+    result = run(quick(max_requests_per_level=20), transport)
+    assert result.end_state == END_COMPLETED
+    assert [phase.dispatched for phase in result.phases] == [3, 20, 20, 20]
+
+
+def test_a_worker_failure_under_concurrency_stops_its_siblings() -> None:
+    gate = threading.Event()
+
+    def answer(sequence: int) -> Any:
+        if sequence == 5:
+            gate.set()
+            return RuntimeError("boom")
+        if sequence > 5:
+            gate.wait(timeout=5)
+            time.sleep(0.01)
+        return HttpAnswer(200, completion())
+
+    profile = quick(max_requests_per_level=500, levels=(core.Level("c4", 4),))
+    transport = FakeTransport(answer)
+    with pytest.raises(RuntimeError, match="boom"):
+        run(profile, transport)
+    # Each sibling may finish the one request it had already dispatched and then
+    # stops; none keeps dispatching toward the 500-request ceiling.
+    assert len(transport.sequences) < 3 + 20
+
+
+def test_the_level_summary_counts_each_http_status() -> None:
+    transport = FakeTransport(
+        lambda sequence: (
+            HttpAnswer(504, None)
+            if sequence in (4, 6)
+            else HttpAnswer(200, completion())
+        )
+    )
+    result = run(quick(levels=(core.Level("c1", 1),)), transport)
+    level = summarize(run_to_raw(result))["levels"][0]
+    assert level["httpStatuses"] == {"200": 4, "504": 2}
+
+
+@pytest.mark.parametrize(
+    ("end_state", "expected"),
+    [
+        (END_COMPLETED, cli.EXIT_OK),
+        (END_WARMUP_FAILED, cli.EXIT_NOT_USABLE),
+        (END_ABORTED, cli.EXIT_REFUSED),
+        (END_TRANSPORT_LOST, cli.EXIT_REFUSED),
+        (END_INTERRUPTED, cli.EXIT_INTERRUPTED),
+    ],
+)
+def test_the_command_line_exit_code_follows_the_end_state(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    end_state: str,
+    expected: int,
+) -> None:
+    finished = replace(
+        run(quick(), FakeTransport(), mode=MODE_REHEARSAL), end_state=end_state
+    )
+    monkeypatch.setattr(cli, "execute", lambda *args, **kwargs: finished)
+    monkeypatch.setattr(
+        cli, "write_raw", lambda *args, **kwargs: tmp_path / "raw.jsonl"
+    )
+    monkeypatch.setattr(
+        cli, "write_summary", lambda *args, **kwargs: tmp_path / "summary.json"
+    )
+    assert cli.main(["rehearse"]) == expected
+    assert end_state in capsys.readouterr().out

@@ -16,20 +16,26 @@ once versioned releases begin.
   requests per level, and a 150,000 ms client deadline held above the API's own.
   `python -m tools.llm_load` refuses a profile that drifts from the chart or the
   runtime profile, or that exceeds ceilings kept in code. It refuses a target that
-  is not a loopback forward, or whose readiness and model list are not the real
-  release. Every request gets one sequence number and one of six outcomes, decided
-  in a fixed order. The raw record set carries the provider, host, model, runtime,
+  is not a loopback URL, and one whose readiness and model list do not report the
+  real adapter, the pinned model, its revision, and the pinned runtime name. Every
+  request gets one sequence number and one of six outcomes, decided in a fixed
+  order. Five transport errors in a row stop a run as `transport-lost`, so a dead
+  forward cannot produce a completed record. The raw record set carries the provider, host, model, runtime,
   profile digest, and component versions, and says which facts were checked against
-  the repository, which were only declared, and which were observed from the API.
+  the repository, which were only declared, and which the API only reported.
   The reader refuses a set whose accounting does not balance.
   [The guide](docs/serving/llm-load-generation.md) documents the real-run commands.
   Evidence: [the V1-S4-003-PR1 validation record](docs/proof/serving/v1-s4-003-pr1-validation.md).
 
   **No real load has been sent with it.** The only execution is a rehearsal against
   an in-process stub over loopback HTTP, committed as a **synthetic** example whose
-  latencies describe a 20 ms sleep. Nothing here is capacity, an SLO, or a
+  latencies and rates describe a 20 ms sleep. Nothing here is capacity, an SLO, or a
   benchmark. The capacity claim stays deferred, and the project boundaries still
-  forbid publishing a throughput or latency figure until they are amended.
+  forbid publishing a benchmark, throughput figure, or capacity claim until they are
+  amended. Independent review before merge found that a platform deadline arrives as
+  the API carrier's empty `504` rather than `upstream-timeout`, that a dead forward
+  would have ended `completed`, and that the first latencies had 15.6 ms resolution
+  on Windows; each is fixed and recorded in the validation record.
 
 - **The dashboard, asked of a real Prometheus and rendered by a real Grafana, with a
   thirty-second operator guide.** One single-replica release on `docker-desktop` was
