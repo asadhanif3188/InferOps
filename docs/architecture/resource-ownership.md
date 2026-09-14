@@ -222,7 +222,7 @@ inside one.
 |---|---|---|
 | `workload-contract-schema` | `repository` | The input to every layer, produced by none of them |
 | `evidence-records` | `repository` | Written by a reviewed change. Nothing in a cluster writes here |
-| `inference-operations-dashboard` | `repository` | The dashboard's panels, queries and empty-state texts as a committed record, and the Grafana JSON generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-13. `implemented` means the definition exists and is checked against the query policy and synthetic scenarios; no Grafana has imported it and nothing here runs one |
+| `inference-operations-dashboard` | `repository` | The dashboard's panels, queries and empty-state texts as a committed record, and the Grafana JSON generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-13. `implemented` means the definition exists and is checked against the query policy and synthetic scenarios; one throwaway Grafana imported it once for the V1-S4-002-PR2 validation, and nothing here runs one |
 | `workload-contract-document` | `workload-owner` | The platform reads it and never writes it back |
 | `workload-secret-material` | `workload-owner` | Referenced by name. This project never creates, rotates, or reads it |
 | `serving-runtime-container-image` | `external-publisher` | Pinned by digest. Availability is not this project's to guarantee |

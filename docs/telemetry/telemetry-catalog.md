@@ -439,7 +439,7 @@ document should be read:
   live in an `emptyDir` and go with its pod, so nothing it collected outlives the
   release. Who runs a dashboard server and owns an alert routing path is still
   open, and `telemetry-backend` is still deferred; the dashboard definition is a
-  repository artifact that nothing has imported.
+  repository artifact that no server runs.
 - **Records go to a stream and no further.** No log store, shipper, retention window,
   or access rule is selected, so the retention this catalog requires to be stated
   before content of any kind is written is still unstated.

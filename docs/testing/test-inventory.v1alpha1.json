@@ -631,7 +631,17 @@
       "claims": [
         "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
       ],
-      "note": "Every check reads files. No Grafana imports the rendered JSON and no Prometheus evaluates a panel: the structure is checked against the fields this repository writes, and eleven of the thirty expressions have been evaluated only by the fixture evaluator."
+      "note": "Every check reads files. The structure is checked against the fields this repository writes, and the eleven new expressions are evaluated here only by the fixture evaluator; the real run on one provider is held to its record by tests/telemetry/test_inference_dashboard_validation.py."
+    },
+    {
+      "module": "tests/telemetry/test_inference_dashboard_validation.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The dashboard's real-run validation: the capture command classifies a Prometheus answer as empty, zero, value, NaN, or refused and asks every panel expression once, against a local stub; the committed readings cover every panel expression in all nine states, agree with their own rows, carry no barred label and the pod name only where a panel is declared per replica, keep not-emitted panels silent, separate zero from missing, and reconcile request and error counts with the traffic the record says was sent; the validation record publishes the counts the readings have; and the operator guide covers every panel once with a conclusion it cannot support.",
+      "claims": [
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+      ],
+      "note": "No test contacts a cluster or a Prometheus. Whether the committed readings are what a real collector returned rests on the validation record's method; this suite holds the readings, the record, and the guide to each other and to the dashboard record."
     },
     {
       "module": "tests/telemetry/test_telemetry_catalog.py",

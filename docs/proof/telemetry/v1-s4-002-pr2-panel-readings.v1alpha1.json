@@ -1,0 +1,3316 @@
+{
+  "$id": "https://inferops.io/proof/telemetry/v1-s4-002-pr2-panel-readings.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Every inference operations dashboard panel expression, asked of a real Prometheus in nine controlled states",
+  "documentRef": "docs/proof/telemetry/v1-s4-002-pr2-dashboard-validation.md",
+  "dashboardRecordRef": "docs/telemetry/inference-operations-dashboard.v1alpha1.json",
+  "evidenceClass": "local-real-cpu",
+  "provider": "docker-desktop",
+  "capturedBy": "python -m tools.inference_dashboard --capture http://127.0.0.1:19090",
+  "statement": "Readings are what the release's own collector returned to an instant query of each committed panel expression at one moment, classified by tools/inference_dashboard/live.py. Every number is an observation of one single-replica release on one host at one moment. None is a measurement of latency, throughput, or capacity. Each screenshot was rendered shortly after its state's capture, not at the same instant, so a figure on a screenshot can differ from the reading: the serving-runtime-scaled-to-zero screenshot shows 17 failed readiness checks where the reading is 13.",
+  "environment": {
+    "repositoryRevision": "7dda44fad4eff8f85bf71b232956055fde6b755b",
+    "chart": "inferops-llm-0.3.0",
+    "kubernetesServer": "v1.34.3",
+    "kubectl": "v1.34.3",
+    "helm": "v3.19.0+g3d8990f",
+    "containerEngine": "Docker Desktop, server 29.7.2, 12 processors, 10432536576 bytes",
+    "collector": {
+      "version": "3.5.0",
+      "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+    },
+    "apiImage": "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63",
+    "runtimeImage": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "grafana": {
+      "version": "11.6.0",
+      "image": "grafana/grafana@sha256:62d2b9d20a19714ebfe48d1bb405086081bc602aa053e28cf6d73c7537640dfb"
+    },
+    "screenshotBrowser": "Google Chrome 152.0.7977.83, headless, 1600 by 2950 pixels",
+    "replicas": {
+      "platform-api": 1,
+      "serving-runtime": 1
+    }
+  },
+  "states": [
+    {
+      "stateId": "idle",
+      "capturedAt": "2026-09-14T10:22:41Z",
+      "action": "Every workload ready and no inference request sent. One request to a path the API does not serve preceded this capture.",
+      "traffic": [],
+      "screenshotRef": "docs/proof/telemetry/v1-s4-002-pr2-screenshots/01-idle.png",
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "request-latency-quantiles/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "request-latency-quantiles/C": {
+          "reading": "empty",
+          "rows": []
+        },
+        "successful-requests-per-second/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-by-code/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.001567020283584964"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stateId": "traffic-in-flight",
+      "capturedAt": "2026-09-14T10:25:18Z",
+      "action": "Captured while four concurrent clients were sending successful requests, after the three refused requests and thirty sequential ones below.",
+      "traffic": [
+        {
+          "trafficId": "contract-invalid-probes",
+          "requests": 3,
+          "concurrency": 1,
+          "byStatus": {
+            "400 contract-invalid": 3
+          },
+          "promptTokens": 0,
+          "completionTokens": 0,
+          "note": "Sent while confirming the request shape, before any successful request. All three carried max_tokens, a member outside the request subset the API accepts, and one of them also named a model the release is not configured with. The API counted all three, so they are in every later figure. Their durations were not logged: two were printed at 0.092 s and 0.070 s and the third was sent by hand and not timed.",
+          "clientSecondsAtOrUnder": null
+        },
+        {
+          "trafficId": "sequential-traffic",
+          "requests": 30,
+          "concurrency": 1,
+          "byStatus": {
+            "200 ok": 30
+          },
+          "promptTokens": 540,
+          "completionTokens": 90,
+          "clientSecondsAtOrUnder": {
+            "0.5": 29,
+            "1": 29,
+            "2.5": 30,
+            "5": 30
+          }
+        },
+        {
+          "trafficId": "concurrent-traffic",
+          "requests": 200,
+          "concurrency": 4,
+          "byStatus": {
+            "200 ok": 200
+          },
+          "promptTokens": 3600,
+          "completionTokens": 600,
+          "clientSecondsAtOrUnder": {
+            "0.5": 0,
+            "1": 2,
+            "2.5": 200,
+            "5": 200
+          }
+        }
+      ],
+      "screenshotRef": null,
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "63"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "client-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.00580983098309831"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.3676027602760276"
+            }
+          ]
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "4"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.4819135978921465"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.3330188476113913"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.4666037695222784"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.3676027602760276"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0.047619047619047616"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_error_code": "contract-invalid",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.00580983098309831"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.004121915235654068"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "6.616849684968497"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "1.1028082808280828"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stateId": "traffic",
+      "capturedAt": "2026-09-14T10:27:21Z",
+      "action": "Captured after the concurrent traffic finished and the collector had scraped and recorded it.",
+      "traffic": [],
+      "screenshotRef": "docs/proof/telemetry/v1-s4-002-pr2-screenshots/02-traffic.png",
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "233"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "client-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.003619830467500224"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.779146298775982"
+            }
+          ]
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1.617532672270452"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.411753267227045"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.482350653445409"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.779146298775982"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0.012875536480686695"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_error_code": "contract-invalid",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.003619830467500224"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.012120727705095341"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "14.024633377967675"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "2.3374388963279458"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.9267748750000001"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "2.5889662500000004"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stateId": "error",
+      "capturedAt": "2026-09-14T10:28:24Z",
+      "action": "Twenty requests naming a model this release is not configured with.",
+      "traffic": [
+        {
+          "trafficId": "wrong-model",
+          "requests": 20,
+          "concurrency": 1,
+          "byStatus": {
+            "400 contract-invalid": 20
+          },
+          "promptTokens": 0,
+          "completionTokens": 0,
+          "clientSecondsAtOrUnder": {
+            "0.5": 20,
+            "1": 20,
+            "2.5": 20,
+            "5": 20
+          }
+        }
+      ],
+      "screenshotRef": "docs/proof/telemetry/v1-s4-002-pr2-screenshots/03-error.png",
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "3"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "253"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "client-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.07778555633341114"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.7846400612283451"
+            }
+          ]
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1.5418274772464704"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.404182747724647"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "2.4808365495449296"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.7846400612283451"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "23"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0.09090909090909091"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_error_code": "contract-invalid",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.07778555633341114"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.012131612420501313"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "14.123521102110212"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "2.353920183685035"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.936383861111111"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "2.6158091666666667"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stateId": "serving-runtime-scaled-to-zero",
+      "capturedAt": "2026-09-14T10:30:23Z",
+      "action": "The release's serving runtime Deployment scaled to zero replicas, ten valid requests sent, captured once the collector recorded the runtime job as discovering no pod.",
+      "traffic": [
+        {
+          "trafficId": "valid-requests-while-unavailable",
+          "requests": 10,
+          "concurrency": 1,
+          "byStatus": {
+            "503 capability-unavailable": 10
+          },
+          "promptTokens": 0,
+          "completionTokens": 0,
+          "clientSecondsAtOrUnder": {
+            "0.5": 10,
+            "1": 10,
+            "2.5": 10,
+            "5": 10
+          }
+        }
+      ],
+      "screenshotRef": "docs/proof/telemetry/v1-s4-002-pr2-screenshots/04-serving-runtime-scaled-to-zero.png",
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_job_absent:serving_runtime",
+                "job": "inferops-inferops-llm-serving-runtime"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "13"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.03704060391000615"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "263"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "client-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.0740812078200123"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "server-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.25"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.475"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.495"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "33"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0.12547528517110265"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_error_code": "capability-unavailable",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_error_code": "contract-invalid",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.0740812078200123"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.0016033255054190396"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.22747898148148146"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0.6948448888888888"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stateId": "serving-runtime-restored",
+      "capturedAt": "2026-09-14T10:31:52Z",
+      "action": "The runtime Deployment scaled back to one replica, ready again, and ten valid requests sent.",
+      "traffic": [
+        {
+          "trafficId": "valid-requests-after-restore",
+          "requests": 10,
+          "concurrency": 1,
+          "byStatus": {
+            "200 ok": 10
+          },
+          "promptTokens": 180,
+          "completionTokens": 30,
+          "clientSecondsAtOrUnder": {
+            "0.5": 9,
+            "1": 10,
+            "2.5": 10,
+            "5": 10
+          }
+        }
+      ],
+      "screenshotRef": null,
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "20"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.06296902664701046"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "273"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "client-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.0740812078200123"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "server-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.03704060391000615"
+            }
+          ]
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.25641025641025644"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.4871794871794872"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.8000000000000015"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.03704060391000615"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "33"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0.12087912087912088"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_error_code": "capability-unavailable",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_error_code": "contract-invalid",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.0740812078200123"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.0019106299125100936"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.6667308703801107"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0.11112181173001845"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stateId": "api-pod-replaced-transition",
+      "capturedAt": "2026-09-14T10:32:39Z",
+      "action": "The API pod deleted by name; captured once its replacement published an identity, while the deleted pod's series were still returned.",
+      "traffic": [],
+      "screenshotRef": null,
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "20"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.06245441875469659"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "273"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "client-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.07347578677023128"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "server-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.03673789338511564"
+            }
+          ]
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.2564102564102564"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.48717948717948717"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.7999999999999993"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.03673789338511564"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "33"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0.12087912087912088"
+            }
+          ]
+        },
+        "errors-by-code/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_error_code": "capability-unavailable",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_error_code": "contract-invalid",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.07347578677023128"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "2"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.0017436549979811592"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-6fwmj",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.6612820809320815"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0.11021368015534692"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.135"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0.15"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stateId": "api-pod-replaced-settled",
+      "capturedAt": "2026-09-14T10:32:56Z",
+      "action": "Captured once only the replacement API process's identity was returned.",
+      "traffic": [],
+      "screenshotRef": "docs/proof/telemetry/v1-s4-002-pr2-screenshots/05-api-pod-replaced.png",
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-identity-not-published/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.06675420716674842"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "client-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "server-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.039267180686322595"
+            }
+          ]
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.2631578947368421"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.5"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.9"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.039267180686322595"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {},
+              "value": "0"
+            }
+          ]
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-by-code/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_error_code": "capability-unavailable",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_error_code": "contract-invalid",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "k8s_component": "platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.0015753776921858848"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            },
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops_build_info",
+                "deployment_environment": "dev",
+                "inferops_adapter_kind": "real",
+                "inferops_capability_id": "inferops-native-serving",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_model_revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+                "inferops_release_id": "inferops",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_runtime_image_digest": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+                "instance": "inferops-inferops-llm-5b6b4845d7-6fwmj",
+                "job": "inferops-inferops-llm-platform-api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.7068092523538068"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0.11780154205896778"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.1125"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0.125"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "stateId": "api-scaled-to-zero",
+      "capturedAt": "2026-09-14T10:34:55Z",
+      "action": "The API Deployment scaled to zero replicas; captured once the collector recorded the platform-api job as discovering no pod and no identity was returned.",
+      "traffic": [],
+      "screenshotRef": "docs/proof/telemetry/v1-s4-002-pr2-screenshots/06-api-scaled-to-zero.png",
+      "readings": {
+        "scrape-targets-answering-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_job_absent:platform_api",
+                "job": "inferops-inferops-llm-platform-api"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "scrape-jobs-that-discovered-no-pod/B": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-identity-not-published/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:build_info_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "readiness-checks-failed-since-start/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "readiness-refusals-by-component/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_component": "serving-adapter",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.03332546843670055"
+            }
+          ]
+        },
+        "model-readiness/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "model-readiness/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:model_ready_absent:platform_api",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "requests-since-start/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "request-rate-by-outcome/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "client-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "server-error",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_outcome": "success",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.04760781205242936"
+            }
+          ]
+        },
+        "api-in-flight-by-replica/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "runtime-processing-and-deferred/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "runtime-processing-and-deferred/B": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "request-latency-quantiles/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.27777777777777773"
+            }
+          ]
+        },
+        "request-latency-quantiles/B": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.7499999999999997"
+            }
+          ]
+        },
+        "request-latency-quantiles/C": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.9499999999999996"
+            }
+          ]
+        },
+        "successful-requests-per-second/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0.04760781205242936"
+            }
+          ]
+        },
+        "queue-wait-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-since-start/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "unsuccessful-request-ratio/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "errors-by-code/A": {
+          "reading": "zero",
+          "rows": [
+            {
+              "labels": {
+                "inferops_error_code": "capability-unavailable",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            },
+            {
+              "labels": {
+                "inferops_error_code": "contract-invalid",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "0"
+            }
+          ]
+        },
+        "model-load-duration-p95/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-processes-publishing-identity/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "api-process-cpu-by-replica/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-6fwmj",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.00045174650000000103"
+            },
+            {
+              "labels": {
+                "instance": "inferops-inferops-llm-5b6b4845d7-cz25s",
+                "k8s_component": "platform-api",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "0.001001076600479304"
+            }
+          ]
+        },
+        "api-process-memory/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "scrape-targets-discovered-by-tier/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "__name__": "inferops:scrape_targets:count",
+                "job": "inferops-inferops-llm-serving-runtime",
+                "k8s_component": "serving-runtime",
+                "k8s_namespace": "inferops-release"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "build-identity-per-replica/A": {
+          "reading": "empty",
+          "rows": []
+        },
+        "runtime-operating-identity/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "deployment_environment": "dev",
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_runtime_id": "llama-cpp-server",
+                "inferops_workload_id": "support-assistant"
+              },
+              "value": "1"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-api/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.8569406169437285"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0.14282343615728807"
+            }
+          ]
+        },
+        "tokens-per-second-at-the-runtime/A": {
+          "reading": "value",
+          "rows": [
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "input"
+              },
+              "value": "0.09749999999999999"
+            },
+            {
+              "labels": {
+                "inferops_model_id": "qwen3-1-7b-q8-0",
+                "inferops_token_direction": "output"
+              },
+              "value": "0.10833333333333332"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "directReads": [
+    {
+      "readId": "token-counters-after-traffic",
+      "readAt": "2026-09-14T10:26:59Z",
+      "method": "Instant queries of the raw counters, sent by hand once the recorded runtime series had caught up with llama-server's own counter; not a panel expression and not a capture.",
+      "values": {
+        "sum by (inferops_token_direction) (inferops_inference_tokens_total)": {
+          "input": "4140",
+          "output": "690"
+        },
+        "llamacpp:prompt_tokens_total": "247",
+        "llamacpp:prompt_tokens_cached_total": "3893",
+        "llamacpp:tokens_predicted_total": "690"
+      },
+      "note": "Every request in the run sent the same 18-token prompt, which is close to the most prompt-cache reuse possible; how far the runtime's input counter falls below the API's depends on that reuse."
+    },
+    {
+      "readId": "request-duration-buckets-at-traffic",
+      "readAt": "2026-09-14T10:27:21Z",
+      "method": "An instant query of sum by (le) (inferops_inference_request_duration_seconds_bucket) evaluated at the traffic capture's instant, sent by hand after that capture; not a panel expression.",
+      "values": {
+        "0.5": "33",
+        "1": "35",
+        "2.5": "233",
+        "5": "233",
+        "+Inf": "233"
+      }
+    }
+  ]
+}

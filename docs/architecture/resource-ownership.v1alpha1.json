@@ -151,7 +151,7 @@
         "cluster teardown"
       ],
       "referencedBy": [],
-      "handoff": "Split out of telemetry-backend by the ADR 0004 D7 amendment of 2026-09-13. The panels, their queries and what each shows without a number are a committed record, and the Grafana dashboard JSON is generated from it and compared against it. Implemented means the definition exists and is checked: every expression is held to the correlation query policy and evaluated over synthetic scenarios. It does not mean a dashboard runs anywhere. No Grafana has imported the JSON, no chart or Terraform module installs one, and the server that would show it stays under telemetry-backend.",
+      "handoff": "Split out of telemetry-backend by the ADR 0004 D7 amendment of 2026-09-13. The panels, their queries and what each shows without a number are a committed record, and the Grafana dashboard JSON is generated from it and compared against it. Implemented means the definition exists and is checked: every expression is held to the correlation query policy and evaluated over synthetic scenarios. It does not mean a dashboard runs anywhere. One throwaway Grafana container outside the cluster, owned by nothing, imported the JSON once for the V1-S4-002-PR2 validation and was removed; no chart or Terraform module installs one, and the server that would show it stays under telemetry-backend.",
       "evidenceRef": "docs/proof/telemetry/v1-s4-002-pr1-validation.md"
     },
     {

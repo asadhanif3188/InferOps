@@ -127,7 +127,7 @@ the ASGI application is exercised. No component emits a span. A release-scoped
 Prometheus collector is now Helm-owned and has scraped both InferOps jobs on
 `docker-desktop`; it writes to an `emptyDir` that goes with its pod, so no durable
 store, dashboard server, or alerting path exists. A dashboard definition does, checked
-against the query policy, and nothing has imported it. The selected serving runtime's own signals
+against the query policy and validated once in a throwaway Grafana that nothing owns. The selected serving runtime's own signals
 were observed in one trial, on one host; the API's committed evidence is local and
 mock-backed rather than evidence of a deployed network service. Two of ADR 0006's
 eighteen rules remain marked as enforced by review alone rather than promoted to

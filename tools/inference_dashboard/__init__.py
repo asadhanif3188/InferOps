@@ -5,8 +5,9 @@ correlation query policy in :mod:`tools.telemetry_correlation`, refuses a panel 
 would show missing telemetry as a number or scrape reachability as readiness, and
 renders the record as Grafana dashboard JSON.
 
-It contacts no cluster, starts no Grafana, and evaluates nothing against a store that
-has ever held a sample. The rendered JSON has not been imported anywhere.
+It starts no Grafana and no Prometheus. Every mode but ``--capture`` reads files;
+``--capture`` asks the one Prometheus URL it is given every panel expression and
+prints how each reads (:mod:`.live`).
 """
 
 from .core import (

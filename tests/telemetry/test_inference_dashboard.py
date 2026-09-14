@@ -101,11 +101,20 @@ def test_the_committed_record_satisfies_the_dashboard_policy() -> None:
     assert check_dashboard() == []
 
 
-def test_the_record_does_not_claim_a_run_that_did_not_happen() -> None:
+def test_the_record_claims_a_run_only_with_a_record_of_it() -> None:
+    """The first version of this test pinned both flags false; a real run moved them.
+
+    A flag may say true only while the record names the evidence of the run, and the
+    static evidence stays referenced beside it rather than being replaced.
+    """
     status = RECORD["verificationStatus"]
-    assert status["importedIntoGrafana"] is False
-    assert status["evaluatedByPrometheus"] is False
-    assert status["evidenceClass"] == "local-static"
+    ran = status["importedIntoGrafana"] or status["evaluatedByPrometheus"]
+    if ran:
+        assert (REPO_ROOT / RECORD["realRunEvidenceRef"]).is_file()
+        assert status["evidenceClass"] == "local-real-cpu"
+    else:
+        assert status["evidenceClass"] == "local-static"
+    assert RECORD["evidenceRef"] == "docs/proof/telemetry/v1-s4-002-pr1-validation.md"
 
 
 def test_the_questions_are_the_v1_operational_questions() -> None:
@@ -186,7 +195,7 @@ def test_the_published_counts_are_the_counts_the_record_has() -> None:
     limitation = next(
         entry
         for entry in RECORD["limitations"]
-        if entry["limitationId"] == "new-expressions-evaluated-by-fixtures-only"
+        if entry["limitationId"] == "new-expressions-evaluated-on-one-provider"
     )
     assert limitation["statement"].lower().startswith(f"{words[len(new)]} panel")
     per_replica = [panel for panel in RECORD["panels"] if panel["perReplica"]]
@@ -488,7 +497,9 @@ def test_a_count_reads_zero_when_the_api_was_read_and_counted_nothing() -> None:
 
 
 def test_no_zero_filled_expression_takes_a_rate() -> None:
-    """A labelled counter series is born at 1, so a rate never sees its first event.
+    """A labelled counter series is born at whatever it counted before its first scrape.
+
+    At least 1, and on a real collector ten: a rate never sees those events.
     A zero filled over a rate would read 0 after a real first failure."""
     for panel in RECORD["panels"]:
         if panel["zeroMeans"] is None:
@@ -766,5 +777,7 @@ def test_the_document_names_no_panel_the_record_lacks() -> None:
 
 def test_the_document_says_what_has_not_been_done() -> None:
     flat = " ".join(DOCUMENT.lower().split())
-    assert "no grafana has imported" in flat
-    assert "no prometheus has evaluated a panel" in flat
+    assert "one grafana, one provider, one release" in flat
+    assert "grafana's own schema validation" in flat
+    assert "a long missing text does not render legibly" in flat
+    assert "no alert is defined" in flat
