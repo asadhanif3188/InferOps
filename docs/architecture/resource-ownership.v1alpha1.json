@@ -135,6 +135,26 @@
       "evidenceRef": "docs/proof/governance/v1-s0-001-pr1.md"
     },
     {
+      "resourceId": "inference-operations-dashboard",
+      "name": "The inference operations dashboard definition and its Grafana rendering",
+      "kind": "repository artifact",
+      "owner": "repository",
+      "lifecycle": "repository",
+      "v1Status": "implemented",
+      "createdBy": "a merged pull request",
+      "destroyedBy": "a merged pull request",
+      "survives": [
+        "pod restart",
+        "helm uninstall",
+        "scoped object teardown",
+        "terraform destroy",
+        "cluster teardown"
+      ],
+      "referencedBy": [],
+      "handoff": "Split out of telemetry-backend by the ADR 0004 D7 amendment of 2026-09-13. The panels, their queries and what each shows without a number are a committed record, and the Grafana dashboard JSON is generated from it and compared against it. Implemented means the definition exists and is checked: every expression is held to the correlation query policy and evaluated over synthetic scenarios. It does not mean a dashboard runs anywhere. No Grafana has imported the JSON, no chart or Terraform module installs one, and the server that would show it stays under telemetry-backend.",
+      "evidenceRef": "docs/proof/telemetry/v1-s4-002-pr1-validation.md"
+    },
+    {
       "resourceId": "workload-contract-document",
       "name": "A workload contract instance authored by an owning team",
       "kind": "document",
@@ -600,7 +620,7 @@
         "pod restart"
       ],
       "referencedBy": [],
-      "handoff": "The reader for telemetry-scrape-configuration, which was rendered for two sprints with nothing consuming it. ADR 0004 D7 left collector ownership undecided; the Sprint 3 remediation resolved it for the collector alone, as Helm-owned and release-scoped, and left ingress, load balancing, dashboards and alert routing undecided. It reads the scrape jobs and recording rules out of that ConfigMap rather than carrying its own copy, so one release cannot have two scrape configurations. Its series live in an emptyDir and go with the pod: it answers questions about the release running now, and is not a store anything may depend on outliving a restart. V1-S3-011 installed one on the docker-desktop provider: it discovered and scraped both InferOps jobs and a real Prometheus evaluated every accepted correlation expression through it, which is what moved this row to implemented. On that provider only.",
+      "handoff": "The reader for telemetry-scrape-configuration, which was rendered for two sprints with nothing consuming it. ADR 0004 D7 left collector ownership undecided; the Sprint 3 remediation resolved it for the collector alone, as Helm-owned and release-scoped, and left ingress, load balancing, dashboards and alert routing undecided (the 2026-09-13 amendment has since assigned the dashboard definition; see inference-operations-dashboard). It reads the scrape jobs and recording rules out of that ConfigMap rather than carrying its own copy, so one release cannot have two scrape configurations. Its series live in an emptyDir and go with the pod: it answers questions about the release running now, and is not a store anything may depend on outliving a restart. V1-S3-011 installed one on the docker-desktop provider: it discovered and scraped both InferOps jobs and a real Prometheus evaluated every accepted correlation expression through it, which is what moved this row to implemented. On that provider only.",
       "evidenceRef": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
     },
     {
@@ -671,7 +691,7 @@
     },
     {
       "resourceId": "telemetry-backend",
-      "name": "Dashboards and an alert routing path",
+      "name": "A dashboard server and an alert routing path",
       "kind": "platform service",
       "owner": "undecided",
       "lifecycle": "undecided",
@@ -680,7 +700,7 @@
       "destroyedBy": "nothing; no owner has been chosen",
       "survives": [],
       "referencedBy": [],
-      "handoff": "Narrowed by the Sprint 3 remediation. It used to cover the collector too, and the collector is now decided and owned: see telemetry-collector. What is left is genuinely undecided. A dashboard needs somebody to read it and an alert needs a receiver, a routing tree and somebody on the other end, and none of the three has been chosen. This row exists so that the question is answered deliberately rather than by whoever builds the first panel.",
+      "handoff": "Narrowed twice. The Sprint 3 remediation took the collector out of it (see telemetry-collector), and the ADR 0004 D7 amendment of 2026-09-13 took the dashboard definition out of it (see inference-operations-dashboard): the first panels were built, and the question of what they are was answered deliberately -- a repository artifact -- rather than by the tool that happened to render them. What is left is genuinely undecided. A Grafana server needs an owner, a place to run and an exposure decision, and an alert needs a receiver, a routing tree and somebody on the other end. None of those has been chosen.",
       "evidenceRef": null
     },
     {

@@ -104,8 +104,8 @@ def test_the_inventory_row_is_owned_and_now_implemented() -> None:
         r for r in INVENTORY["resources"] if r["resourceId"] == "telemetry-backend"
     )
     assert backend["owner"] == "undecided" and backend["v1Status"] == "deferred", (
-        "dashboards and alert routing are still undecided; only the collector was "
-        "resolved"
+        "a dashboard server and alert routing are still undecided; only the collector "
+        "and the dashboard definition were resolved"
     )
 
 

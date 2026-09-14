@@ -415,10 +415,14 @@ other is committed and immutable.
                    |  live in an emptyDir and go   |
                    |  with the pod.                |
                    |                               |
-                   |  Durable store, dashboard,    |
-                   |  alert routing: NOT SELECTED. |
-                   |  telemetry-backend is         |
-                   |  deferred in the inventory.   |
+                   |  Dashboard definition: a      |
+                   |  repository artifact, never   |
+                   |  imported.                    |
+                   |                               |
+                   |  Durable store, dashboard     |
+                   |  server, alert routing: NOT   |
+                   |  SELECTED. telemetry-backend  |
+                   |  is deferred in the inventory.|
                    +-------------------------------+
 
    -------------------------------------------------------------------

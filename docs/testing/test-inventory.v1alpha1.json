@@ -624,6 +624,16 @@
       "note": null
     },
     {
+      "module": "tests/telemetry/test_inference_dashboard.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The inference operations dashboard: every panel expression satisfies the correlation query policy, a panel repeating an accepted query does so verbatim, a scrape signal is never shown as readiness, every query panel carries missing text that cannot be read as a number and every zero fill says what its zero means, the pod name appears only in a panel declared per replica, each of the nine dashboard rules refuses a record corrupted to break it, zero and missing come apart over the committed synthetic scenarios, and the committed Grafana JSON is byte-identical to what the record generates.",
+      "claims": [
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+      ],
+      "note": "Every check reads files. No Grafana imports the rendered JSON and no Prometheus evaluates a panel: the structure is checked against the fields this repository writes, and eleven of the thirty expressions have been evaluated only by the fixture evaluator."
+    },
+    {
       "module": "tests/telemetry/test_telemetry_catalog.py",
       "layer": "documentation",
       "marker": "docs",
@@ -736,7 +746,6 @@
     }
   ],
   "coverageGaps": [
-
     {
       "claimId": "the-model-artifact-matches-its-published-hash",
       "reason": "No pytest module computes or compares the artifact hash. The real-runtime suite drives a running runtime, and the runtime exposes no hash of the file it loaded; the comparison happens in the download procedure rather than in a test.",

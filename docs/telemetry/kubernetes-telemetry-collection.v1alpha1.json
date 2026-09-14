@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/telemetry/kubernetes-telemetry-collection.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "Kubernetes telemetry collection for the InferOps release, v1alpha1",
-  "description": "What a collector would scrape in a Kubernetes installation of the inferops-llm chart, which labels it attaches, what those labels cost, which native runtime series map to an InferOps concept, and which signals have no source at all. It describes configuration this repository renders. Since V1-S3-011 it is also a record of what a collector did scrape: the release installs one, it discovered and scraped both InferOps jobs on the docker-desktop provider, and a real Prometheus evaluated every accepted correlation expression through it. No store, dashboard, or alerting path is selected, the collector's series live in an emptyDir that goes with its pod, and nothing here has been executed on kind.",
+  "description": "What a collector would scrape in a Kubernetes installation of the inferops-llm chart, which labels it attaches, what those labels cost, which native runtime series map to an InferOps concept, and which signals have no source at all. It describes configuration this repository renders. Since V1-S3-011 it is also a record of what a collector did scrape: the release installs one, it discovered and scraped both InferOps jobs on the docker-desktop provider, and a real Prometheus evaluated every accepted correlation expression through it. No store, dashboard server, or alerting path is selected, the collector's series live in an emptyDir that goes with its pod, and nothing here has been executed on kind.",
   "decisionRef": "docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md",
   "documentRef": "docs/telemetry/kubernetes-telemetry-collection.md",
   "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
@@ -24,7 +24,7 @@
       "recording-rules.yaml"
     ],
     "mountedBy": "the telemetry collector this release installs, and nothing else. No workload Deployment references it: a workload publishes metrics and does not collect them, and a ConfigMap mounted into the pod it describes would install the wrong mental model beside the right file.",
-    "collector": "selected. ADR 0004 D7, amended 2026-09-09, makes the collector Helm-owned and release-scoped; telemetry-collector in the ownership inventory carries it. Prometheus, pinned by digest, reading this ConfigMap rather than a copy of it. Dashboards and an alert routing path remain unowned and deferred, and ADR 0006 D8 still selects no SDK, exporter or tracer.",
+    "collector": "selected. ADR 0004 D7, amended 2026-09-09, makes the collector Helm-owned and release-scoped; telemetry-collector in the ownership inventory carries it. Prometheus, pinned by digest, reading this ConfigMap rather than a copy of it. A dashboard server and an alert routing path remain unowned and deferred -- the dashboard definition is a repository artifact since the 2026-09-13 amendment -- and ADR 0006 D8 still selects no SDK, exporter or tracer.",
     "collected": true,
     "everInstalled": true,
     "note": "A collector is selected, rendered, installed, and has run. V1-S3-011-PR1 installed this chart into Docker Desktop's Kubernetes and watched the collector discover and scrape both InferOps jobs -- one target each, both up -- so the two booleans above are true and this record says so rather than softening it in prose. What that does not make true is the rest of this record: every count, bound and multiplier below is still arithmetic over declared values rather than a measurement of a store, and a scrape having happened is not a series having been retained, aggregated, or measured. The configuration is also still checked by the pinned collector's own promtool, which establishes that it loads.",
@@ -426,7 +426,7 @@
   "limitations": [
     {
       "limitationId": "no-collector",
-      "statement": "No store, dashboard, or alerting path is selected. A collector is: ADR 0004 D7 makes it Helm-owned and release-scoped, and it has scraped both endpoints on the docker-desktop provider. Its series are in an emptyDir and go with its pod, so nothing here is a store anything may depend on."
+      "statement": "No store, dashboard server, or alerting path is selected. A collector is: ADR 0004 D7 makes it Helm-owned and release-scoped, and it has scraped both endpoints on the docker-desktop provider. Its series are in an emptyDir and go with its pod, so nothing here is a store anything may depend on."
     },
     {
       "limitationId": "installed-on-one-provider-only",

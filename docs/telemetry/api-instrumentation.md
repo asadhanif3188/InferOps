@@ -303,7 +303,8 @@ Read this section before quoting anything above.
 
 **The metrics are collected; nothing else is.** A release-scoped collector scrapes
 this endpoint, and its series live in an `emptyDir` that goes with its pod. No
-exporter, durable store, dashboard, or alert is selected. Records go to a stream and
+exporter, durable store, dashboard server, or alert is selected, and the dashboard
+definition that reads these metrics has never been imported. Records go to a stream and
 no store has held one. No retention window, shipper, or access rule exists.
 
 **No span exists.** `traceparent` and `tracestate` are neither read nor written,

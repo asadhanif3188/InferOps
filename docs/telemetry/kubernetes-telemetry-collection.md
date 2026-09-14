@@ -1,7 +1,8 @@
 # Collecting telemetry in Kubernetes
 
 Status: **collector selected, rendered, installed, and it has collected.** Its
-series are ephemeral, and no durable store, dashboard, or alerting path is selected.
+series are ephemeral, and no durable store, dashboard server, or alerting path is
+selected.
 The `inferops-llm`
 chart renders the `telemetry-scrape-configuration` row of
 [the ownership inventory](../architecture/resource-ownership.md) as a ConfigMap
@@ -12,8 +13,9 @@ That is the part that changed.
 [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 `D7` left collector ownership undecided, and for two sprints the consequence was a
 scrape configuration nothing consumed. The amendment makes the collector Helm-owned
-and release-scoped: `telemetry-collector` in the inventory. **Dashboards and an
-alert routing path are still unowned and still deferred**, and
+and release-scoped: `telemetry-collector` in the inventory. **A dashboard server
+and an alert routing path are still unowned and still deferred** — the dashboard
+*definition* has been a repository artifact since the 2026-09-13 amendment — and
 [ADR 0006](../architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md) `D8`
 still selects no SDK, exporter or tracer.
 
@@ -321,9 +323,11 @@ control on an endpoint that carries **no authentication at all**
 
 ## 9. What this does not establish
 
-- **No dashboard and no alerting path is selected.** A collector is, and it reads
-  this ConfigMap. Where the series go afterwards, and what would page anybody, are
-  still unowned and still deferred.
+- **No dashboard server and no alerting path is selected.** A collector is, and it
+  reads this ConfigMap, and [a dashboard definition](inference-operations-dashboard.md)
+  reads the collector's series in a file nothing has imported. Where the series go
+  afterwards, what shows them, and what would page anybody, are still unowned and
+  still deferred.
 - **One installation is not a claim about installation.** V1-S3-011-PR1 installed
   this chart on one host, on one provider, once, and a real Prometheus loaded this
   configuration and scraped both jobs there. Every job, label, and rule here has
