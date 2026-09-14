@@ -384,7 +384,9 @@ LIVING_DOCUMENTS = (
 )
 
 #: Written-out numbers, because these documents write them out. Only as far as
-#: the layer count can reach.
+#: the counts these documents state can reach; the no-claim module count passed
+#: twenty-five in `V1-S4-003-PR1`, and a count with no word here fails with a
+#: `KeyError` rather than an explanation.
 NUMBER_WORDS: dict[int, str] = {
     0: "zero",
     1: "one",
@@ -412,6 +414,11 @@ NUMBER_WORDS: dict[int, str] = {
     23: "twenty-three",
     24: "twenty-four",
     25: "twenty-five",
+    26: "twenty-six",
+    27: "twenty-seven",
+    28: "twenty-eight",
+    29: "twenty-nine",
+    30: "thirty",
 }
 
 WORD_NUMBERS: dict[str, int] = {word: value for value, word in NUMBER_WORDS.items()}

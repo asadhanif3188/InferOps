@@ -10,6 +10,27 @@ once versioned releases begin.
 
 ### Added
 
+- **A repeatable LLM load profile, with every dispatched request accounted for.**
+  [The profile](deploy/serving/load/llm-load-profile.v1.json) fixes one fixture, a
+  3-request warm-up, levels at concurrency 1, 2, and 4, a bound of 180 s or 60
+  requests per level, and a 150,000 ms client deadline held above the API's own.
+  `python -m tools.llm_load` refuses a profile that drifts from the chart or the
+  runtime profile, or that exceeds ceilings kept in code. It refuses a target that
+  is not a loopback forward, or whose readiness and model list are not the real
+  release. Every request gets one sequence number and one of six outcomes, decided
+  in a fixed order. The raw record set carries the provider, host, model, runtime,
+  profile digest, and component versions, and says which facts were checked against
+  the repository, which were only declared, and which were observed from the API.
+  The reader refuses a set whose accounting does not balance.
+  [The guide](docs/serving/llm-load-generation.md) documents the real-run commands.
+  Evidence: [the V1-S4-003-PR1 validation record](docs/proof/serving/v1-s4-003-pr1-validation.md).
+
+  **No real load has been sent with it.** The only execution is a rehearsal against
+  an in-process stub over loopback HTTP, committed as a **synthetic** example whose
+  latencies describe a 20 ms sleep. Nothing here is capacity, an SLO, or a
+  benchmark. The capacity claim stays deferred, and the project boundaries still
+  forbid publishing a throughput or latency figure until they are amended.
+
 - **The dashboard, asked of a real Prometheus and rendered by a real Grafana, with a
   thirty-second operator guide.** One single-replica release on `docker-desktop` was
   driven through nine states — idle, traffic, errors, the serving runtime scaled to

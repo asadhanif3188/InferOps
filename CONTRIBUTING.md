@@ -476,6 +476,18 @@ generation settings in agreement with the runtime profile, keep concurrency equa
 to the runtime's parallel slots, keep warm-up out of every distribution, and never
 publish a figure it produces as a benchmark.
 
+The [repeatable LLM load generation](docs/serving/llm-load-generation.md) sends a
+fixed, bounded load through an installed release's API. Validate its profile
+without contacting anything with `uv run --locked python -m tools.llm_load check`,
+and exercise the whole tool against an in-process stub with `rehearse`, whose output
+is synthetic. Only `run` sends real load, and only with `--confirm-real-load`, a
+loopback `--target-url`, and an `--environment-facts` file. Keep the generation
+settings in agreement with the chart and the runtime profile, keep the client
+deadline above the API's own, keep every bound under the ceilings in code, keep
+every dispatched request in the record with exactly one outcome, keep the prompt and
+the completion out of it, and never publish a figure it produces as capacity, an
+SLO, or a benchmark.
+
 The [model lifecycle](docs/serving/model-lifecycle.md) is the ordered state model
 spanning the cache and the runtime, and the one place the answer each probe gives
 in each state is written down. Read the record without touching anything with

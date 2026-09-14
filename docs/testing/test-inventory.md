@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are twenty-five, and they are listed in their own section rather than
+empty list. There are twenty-six, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -103,7 +103,7 @@ read a WorkloadContract.
 
 ### `architecture-inventory` — [`tests/architecture/`](../../tests/architecture/)
 
-Fourteen modules. The committed ownership inventory against the documents describing
+Sixteen modules. The committed ownership inventory against the documents describing
 it; the local cluster provider contract against its document, the ownership
 inventory, the guard functions in `lib.sh`, and the Terraform module; every module under `src/inferops/` read for the imports the dependency rule
 forbids; the cluster and release lifecycle scripts read for the safety rules
@@ -122,7 +122,9 @@ and again before this story: seven modules existed while the sentence said four.
 It is not machine-checked, which is why it keeps drifting, and it is recorded
 here rather than quietly corrected. It drifted once more after that: by
 `V1-S3-010-PR1` thirteen modules existed while the sentence said nine, and that
-change added the fourteenth.
+change added the fourteenth. It drifted again: by `V1-S4-003-PR1` sixteen modules
+existed while the sentence said fourteen. That change added no module to this
+layer and corrected the sentence.
 
 ### `adapter` — [`tests/adapters/`](../../tests/adapters/)
 
@@ -141,7 +143,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Nineteen modules. Committed machine-readable data checked against the documents
+Twenty-six modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -150,11 +152,16 @@ local runtime troubleshooting guide — and,
 since the API began emitting, the catalog checked against what the distribution
 declares rather than only against its own prose. The two most recent are the
 Kubernetes telemetry collection record against the chart renders, and the
-correlation queries against both of those and against synthetic stores.
+correlation queries against both of those and against synthetic stores. The newest
+is the repeatable LLM load profile: its agreement with the chart and the runtime
+profile, the order every response is classified in, the accounting of every
+dispatched request, and a rehearsal over loopback HTTP whose output is synthetic.
 
 The count said seventeen until this story and had been wrong since `V1-S3-007-PR1`
 added the eighteenth. It is not machine-checked, which is why it drifted — the same
-way `architecture-inventory`'s did, and it is recorded here for the same reason.
+way `architecture-inventory`'s did, and it is recorded here for the same reason. It
+drifted once more: by `V1-S4-003-PR1` twenty-five modules existed while the sentence
+said nineteen. That change added the twenty-sixth and corrected the count.
 
 One is the odd one in this layer: `tests/security/test_workload_policy.py`
 reads manifests rather than a record, applying
@@ -175,7 +182,10 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Twenty-four suites protect something no row of the claim matrix names. Each carries its
+Twenty-six suites protect something no row of the claim matrix names. (This sentence
+said twenty-four while the table below held twenty-five rows; `V1-S4-003-PR1` added
+the twenty-sixth row and corrected it. The machine-checked count is the one in the
+opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -191,6 +201,7 @@ matrix is complete needs to see them together.
 | [`tests/serving/test_runtime_packaging.py`](../../tests/serving/test_runtime_packaging.py) | The standalone Docker descriptor and guarded lifecycle through injected command and HTTP seams. It proves package mechanics, not a real startup or completion |
 | [`tests/serving/test_runtime_certification.py`](../../tests/serving/test_runtime_certification.py) | The C2 certification descriptor, its refusal of a weakened level or waived assertion, the hardware refusal, the mock-identity prohibition, and the record it writes. The `local-real-cpu` label it exercises is truthful only for an authorized run |
 | [`tests/serving/test_serving_baseline.py`](../../tests/serving/test_serving_baseline.py) | The registered baseline's agreement with the composition it measures, its percentile arithmetic, and its deterministic summary. Every request is answered by an injected seam, so no latency here is a serving measurement |
+| [`tests/serving/test_llm_load.py`](../../tests/serving/test_llm_load.py) | The repeatable LLM load profile's agreement with the chart and the runtime profile, the fixed order every response is classified in, exactly one outcome for every dispatched request, the raw reader's refusals, and a rehearsal over loopback HTTP. Every answer comes from an injected function or an in-process stub, so no latency here describes serving and the committed example is synthetic |
 | [`tests/serving/test_model_lifecycle.py`](../../tests/serving/test_model_lifecycle.py) | The accepted lifecycle state model against the package, the model record, and the API's drain budget; the rule that liveness passes while readiness is false during a load; and two measurements whose every timing is arithmetic on a fake clock, including the full ordered sequence of probes and artifact reads a restart comparison performs — which is what shows that the start procedure reads the artifact before every start |
 | [`tests/serving/test_local_runtime_troubleshooting.py`](../../tests/serving/test_local_runtime_troubleshooting.py) | The published troubleshooting guide against the tools, descriptors, and records it quotes. It establishes that the guide has not drifted, never that following one of its recoveries repairs a fault |
 | [`tests/serving/test_inference_api_surface.py`](../../tests/serving/test_inference_api_surface.py) | The committed API compatibility surface against its document |

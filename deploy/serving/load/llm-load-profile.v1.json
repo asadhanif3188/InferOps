@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "profileId": "inferops-llm-load",
+  "profileVersion": "1.0.0",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "certificationCeiling": "C2",
+  "productionBenchmark": false,
+  "portableCapacityClaim": false,
+  "boundariesRef": "docs/architecture/project-boundaries.md",
+  "providerContractRef": "docs/environment/local-cluster-provider-contract.v1alpha1.json",
+  "release": {
+    "chartRef": "charts/inferops-llm/Chart.yaml",
+    "valuesRef": "charts/inferops-llm/values.yaml",
+    "realValuesRef": "charts/inferops-llm/ci/real-values.yaml",
+    "runtimeProfileRef": "docs/serving/runtime-profile.local.v1.json"
+  },
+  "target": {
+    "scheme": "http",
+    "host": "127.0.0.1",
+    "readinessPath": "/health/ready",
+    "modelsPath": "/v1/models",
+    "identityProbeTimeoutMs": 10000
+  },
+  "fixture": {
+    "fixtureId": "llm-load-single-turn-v1",
+    "requestPath": "/v1/chat/completions",
+    "model": "qwen3-1-7b-q8-0",
+    "stream": false,
+    "messages": [
+      {
+        "role": "user",
+        "content": "You are a terse assistant. Answer in at most two sentences. Name three things a Kubernetes readiness probe is for."
+      }
+    ]
+  },
+  "generation": {
+    "maxOutputTokens": 128,
+    "temperature": 0,
+    "contextSizeTokens": 4096,
+    "parallelSlots": 1
+  },
+  "warmup": {
+    "requests": 3,
+    "concurrency": 1
+  },
+  "levels": [
+    {
+      "levelId": "c1",
+      "concurrency": 1
+    },
+    {
+      "levelId": "c2",
+      "concurrency": 2
+    },
+    {
+      "levelId": "c4",
+      "concurrency": 4
+    }
+  ],
+  "measured": {
+    "durationSeconds": 180,
+    "maxRequestsPerLevel": 60
+  },
+  "timeouts": {
+    "requestTimeoutMs": 150000
+  },
+  "success": {
+    "requiredStatus": 200,
+    "requiredAdapterKind": "real",
+    "requiredModelRef": "qwen3-1-7b-q8-0",
+    "requiredRuntimeName": "llama.cpp llama-server",
+    "requireUsage": true
+  },
+  "results": {
+    "directory": ".cache/inferops/load",
+    "rawFile": "raw.jsonl",
+    "summaryFile": "summary.json",
+    "rawFormat": "application/jsonl",
+    "summaryFormat": "application/json",
+    "percentileMethod": "nearest-rank",
+    "reportedPercentiles": [
+      50,
+      95,
+      99
+    ]
+  }
+}

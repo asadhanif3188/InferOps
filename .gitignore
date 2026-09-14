@@ -233,6 +233,7 @@ __marimo__/
 /.cache/inferops/experiments/
 /.cache/inferops/baseline/
 /.cache/inferops/lifecycle/
+/.cache/inferops/load/
 *.gguf
 
 # InferOps Terraform prerequisite layer
