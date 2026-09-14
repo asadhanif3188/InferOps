@@ -256,7 +256,7 @@
       "marker": "architecture",
       "protects": "Every module under src/inferops/ is read for its imports, and the platform domain acquiring a Kubernetes client, a Helm library, a runtime SDK, or an HTTP framework is a failure.",
       "claims": [],
-      "note": "No published claim covers the dependency rule. It is an architecture decision rather than a claim about the product, and the claim matrix names none — but the rule is what makes the unit layer possible at all, so the check is here rather than deferred until a claim needs it."
+      "note": "No published claim covers the dependency rule. It is an architecture decision rather than a claim about the product, and the claim matrix names none \u2014 but the rule is what makes the unit layer possible at all, so the check is here rather than deferred until a claim needs it."
     },
     {
       "module": "tests/architecture/test_helm_chart.py",

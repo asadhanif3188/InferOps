@@ -7,7 +7,7 @@
   "evidenceClass": "local-real-cpu",
   "provider": "docker-desktop",
   "capturedBy": "python -m tools.inference_dashboard --capture http://127.0.0.1:19090",
-  "statement": "Readings are what the release's own collector returned to an instant query of each committed panel expression at one moment, classified by tools/inference_dashboard/live.py. Every number is an observation of one single-replica release on one host at one moment. None is a measurement of latency, throughput, or capacity.",
+  "statement": "Readings are what the release's own collector returned to an instant query of each committed panel expression at one moment, classified by tools/inference_dashboard/live.py. Every number is an observation of one single-replica release on one host at one moment. None is a measurement of latency, throughput, or capacity. Each screenshot was rendered shortly after its state's capture, not at the same instant, so a figure on a screenshot can differ from the reading: the serving-runtime-scaled-to-zero screenshot shows 17 failed readiness checks where the reading is 13.",
   "environment": {
     "repositoryRevision": "7dda44fad4eff8f85bf71b232956055fde6b755b",
     "chart": "inferops-llm-0.3.0",
@@ -320,7 +320,8 @@
           },
           "promptTokens": 0,
           "completionTokens": 0,
-          "note": "Sent while confirming the request shape, before any successful request. All three carried max_tokens, a member outside the request subset the API accepts, and one of them also named a model the release is not configured with. The API counted all three, so they are in every later figure."
+          "note": "Sent while confirming the request shape, before any successful request. All three carried max_tokens, a member outside the request subset the API accepts, and one of them also named a model the release is not configured with. The API counted all three, so they are in every later figure. Their durations were not logged: two were printed at 0.092 s and 0.070 s and the third was sent by hand and not timed.",
+          "clientSecondsAtOrUnder": null
         },
         {
           "trafficId": "sequential-traffic",
@@ -330,7 +331,13 @@
             "200 ok": 30
           },
           "promptTokens": 540,
-          "completionTokens": 90
+          "completionTokens": 90,
+          "clientSecondsAtOrUnder": {
+            "0.5": 29,
+            "1": 29,
+            "2.5": 30,
+            "5": 30
+          }
         },
         {
           "trafficId": "concurrent-traffic",
@@ -340,7 +347,13 @@
             "200 ok": 200
           },
           "promptTokens": 3600,
-          "completionTokens": 600
+          "completionTokens": 600,
+          "clientSecondsAtOrUnder": {
+            "0.5": 0,
+            "1": 2,
+            "2.5": 200,
+            "5": 200
+          }
         }
       ],
       "screenshotRef": null,
@@ -1073,7 +1086,13 @@
             "400 contract-invalid": 20
           },
           "promptTokens": 0,
-          "completionTokens": 0
+          "completionTokens": 0,
+          "clientSecondsAtOrUnder": {
+            "0.5": 20,
+            "1": 20,
+            "2.5": 20,
+            "5": 20
+          }
         }
       ],
       "screenshotRef": "docs/proof/telemetry/v1-s4-002-pr2-screenshots/03-error.png",
@@ -1445,7 +1464,13 @@
             "503 capability-unavailable": 10
           },
           "promptTokens": 0,
-          "completionTokens": 0
+          "completionTokens": 0,
+          "clientSecondsAtOrUnder": {
+            "0.5": 10,
+            "1": 10,
+            "2.5": 10,
+            "5": 10
+          }
         }
       ],
       "screenshotRef": "docs/proof/telemetry/v1-s4-002-pr2-screenshots/04-serving-runtime-scaled-to-zero.png",
@@ -1797,7 +1822,13 @@
             "200 ok": 10
           },
           "promptTokens": 180,
-          "completionTokens": 30
+          "completionTokens": 30,
+          "clientSecondsAtOrUnder": {
+            "0.5": 9,
+            "1": 10,
+            "2.5": 10,
+            "5": 10
+          }
         }
       ],
       "screenshotRef": null,
@@ -3250,6 +3281,35 @@
             }
           ]
         }
+      }
+    }
+  ],
+  "directReads": [
+    {
+      "readId": "token-counters-after-traffic",
+      "readAt": "2026-09-14T10:26:59Z",
+      "method": "Instant queries of the raw counters, sent by hand once the recorded runtime series had caught up with llama-server's own counter; not a panel expression and not a capture.",
+      "values": {
+        "sum by (inferops_token_direction) (inferops_inference_tokens_total)": {
+          "input": "4140",
+          "output": "690"
+        },
+        "llamacpp:prompt_tokens_total": "247",
+        "llamacpp:prompt_tokens_cached_total": "3893",
+        "llamacpp:tokens_predicted_total": "690"
+      },
+      "note": "Every request in the run sent the same 18-token prompt, which is close to the most prompt-cache reuse possible; how far the runtime's input counter falls below the API's depends on that reuse."
+    },
+    {
+      "readId": "request-duration-buckets-at-traffic",
+      "readAt": "2026-09-14T10:27:21Z",
+      "method": "An instant query of sum by (le) (inferops_inference_request_duration_seconds_bucket) evaluated at the traffic capture's instant, sent by hand after that capture; not a panel expression.",
+      "values": {
+        "0.5": "33",
+        "1": "35",
+        "2.5": "233",
+        "5": "233",
+        "+Inf": "233"
       }
     }
   ]

@@ -16,8 +16,8 @@ once versioned releases begin.
   zero and restored, an API pod replaced, and the API scaled to zero — and after each,
   `python -m tools.inference_dashboard --capture` asked the release's collector every
   one of the 30 panel expressions. Prometheus refused none. Requests, errors, and
-  output tokens reconcile exactly with what clients sent; every latency quantile falls
-  in the client-observed bucket. Grafana 11.6.0 imported the generated JSON and was
+  output tokens reconcile exactly with what clients sent; at the traffic capture, each
+  latency quantile falls in the client-observed bucket. Grafana 11.6.0 imported the generated JSON and was
   screenshotted in six states.
   [The operator guide](docs/telemetry/inference-operations-dashboard-operator-guide.md)
   names, for every panel, the conclusion it cannot support. Evidence:
@@ -26,8 +26,8 @@ once versioned releases begin.
 
   **What the run showed that fixtures had not:** a rate misses every event before a
   series' first scrape — ten `capability-unavailable` failures read `0` per second —
-  and outlives its process; latency quantiles include fast refusals, so an outage
-  reads faster; the runtime's input tokens exclude its prompt cache; and a long
+  and, as PR1 had reasoned, outlives its process; latency quantiles include fast
+  refusals, so a window of refusals reads faster; the runtime's input tokens exclude its prompt cache; and a long
   missing text in a Grafana stat panel shrinks until it cannot be read. The record's
   descriptions and limitations were corrected; no query, chart, rule, or API behaviour
   changed. Not run: `kind`, two replicas, an idle NaN window, and a target that is

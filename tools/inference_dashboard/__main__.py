@@ -14,8 +14,9 @@ panel query against every committed scenario fixture and prints what it returned
 refuses renders nothing.
 
 ``--capture`` asks one running Prometheus every panel expression as an instant query
-and prints how each reads; it is the only mode that contacts anything, and it
-contacts only the URL it is given.
+and prints how each reads. It is the only mode that contacts anything: one POST per
+expression to the http or https URL it is given, with no proxy and no redirect. A
+collector it cannot reach exits 1 with nothing printed on standard output.
 
 **The other modes read files.** None starts a Grafana or a Prometheus. See
 docs/telemetry/inference-operations-dashboard.md.
@@ -32,7 +33,7 @@ from tools.telemetry_correlation import FIXTURE_DIR, load_fixture, load_query_re
 
 from .core import check_dashboard, evaluate_dashboard, load_dashboard_record
 from .grafana import render_grafana, serialise
-from .live import capture, http_query
+from .live import CaptureFailed, capture, http_query
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -70,11 +71,14 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     if arguments.at is not None and arguments.capture is None:
         parser.error("--at is only meaningful with --capture")
+    if arguments.capture is not None and not arguments.capture.strip():
+        parser.error("--capture needs a Prometheus URL")
 
     record = load_dashboard_record()
     findings = check_dashboard(record)
 
-    if (arguments.evaluate or arguments.grafana or arguments.capture) and findings:
+    capturing = arguments.capture is not None
+    if (arguments.evaluate or arguments.grafana or capturing) and findings:
         print(
             "REFUSED  the dashboard record does not satisfy the dashboard policy",
             file=sys.stderr,
@@ -85,9 +89,13 @@ def main(argv: list[str] | None = None) -> int:
         print(serialise(render_grafana(record)), end="")
         return 0
 
-    if arguments.capture:
+    if capturing:
         at = arguments.at if arguments.at is not None else time.time()
-        readings = capture(record, http_query(arguments.capture, at=at))
+        try:
+            readings = capture(record, http_query(arguments.capture, at=at))
+        except CaptureFailed as failure:
+            print(f"REFUSED  no capture: {failure}", file=sys.stderr)
+            return 1
         print(json.dumps({"at": round(at, 3), "readings": readings}, indent=2))
         return 0
 

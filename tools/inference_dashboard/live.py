@@ -20,13 +20,17 @@ and classifies the answer in the dashboard's own terms:
     At least one sample reads ``NaN`` and none reads a non-zero number: an
     idle latency window, drawn as a gap rather than as the missing text.
 ``refused``
-    Prometheus did not evaluate the expression. The error type and message are kept.
+    Prometheus answered that it did not evaluate the expression. The error type and
+    message are kept. A collector that cannot be reached is not a reading: the capture
+    stops with :class:`CaptureFailed` instead.
 
 **It records labels as they are returned.** A panel may only name labels the catalog
 permits, and the collector drops the rest before storage, so a returned label set is
 already bounded by those two checks; the suite checks every committed reading against
-the barred label list anyway. It contacts only the URL it is given, sends no
-inference request, and changes nothing.
+the barred label list anyway. It sends one POST per expression to the URL it is given
+-- http or https only, with environment proxies ignored and redirects refused -- sends
+no inference request, and changes nothing. It does not check that the URL is a
+loopback forward; the operator names it.
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ from .core import panel_queries
 
 __all__ = [
     "READINGS",
+    "CaptureFailed",
     "capture",
     "classify",
     "http_query",
@@ -59,12 +64,39 @@ QueryFunction = Callable[[str], Mapping[str, Any]]
 QUERY_TIMEOUT_SECONDS = 30.0
 
 
+class CaptureFailed(RuntimeError):
+    """The capture could not ask Prometheus, so it has no reading to give.
+
+    Distinct from a ``refused`` reading on purpose. ``refused`` is Prometheus's own
+    answer that it did not evaluate an expression. An unreachable collector, a proxy's
+    error page, or a timeout is not an answer about any expression, and recording it as
+    one would put a failure of the run into the evidence as a property of a panel.
+    """
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *_: Any, **__: Any) -> None:
+        return None
+
+
+#: No proxy from the environment and no redirect: the request goes to the URL named,
+#: or it fails.
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+
+
 def http_query(base_url: str, *, at: float | None = None) -> QueryFunction:
     """A query function asking the Prometheus at ``base_url``, optionally at one instant.
 
     Passing ``at`` pins every expression of one capture to the same evaluation time,
-    so a capture is one moment rather than thirty neighbouring ones.
+    so a capture is one moment rather than thirty neighbouring ones. Only ``http`` and
+    ``https`` URLs are accepted, proxy settings in the environment are ignored, and a
+    redirect is refused rather than followed.
     """
+    scheme = urllib.parse.urlsplit(base_url).scheme
+    if scheme not in ("http", "https"):
+        raise CaptureFailed(
+            f"refusing a {scheme or 'schemeless'} URL; use http or https"
+        )
     endpoint = base_url.rstrip("/") + "/api/v1/query"
 
     def ask(expression: str) -> Mapping[str, Any]:
@@ -77,14 +109,33 @@ def http_query(base_url: str, *, at: float | None = None) -> QueryFunction:
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         try:
-            with urllib.request.urlopen(
-                request, timeout=QUERY_TIMEOUT_SECONDS
-            ) as response:
-                decoded: Mapping[str, Any] = json.loads(response.read())
+            with _OPENER.open(request, timeout=QUERY_TIMEOUT_SECONDS) as response:
+                body = response.read()
         except urllib.error.HTTPError as error:
             # Prometheus answers a query it cannot parse or evaluate with 400 or 422
-            # and a JSON body naming the error. That is a reading, not a crash.
-            decoded = json.loads(error.read())
+            # and a JSON body naming the error. That is a reading, not a crash; any
+            # other error body is not Prometheus answering, and is a failed capture.
+            body = error.read()
+            try:
+                refused: Mapping[str, Any] = json.loads(body)
+            except ValueError:
+                raise CaptureFailed(
+                    f"HTTP {error.code} from {endpoint} with a body that is not "
+                    "Prometheus's JSON"
+                ) from error
+            if refused.get("status") != "error":
+                raise CaptureFailed(
+                    f"HTTP {error.code} from {endpoint} without a Prometheus error"
+                ) from error
+            return refused
+        except (urllib.error.URLError, TimeoutError) as error:
+            raise CaptureFailed(f"could not reach {endpoint}: {error}") from error
+        try:
+            decoded: Mapping[str, Any] = json.loads(body)
+        except ValueError as error:
+            raise CaptureFailed(
+                f"{endpoint} answered with a body that is not JSON"
+            ) from error
         return decoded
 
     return ask

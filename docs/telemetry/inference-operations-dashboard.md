@@ -53,7 +53,8 @@ first scrape — at least 1. A rate never sees those events: the recovery run's 
 readiness refusal would have read `0` per second, and in the validation run ten
 refused requests did. A zero filled over a rate would therefore read `0` beside a real failure. So
 the four panels that fill a zero are counts since the API processes started, which do
-see the first event and disappear at once when a target stops answering. The rate
+see the first event and disappear at once when a target fails its scrape (a deleted
+pod's series linger until they go stale). The rate
 timeseries remain, and each says what a rate cannot see.
 
 ## Where it reads from
@@ -202,8 +203,10 @@ python -m tools.inference_dashboard --capture http://127.0.0.1:19090
 The first four read files in this repository. None of them starts Grafana, contacts a
 cluster, or queries a Prometheus. `--capture` asks the Prometheus at the URL it is
 given every panel expression as an instant query and prints how each reads — empty,
-zero, value, NaN, or refused. It sends no inference request and changes nothing; the
-URL is a loopback forward to a release's collector that the operator opened.
+zero, value, NaN, or refused. It sends no inference request and changes nothing. It
+accepts only an http or https URL, ignores environment proxies, refuses redirects,
+and stops with exit 1 if it cannot reach Prometheus. It does not check that the URL
+is a loopback forward to a release's collector; the operator names it.
 
 ## What this does not establish
 
@@ -220,10 +223,10 @@ URL is a loopback forward to a release's collector that the operator opened.
   only reasoned: ten refused requests read `0` per second while the since-start count
   rose by ten, and with no API pod the request rate still read a success rate.
 - **Latency quantiles include refused requests and interpolate inside a bucket.** A
-  release refusing traffic reads faster, and a quantile says which bucket, not a
-  figure.
+  window of mostly refusals reads faster, whatever caused them, and a quantile says
+  which bucket, not a figure.
 - **The runtime's input tokens exclude its prompt cache**, so the two token panels
-  cannot be compared on input.
+  cannot be compared on input; how far apart they are depends on prompt reuse.
 - **An idle latency window is NaN, not missing.** Once the bucket series exist, a
   window with no request draws gaps rather than the missing text. The validation run
   did not observe one.

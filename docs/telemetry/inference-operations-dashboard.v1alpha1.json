@@ -241,7 +241,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "cps",
-      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. Three refusals counted during startup have been observed beside this rate reading 0. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "whenMissing": "Missing: no readiness check has failed since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
       "zeroMeans": null,
       "valueText": {},
@@ -350,7 +350,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "reqps",
-      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. Ten server-error outcomes before a first scrape have been observed reading 0 per second here. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "whenMissing": "Missing: no request has been finished since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
       "zeroMeans": null,
       "valueText": {},
@@ -440,7 +440,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "s",
-      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark. Once the bucket series exist, a five-minute window with no request makes every quantile NaN, which draws as a gap in a line that is still present -- not as this panel's missing text. Every outcome is in the histogram: a refused request is fast, so a release refusing traffic reads lower here, not higher. A wide bucket makes the interpolation coarse: a quantile can sit most of a bucket width away from what clients observed, so read it as a bucket, not a figure.",
+      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark. Once the bucket series exist, a five-minute window with no request makes every quantile NaN, which draws as a gap in a line that is still present -- not as this panel's missing text. Every outcome is in the histogram, and a refused request is fast: a window holding mostly refusals reads lower here, whatever caused them. A wide bucket makes the interpolation coarse: a quantile can sit most of a bucket width away from what clients observed, so read it as a bucket, not a figure.",
       "whenMissing": "Missing: no request has been finished since the API process started, so no bucket series exists, or no API target is scraped. An idle window after that shows gaps instead.",
       "zeroMeans": null,
       "valueText": {},
@@ -489,7 +489,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "reqps",
-      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "whenMissing": "Missing: no request has succeeded since the API process started, so no series exists, or no API target is scraped. The requests count separates the two.",
       "zeroMeans": null,
       "valueText": {},
@@ -597,7 +597,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "reqps",
-      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. Ten capability-unavailable errors before a first scrape have been observed reading 0 per second here. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "whenMissing": "Missing: no error has been counted since the API process started, so no series exists, or no API target is scraped. The since-start count separates the two.",
       "zeroMeans": null,
       "valueText": {},
@@ -859,7 +859,7 @@
       "signal": "value",
       "perReplica": false,
       "unit": "short",
-      "description": "Input and output tokens as the API counts them, at the API's boundary. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Input and output tokens as the API counts them, at the API's boundary. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "whenMissing": "Missing: no completion has been counted since the API process started, or no API target is scraped.",
       "zeroMeans": null,
       "valueText": {},
@@ -946,7 +946,7 @@
     },
     {
       "limitationId": "rates-miss-first-events-and-outlive-an-outage",
-      "statement": "Every rate panel inherits two properties of a real Prometheus that the fixture evaluator does not model, and both were observed. A labelled counter series first appears at whatever it counted before its first scrape, so a rate never counts those events: ten refused requests read 0 per second while the since-start count rose by ten. And after a target stops answering, a rate over a five-minute window keeps returning the pre-outage figure: with no API process running, the request rate still read a success rate, while the since-start counts disappeared at once."
+      "statement": "Every rate panel inherits two properties of a real Prometheus that the fixture evaluator does not model, and both were observed. A labelled counter series first appears at whatever it counted before its first scrape, so a rate never counts those events: ten refused requests read 0 per second while the since-start count rose by ten. And after a target stops answering, a rate over a five-minute window keeps returning the pre-outage figure: with no API process running, the request rate still read a success rate, while the since-start counts were empty. Those counts vanish at once when a target fails its scrape, but a deleted pod's series linger until they go stale."
     },
     {
       "limitationId": "the-grafana-json-is-not-profile-aware",
@@ -958,7 +958,7 @@
     },
     {
       "limitationId": "runtime-input-tokens-exclude-the-prompt-cache",
-      "statement": "The runtime's input token counter excludes prompt tokens served from llama-server's prompt cache, so the two token panels disagree on input by design and cannot be compared. Output tokens matched exactly in the one run that compared them."
+      "statement": "The runtime's input token counter counts prompt tokens llama-server evaluated, not those it served from its prompt cache, so the two token panels disagree on input and cannot be compared. How far apart they are depends on prompt reuse. Output tokens matched exactly in the one run that compared them, which reused a single prompt."
     }
   ]
 }

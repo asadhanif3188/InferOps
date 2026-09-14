@@ -325,7 +325,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Which readiness component the API names when it refuses traffic: api or serving-adapter. inferops_component is not k8s_component, which is the workload tier. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. Three refusals counted during startup have been observed beside this rate reading 0. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -564,7 +564,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Outcome is one of success, client-error, server-error, and timeout. Summed across replicas on purpose: the question is about a workload, not a pod. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. Ten server-error outcomes before a first scrape have been observed reading 0 per second here. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -771,7 +771,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark. Once the bucket series exist, a five-minute window with no request makes every quantile NaN, which draws as a gap in a line that is still present -- not as this panel's missing text. Every outcome is in the histogram: a refused request is fast, so a release refusing traffic reads lower here, not higher. A wide bucket makes the interpolation coarse: a quantile can sit most of a bucket width away from what clients observed, so read it as a bucket, not a figure.",
+      "description": "Quantiles of inferops_inference_request_duration_seconds, with bucket counters summed across replicas before the quantile is taken. A quantile is interpolated inside a bucket, so its resolution is the catalog's bucket boundaries. An operating figure, not a benchmark. Once the bucket series exist, a five-minute window with no request makes every quantile NaN, which draws as a gap in a line that is still present -- not as this panel's missing text. Every outcome is in the histogram, and a refused request is fast: a window holding mostly refusals reads lower here, whatever caused them. A wide bucket makes the interpolation coarse: a quantile can sit most of a bucket width away from what clients observed, so read it as a bucket, not a figure.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -854,7 +854,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Request throughput: requests that finished with outcome success. Token throughput is in the token row. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1120,7 +1120,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "inferops_error_code is the platform's canonical code, never an HTTP status and never a provider's message; the collector drops an HTTP status label on the way in. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. Ten capability-unavailable errors before a first scrape have been observed reading 0 per second here. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1729,7 +1729,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Input and output tokens as the API counts them, at the API's boundary. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1, so a rate never sees those events: a burst of refusals before a first scrape has been observed reading 0 per second. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
+      "description": "Input and output tokens as the API counts them, at the API's boundary. A labelled counter series is created by its first event and first appears at whatever it has counted by its first scrape, at least 1. A rate needs two samples in its window and assumes no zero at creation, so it never sees those events, and for one scrape interval the new series has no row at all. A series that exists and has not moved draws a flat 0 rather than this panel's missing text.",
       "fieldConfig": {
         "defaults": {
           "color": {

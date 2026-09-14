@@ -16,9 +16,9 @@ It was not observed on `kind`, with two replicas, or on any other host.
 Read the rows top to bottom and stop at the first one that is wrong.
 
 1. **First row, first.** `scrape-targets-answering-by-tier` must show both tiers.
-   A tier with no row, or a `discovered no pod` in the panel beside it, means every
-   panel reading that tier below is empty or stale. That says nothing about the
-   tier's health.
+   A tier with no row, or a `discovered no pod` in the panel beside it, means the
+   tier has no pod: it cannot serve, and every panel below that reads it is empty or
+   stale, so none of them can tell you why.
 2. **Look for text before numbers.** A panel with no number shows text naming its
    state: *missing*, *not emitted*, or *not answerable*. None of those is a zero. If
    the text is too small to read, the title still names what the panel counts, and a
@@ -52,14 +52,14 @@ is built.
 | `scrape-jobs-that-discovered-no-pod` | Does a tier have no pod at all? | "No absence recorded means pods are ready." It only means at least one pod exists |
 | `api-identity-not-published` | Is no API process publishing its identity? | "It reads 1, so an API target answered without an identity." It also reads 1 when there is no API pod at all |
 | `readiness-checks-failed-since-start` | How many readiness refusals have the running API processes counted? | "0 means no readiness trouble recently." The count starts again when an API process restarts: 20 went to 0 after a pod replacement |
-| `readiness-refusals-by-component` | Which component the API names when it refuses? | "A flat 0 means no refusals." Startup refusals counted 3 while this panel read 0 |
+| `readiness-refusals-by-component` | Which component the API names when it refuses? | "A flat 0 means no refusals." It read 0 beside 3 counted startup refusals, and a rate never sees events before a series' first scrape |
 | `model-readiness` | Nothing. It is not emitted | "Not emitted, so the model is fine." It read the same while the serving runtime had zero replicas |
 | `pod-container-and-runtime-readiness` | Nothing. It is not answerable | Any conclusion about pod or container readiness |
 | `requests-since-start` | How many requests have the running API processes finished? | "The number is the release's total." It sums only processes publishing now, and until a deleted pod's series go stale it also includes that pod |
 | `request-rate-by-outcome` | How the recent request rate splits by outcome | "server-error 0 means no server errors." Ten `capability-unavailable` failures read 0 here. And "a success rate means the API is up": it still showed one with no API pod running |
 | `api-in-flight-by-replica` | How many requests each API replica has in flight, at scrape moments | "Empty means idle." The series appears only after a replica's first request |
 | `runtime-processing-and-deferred` | How many requests the runtime is processing and deferring | "0 while the API shows traffic means the runtime is idle." It trails the API by a scrape and a rule evaluation, so a short burst can finish before it moves |
-| `request-latency-quantiles` | Roughly where P50, P95 and P99 request duration fall | "Latency dropped, so things improved." Refused requests are included and fast: P50 fell while every valid request was failing. Also "P95 is 2.41 s": it is an interpolation inside a bucket, and clients observed 1.54 s |
+| `request-latency-quantiles` | Roughly where P50, P95 and P99 request duration fall | "Latency dropped, so things improved." Refused requests are included and fast: with only refusals in the window, P50 read 0.25 s against 1.62 s under traffic. Also "P95 is 2.41 s": it is an interpolation inside a bucket, and clients observed 1.54 s |
 | `successful-requests-per-second` | The recent successful request rate | "Zero means nothing is being served *right now*." It is a five-minute rate and misses events before a series' first scrape |
 | `queue-wait-p95` | Nothing. It is not emitted | Any conclusion about queueing. Use `runtime-processing-and-deferred` for whether queueing happened, never for how long |
 | `errors-since-start` | How many errors the running API processes have counted | "0 means no errors recently." It went from 33 to 0 when the API pod was replaced |
@@ -76,7 +76,7 @@ is built.
 | `runtime-operating-identity` | Which environment, workload, model and runtime the runtime tier reports | "Missing means the model is wrong." It is missing whenever the runtime job discovered no pod |
 | `cluster-provider` | Nothing. It is not answerable | Which provider this release runs on. Read the run's evidence record |
 | `tokens-per-second-at-the-api` | Input and output token rates as the API counts them | "Tokens are flowing, so the API is up." The rate outlived the API pod |
-| `tokens-per-second-at-the-runtime` | Token rates as llama-server counts them | "Runtime input is far below API input, so tokens are lost." Runtime input excludes prompt-cached tokens: counter totals of 247 against the API's 4140, with 3893 cached, while output matched at 690 |
+| `tokens-per-second-at-the-runtime` | Token rates as llama-server counts them | "Runtime input is far below API input, so tokens are lost." Runtime input excludes prompt-cached tokens: counter totals of 247 against the API's 4140, with 3893 on llama-server's cached-prompt counter, while output matched at 690. The gap depends on prompt reuse, and that run reused one prompt |
 
 ## What this dashboard cannot tell you at all
 
@@ -89,6 +89,9 @@ is built.
   observation of one release.
 
 ## What each screenshot shows
+
+Each was taken shortly after its state's capture, so a figure on it can differ from
+the committed reading.
 
 | State | Screenshot |
 |---|---|

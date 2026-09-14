@@ -191,7 +191,10 @@ below was verified before it was acted on.
 
 - **Its zeros could hide a real first failure.** The API creates a labelled counter
   series on its first event (`src/inferops/telemetry/registry.py`, `_slot`), so the
-  series first appears already at 1, and a rate never sees that event. The first
+  series first appears already at 1, and a rate never sees that event. (Later
+  observed on a real collector to be a lower bound: a series first appears at
+  whatever it counted before its first scrape. See
+  [the V1-S4-002-PR2 record](v1-s4-002-pr2-dashboard-validation.md).) The first
   commit's four zero-filled panels were rates: after the recovery run's single
   readiness refusal, "readiness checks failed per second" would have read `0` under a
   zero meaning "counted no failed readiness check". They are now counts since the API

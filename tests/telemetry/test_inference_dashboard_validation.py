@@ -36,7 +36,13 @@ import pytest
 
 from tools.inference_dashboard import load_dashboard_record, panel_queries
 from tools.inference_dashboard.__main__ import main
-from tools.inference_dashboard.live import READINGS, capture, classify, http_query
+from tools.inference_dashboard.live import (
+    READINGS,
+    CaptureFailed,
+    capture,
+    classify,
+    http_query,
+)
 from tools.telemetry_correlation import (
     forbidden_metric_labels,
     not_emitted_metric_names,
@@ -171,16 +177,28 @@ class _Stub(BaseHTTPRequestHandler):
         length = int(self.headers["Content-Length"])
         form = parse_qs(self.rfile.read(length).decode("ascii"))
         type(self).received.append(form)
-        if form["query"][0] == "not a query(":
+        query = form["query"][0]
+        if query == "proxy page":
+            self._send(502, b"<html>Bad Gateway</html>", "text/html")
+            return
+        if query == "redirect":
+            self.send_response(302)
+            self.send_header("Location", "http://127.0.0.1:1/api/v1/query")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        if query == "not a query(":
             body, status = (
                 {"status": "error", "errorType": "bad_data", "error": "x"},
                 400,
             )
         else:
             body, status = _vector(({"k8s_component": "platform-api"}, "1")), 200
-        payload = json.dumps(body).encode("utf-8")
+        self._send(status, json.dumps(body).encode("utf-8"), "application/json")
+
+    def _send(self, status: int, payload: bytes, content_type: str) -> None:
         self.send_response(status)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
@@ -223,6 +241,46 @@ def test_the_command_prints_one_reading_per_panel_expression(
     assert printed["at"] == 1789381000
     assert list(printed["readings"]) == QUERY_IDS
     assert {entry["time"][0] for entry in _Stub.received} == {"1789381000.000"}
+
+
+def test_a_proxy_error_page_stops_the_capture_rather_than_becoming_a_reading(
+    prometheus_stub: str,
+) -> None:
+    with pytest.raises(CaptureFailed, match="HTTP 502"):
+        http_query(prometheus_stub)("proxy page")
+
+
+def test_a_redirect_is_refused_rather_than_followed(prometheus_stub: str) -> None:
+    with pytest.raises(CaptureFailed, match="HTTP 302"):
+        http_query(prometheus_stub)("redirect")
+
+
+def test_an_unreachable_collector_stops_the_capture() -> None:
+    with pytest.raises(CaptureFailed, match="could not reach"):
+        http_query("http://127.0.0.1:1")("up")
+
+
+@pytest.mark.parametrize(
+    "url", ["file:///etc/passwd", "ftp://127.0.0.1/", "127.0.0.1:9090"]
+)
+def test_only_an_http_url_is_asked(url: str) -> None:
+    with pytest.raises(CaptureFailed, match="use http or https"):
+        http_query(url)
+
+
+def test_the_command_reports_an_unreachable_collector_and_prints_no_readings(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["--capture", "http://127.0.0.1:1"]) == 1
+    printed = capsys.readouterr()
+    assert printed.out == ""
+    assert "REFUSED  no capture" in printed.err
+
+
+def test_the_command_refuses_an_empty_capture_url() -> None:
+    with pytest.raises(SystemExit) as refused:
+        main(["--capture", ""])
+    assert refused.value.code == 2
 
 
 def test_the_command_refuses_an_instant_without_a_capture() -> None:
@@ -482,3 +540,48 @@ def test_the_guide_links_every_committed_screenshot() -> None:
     for state in EVIDENCE["states"]:
         if state["screenshotRef"] is not None:
             assert Path(state["screenshotRef"]).name in GUIDE, state["stateId"]
+
+
+def test_the_bucket_comparison_is_the_committed_one() -> None:
+    """The first commit's comparison added durations nobody logged; this pins the logged."""
+    flat = " ".join(VALIDATION.split())
+    logged = [
+        traffic
+        for state in EVIDENCE["states"]
+        for traffic in state["traffic"]
+        if state["stateId"] in ("traffic-in-flight", "traffic")
+        and traffic["clientSecondsAtOrUnder"] is not None
+    ]
+    count = sum(traffic["requests"] for traffic in logged)
+    under = {
+        le: sum(traffic["clientSecondsAtOrUnder"][le] for traffic in logged)
+        for le in ("0.5", "1", "2.5")
+    }
+    assert f"Clients logged {count} durations" in flat
+    assert f"`{under['0.5']}` at or under 0.5 s, `{under['1']}` at or under 1 s" in flat
+    assert under["2.5"] == count
+    reads = {entry["readId"]: entry for entry in EVIDENCE["directReads"]}
+    collector = reads["request-duration-buckets-at-traffic"]
+    assert collector["readAt"] == STATES["traffic"]["capturedAt"]
+    assert (
+        f"were `{collector['values']['0.5']}` and `{collector['values']['1']}`" in flat
+    )
+    assert collector["values"]["+Inf"] == str(
+        int(_only_value("traffic", "requests-since-start/A"))
+    )
+
+
+def test_the_token_figures_are_committed_direct_reads() -> None:
+    reads = {entry["readId"]: entry for entry in EVIDENCE["directReads"]}[
+        "token-counters-after-traffic"
+    ]["values"]
+    api = reads["sum by (inferops_token_direction) (inferops_inference_tokens_total)"]
+    sent = [traffic for state in EVIDENCE["states"][:3] for traffic in state["traffic"]]
+    assert int(api["input"]) == sum(traffic["promptTokens"] for traffic in sent)
+    assert int(api["output"]) == sum(traffic["completionTokens"] for traffic in sent)
+    assert reads["llamacpp:tokens_predicted_total"] == api["output"]
+    assert int(reads["llamacpp:prompt_tokens_total"]) + int(
+        reads["llamacpp:prompt_tokens_cached_total"]
+    ) == int(api["input"])
+    for text in (VALIDATION, GUIDE):
+        assert reads["llamacpp:prompt_tokens_cached_total"] in text
