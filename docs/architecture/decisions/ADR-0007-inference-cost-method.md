@@ -8,7 +8,7 @@
 | Decision owner | Unassigned; no public maintainer roster exists yet |
 | Supersedes | None |
 | Superseded by | None |
-| Amended by | [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md), 2026-09-15: D1, D2, and D9 |
+| Amended by | [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md), 2026-09-15: D1, D2, D3, and D9; D13 clarified |
 
 > [!IMPORTANT]
 > This record decides how a V1 inference cost figure is produced and what it may be
@@ -33,9 +33,11 @@
 > **Amended 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** V1 now calculates the `estimated`
 > basis only, `observed-utilisation-share` is the selected allocation method, and a
 > repository tool computes a record by hand from a declared input whose usage values
-> come from a committed bounded experiment. D11, D12, and D13 are unchanged. The text
-> below is kept as it was accepted; where it says allocation is the only reachable
-> basis, or that nothing computes a record, read it as amended.
+> are typed in by hand and, under ADR 0014 D3, are to be taken from a committed bounded
+> experiment. D3's line now means capacity no workload was measured using, and D13 is
+> clarified to mean platform components. D11 and D12 are unchanged. The text below is
+> kept as it was accepted; where it says allocation is the only reachable basis, or
+> that nothing computes a record, read it as amended.
 
 ## Decision status
 
@@ -198,6 +200,11 @@ does not validate certificates — the finding
 it to a workload would make deleting that workload look like a saving that does not
 occur. **Control-plane overhead is environment cost**, for the ordinary reason that
 dividing it produces per-workload numbers that move when the workload count changes.
+
+> **Amended 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** On the estimated basis the line is
+> capacity no workload in a calculation was measured using, which includes reservations
+> left idle. Its treatment — reported, never spread, closing against the machine — is
+> unchanged. The text above is kept as it was accepted.
 
 ## D4 — Windows are half-open, in UTC, and split at a change of shape
 
@@ -363,6 +370,11 @@ telemetry collector is unowned and defers that question deliberately; this recor
 not answer the equivalent question for cost. A method that nominated an owner in
 passing would be answering an architecture question in a cost document, which is the
 leak this record is written to avoid.
+
+> **Clarified 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** A repository tool now computes a
+> record by hand from a declared input, runs in no cluster, and emits nothing. "No
+> component computes one" reads as no platform component, and the question this
+> decision leaves open is unchanged. The text above is kept as it was accepted.
 
 ## Consequences
 

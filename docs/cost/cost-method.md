@@ -296,8 +296,8 @@ whether it exists today.
 | `usage.requests` | How many requests is this amount divided by? | measured | `inferops_inference_requests_total` |
 | `usage.inputTokens` | How many input tokens did it process? | measured | `inferops_inference_tokens_total` |
 | `usage.outputTokens` | How many output tokens did it produce? | measured | `inferops_inference_tokens_total` |
-| `usage.cpuSeconds` | How much processor time did it actually consume? | unavailable | `inferops_process_cpu_seconds_total`, partially |
-| `usage.memoryByteSeconds` | How much memory did it actually hold, over time? | unavailable | `inferops_process_resident_memory_bytes`, partially |
+| `usage.cpuSeconds` | How much processor time did it actually consume? | measured | none in the catalog; pod cgroup samples of a declared experiment, typed in by hand |
+| `usage.memoryByteSeconds` | How much memory did it actually hold, over time? | measured | none in the catalog; pod cgroup samples of a declared experiment, typed in by hand |
 | `usage.acceleratorSeconds` | How much accelerator time did it consume? | unavailable | none |
 | `usage.readySeconds` | For how much of the window could it answer at all? | derived | `inferops_model_ready`, partially |
 | `identity.workloadId` | Which workload is this record about? | declared | `inferops.workload.id` |

@@ -804,8 +804,8 @@ It also checks `tools/cost_calculation`, which applies the method to one declare
 input on the `estimated` basis
 ([ADR 0014](docs/architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)): that it refuses any other basis, an
 invalid or uncommitted price source, a float, a window outside the method's rules, a
-declared change of reservation, a tenant identifier, and measured use the node could
-not hold; that a missing input is null with a reason and so is every figure depending
+declared change of reservation, a tenant identifier, measured use the node could not
+hold, and a measured evidence class that does not name a matching committed record; that a missing input is null with a reason and so is every figure depending
 on it; and that the committed fixtures regenerate byte for byte with figures held to
 values worked out by hand. A calculation input's committed result must regenerate:
 

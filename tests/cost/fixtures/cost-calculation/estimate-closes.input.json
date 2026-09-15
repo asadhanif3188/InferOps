@@ -15,6 +15,7 @@
     "memoryGibibytes": "16",
     "acceleratorDevices": 0
   },
+  "usageEvidence": null,
   "prerequisites": [
     {
       "resourceId": "model-cache-claim",
@@ -49,9 +50,7 @@
         "memoryByteSeconds": "11596411699200",
         "acceleratorSeconds": null
       },
-      "unavailable": {
-        "accelerator-seconds": "no-telemetry-source"
-      }
+      "unavailable": {}
     },
     {
       "recordId": "example-estimate-0002",
@@ -81,8 +80,7 @@
       },
       "unavailable": {
         "input-tokens": "no-telemetry-source",
-        "output-tokens": "no-telemetry-source",
-        "accelerator-seconds": "no-telemetry-source"
+        "output-tokens": "no-telemetry-source"
       }
     }
   ]

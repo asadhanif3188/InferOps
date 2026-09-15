@@ -29,7 +29,9 @@ once versioned releases begin.
   produced, so an allocation and an estimate of one window never sit side by side. The
   tool refuses `actual` and `allocated`, a price source that is not committed, versioned,
   dated, and decimal, any float, a declared change of reservation, a tenant identifier,
-  and measured use the node could not hold. Synthetic usage never counts as measured.
+  and measured processor, memory, or device use the node could not hold. A measured
+  evidence class must name a committed record of that class by path and digest, and
+  synthetic usage never counts as measured.
 
   **What it is not:** a cost figure. The only rate card is synthetic, so every record has
   confidence `none`; both fixtures are synthetic; every usage value is typed in by hand,

@@ -37,12 +37,8 @@
   "records": [
     {
       "completeness": {
-        "reasons": [
-          "no-telemetry-source"
-        ],
-        "unavailableInputs": [
-          "accelerator-seconds"
-        ],
+        "reasons": [],
+        "unavailableInputs": [],
         "windowComplete": true
       },
       "cost": {
@@ -112,7 +108,6 @@
           "no-telemetry-source"
         ],
         "unavailableInputs": [
-          "accelerator-seconds",
           "input-tokens",
           "output-tokens"
         ],
@@ -194,6 +189,7 @@
     "shareOfNodeCapacity": "0.887918",
     "unavailableReasons": []
   },
+  "usageEvidence": null,
   "usageEvidenceClass": "synthetic",
   "window": {
     "end": "2026-08-26T01:00:00Z",

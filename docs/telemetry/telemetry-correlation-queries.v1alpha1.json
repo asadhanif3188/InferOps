@@ -441,7 +441,7 @@
     },
     {
       "metric": "inferops_cost_records_total",
-      "reason": "Deferred out of V1 by the catalog. No component computes or emits a cost record, so a query over it would describe an absent capability as a quiet one."
+      "reason": "Deferred out of V1 by the catalog. No platform component computes or emits a cost record, so a query over it would describe an absent capability as a quiet one."
     }
   ],
   "refusedQueries": [

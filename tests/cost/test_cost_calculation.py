@@ -23,6 +23,7 @@ only rate card is invented, and no usage value here was measured.
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import re
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
@@ -58,6 +59,28 @@ FIXTURE_NAMES = ("estimate-closes", "estimate-incomplete")
 STRATEGY_PATH = REPO_ROOT / "docs" / "testing" / "test-strategy.v1alpha1.json"
 
 METHOD = load_method()
+
+# A committed local-real record a measured input may name. The calculation reads
+# nothing from it but its evidence class; the digest is over LF line endings.
+MEASURED_RECORD = "docs/proof/serving/v1-s4-004-pr1-performance-record.v1alpha1.json"
+
+
+def measured_evidence() -> dict[str, str]:
+    text = (
+        (REPO_ROOT / MEASURED_RECORD).read_text(encoding="utf-8").replace("\r\n", "\n")
+    )
+    return {
+        "path": MEASURED_RECORD,
+        "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+    }
+
+
+def measured_input() -> dict[str, Any]:
+    document = closes_input()
+    document["classification"] = "local-real-cpu"
+    document["warning"] = "Usage typed in by hand for a test; the record named is real."
+    document["usageEvidence"] = measured_evidence()
+    return document
 
 
 def fixture_input(name: str) -> dict[str, Any]:
@@ -122,6 +145,10 @@ def test_the_record_shape_check_refuses_a_missing_field_a_wrong_type_and_a_tenan
     tenant["identity"]["tenantId"] = "someone"
     with pytest.raises(CostCalculationError, match="no committed record may carry"):
         check_record(tenant, METHOD)
+    instant = copy.deepcopy(row)
+    instant["period"]["start"] = "not-an-instant"
+    with pytest.raises(CostCalculationError, match="is not a instant"):
+        check_record(instant, METHOD)
     billed = copy.deepcopy(row)
     billed["identity"]["workloadId"] = "billed-assistant"
     with pytest.raises(CostCalculationError, match="uses the word 'billed'"):
@@ -256,12 +283,17 @@ def test_a_unit_cost_is_divided_from_the_exact_amount_not_the_rounded_one() -> N
 
 def test_a_reserved_device_needs_measured_device_seconds() -> None:
     document = closes_input()
-    document["capacity"]["acceleratorDevices"] = 1
+    document["capacity"]["acceleratorDevices"] = 2  # two replicas, one device each
     workload = document["workloads"][0]
     workload["declaration"].update(
         {"acceleratorType": "nvidia-gpu", "acceleratorCount": 1}
     )
     document["workloads"] = [workload]
+    # With a device reserved, missing device seconds are a gap and need a reason.
+    refused(
+        copy.deepcopy(document), "is null and workloads[0].unavailable gives no reason"
+    )
+    workload["unavailable"] = {"accelerator-seconds": "no-telemetry-source"}
     without = calculate(document, METHOD)["records"][0]
     assert without["cost"]["amount"] is None
     assert without["derived"]["amountPerHour"] is None
@@ -410,9 +442,8 @@ def test_synthetic_usage_never_counts_as_measured_utilisation() -> None:
         assert row["facts"]["hasMeasuredUtilisation"] is False, row["recordId"]
         assert row["evidence"]["usageEvidenceClass"] == "synthetic"
 
-    measured_input = closes_input()
-    measured_input["classification"] = "local-real-cpu"
-    measured = calculate(measured_input, METHOD)
+    measured = calculate(measured_input(), METHOD)
+    assert measured["usageEvidence"] == measured_evidence()
     for row in measured["records"]:
         assert row["facts"]["hasMeasuredUtilisation"] is True, row["recordId"]
         # Measured use does not lift a synthetic rate card above none.
@@ -421,6 +452,67 @@ def test_synthetic_usage_never_counts_as_measured_utilisation() -> None:
     unmeasured = closes_input()
     unmeasured["classification"] = "mock"
     refused(unmeasured, "is not an evidence class a usage input may come from")
+
+
+def test_measured_use_does_not_depend_on_the_accelerator_term() -> None:
+    """Processor and memory measured, a reserved device's seconds unavailable."""
+    document = measured_input()
+    document["capacity"]["acceleratorDevices"] = 2  # two replicas, one device each
+    workload = document["workloads"][0]
+    workload["declaration"].update(
+        {"acceleratorType": "nvidia-gpu", "acceleratorCount": 1}
+    )
+    workload["unavailable"] = {"accelerator-seconds": "no-telemetry-source"}
+    document["workloads"] = [workload]
+    row = calculate(document, METHOD)["records"][0]
+    assert row["cost"]["amount"] is None
+    assert row["facts"]["hasMeasuredUtilisation"] is True
+
+
+@pytest.mark.parametrize(
+    ("change", "fragment"),
+    [
+        (lambda d: d.update(usageEvidence=None), "must name the committed record"),
+        (
+            lambda d: d["usageEvidence"].update(sha256="0" * 64),
+            "does not match the record",
+        ),
+        (
+            lambda d: d["usageEvidence"].update(
+                path="docs/cost/cost-method.v1alpha1.json"
+            ),
+            "under docs/proof/",
+        ),
+        (
+            lambda d: d["usageEvidence"].update(
+                path="docs/proof/../cost/cost-method.md"
+            ),
+            "under docs/proof/",
+        ),
+        (
+            lambda d: d["usageEvidence"].update(path="docs/proof/serving/absent.json"),
+            "names no readable committed record",
+        ),
+        (
+            lambda d: d["usageEvidence"].update(sha256="ABC"),
+            "64 lowercase hex digits",
+        ),
+        (
+            lambda d: d.update(classification="cloud-real-cpu"),
+            "declares evidence class 'local-real-cpu'",
+        ),
+        (
+            lambda d: d.update(classification="synthetic", warning="Synthetic."),
+            "usageEvidence must be null",
+        ),
+    ],
+)
+def test_a_measured_class_must_name_matching_committed_evidence(
+    change: Any, fragment: str
+) -> None:
+    document = measured_input()
+    change(document)
+    refused(document, fragment)
 
 
 @pytest.mark.parametrize(
@@ -480,7 +572,7 @@ def test_the_incomplete_fixture_is_null_with_a_reason_and_never_zero() -> None:
     ("change", "fragment"),
     [
         (
-            lambda w: w["unavailable"].pop("accelerator-seconds"),
+            lambda w: w["usage"].update(requests=None),
             "is null and workloads[0].unavailable gives no reason",
         ),
         (
@@ -488,18 +580,28 @@ def test_the_incomplete_fixture_is_null_with_a_reason_and_never_zero() -> None:
             "is set and also declared unavailable",
         ),
         (
-            lambda w: w["unavailable"].update({"accelerator-seconds": "because"}),
+            lambda w: (
+                w["usage"].update(requests=None),
+                w["unavailable"].update({"requests": "because"}),
+            ),
             "a reason the method does not declare",
         ),
         (
-            lambda w: w["unavailable"].update(
-                {"accelerator-seconds": "below-minimum-sample"}
+            lambda w: (
+                w["usage"].update(requests=None),
+                w["unavailable"].update({"requests": "below-minimum-sample"}),
             ),
             "describes an output, not a missing input",
         ),
         (
             lambda w: w["unavailable"].update({"ready-seconds": "no-telemetry-source"}),
             "is not a usage input",
+        ),
+        (
+            lambda w: w["unavailable"].update(
+                {"accelerator-seconds": "no-telemetry-source"}
+            ),
+            "accelerator seconds are not missing",
         ),
         (lambda w: w["usage"].update(requests=-1), "an integer of at least 0"),
         (lambda w: w["usage"].update(requests=True), "an integer of at least 0"),
@@ -522,7 +624,12 @@ def test_a_measured_zero_is_a_measurement_and_is_priced_as_one() -> None:
     document["workloads"] = [workload]
     row = calculate(document, METHOD)["records"][0]
     assert row["cost"]["amount"] == "0.000000"
-    assert row["completeness"]["reasons"] == ["no-telemetry-source"]
+    # Accelerator seconds are not applicable with no device reserved: no gap is listed.
+    assert row["completeness"] == {
+        "unavailableInputs": [],
+        "reasons": [],
+        "windowComplete": True,
+    }
 
 
 # --------------------------------------------------------------------------
@@ -705,7 +812,61 @@ def test_a_declared_shape_change_is_refused_rather_than_averaged() -> None:
             lambda d: d["prerequisites"][0].update(attributedTo="support-assistant"),
             "never to a workload",
         ),
-        (lambda d: d.update(classification="local-real-cpu", warning="x"), None),
+        (
+            lambda d: d.update(
+                classification="local-real-cpu",
+                warning="x",
+                usageEvidence=measured_evidence(),
+            ),
+            None,
+        ),
+        (
+            lambda d: (
+                d["capacity"].update(acceleratorDevices=1),
+                d["workloads"][0]["declaration"].update(
+                    acceleratorType="nvidia-gpu", acceleratorCount=1
+                ),
+                d["workloads"][0]["usage"].update(acceleratorSeconds="3601"),
+                d["workloads"][0]["declaration"].update(replicas=1),
+            ),
+            "more accelerator seconds than the node's declared capacity",
+        ),
+        (
+            lambda d: (
+                d["capacity"].update(acceleratorDevices=1),
+                [
+                    (
+                        w["declaration"].update(
+                            acceleratorType="nvidia-gpu", acceleratorCount=1
+                        ),
+                        w["declaration"].update(replicas=1),
+                        w["usage"].update(acceleratorSeconds="1801"),
+                    )
+                    for w in d["workloads"]
+                ],
+            ),
+            "the workloads together report more measured use",
+        ),
+        (
+            lambda d: d["workloads"][0]["declaration"].update(
+                acceleratorType="nvidia-gpu", acceleratorCount=1
+            ),
+            "reserves 2 accelerator device(s) and the node declares 0",
+        ),
+        (
+            lambda d: d.update(
+                window={"start": "2026-08-26T00:30:00Z", "end": "2026-08-26T01:30:00Z"}
+            ),
+            "starts on the hour",
+        ),
+        (
+            lambda d: d["workloads"][0]["identity"].update(ownerId="/home/x"),
+            "shaped like a host path",
+        ),
+        (
+            lambda d: d["workloads"][0]["identity"].update(runtimeId="10.1.2.3"),
+            "shaped like a host path",
+        ),
         (lambda d: d.update(warning="Invented numbers."), "must say it is synthetic"),
         (lambda d: d.update(kind="CostRecord"), "CostCalculationInput"),
         (lambda d: d.update(extra=True), "unexpected ['extra']"),

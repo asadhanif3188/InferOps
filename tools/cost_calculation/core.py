@@ -24,6 +24,7 @@ synthetic, and ADR 0007 D11 publishes no cost figure.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from collections.abc import Mapping, Sequence
@@ -114,9 +115,13 @@ INPUT_KEYS = frozenset(
         "window",
         "capacity",
         "prerequisites",
+        "usageEvidence",
         "workloads",
     }
 )
+USAGE_EVIDENCE_KEYS = frozenset({"path", "sha256"})
+EVIDENCE_ROOT = "docs/proof/"
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
 WORKLOAD_KEYS = frozenset(
     {
         "recordId",
@@ -562,6 +567,18 @@ def _window(value: Any) -> Window:
         raise CostCalculationRefused(
             "a window is at least one minute and at most one day long"
         )
+    if seconds == SECONDS_PER_HOUR and (
+        start.minute,
+        start.second,
+        start.microsecond,
+    ) != (
+        0,
+        0,
+        0,
+    ):
+        raise CostCalculationRefused(
+            "a window of the default length, one hour, starts on the hour"
+        )
     return Window(start=window["start"], end=window["end"], seconds=seconds)
 
 
@@ -586,7 +603,9 @@ class Usage:
     unavailable: Mapping[str, str]
 
 
-def _usage(workload: Mapping[str, Any], method: Mapping[str, Any], field: str) -> Usage:
+def _usage(
+    workload: Mapping[str, Any], method: Mapping[str, Any], field: str, devices: int
+) -> Usage:
     usage = _object(
         workload["usage"],
         f"{field}.usage",
@@ -605,6 +624,19 @@ def _usage(workload: Mapping[str, Any], method: Mapping[str, Any], field: str) -
         value = usage[key]
         declared = input_id in unavailable_raw
         target: dict[str, Any] = counts if kind == "count" else quantities
+        if input_id == "accelerator-seconds" and devices == 0:
+            # Not reserved, so not applicable: neither a measurement nor a gap.
+            if value is not None:
+                raise CostCalculationRefused(
+                    f"{field} reserves no accelerator and reports accelerator seconds; the inputs conflict"
+                )
+            if declared:
+                raise CostCalculationRefused(
+                    f"{field} reserves no accelerator, so accelerator seconds are not "
+                    "missing; declare no reason for them"
+                )
+            target[key] = None
+            continue
         if value is None:
             if not declared:
                 raise CostCalculationRefused(
@@ -634,6 +666,62 @@ def _usage(workload: Mapping[str, Any], method: Mapping[str, Any], field: str) -
 
 def _optional(value: Fraction | None) -> str | None:
     return None if value is None else round_half_even(value)
+
+
+def _usage_evidence(value: Any, classification: str) -> dict[str, str] | None:
+    """The committed record a measured class names, checked to exist and to agree.
+
+    A synthetic input names none. A measured one names a record under docs/proof by
+    path and by the SHA-256 of its content with line endings normalized to LF, and
+    that record must declare the same evidence class. This checks that the named
+    evidence exists and is of the class claimed; it cannot check that the usage
+    values typed into the input are the ones that evidence holds.
+    """
+    if classification in UNMEASURED_USAGE_CLASSES:
+        if value is not None:
+            raise CostCalculationRefused(
+                "a synthetic input names no usage evidence; usageEvidence must be null"
+            )
+        return None
+    if value is None:
+        raise CostCalculationRefused(
+            f"a '{classification}' input must name the committed record its usage came "
+            "from in usageEvidence"
+        )
+    reference = _object(value, "usageEvidence", USAGE_EVIDENCE_KEYS)
+    path = _string(reference["path"], "usageEvidence.path")
+    digest = _string(reference["sha256"], "usageEvidence.sha256")
+    parts = path.split("/")
+    if not path.startswith(EVIDENCE_ROOT) or "\\" in path or ".." in parts:
+        raise CostCalculationRefused(
+            f"usageEvidence.path must be a repository-relative path under {EVIDENCE_ROOT}"
+        )
+    if not SHA256.match(digest):
+        raise CostCalculationRefused(
+            "usageEvidence.sha256 must be 64 lowercase hex digits"
+        )
+    try:
+        text = (REPO_ROOT / path).read_text(encoding="utf-8").replace("\r\n", "\n")
+    except (OSError, UnicodeError) as error:
+        raise CostCalculationRefused(
+            f"usageEvidence.path names no readable committed record: '{path}'"
+        ) from error
+    if hashlib.sha256(text.encode("utf-8")).hexdigest() != digest:
+        raise CostCalculationRefused(
+            f"usageEvidence.sha256 does not match the record at '{path}'"
+        )
+    try:
+        declared = json.loads(text).get("evidenceClass")
+    except (json.JSONDecodeError, AttributeError) as error:
+        raise CostCalculationRefused(
+            f"the record at '{path}' is not a JSON object declaring an evidence class"
+        ) from error
+    if declared != classification:
+        raise CostCalculationRefused(
+            f"the record at '{path}' declares evidence class '{declared}', and the input "
+            f"claims '{classification}'"
+        )
+    return {"path": path, "sha256": digest}
 
 
 def _refuse_basis(method: Mapping[str, Any], basis: Any) -> None:
@@ -669,6 +757,8 @@ def calculate(document: Any, method: Mapping[str, Any]) -> dict[str, Any]:
         raise CostCalculationRefused(
             "a synthetic input must say it is synthetic in its own warning"
         )
+
+    usage_evidence = _usage_evidence(top["usageEvidence"], classification)
 
     environment = _slug(top["environmentId"], "environmentId")
     source = price_source(method, _slug(top["priceSourceId"], "priceSourceId"))
@@ -712,6 +802,7 @@ def calculate(document: Any, method: Mapping[str, Any]) -> dict[str, Any]:
     seen: set[str] = set()
     measured_cpu_total = Fraction(0)
     measured_memory_total = Fraction(0)
+    measured_accelerator_total = Fraction(0)
     for index, raw in enumerate(workloads):
         field = f"workloads[{index}]"
         if (
@@ -769,15 +860,23 @@ def calculate(document: Any, method: Mapping[str, Any]) -> dict[str, Any]:
                 f"{field}.declaration reserves accelerator type '{accelerator_type}' with count {devices}"
             )
 
-        usage = _usage(workload, method, field)
+        if devices * replicas > capacity_accelerators:
+            raise CostCalculationRefused(
+                f"{field} reserves {devices * replicas} accelerator device(s) and the node "
+                f"declares {capacity_accelerators}"
+            )
+        usage = _usage(workload, method, field, devices)
         unavailable = usage.unavailable
         cpu_seconds = usage.quantities["cpuSeconds"]
         memory_byte_seconds = usage.quantities["memoryByteSeconds"]
         accelerator_seconds = usage.quantities["acceleratorSeconds"]
 
-        if devices == 0 and accelerator_seconds is not None:
+        if (
+            accelerator_seconds is not None
+            and accelerator_seconds > capacity_accelerators * window.seconds
+        ):
             raise CostCalculationRefused(
-                f"{field} reserves no accelerator and reports accelerator seconds; the inputs conflict"
+                f"{field} reports more accelerator seconds than the node's declared capacity holds in the window"
             )
         if cpu_seconds is not None and cpu_seconds > capacity_cpu * window.seconds:
             raise CostCalculationRefused(
@@ -812,6 +911,8 @@ def calculate(document: Any, method: Mapping[str, Any]) -> dict[str, Any]:
             measured_cpu_total += cpu_seconds
         if memory_byte_seconds is not None:
             measured_memory_total += memory_byte_seconds
+        if accelerator_seconds is not None:
+            measured_accelerator_total += accelerator_seconds
 
         reasons = set(unavailable.values())
         requests = usage.counts["requests"]
@@ -836,8 +937,12 @@ def calculate(document: Any, method: Mapping[str, Any]) -> dict[str, Any]:
         facts = {
             "basis": BASIS,
             "priceSourceClass": source.price_class,
+            # Processor and memory use both present and from a measured class
+            # whose committed record was named and matched (ADR 0014 D3). The
+            # accelerator term does not decide it.
             "hasMeasuredUtilisation": classification in MEASURED_USAGE_CLASSES
-            and amount is not None,
+            and cpu_seconds is not None
+            and memory_byte_seconds is not None,
             "windowComplete": whole_window,
             "shapeChangedInWindow": False,
         }
@@ -901,8 +1006,10 @@ def calculate(document: Any, method: Mapping[str, Any]) -> dict[str, Any]:
             }
         )
 
-    if measured_cpu_total > capacity_cpu * window.seconds or measured_memory_total > (
-        capacity_memory * BYTES_PER_GIBIBYTE * window.seconds
+    if (
+        measured_cpu_total > capacity_cpu * window.seconds
+        or measured_memory_total > capacity_memory * BYTES_PER_GIBIBYTE * window.seconds
+        or measured_accelerator_total > capacity_accelerators * window.seconds
     ):
         raise CostCalculationRefused(
             "the workloads together report more measured use than the node's declared capacity "
@@ -972,6 +1079,7 @@ def calculate(document: Any, method: Mapping[str, Any]) -> dict[str, Any]:
         "kind": RESULT_KIND,
         "classification": RESULT_CLASSIFICATION,
         "usageEvidenceClass": classification,
+        "usageEvidence": usage_evidence,
         "inputWarning": warning,
         "boundary": BOUNDARY,
         "publishedCostFigure": False,
@@ -1044,7 +1152,9 @@ def _at(record: Mapping[str, Any], path: str) -> tuple[bool, Any]:
 
 
 def _type_holds(kind: str, value: Any) -> bool:
-    if kind in {"string", "instant"}:
+    if kind == "instant":
+        return isinstance(value, str) and bool(INSTANT.match(value))
+    if kind == "string":
         return isinstance(value, str) and bool(value)
     if kind == "decimal":
         return isinstance(value, str) and bool(DECIMAL_STRING.match(value))

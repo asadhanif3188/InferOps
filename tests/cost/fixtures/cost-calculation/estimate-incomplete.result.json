@@ -34,7 +34,6 @@
           "no-telemetry-source"
         ],
         "unavailableInputs": [
-          "accelerator-seconds",
           "memory-byte-seconds"
         ],
         "windowComplete": false
@@ -117,6 +116,7 @@
       "no-telemetry-source"
     ]
   },
+  "usageEvidence": null,
   "usageEvidenceClass": "synthetic",
   "window": {
     "end": "2026-08-26T01:30:00Z",

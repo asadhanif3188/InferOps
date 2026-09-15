@@ -220,7 +220,7 @@ Four of the eight it marks not emitted are not, and the reason differs in each c
 | `inferops_workload_document_rejections_total` | Its emitter is the contract validator, which is a library and a command rather than a running service. There is no process to scrape, so no scrape job could discover an endpoint and no query could read it |
 | `inferops_inference_time_to_first_token_seconds` | Deferred out of V1. There is no streaming path, so this is the same measurement as request duration; publishing it as a second signal would publish a fabrication |
 | `inferops_inference_retries_total` | Deferred out of V1. There is no retry or fallback path, so the counter can only ever read zero, and a flat line reads as a healthy system rather than an absent feature |
-| `inferops_cost_records_total` | Deferred out of V1. No component computes or emits a cost record, so a query over it would describe an absent capability as a quiet one |
+| `inferops_cost_records_total` | Deferred out of V1. No platform component computes or emits a cost record, so a query over it would describe an absent capability as a quiet one |
 
 The other four not-emitted metrics — `inferops_model_ready`,
 `inferops_model_load_duration_seconds`, `inferops_inference_queue_duration_seconds`,

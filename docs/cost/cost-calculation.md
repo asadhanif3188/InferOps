@@ -43,8 +43,8 @@ figures, so that the lines a reader sees close.
 
 Confidence is derived from each record's `facts` by the method's rules. With the
 synthetic card it is `none` whatever else is true, and `hasMeasuredUtilisation` is true
-only when the input's evidence class is a measured one and processor and memory use
-are both present.
+only when the input's evidence class is a measured one, it names a committed record of
+that class, and processor and memory use are both present.
 
 ## Running it
 
@@ -66,17 +66,19 @@ python -m tools.cost_calculation verify --input tests/cost/fixtures/cost-calcula
 
 ## The input
 
-An input is a `CostCalculationInput` at `inferops.io/v1alpha1`, with exactly these
-fields and no others:
+An input has exactly these fields and no others:
 
 | Field | What it holds |
 |---|---|
+| `schemaVersion` | `inferops.io/v1alpha1` |
+| `kind` | `CostCalculationInput` |
 | `classification` | The evidence class the usage values came from: `synthetic`, `local-real-cpu`, `cloud-real-cpu`, or `cloud-real-gpu` |
+| `usageEvidence` | `null` for a synthetic input. For a measured class, the committed record the usage came from: a `path` under `docs/proof/` and the `sha256` of its content with line endings normalized to LF. The record must exist, match the digest, and declare the same evidence class |
 | `warning` | What the input is; a synthetic input must say it is synthetic |
 | `environmentId` | The environment every workload belongs to |
 | `basis` | `estimated`; anything else is refused |
 | `priceSourceId` | A rate card committed in the method; no other source is read |
-| `window` | `start` and `end`, RFC 3339 in UTC with a `Z`, half-open, from one minute to one day |
+| `window` | `start` and `end`, RFC 3339 in UTC with a `Z`, half-open, from one minute to one day; a one-hour window starts on the hour |
 | `capacity` | The node's allocatable `cpuCores` and `memoryGibibytes` as decimal strings, and `acceleratorDevices` as an integer |
 | `prerequisites` | Claims that outlive a release, each attributed to `prerequisite-layer` |
 | `workloads` | One entry per record: `recordId`, `identity`, `declaration`, `presentForWholeWindow`, `shapeChangedInWindow`, `usage`, and `unavailable` |
@@ -87,7 +89,9 @@ A workload's `declaration` uses the workload contract's quantity pattern for
 `cpuSeconds`, `memoryByteSeconds`, and `acceleratorSeconds`. Counts are integers and
 quantities are decimal strings. A value that is not available is `null`, and
 `unavailable` gives its reason from the method's list; a value set and declared
-unavailable, or null without a reason, is refused.
+unavailable, or null without a reason, is refused. The one exception is
+`acceleratorSeconds` for a workload that reserves no device: it is not applicable, so it
+is `null` with **no** reason, and is not listed as unavailable.
 
 ## What it refuses
 
@@ -102,23 +106,28 @@ Before writing any figure, the tool refuses:
 - a synthetic rate card that does not self-identify, is marked publishable, caps
   confidence above `none`, or does not say its rates are invented;
 - any binary float, `NaN`, or duplicate key anywhere in the input;
-- a window that is not UTC with a `Z`, is not a real instant, runs backwards, or is
-  shorter than a minute or longer than a day;
+- a window that is not UTC with a `Z`, is not a real instant, runs backwards, is
+  shorter than a minute or longer than a day, or lasts one hour without starting on the
+  hour;
 - a workload that declares a change of reservation inside the window — split the window
   instead;
-- a tenant identifier, and any value shaped like a host path, a user directory, or a
-  network address;
-- measured use that exceeds the node's declared capacity for the window, for one
-  workload or all of them together, and device seconds for a workload that reserves no
-  device;
-- an evidence class that cannot supply usage, such as `mock`.
+- a tenant identifier, and any value shaped like a Windows drive path, a `/Users` or
+  `/home` directory, or an IPv4 address other than loopback (host names and IPv6
+  addresses are not recognized);
+- measured processor, memory, or device use that exceeds the node's declared capacity
+  for the window, for one workload or all of them together; more devices reserved across
+  a workload's replicas than the node declares; and device seconds, or a reason for
+  missing them, for a workload that reserves no device;
+- an evidence class that cannot supply usage, such as `mock`; a measured class that names
+  no committed record, one outside `docs/proof/`, one whose digest does not match, or one
+  that declares a different class; and a synthetic input that names any record.
 
 ## What is still supplied by hand
 
 | Input | Where it would come from | Today |
 |---|---|---|
-| Processor seconds | The container's cgroup processor counter, increase between the samples bounding the window (ADR 0014 D3) | Typed in by hand |
-| Memory byte-seconds | The container's working set, integrated trapezoidally between samples inside the window (ADR 0014 D3) | Typed in by hand |
+| Processor seconds | Each pod's cgroup processor counter, increase between the samples bounding the window, summed over the workload's pods (ADR 0014 D3) | Typed in by hand |
+| Memory byte-seconds | Each pod's cgroup working set, integrated trapezoidally between samples inside the window (ADR 0014 D3) | Typed in by hand |
 | Requests and tokens | The experiment's raw records, reconciled with the collector's counters | Typed in by hand |
 | Node capacity | The node's allocatable resources | Declared by hand; nothing reads a cluster |
 | Reservation and replicas | The workload document and the release | Declared by hand |
@@ -126,8 +135,9 @@ Before writing any figure, the tool refuses:
 
 The integration rules in that table are written and not executed: no reader in this
 repository takes a usage value from committed samples. The tool can check that a value
-is well formed and fits within the node; it cannot check that it matches the evidence
-its input names.
+is well formed and fits within the node, and that a measured class names a committed
+record of that class; it cannot check that the value matches that record, which it does
+not read beyond its class.
 
 ## The committed fixtures
 
@@ -145,8 +155,10 @@ Both fixtures use the synthetic card: 0.040000 per core-hour, 0.005000 per gibib
 
 The first workload reserved 2.000000 core-hours and was measured using 0.6 of a
 core-hour; the rest of its reservation is on the unallocated line, not on its record. The unallocated share is
-0.8879175 exactly, a tie at the sixth place, and rounds half-even to 0.887918. With the
-0.000500 model cache claim the environment comes to 0.400500.
+0.8879175 exactly, a tie at the sixth place, and rounds half-even to 0.887918. The
+amounts close against the node exactly; the shares are each rounded on their own, so the
+three published shares add to a millionth over one, and only the amounts are required
+to close. With the 0.000500 model cache claim the environment comes to 0.400500.
 
 **`estimate-incomplete`** — half an hour, one workload present for part of it, and no
 memory integral. Its amount, hourly figure, share, and both unit costs are null with the
@@ -159,9 +171,11 @@ still stated, because it does not depend on use.
 - **Every figure is synthetic.** It demonstrates the arithmetic and says nothing about a
   price.
 - **Hand-typed usage** is as good as whoever typed it.
-- **A working set counts file-backed pages** the kernel charges to a container, and a
-  cgroup processor counter counts every thread in it; both are what the kernel reported,
-  not what a request needed.
+- **A working set counts file-backed pages** the kernel charges to a pod, and a cgroup
+  processor counter counts every thread in it; both are what the kernel reported, not
+  what a request needed.
+- **The hourly figure over a short window** is the amount scaled up, and reads like a
+  run rate; it means nothing apart from the window it carries.
 - **Idle reservations are not charged to the workload** that reserved them; they are on
   the unallocated line.
 - **Nothing here is a contract.** The record shape is part of the method (ADR 0007 D10),

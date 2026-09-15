@@ -15,6 +15,7 @@
     "memoryGibibytes": "16",
     "acceleratorDevices": 0
   },
+  "usageEvidence": null,
   "prerequisites": [],
   "workloads": [
     {
@@ -44,8 +45,7 @@
         "acceleratorSeconds": null
       },
       "unavailable": {
-        "memory-byte-seconds": "no-telemetry-source",
-        "accelerator-seconds": "no-telemetry-source"
+        "memory-byte-seconds": "no-telemetry-source"
       }
     }
   ]
