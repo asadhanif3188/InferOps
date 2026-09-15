@@ -10,6 +10,32 @@ once versioned releases begin.
 
 ### Added
 
+- **The V1 cost baseline: estimated records from measured use, at synthetic prices.**
+  `python -m tools.cost_baseline` reads the committed `V1-S4-004` performance record, and
+  refuses unless it regenerates byte for byte from its inputs, is `local-real-cpu`
+  evidence, and passed its own checks. It then applies ADR 0014 D3 to the samples and raw
+  records: a window opened and closed on the samples bounding each run's phases, each
+  pod's cgroup processor counter increase, working-set bytes integrated trapezoidally,
+  and every request counted inside the window. It writes one calculation input per run,
+  prices it with the unchanged `tools/cost_calculation`, and writes a derivation record
+  of every intermediate value. `verify` regenerates all five files.
+  [The baseline](docs/proof/cost/v1-s4-005-pr2-cost-baseline.md) publishes the price
+  source, version, and date, the basis and allocation method, the windows, the
+  attribution of the request path's pods to the workload and the collector to the
+  unallocated line, what the unallocated line holds, the excluded costs, confidence,
+  uncertainty, and how to read the hourly figure and the cost per thousand requests.
+
+  **What it states, for one single-replica release serving one fixed prompt on one host:**
+  the request path used about 5.9 cores and 0.53 GiB while serving 183 requests in each of
+  two runs, whose amounts agree to 0.7%; its use exceeded its processor reservation about
+  5.4 times and left most of its memory reservation idle; the cost per million tokens is
+  null, because 9,516 tokens is below the method's minimum. **What it is not:** a cost
+  figure. Every price is synthetic, so both records have confidence `none`, and ADR 0007
+  D11 still publishes no cost figure. No dashboard or query hook is added: nothing emits a
+  cost record to read. The method data's measured record count, its limitations and
+  usage coverage notes, ADR 0014's D3 status, and the documents that said no reader takes
+  usage from samples are updated; no decision changes.
+
 - **The V1 cost calculation, on the estimated basis only, exercised on synthetic
   fixtures.** `python -m tools.cost_calculation` applies
   [the cost method](docs/cost/cost-method.md) to one declared input and writes a result

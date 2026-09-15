@@ -25,6 +25,7 @@ can produce today lands on `none`.
 | [The cost method](cost-method.md) | Basis, allocation, idle and shared cost, windows, prices, units and precision, missing data, confidence, inputs, outputs, the record shape, and the rules |
 | [A worked synthetic example](worked-example.md) | One hour, one node, two workloads, and the residual, on the allocated basis, with every figure recomputed by the suite |
 | [The cost calculation](cost-calculation.md) | `tools/cost_calculation`: the estimated basis applied to one declared input, what it refuses, what is still typed by hand, and two synthetic fixtures |
+| [The V1 cost baseline](../proof/cost/v1-s4-005-pr2-cost-baseline.md) | `tools/cost_baseline`: use taken from the `V1-S4-004` samples, two estimated records at synthetic prices, and how far to trust them |
 | [`cost-method.v1alpha1.json`](cost-method.v1alpha1.json) | The authoritative form of both, validated by [`tests/cost/`](../../tests/cost/) |
 | [The telemetry catalog](../telemetry/telemetry-catalog.md) | Where every usage input would come from, and which ones have no source |
 
@@ -35,7 +36,8 @@ never received. `allocated` is specified and demonstrated by the worked example,
 V1 calculation does not produce it, so that an allocation and an estimate of one window
 never sit side by side. `estimated` prices what a workload was measured using, and since
 the `V1-S4-004` scenario matrix committed measured processor and memory use, it is the
-one V1 calculates — with every usage value typed into the input by hand.
+one V1 calculates. Usage is typed into an input by hand, or taken from committed samples
+by `tools/cost_baseline`, which produced the baseline's two records.
 
 Capacity no workload in a calculation was measured using is reported as its own line
 rather than spread or dropped, and the workload lines plus that line are required to
@@ -57,9 +59,9 @@ to values worked out by hand.
 ## What is not here
 
 No platform component that computes or emits a cost record, no schema for one under
-[`contracts/`](../../contracts/README.md), no provider rate card, no invoice, no reader
-that takes usage from committed samples, no calculation over measured evidence, and no
-figure for what running an inference workload costs. The last of those is a boundary
+[`contracts/`](../../contracts/README.md), no provider rate card, no invoice, no usage
+read from a running system, no dashboard or query over cost, and no figure for what
+running an inference workload costs. The last of those is a boundary
 rather than a gap: ADR 0007 D11 publishes the method and synthetic examples and no cost
 figure, and [ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md),
 which allows a bounded traffic figure, leaves that decision untouched.

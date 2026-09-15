@@ -381,6 +381,16 @@
       "note": null
     },
     {
+      "module": "tests/cost/test_cost_baseline.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The V1 cost baseline in tools/cost_baseline: usage taken only from a performance record that regenerates byte for byte from its committed inputs, is local-real-cpu evidence, and passed its own checks; a window opened and closed on the samples that bound a run's phases, and refused when they do not; processor seconds as a counter increase, null with input-conflict on a reset rather than stitched; memory byte-seconds integrated trapezoidally with nothing extrapolated; a missing reading refused rather than interpolated; every request placed inside the window; identity observed from the collector's labels and refused when a label has two values; the committed inputs, results, and derivation regenerating byte for byte; every usage value recomputed by integer sums over the committed sample and raw lines and every published figure in Decimal from rates written out by hand; the unallocated use closing against capacity; and the published baseline report quoting no six-place figure the results lack.",
+      "claims": [
+        "a-cost-figure-cannot-be-presented-as-a-bill"
+      ],
+      "note": null
+    },
+    {
       "module": "tests/cost/test_cost_calculation.py",
       "layer": "documentation",
       "marker": "docs",

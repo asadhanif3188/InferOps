@@ -31,6 +31,13 @@
 > repository tool run by hand is outside it (D7). The tool runs by hand, contacts
 > nothing, and emits no telemetry. Every usage value it reads is **typed in by hand**; nothing in
 > this repository reads it from the committed samples yet.
+>
+> **Implementation update, 2026-09-15 (`V1-S4-005-PR2`).** A second repository tool,
+> `tools/cost_baseline`, now applies D3's integration rules to the committed `V1-S4-004`
+> samples and raw records and writes the calculation input, so the
+> [V1 cost baseline](../../proof/cost/v1-s4-005-pr2-cost-baseline.md)'s two records carry
+> measured use that nobody typed. No decision below changes; D3's status row records
+> what now enforces it. The paragraph above is kept as it was accepted.
 
 ## Decision status
 
@@ -38,7 +45,7 @@
 |---|---|---|---|
 | D1 | V1 calculates the `estimated` basis only; `actual` and `allocated` are refused | **Accepted** | The method's reachable set is tested, and the tool refuses the other two before writing anything |
 | D2 | `observed-utilisation-share` is selected; `requested-resource-share` is deferred | **Accepted** | The method's selection is tested, and the tool refuses a method selecting anything else |
-| D3 | What counts as measured use, and how a usage value is taken from samples | **Accepted as a rule.** The evidence half is tested; the integration half is review only, because no reader exists | Tests that synthetic usage never derives `hasMeasuredUtilisation` and that a measured class must name a committed record of that class, and nothing for the integration rules |
+| D3 | What counts as measured use, and how a usage value is taken from samples | **Accepted as a rule.** The evidence half is tested. The integration half is enforced for an input `tools/cost_baseline` writes, and is still review only for a hand-typed input | Tests that synthetic usage never derives `hasMeasuredUtilisation` and that a measured class must name a committed record of that class; since `V1-S4-005-PR2`, `tests/cost/test_cost_baseline.py`, which recomputes every usage value the reader writes from the committed sample lines and tests its window, reset, missing-reading, and placement rules |
 | D4 | The estimated amount, its unallocated line, and what closes; amends the meaning of ADR 0007 D3's line | **Accepted** | Fixtures whose figures are held to values worked out by hand, a closure check the tool runs on every result, and tests of every capacity bound |
 | D5 | Exact arithmetic, rounded once, and which figures are taken from which | **Accepted** | Rounding tests at the tie, and a test that a unit cost is divided from the exact amount |
 | D6 | The hourly figure and the cost-per-request figure | **Accepted** | Tests over the fixtures, and the unchanged denominator minimums |
@@ -150,6 +157,19 @@ value in an input today is typed in by hand, and the tool can check that it is s
 correctly and fits within the node's declared capacity for the window, but cannot check
 that it matches the record it names, which it does not read beyond its class. That gap
 is stated, not closed.
+
+**Update, `V1-S4-005-PR2`.** `tools/cost_baseline` is that reader. It refuses a
+performance record that does not regenerate from its committed inputs, is not
+`local-real-cpu`, or failed one of its own checks, and then applies the rules above: the
+window opens and closes on the samples that bound a run's phases, so the counter increase
+and the trapezoidal integral cover the same interval and nothing is extrapolated; a
+counter that falls is null with `input-conflict`; a missing reading is refused rather
+than interpolated; every request must lie inside the window. Its `verify` regenerates the
+input byte for byte. Two choices the rules above did not make are made there and stated:
+the workload is the request path's API and runtime pods, and the release's collector is
+platform overhead left on the unallocated line. The gap is closed for inputs that tool
+writes and stays open for an input typed by hand, which `tools/cost_calculation` still
+does not check against its samples.
 
 ## D4 — The estimated amount, and what closes
 
@@ -288,11 +308,17 @@ and the figures in them held to values worked out by hand. It is `local-static` 
 `synthetic` evidence. No usage value in it was measured, and no cost record has been
 calculated from the `V1-S4-004` evidence.
 
+[The V1 cost baseline](../../proof/cost/v1-s4-005-pr2-cost-baseline.md) and
+[its validation record](../../proof/cost/v1-s4-005-pr2-validation.md): two estimated records
+over the `V1-S4-004` runs, with measured use taken from the samples by `tools/cost_baseline`
+and prices from the synthetic card, so confidence `none`.
+
 ## Risks, assumptions, and open questions
 
 - **Hand-typed inputs are the weak point.** D3's integration rules are written and not
   executed. Until a reader applies them to committed samples, a calculation's usage
-  values are exactly as good as whoever typed them.
+  values are exactly as good as whoever typed them. (Since `V1-S4-005-PR2` a reader does,
+  for the inputs it writes; a typed input is still as good as its typist.)
 - **A container's working set is not only its own allocations.** It counts file-backed
   pages the kernel charges to the container, so a memory-mapped model file is counted
   as far as the kernel charges it. The memory line prices what the kernel reported, not

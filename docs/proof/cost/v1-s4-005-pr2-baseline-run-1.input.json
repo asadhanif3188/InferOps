@@ -1,0 +1,53 @@
+{
+  "basis": "estimated",
+  "capacity": {
+    "acceleratorDevices": 0,
+    "cpuCores": "12",
+    "memoryGibibytes": "9.71605682373046875"
+  },
+  "classification": "local-real-cpu",
+  "environmentId": "dev",
+  "kind": "CostCalculationInput",
+  "prerequisites": [],
+  "priceSourceId": "synthetic-illustrative-v1",
+  "schemaVersion": "inferops.io/v1alpha1",
+  "usageEvidence": {
+    "path": "docs/proof/serving/v1-s4-004-pr1-performance-record.v1alpha1.json",
+    "sha256": "d6fb7a1486c04fc0a57bd170737f39df023d3deb21ad40245cbc1d42d833a043"
+  },
+  "warning": "Measured use of run 1 of a declared local experiment, derived by tools/cost_baseline from the committed samples and raw records under ADR 0014 D3 and not typed in. Priced from the synthetic rate card, so the amounts are economically meaningless and no figure here is published.",
+  "window": {
+    "end": "2026-09-14T16:22:54.831Z",
+    "start": "2026-09-14T16:17:26.077Z"
+  },
+  "workloads": [
+    {
+      "declaration": {
+        "acceleratorCount": 0,
+        "acceleratorType": "none",
+        "cpuRequest": "1100m",
+        "memoryRequest": "2281701376",
+        "replicas": 1
+      },
+      "identity": {
+        "environment": "dev",
+        "modelId": "qwen3-1-7b-q8-0",
+        "ownerId": "team-platform-demo",
+        "runtimeId": "llama-cpp-server",
+        "workloadId": "support-assistant"
+      },
+      "presentForWholeWindow": true,
+      "recordId": "baseline-run-1-support-assistant",
+      "shapeChangedInWindow": false,
+      "unavailable": {},
+      "usage": {
+        "acceleratorSeconds": null,
+        "cpuSeconds": "1952.1241704",
+        "inputTokens": 6405,
+        "memoryByteSeconds": "188050670049.28",
+        "outputTokens": 3111,
+        "requests": 183
+      }
+    }
+  ]
+}

@@ -15,11 +15,11 @@
 
   "computationStatus": {
     "state": "synthetic-only",
-    "meaning": "A repository tool, tools/cost_calculation, computes an estimated cost record by hand from one declared input document and a committed rate card. Nothing in a running system computes, emits, stores, or reads a cost record, and the only rate card committed here is synthetic, so every figure the tool has produced is economically meaningless.",
+    "meaning": "A repository tool, tools/cost_calculation, computes an estimated cost record by hand from one declared input document and a committed rate card. A second repository tool, tools/cost_baseline, writes such an input from the committed samples of a bounded experiment under ADR 0014 D3, so two committed records carry measured use. Nothing in a running system computes, emits, stores, or reads a cost record, and the only rate card committed here is synthetic, so every figure the tools have produced is economically meaningless.",
     "producer": "tools/cost_calculation, a repository tool run by hand that contacts no cluster, network, or telemetry store; which platform component computes and emits a cost record in a running system, and who owns it, is still not selected",
     "invoicesRead": 0,
     "syntheticRecordsProduced": 3,
-    "measuredRecordsProduced": 0,
+    "measuredRecordsProduced": 2,
     "publishedCostFigures": 0
   },
 
@@ -568,7 +568,7 @@
       "source": "measured",
       "telemetrySignal": "inferops_inference_requests_total",
       "telemetryCoverage": "full",
-      "coverageNote": "The platform counts the requests it receives. This is the counter the selected serving runtime does not expose and the platform produces itself, which the telemetry catalog already records. A calculation takes it from a committed bounded experiment record (ADR 0013), typed into the calculation input by hand (ADR 0014 D3); no reader in this repository derives it from that record.",
+      "coverageNote": "The platform counts the requests it receives. This is the counter the selected serving runtime does not expose and the platform produces itself, which the telemetry catalog already records. A calculation takes it from a committed bounded experiment record (ADR 0013), either typed into the calculation input by hand or counted from the record's raw records by tools/cost_baseline (ADR 0014 D3).",
       "sensitivity": "operational",
       "question": "How many requests is this amount being divided by?",
       "v1Available": true,
@@ -583,7 +583,7 @@
       "source": "measured",
       "telemetrySignal": "inferops_inference_tokens_total",
       "telemetryCoverage": "partial",
-      "coverageNote": "Carried on the token counter under the input direction. The selected runtime does expose a prompt-token counter, so this is one of the few usage inputs with a real source behind it, once anything scrapes it. A calculation takes it from a committed bounded experiment record (ADR 0013), typed into the calculation input by hand (ADR 0014 D3); no reader in this repository derives it from that record.",
+      "coverageNote": "Carried on the token counter under the input direction. The selected runtime does expose a prompt-token counter, so this is one of the few usage inputs with a real source behind it, once anything scrapes it. A calculation takes it from a committed bounded experiment record (ADR 0013), either typed into the calculation input by hand or counted from the record's raw records by tools/cost_baseline (ADR 0014 D3).",
       "sensitivity": "operational",
       "question": "How many input tokens did this workload process?",
       "v1Available": true,
@@ -598,7 +598,7 @@
       "source": "measured",
       "telemetrySignal": "inferops_inference_tokens_total",
       "telemetryCoverage": "partial",
-      "coverageNote": "Carried on the same counter under the output direction. A calculation takes it from a committed bounded experiment record (ADR 0013), typed into the calculation input by hand (ADR 0014 D3); no reader in this repository derives it from that record.",
+      "coverageNote": "Carried on the same counter under the output direction. A calculation takes it from a committed bounded experiment record (ADR 0013), either typed into the calculation input by hand or counted from the record's raw records by tools/cost_baseline (ADR 0014 D3).",
       "sensitivity": "operational",
       "question": "How many output tokens did it produce?",
       "v1Available": true,
@@ -613,7 +613,7 @@
       "source": "measured",
       "telemetrySignal": null,
       "telemetryCoverage": "none",
-      "coverageNote": "No catalog signal supplies this input: the catalog's process counter belongs to the platform process, and no catalog signal reports container, pod, or node processor use. A calculation takes it instead from the pod cgroup processor counters sampled beside a declared local experiment, the counter's increase between the samples bounding the window (ADR 0014 D3). It is typed into the calculation input by hand, and no reader in this repository takes it from the samples.",
+      "coverageNote": "No catalog signal supplies this input: the catalog's process counter belongs to the platform process, and no catalog signal reports container, pod, or node processor use. A calculation takes it instead from the pod cgroup processor counters sampled beside a declared local experiment, the counter's increase between the samples bounding the window (ADR 0014 D3). It is either typed into the calculation input by hand or taken from the samples by tools/cost_baseline.",
       "sensitivity": "operational",
       "question": "How much processor time did this workload actually consume?",
       "v1Available": true,
@@ -628,7 +628,7 @@
       "source": "measured",
       "telemetrySignal": null,
       "telemetryCoverage": "none",
-      "coverageNote": "No catalog signal supplies this input: the catalog's resident-memory gauge belongs to the platform process. A calculation takes it instead from the pod cgroup memory working-set readings sampled beside a declared local experiment, integrated trapezoidally between consecutive samples inside the window and never extrapolated past the first or last (ADR 0014 D3). It is typed into the calculation input by hand, and no reader in this repository integrates the samples.",
+      "coverageNote": "No catalog signal supplies this input: the catalog's resident-memory gauge belongs to the platform process. A calculation takes it instead from the pod cgroup memory working-set readings sampled beside a declared local experiment, integrated trapezoidally between consecutive samples inside the window and never extrapolated past the first or last (ADR 0014 D3). It is either typed into the calculation input by hand or integrated from the samples by tools/cost_baseline.",
       "sensitivity": "operational",
       "question": "How much memory did this workload actually hold, over time?",
       "v1Available": true,
@@ -1639,7 +1639,7 @@
         "gapId": "no-container-or-node-resource-metric",
         "affects": ["cpu-seconds", "memory-byte-seconds"],
         "statement": "The catalog's two process metrics describe the emitting process, not a container, pod, or node, and the local cluster runs no metrics server. The inputs this gap affects therefore name no catalog signal.",
-        "consequence": "No catalog signal supplies the estimated basis. It is reachable only from the pod cgroup samples of a declared local experiment, typed into a calculation input by hand (ADR 0014 D3), and the observed-utilisation-share method has no telemetry source."
+        "consequence": "No catalog signal supplies the estimated basis. It is reachable only from the pod cgroup samples of a declared local experiment, typed into a calculation input by hand or taken from them by tools/cost_baseline (ADR 0014 D3), and the observed-utilisation-share method has no telemetry source."
       },
       {
         "gapId": "no-accelerator-metric",
@@ -1651,7 +1651,7 @@
         "gapId": "no-collector-reads-anything",
         "affects": ["requests", "input-tokens", "output-tokens", "ready-seconds"],
         "statement": "The API emits the request and token signals and the release-scoped collector scrapes them, but no durable store keeps what it scrapes and no component reads them into a cost calculation. The readiness gauge is not emitted at all.",
-        "consequence": "A calculation takes request and token counts from a committed bounded experiment record, typed in by hand, and has no source for ready seconds. No usage input is read from a running system."
+        "consequence": "A calculation takes request and token counts from a committed bounded experiment record, typed in by hand or counted by tools/cost_baseline, and has no source for ready seconds. No usage input is read from a running system."
       }
     ]
   },
@@ -1686,7 +1686,7 @@
     },
     {
       "limitationId": "no-utilisation-source",
-      "statement": "There is no metrics server, and no collector keeps a durable utilisation series. Measured processor and memory use reaches a calculation only as values typed in by hand from a committed bounded experiment, and no reader in this repository integrates them from its samples."
+      "statement": "There is no metrics server, and no collector keeps a durable utilisation series. Measured processor and memory use reaches a calculation only from the committed samples of a bounded experiment: typed in by hand, or taken from them by tools/cost_baseline, which reads files and never a running system."
     },
     {
       "limitationId": "allocation-overcharges-idleness",
@@ -1726,7 +1726,7 @@
     },
     {
       "limitationId": "measured-use-is-typed-in-by-hand",
-      "statement": "Every usage value in a calculation input is typed in by whoever prepares it. The calculation checks its shape, that it fits within the node's declared capacity for the window, and that a measured class names a committed record of that class; it cannot check that the values match that record, which it does not read beyond its class."
+      "statement": "Every usage value in a calculation input is typed in by hand by whoever prepares it, unless tools/cost_baseline wrote the input. The calculation checks its shape, that it fits within the node's declared capacity for the window, and that a measured class names a committed record of that class; it cannot check that the values match that record, which it does not read beyond its class. For an input tools/cost_baseline wrote, its verify command is that check: it regenerates the input from the record's samples byte for byte."
     }
   ]
 }

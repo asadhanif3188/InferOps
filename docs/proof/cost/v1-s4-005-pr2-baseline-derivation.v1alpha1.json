@@ -1,0 +1,226 @@
+{
+  "attribution": {
+    "platformPods": [
+      "collector"
+    ],
+    "rule": "The request path's pods are the workload. The release's collector is platform overhead, which the method's shared-cost rule makes environment cost; it is not listed, so its use is on the unallocated line.",
+    "workloadPods": [
+      "api",
+      "runtime"
+    ]
+  },
+  "boundary": "Usage values taken from one committed performance record's samples and raw records under ADR 0014 D3, and the estimated cost records the committed calculation produces from them. The use is measured on one local host; every price is from the synthetic rate card, so no amount here is what anything costs, and none is a bill, an allocation, or a published cost figure.",
+  "decisionRef": "docs/architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md",
+  "environment": {
+    "cgroupVersion": 1,
+    "kubernetesServerVersion": "v1.34.3",
+    "nodeAllocatable": {
+      "cpu": "12",
+      "memory": "10188024Ki"
+    },
+    "provider": "docker-desktop",
+    "virtualMachineLogicalCpus": 12
+  },
+  "identity": {
+    "observedFromCollectorLabels": [
+      "inferops_workload_id",
+      "inferops_model_id",
+      "inferops_runtime_id",
+      "deployment_environment"
+    ],
+    "ownerFrom": "charts/inferops-llm/ci/real-values.yaml",
+    "valuesSha256": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48"
+  },
+  "kind": "CostBaselineDerivation",
+  "notDerived": [
+    "Node capacity and the reservation are read from the environment the experiment captured, not from the samples.",
+    "The owner is declared by the executed values file; the collector's series carry no owner label.",
+    "No prerequisite is listed: the model cache claim's size is not in the record, so its storage is not priced.",
+    "Input tokens are not reconciled against a counter by the record."
+  ],
+  "publishedCostFigure": false,
+  "rules": [
+    "The window opens on the last sample at or before the run's first phase starts and closes on the first sample at or after its last phase ends, placed by host instant.",
+    "Processor seconds are each workload pod's cgroup counter increase between the window's bounding samples, summed; a counter that falls inside the window is null with input-conflict.",
+    "Memory byte-seconds are each workload pod's working set integrated trapezoidally between consecutive samples on host time, summed; nothing is extrapolated.",
+    "Requests are every raw record of the run, and tokens are summed over its successful records; every request must lie inside the window, and a count its reconciliation shows disagreeing is null with input-conflict.",
+    "Accelerator seconds are not applicable; no device is reserved."
+  ],
+  "runs": [
+    {
+      "crossCheck": {
+        "meaning": "The runtime pod's average processor use over the window, beside the per-phase figures the performance record computed independently from the samples inside each phase.",
+        "runtimePhaseMillicores": [
+          5979,
+          5944,
+          5993,
+          5992
+        ],
+        "runtimeWindowMillicores": 5929
+      },
+      "inputFile": "v1-s4-005-pr2-baseline-run-1.input.json",
+      "pods": {
+        "api": {
+          "attributedTo": "workload",
+          "counterReset": false,
+          "cpuSeconds": "2.8623462",
+          "memoryByteSeconds": "8562145134.592"
+        },
+        "collector": {
+          "attributedTo": "unallocated",
+          "counterReset": false,
+          "cpuSeconds": "0.6702399",
+          "memoryByteSeconds": "7351339749.376"
+        },
+        "runtime": {
+          "attributedTo": "workload",
+          "counterReset": false,
+          "cpuSeconds": "1949.2618242",
+          "memoryByteSeconds": "179488524914.688"
+        }
+      },
+      "rawFile": "run-1-raw.jsonl",
+      "recordId": "baseline-run-1-support-assistant",
+      "repetition": 1,
+      "resultFile": "v1-s4-005-pr2-baseline-run-1.result.json",
+      "traffic": {
+        "firstDispatchEpochMs": 1789402648353,
+        "inputTokens": 6405,
+        "inputTokensReconciled": false,
+        "lastCompletionEpochMs": 1789402974547,
+        "outputTokens": 3111,
+        "outputTokensReconciled": true,
+        "requests": 183,
+        "requestsReconciled": true,
+        "successful": 183
+      },
+      "unallocatedUse": {
+        "meaning": "What the unallocated line holds, in the units it is priced from. Every row is measured except idle, which is capacity less the node's measured use.",
+        "memoryByteSeconds": {
+          "capacity": "3429738129506.304",
+          "nodeOutsideRelease": "1681520791009.28",
+          "notInWorkingSet": "1552815328698.368",
+          "releasePlatformPods": "7351339749.376",
+          "workload": "188050670049.28"
+        },
+        "processorSeconds": {
+          "capacity": "3945.048",
+          "idle": "1819.9374256",
+          "nodeOutsideRelease": "172.3161641",
+          "releasePlatformPods": "0.6702399",
+          "workload": "1952.1241704"
+        }
+      },
+      "window": {
+        "closedAfterLoadMs": 284,
+        "end": "2026-09-14T16:22:54.831Z",
+        "endEpochMs": 1789402974831,
+        "hostSeconds": "328.754",
+        "largestSampleGapMs": 3877,
+        "loadEndEpochMs": 1789402974547,
+        "loadStartEpochMs": 1789402648346,
+        "longestSampleReadMs": 1874,
+        "nodeClockSeconds": "328.908457955",
+        "openedBeforeLoadMs": 2269,
+        "samples": 99,
+        "start": "2026-09-14T16:17:26.077Z",
+        "startEpochMs": 1789402646077
+      }
+    },
+    {
+      "crossCheck": {
+        "meaning": "The runtime pod's average processor use over the window, beside the per-phase figures the performance record computed independently from the samples inside each phase.",
+        "runtimePhaseMillicores": [
+          5955,
+          5952,
+          5989,
+          5994
+        ],
+        "runtimeWindowMillicores": 5902
+      },
+      "inputFile": "v1-s4-005-pr2-baseline-run-2.input.json",
+      "pods": {
+        "api": {
+          "attributedTo": "workload",
+          "counterReset": false,
+          "cpuSeconds": "2.8811365",
+          "memoryByteSeconds": "8872274171.904"
+        },
+        "collector": {
+          "attributedTo": "unallocated",
+          "counterReset": false,
+          "cpuSeconds": "0.6475609",
+          "memoryByteSeconds": "8285784231.936"
+        },
+        "runtime": {
+          "attributedTo": "workload",
+          "counterReset": false,
+          "cpuSeconds": "1934.8482761",
+          "memoryByteSeconds": "180196299479.04"
+        }
+      },
+      "rawFile": "run-2-raw.jsonl",
+      "recordId": "baseline-run-2-support-assistant",
+      "repetition": 2,
+      "resultFile": "v1-s4-005-pr2-baseline-run-2.result.json",
+      "traffic": {
+        "firstDispatchEpochMs": 1789403066539,
+        "inputTokens": 6405,
+        "inputTokensReconciled": false,
+        "lastCompletionEpochMs": 1789403390181,
+        "outputTokens": 3111,
+        "outputTokensReconciled": true,
+        "requests": 183,
+        "requestsReconciled": true,
+        "successful": 183
+      },
+      "unallocatedUse": {
+        "meaning": "What the unallocated line holds, in the units it is priced from. Every row is measured except idle, which is capacity less the node's measured use.",
+        "memoryByteSeconds": {
+          "capacity": "3419952410198.016",
+          "nodeOutsideRelease": "1675261171691.52",
+          "notInWorkingSet": "1547336880623.616",
+          "releasePlatformPods": "8285784231.936",
+          "workload": "189068573650.944"
+        },
+        "processorSeconds": {
+          "capacity": "3933.792",
+          "idle": "1829.9530128",
+          "nodeOutsideRelease": "165.4620137",
+          "releasePlatformPods": "0.6475609",
+          "workload": "1937.7294126"
+        }
+      },
+      "window": {
+        "closedAfterLoadMs": 1475,
+        "end": "2026-09-14T16:29:51.656Z",
+        "endEpochMs": 1789403391656,
+        "hostSeconds": "327.816",
+        "largestSampleGapMs": 3795,
+        "loadEndEpochMs": 1789403390181,
+        "loadStartEpochMs": 1789403066532,
+        "longestSampleReadMs": 1663,
+        "nodeClockSeconds": "327.745918083",
+        "openedBeforeLoadMs": 2692,
+        "samples": 96,
+        "start": "2026-09-14T16:24:23.840Z",
+        "startEpochMs": 1789403063840
+      }
+    }
+  ],
+  "schemaVersion": "inferops.io/v1alpha1",
+  "usageEvidence": {
+    "checksRequired": [
+      "every-deployment-available",
+      "same-pods-throughout",
+      "zero-container-restarts",
+      "counters-reconcile-with-raw-records",
+      "resource-samples-cover-every-phase"
+    ],
+    "evidenceClass": "local-real-cpu",
+    "path": "docs/proof/serving/v1-s4-004-pr1-performance-record.v1alpha1.json",
+    "regeneratesFromInputs": true,
+    "resourceSamplesSha256": "122eedfe533800a434642f31d266d4b163149777ecf938accac5553f55fc13aa",
+    "sha256": "d6fb7a1486c04fc0a57bd170737f39df023d3deb21ad40245cbc1d42d833a043"
+  }
+}

@@ -69,6 +69,9 @@ derived rather than assigned. The cost calculation's suite contributes to the sa
 row for the records it writes: none on a basis other than `estimated`, none carrying
 an invoice's vocabulary, and every one validated against the method's record shape.
 It certifies the arithmetic on synthetic fixtures and nothing about a measurement.
+The cost baseline's suite contributes the same for its two records, whose use is taken
+from committed samples: it certifies that the use is the samples' and the arithmetic
+the method's, and still nothing about what anything costs.
 
 The security row is the newest, and it is the narrowest of the three. It certifies
 that every control in the committed baseline derives its status from the verification

@@ -319,7 +319,8 @@ be available.
 > **Amended 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** Processor seconds, memory byte-seconds,
 > requests, and tokens are now obtainable in V1 from a committed bounded experiment,
 > typed into a calculation input by hand; ADR 0014 D3 states how each is taken from
-> the samples, and no reader applies it yet. None is read from a running system, and
+> the samples, and `tools/cost_baseline` has applied it since `V1-S4-005-PR2`. None is
+> read from a running system, and
 > the named-signal comparison above is unchanged. The text above is kept as it was
 > accepted.
 

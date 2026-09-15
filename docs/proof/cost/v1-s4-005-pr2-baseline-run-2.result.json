@@ -1,0 +1,125 @@
+{
+  "allocationMethod": "observed-utilisation-share",
+  "basis": "estimated",
+  "boundary": "An estimated cost computed from the price source named beside it. It is not a bill, not an allocation, and not a published figure for what running an inference workload costs: ADR 0007 D11 publishes none, and a record priced from a synthetic rate card is economically meaningless.",
+  "capacity": {
+    "acceleratorDevices": 0,
+    "amount": "0.048133",
+    "cpuCores": "12.000000",
+    "memoryGibibytes": "9.716057"
+  },
+  "classification": "estimated",
+  "decisionRefs": [
+    "docs/architecture/decisions/ADR-0007-inference-cost-method.md",
+    "docs/architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md"
+  ],
+  "environmentId": "dev",
+  "inputWarning": "Measured use of run 2 of a declared local experiment, derived by tools/cost_baseline from the committed samples and raw records under ADR 0014 D3 and not typed in. Priced from the synthetic rate card, so the amounts are economically meaningless and no figure here is published.",
+  "kind": "CostCalculationResult",
+  "methodRef": "docs/cost/cost-method.v1alpha1.json",
+  "prerequisites": [],
+  "priceSource": {
+    "class": "synthetic-illustrative",
+    "currency": "USD",
+    "effectiveDate": "2026-08-26",
+    "priceSourceId": "synthetic-illustrative-v1",
+    "selfIdentifies": true,
+    "version": "1"
+  },
+  "publishedCostFigure": false,
+  "records": [
+    {
+      "completeness": {
+        "reasons": [
+          "below-minimum-sample"
+        ],
+        "unavailableInputs": [],
+        "windowComplete": true
+      },
+      "cost": {
+        "allocationMethod": "observed-utilisation-share",
+        "amount": "0.021775",
+        "amountScale": 6,
+        "basis": "estimated",
+        "confidence": "none",
+        "currency": "USD",
+        "priceSourceClass": "synthetic-illustrative",
+        "priceSourceEffectiveDate": "2026-08-26",
+        "priceSourceId": "synthetic-illustrative-v1",
+        "priceSourceVersion": "1"
+      },
+      "derived": {
+        "amountPerHour": "0.239127",
+        "costPerMillionTokens": null,
+        "costPerMillionTokensDenominator": 9516,
+        "costPerThousandRequests": "0.118988",
+        "costPerThousandRequestsDenominator": 183,
+        "shareOfNodeCapacity": "0.452395"
+      },
+      "evidence": {
+        "assumptionsRef": "docs/cost/cost-calculation.md",
+        "usageEvidenceClass": "local-real-cpu"
+      },
+      "facts": {
+        "basis": "estimated",
+        "hasMeasuredUtilisation": true,
+        "priceSourceClass": "synthetic-illustrative",
+        "shapeChangedInWindow": false,
+        "windowComplete": true
+      },
+      "identity": {
+        "environment": "dev",
+        "modelId": "qwen3-1-7b-q8-0",
+        "ownerId": "team-platform-demo",
+        "runtimeId": "llama-cpp-server",
+        "workloadId": "support-assistant"
+      },
+      "method": {
+        "version": "cost-method.v1alpha1"
+      },
+      "period": {
+        "end": "2026-09-14T16:29:51.656Z",
+        "start": "2026-09-14T16:24:23.840Z"
+      },
+      "recordId": "baseline-run-2-support-assistant",
+      "reserved": {
+        "acceleratorDeviceHours": "0.000000",
+        "cpuCoreHours": "0.100166",
+        "memoryGibibyteHours": "0.193502"
+      },
+      "usage": {
+        "acceleratorSeconds": null,
+        "cpuSeconds": "1937.729413",
+        "inputTokens": 6405,
+        "memoryByteSeconds": "189068573650.944000",
+        "outputTokens": 3111,
+        "requests": 183
+      }
+    }
+  ],
+  "residualTreatment": "report-separately",
+  "schemaVersion": "inferops.io/v1alpha1",
+  "totals": {
+    "closes": true,
+    "environmentAmount": "0.048133",
+    "nodeCapacityAmount": "0.048133",
+    "prerequisiteAmountSum": "0.000000",
+    "workloadAmountSum": "0.021775"
+  },
+  "unallocated": {
+    "amount": "0.026358",
+    "meaning": "Node capacity no workload in this calculation was measured using: idle capacity, the platform and control plane, and any workload the input does not list. It is reported, never spread.",
+    "shareOfNodeCapacity": "0.547608",
+    "unavailableReasons": []
+  },
+  "usageEvidence": {
+    "path": "docs/proof/serving/v1-s4-004-pr1-performance-record.v1alpha1.json",
+    "sha256": "d6fb7a1486c04fc0a57bd170737f39df023d3deb21ad40245cbc1d42d833a043"
+  },
+  "usageEvidenceClass": "local-real-cpu",
+  "window": {
+    "end": "2026-09-14T16:29:51.656Z",
+    "hours": "0.091060",
+    "start": "2026-09-14T16:24:23.840Z"
+  }
+}

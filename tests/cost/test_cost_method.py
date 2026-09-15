@@ -1143,13 +1143,20 @@ def test_the_method_states_that_only_a_repository_tool_computes_it() -> None:
     assert status["state"] == "synthetic-only"
     assert status["invoicesRead"] == 0
     assert status["publishedCostFigures"] == 0
-    assert status["measuredRecordsProduced"] == 0
     # The synthetic count is the committed fixtures' records, counted rather than typed.
     fixtures = REPO_ROOT / "tests" / "cost" / "fixtures" / "cost-calculation"
     produced = sum(
         len(load(path)["records"]) for path in sorted(fixtures.glob("*.result.json"))
     )
     assert status["syntheticRecordsProduced"] == produced, produced
+    # So is the measured count: committed results whose usage is a measured class.
+    results = sorted((REPO_ROOT / "docs" / "proof").rglob("*.result.json"))
+    measured = [load(path) for path in results]
+    assert all(result["usageEvidenceClass"] != "synthetic" for result in measured)
+    assert status["measuredRecordsProduced"] == sum(
+        len(result["records"]) for result in measured
+    )
+    assert "tools/cost_baseline" in status["meaning"]
     assert status["producer"].startswith("tools/cost_calculation")
     assert (REPO_ROOT / "tools" / "cost_calculation" / "core.py").is_file()
     assert "still not selected" in status["producer"]
