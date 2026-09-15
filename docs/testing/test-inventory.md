@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are twenty-seven, and they are listed in their own section rather than
+empty list. There are twenty-eight, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -143,7 +143,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Twenty-seven modules. Committed machine-readable data checked against the documents
+Twenty-eight modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -156,15 +156,18 @@ correlation queries against both of those and against synthetic stores. Then cam
 the repeatable LLM load profile: its agreement with the chart and the runtime
 profile, the order every response is classified in, the accounting of every
 dispatched request, and a rehearsal over loopback HTTP whose output is synthetic. The
-newest is the performance scenario matrix: its descriptor against that profile and the
+next was the performance scenario matrix: its descriptor against that profile and the
 chart, the record's placement and stability rules, and the committed real record
-regenerating from its inputs.
+regenerating from its inputs. The newest is the findings derived from that record:
+derivation refused unless the record regenerates, and the published report's tables
+held to the findings file.
 
 The count said seventeen until this story and had been wrong since `V1-S3-007-PR1`
 added the eighteenth. It is not machine-checked, which is why it drifted — the same
 way `architecture-inventory`'s did, and it is recorded here for the same reason. It
 drifted once more: by `V1-S4-003-PR1` twenty-five modules existed while the sentence
 said nineteen. That change added the twenty-sixth and corrected the count.
+`V1-S4-004-PR1` added the twenty-seventh and `V1-S4-004-PR2` the twenty-eighth.
 
 One is the odd one in this layer: `tests/security/test_workload_policy.py`
 reads manifests rather than a record, applying
@@ -185,10 +188,11 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Twenty-seven suites protect something no row of the claim matrix names. (This sentence
+Twenty-eight suites protect something no row of the claim matrix names. (This sentence
 said twenty-four while the table below held twenty-five rows; `V1-S4-003-PR1` added
 the twenty-sixth row and corrected it. `V1-S4-004-PR1` added the twenty-seventh and
-first left this sentence at twenty-six; its review corrected it. The machine-checked count is the one in the
+first left this sentence at twenty-six; its review corrected it. `V1-S4-004-PR2` added
+the twenty-eighth. The machine-checked count is the one in the
 opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
@@ -207,6 +211,7 @@ matrix is complete needs to see them together.
 | [`tests/serving/test_serving_baseline.py`](../../tests/serving/test_serving_baseline.py) | The registered baseline's agreement with the composition it measures, its percentile arithmetic, and its deterministic summary. Every request is answered by an injected seam, so no latency here is a serving measurement |
 | [`tests/serving/test_llm_load.py`](../../tests/serving/test_llm_load.py) | The repeatable LLM load profile's agreement with the chart and the runtime profile, the fixed order every response is classified in, exactly one outcome for every dispatched request, the raw reader's refusals, and a rehearsal over loopback HTTP. Every answer comes from an injected function or an in-process stub, so no latency here describes serving and the committed example is synthetic |
 | [`tests/serving/test_performance_scenarios.py`](../../tests/serving/test_performance_scenarios.py) | The performance scenario matrix's agreement with the load profile and chart it pins, the load facts and environment derived from the cluster's own answers, the node cgroup sample parser, CPU placed strictly inside each phase window, a record that is not usable when pods change, counters disagree, or samples leave a gap, and the committed record regenerating from its inputs. Every raw set, cluster answer, and collector reading in its other tests is constructed, so no figure they produce describes serving; the committed record it regenerates is local real evidence and certifies no claim |
+| [`tests/serving/test_performance_findings.py`](../../tests/serving/test_performance_findings.py) | The figures derived from the committed performance record and the report publishing them: derivation refused unless the record regenerates from its inputs, is usable, and claims no benchmark, capacity, or saturation judgement; the ratio, gap, gauge, and counter arithmetic; and every table in the report agreeing with the findings file. The record is local real evidence; the report's degradation statement is checked by review only and certifies no claim |
 | [`tests/serving/test_model_lifecycle.py`](../../tests/serving/test_model_lifecycle.py) | The accepted lifecycle state model against the package, the model record, and the API's drain budget; the rule that liveness passes while readiness is false during a load; and two measurements whose every timing is arithmetic on a fake clock, including the full ordered sequence of probes and artifact reads a restart comparison performs — which is what shows that the start procedure reads the artifact before every start |
 | [`tests/serving/test_local_runtime_troubleshooting.py`](../../tests/serving/test_local_runtime_troubleshooting.py) | The published troubleshooting guide against the tools, descriptors, and records it quotes. It establishes that the guide has not drifted, never that following one of its recoveries repairs a fault |
 | [`tests/serving/test_inference_api_surface.py`](../../tests/serving/test_inference_api_surface.py) | The committed API compatibility surface against its document |

@@ -77,7 +77,9 @@ What that lane would produce is a portable capacity claim, and that stays refuse
 allows something narrower: a bounded observation of one declared, authorized
 experiment, recorded with its provider, host, model, runtime, and profile. Those runs
 happen in the `real-runtime` lane, and
-[the performance scenario matrix](../serving/performance-scenarios.md) is the first.
+[the performance scenario matrix](../serving/performance-scenarios.md) is the first, and
+[its findings](../proof/serving/v1-s4-004-pr2-performance-findings.md) the first bounded
+degradation statement made from one.
 They do not run the `capacity` lane or certify its claim.
 
 ### Prerequisites, diagnostics, and what a failure has to say

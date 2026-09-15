@@ -10,6 +10,30 @@ once versioned releases begin.
 
 ### Added
 
+- **Performance findings for the executed scenario matrix, bound to its one setup.**
+  [The findings](docs/proof/serving/v1-s4-004-pr2-performance-findings.md) compare the
+  baseline with concurrency 2 and 4 across both repetitions of the `docker-desktop` run:
+  latency percentiles, completed-request rates, errors, runtime CPU and memory, tokens,
+  the collector's queue gauges, and the dashboard's own phase-end readings.
+  `python -m tools.performance_findings` derives every compared figure into
+  [a findings file](docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json), and refuses
+  to unless the record regenerates byte for byte from its raw evidence and claims no
+  benchmark, capacity, or saturation. A test holds every table in the report to that
+  file.
+
+  **What they state, for that single-replica, single-slot release serving one cached
+  35-token prompt on one host only:** successful requests per second stayed between
+  0.554 and 0.575 at every level, while median latency rose about twofold at concurrency
+  2 and fourfold at 4. The observed degradation point is concurrency 2. The runtime
+  never processed more than one request at a time and deferred the rest, and it used
+  99.1–99.9% of its 6-CPU limit at every level. No request failed. Throttling was not
+  sampled, and no other configuration was run. This is not capacity, an SLO, or a
+  benchmark ([ADR 0013](docs/architecture/decisions/ADR-0013-bounded-local-performance-observations.md)).
+
+  The analysis also found that [the load guide](docs/serving/llm-load-generation.md) said
+  a request's `dispatchOffsetMs` is measured from the run's origin. It is measured from
+  its own phase's start, as `tools.llm_load` writes it, and the guide now says so.
+
 - **The performance scenario matrix, executed on `docker-desktop`, with a record that
   regenerates from its raw evidence.**
   [The matrix](deploy/serving/experiments/performance-scenarios.v1.json) pins the load

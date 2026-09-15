@@ -10,7 +10,9 @@ the [repeatable load profile](llm-load-generation.md) against one real release a
 on one wall clock, what is needed to read the result later: the raw load records, the
 node's resource counters, the release collector's readings, and the environment the
 cluster reported. The first run and its record are in
-[the V1-S4-004-PR1 validation record](../proof/serving/v1-s4-004-pr1-validation.md).
+[the V1-S4-004-PR1 validation record](../proof/serving/v1-s4-004-pr1-validation.md), and
+its analysis is
+[the V1-S4-004-PR2 performance findings](../proof/serving/v1-s4-004-pr2-performance-findings.md).
 
 > [!WARNING]
 > **Every figure this produces is a bounded observation of one executed matrix** on
@@ -20,7 +22,8 @@ cluster reported. The first run and its record are in
 > Kubernetes, the model, the runtime, or any provider. The descriptor and the record
 > carry `productionBenchmark: false` and `portableCapacityClaim: false`, and the
 > record carries `saturationJudged: false`: nothing here decides where the setup
-> degraded. That analysis is separate work and cites the record.
+> degraded. That analysis is separate work and cites the record; for the first run it is
+> [the V1-S4-004-PR2 performance findings](../proof/serving/v1-s4-004-pr2-performance-findings.md).
 
 ## What the matrix fixes
 
@@ -190,6 +193,23 @@ the load profile, and the chart values the descriptor is checked against. `verif
 regenerates a committed record from its committed inputs and fails if it differs in any
 byte after line endings are normalized to LF.
 
+### Derive and verify the figures an analysis quotes
+
+```text
+python -m tools.performance_findings derive --dir docs/proof/serving --record-prefix v1-s4-004-pr1- --findings <file>
+python -m tools.performance_findings verify --dir docs/proof/serving --record-prefix v1-s4-004-pr1- --findings docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json
+```
+
+Both refuse, with exit code `3`, a record that does not regenerate from its committed
+inputs, is not usable, has lost its boundary sentence, or does not carry
+`productionBenchmark`, `portableCapacityClaim`, and `saturationJudged` as `false`. They
+compute each level's latency and rate against its own run's baseline, the gaps between
+successive completions, the collector's gauge maxima inside each phase, the input-token
+and prompt-token counter changes the record does not reconcile, and the dashboard's
+latency and rate panels at each phase end. `verify` exits `1` if the committed findings
+differ. Neither states where a setup degraded; that statement belongs to the analysis
+document that cites the findings.
+
 ### Exit codes
 
 `0` usable, or validated. `1` a committed record does not regenerate. `3` a refusal,
@@ -217,7 +237,9 @@ completion text reaches any input.
 ## What this cannot establish
 
 - Nothing about capacity, saturation, or where a level degrades. The record places
-  figures side by side and judges none.
+  figures side by side and judges none. The bounded degradation statement for the first
+  run is made, and reviewed, in
+  [its findings](../proof/serving/v1-s4-004-pr2-performance-findings.md).
 - Nothing about `kind`, another host, a second replica, a GPU, or a Service spreading
   load: the forward reaches one API pod.
 - Nothing about varied prompts. Every request sends the same fixture, so the runtime's

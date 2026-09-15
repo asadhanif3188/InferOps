@@ -495,7 +495,8 @@ and the release collector's readings. Validate the matrix with
 `scripts/environment/performance-scenarios.sh run` touches a cluster, and only with an
 explicit `INFEROPS_PROVIDER`, `--values`, and `--confirm-real-kubernetes`. A committed
 record must regenerate from its committed inputs
-(`python -m tools.performance_scenarios verify`). Publish its figures only as
+(`python -m tools.performance_scenarios verify`), and committed findings must regenerate
+from that record (`python -m tools.performance_findings verify`). Publish its figures only as
 [ADR 0013](docs/architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
 allows: with the provider, host, model, runtime, and profile named, and never as
 portable capacity, an SLO, or a benchmark.

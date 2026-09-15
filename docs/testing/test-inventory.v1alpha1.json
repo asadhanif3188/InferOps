@@ -568,6 +568,14 @@
       "note": "No performance figure is certified by this suite. Every raw set it builds comes from the load tool against an injected transport and a fake clock, every cluster answer is JSON written to a temporary directory, and the collector is a function, so no latency or CPU figure here describes serving. The committed record it regenerates is local real evidence from one authorized run and is bounded by ADR 0013; the sustained-throughput-and-capacity-under-load claim stays a recorded gap."
     },
     {
+      "module": "tests/serving/test_performance_findings.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The figures derived from the committed V1-S4-004 performance record and the report that publishes them: derivation refused for a record that does not regenerate byte for byte from its committed inputs, that is not usable, that claims a benchmark, capacity, or a saturation judgement, or that has lost its boundary sentence; ratios to baseline in rounded thousandths; completion gaps taken in completion order; collector gauge maxima and counter readings taken only inside the windows they describe; the committed findings regenerating exactly; and every table in the published findings report agreeing with the findings file.",
+      "claims": [],
+      "note": "No performance claim is certified by this suite. It reads committed local real evidence from one authorized run and computes nothing new from any cluster or model. The report's degradation statement and every sentence around its tables are checked by review only, as ADR 0013 states; the sustained-throughput-and-capacity-under-load claim stays a recorded gap."
+    },
+    {
       "module": "tests/serving/test_inference_api_implementation_agreement.py",
       "layer": "documentation",
       "marker": "docs",
