@@ -1,0 +1,658 @@
+{
+  "acrossMeasuredPhases": {
+    "baselineRuntimeCpuMillicoresRange": [
+      5944,
+      5952
+    ],
+    "higherLoadRuntimeCpuMinusBaselineMillicoresRange": [
+      37,
+      49
+    ],
+    "largestBetweenRunsRateDifferenceMilli": 19,
+    "requests": 360,
+    "successfulRequestsPerSecondMilliRange": [
+      554,
+      575
+    ],
+    "successfulRequestsPerSecondSpreadMilli": 21,
+    "unsuccessful": 0
+  },
+  "boundary": "Figures derived from one committed performance record, on the provider, host, model, runtime, release, and load profile that record names. They are not a portable capacity figure, a production SLO, or a benchmark of Kubernetes, the model, the runtime, or any provider, and no tool judged saturation from them.",
+  "dashboardAtPhaseEnd": [
+    {
+      "latencyQuantilesMs": {
+        "p50": null,
+        "p95": null,
+        "p99": null
+      },
+      "repetition": 1,
+      "requestsPerSecondMilli": null,
+      "scenarioId": "warmup"
+    },
+    {
+      "latencyQuantilesMs": {
+        "p50": 1777,
+        "p95": 2476,
+        "p99": 4278
+      },
+      "repetition": 1,
+      "requestsPerSecondMilli": 206,
+      "scenarioId": "c1"
+    },
+    {
+      "latencyQuantilesMs": {
+        "p50": 2279,
+        "p95": 4698,
+        "p99": 4940
+      },
+      "repetition": 1,
+      "requestsPerSecondMilli": 405,
+      "scenarioId": "c2"
+    },
+    {
+      "latencyQuantilesMs": {
+        "p50": 3914,
+        "p95": 9230,
+        "p99": 9846
+      },
+      "repetition": 1,
+      "requestsPerSecondMilli": 559,
+      "scenarioId": "c4"
+    },
+    {
+      "latencyQuantilesMs": {
+        "p50": 5259,
+        "p95": 9526,
+        "p99": 9905
+      },
+      "repetition": 2,
+      "requestsPerSecondMilli": 407,
+      "scenarioId": "warmup"
+    },
+    {
+      "latencyQuantilesMs": {
+        "p50": 2297,
+        "p95": 9407,
+        "p99": 9881
+      },
+      "repetition": 2,
+      "requestsPerSecondMilli": 378,
+      "scenarioId": "c1"
+    },
+    {
+      "latencyQuantilesMs": {
+        "p50": 2266,
+        "p95": 4693,
+        "p99": 4939
+      },
+      "repetition": 2,
+      "requestsPerSecondMilli": 400,
+      "scenarioId": "c2"
+    },
+    {
+      "latencyQuantilesMs": {
+        "p50": 3975,
+        "p95": 9255,
+        "p99": 9851
+      },
+      "repetition": 2,
+      "requestsPerSecondMilli": 563,
+      "scenarioId": "c4"
+    }
+  ],
+  "evidenceClass": "local-real-cpu",
+  "kind": "inferops-performance-findings",
+  "levels": [
+    {
+      "betweenRunsDifferenceMs": {
+        "p50": 44,
+        "p95": 184,
+        "p99": 324
+      },
+      "betweenRunsRateDifferenceMilli": 19,
+      "concurrency": 1,
+      "p50MsRange": [
+        1700,
+        1744
+      ],
+      "p95MsRange": [
+        2074,
+        2258
+      ],
+      "p99MsRange": [
+        2365,
+        2689
+      ],
+      "runtimeCpuMillicoresRange": [
+        5944,
+        5952
+      ],
+      "scenarioId": "c1",
+      "successfulRequestsPerSecondMilliRange": [
+        554,
+        573
+      ]
+    },
+    {
+      "betweenRunsDifferenceMs": {
+        "p50": 93,
+        "p95": 337,
+        "p99": 332
+      },
+      "betweenRunsRateDifferenceMilli": 3,
+      "concurrency": 2,
+      "p50MsRange": [
+        3411,
+        3504
+      ],
+      "p95MsRange": [
+        4100,
+        4437
+      ],
+      "p99MsRange": [
+        4433,
+        4765
+      ],
+      "runtimeCpuMillicoresRange": [
+        5989,
+        5993
+      ],
+      "scenarioId": "c2",
+      "successfulRequestsPerSecondMilliRange": [
+        554,
+        557
+      ]
+    },
+    {
+      "betweenRunsDifferenceMs": {
+        "p50": 133,
+        "p95": 1370,
+        "p99": 2000
+      },
+      "betweenRunsRateDifferenceMilli": 8,
+      "concurrency": 4,
+      "p50MsRange": [
+        6775,
+        6908
+      ],
+      "p95MsRange": [
+        7244,
+        8614
+      ],
+      "p99MsRange": [
+        7311,
+        9311
+      ],
+      "runtimeCpuMillicoresRange": [
+        5992,
+        5994
+      ],
+      "scenarioId": "c4",
+      "successfulRequestsPerSecondMilliRange": [
+        567,
+        575
+      ]
+    }
+  ],
+  "method": [
+    "Latency percentiles and rates are copied from the record, which takes them from the raw sets: nearest-rank over successful requests, and rates in thousandths per second over each phase's own window, truncated rather than rounded.",
+    "A ratio to baseline divides a phase's figure by the same run's c1 figure, in thousandths, rounded half up.",
+    "A completion gap is the time between successive completions inside one phase, where a completion is the request's dispatch offset plus its latency, both from the phase's start.",
+    "A collector gauge's maximum is the largest reading at a 15-second range step inside the phase window. The collector scrapes every 30 seconds, so a gauge can miss a shorter excursion.",
+    "A dashboard reading is the panel's own expression evaluated at a phase end, in milliseconds or thousandths per second, rounded half up. Its five-minute window covers earlier phases too; a panel with no row reads null.",
+    "The API input-token counter is read at the same scheduled moments as the record's reconciled counters. Where it is absent before the first run, it is read as zero only when the record read the API output-token counter the same way, on the assumption that both directions of that counter family appear with the first completed request.",
+    "The runtime prompt-token counter, which the record does not read at those moments, is the last 15-second range-step reading at or before a run's launch, and at or before the next run's launch or the final settle."
+  ],
+  "phases": [
+    {
+      "collector": {
+        "apiRequestsInFlight": {
+          "maximum": 1,
+          "points": 7
+        },
+        "runtimeRequestsDeferred": {
+          "maximum": 0,
+          "points": 7
+        },
+        "runtimeRequestsProcessing": {
+          "maximum": 1,
+          "points": 7
+        }
+      },
+      "completionGapMs": {
+        "count": 59,
+        "maxMs": 2689,
+        "minMs": 1584,
+        "p50Ms": 1743
+      },
+      "concurrency": 1,
+      "fastestRequestPosition": 20,
+      "latencyMs": {
+        "maxMs": 2689,
+        "minMs": 1583,
+        "p50Ms": 1744,
+        "p95Ms": 2258,
+        "p99Ms": 2689
+      },
+      "nodeOutsideReleaseCpuMillicores": 518,
+      "p50ToBaselineMilli": 1000,
+      "p95ToBaselineMilli": 1000,
+      "rateToBaselineMilli": 1000,
+      "repetition": 1,
+      "requests": {
+        "dispatched": 60,
+        "successful": 60,
+        "unsuccessful": 0
+      },
+      "role": "baseline",
+      "runtimeCpu": {
+        "millicores": 5944,
+        "minusBaselineMillicores": 0,
+        "ofLimitMilli": 991
+      },
+      "runtimeMemory": {
+        "ofLimitMilli": 170,
+        "peakWorkingSetBytes": 546287616
+      },
+      "scenarioId": "c1",
+      "successfulRequestsPerSecondMilli": 554
+    },
+    {
+      "collector": {
+        "apiRequestsInFlight": {
+          "maximum": 2,
+          "points": 7
+        },
+        "runtimeRequestsDeferred": {
+          "maximum": 1,
+          "points": 7
+        },
+        "runtimeRequestsProcessing": {
+          "maximum": 1,
+          "points": 7
+        }
+      },
+      "completionGapMs": {
+        "count": 59,
+        "maxMs": 2223,
+        "minMs": 1603,
+        "p50Ms": 1753
+      },
+      "concurrency": 2,
+      "fastestRequestPosition": 1,
+      "latencyMs": {
+        "maxMs": 4433,
+        "minMs": 1797,
+        "p50Ms": 3504,
+        "p95Ms": 4100,
+        "p99Ms": 4433
+      },
+      "nodeOutsideReleaseCpuMillicores": 541,
+      "p50ToBaselineMilli": 2009,
+      "p95ToBaselineMilli": 1816,
+      "rateToBaselineMilli": 1005,
+      "repetition": 1,
+      "requests": {
+        "dispatched": 60,
+        "successful": 60,
+        "unsuccessful": 0
+      },
+      "role": "higher-load",
+      "runtimeCpu": {
+        "millicores": 5993,
+        "minusBaselineMillicores": 49,
+        "ofLimitMilli": 999
+      },
+      "runtimeMemory": {
+        "ofLimitMilli": 170,
+        "peakWorkingSetBytes": 546414592
+      },
+      "scenarioId": "c2",
+      "successfulRequestsPerSecondMilli": 557
+    },
+    {
+      "collector": {
+        "apiRequestsInFlight": {
+          "maximum": 4,
+          "points": 7
+        },
+        "runtimeRequestsDeferred": {
+          "maximum": 3,
+          "points": 7
+        },
+        "runtimeRequestsProcessing": {
+          "maximum": 1,
+          "points": 7
+        }
+      },
+      "completionGapMs": {
+        "count": 59,
+        "maxMs": 1977,
+        "minMs": 1544,
+        "p50Ms": 1726
+      },
+      "concurrency": 4,
+      "fastestRequestPosition": 1,
+      "latencyMs": {
+        "maxMs": 7311,
+        "minMs": 1903,
+        "p50Ms": 6908,
+        "p95Ms": 7244,
+        "p99Ms": 7311
+      },
+      "nodeOutsideReleaseCpuMillicores": 520,
+      "p50ToBaselineMilli": 3961,
+      "p95ToBaselineMilli": 3208,
+      "rateToBaselineMilli": 1038,
+      "repetition": 1,
+      "requests": {
+        "dispatched": 60,
+        "successful": 60,
+        "unsuccessful": 0
+      },
+      "role": "higher-load",
+      "runtimeCpu": {
+        "millicores": 5992,
+        "minusBaselineMillicores": 48,
+        "ofLimitMilli": 999
+      },
+      "runtimeMemory": {
+        "ofLimitMilli": 170,
+        "peakWorkingSetBytes": 546312192
+      },
+      "scenarioId": "c4",
+      "successfulRequestsPerSecondMilli": 575
+    },
+    {
+      "collector": {
+        "apiRequestsInFlight": {
+          "maximum": 1,
+          "points": 7
+        },
+        "runtimeRequestsDeferred": {
+          "maximum": 0,
+          "points": 7
+        },
+        "runtimeRequestsProcessing": {
+          "maximum": 1,
+          "points": 7
+        }
+      },
+      "completionGapMs": {
+        "count": 59,
+        "maxMs": 2365,
+        "minMs": 1580,
+        "p50Ms": 1701
+      },
+      "concurrency": 1,
+      "fastestRequestPosition": 1,
+      "latencyMs": {
+        "maxMs": 2365,
+        "minMs": 1581,
+        "p50Ms": 1700,
+        "p95Ms": 2074,
+        "p99Ms": 2365
+      },
+      "nodeOutsideReleaseCpuMillicores": 477,
+      "p50ToBaselineMilli": 1000,
+      "p95ToBaselineMilli": 1000,
+      "rateToBaselineMilli": 1000,
+      "repetition": 2,
+      "requests": {
+        "dispatched": 60,
+        "successful": 60,
+        "unsuccessful": 0
+      },
+      "role": "baseline",
+      "runtimeCpu": {
+        "millicores": 5952,
+        "minusBaselineMillicores": 0,
+        "ofLimitMilli": 992
+      },
+      "runtimeMemory": {
+        "ofLimitMilli": 170,
+        "peakWorkingSetBytes": 546349056
+      },
+      "scenarioId": "c1",
+      "successfulRequestsPerSecondMilli": 573
+    },
+    {
+      "collector": {
+        "apiRequestsInFlight": {
+          "maximum": 2,
+          "points": 7
+        },
+        "runtimeRequestsDeferred": {
+          "maximum": 1,
+          "points": 7
+        },
+        "runtimeRequestsProcessing": {
+          "maximum": 1,
+          "points": 7
+        }
+      },
+      "completionGapMs": {
+        "count": 59,
+        "maxMs": 2446,
+        "minMs": 1579,
+        "p50Ms": 1721
+      },
+      "concurrency": 2,
+      "fastestRequestPosition": 0,
+      "latencyMs": {
+        "maxMs": 4765,
+        "minMs": 2320,
+        "p50Ms": 3411,
+        "p95Ms": 4437,
+        "p99Ms": 4765
+      },
+      "nodeOutsideReleaseCpuMillicores": 536,
+      "p50ToBaselineMilli": 2006,
+      "p95ToBaselineMilli": 2139,
+      "rateToBaselineMilli": 967,
+      "repetition": 2,
+      "requests": {
+        "dispatched": 60,
+        "successful": 60,
+        "unsuccessful": 0
+      },
+      "role": "higher-load",
+      "runtimeCpu": {
+        "millicores": 5989,
+        "minusBaselineMillicores": 37,
+        "ofLimitMilli": 998
+      },
+      "runtimeMemory": {
+        "ofLimitMilli": 172,
+        "peakWorkingSetBytes": 555487232
+      },
+      "scenarioId": "c2",
+      "successfulRequestsPerSecondMilli": 554
+    },
+    {
+      "collector": {
+        "apiRequestsInFlight": {
+          "maximum": 4,
+          "points": 7
+        },
+        "runtimeRequestsDeferred": {
+          "maximum": 3,
+          "points": 7
+        },
+        "runtimeRequestsProcessing": {
+          "maximum": 1,
+          "points": 7
+        }
+      },
+      "completionGapMs": {
+        "count": 59,
+        "maxMs": 2735,
+        "minMs": 1578,
+        "p50Ms": 1710
+      },
+      "concurrency": 4,
+      "fastestRequestPosition": 0,
+      "latencyMs": {
+        "maxMs": 9311,
+        "minMs": 1647,
+        "p50Ms": 6775,
+        "p95Ms": 8614,
+        "p99Ms": 9311
+      },
+      "nodeOutsideReleaseCpuMillicores": 513,
+      "p50ToBaselineMilli": 3985,
+      "p95ToBaselineMilli": 4153,
+      "rateToBaselineMilli": 990,
+      "repetition": 2,
+      "requests": {
+        "dispatched": 60,
+        "successful": 60,
+        "unsuccessful": 0
+      },
+      "role": "higher-load",
+      "runtimeCpu": {
+        "millicores": 5994,
+        "minusBaselineMillicores": 42,
+        "ofLimitMilli": 999
+      },
+      "runtimeMemory": {
+        "ofLimitMilli": 173,
+        "peakWorkingSetBytes": 557223936
+      },
+      "scenarioId": "c4",
+      "successfulRequestsPerSecondMilli": 567
+    }
+  ],
+  "portableCapacityClaim": false,
+  "productionBenchmark": false,
+  "runs": [
+    {
+      "repetition": 1,
+      "runId": "load-20260914T161728Z",
+      "tokens": {
+        "apiInputCounter": {
+          "absentBeforeReadAsZero": true,
+          "after": 6405,
+          "agreesWithRawSet": true,
+          "before": null,
+          "increase": 6405
+        },
+        "distinctInputTokenCounts": [
+          35
+        ],
+        "distinctOutputTokenCounts": [
+          17
+        ],
+        "finishReasons": [
+          "stop"
+        ],
+        "inputSentByRawSet": 6405,
+        "outputRecordedByRawSet": 3111,
+        "runtimePromptTokens": {
+          "after": 217,
+          "before": 0,
+          "increase": 217
+        }
+      },
+      "warmUp": {
+        "firstSlowerThanOthersMsRange": [
+          836,
+          991
+        ],
+        "latenciesMsInDispatchOrder": [
+          2663,
+          1827,
+          1672
+        ]
+      }
+    },
+    {
+      "repetition": 2,
+      "runId": "load-20260914T162426Z",
+      "tokens": {
+        "apiInputCounter": {
+          "absentBeforeReadAsZero": false,
+          "after": 12810,
+          "agreesWithRawSet": true,
+          "before": 6405,
+          "increase": 6405
+        },
+        "distinctInputTokenCounts": [
+          35
+        ],
+        "distinctOutputTokenCounts": [
+          17
+        ],
+        "finishReasons": [
+          "stop"
+        ],
+        "inputSentByRawSet": 6405,
+        "outputRecordedByRawSet": 3111,
+        "runtimePromptTokens": {
+          "after": 400,
+          "before": 217,
+          "increase": 183
+        }
+      },
+      "warmUp": {
+        "firstSlowerThanOthersMsRange": [
+          124,
+          150
+        ],
+        "latenciesMsInDispatchOrder": [
+          1838,
+          1688,
+          1714
+        ]
+      }
+    }
+  ],
+  "saturationJudged": false,
+  "schemaVersion": "inferops.io/v1alpha1",
+  "setup": {
+    "chart": "inferops-llm-0.3.0",
+    "descriptorSha256": "cae87607cd65fe3152f68fb487e723e0b085148abbabe99252ec0d9c153e4fc1",
+    "engine": {
+      "cpus": 12,
+      "memoryBytes": 10432536576,
+      "serverVersion": "29.7.2"
+    },
+    "evidenceClass": "local-real-cpu",
+    "generatorHost": {
+      "architecture": "AMD64",
+      "logicalCpus": 20,
+      "operatingSystem": "Windows",
+      "pythonVersion": "3.12.12",
+      "release": "11",
+      "totalMemoryBytes": 16836890624
+    },
+    "kubernetesServerVersion": "v1.34.3",
+    "loadProfileSha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+    "maxOutputTokens": 128,
+    "model": {
+      "id": "qwen3-1-7b-q8-0",
+      "revision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+    },
+    "nodeAllocatable": {
+      "cpu": "12",
+      "memory": "10188024Ki"
+    },
+    "nodeKernel": "5.15.146.1-microsoft-standard-WSL2",
+    "provider": "docker-desktop",
+    "requestTimeoutMs": 120000,
+    "runtime": {
+      "contextSize": 4096,
+      "cpuLimitMillicores": 6000,
+      "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "memoryLimitBytes": 3221225472,
+      "parallelSlots": 1,
+      "replicas": 1,
+      "threads": 6
+    }
+  },
+  "source": {
+    "recordFile": "v1-s4-004-pr1-performance-record.v1alpha1.json",
+    "recordSha256": "d6fb7a1486c04fc0a57bd170737f39df023d3deb21ad40245cbc1d42d833a043",
+    "regeneratedFromInputs": true
+  }
+}

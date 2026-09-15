@@ -355,8 +355,10 @@ A `request` record carries `sequence`, `phase`, `levelId`, `concurrency`,
 header records the fixture's identifier and message count, not its text.
 
 The `run` header also carries `startedAtEpochMs`: the wall-clock millisecond read
-beside the performance counter that every `startedOffsetMs` and `dispatchOffsetMs` is
-measured from. `startedAt` is truncated to the second, which is too coarse to place a
+beside the performance counter that every phase's `startedOffsetMs` is measured from.
+A request's `dispatchOffsetMs` is measured from its own phase's start, so its wall-clock
+moment is `startedAtEpochMs` plus its phase's `startedOffsetMs` plus its
+`dispatchOffsetMs`. `startedAt` is truncated to the second, which is too coarse to place a
 phase against samples taken outside this process, such as a node's resource counters.
 The reader accepts a raw set without it, because record sets written before it existed
 are committed evidence. It was added for
