@@ -454,3 +454,131 @@ def test_the_report_refuses_the_readings_adr_0013_forbids() -> None:
         "says nothing\n  about `kind`",
     ):
         assert phrase in REPORT, phrase
+
+
+# --------------------------------------------------------------------------
+# Refusals added after review: malformed setup values and short phases
+# --------------------------------------------------------------------------
+
+
+def _committed_record() -> dict[str, Any]:
+    return json.loads(
+        (PROOF_DIR / f"{RECORD_PREFIX}performance-record.v1alpha1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "key", ["INFEROPS_MAX_OUTPUT_TOKENS", "INFEROPS_REQUEST_TIMEOUT_MS"]
+)
+def test_a_non_numeric_configuration_value_is_a_named_refusal(key: str) -> None:
+    record = _committed_record()
+    record["environment"]["configuration"][key] = "abc"
+    with pytest.raises(FindingsError, match=key):
+        core._setup(record)
+
+
+@pytest.mark.parametrize("flag", ["--parallel", "--threads", "--ctx-size"])
+def test_a_non_numeric_runtime_argument_is_a_named_refusal(flag: str) -> None:
+    record = _committed_record()
+    arguments = record["environment"]["workloads"]["runtime"]["containers"][0]["args"]
+    arguments[arguments.index(flag) + 1] = "abc"
+    with pytest.raises(FindingsError, match=flag):
+        core._setup(record)
+
+
+def test_a_phase_with_one_completion_has_no_gap_and_says_so() -> None:
+    with pytest.raises(FindingsError, match="fewer than two"):
+        completion_gaps_ms([_request(0, 0, 100)])
+
+
+def test_an_input_token_read_comes_from_the_scheduled_instant() -> None:
+    telemetry = {
+        "instants": [
+            {
+                "seriesId": "api-tokens-by-direction",
+                "repetition": 1,
+                "position": "after",
+                "status": "success",
+                "rows": [
+                    {"labels": {"inferops_token_direction": "input"}, "value": "70"},
+                    {"labels": {"inferops_token_direction": "output"}, "value": "34"},
+                ],
+            },
+            {
+                "seriesId": "api-tokens-by-direction",
+                "repetition": 1,
+                "position": "before",
+                "status": "success",
+                "rows": [],
+            },
+        ]
+    }
+    labels = {"inferops_token_direction": "input"}
+    series = "api-tokens-by-direction"
+    assert core.instant_total(telemetry, series, 1, "after", labels) == 70
+    assert core.instant_total(telemetry, series, 1, "before", labels) is None
+    with pytest.raises(FindingsError, match="exactly one"):
+        core.instant_total(telemetry, series, 2, "after", labels)
+
+
+# --------------------------------------------------------------------------
+# The setup table and the figures quoted in prose
+# --------------------------------------------------------------------------
+
+#: The report with line breaks and blockquote markers folded into single spaces.
+FLAT_REPORT = " ".join(
+    line.removeprefix(">").strip() for line in REPORT.splitlines()
+).replace("  ", " ")
+
+
+def _grouped(number: int) -> str:
+    return f"{number:,}".replace(",", " ")
+
+
+def test_the_setup_table_carries_the_recorded_setup() -> None:
+    setup = FINDINGS["setup"]
+    runtime = setup["runtime"]
+    engine = setup["engine"]
+    host = setup["generatorHost"]
+    expected = [
+        f"| Provider | `{setup['provider']}`: one node, Kubernetes `{setup['kubernetesServerVersion']}`",
+        f"kernel `{setup['nodeKernel']}`",
+        f"allocatable {setup['nodeAllocatable']['cpu']} CPU and {setup['nodeAllocatable']['memory']}",
+        f"Docker Desktop `{engine['serverVersion']}` with {engine['cpus']} processors and {_grouped(engine['memoryBytes'])} bytes",
+        f"Windows {host['release']} with {host['logicalCpus']} logical processors",
+        f"`{setup['model']['id']}`",
+        f"`{runtime['image']}` with `--parallel {runtime['parallelSlots']} --threads {runtime['threads']} --ctx-size {runtime['contextSize']} --n-predict {setup['maxOutputTokens']} --temp 0`",
+        f"limits {runtime['cpuLimitMillicores'] // 1000} CPU and {runtime['memoryLimitBytes'] // 1024**3}Gi",
+        f"Chart `{setup['chart']}`",
+        f"request deadline {_grouped(setup['requestTimeoutMs'])} ms; output-token limit {setup['maxOutputTokens']}",
+    ]
+    missing = [text for text in expected if text not in REPORT]
+    assert not missing, missing
+    assert runtime["replicas"] == 1
+    assert "one runtime replica" in REPORT
+
+
+def test_the_figures_quoted_in_prose_are_the_computed_ones() -> None:
+    across = FINDINGS["acrossMeasuredPhases"]
+    levels = {level["scenarioId"]: level for level in FINDINGS["levels"]}
+    runs = {run["repetition"]: run for run in FINDINGS["runs"]}
+    cpu_low, cpu_high = across["higherLoadRuntimeCpuMinusBaselineMillicoresRange"]
+    first_run = runs[1]["warmUp"]["firstSlowerThanOthersMsRange"]
+    second_run = runs[2]["warmUp"]["firstSlowerThanOthersMsRange"]
+    medians = max(level["betweenRunsDifferenceMs"]["p50"] for level in levels.values())
+    expected = [
+        f"The spread across all measured phases, {_decimal(across['successfulRequestsPerSecondSpreadMilli'])} per second",
+        f"at the **same** level, {_decimal(across['largestBetweenRunsRateDifferenceMilli'])} per second",
+        f"a spread ({_decimal(across['successfulRequestsPerSecondSpreadMilli'])}) about the size of the largest difference between the two runs at one level ({_decimal(across['largestBetweenRunsRateDifferenceMilli'])})",
+        f"between {_decimal(across['successfulRequestsPerSecondMilliRange'][0])} and {_decimal(across['successfulRequestsPerSecondMilliRange'][1])}",
+        f"{cpu_low}{RANGE}{cpu_high} millicores above their run's `c1`",
+        f"{first_run[0]}{RANGE}{first_run[1]} ms slower than the other two",
+        f"in run 2 the first was {second_run[0]}{RANGE}{second_run[1]} ms slower",
+        f"Medians differ by at most {medians} ms",
+        f"differs by {_grouped(levels['c4']['betweenRunsDifferenceMs']['p95'])} ms at P95",
+        f"{_grouped(levels['c4']['betweenRunsDifferenceMs']['p99'])} ms at P99",
+    ]
+    missing = [text for text in expected if text not in FLAT_REPORT]
+    assert not missing, missing

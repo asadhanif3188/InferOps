@@ -4,12 +4,17 @@
       5944,
       5952
     ],
+    "higherLoadRuntimeCpuMinusBaselineMillicoresRange": [
+      37,
+      49
+    ],
     "largestBetweenRunsRateDifferenceMilli": 19,
     "requests": 360,
     "successfulRequestsPerSecondMilliRange": [
       554,
       575
     ],
+    "successfulRequestsPerSecondSpreadMilli": 21,
     "unsuccessful": 0
   },
   "boundary": "Figures derived from one committed performance record, on the provider, host, model, runtime, release, and load profile that record names. They are not a portable capacity figure, a production SLO, or a benchmark of Kubernetes, the model, the runtime, or any provider, and no tool judged saturation from them.",
@@ -99,6 +104,11 @@
   "kind": "inferops-performance-findings",
   "levels": [
     {
+      "betweenRunsDifferenceMs": {
+        "p50": 44,
+        "p95": 184,
+        "p99": 324
+      },
       "betweenRunsRateDifferenceMilli": 19,
       "concurrency": 1,
       "p50MsRange": [
@@ -124,6 +134,11 @@
       ]
     },
     {
+      "betweenRunsDifferenceMs": {
+        "p50": 93,
+        "p95": 337,
+        "p99": 332
+      },
       "betweenRunsRateDifferenceMilli": 3,
       "concurrency": 2,
       "p50MsRange": [
@@ -149,6 +164,11 @@
       ]
     },
     {
+      "betweenRunsDifferenceMs": {
+        "p50": 133,
+        "p95": 1370,
+        "p99": 2000
+      },
       "betweenRunsRateDifferenceMilli": 8,
       "concurrency": 4,
       "p50MsRange": [
@@ -175,12 +195,13 @@
     }
   ],
   "method": [
-    "Latency percentiles and rates are copied from the record, which takes them from the raw sets: nearest-rank over successful requests, rates over each phase's own window.",
+    "Latency percentiles and rates are copied from the record, which takes them from the raw sets: nearest-rank over successful requests, and rates in thousandths per second over each phase's own window, truncated rather than rounded.",
     "A ratio to baseline divides a phase's figure by the same run's c1 figure, in thousandths, rounded half up.",
     "A completion gap is the time between successive completions inside one phase, where a completion is the request's dispatch offset plus its latency, both from the phase's start.",
     "A collector gauge's maximum is the largest reading at a 15-second range step inside the phase window. The collector scrapes every 30 seconds, so a gauge can miss a shorter excursion.",
     "A dashboard reading is the panel's own expression evaluated at a phase end, in milliseconds or thousandths per second, rounded half up. Its five-minute window covers earlier phases too; a panel with no row reads null.",
-    "A counter before or after a run is the last range-step reading at or before the run's launch, and before the next run's launch or the final settle."
+    "The API input-token counter is read at the same scheduled moments as the record's reconciled counters. Where it is absent before the first run, it is read as zero only when the record read the API output-token counter the same way, on the assumption that both directions of that counter family appear with the first completed request.",
+    "The runtime prompt-token counter, which the record does not read at those moments, is the last 15-second range-step reading at or before a run's launch, and at or before the next run's launch or the final settle."
   ],
   "phases": [
     {
@@ -226,6 +247,7 @@
       "role": "baseline",
       "runtimeCpu": {
         "millicores": 5944,
+        "minusBaselineMillicores": 0,
         "ofLimitMilli": 991
       },
       "runtimeMemory": {
@@ -278,6 +300,7 @@
       "role": "higher-load",
       "runtimeCpu": {
         "millicores": 5993,
+        "minusBaselineMillicores": 49,
         "ofLimitMilli": 999
       },
       "runtimeMemory": {
@@ -330,6 +353,7 @@
       "role": "higher-load",
       "runtimeCpu": {
         "millicores": 5992,
+        "minusBaselineMillicores": 48,
         "ofLimitMilli": 999
       },
       "runtimeMemory": {
@@ -382,6 +406,7 @@
       "role": "baseline",
       "runtimeCpu": {
         "millicores": 5952,
+        "minusBaselineMillicores": 0,
         "ofLimitMilli": 992
       },
       "runtimeMemory": {
@@ -434,6 +459,7 @@
       "role": "higher-load",
       "runtimeCpu": {
         "millicores": 5989,
+        "minusBaselineMillicores": 37,
         "ofLimitMilli": 998
       },
       "runtimeMemory": {
@@ -486,6 +512,7 @@
       "role": "higher-load",
       "runtimeCpu": {
         "millicores": 5994,
+        "minusBaselineMillicores": 42,
         "ofLimitMilli": 999
       },
       "runtimeMemory": {
@@ -528,6 +555,10 @@
         }
       },
       "warmUp": {
+        "firstSlowerThanOthersMsRange": [
+          836,
+          991
+        ],
         "latenciesMsInDispatchOrder": [
           2663,
           1827,
@@ -564,6 +595,10 @@
         }
       },
       "warmUp": {
+        "firstSlowerThanOthersMsRange": [
+          124,
+          150
+        ],
         "latenciesMsInDispatchOrder": [
           1838,
           1688,

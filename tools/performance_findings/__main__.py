@@ -70,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
             raise FindingsError("the committed findings are unreadable") from error
         if committed != text:
             print(
-                "REFUSED performance findings: the committed findings are not what the record's inputs produce",
+                "FAILED performance findings: the committed findings are not what the record's inputs produce",
                 file=sys.stderr,
             )
             return EXIT_FAILED

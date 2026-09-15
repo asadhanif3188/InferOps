@@ -18,15 +18,17 @@ once versioned releases begin.
   `python -m tools.performance_findings` derives every compared figure into
   [a findings file](docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json), and refuses
   to unless the record regenerates byte for byte from its raw evidence and claims no
-  benchmark, capacity, or saturation. A test holds every table in the report to that
-  file.
+  benchmark, capacity, or saturation. A test holds the report's results tables, its
+  setup table, and the figures its prose quotes to that file; its interpretation is
+  checked by review only.
 
-  **What they state, for that single-replica, single-slot release serving one cached
+  **What they state, for that single-replica, single-slot release serving one fixed
   35-token prompt on one host only:** successful requests per second stayed between
   0.554 and 0.575 at every level, while median latency rose about twofold at concurrency
   2 and fourfold at 4. The observed degradation point is concurrency 2. The runtime
-  never processed more than one request at a time and deferred the rest, and it used
-  99.1–99.9% of its 6-CPU limit at every level. No request failed. Throttling was not
+  never processed more than one request at a time and deferred the rest, while its
+  container used 99.1–99.9% of its 6-CPU limit, averaged over every level; which of those
+  two limits bound the rate is not established. No request failed. Throttling was not
   sampled, and no other configuration was run. This is not capacity, an SLO, or a
   benchmark ([ADR 0013](docs/architecture/decisions/ADR-0013-bounded-local-performance-observations.md)).
 

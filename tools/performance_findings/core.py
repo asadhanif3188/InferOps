@@ -113,6 +113,13 @@ def _integer(value: Any, field: str) -> int:
     return value
 
 
+def _whole_string(value: Any, field: str) -> int:
+    """A configuration value or runtime argument that must be a whole number."""
+    if not isinstance(value, str) or not value.isascii() or not value.isdigit():
+        raise FindingsError(f"'{field}' must be a whole number")
+    return int(value)
+
+
 def _number(value: Any, field: str) -> float:
     """A collector value, which Prometheus writes as a string, as a float."""
     if not isinstance(value, str | int | float) or isinstance(value, bool):
@@ -253,6 +260,10 @@ def completion_gaps_ms(records: Sequence[load.RequestRecord]) -> list[int]:
     A request's completion is its dispatch offset plus its latency, both measured
     from the phase's own start. Gaps are taken in completion order.
     """
+    if len(records) < 2:
+        raise FindingsError(
+            "a phase with fewer than two completions has no completion gap"
+        )
     completions = sorted(
         record.dispatch_offset_ms + record.latency_ms for record in records
     )
@@ -314,6 +325,43 @@ def reading_at(points: Sequence[tuple[int, int]], moment_ms: int) -> int | None:
     """The last range-step reading at or before a moment, or None if there is none."""
     earlier = [value for at, value in points if at <= moment_ms]
     return earlier[-1] if earlier else None
+
+
+def instant_total(
+    telemetry: Mapping[str, Any],
+    series_id: str,
+    repetition: int,
+    position: str,
+    labels: Mapping[str, str],
+) -> int | None:
+    """A counter read at a scheduled moment, for one label set, or None if absent."""
+    matches = [
+        _object(entry, "instant")
+        for entry in _list(telemetry.get("instants"), "instants")
+        if _object(entry, "instant").get("seriesId") == series_id
+        and _object(entry, "instant").get("repetition") == repetition
+        and _object(entry, "instant").get("position") == position
+    ]
+    if len(matches) != 1:
+        raise FindingsError(
+            f"the telemetry does not hold exactly one '{series_id}' read {position} "
+            f"run {repetition}"
+        )
+    if matches[0].get("status") != "success":
+        raise FindingsError(f"the collector refused the '{series_id}' read")
+    rows = [
+        _object(row, "row")
+        for row in _list(matches[0].get("rows"), "rows")
+        if _object(_object(row, "row").get("labels"), "labels") == dict(labels)
+    ]
+    if not rows:
+        return None
+    if len(rows) != 1:
+        raise FindingsError(f"the '{series_id}' read holds more than one matching row")
+    number = _number(rows[0].get("value"), series_id)
+    if not math.isfinite(number) or number != int(number):
+        raise FindingsError(f"a read of '{series_id}' is not a whole number")
+    return int(number)
 
 
 def _single_reading(
@@ -421,9 +469,15 @@ def _setup(record: Mapping[str, Any]) -> dict[str, Any]:
         },
         "runtime": {
             "image": container.get("image"),
-            "parallelSlots": int(argument_value(arguments, "--parallel")),
-            "threads": int(argument_value(arguments, "--threads")),
-            "contextSize": int(argument_value(arguments, "--ctx-size")),
+            "parallelSlots": _whole_string(
+                argument_value(arguments, "--parallel"), "--parallel"
+            ),
+            "threads": _whole_string(
+                argument_value(arguments, "--threads"), "--threads"
+            ),
+            "contextSize": _whole_string(
+                argument_value(arguments, "--ctx-size"), "--ctx-size"
+            ),
             "cpuLimitMillicores": cpu_millicores(str(limits.get("cpu"))),
             "memoryLimitBytes": memory_bytes(str(limits.get("memory"))),
             "replicas": _object(
@@ -431,8 +485,14 @@ def _setup(record: Mapping[str, Any]) -> dict[str, Any]:
                 "runtime",
             ).get("desiredReplicas"),
         },
-        "maxOutputTokens": int(str(configuration.get("INFEROPS_MAX_OUTPUT_TOKENS"))),
-        "requestTimeoutMs": int(str(configuration.get("INFEROPS_REQUEST_TIMEOUT_MS"))),
+        "maxOutputTokens": _whole_string(
+            configuration.get("INFEROPS_MAX_OUTPUT_TOKENS"),
+            "INFEROPS_MAX_OUTPUT_TOKENS",
+        ),
+        "requestTimeoutMs": _whole_string(
+            configuration.get("INFEROPS_REQUEST_TIMEOUT_MS"),
+            "INFEROPS_REQUEST_TIMEOUT_MS",
+        ),
         "loadProfileSha256": record.get("loadProfileSha256"),
         "descriptorSha256": record.get("descriptorSha256"),
         "evidenceClass": record.get("evidenceClass"),
@@ -449,9 +509,7 @@ def derive_findings(
     processing = _points(telemetry, SERIES_PROCESSING, {})
     deferred = _points(telemetry, SERIES_DEFERRED, {})
     in_flight = _points(telemetry, SERIES_IN_FLIGHT, {})
-    api_input = _points(
-        telemetry, SERIES_API_TOKENS, {"inferops_token_direction": "input"}
-    )
+    input_labels = {"inferops_token_direction": "input"}
     prompt_tokens = _points(telemetry, SERIES_PROMPT_TOKENS, {})
     schedule = _object(record.get("schedule"), "schedule")
     scheduled_runs = _list(schedule.get("runs"), "schedule.runs")
@@ -488,6 +546,13 @@ def derive_findings(
         baseline_rate = _integer(
             baseline_load.get("successfulRequestsPerSecondMilli"), "rate"
         )
+        baseline_resources = _object(baseline[0].get("resources"), "resources")
+        baseline_cpu = _integer(
+            _object(baseline_resources.get("cpuMillicores"), "cpuMillicores").get(
+                "runtime"
+            ),
+            "runtime cpu",
+        )
         warm_up: dict[str, Any] | None = None
         for phase in record_phases:
             scenario_id = str(phase.get("scenarioId"))
@@ -506,10 +571,14 @@ def derive_findings(
             end = _integer(phase.get("endEpochMs"), "endEpochMs")
             ordered = sorted(requests, key=lambda request: request.sequence)
             if role_of.get(scenario_id) == ROLE_WARM_UP:
+                latencies = [request.latency_ms for request in ordered]
                 warm_up = {
-                    "latenciesMsInDispatchOrder": [
-                        request.latency_ms for request in ordered
-                    ],
+                    "latenciesMsInDispatchOrder": latencies,
+                    "firstSlowerThanOthersMsRange": _range(
+                        [latencies[0] - later for later in latencies[1:]]
+                    )
+                    if len(latencies) > 1
+                    else None,
                 }
                 continue
             gaps = completion_gaps_ms(requests)
@@ -566,6 +635,7 @@ def derive_findings(
                         "ofLimitMilli": ratio_milli(
                             runtime_cpu, setup["runtime"]["cpuLimitMillicores"]
                         ),
+                        "minusBaselineMillicores": runtime_cpu - baseline_cpu,
                     },
                     "runtimeMemory": {
                         "peakWorkingSetBytes": runtime_memory,
@@ -596,11 +666,15 @@ def derive_findings(
             and _object(check, "check").get("absentBeforeReadAsZero") is True
             for check in _list(run.get("reconciliation"), "reconciliation")
         )
-        input_before = reading_at(api_input, launched)
+        input_before = instant_total(
+            telemetry, SERIES_API_TOKENS, repetition, "before", input_labels
+        )
         input_before_read = (
             0 if input_before is None and absent_as_zero else input_before
         )
-        input_after = reading_at(api_input, after)
+        input_after = instant_total(
+            telemetry, SERIES_API_TOKENS, repetition, "after", input_labels
+        )
         prompt_before = reading_at(prompt_tokens, launched)
         prompt_after = reading_at(prompt_tokens, after)
         input_sent = sum(request.input_tokens or 0 for request in raw.records)
@@ -677,6 +751,11 @@ def derive_findings(
                 "p99MsRange": _range([phase["latencyMs"]["p99Ms"] for phase in chosen]),
                 "successfulRequestsPerSecondMilliRange": _range(rates),
                 "betweenRunsRateDifferenceMilli": max(rates) - min(rates),
+                "betweenRunsDifferenceMs": {
+                    key: max(phase["latencyMs"][f"{key}Ms"] for phase in chosen)
+                    - min(phase["latencyMs"][f"{key}Ms"] for phase in chosen)
+                    for key in ("p50", "p95", "p99")
+                },
                 "runtimeCpuMillicoresRange": _range(
                     [phase["runtimeCpu"]["millicores"] for phase in chosen]
                 ),
@@ -708,6 +787,14 @@ def derive_findings(
         "dashboardAtPhaseEnd": dashboard_at_phase_ends(telemetry),
         "acrossMeasuredPhases": {
             "successfulRequestsPerSecondMilliRange": _range(all_rates),
+            "successfulRequestsPerSecondSpreadMilli": max(all_rates) - min(all_rates),
+            "higherLoadRuntimeCpuMinusBaselineMillicoresRange": _range(
+                [
+                    phase["runtimeCpu"]["minusBaselineMillicores"]
+                    for phase in phases
+                    if phase["role"] != ROLE_BASELINE
+                ]
+            ),
             "largestBetweenRunsRateDifferenceMilli": max(
                 level["betweenRunsRateDifferenceMilli"] for level in levels
             ),
@@ -716,12 +803,13 @@ def derive_findings(
             "unsuccessful": sum(phase["requests"]["unsuccessful"] for phase in phases),
         },
         "method": [
-            "Latency percentiles and rates are copied from the record, which takes them from the raw sets: nearest-rank over successful requests, rates over each phase's own window.",
+            "Latency percentiles and rates are copied from the record, which takes them from the raw sets: nearest-rank over successful requests, and rates in thousandths per second over each phase's own window, truncated rather than rounded.",
             "A ratio to baseline divides a phase's figure by the same run's c1 figure, in thousandths, rounded half up.",
             "A completion gap is the time between successive completions inside one phase, where a completion is the request's dispatch offset plus its latency, both from the phase's start.",
             "A collector gauge's maximum is the largest reading at a 15-second range step inside the phase window. The collector scrapes every 30 seconds, so a gauge can miss a shorter excursion.",
             "A dashboard reading is the panel's own expression evaluated at a phase end, in milliseconds or thousandths per second, rounded half up. Its five-minute window covers earlier phases too; a panel with no row reads null.",
-            "A counter before or after a run is the last range-step reading at or before the run's launch, and before the next run's launch or the final settle.",
+            "The API input-token counter is read at the same scheduled moments as the record's reconciled counters. Where it is absent before the first run, it is read as zero only when the record read the API output-token counter the same way, on the assumption that both directions of that counter family appear with the first completed request.",
+            "The runtime prompt-token counter, which the record does not read at those moments, is the last 15-second range-step reading at or before a run's launch, and at or before the next run's launch or the final settle.",
         ],
     }
     refuse_private(dumps(findings), "findings")
