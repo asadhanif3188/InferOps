@@ -1,0 +1,199 @@
+{
+  "allocationMethod": "observed-utilisation-share",
+  "basis": "estimated",
+  "boundary": "An estimated cost computed from the price source named beside it. It is not a bill, not an allocation, and not a published figure for what running an inference workload costs: ADR 0007 D11 publishes none, and a record priced from a synthetic rate card is economically meaningless.",
+  "capacity": {
+    "acceleratorDevices": 0,
+    "amount": "0.400000",
+    "cpuCores": "8.000000",
+    "memoryGibibytes": "16.000000"
+  },
+  "classification": "estimated",
+  "decisionRefs": [
+    "docs/architecture/decisions/ADR-0007-inference-cost-method.md",
+    "docs/architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md"
+  ],
+  "environmentId": "dev",
+  "inputWarning": "Synthetic. Every quantity here is invented to exercise the arithmetic: no request was served, no processor second was measured, and the rate card is invented.",
+  "kind": "CostCalculationResult",
+  "methodRef": "docs/cost/cost-method.v1alpha1.json",
+  "prerequisites": [
+    {
+      "amount": "0.000500",
+      "attributedTo": "prerequisite-layer",
+      "resourceId": "model-cache-claim",
+      "storageGibibytes": "5.000000"
+    }
+  ],
+  "priceSource": {
+    "class": "synthetic-illustrative",
+    "currency": "USD",
+    "effectiveDate": "2026-08-26",
+    "priceSourceId": "synthetic-illustrative-v1",
+    "selfIdentifies": true,
+    "version": "1"
+  },
+  "publishedCostFigure": false,
+  "records": [
+    {
+      "completeness": {
+        "reasons": [],
+        "unavailableInputs": [],
+        "windowComplete": true
+      },
+      "cost": {
+        "allocationMethod": "observed-utilisation-share",
+        "amount": "0.039000",
+        "amountScale": 6,
+        "basis": "estimated",
+        "confidence": "none",
+        "currency": "USD",
+        "priceSourceClass": "synthetic-illustrative",
+        "priceSourceEffectiveDate": "2026-08-26",
+        "priceSourceId": "synthetic-illustrative-v1",
+        "priceSourceVersion": "1"
+      },
+      "derived": {
+        "amountPerHour": "0.039000",
+        "costPerMillionTokens": "0.067708",
+        "costPerMillionTokensDenominator": 576000,
+        "costPerThousandRequests": "0.032500",
+        "costPerThousandRequestsDenominator": 1200,
+        "shareOfNodeCapacity": "0.097500"
+      },
+      "evidence": {
+        "assumptionsRef": "docs/cost/cost-calculation.md",
+        "usageEvidenceClass": "synthetic"
+      },
+      "facts": {
+        "basis": "estimated",
+        "hasMeasuredUtilisation": false,
+        "priceSourceClass": "synthetic-illustrative",
+        "shapeChangedInWindow": false,
+        "windowComplete": true
+      },
+      "identity": {
+        "environment": "dev",
+        "modelId": "example-open-model",
+        "ownerId": "team-platform-demo",
+        "runtimeId": "example-serving-runtime",
+        "workloadId": "support-assistant"
+      },
+      "method": {
+        "version": "cost-method.v1alpha1"
+      },
+      "period": {
+        "end": "2026-08-26T01:00:00Z",
+        "start": "2026-08-26T00:00:00Z"
+      },
+      "recordId": "example-estimate-0001",
+      "reserved": {
+        "acceleratorDeviceHours": "0.000000",
+        "cpuCoreHours": "2.000000",
+        "memoryGibibyteHours": "4.000000"
+      },
+      "usage": {
+        "acceleratorSeconds": null,
+        "cpuSeconds": "2160.000000",
+        "inputTokens": 480000,
+        "memoryByteSeconds": "11596411699200.000000",
+        "outputTokens": 96000,
+        "requests": 1200
+      }
+    },
+    {
+      "completeness": {
+        "reasons": [
+          "below-minimum-sample",
+          "no-telemetry-source"
+        ],
+        "unavailableInputs": [
+          "input-tokens",
+          "output-tokens"
+        ],
+        "windowComplete": true
+      },
+      "cost": {
+        "allocationMethod": "observed-utilisation-share",
+        "amount": "0.005833",
+        "amountScale": 6,
+        "basis": "estimated",
+        "confidence": "none",
+        "currency": "USD",
+        "priceSourceClass": "synthetic-illustrative",
+        "priceSourceEffectiveDate": "2026-08-26",
+        "priceSourceId": "synthetic-illustrative-v1",
+        "priceSourceVersion": "1"
+      },
+      "derived": {
+        "amountPerHour": "0.005833",
+        "costPerMillionTokens": null,
+        "costPerMillionTokensDenominator": null,
+        "costPerThousandRequests": null,
+        "costPerThousandRequestsDenominator": 40,
+        "shareOfNodeCapacity": "0.014583"
+      },
+      "evidence": {
+        "assumptionsRef": "docs/cost/cost-calculation.md",
+        "usageEvidenceClass": "synthetic"
+      },
+      "facts": {
+        "basis": "estimated",
+        "hasMeasuredUtilisation": false,
+        "priceSourceClass": "synthetic-illustrative",
+        "shapeChangedInWindow": false,
+        "windowComplete": true
+      },
+      "identity": {
+        "environment": "dev",
+        "modelId": "example-open-model",
+        "ownerId": "team-platform-demo",
+        "runtimeId": "example-serving-runtime",
+        "workloadId": "batch-summariser"
+      },
+      "method": {
+        "version": "cost-method.v1alpha1"
+      },
+      "period": {
+        "end": "2026-08-26T01:00:00Z",
+        "start": "2026-08-26T00:00:00Z"
+      },
+      "recordId": "example-estimate-0002",
+      "reserved": {
+        "acceleratorDeviceHours": "0.000000",
+        "cpuCoreHours": "0.500000",
+        "memoryGibibyteHours": "1.000000"
+      },
+      "usage": {
+        "acceleratorSeconds": null,
+        "cpuSeconds": "300.000000",
+        "inputTokens": null,
+        "memoryByteSeconds": "1932735283200.000000",
+        "outputTokens": null,
+        "requests": 40
+      }
+    }
+  ],
+  "residualTreatment": "report-separately",
+  "schemaVersion": "inferops.io/v1alpha1",
+  "totals": {
+    "closes": true,
+    "environmentAmount": "0.400500",
+    "nodeCapacityAmount": "0.400000",
+    "prerequisiteAmountSum": "0.000500",
+    "workloadAmountSum": "0.044833"
+  },
+  "unallocated": {
+    "amount": "0.355167",
+    "meaning": "Node capacity no workload in this calculation was measured using: idle capacity, the platform and control plane, and any workload the input does not list. It is reported, never spread.",
+    "shareOfNodeCapacity": "0.887918",
+    "unavailableReasons": []
+  },
+  "usageEvidence": null,
+  "usageEvidenceClass": "synthetic",
+  "window": {
+    "end": "2026-08-26T01:00:00Z",
+    "hours": "1.000000",
+    "start": "2026-08-26T00:00:00Z"
+  }
+}

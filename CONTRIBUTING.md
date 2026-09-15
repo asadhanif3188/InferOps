@@ -774,9 +774,10 @@ permits is a change that has to reclassify the field in public first. The decisi
 behind all of it is
 [ADR 0006](docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md).
 
-### Cost method and worked example
+### Cost method, worked example, and calculation
 
-Changes under `docs/cost/` or `tests/cost/` must pass the cost suite:
+Changes under `docs/cost/`, `tests/cost/`, or `tools/cost_calculation/` must pass the
+cost suite:
 
 ```sh
 python -m pytest tests/cost -q
@@ -799,8 +800,22 @@ a tenant identifier out of every record here; that no binary float appears anywh
 the method; and that the worked example's amounts, shares, and unit costs recompute in
 exact decimal and close against the capacity they allocate.
 
-It checks a method, not a cost. Nothing in this repository computes, emits, or reads a
-cost record, no invoice has ever been seen, and the only rate card committed here is
+It also checks `tools/cost_calculation`, which applies the method to one declared
+input on the `estimated` basis
+([ADR 0014](docs/architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)): that it refuses any other basis, an
+invalid or uncommitted price source, a float, a window outside the method's rules, a
+declared change of reservation, a tenant identifier, measured use the node could not
+hold, and a measured evidence class that does not name a matching committed record; that a missing input is null with a reason and so is every figure depending
+on it; and that the committed fixtures regenerate byte for byte with figures held to
+values worked out by hand. A calculation input's committed result must regenerate:
+
+```sh
+python -m tools.cost_calculation verify --input INPUT.json --result RESULT.json
+```
+
+It checks a method and its arithmetic, not a cost. No platform component computes,
+emits, or reads a cost record, no invoice has ever been seen, every usage value in a
+calculation input is typed in by hand, and the only rate card committed here is
 synthetic, so every amount the suite verifies is arithmetically correct and
 economically meaningless.
 

@@ -177,7 +177,10 @@ feature; a cost-record counter is deferred because nothing computes or emits a c
 record. That last deferral was originally recorded here as "no cost method exists",
 which [ADR 0007](ADR-0007-inference-cost-method.md) has since made false; the
 deferral stands, and its reason is corrected in the catalog data and in this
-sentence rather than left to read as though the method were still missing.
+sentence rather than left to read as though the method were still missing. (Since
+2026-09-15, [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)
+adds a repository tool that computes a cost record by hand. Nothing emits one, so the
+deferral still stands.)
 
 Two structural choices carry the reasoning that generalises:
 

@@ -3,12 +3,18 @@
 > [!IMPORTANT]
 > **Every number on this page is invented.** The machine, the reservations, the
 > traffic, and above all the prices correspond to no host, no provider, and no
-> measurement this project has ever taken. Nothing in this repository computes a cost
-> record, and no request counted here was served.
+> measurement this project has ever taken. No calculation produced these records, and
+> no request counted here was served.
 >
 > The example exists to demonstrate two things: that the arithmetic closes, and that a
 > missing input produces a null rather than a zero. It is not evidence of what
 > anything costs, and its confidence is `none` for exactly that reason.
+>
+> It demonstrates the `allocated` basis, which a V1 calculation no longer produces:
+> [ADR 0014](../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)
+> made `estimated` the only basis V1 calculates. The example is kept as it was
+> accepted, because the allocation arithmetic is still specified. The estimated basis
+> has its own synthetic fixtures, described in [the cost calculation](cost-calculation.md).
 
 The inputs and every figure below are committed in
 [`cost-method.v1alpha1.json`](cost-method.v1alpha1.json) and recomputed in exact

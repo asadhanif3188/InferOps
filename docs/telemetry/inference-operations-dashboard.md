@@ -138,7 +138,7 @@ configuration would be a claim nobody verified.
 |---|---|
 | `inferops_inference_time_to_first_token_seconds` | Deferred out of V1. No streaming path, so it would be request duration again under another name |
 | `inferops_inference_retries_total` | Deferred out of V1. No retry path, and a panel that can only read zero reads as health |
-| `inferops_cost_records_total` | Deferred out of V1. Nothing computes a cost record |
+| `inferops_cost_records_total` | Deferred out of V1. Nothing emits a cost record |
 | `inferops_workload_document_rejections_total` | Its emitter is a library and a command, not a running service, so nothing scrapes it |
 
 The eleven native `llama-server` series that map to no InferOps concept are collected
