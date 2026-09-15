@@ -381,6 +381,16 @@
       "note": null
     },
     {
+      "module": "tests/cost/test_cost_calculation.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The V1 cost calculation in tools/cost_calculation: the estimated basis calculated and the actual and allocated bases refused before any figure; a price read only from a source committed in the method, and refused if fetched, unversioned, undated, not a real date, not a six-place non-negative decimal, incomplete, or synthetic without saying so; binary and decimal quantity suffixes converted exactly with the workload contract's own pattern; rounding once, half-even, from exact values, including at a tie and for a unit cost whose amount rounds to zero; a missing input null with a declared reason in both directions, and every figure depending on it null; unit costs carrying their denominators and null below the declared minimums; the unallocated line closing the workload lines against the node; confidence derived from each record's facts, with synthetic usage never counted as measured; refusal of floats, duplicate keys, windows outside the method's rules, a declared change of reservation, a tenant identifier, a host path, and measured use the node could not hold; every record validated against the method's published record shape; the committed synthetic fixtures regenerating byte for byte with figures held to values worked out by hand; the calculation document quoting no figure the fixtures lack; and the command's exit codes.",
+      "claims": [
+        "a-cost-figure-cannot-be-presented-as-a-bill"
+      ],
+      "note": null
+    },
+    {
       "module": "tests/domain/test_serving_adapter_conformance.py",
       "layer": "unit",
       "marker": "unit",

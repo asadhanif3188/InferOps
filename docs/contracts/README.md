@@ -33,8 +33,9 @@ behind it exists rather than in advance.
 
 A **cost record** is the one of those whose shape is now written down. [The cost
 method](../cost/cost-method.md) publishes the fields a record would carry, as part
-of the method rather than as a schema here, because nothing computes or consumes
-one. That is the rule above applied rather than an exception to it: publishing a
+of the method rather than as a schema here, because nothing in a running system
+produces or consumes one; a repository tool that computes a record by hand validates
+it against the method, not against a schema. That is the rule above applied rather than an exception to it: publishing a
 schema would create a versioned commitment to a consumer that does not exist.
 
 A **runtime and model compatibility matrix** does exist, at

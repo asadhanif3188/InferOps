@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "kind": "CostCalculationInput",
+  "classification": "synthetic",
+  "warning": "Synthetic. Every quantity here is invented to exercise the missing-data path: the memory integral is absent on purpose, and the rate card is invented.",
+  "environmentId": "dev",
+  "basis": "estimated",
+  "priceSourceId": "synthetic-illustrative-v1",
+  "window": {
+    "start": "2026-08-26T01:00:00Z",
+    "end": "2026-08-26T01:30:00Z"
+  },
+  "capacity": {
+    "cpuCores": "8",
+    "memoryGibibytes": "16",
+    "acceleratorDevices": 0
+  },
+  "prerequisites": [],
+  "workloads": [
+    {
+      "recordId": "example-estimate-0003",
+      "identity": {
+        "workloadId": "support-assistant",
+        "ownerId": "team-platform-demo",
+        "environment": "dev",
+        "modelId": "example-open-model",
+        "runtimeId": "example-serving-runtime"
+      },
+      "declaration": {
+        "cpuRequest": "1",
+        "memoryRequest": "2Gi",
+        "acceleratorType": "none",
+        "acceleratorCount": 0,
+        "replicas": 1
+      },
+      "presentForWholeWindow": false,
+      "shapeChangedInWindow": false,
+      "usage": {
+        "requests": 150,
+        "inputTokens": 20000,
+        "outputTokens": 4000,
+        "cpuSeconds": "600",
+        "memoryByteSeconds": null,
+        "acceleratorSeconds": null
+      },
+      "unavailable": {
+        "memory-byte-seconds": "no-telemetry-source",
+        "accelerator-seconds": "no-telemetry-source"
+      }
+    }
+  ]
+}

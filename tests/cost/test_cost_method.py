@@ -17,10 +17,16 @@ input produces a null with a reason rather than a zero, that a unit cost carries
 the denominator it was divided by, and that no record committed to this
 repository carries a tenant identifier.
 
-What it does not establish is that any of this is computed. Nothing in this
-repository produces, emits, stores, or reads a cost record; no invoice has ever
-been seen; and the only rate card committed here is synthetic, so every amount
-the suite verifies is arithmetically correct and economically meaningless.
+It also holds the amendment ADR 0014 made: the estimated basis is the only one V1
+reaches, observed use is the selected allocation method, and the usage inputs a
+committed bounded experiment can supply are the only ones marked obtainable.
+
+What it does not establish is that any of this is computed from a running system.
+No platform component produces, emits, stores, or reads a cost record; the
+repository tool that computes one by hand is checked by its own suite beside this
+one; no invoice has ever been seen; and the only rate card committed here is
+synthetic, so every amount the suite verifies is arithmetically correct and
+economically meaningless.
 """
 
 from __future__ import annotations
@@ -41,6 +47,8 @@ METHOD_PATH = COST_DIR / "cost-method.v1alpha1.json"
 CATALOG_PATH = REPO_ROOT / "docs" / "telemetry" / "telemetry-catalog.v1alpha1.json"
 STRATEGY_PATH = REPO_ROOT / "docs" / "testing" / "test-strategy.v1alpha1.json"
 THIS_MODULE = Path(__file__)
+# A rule may be enforced here or by the calculation's own suite beside it.
+ENFORCING_MODULES = (THIS_MODULE, THIS_MODULE.parent / "test_cost_calculation.py")
 
 EXPECTED_METHOD_ID = "https://inferops.io/cost/cost-method.v1alpha1.json"
 EXPECTED_CONTRACT_VERSION = "inferops.io/v1alpha1"
@@ -510,8 +518,10 @@ def test_confidence_levels_are_a_total_order_from_zero() -> None:
 def test_the_data_points_back_at_the_documents_that_describe_it() -> None:
     for field in (
         "decisionRef",
+        "amendmentRef",
         "documentRef",
         "workedExampleRef",
+        "calculationRef",
         "telemetryCatalogRef",
         "workloadContractRef",
         "strategyRef",
@@ -527,8 +537,9 @@ def test_the_data_points_back_at_the_documents_that_describe_it() -> None:
 
 
 def test_exactly_one_allocation_method_is_selected() -> None:
+    """ADR 0014 D2 deleted the deferral ADR 0007 D2 recorded for observed use."""
     selected = [row["methodId"] for row in ALLOCATION_METHODS if row["selected"]]
-    assert selected == ["requested-resource-share"], selected
+    assert selected == ["observed-utilisation-share"], selected
 
 
 def test_exactly_one_residual_treatment_is_selected() -> None:
@@ -549,9 +560,13 @@ def test_an_unselected_allocation_method_says_why_it_is_not_used() -> None:
                 assert row["deferralReason"], row["methodId"]
 
 
-def test_the_only_basis_v1_can_reach_is_an_allocation() -> None:
+def test_the_only_basis_v1_can_reach_is_an_estimate() -> None:
+    """ADR 0014 D1: actual needs an invoice, and allocated is specified, not produced."""
     reachable = [row["basisId"] for row in BASES if row["v1Reachable"]]
-    assert reachable == ["allocated"], reachable
+    assert reachable == ["estimated"], reachable
+    assert METHOD["amendmentRef"].endswith(
+        "ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md"
+    )
 
 
 def test_an_unreachable_basis_says_why_and_a_reachable_one_does_not() -> None:
@@ -1025,15 +1040,30 @@ def test_an_unavailable_input_says_why_and_an_available_one_does_not(
         assert row["unavailableReason"] in REASON_BY_ID, row["inputId"]
 
 
-def test_no_usage_input_is_available_because_nothing_emits_anything() -> None:
-    """Coverage says what the catalog would supply; nothing supplies it yet."""
+# The usage inputs a committed bounded experiment can supply (ADR 0014 D3). The
+# accelerator was never used and readiness is never integrated, so neither is.
+USAGE_INPUTS_A_BOUNDED_EXPERIMENT_SUPPLIES = {
+    "requests",
+    "input-tokens",
+    "output-tokens",
+    "cpu-seconds",
+    "memory-byte-seconds",
+}
+
+
+def test_a_usage_input_is_available_only_from_a_bounded_experiment_by_hand() -> None:
+    """Coverage says what the catalog would supply; a calculation is typed in by hand."""
+    available = {
+        row["inputId"]
+        for row in INPUTS
+        if row["kind"] == "usage" and row["v1Available"]
+    }
+    assert available == USAGE_INPUTS_A_BOUNDED_EXPERIMENT_SUPPLIES, sorted(available)
     for row in INPUTS:
-        if row["kind"] != "usage":
-            continue
-        assert row["v1Available"] is False, (
-            f"input '{row['inputId']}' claims to be available, and no component "
-            f"in this repository emits a single signal"
-        )
+        if row["inputId"] in available:
+            assert row["source"] == "measured", row["inputId"]
+            assert "ADR 0014 D3" in row["coverageNote"], row["inputId"]
+            assert "by hand" in row["coverageNote"], row["inputId"]
 
 
 @pytest.mark.parametrize("row", RECORD_FIELDS, ids=lambda row: row["fieldId"])
@@ -1108,12 +1138,14 @@ def test_every_declared_input_is_required_by_something() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_the_method_states_that_nothing_computes_it() -> None:
+def test_the_method_states_that_only_a_repository_tool_computes_it() -> None:
     status = METHOD["computationStatus"]
-    assert status["state"] == "nothing-computes"
+    assert status["state"] == "synthetic-only"
     assert status["invoicesRead"] == 0
-    assert status["costRecordsProduced"] == 0
-    assert "not selected" in status["producer"]
+    assert status["publishedCostFigures"] == 0
+    assert status["producer"].startswith("tools/cost_calculation")
+    assert (REPO_ROOT / "tools" / "cost_calculation" / "core.py").is_file()
+    assert "still not selected" in status["producer"]
 
 
 def test_the_worked_example_says_it_is_synthetic_in_its_own_contents() -> None:
@@ -1123,12 +1155,12 @@ def test_the_worked_example_says_it_is_synthetic_in_its_own_contents() -> None:
 
 @pytest.mark.parametrize("row", PROHIBITIONS, ids=lambda row: row["ruleId"])
 def test_a_rule_claims_a_test_only_when_that_test_exists(row: dict) -> None:
-    module = THIS_MODULE.read_text(encoding="utf-8")
+    modules = "\n".join(path.read_text(encoding="utf-8") for path in ENFORCING_MODULES)
     if row["enforcement"] == "test":
         assert row["enforcedBy"], row["ruleId"]
-        assert f"def {row['enforcedBy']}(" in module, (
+        assert f"def {row['enforcedBy']}(" in modules, (
             f"rule '{row['ruleId']}' names '{row['enforcedBy']}', which does not "
-            f"exist in this module"
+            f"exist in {[path.name for path in ENFORCING_MODULES]}"
         )
     else:
         assert row["enforcedBy"] is None, row["ruleId"]
@@ -1145,11 +1177,12 @@ def test_at_least_one_rule_admits_it_is_enforced_by_review_alone() -> None:
 def test_the_method_declares_a_limitation_for_every_gap_it_has() -> None:
     statements = " ".join(row["statement"] for row in LIMITATIONS).lower()
     for phrase in (
-        "no component in this repository computes",
+        "no platform component computes",
         "no provider account",
         "invented",
         "metrics server",
         "declared, not derived",
+        "typed in by hand",
     ):
         assert phrase in statements, f"no limitation covers: {phrase}"
 

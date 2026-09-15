@@ -1,10 +1,14 @@
 # The V1 inference cost method
 
 Status: **accepted**, in
-[ADR 0007](../architecture/decisions/ADR-0007-inference-cost-method.md). The method
-is committed as data and machine-checked. Nothing computes it: no component in this
-repository produces, emits, stores, or reads a cost record, no invoice has ever been
-seen, and the only rate card committed here is synthetic.
+[ADR 0007](../architecture/decisions/ADR-0007-inference-cost-method.md), and
+**amended** by
+[ADR 0014](../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)
+so that V1 calculates the `estimated` basis only. The method is committed as data and
+machine-checked. A repository tool, [the cost calculation](cost-calculation.md),
+applies it by hand to one declared input; no platform component produces, emits,
+stores, or reads a cost record, no invoice has ever been seen, and the only rate card
+committed here is synthetic.
 
 The authoritative form is
 [`cost-method.v1alpha1.json`](cost-method.v1alpha1.json). This document and that file
@@ -22,8 +26,9 @@ three are unreachable here, and saying which is unreachable and why is most of t
 value this record has today.
 
 **Whose number it is.** A machine has one cost and several occupants. This method
-allocates by what each workload reserved, reports what nobody reserved as its own
-line, and requires the parts to add up to the whole exactly.
+prices what each workload was measured using, reports what no workload in the
+calculation was measured using as its own line, and requires the parts to add up to
+the whole exactly.
 
 **What it is divided by.** A cost per thousand requests is a division, and the
 denominator decides whether the result means anything. Every unit cost here carries
@@ -39,8 +44,8 @@ lands on `none`.
 | Basis | What it means | Reachable in V1 |
 |---|---|---|
 | `actual` | Taken from a provider's invoice or billing export for the period it covers | No. This project has no provider account, no invoice, and no billing export |
-| `allocated` | A price applied to the capacity a workload reserved, whether or not it used any | Yes, and it is the only one |
-| `estimated` | A price applied to observed utilisation over the window | No. There is no metrics server, collector, or store, so there is nothing to integrate |
+| `allocated` | A price applied to the capacity a workload reserved, whether or not it used any | No, since ADR 0014. It is specified, and the worked example demonstrates it, but a V1 calculation does not produce it: an allocation beside an estimate of the same window is two numbers read as one |
+| `estimated` | A price applied to observed utilisation over the window | Yes, and it is the only one. Measured use comes from a committed bounded experiment and is typed into the calculation input by hand |
 
 Three rules travel with the basis:
 
@@ -55,31 +60,31 @@ headed *charges* — each of them turns a model of a cost into a claim about one
 none of them changes a number. A test reads every committed record and fails if a
 record that is not `actual` uses any of those words.
 
-`estimated` is specified here despite being unreachable, for the same reason the
+`estimated` was specified here while it was unreachable, for the same reason the
 telemetry catalog names deferred signals: a basis that is not written down is a basis
-that gets reinvented by relabelling an allocation, and the relabelling is exactly the
-mistake the separation exists to prevent.
+that gets reinvented by relabelling an allocation. When measured use became committed
+evidence, that specification is what
+[ADR 0014](../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)
+made reachable, rather than a new basis invented for the occasion.
 
 ## 2. Allocation
 
 | Method | What it charges for | Status |
 |---|---|---|
-| `requested-resource-share` | The processor, memory, and accelerator capacity a workload reserved, times its replica count, times the window | **Selected** |
-| `observed-utilisation-share` | The capacity it was measured to use | Deferred; every input it needs is unavailable |
+| `requested-resource-share` | The processor, memory, and accelerator capacity a workload reserved, times its replica count, times the window | Deferred since ADR 0014; it produces the `allocated` basis, which V1 does not produce |
+| `observed-utilisation-share` | The capacity it was measured to use | **Selected**, since ADR 0014 deleted its deferral |
 | `request-count-share` | A share of the node proportional to requests served | Rejected |
 
-Reserved capacity is what the scheduler refuses to give to anything else, so it is
-what a workload actually takes from a fixed machine. It is also the only quantity
-this project can obtain: it is declared in a validated workload document, where
-`spec.resources` is required in every environment and a resource-free workload is
-refused.
+ADR 0007 selected reserved capacity because it was the only quantity this project
+could obtain: it is declared in a validated workload document, where `spec.resources`
+is required in every environment. Its honest cost was that a workload reserving four
+cores and using a tenth of one is charged what a workload saturating four cores is
+charged — correct capacity accounting and useless efficiency accounting.
 
-**The honest cost of this choice**, stated because the enthusiastic version omits it:
-a workload that reserves four cores and uses a tenth of one is charged exactly what a
-workload that saturates four cores is charged. That is correct capacity accounting
-and useless efficiency accounting. These figures answer *what is this reservation
-worth*, and they do not answer *is this workload wasteful*. The second question needs
-utilisation, and utilisation has no source.
+**The honest cost of observed use** is the opposite: a workload that reserves capacity
+and leaves it idle is not charged for it. Under this method that idle reservation is
+not hidden. Every record still carries what its workload reserved, and the capacity
+nobody was measured using is its own line (section 3).
 
 `request-count-share` is rejected rather than deferred, and the reason generalises:
 it makes one workload's unit cost a function of its neighbours' traffic. A workload
@@ -102,7 +107,10 @@ summing to less than the whole with no line to explain the gap.
 
 In the worked example the unallocated line is the largest number on the page. That is
 the normal case on a development host and it is the case a cost model most often
-conceals.
+conceals. On the `estimated` basis the line means capacity **no workload in the
+calculation was measured using** — idle capacity, reservations left unused, the
+platform and control plane, and any workload the input does not list — so it is larger
+still.
 
 Two shared costs are attributed rather than divided:
 
@@ -260,10 +268,13 @@ fails the suite.
 | `an-unsplit-shape-change-carries-no-confidence` | The reservation changed inside the window | `none` |
 
 The consequence is worth stating plainly: **every cost figure this project can
-produce today has confidence `none`.** The basis is an allocation and the rate card
-is synthetic, so two independent ceilings apply and the lower wins. That is not a
-placeholder to be raised later by editing a field; it is raised by acquiring a real
-rate card, and then by acquiring utilisation telemetry, and then by acquiring a bill.
+produce today has confidence `none`.** The rate card is synthetic, and that ceiling is
+`none` whatever the basis and however the use was measured. When this method was
+accepted, the allocated basis imposed a second ceiling of `low`; the estimated basis
+V1 now calculates is capped at `low` too unless its utilisation was measured. That is
+not a placeholder to be raised later by editing a field; it is raised by acquiring a
+real rate card, and then by acquiring measured utilisation, and then by acquiring a
+bill.
 
 ## 9. Inputs
 
@@ -301,10 +312,14 @@ Every signal named in the last column is compared against
 [the telemetry catalog](../telemetry/telemetry-catalog.v1alpha1.json) by a test, so
 an input cannot claim a source the catalog does not declare.
 
-**No usage input is available today**, whatever its coverage says, because no
-component in this repository emits a single signal. Coverage describes what the
-catalog would supply, not what exists, and a test refuses any usage input that claims
-otherwise.
+**No usage input is read from a running system.** Coverage describes what the catalog
+would supply, not what exists. Processor seconds, memory byte-seconds, requests, and
+tokens are obtainable in V1 only from a committed bounded experiment, and only by
+typing them into a calculation input by hand;
+[ADR 0014](../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)
+D3 states how each is taken from the samples, and no reader applies it yet.
+Accelerator seconds and ready seconds are not obtainable at all. A test holds that
+split.
 
 ## 10. Outputs
 
@@ -313,16 +328,21 @@ otherwise.
 | `reserved.cpuCoreHours` | cores × replicas × window hours | `cpu-core-hour` |
 | `reserved.memoryGibibyteHours` | gibibytes × replicas × window hours | `memory-gibibyte-hour` |
 | `reserved.acceleratorDeviceHours` | devices × replicas × window hours | `accelerator-device-hour` |
-| `cost.amount` | each reserved quantity × its rate, summed | `currency` |
+| `cost.amount` | allocated: each reserved quantity × its rate, summed | `currency` |
+| `cost.amount` | estimated: (processor seconds × core-hour rate + memory byte-seconds ÷ 2^30 × gibibyte-hour rate + device seconds × device-hour rate) ÷ 3,600, the device term absent when no device is reserved | `currency` |
 | `capacity.amount` | each allocatable quantity × its rate × window hours | `currency` |
 | `unallocated.amount` | node capacity amount − sum of workload amounts | `currency` |
 | `prerequisite.amount` | claimed gibibytes × window hours × storage rate | `currency` |
+| `derived.amountPerHour` | workload amount ÷ window hours; the rate over that window, projecting nothing | `currency` |
 | `derived.shareOfNodeCapacity` | workload amount ÷ node capacity amount | `ratio` |
 | `derived.costPerThousandRequests` | workload amount ÷ requests × 1,000 | `currency` |
 | `derived.costPerMillionTokens` | workload amount ÷ tokens × 1,000,000 | `currency` |
 
-Each is stated to six decimal places, rounded once, half-even. The last two are null
-whenever their denominator is unavailable or below the declared minimum.
+Each is stated to six decimal places, rounded once, half-even, from exact values. The
+two unit costs are null whenever their denominator is unavailable or below the declared
+minimum, and every figure depending on an estimated amount is null when that amount is.
+The cost-per-request figure is quoted per thousand requests, because six places would
+leave a single request's cost on the synthetic card with one or two significant digits.
 
 ## 11. The record shape
 
@@ -340,14 +360,19 @@ and is absent from every record in this repository — including the worked exam
 test derives the permission from the class rather than reading a flag, so the two
 cannot disagree.
 
+Since ADR 0014 a record also names its rate card's version and effective date, carries
+the facts its confidence is derived from, and states the evidence class its usage came
+from; its amount may be null. [The cost calculation](cost-calculation.md) validates
+every record it writes against these fields.
+
 **This is not a contract.** No schema for it is published under
-[`contracts/`](../../contracts/README.md), because no component produces or consumes
-one, and the contract package adds a schema when the capability behind it exists
-rather than in advance.
+[`contracts/`](../../contracts/README.md), because nothing in a running system produces
+or consumes one, and the contract package adds a schema when the capability behind it
+exists rather than in advance.
 
 ## 12. Rules
 
-Twelve rules are enforced by a test; two are enforced by review alone and say so.
+Seventeen rules are enforced by a test; two are enforced by review alone and say so.
 
 | Rule | Enforcement |
 |---|---|
@@ -364,43 +389,56 @@ Twelve rules are enforced by a test; two are enforced by review alone and say so
 | `the-model-cache-is-a-prerequisite-cost` | test |
 | `every-required-input-names-a-source-or-records-that-none-exists` | test |
 | `no-cost-figure-is-published-from-v1` | **review** |
-| `a-window-in-which-the-shape-changed-is-split` | **review** |
+| `a-window-in-which-the-shape-changed-is-split` | **review**; the calculation refuses a declared change, and an undeclared one is caught by review alone |
+| `v1-calculates-the-estimated-basis-only` | test |
+| `a-calculation-refuses-a-basis-v1-does-not-reach` | test |
+| `a-price-source-is-refused-unless-committed-versioned-dated-and-decimal` | test |
+| `measured-use-names-its-evidence-class` | test |
+| `a-calculated-record-validates-against-the-published-shape` | test |
 
 The first review-only rule deserves its reasoning in the open. A cost per thousand
-requests is an hourly reservation divided by an hour of traffic, which means
-publishing one publishes the traffic.
-[The project boundaries](../architecture/project-boundaries.md) forbid V1 publishing
-a throughput figure, so V1 may not publish a cost-per-request figure either. What is
-published here is the method and a synthetic example; no figure for what running an
-inference workload costs is published, and none can be, because none has been
-measured.
+requests is an amount divided by a window of traffic, which means publishing one
+publishes the traffic. When this method was accepted,
+[the project boundaries](../architecture/project-boundaries.md) forbade V1 publishing
+a throughput figure;
+[ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
+has since narrowed that to allow a bounded observation of a declared local experiment.
+ADR 0007 D11 is a decision in its own right and stands: what is published here is the
+method and synthetic examples, and no figure for what running an inference workload
+costs.
 
 ## 13. What would have to exist before this produces anything
 
 | Gap | What it blocks |
 |---|---|
-| No container or node resource metric, and no metrics server | The `estimated` basis and the `observed-utilisation-share` method |
+| No container or node resource metric, and no metrics server | Any `estimated` record whose use is read from telemetry; today measured use reaches a calculation only from a committed bounded experiment, by hand |
 | No accelerator metric, and no accelerator ever used | Any accelerator line above an allocation from a declaration |
-| No collector collects a utilisation series, and no durable store holds one | Every usage input, including the ones with full catalog coverage |
+| No collector keeps a utilisation series, and no durable store holds one | Reading any usage input from a running system, including the ones with full catalog coverage |
+| No reader takes usage from committed samples | Checking that a calculation's hand-typed usage matches the evidence it names |
 
 Two questions are **not decided** here and are not this record's to decide: which
-provider rate cards a comparison against hosted capacity would use, and which
-component computes a cost record and owns it. The second belongs with the ownership
+provider rate cards a comparison against hosted capacity would use, and which platform
+component computes and emits a cost record in a running system and owns it. A
+repository tool run by hand does not answer the second. The second belongs with the ownership
 question [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
 already leaves open, and answering it in a cost document would be exactly the kind of
 leak this method is written to avoid.
 
 ## 14. Limitations
 
-Twelve are recorded in the data. These are the ones that change how this document
+Fourteen are recorded in the data. These are the ones that change how this document
 should be read:
 
-- **Nothing computes any of this.** No cost record has been produced, no invoice has
-  been read, and every rule specifies behaviour for a producer that does not exist.
+- **No platform component computes any of this.** A repository tool computes a record
+  by hand from a declared input; no invoice has been read, and no cost record has been
+  calculated from measured evidence.
 - **The only rate card is synthetic**, so every amount here is arithmetically correct
   and economically meaningless.
-- **There is no utilisation source**, so the reachable basis is an allocation and the
-  method cannot say whether any reserved capacity was used.
+- **There is no utilisation series.** Measured use reaches a calculation only as values
+  typed in by hand from a committed bounded experiment, and nothing checks them against
+  that experiment.
+- **An estimate does not charge idle reservations** to the workload that made them; they
+  are on the unallocated line.
 - **Node capacity is a declared input.** Nothing reads it from a cluster, so a record
   can be produced against a machine that does not exist.
 - **The minimum denominators are arbitrary.** 100 requests and 10,000 tokens are

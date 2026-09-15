@@ -4,19 +4,21 @@
   "title": "V1 inference cost-calculation method, v1alpha1",
   "description": "How a V1 inference cost figure is produced: which basis it carries, how a share of a machine is allocated to a workload, what happens to capacity nobody reserved, which time window it covers, where its prices came from, what units and precision it uses, what it does when an input is missing, and how much confidence it is allowed to claim. The method is committed as data so that every number in the worked example is arithmetic a test recomputes rather than a figure somebody typed. Nothing in this repository computes a cost record.",
   "decisionRef": "docs/architecture/decisions/ADR-0007-inference-cost-method.md",
+  "amendmentRef": "docs/architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md",
   "documentRef": "docs/cost/cost-method.md",
   "workedExampleRef": "docs/cost/worked-example.md",
+  "calculationRef": "docs/cost/cost-calculation.md",
   "telemetryCatalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
   "workloadContractRef": "contracts/workload/workload-contract.v1alpha1.schema.json",
   "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
   "boundariesRef": "docs/architecture/project-boundaries.md",
 
   "computationStatus": {
-    "state": "nothing-computes",
-    "meaning": "No component in this repository computes, emits, stores, or reads a cost record. Every rule below specifies behaviour for a producer that does not exist, and the only numbers this project holds are the synthetic ones in the worked example.",
-    "producer": "not selected; which component computes a cost record and who owns it is an open question, and the resource-ownership inventory assigns the work to nobody",
+    "state": "synthetic-only",
+    "meaning": "A repository tool, tools/cost_calculation, computes an estimated cost record by hand from one declared input document and a committed rate card. Nothing in a running system computes, emits, stores, or reads a cost record, and the only rate card committed here is synthetic, so every figure the tool has produced is economically meaningless.",
+    "producer": "tools/cost_calculation, a repository tool run by hand that contacts no cluster, network, or telemetry store; which platform component computes and emits a cost record in a running system, and who owns it, is still not selected",
     "invoicesRead": 0,
-    "costRecordsProduced": 0
+    "publishedCostFigures": 0
   },
 
   "bases": [
@@ -33,19 +35,19 @@
       "basisId": "allocated",
       "meaning": "A price applied to the capacity a workload reserved, whether or not it used any of it.",
       "requires": "a price source, a node capacity declaration, and the workload's declared resource requests and replica count",
-      "v1Reachable": true,
-      "unreachableReason": null,
+      "v1Reachable": false,
+      "unreachableReason": "V1 calculates the estimated basis only (ADR 0014 D1). An allocation and an estimate of one workload over one window answer different questions, and a producer able to emit both puts two numbers side by side where they are read as one. The arithmetic stays specified here and is demonstrated by the synthetic worked example, which no calculation produces.",
       "maxConfidence": "low",
-      "notes": "The only basis V1 can reach, because reserved capacity is declared in a document rather than measured on a host."
+      "notes": "Specified and not produced in V1. Every estimated record still carries what its workload reserved, so the reservation and the measured use sit side by side without being priced twice."
     },
     {
       "basisId": "estimated",
       "meaning": "A price applied to observed utilisation over the window rather than to what was reserved.",
       "requires": "a price source and measured processor, memory, or accelerator utilisation integrated over the window",
-      "v1Reachable": false,
-      "unreachableReason": "The local cluster runs no metrics server, no collector, and no store. Container and node resource use has no source, which the telemetry catalog already records as a limitation, so there is nothing to integrate over a window.",
+      "v1Reachable": true,
+      "unreachableReason": null,
       "maxConfidence": "medium",
-      "notes": "Named and specified here so that the first component to measure utilisation produces this basis deliberately rather than relabelling an allocation."
+      "notes": "The only basis V1 calculates, since ADR 0014. Measured use reaches a calculation only as values supplied in its input, with the evidence class they came from; nothing in this repository reads a utilisation series from a running system."
     }
   ],
 
@@ -68,10 +70,10 @@
         "window-end",
         "price-source"
       ],
-      "selected": true,
-      "v1Status": "specified",
-      "deferralReason": null,
-      "whyChosen": "Reserved capacity is what the scheduler refuses to give to anything else, so it is the quantity a workload actually consumes from a fixed machine. It is also the only quantity V1 can obtain, because it is declared in a validated document rather than measured on a host.",
+      "selected": false,
+      "v1Status": "deferred",
+      "deferralReason": "It produces the allocated basis, which V1 does not produce (ADR 0014 D1). ADR 0007 D2 selected it while no measured use existed, and its reasoning is kept there.",
+      "whyChosen": null,
       "honestCost": "A workload that reserves four processor cores and uses a tenth of one is charged the same as a workload that uses all four. That is correct capacity accounting and useless efficiency accounting, and it is a property of the method rather than a defect in it."
     },
     {
@@ -85,10 +87,10 @@
         "window-end",
         "price-source"
       ],
-      "selected": false,
-      "v1Status": "deferred",
-      "deferralReason": "Every input it needs is unavailable. There is no metrics server, no collector, and no store, so no utilisation integral exists to allocate from.",
-      "whyChosen": null,
+      "selected": true,
+      "v1Status": "specified",
+      "deferralReason": null,
+      "whyChosen": "The V1-S4-004 scenario matrix committed measured processor and memory use of a declared local experiment, so the deferral ADR 0007 D2 recorded is deleted rather than a method invented (ADR 0014 D2). It is the method the estimated basis needs.",
       "honestCost": "It rewards a workload for reserving capacity it does not use, which is a cost the reserving workload has already imposed on everything else on the node."
     },
     {
@@ -310,7 +312,7 @@
       "retrieval": "committed",
       "selfIdentifies": true,
       "maxConfidence": "none",
-      "scope": "the worked example in this repository, and nothing else",
+      "scope": "the worked example and the calculation fixtures in this repository, and nothing else",
       "publishable": false,
       "rates": [
         { "unit": "cpu-core-hour", "ratePerHour": "0.040000" },
@@ -564,11 +566,11 @@
       "source": "measured",
       "telemetrySignal": "inferops_inference_requests_total",
       "telemetryCoverage": "full",
-      "coverageNote": "The platform counts the requests it receives. This is the counter the selected serving runtime does not expose and the platform produces itself, which the telemetry catalog already records.",
+      "coverageNote": "The platform counts the requests it receives. This is the counter the selected serving runtime does not expose and the platform produces itself, which the telemetry catalog already records. A calculation takes it from a committed bounded experiment record (ADR 0013), typed into the calculation input by hand (ADR 0014 D3); no reader in this repository derives it from that record.",
       "sensitivity": "operational",
       "question": "How many requests is this amount being divided by?",
-      "v1Available": false,
-      "unavailableReason": "no-telemetry-source"
+      "v1Available": true,
+      "unavailableReason": null
     },
     {
       "inputId": "input-tokens",
@@ -579,11 +581,11 @@
       "source": "measured",
       "telemetrySignal": "inferops_inference_tokens_total",
       "telemetryCoverage": "partial",
-      "coverageNote": "Carried on the token counter under the input direction. The selected runtime does expose a prompt-token counter, so this is one of the few usage inputs with a real source behind it, once anything scrapes it.",
+      "coverageNote": "Carried on the token counter under the input direction. The selected runtime does expose a prompt-token counter, so this is one of the few usage inputs with a real source behind it, once anything scrapes it. A calculation takes it from a committed bounded experiment record (ADR 0013), typed into the calculation input by hand (ADR 0014 D3); no reader in this repository derives it from that record.",
       "sensitivity": "operational",
       "question": "How many input tokens did this workload process?",
-      "v1Available": false,
-      "unavailableReason": "no-telemetry-source"
+      "v1Available": true,
+      "unavailableReason": null
     },
     {
       "inputId": "output-tokens",
@@ -594,11 +596,11 @@
       "source": "measured",
       "telemetrySignal": "inferops_inference_tokens_total",
       "telemetryCoverage": "partial",
-      "coverageNote": "Carried on the same counter under the output direction.",
+      "coverageNote": "Carried on the same counter under the output direction. A calculation takes it from a committed bounded experiment record (ADR 0013), typed into the calculation input by hand (ADR 0014 D3); no reader in this repository derives it from that record.",
       "sensitivity": "operational",
       "question": "How many output tokens did it produce?",
-      "v1Available": false,
-      "unavailableReason": "no-telemetry-source"
+      "v1Available": true,
+      "unavailableReason": null
     },
     {
       "inputId": "cpu-seconds",
@@ -606,14 +608,14 @@
       "kind": "usage",
       "required": false,
       "unit": "cpu-core-hour",
-      "source": "unavailable",
+      "source": "measured",
       "telemetrySignal": "inferops_process_cpu_seconds_total",
       "telemetryCoverage": "partial",
-      "coverageNote": "The named counter is process-scoped and belongs to the platform process. The serving runtime is a separate deployment that emits no such counter, and container and node resource use has no source at all, which the telemetry catalog records as a limitation. This input is the reason the estimated basis is unreachable.",
+      "coverageNote": "The named counter is process-scoped and belongs to the platform process, and no catalog signal reports container or node processor use. A calculation takes this input instead from the node's cgroup processor counters sampled beside a declared local experiment: the counter's increase between the samples bounding the window (ADR 0014 D3). It is typed into the calculation input by hand, and no reader in this repository takes it from the samples.",
       "sensitivity": "operational",
       "question": "How much processor time did this workload actually consume?",
-      "v1Available": false,
-      "unavailableReason": "no-telemetry-source"
+      "v1Available": true,
+      "unavailableReason": null
     },
     {
       "inputId": "memory-byte-seconds",
@@ -621,14 +623,14 @@
       "kind": "usage",
       "required": false,
       "unit": "memory-gibibyte-hour",
-      "source": "unavailable",
+      "source": "measured",
       "telemetrySignal": "inferops_process_resident_memory_bytes",
       "telemetryCoverage": "partial",
-      "coverageNote": "The named signal is an instantaneous gauge. Turning a gauge into an integral over a window needs a store, a scrape interval, and a stated interpolation rule, and none of the three is selected.",
+      "coverageNote": "The named signal is an instantaneous gauge of the platform process. A calculation takes this input instead from the node's cgroup memory working-set readings sampled beside a declared local experiment, integrated trapezoidally between consecutive samples inside the window and never extrapolated past the first or last (ADR 0014 D3). It is typed into the calculation input by hand, and no reader in this repository integrates the samples.",
       "sensitivity": "operational",
       "question": "How much memory did this workload actually hold, over time?",
-      "v1Available": false,
-      "unavailableReason": "no-telemetry-source"
+      "v1Available": true,
+      "unavailableReason": null
     },
     {
       "inputId": "accelerator-seconds",
@@ -759,11 +761,11 @@
       "source": "declared",
       "telemetrySignal": "inferops.cost.record.id",
       "telemetryCoverage": "full",
-      "coverageNote": "The catalog registered this attribute and deferred it, so that the first code to need the name would adopt the agreed one. This method is what gives it a meaning; nothing has produced a value for it.",
+      "coverageNote": "The catalog registered this attribute and deferred it, so that the first code to need the name would adopt the agreed one. A calculation input declares the value and the record carries it; no telemetry does, because nothing emits a cost record.",
       "sensitivity": "operational",
       "question": "Which cost record is this, so that a request can be tied back to it?",
-      "v1Available": false,
-      "unavailableReason": "no-producer"
+      "v1Available": true,
+      "unavailableReason": null
     }
   ],
 
@@ -829,6 +831,26 @@
       "nullWhen": []
     },
     {
+      "outputId": "estimated-workload-amount",
+      "name": "cost.amount",
+      "unit": "currency",
+      "formula": "(cpuSeconds * rate(cpu-core-hour) + memoryByteSeconds / 2^30 * rate(memory-gibibyte-hour) + acceleratorSeconds * rate(accelerator-device-hour)) / 3600, with the accelerator term absent when the workload reserves no device",
+      "dependsOn": [
+        "cpu-seconds",
+        "memory-byte-seconds",
+        "accelerator-seconds",
+        "price-source"
+      ],
+      "scale": 6,
+      "question": "What did the processor, memory, and accelerator time this workload was measured using come to at the committed rates?",
+      "nullWhen": [
+        "no-telemetry-source",
+        "runtime-does-not-expose",
+        "outside-window",
+        "input-conflict"
+      ]
+    },
+    {
       "outputId": "node-capacity-amount",
       "name": "capacity.amount",
       "unit": "currency",
@@ -850,7 +872,11 @@
       "name": "unallocated.amount",
       "unit": "currency",
       "formula": "nodeCapacityAmount - sum(workloadAmounts)",
-      "dependsOn": ["node-capacity-amount", "workload-amount"],
+      "dependsOn": [
+        "node-capacity-amount",
+        "estimated-workload-amount",
+        "workload-amount"
+      ],
       "scale": 6,
       "question": "What is the machine costing for capacity nobody reserved?",
       "nullWhen": []
@@ -866,11 +892,30 @@
       "nullWhen": []
     },
     {
+      "outputId": "amount-per-hour",
+      "name": "derived.amountPerHour",
+      "unit": "currency",
+      "formula": "workloadAmount / windowHours",
+      "dependsOn": ["estimated-workload-amount", "window-start", "window-end"],
+      "scale": 6,
+      "question": "At what hourly rate did this amount accrue over the window it covers? It describes that window and projects nothing beyond it.",
+      "nullWhen": [
+        "no-telemetry-source",
+        "runtime-does-not-expose",
+        "outside-window",
+        "input-conflict"
+      ]
+    },
+    {
       "outputId": "share-of-node-capacity",
       "name": "derived.shareOfNodeCapacity",
       "unit": "ratio",
       "formula": "workloadAmount / nodeCapacityAmount",
-      "dependsOn": ["workload-amount", "node-capacity-amount"],
+      "dependsOn": [
+        "workload-amount",
+        "estimated-workload-amount",
+        "node-capacity-amount"
+      ],
       "scale": 6,
       "question": "How much of the machine is this workload holding?",
       "nullWhen": []
@@ -880,20 +925,37 @@
       "name": "derived.costPerThousandRequests",
       "unit": "currency",
       "formula": "workloadAmount / requests * 1000",
-      "dependsOn": ["workload-amount", "requests"],
+      "dependsOn": ["workload-amount", "estimated-workload-amount", "requests"],
       "scale": 6,
       "question": "What does a thousand requests cost, at this reservation and this traffic?",
-      "nullWhen": ["no-telemetry-source", "below-minimum-sample"]
+      "nullWhen": [
+        "no-telemetry-source",
+        "below-minimum-sample",
+        "runtime-does-not-expose",
+        "outside-window",
+        "input-conflict"
+      ]
     },
     {
       "outputId": "cost-per-million-tokens",
       "name": "derived.costPerMillionTokens",
       "unit": "currency",
       "formula": "workloadAmount / (inputTokens + outputTokens) * 1000000",
-      "dependsOn": ["workload-amount", "input-tokens", "output-tokens"],
+      "dependsOn": [
+        "workload-amount",
+        "estimated-workload-amount",
+        "input-tokens",
+        "output-tokens"
+      ],
       "scale": 6,
       "question": "What does a million tokens cost, at this reservation and this traffic?",
-      "nullWhen": ["no-telemetry-source", "below-minimum-sample"]
+      "nullWhen": [
+        "no-telemetry-source",
+        "below-minimum-sample",
+        "runtime-does-not-expose",
+        "outside-window",
+        "input-conflict"
+      ]
     }
   ],
 
@@ -940,12 +1002,12 @@
     {
       "reasonId": "no-producer",
       "meaning": "Nothing computes this record, so the field has never been populated by anything.",
-      "v1Common": true
+      "v1Common": false
     }
   ],
 
   "recordShape": {
-    "note": "This is the method's output shape, published here as part of the method. It is not a contract: no schema for it is published under contracts/, because no component produces or consumes one and the contract package adds a schema when the capability behind it exists rather than in advance.",
+    "note": "This is the method's output shape, published here as part of the method. It is not a contract: no schema for it is published under contracts/, because nothing in a running system produces or consumes one, and the contract package adds a schema when the capability behind it exists rather than in advance. The repository tool that computes a record by hand validates every record it writes against these fields.",
     "fields": [
       {
         "fieldId": "record-id",
@@ -1121,11 +1183,11 @@
       {
         "fieldId": "cost-amount",
         "path": "cost.amount",
-        "type": "decimal-string",
+        "type": "decimal-or-null",
         "required": true,
         "sensitivity": "operational",
         "committedRecordAllowed": true,
-        "meaning": "The amount, as a decimal string at the record scale."
+        "meaning": "The amount, as a decimal string at the record scale. Null, with the reason in completeness, when an input it depends on is unavailable."
       },
       {
         "fieldId": "cost-currency",
@@ -1182,6 +1244,24 @@
         "meaning": "What kind of rate card it is, which caps the confidence."
       },
       {
+        "fieldId": "cost-price-source-version",
+        "path": "cost.priceSourceVersion",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "The version of the rate card the amount was priced from."
+      },
+      {
+        "fieldId": "cost-price-source-effective-date",
+        "path": "cost.priceSourceEffectiveDate",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "The date from which that version of the rate card applies. A price source without an identifier, a version, and a date cannot be cited."
+      },
+      {
         "fieldId": "cost-confidence",
         "path": "cost.confidence",
         "type": "string",
@@ -1209,6 +1289,15 @@
         "meaning": "Which inputs were unavailable and why."
       },
       {
+        "fieldId": "record-facts",
+        "path": "facts",
+        "type": "object",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "The facts the record's confidence is derived from, carried so that a reader recomputes the confidence rather than trusting it."
+      },
+      {
         "fieldId": "assumptions-ref",
         "path": "evidence.assumptionsRef",
         "type": "string",
@@ -1216,6 +1305,15 @@
         "sensitivity": "operational",
         "committedRecordAllowed": true,
         "meaning": "Where the method behind this record is published."
+      },
+      {
+        "fieldId": "usage-evidence-class",
+        "path": "evidence.usageEvidenceClass",
+        "type": "string",
+        "required": true,
+        "sensitivity": "operational",
+        "committedRecordAllowed": true,
+        "meaning": "The evidence class the usage inputs came from. Only a measured class lets a record state that its utilisation was measured."
       }
     ]
   },
@@ -1315,9 +1413,44 @@
     {
       "ruleId": "a-window-in-which-the-shape-changed-is-split",
       "statement": "A record never averages an allocation across a change in resource requests or replica count.",
-      "rationale": "The average describes a machine state that never existed, and it is indistinguishable in the output from a state that did.",
+      "rationale": "The average describes a machine state that never existed, and it is indistinguishable in the output from a state that did. The calculation refuses an input that declares a change inside its window. A change nobody declared is caught by review alone, which is why this rule stays marked as review.",
       "enforcement": "review",
       "enforcedBy": null
+    },
+    {
+      "ruleId": "v1-calculates-the-estimated-basis-only",
+      "statement": "The only basis V1 reaches is estimated. Actual needs an invoice, and allocated is specified and not produced.",
+      "rationale": "ADR 0014 D1. One basis per calculation means an estimate and an allocation of the same workload and window never appear side by side to be read, or summed, as one number.",
+      "enforcement": "test",
+      "enforcedBy": "test_the_only_basis_v1_can_reach_is_an_estimate"
+    },
+    {
+      "ruleId": "a-calculation-refuses-a-basis-v1-does-not-reach",
+      "statement": "A calculation input asking for the actual or the allocated basis is refused before any figure is written, with the reason the method gives.",
+      "rationale": "A basis that is unreachable in data and reachable in code is reachable.",
+      "enforcement": "test",
+      "enforcedBy": "test_a_basis_v1_does_not_reach_is_refused"
+    },
+    {
+      "ruleId": "a-price-source-is-refused-unless-committed-versioned-dated-and-decimal",
+      "statement": "A calculation reads a price only from a source committed in this method, and refuses one that is fetched, unversioned, undated, priced in a float, negative, or incomplete, or synthetic without saying so.",
+      "rationale": "ADR 0007 D5 and D6, applied where a price is used rather than only where it is stored.",
+      "enforcement": "test",
+      "enforcedBy": "test_an_invalid_price_source_is_refused"
+    },
+    {
+      "ruleId": "measured-use-names-its-evidence-class",
+      "statement": "A calculation input names the evidence class its usage values came from, and only a measured class lets a record state that its utilisation was measured.",
+      "rationale": "ADR 0014 D3. Synthetic usage priced on the estimated basis would otherwise derive the confidence of a measurement.",
+      "enforcement": "test",
+      "enforcedBy": "test_synthetic_usage_never_counts_as_measured_utilisation"
+    },
+    {
+      "ruleId": "a-calculated-record-validates-against-the-published-shape",
+      "statement": "Every record a calculation writes carries every required field of the published record shape, at its declared type, and no field a committed record may not carry.",
+      "rationale": "ADR 0007 D10 publishes the shape as part of the method rather than as a contract, so the method is what a record is checked against.",
+      "enforcement": "test",
+      "enforcedBy": "test_every_calculated_record_validates_against_the_published_shape"
     }
   ],
 
@@ -1504,7 +1637,7 @@
         "gapId": "no-container-or-node-resource-metric",
         "affects": ["cpu-seconds", "memory-byte-seconds"],
         "statement": "The catalog's two process metrics describe the emitting process, not a container or a node, and the local cluster runs no metrics server.",
-        "consequence": "The estimated basis and the observed-utilisation-share allocation method are both unreachable in V1."
+        "consequence": "No catalog signal supplies the estimated basis. It is reachable only from the node cgroup samples of a declared local experiment, typed into a calculation input by hand (ADR 0014 D3), and the observed-utilisation-share method has no telemetry source."
       },
       {
         "gapId": "no-accelerator-metric",
@@ -1515,8 +1648,8 @@
       {
         "gapId": "no-collector-reads-anything",
         "affects": ["requests", "input-tokens", "output-tokens", "ready-seconds"],
-        "statement": "The signals these inputs name are specified and emitted by nothing. There is no metrics server and no durable store, so there is no utilisation series to integrate over a window - the release's own collector scrapes what InferOps publishes and never container, pod, or node consumption.",
-        "consequence": "Every usage input is unavailable today, whatever its coverage says. Coverage describes what the catalog would supply, not what exists."
+        "statement": "The API emits these signals and the release-scoped collector scrapes them, but no durable store keeps what it scrapes and no component reads them into a cost calculation.",
+        "consequence": "A calculation takes request and token counts from a committed bounded experiment record, typed in by hand. No usage input is read from a running system."
       }
     ]
   },
@@ -1530,16 +1663,16 @@
     },
     {
       "questionId": "who-computes-a-cost-record",
-      "statement": "Which component computes and emits a cost record, and who owns it.",
+      "statement": "Which platform component computes and emits a cost record in a running system, and who owns it.",
       "status": "not decided, and not this record's to decide",
-      "why": "The resource-ownership inventory assigns this to nobody, and the same inventory already leaves a telemetry collector unowned. A method that quietly nominated an owner would answer an architecture question in a cost document."
+      "why": "The resource-ownership inventory assigns this to nobody, and the same inventory already leaves a telemetry collector unowned. A method that quietly nominated an owner would answer an architecture question in a cost document. A repository tool that computes a record by hand from a declared input (ADR 0014) does not answer it: it runs in no cluster and emits nothing."
     }
   ],
 
   "limitations": [
     {
-      "limitationId": "nothing-computes",
-      "statement": "No component in this repository computes, emits, stores, or reads a cost record. Every rule here specifies behaviour for a producer that does not exist."
+      "limitationId": "only-a-repository-tool-computes",
+      "statement": "No platform component computes a cost record. A repository tool computes one by hand from a declared input document, and nothing in a running system computes, emits, stores, or reads one."
     },
     {
       "limitationId": "no-invoice-has-ever-been-read",
@@ -1551,11 +1684,15 @@
     },
     {
       "limitationId": "no-utilisation-source",
-      "statement": "There is no metrics server, collector, or store, so processor, memory, and accelerator utilisation have no source and the estimated basis cannot be produced."
+      "statement": "There is no metrics server, and no collector keeps a durable utilisation series. Measured processor and memory use reaches a calculation only as values typed in by hand from a committed bounded experiment, and no reader in this repository integrates them from its samples."
     },
     {
       "limitationId": "allocation-overcharges-idleness",
       "statement": "Allocation by reservation charges a workload for capacity it did not use. That is the definition of the method rather than a defect in it, and it makes these figures capacity accounting rather than efficiency accounting."
+    },
+    {
+      "limitationId": "an-estimate-leaves-reserved-idle-capacity-unattributed",
+      "statement": "The estimated basis prices what a workload was measured using, so capacity it reserved and left idle lands on the unallocated line rather than on its record. That is the cost ADR 0007 D2 named for observed use, and the reservation each record carries is what keeps it visible."
     },
     {
       "limitationId": "capacity-is-declared-not-read",
@@ -1567,7 +1704,7 @@
     },
     {
       "limitationId": "a-unit-cost-is-a-throughput-figure",
-      "statement": "Cost per thousand requests is an hourly reservation divided by an hour of traffic, which publishes the traffic. V1 may publish neither, so the method exists here without a figure attached to it."
+      "statement": "Cost per thousand requests is an amount divided by a window of traffic, which publishes the traffic. ADR 0013 now permits a bounded traffic figure from a declared local experiment; ADR 0007 D11 still publishes no cost figure, so the method's unit costs exist here only on synthetic prices."
     },
     {
       "limitationId": "no-local-host-rate-is-honest",
@@ -1584,6 +1721,10 @@
     {
       "limitationId": "the-example-is-not-a-measurement",
       "statement": "The worked example's traffic figures are chosen numbers. No request in it was served and no token in it was generated."
+    },
+    {
+      "limitationId": "measured-use-is-typed-in-by-hand",
+      "statement": "Every usage value in a calculation input is typed in by whoever prepares it. The calculation checks its evidence class, its shape, and that it fits within the node's declared capacity for the window, and cannot check that it matches the evidence it came from."
     }
   ]
 }

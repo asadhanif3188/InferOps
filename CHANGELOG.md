@@ -10,6 +10,35 @@ once versioned releases begin.
 
 ### Added
 
+- **The V1 cost calculation, on the estimated basis only, exercised on synthetic
+  fixtures.** `python -m tools.cost_calculation` applies
+  [the cost method](docs/cost/cost-method.md) to one declared input and writes a result
+  whose records validate against the shape the method publishes: each workload's amount
+  priced from measured processor seconds and binary memory byte-seconds, an hourly
+  figure over its window, a cost per thousand requests and per million tokens with their
+  denominators, its share of the node, what it reserved beside what it used, and the
+  capacity no workload was measured using as its own line, closing against the node.
+  Arithmetic is exact and rounded once, half-even. A missing input is null with a reason,
+  and so is everything depending on it. `verify` regenerates a committed result byte for
+  byte. [The calculation guide](docs/cost/cost-calculation.md) documents the input, the
+  refusals, and what is still typed by hand.
+
+  [ADR 0014](docs/architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)
+  amends ADR 0007 D1, D2, and D9: `estimated` becomes the only basis V1 calculates,
+  `observed-utilisation-share` is selected, and `allocated` is specified but not
+  produced, so an allocation and an estimate of one window never sit side by side. The
+  tool refuses `actual` and `allocated`, a price source that is not committed, versioned,
+  dated, and decimal, any float, a declared change of reservation, a tenant identifier,
+  and measured use the node could not hold. Synthetic usage never counts as measured.
+
+  **What it is not:** a cost figure. The only rate card is synthetic, so every record has
+  confidence `none`; both fixtures are synthetic; every usage value is typed in by hand,
+  and ADR 0014 D3's rules for taking it from committed samples are review only. No
+  calculation has been run over the `V1-S4-004` evidence, and ADR 0007 D11 still
+  publishes no cost figure. The method data, its document, the worked example's framing,
+  the telemetry catalog's two cost deferral reasons, and the indexes that said nothing
+  computes a cost record are corrected; the worked example's figures are unchanged.
+
 - **Performance findings for the executed scenario matrix, bound to its one setup.**
   [The findings](docs/proof/serving/v1-s4-004-pr2-performance-findings.md) compare the
   baseline with concurrency 2 and 4 across both repetitions of the `docker-desktop` run:

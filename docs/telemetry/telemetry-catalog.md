@@ -237,7 +237,7 @@ adopts the agreed name instead of coining a second:
 | Field | Why it is deferred |
 |---|---|
 | `inferops.retry.count` | V1 has no retry and no fallback path |
-| `inferops.cost.record.id` | The cost method is defined, in [ADR 0007](../architecture/decisions/ADR-0007-inference-cost-method.md); nothing computes or emits a cost record, so there is no value to carry |
+| `inferops.cost.record.id` | The cost method is defined, in [ADR 0007](../architecture/decisions/ADR-0007-inference-cost-method.md); nothing emits a cost record, and the only thing that computes one is a repository tool run by hand, so there is no value to carry |
 | `inferops.evaluation.decision` | There is no evaluation capability here and none is in V1 scope |
 
 ## 7. Metrics
@@ -309,7 +309,7 @@ Three metrics are defined and deferred:
 |---|---|
 | `inferops_inference_time_to_first_token_seconds` | V1 has no streaming path, so this would be the same measurement as request duration under a different name |
 | `inferops_inference_retries_total` | No retry or fallback path exists, and a counter that can only read zero looks like a healthy system rather than an absent feature |
-| `inferops_cost_records_total` | The cost method is defined and no component computes or emits a cost record, so this counter could only ever read zero |
+| `inferops_cost_records_total` | The cost method is defined and no platform component computes or emits a cost record, so this counter could only ever read zero |
 
 > [!IMPORTANT]
 > Latency, throughput, and capacity signals exist to operate the platform. V1

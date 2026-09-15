@@ -8,6 +8,7 @@
 | Decision owner | Unassigned; no public maintainer roster exists yet |
 | Supersedes | None |
 | Superseded by | None |
+| Amended by | [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md), 2026-09-15: D1, D2, and D9 |
 
 > [!IMPORTANT]
 > This record decides how a V1 inference cost figure is produced and what it may be
@@ -28,20 +29,27 @@
 > D12 and D13 are **not decided**: no provider rate card is selected, and which
 > component computes a cost record remains unowned. The second is deliberately left
 > to ADR 0004's open ownership question rather than answered in passing here.
+>
+> **Amended 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** V1 now calculates the `estimated`
+> basis only, `observed-utilisation-share` is the selected allocation method, and a
+> repository tool computes a record by hand from a declared input whose usage values
+> come from a committed bounded experiment. D11, D12, and D13 are unchanged. The text
+> below is kept as it was accepted; where it says allocation is the only reachable
+> basis, or that nothing computes a record, read it as amended.
 
 ## Decision status
 
 | ID | Decision | Status | What supports it |
 |---|---|---|---|
-| D1 | Three bases — invoice, allocation, estimate — that are never mixed in one total, and only one of which V1 can reach | **Accepted** | A committed method, with the reachable set and the invoice-vocabulary rule enforced by tests |
-| D2 | Allocation is by reserved capacity, not by observed use | **Accepted** | Review, plus a test that recomputes every reservation from the declared request and replica count |
+| D1 | Three bases — invoice, allocation, estimate — that are never mixed in one total, and only one of which V1 can reach | **Accepted; amended 2026-09-15** so that the one V1 reaches is `estimated`, not `allocated` ([ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)) | A committed method, with the reachable set and the invoice-vocabulary rule enforced by tests |
+| D2 | Allocation is by reserved capacity, not by observed use | **Accepted; amended 2026-09-15** so that observed use is selected and reserved capacity deferred ([ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)) | Review, plus a test that recomputes every reservation from the declared request and replica count |
 | D3 | Capacity nobody reserved is a reported line, and the parts must close against the whole | **Accepted** | Arithmetic the suite performs on the worked example |
 | D4 | Half-open UTC windows, split at a change of reservation | **Accepted** as a rule | Review. The splitting half is enforced by review alone; nothing produces a window |
 | D5 | Prices are committed, versioned, dated, and — in V1 — synthetic only | **Accepted** | Tests that every source is committed, that the only class published is synthetic, and that it says so in its own contents |
 | D6 | Decimal money at a scale of six, rounded half-even once, with binary and decimal units kept apart | **Accepted** | A test that no binary float appears anywhere in the committed method |
 | D7 | A missing input is null with a reason, never a zero | **Accepted** | Tests in both directions over the worked example |
 | D8 | Confidence is derived from a record's own inputs, not asserted by its producer | **Accepted** | The suite recomputes it from the declared rules |
-| D9 | Every input names a telemetry signal or records that no source exists | **Accepted** | A test comparing each named signal against the committed telemetry catalog |
+| D9 | Every input names a telemetry signal or records that no source exists | **Accepted; amended 2026-09-15** so that processor seconds, memory byte-seconds, requests, and tokens are obtainable by hand from a committed bounded experiment ([ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)) | A test comparing each named signal against the committed telemetry catalog |
 | D10 | The output shape is published as part of the method and **not** as a contract | **Accepted** | Review, plus the contract package's own rule about publishing in advance |
 | D11 | V1 publishes the method and a synthetic example, and no cost figure | **Accepted** as a rule | Review alone. It is a rule about future publications, and no test can hold one |
 | D12 | Which provider rate cards a comparison against hosted capacity would use | **Not decided** | Nothing. No provider is selected and no account exists |
@@ -130,6 +138,12 @@ exists to prevent.
 **Not decided:** everything about producing an `actual` record. No provider, account,
 invoice format, or reconciliation exists.
 
+> **Amended 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** The basis V1 reaches is now `estimated`,
+> because measured processor and memory use of a declared local experiment became
+> committed evidence, and `allocated` is specified and not produced, so that an
+> allocation and an estimate of the same window never sit side by side. The text above
+> is kept as it was accepted.
+
 ## D2 — Allocation by what was reserved
 
 A workload is charged for its processor, memory, and accelerator requests multiplied
@@ -153,6 +167,11 @@ Allocation by request count was considered and **rejected**, not deferred. It ma
 one workload's unit cost a function of its neighbours' traffic: a workload whose own
 traffic halves while nothing else changes appears to double in price. That is a
 statement about the neighbours, and no amount of future telemetry improves it.
+
+> **Amended 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** `observed-utilisation-share` is selected
+> and its deferral deleted, as the paragraph above anticipated; `requested-resource-share`
+> is deferred. `request-count-share` stays rejected. The text above is kept as it was
+> accepted.
 
 ## D3 — The residual is a line, and the lines close
 
@@ -289,6 +308,13 @@ says, because no component emits the utilisation signals they name and no collec
 here collects one. Coverage
 describes what the catalog would supply. A test refuses any usage input that claims to
 be available.
+
+> **Amended 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** Processor seconds, memory byte-seconds,
+> requests, and tokens are now obtainable in V1 from a committed bounded experiment,
+> typed into a calculation input by hand; ADR 0014 D3 states how each is taken from
+> the samples, and no reader applies it yet. None is read from a running system, and
+> the named-signal comparison above is unchanged. The text above is kept as it was
+> accepted.
 
 ## D10 — The output shape is part of the method, not a contract
 

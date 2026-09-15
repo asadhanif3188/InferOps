@@ -64,8 +64,11 @@ confidence is recomputed from its own inputs rather than read from a field its
 producer filled in, and that the worked example's arithmetic closes against the
 capacity it allocates. It certifies **nothing about what anything costs**: the only
 rate card in this repository is synthetic, no invoice has ever been read, and no
-component computes a cost record. The example's own confidence is `none`, derived
-rather than assigned.
+platform component computes a cost record. The example's own confidence is `none`,
+derived rather than assigned. The cost calculation's suite contributes to the same
+row for the records it writes: none on a basis other than `estimated`, none carrying
+an invoice's vocabulary, and every one validated against the method's record shape.
+It certifies the arithmetic on synthetic fixtures and nothing about a measurement.
 
 The security row is the newest, and it is the narrowest of the three. It certifies
 that every control in the committed baseline derives its status from the verification
