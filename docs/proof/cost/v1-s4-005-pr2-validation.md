@@ -34,12 +34,11 @@ about another host, release, prompt, or load.
 - **Five committed files** under `docs/proof/cost/`: an input and a result for each run,
   and [the derivation record](v1-s4-005-pr2-baseline-derivation.v1alpha1.json).
 - **[`tests/cost/test_cost_baseline.py`](../../../tests/cost/test_cost_baseline.py)**,
-  41 test functions, 53 tests.
+  43 test functions, 56 tests.
 
 ## The independent check of the calculation
 
-The brief asked for the calculation to be checked independently. The suite does it three
-ways, none of which calls the functions it checks:
+The calculation is checked three ways, none of which calls the functions it checks:
 
 1. **Usage, from the committed lines.** For each run it finds the bounding samples in the
    JSONL itself, sums the API and runtime counter increases as integers, and sums
@@ -89,10 +88,10 @@ A hand check of run 1, for a reader without the suite:
 - **[ADR 0014](../../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)**:
   D3's status row now says the integration half is enforced for inputs the reader writes
   and review only for a typed input, and names the suite. Dated implementation notes are
-  added beside the summary, D3's enforcement paragraph, the evidence, and the hand-typed
+  added after the summary, D3's enforcement paragraph, the evidence, and the hand-typed
   risk. No decision's text changed, and the accepted paragraphs are kept as accepted.
-  [ADR 0007](../../architecture/decisions/ADR-0007-inference-cost-method.md)'s D9 pointer
-  no longer says no reader applies D3.
+  [ADR 0007](../../architecture/decisions/ADR-0007-inference-cost-method.md) gains dated
+  implementation notes after its amendment summary and its D9 pointer.
 - **[The calculation guide](../../cost/cost-calculation.md)**, [the method
   document](../../cost/cost-method.md), and [the cost README](../../cost/README.md) stop
   saying that every usage value is typed in by hand, that no reader exists, and that no
@@ -125,9 +124,9 @@ Every command ran from the repository root in Git Bash, inside the locked enviro
 | GNU bash | `5.2.26(1)-release (x86_64-pc-msys)` |
 
 ```text
-python -m pytest -q                                                       9300 passed, 31 skipped, 14 deselected
-python -m pytest tests/cost -q                                            487 passed
-python -m pytest tests/cost/test_cost_baseline.py -q                      53 passed
+python -m pytest -q                                                       9303 passed, 31 skipped, 14 deselected
+python -m pytest tests/cost -q                                            490 passed
+python -m pytest tests/cost/test_cost_baseline.py -q                      56 passed
 ruff format --check .                                                     414 files already formatted
 ruff check .                                                              All checks passed!
 python -m mypy                                                            Success: no issues found in 231 source files
@@ -145,6 +144,96 @@ git diff --check                                                          (no ou
 ```
 
 **Private-information inspection of the diff.** Every added line was searched for drive paths, user or home directories, IPv4 addresses, e-mail addresses, host and node names, pod names and UIDs, kubeconfig references, local image references, and names from outside this repository. Nothing matched except `@pytest.mark` decorators, which the e-mail pattern catches. The baseline's committed files name the performance record by repository-relative path, and carry none of the node name, pod names, or pod UIDs the `V1-S4-004` environment record holds.
+
+## Independent review, and what it changed
+
+The first commit was reviewed before push by three independent reviewers: one for the
+tool's and the tests' code, one for every number and claim, recomputed from the raw
+sample, raw record, and performance record files rather than from the tool's output, and
+one for scope, ADR governance, cost semantics, and leakage. Each finding below was
+checked before it was acted on. **No leakage was found**, no product file was touched,
+and every headline figure in the baseline, every table value, and every line of the hand
+check recomputed correctly.
+
+**What the first commit got wrong in the report.**
+
+- **The idle baseline was said to lie outside both windows.** Run 1's window opens on a
+  sample 1,307 ms before its load generator launched, so it holds the last 1,057 ms of
+  the idle baseline. The excluded-costs list and the hourly figure's "busy for the whole
+  window" now say so.
+- **A real rate card was said to raise confidence to `medium`.** A card's class caps it:
+  an amortised-hardware card, the kind a local host would have, allows `low`, and only a
+  provider list price or negotiated price reaches `medium`. The same error was in this
+  record's deferred work. The confidence paragraph also named three of the six rules and
+  called the synthetic card's "the only rule that binds", though the invoice rule holds
+  too; it now names both rules that hold and why the others do not.
+- **It set a priced reservation beside the estimate.** "Larger than a price on the
+  reservation would have been; an allocation would have understated this workload's use
+  about fivefold" is the side-by-side reading ADR 0014 D1 exists to prevent, though no
+  amount was printed. The comparison is now in core-hours only, and a test refuses the
+  wording.
+- **"No cost figure is published" was asserted, not argued.** These are the first records
+  combining measured use and published traffic with a price. A section now says why they
+  are consistent with ADR 0007 D11: the divisor is public under ADR 0013, and the prices
+  are invented and confidence is `none`. It also says the reading is the record's, not a
+  decision's.
+- **The collector's attribution was presented as the method's rule.** It is a choice: the
+  collector is Helm-owned and release-scoped (ADR 0004 D7), and a reader could count it as
+  the workload's. The report now says so, and says the summed declaration is no workload
+  document's shape.
+- **Smaller:** the dashboard record and correlation queries were said to defer
+  `inferops.cost.record.id`, which only the catalog does; the node's 0.52 cores outside
+  the release were attributed to "12 pods", though they include the system and the
+  sampler and the idle baseline read 0.28; memory outside the working set was called
+  capacity "nothing used"; "the tool writes files by hand".
+
+**What the first commit got wrong in the ADRs and the method data.**
+
+- **ADR 0014's D3 update decided attribution.** It stated the workload and collector
+  choices inside an accepted decision. The note now says which pods are the workload is not
+  decided there, and points to the record that states its own choice.
+- **ADR text was left inconsistent.** ADR 0007's D9 pointer said "typed into a calculation
+  input by hand" and, in the same sentence, that the reader applies D3; its summary still
+  said usage "is typed in by hand". ADR 0014's header ("half of it enforced"), its
+  consequence counting no measured record, and its compatibility note naming one tool were
+  left stale without a note. A parenthetical was spliced into an accepted risk bullet, and
+  two notes described as dated carried no date. The accepted sentences are now restored as
+  accepted, and separate dated notes say what changed.
+- **The method document still said measured use reaches a calculation "by hand"** in its
+  gaps table, which this record claimed was corrected.
+- **Found in addressing the review, not by it:** the synthetic card's own `scope` named
+  "the worked example and the calculation fixtures, and nothing else", and the baseline
+  used it anyway. The scope now names the baseline, and a test checks it. The computation
+  status's `state` stays `synthetic-only`, and its meaning now says that describes the
+  prices.
+- The claim matrix said the baseline's suite certifies "that the use is the samples'",
+  which the cost row does not claim. It now says the suite checks that, and what the row
+  certifies.
+
+**What the first commit got wrong in the code and tests.**
+
+- **A second parse sat outside the refusal.** `read_sources` parsed the samples and raw
+  records again after the regeneration check, outside any `except`, so a parse error would
+  have been a traceback rather than a refusal. It could not happen while both parses used
+  the same texts, and relied on that. Both parses now use the same readers, inside a
+  refusal.
+- **A test could not fail.** `test_the_raw_set_parser_is_the_load_tools_own` asserted an
+  `isinstance` that holds by construction. It is replaced by a test that the warm-up lies
+  inside each window and its requests are counted, which the reviewer flagged as a domain
+  point to state.
+- **Smaller:** an unused `RECORD_KIND` constant, and node capacity read twice per run.
+
+**What the first commit got wrong in this record.** It said the method document and ADR
+0007 no longer said usage is typed in by hand, which was untrue in three places, and that
+dated notes were added where two were undated. It opened a section by citing a requirement
+rather than stating the check, which is now plain. Its counts described the first commit's suite: 41 functions and 53
+tests, 487 in the cost suite, and a lane of 9300 passed. The counts above are for the tree
+after these changes. The first commit's message repeats the first counts. Commit messages
+are not rewritten; this is the correction.
+
+**Not changed.** The window stays snapped outward to samples: the reviewers agreed it
+matches D3 and is disclosed. `computationStatus.state` keeps its value. The per-phase and
+whole-hour windows stay uncalculated, for the reasons above.
 
 ## What was not run, and why
 
@@ -175,8 +264,9 @@ by decision.
 
 ## Deferred, and follow-up dependencies
 
-- A **real rate card** needs ADR 0007 D12 decided; only then could confidence rise above
-  `none`, and only to `medium`.
+- A **real rate card** needs ADR 0007 D12 decided. Its class caps confidence: an
+  amortised-hardware card allows `low`, and a provider list price or negotiated price
+  `medium`, which an estimate never exceeds.
 - A **platform component that computes and emits a cost record** needs ADR 0007 D13 and
   ADR 0004's ownership question; the dashboard and query hook depend on it.
 - **Checking a hand-typed input against its samples** stays open: `tools/cost_calculation`

@@ -88,7 +88,9 @@ during which no request was in flight.
 are the single values the collector's own series carried during the run. The owner is the
 one thing declared, by the values file the experiment executed, whose digest the record
 captured. **The reservation**, 1100m and 2281701376 bytes per replica, is the API's and
-the runtime's requests summed, read from the environment the experiment captured.
+the runtime's requests summed, read from the environment the experiment captured. No
+workload document declares that shape: it is the sum of two pods, and is valid only
+because both ran one replica, which the tool requires.
 
 ### Allocation, idle, and shared cost
 
@@ -97,7 +99,7 @@ the runtime's requests summed, read from the environment the experiment captured
 | Basis | `estimated`, the only one V1 calculates (ADR 0014 D1). No allocation is produced beside it |
 | Allocation method | `observed-utilisation-share`: the workload is priced for what it was measured using |
 | Which pods are the workload | The request path: the API and runtime pods |
-| The release's collector | Platform overhead, which the method makes environment cost. Measured, not listed, so on the unallocated line |
+| The release's collector | Measured, not listed, so on the unallocated line, under the method's rule that platform overhead is environment cost. That is a choice: the collector is Helm-owned and release-scoped (ADR 0004 D7), so a reader could count it as the workload's. Counting it would change neither run's amount by a thousandth |
 | Idle capacity, and reservation left unused | On the unallocated line, never spread |
 | The platform, other pods on the node, the control plane | On the unallocated line, never spread |
 | Prerequisites | None listed |
@@ -109,13 +111,13 @@ measured except idle, which is the node's allocatable capacity less its measured
 |---|---|---|
 | The workload (priced on its record) | 1952.12 core-s, 49.5% | 175.14 GiB-s, 5.5% |
 | The release's collector | 0.67 core-s, 0.02% | 6.85 GiB-s, 0.2% |
-| The node outside the release: 12 other pods, the system, the sampler | 172.32 core-s, 4.4% | 1566.04 GiB-s, 49.0% |
+| The node outside the release: 12 other pods, the system, and the sampler | 172.32 core-s, 4.4% | 1566.04 GiB-s, 49.0% |
 | Idle, or not in the node's working set | 1819.94 core-s, 46.1% | 1446.17 GiB-s, 45.3% |
 | **Node allocatable over the window** | **3945.048 core-s** | **3194.19 GiB-s** |
 
 Priced at the card, about 77% of the run 1 unallocated amount is idle processor capacity,
-and about 84% is capacity nothing on the node used, processor and memory together; most
-of the rest is memory held by what else runs on the node. Run 2 divides the same way to
+and about 84% is idle processor capacity and memory outside the node's working set
+together; the rest is mostly memory in the working set of what else runs on the node. Run 2 divides the same way to
 within half a percentage point.
 
 ### Excluded costs
@@ -128,16 +130,18 @@ the node's capacity amount prices only processor and memory:
 - **the node's disk, images, and the virtual machine's overhead** outside the node's
   allocatable capacity;
 - **network, the port-forward the load travelled over, and the load generator's host**;
-- **the time before and between runs**: model loading, the idle baseline, and the settle
-  interval, which lie outside both windows.
+- **the time before and between runs**: model loading, most of the idle baseline, and the
+  settle intervals, which lie outside both windows. Run 1's window opens 1,307 ms before
+  its load generator launched, and so holds the last 1,057 ms of the idle baseline;
+  run 2's holds none of it.
 
 ## How to read the figures
 
 **The hourly figure** is the amount divided by the window, 0.091 hours. It says the
 request path accrued use at about 0.24 an hour at invented rates *while serving this
-load*. It projects nothing: the release was busy for the whole window and idle before and
-after it, and an hour of it would cost what an hour of its load looked like, which nobody
-measured.
+load*. It projects nothing: the release was busy for all but the window's first and last
+few seconds and idle before and after it, and an hour of it would cost what an hour of
+its load looked like, which nobody measured.
 
 **The cost per thousand requests** is the amount divided by 183 requests. It is a
 throughput figure in the units of a price, and it inherits everything
@@ -159,24 +163,43 @@ run 1 the request path averaged 5.94 cores, 5.93 of them the runtime's, and held
 **Use exceeded the reservation.** The request path reserved 1.1 cores and was measured
 using 5.94 on average: 0.542 measured core-hours against 0.100453 reserved in run 1, about
 5.4 times. The runtime requests one core and is limited to six, and it ran at its limit.
-An estimate prices what was used, so this record is larger than a price on the
-reservation would have been; an allocation would have understated this workload's use of
-the node about fivefold. Memory went the other way: 0.049 measured gibibyte-hours against
+The estimate prices the processor time used, not the processor time reserved. Memory went
+the other way: 0.049 measured gibibyte-hours against
 0.194056 reserved, so most of the memory reservation was left idle and sits on the
-unallocated line. The allocation on the same window is deliberately not computed (ADR
-0014 D1); the reservation is carried in each record in core- and gibibyte-hours, unpriced.
+unallocated line. No reservation is priced here (ADR 0014 D1); it is carried in each
+record in core- and gibibyte-hours, unpriced.
 
 **The two runs agree.** The amounts and the costs per thousand requests differ by 0.7%,
-and the hourly figures by 0.4%, because run 2's window was shorter. That is two repetitions on one host, a statement about
-repeatability here and nothing about variance anywhere else.
+and the hourly figures by 0.4%, because run 2's window was shorter. That is two
+repetitions on one host, a statement about repeatability here and nothing about variance
+anywhere else.
+
+## Why this is not a published cost figure
+
+ADR 0007 D11 publishes the method and a synthetic worked example, and no figure for what running
+an inference workload costs. Its reason was that a cost per request publishes the
+throughput it is divided by, which V1 then could not publish.
+
+Two things make these records consistent with it. The divisor is already public:
+[ADR 0013](../../architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
+allows a bounded traffic figure from a declared local experiment, and the 183 requests
+and their window are in [the performance findings](../serving/v1-s4-004-pr2-performance-findings.md).
+And the dividend prices nothing: every rate is invented, the synthetic card names this
+baseline in its own scope, and confidence is derived as `none`, which the method defines
+as economically meaningless. So no amount here says what running the workload costs; each
+says what its measured use comes to at rates that describe no machine. That reading is
+this record's, not a decision's, and a figure on any other card would need one.
 
 ## Confidence and uncertainty
 
-**Confidence is `none`, derived and not assigned.** The method's rules give `medium` as
-the ceiling for an estimate without an invoice, `low` for an estimate without measured use
-or with an incomplete window, and `none` for a synthetic card. These records have measured
-use and complete windows, so the only rule that binds is the synthetic card's. A real rate
-card would raise the ceiling to `medium` and nothing here to more.
+**Confidence is `none`, derived and not assigned.** A record's confidence is the lowest
+ceiling among the rules that hold for it. Two hold here: no invoice caps an estimate at
+`medium`, and the synthetic card caps any record at `none`. The rules that would cap it at
+`low` do not hold, because use was measured and the windows are complete, and neither does
+the `none` rule for an unsplit change of reservation. So the card alone decides it. A
+different card is capped by its own class as well: an amortised-hardware card, the kind a
+local host would have, allows `low`, and only a provider list price or a negotiated price
+could reach `medium`, which an estimate never exceeds.
 
 What remains uncertain even about the measured use:
 
@@ -187,7 +210,7 @@ What remains uncertain even about the measured use:
 | Sample read time | Up to 1,874 ms per read, placed at the read's midpoint | A counter read lands up to about a second from its instant; the gap is inside the window's edges |
 | Working set | The kernel's accounting, including file-backed pages it charges to the pod; the runtime's memory-mapped model is counted only as far as the kernel charges it | The memory line prices what the kernel reported, not what the process allocated |
 | cgroup processor counter | Every thread in the pod, including work done for no request | Right for pricing use, wrong for attributing it to a request |
-| Background on the node | 12 pods outside the release, 0.52 cores on average in run 1 | Not in the workload's figures; it competes for the same cores |
+| Background on the node | The node outside the release, 12 pods, the system, and the sampler: 0.52 cores on average in run 1, against 0.28 in the idle baseline | Not in the workload's figures; it competes for the same cores |
 | Reservation read once | Captured before the experiment; same pod identities after, and no restart | A resize in place during the run would not be seen |
 
 ## Limitations
@@ -198,9 +221,9 @@ What remains uncertain even about the measured use:
   meaningless.
 - **The window is a load span, not an accounting hour.** A record of an hour on the hour
   would include idle time these do not, and a different amount.
-- **The collector is left on the unallocated line by a rule, not a measurement of whose it
-  is.** Listing it as part of the workload would add 0.67 core-s and 6.85 GiB-s to run 1,
-  under a thousandth of the amount.
+- **The collector is left on the unallocated line by a choice, not a measurement of whose
+  it is.** Listing it as part of the workload would add 0.67 core-s and 6.85 GiB-s to run
+  1, under a thousandth of the amount.
 - **The owner is declared, not observed.** The collector's series carry no owner label.
 - **Input tokens are not reconciled** against any counter by the performance record;
   requests and output tokens are.
@@ -209,9 +232,10 @@ What remains uncertain even about the measured use:
 
 ## A dashboard or query hook
 
-**None is added.** Nothing emits a cost record: the tool writes files by hand, and the
-telemetry catalog, the correlation queries, and the dashboard record all defer
-`inferops.cost.record.id` and `inferops_cost_records_total` for that reason. A panel or a
+**None is added.** Nothing emits a cost record: the tool is run by hand and writes
+files. The telemetry catalog defers `inferops.cost.record.id` and
+`inferops_cost_records_total` for that reason, and the correlation queries and the
+dashboard record defer `inferops_cost_records_total`. A panel or a
 query would read a series no component produces, which describes an absent capability as
 a quiet one, and inventing a metric to feed it is outside the telemetry boundary. The hook
 stays deferred with the platform component that would compute a cost record, which is

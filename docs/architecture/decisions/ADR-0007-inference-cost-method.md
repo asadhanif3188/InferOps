@@ -38,6 +38,11 @@
 > clarified to mean platform components. D11 and D12 are unchanged. The text below is
 > kept as it was accepted; where it says allocation is the only reachable basis, or
 > that nothing computes a record, read it as amended.
+>
+> **Implementation update, 2026-09-15 (`V1-S4-005-PR2`).** Usage values are no longer
+> only typed in by hand: `tools/cost_baseline` takes them from the committed `V1-S4-004`
+> samples under ADR 0014 D3, for [the V1 cost baseline](../../proof/cost/v1-s4-005-pr2-cost-baseline.md).
+> The status table's D9 row records the amendment as accepted.
 
 ## Decision status
 
@@ -319,10 +324,14 @@ be available.
 > **Amended 2026-09-15 by [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).** Processor seconds, memory byte-seconds,
 > requests, and tokens are now obtainable in V1 from a committed bounded experiment,
 > typed into a calculation input by hand; ADR 0014 D3 states how each is taken from
-> the samples, and `tools/cost_baseline` has applied it since `V1-S4-005-PR2`. None is
-> read from a running system, and
+> the samples, and no reader applies it yet. None is read from a running system, and
 > the named-signal comparison above is unchanged. The text above is kept as it was
 > accepted.
+>
+> **Implementation update, 2026-09-15 (`V1-S4-005-PR2`).** A reader now exists:
+> `tools/cost_baseline` takes these values from the committed samples and raw records
+> under ADR 0014 D3 and writes the calculation input, so they are no longer only typed
+> in by hand. Nothing here reads a running system.
 
 ## D10 — The output shape is part of the method, not a contract
 

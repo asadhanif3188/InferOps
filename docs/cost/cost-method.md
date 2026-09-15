@@ -413,7 +413,7 @@ costs.
 
 | Gap | What it blocks |
 |---|---|
-| No container or node resource metric, and no metrics server | Any `estimated` record whose use is read from telemetry; today measured use reaches a calculation only from a committed bounded experiment, by hand |
+| No container or node resource metric, and no metrics server | Any `estimated` record whose use is read from telemetry; today measured use reaches a calculation only from a committed bounded experiment, typed in by hand or taken from its samples by `tools/cost_baseline` |
 | No accelerator metric, and no accelerator ever used | Any accelerator line above an allocation from a declaration |
 | No collector keeps a utilisation series, and no durable store holds one | Reading any usage input from a running system, including the ones with full catalog coverage |
 | No check ties a hand-typed input to its samples | Knowing that a hand-typed usage value matches the evidence it names; an input `tools/cost_baseline` wrote is checked by regenerating it |

@@ -724,7 +724,40 @@ def test_the_report_carries_its_boundary() -> None:
         assert phrase in report, phrase
 
 
-def test_the_raw_set_parser_is_the_load_tools_own() -> None:
-    """The reader places requests with the load tool's parser, not a copy of it."""
-    run = record_run(1)
-    assert isinstance(SOURCES.raw_sets[run["rawFile"]], load.RawSet)
+@pytest.mark.parametrize("repetition", RUNS)
+def test_the_warm_up_is_inside_the_window_and_its_requests_are_counted(
+    repetition: int,
+) -> None:
+    """A run's cost covers its whole load span, warm-up included, and says so."""
+    run = record_run(repetition)
+    raw = SOURCES.raw_sets[run["rawFile"]]
+    warm_up = [request for request in raw.records if request.phase == load.PHASE_WARMUP]
+    assert warm_up, "the run holds no warm-up request"
+    derivation = run_derivation(repetition)
+    first_phase = run["phases"][0]
+    assert first_phase["role"] == "warm-up"
+    assert derivation["window"]["loadStartEpochMs"] == first_phase["startEpochMs"]
+    assert derivation["traffic"]["requests"] == len(raw.records)
+    assert derivation["traffic"]["requests"] == 60 * 3 + len(warm_up)
+
+
+def test_the_report_prices_no_reservation_beside_the_estimate() -> None:
+    """ADR 0014 D1: an allocation of the same window is never set beside an estimate."""
+    report = REPORT_PATH.read_text(encoding="utf-8").lower()
+    for phrase in (
+        r"price on the reservation",
+        r"allocation would have",
+        r"\ballocated amount",
+    ):
+        assert not re.search(phrase, report), phrase
+
+
+def test_the_synthetic_card_names_the_baseline_in_its_own_scope() -> None:
+    """The card says what it prices; the baseline is one of those things."""
+    source = next(
+        row
+        for row in METHOD["priceSources"]
+        if row["priceSourceId"] == "synthetic-illustrative-v1"
+    )
+    assert "cost baseline" in source["scope"]
+    assert source["scope"].endswith("and nothing else")

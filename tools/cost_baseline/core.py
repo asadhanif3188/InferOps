@@ -68,6 +68,7 @@ from tools.performance_scenarios.core import (
     ScenarioError,
     dumps,
     file_digest,
+    read_samples_jsonl,
     refuse_private,
     text_digest,
 )
@@ -78,7 +79,6 @@ EVIDENCE_CLASS = "local-real-cpu"
 EVIDENCE_ROOT = "docs/proof/"
 PRICE_SOURCE_ID = "synthetic-illustrative-v1"
 BASIS = "estimated"
-RECORD_KIND = "inferops-performance-scenarios-record"
 
 #: The values file the release was installed from; its digest must match the one the
 #: record's environment captured as executed, or the owner it declares is not trusted.
@@ -283,22 +283,28 @@ def read_sources(
             f"'{VALUES_FILE}' is not the file the experiment executed; the owner it "
             "declares cannot be attributed to the run"
         )
-    refuse_private(values_text, "values file")
-    samples = [
-        _object(json.loads(line), "sample")
-        for line in inputs.samples_text.splitlines()
-        if line.strip()
-    ]
-    raw_sets = {
-        name: load.parse_raw(text, repo_root=repo_root)
-        for name, text in sorted(inputs.raw_texts.items())
-    }
+    # The same texts were parsed once already, inside the regeneration check. They are
+    # parsed again with the same readers, and still inside a refusal, so that a parse
+    # failure here is never a traceback even if the two call sites drift apart.
+    try:
+        refuse_private(values_text, "values file")
+        samples = read_samples_jsonl(inputs.samples_text)
+        raw_sets = {
+            name: load.parse_raw(text, repo_root=repo_root)
+            for name, text in sorted(inputs.raw_texts.items())
+        }
+        environment = _object(json.loads(inputs.environment_text), "environment")
+        telemetry = _object(json.loads(inputs.telemetry_text), "telemetry")
+    except (ScenarioError, load.LoadError, json.JSONDecodeError) as error:
+        raise CostBaselineRefused(
+            f"the performance record's inputs cannot be parsed: {error}"
+        ) from error
     return Sources(
         record_ref=record_ref,
         record_sha256=text_digest(inputs.record_text),
         record=record,
-        environment=_object(json.loads(inputs.environment_text), "environment"),
-        telemetry=_object(json.loads(inputs.telemetry_text), "telemetry"),
+        environment=environment,
+        telemetry=telemetry,
         samples=samples,
         raw_sets=raw_sets,
         values_text=values_text.replace("\r\n", "\n"),
@@ -673,6 +679,7 @@ def derive_run(
         unavailable["output-tokens"] = INPUT_CONFLICT
 
     record_id = _record_id(identity, repetition)
+    capacity = node_capacity(sources.environment)
     document: dict[str, Any] = {
         "schemaVersion": calculation.SCHEMA_VERSION,
         "kind": calculation.INPUT_KIND,
@@ -688,7 +695,7 @@ def derive_run(
         "basis": BASIS,
         "priceSourceId": PRICE_SOURCE_ID,
         "window": {"start": instant(window.start_ms), "end": instant(window.end_ms)},
-        "capacity": node_capacity(sources.environment),
+        "capacity": capacity,
         "prerequisites": [],
         "workloads": [
             {
@@ -720,7 +727,6 @@ def derive_run(
         ],
     }
 
-    capacity = node_capacity(sources.environment)
     capacity_core_seconds = Fraction(capacity["cpuCores"]) * window.seconds
     capacity_byte_seconds = (
         Fraction(capacity["memoryGibibytes"]) * 2**30 * window.seconds

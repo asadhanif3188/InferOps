@@ -15,7 +15,7 @@
 
   "computationStatus": {
     "state": "synthetic-only",
-    "meaning": "A repository tool, tools/cost_calculation, computes an estimated cost record by hand from one declared input document and a committed rate card. A second repository tool, tools/cost_baseline, writes such an input from the committed samples of a bounded experiment under ADR 0014 D3, so two committed records carry measured use. Nothing in a running system computes, emits, stores, or reads a cost record, and the only rate card committed here is synthetic, so every figure the tools have produced is economically meaningless.",
+    "meaning": "A repository tool, tools/cost_calculation, computes an estimated cost record by hand from one declared input document and a committed rate card. A second repository tool, tools/cost_baseline, writes such an input from the committed samples of a bounded experiment under ADR 0014 D3, so two committed records carry measured use. Nothing in a running system computes, emits, stores, or reads a cost record, and the only rate card committed here is synthetic, so every figure the tools have produced is economically meaningless. The state stays synthetic-only for that reason: it describes the prices, and two records' use is measured while every price is invented.",
     "producer": "tools/cost_calculation, a repository tool run by hand that contacts no cluster, network, or telemetry store; which platform component computes and emits a cost record in a running system, and who owns it, is still not selected",
     "invoicesRead": 0,
     "syntheticRecordsProduced": 3,
@@ -314,7 +314,7 @@
       "retrieval": "committed",
       "selfIdentifies": true,
       "maxConfidence": "none",
-      "scope": "the worked example and the calculation fixtures in this repository, and nothing else",
+      "scope": "the worked example, the calculation fixtures, and the V1 cost baseline in this repository, and nothing else",
       "publishable": false,
       "rates": [
         { "unit": "cpu-core-hour", "ratePerHour": "0.040000" },

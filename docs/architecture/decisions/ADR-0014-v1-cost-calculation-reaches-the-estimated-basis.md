@@ -37,7 +37,10 @@
 > samples and raw records and writes the calculation input, so the
 > [V1 cost baseline](../../proof/cost/v1-s4-005-pr2-cost-baseline.md)'s two records carry
 > measured use that nobody typed. No decision below changes; D3's status row records
-> what now enforces it. The paragraph above is kept as it was accepted.
+> what now enforces it. The paragraph above, the header's "half of it enforced", the
+> consequence counting no measured record, and the compatibility note naming one tool
+> are kept as they were accepted: the method data now counts two measured records, and
+> two repository tools read it.
 
 ## Decision status
 
@@ -158,18 +161,18 @@ correctly and fits within the node's declared capacity for the window, but canno
 that it matches the record it names, which it does not read beyond its class. That gap
 is stated, not closed.
 
-**Update, `V1-S4-005-PR2`.** `tools/cost_baseline` is that reader. It refuses a
+**Update, 2026-09-15 (`V1-S4-005-PR2`).** `tools/cost_baseline` is that reader. It refuses a
 performance record that does not regenerate from its committed inputs, is not
 `local-real-cpu`, or failed one of its own checks, and then applies the rules above: the
 window opens and closes on the samples that bound a run's phases, so the counter increase
 and the trapezoidal integral cover the same interval and nothing is extrapolated; a
 counter that falls is null with `input-conflict`; a missing reading is refused rather
 than interpolated; every request must lie inside the window. Its `verify` regenerates the
-input byte for byte. Two choices the rules above did not make are made there and stated:
-the workload is the request path's API and runtime pods, and the release's collector is
-platform overhead left on the unallocated line. The gap is closed for inputs that tool
-writes and stays open for an input typed by hand, which `tools/cost_calculation` still
-does not check against its samples.
+input byte for byte. Which pods the baseline counts as the workload is not decided here:
+the rules above say how a pod's use is taken, not whose it is, and the baseline states
+its own attribution and its effect as a limitation of that record. The gap is closed for
+inputs that tool writes and stays open for an input typed by hand, which
+`tools/cost_calculation` still does not check against its samples.
 
 ## D4 — The estimated amount, and what closes
 
@@ -308,6 +311,7 @@ and the figures in them held to values worked out by hand. It is `local-static` 
 `synthetic` evidence. No usage value in it was measured, and no cost record has been
 calculated from the `V1-S4-004` evidence.
 
+**Update, 2026-09-15 (`V1-S4-005-PR2`).**
 [The V1 cost baseline](../../proof/cost/v1-s4-005-pr2-cost-baseline.md) and
 [its validation record](../../proof/cost/v1-s4-005-pr2-validation.md): two estimated records
 over the `V1-S4-004` runs, with measured use taken from the samples by `tools/cost_baseline`
@@ -317,8 +321,10 @@ and prices from the synthetic card, so confidence `none`.
 
 - **Hand-typed inputs are the weak point.** D3's integration rules are written and not
   executed. Until a reader applies them to committed samples, a calculation's usage
-  values are exactly as good as whoever typed them. (Since `V1-S4-005-PR2` a reader does,
-  for the inputs it writes; a typed input is still as good as its typist.)
+  values are exactly as good as whoever typed them.
+
+  **Update, 2026-09-15 (`V1-S4-005-PR2`).** A reader now applies them for the inputs it
+  writes; a typed input is still as good as its typist.
 - **A container's working set is not only its own allocations.** It counts file-backed
   pages the kernel charges to the container, so a memory-mapped model file is counted
   as far as the kernel charges it. The memory line prices what the kernel reported, not
