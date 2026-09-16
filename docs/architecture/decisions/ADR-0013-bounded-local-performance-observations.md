@@ -88,6 +88,20 @@ provider, the host, the model and revision, the runtime and its pinned image, th
 release configuration that shapes the measurement, the workload profile and its
 digest, the versions of what ran, and the evidence class.
 
+> **Implementation update, 2026-09-16 (`V1-S4-006-PR1`).** The list above is written
+> in terms of load and resources, because those were what existed when it was
+> accepted. A failure experiment publishes two further kinds of figure from one
+> executed run, and both are recorded here as falling under D1 rather than as a new
+> permission: **how long a lost workload took to be replaced and to serve again**,
+> and **what callers saw before, during, and after that loss** — request counts by
+> outcome, and latency percentiles either side. The sprint plan's Sprint 4
+> amendment already listed "model-load/recovery observations" and "before/during/
+> after failure impact" among the permitted evidence for this exact environment;
+> this note records that the tooling now produces them and that they carry the same
+> naming requirement as every other figure under D1. D2 is unchanged, and the
+> record that publishes them carries `availabilityClaim: false` beside the two
+> flags D3 requires.
+
 ## D2 — What stays refused
 
 **Accepted as a rule.** None of the following may be published, whatever an
@@ -130,6 +144,18 @@ only thing that stops it. That gap is stated here rather than implied closed.
    without.
 
 Synthetic, mock, and rehearsal output never qualifies, however it is labelled.
+
+> **Implementation update, 2026-09-16 (`V1-S4-006-PR1`).** There is now a third
+> committed descriptor of the kind clause 1 requires —
+> [`inference-pod-recovery.v1.json`](../../../deploy/serving/experiments/inference-pod-recovery.v1.json),
+> for one inference pod lost under load — and a third tool that refuses a record
+> without its boundary, `tools.inference_pod_recovery`. Neither the clause nor the
+> enforcement it describes has changed: the two named above are examples of the kind,
+> not a closed list, and the new tool applies the same three checks plus one more,
+> refusing a record whose `availabilityClaim` is not `false`. The gap D2 states
+> remains exactly as stated: whether a figure is *presented* as an availability
+> figure is not machine-checked anywhere, and a reviewer is the only thing that
+> stops it.
 
 ## D4 — Saturation is stated by an analysis, and bounded
 

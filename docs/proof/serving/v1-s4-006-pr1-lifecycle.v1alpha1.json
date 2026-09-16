@@ -1,0 +1,60 @@
+{
+  "acquisition": {
+    "jobCountAfter": 0,
+    "jobCountBefore": 0
+  },
+  "claims": {
+    "countAfter": 1,
+    "countBefore": 1
+  },
+  "deletion": {
+    "issuedEpochMs": 1789549357895,
+    "name": "inferops-inferops-llm-runtime-56546cfdbd-jg7jl",
+    "nodeName": "desktop-control-plane",
+    "ownerKind": "ReplicaSet",
+    "ownerName": "inferops-inferops-llm-runtime-56546cfdbd",
+    "podsMatchingSelector": 1,
+    "requestedAfterLoadStartMs": 30000,
+    "uid": "ce4ba1ee-6a6d-4a2c-9540-3fa10fead214"
+  },
+  "idleBaseline": {
+    "endEpochMs": 1789549315449,
+    "startEpochMs": 1789549255207
+  },
+  "interventionsAfterDeletion": [],
+  "release": {
+    "revisionAfter": 1,
+    "revisionBefore": 1
+  },
+  "replacement": {
+    "containerStartedAt": "2026-09-16T09:02:53Z",
+    "initContainerName": "verify-model",
+    "initExitCode": 0,
+    "name": "inferops-inferops-llm-runtime-56546cfdbd-kgs9c",
+    "nodeName": "desktop-control-plane",
+    "observedEpochMs": 1789549359256,
+    "ownerKind": "ReplicaSet",
+    "ownerName": "inferops-inferops-llm-runtime-56546cfdbd",
+    "readyConditionAt": "2026-09-16T09:03:10Z",
+    "readyEpochMs": 1789549391560,
+    "restartCount": 0,
+    "uid": "53ddb513-7ee6-46b3-b149-e1d4ccf8d3fc"
+  },
+  "runs": [
+    {
+      "exitCode": 0,
+      "exitedEpochMs": 1789549886868,
+      "launchedEpochMs": 1789549325055,
+      "rawFile": "run-1-raw.jsonl",
+      "role": "disrupted"
+    },
+    {
+      "exitCode": 0,
+      "exitedEpochMs": 1789550355228,
+      "launchedEpochMs": 1789549917310,
+      "rawFile": "run-2-raw.jsonl",
+      "role": "recovered"
+    }
+  ],
+  "settledEpochMs": 1789550445495
+}
