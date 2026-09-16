@@ -74,6 +74,7 @@ ENTRY_POINTS = (
     "kubernetes-pod-restart.sh",
     "performance-scenarios.sh",
     "inference-pod-recovery.sh",
+    "unready-model-recovery.sh",
     "telemetry-collection-verify.sh",
     "target-detect.sh",
 )

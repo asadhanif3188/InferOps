@@ -10,6 +10,60 @@ once versioned releases begin.
 
 ### Added
 
+- **A model that does not become ready, arranged on purpose.** A committed experiment
+  descriptor, a one-setting values overlay, an operating script, and
+  `python -m tools.unready_model_recovery` install a release whose serving runtime is
+  given one hundredth of a processor, so `llama-server` starts, binds its port, begins
+  loading the model and does not finish; hold it there for a registered window while
+  four request surfaces are asked and readiness is sampled from four places that
+  disagree elsewhere; capture the diagnostics an operator would look at; drop the
+  overlay; upgrade; and ask the same four surfaces again. `ADR 0010` D8 marks
+  `model-not-ready` as the one row of its error mapping anything ever observed, and
+  observed it incidentally in a Sprint 0 control-plane line; the mock adapter's
+  `MockScenario.MODEL_NOT_READY` reproduces the shape, and
+  [the mock and real boundary](docs/serving/mock-and-real-boundary.md) says a mock may
+  never certify real local runtime behaviour. This arranges it. Twenty-nine checks
+  decide whether a record is usable, and the descriptor carries the four mechanisms that
+  were measured and rejected -- an artifact mismatch, an absent artifact, a file that is
+  not a GGUF, and a context size at the schema maximum -- so that the choice of
+  disruption is readable rather than asserted.
+  [The result](docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md) regenerates
+  from its six committed inputs.
+
+  **What it states, for one single-replica release on `docker-desktop`:** the release
+  installed, the `verify-model` init container exited `0` in both the misconfigured pod
+  and the corrected one, and the runtime answered on its own port 20 272 ms after its
+  container started and went on answering for the whole 179 755 ms window with
+  `503 {"message":"Loading model"}` -- with **zero container restarts**, which is the
+  TCP-connect liveness probe doing the job the chart's probe asymmetry exists for, inside
+  30.0% of that runtime's own startup-probe budget. **No caller ever received
+  `model-not-ready`.** All eight completions came back `503 capability-unavailable`,
+  condition `runtime-unreachable`, retryable, because the runtime pod's readiness probe
+  had already removed its only address from the Service before the adapter could observe
+  the `503` -- so which row of D8 a Service-fronted release reaches is decided by the
+  probe, and that was written down nowhere. Both Services held **no** ready endpoint for
+  the whole window. `up` for the serving runtime read `0` and then `1`, which reverses
+  what `V1-S3-011-PR2` and `V1-S4-006` recorded about scrape health and readiness, and
+  for a stated reason: there the pod was terminating and still answering, here it is up
+  and refusing. `inferops_model_ready` -- the one metric the catalog declares for exactly
+  this question -- returned **0 series**, and the rule that publishes its absence read
+  `1` in both phases. Dropping the overlay and upgrading moved the release from revision
+  1 to 2 and a real completion came back 36 687 ms later, three output tokens, content
+  not retained.
+
+  **What it is not:** an availability figure, a service-level objective, an error budget,
+  a recovery-time objective, or a benchmark. The load was starved rather than failed, and
+  an earlier attempt watched the starved load finish, so the window is set at 180 s
+  against that measurement and the record does not claim the model would never have
+  loaded. The record carries `availabilityClaim: false` beside the two flags ADR 0013 D3
+  already required, and its boundary sentence must also refuse *recovery-time objective*.
+  ADR 0010 and ADR 0013 each gain one dated implementation note; no accepted sentence is
+  changed and no decision is amended. Publishing the diagnostics required withholding ten
+  excerpt lines that carried an address, nine of them `llama-server`'s own log lines
+  whose timestamps are indistinguishable from one -- counted in the record, and left as
+  follow-up along with a chart defect this run found incidentally: a large integer in a
+  values file renders in scientific notation, which the API refuses at start-up.
+
 - **Losing the inference pod while callers are waiting, measured.** A committed
   experiment descriptor, an operating script, and `python -m tools.inference_pod_recovery`
   delete exactly one serving runtime pod by the name the cluster gave it, a registered

@@ -1,0 +1,2268 @@
+{
+  "availabilityClaim": false,
+  "boundary": "Bounded observations of one release installed once with one runtime misconfiguration, on the provider, host, model, runtime, chart, and release recorded beside them. They are not an availability figure, a service-level objective, an error budget, a portable capacity figure, a recovery-time objective, or a benchmark of Kubernetes, the model, the runtime, or any provider.",
+  "callerSurface": {
+    "canonicalCodesObserved": [
+      "capability-unavailable"
+    ],
+    "conditionsObserved": [
+      "runtime-unreachable"
+    ],
+    "note": "One round of probes every registered interval, not a load profile. Membership is by the phase the round was sent in. The canonical code is the one the API reported in its own error body, not one this record inferred from a status.",
+    "probes": [
+      {
+        "atEpochMs": 1789575272892,
+        "bodyBytes": 75,
+        "bodySha256": "baa09177700f64520a799fd2628bb3663c1486b25e17e4a507f2e6c81bef957c",
+        "conditionId": "unavailable_error",
+        "detail": "Loading model",
+        "errorCode": null,
+        "latencyMs": 1030,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "unready",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 1,
+        "status": 503,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575274245,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 147,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "unready",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 1,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575274811,
+        "bodyBytes": 61,
+        "bodySha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "conditionId": null,
+        "detail": "not-ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 121,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "unready",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 1,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575275229,
+        "bodyBytes": 279,
+        "bodySha256": "035a9a94ca4ca38b748948c8585cc734f334b3c0e34f3a484c9767ea352be106",
+        "conditionId": "runtime-unreachable",
+        "detail": "the selected backend could not be reached",
+        "errorCode": "capability-unavailable",
+        "latencyMs": 136,
+        "method": "POST",
+        "outputTokens": null,
+        "path": "/v1/chat/completions",
+        "phase": "unready",
+        "probeId": "api-completion",
+        "retryable": true,
+        "round": 1,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575297179,
+        "bodyBytes": 75,
+        "bodySha256": "baa09177700f64520a799fd2628bb3663c1486b25e17e4a507f2e6c81bef957c",
+        "conditionId": "unavailable_error",
+        "detail": "Loading model",
+        "errorCode": null,
+        "latencyMs": 161,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "unready",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 2,
+        "status": 503,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575297786,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 188,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "unready",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 2,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575298292,
+        "bodyBytes": 61,
+        "bodySha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "conditionId": null,
+        "detail": "not-ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 304,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "unready",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 2,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575299034,
+        "bodyBytes": 279,
+        "bodySha256": "f187216dfbfe4108ea2f44a80b475b9a147fb00807973db9df03d78be7aa9797",
+        "conditionId": "runtime-unreachable",
+        "detail": "the selected backend could not be reached",
+        "errorCode": "capability-unavailable",
+        "latencyMs": 195,
+        "method": "POST",
+        "outputTokens": null,
+        "path": "/v1/chat/completions",
+        "phase": "unready",
+        "probeId": "api-completion",
+        "retryable": true,
+        "round": 2,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575320863,
+        "bodyBytes": 75,
+        "bodySha256": "baa09177700f64520a799fd2628bb3663c1486b25e17e4a507f2e6c81bef957c",
+        "conditionId": "unavailable_error",
+        "detail": "Loading model",
+        "errorCode": null,
+        "latencyMs": 172,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "unready",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 3,
+        "status": 503,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575321317,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 132,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "unready",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 3,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575321914,
+        "bodyBytes": 61,
+        "bodySha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "conditionId": null,
+        "detail": "not-ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 186,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "unready",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 3,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575322586,
+        "bodyBytes": 279,
+        "bodySha256": "0f8e98455b9705e609e109850035ea5bd3b82fcf40487427aa6535e8821f9a44",
+        "conditionId": "runtime-unreachable",
+        "detail": "the selected backend could not be reached",
+        "errorCode": "capability-unavailable",
+        "latencyMs": 245,
+        "method": "POST",
+        "outputTokens": null,
+        "path": "/v1/chat/completions",
+        "phase": "unready",
+        "probeId": "api-completion",
+        "retryable": true,
+        "round": 3,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575344776,
+        "bodyBytes": 75,
+        "bodySha256": "baa09177700f64520a799fd2628bb3663c1486b25e17e4a507f2e6c81bef957c",
+        "conditionId": "unavailable_error",
+        "detail": "Loading model",
+        "errorCode": null,
+        "latencyMs": 151,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "unready",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 4,
+        "status": 503,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575345265,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 161,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "unready",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 4,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575345835,
+        "bodyBytes": 61,
+        "bodySha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "conditionId": null,
+        "detail": "not-ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 182,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "unready",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 4,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575346448,
+        "bodyBytes": 279,
+        "bodySha256": "ffc707bae2f566fc9a59da33f167fefd505de898ce3d408275c992f1fe9dbb1c",
+        "conditionId": "runtime-unreachable",
+        "detail": "the selected backend could not be reached",
+        "errorCode": "capability-unavailable",
+        "latencyMs": 260,
+        "method": "POST",
+        "outputTokens": null,
+        "path": "/v1/chat/completions",
+        "phase": "unready",
+        "probeId": "api-completion",
+        "retryable": true,
+        "round": 4,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575368647,
+        "bodyBytes": 75,
+        "bodySha256": "baa09177700f64520a799fd2628bb3663c1486b25e17e4a507f2e6c81bef957c",
+        "conditionId": "unavailable_error",
+        "detail": "Loading model",
+        "errorCode": null,
+        "latencyMs": 327,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "unready",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 5,
+        "status": 503,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575369429,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 228,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "unready",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 5,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575370094,
+        "bodyBytes": 61,
+        "bodySha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "conditionId": null,
+        "detail": "not-ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 210,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "unready",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 5,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575370791,
+        "bodyBytes": 279,
+        "bodySha256": "735fe6f9bbf33e999dd3c17ffa532e59e602d3a9dc8bd372305ed7caff1f20ac",
+        "conditionId": "runtime-unreachable",
+        "detail": "the selected backend could not be reached",
+        "errorCode": "capability-unavailable",
+        "latencyMs": 293,
+        "method": "POST",
+        "outputTokens": null,
+        "path": "/v1/chat/completions",
+        "phase": "unready",
+        "probeId": "api-completion",
+        "retryable": true,
+        "round": 5,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575392782,
+        "bodyBytes": 75,
+        "bodySha256": "baa09177700f64520a799fd2628bb3663c1486b25e17e4a507f2e6c81bef957c",
+        "conditionId": "unavailable_error",
+        "detail": "Loading model",
+        "errorCode": null,
+        "latencyMs": 1205,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "unready",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 6,
+        "status": 503,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575394299,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 158,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "unready",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 6,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575394873,
+        "bodyBytes": 61,
+        "bodySha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "conditionId": null,
+        "detail": "not-ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 155,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "unready",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 6,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575395349,
+        "bodyBytes": 279,
+        "bodySha256": "f71d79eff813f70b93ea42dcfc4999b504cfb49d07c535765a7ff90b8d9fe6d1",
+        "conditionId": "runtime-unreachable",
+        "detail": "the selected backend could not be reached",
+        "errorCode": "capability-unavailable",
+        "latencyMs": 122,
+        "method": "POST",
+        "outputTokens": null,
+        "path": "/v1/chat/completions",
+        "phase": "unready",
+        "probeId": "api-completion",
+        "retryable": true,
+        "round": 6,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575410637,
+        "bodyBytes": 75,
+        "bodySha256": "baa09177700f64520a799fd2628bb3663c1486b25e17e4a507f2e6c81bef957c",
+        "conditionId": "unavailable_error",
+        "detail": "Loading model",
+        "errorCode": null,
+        "latencyMs": 9849,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "unready",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 7,
+        "status": 503,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575420789,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 121,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "unready",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 7,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575421193,
+        "bodyBytes": 61,
+        "bodySha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "conditionId": null,
+        "detail": "not-ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 160,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "unready",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 7,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575421631,
+        "bodyBytes": 279,
+        "bodySha256": "f6663c74e6e4abbca23d33dd6e21aadc245975751dfa10f694e3fe4849af310e",
+        "conditionId": "runtime-unreachable",
+        "detail": "the selected backend could not be reached",
+        "errorCode": "capability-unavailable",
+        "latencyMs": 134,
+        "method": "POST",
+        "outputTokens": null,
+        "path": "/v1/chat/completions",
+        "phase": "unready",
+        "probeId": "api-completion",
+        "retryable": true,
+        "round": 7,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575444908,
+        "bodyBytes": 75,
+        "bodySha256": "baa09177700f64520a799fd2628bb3663c1486b25e17e4a507f2e6c81bef957c",
+        "conditionId": "unavailable_error",
+        "detail": "Loading model",
+        "errorCode": null,
+        "latencyMs": 3673,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "unready",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 8,
+        "status": 503,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575448825,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 162,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "unready",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 8,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575449377,
+        "bodyBytes": 61,
+        "bodySha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "conditionId": null,
+        "detail": "not-ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 243,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "unready",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 8,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575449931,
+        "bodyBytes": 279,
+        "bodySha256": "93ea6c4baa9e2a9e8a04f45270eb3983fb7d8fa55626f1745f1db32b48b256f0",
+        "conditionId": "runtime-unreachable",
+        "detail": "the selected backend could not be reached",
+        "errorCode": "capability-unavailable",
+        "latencyMs": 177,
+        "method": "POST",
+        "outputTokens": null,
+        "path": "/v1/chat/completions",
+        "phase": "unready",
+        "probeId": "api-completion",
+        "retryable": true,
+        "round": 8,
+        "status": 503,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575488150,
+        "bodyBytes": 15,
+        "bodySha256": "a29ee2b15c494311c52521766e44af56a3ad2248e7a8ab465e5206463c13d288",
+        "conditionId": null,
+        "detail": "ok",
+        "errorCode": null,
+        "latencyMs": 187,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "recovered",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 1,
+        "status": 200,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575488735,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 208,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "recovered",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 1,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575489527,
+        "bodyBytes": 57,
+        "bodySha256": "c78a4556f294e185cf126e9589cf16217b8f87f51ae841671b555bbce1cba549",
+        "conditionId": null,
+        "detail": "ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 352,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "recovered",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 1,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575490349,
+        "bodyBytes": 502,
+        "bodySha256": "8f6c157c710aa38556b024dcdee0acaa577bdb20b92ea606baac6e9d75fd3b07",
+        "conditionId": null,
+        "detail": "served, finish_reason=stop",
+        "errorCode": null,
+        "latencyMs": 1093,
+        "method": "POST",
+        "outputTokens": 3,
+        "path": "/v1/chat/completions",
+        "phase": "recovered",
+        "probeId": "api-completion",
+        "retryable": null,
+        "round": 1,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575509162,
+        "bodyBytes": 15,
+        "bodySha256": "a29ee2b15c494311c52521766e44af56a3ad2248e7a8ab465e5206463c13d288",
+        "conditionId": null,
+        "detail": "ok",
+        "errorCode": null,
+        "latencyMs": 204,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "recovered",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 2,
+        "status": 200,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575509797,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 270,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "recovered",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 2,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575510948,
+        "bodyBytes": 57,
+        "bodySha256": "c78a4556f294e185cf126e9589cf16217b8f87f51ae841671b555bbce1cba549",
+        "conditionId": null,
+        "detail": "ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 360,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "recovered",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 2,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575511963,
+        "bodyBytes": 502,
+        "bodySha256": "346d33fe08c090be221c0aa18e742d553bcdbaff0d18f8dd56b803c59bc0a69a",
+        "conditionId": null,
+        "detail": "served, finish_reason=stop",
+        "errorCode": null,
+        "latencyMs": 794,
+        "method": "POST",
+        "outputTokens": 3,
+        "path": "/v1/chat/completions",
+        "phase": "recovered",
+        "probeId": "api-completion",
+        "retryable": null,
+        "round": 2,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575534861,
+        "bodyBytes": 15,
+        "bodySha256": "a29ee2b15c494311c52521766e44af56a3ad2248e7a8ab465e5206463c13d288",
+        "conditionId": null,
+        "detail": "ok",
+        "errorCode": null,
+        "latencyMs": 124,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health",
+        "phase": "recovered",
+        "probeId": "runtime-health",
+        "retryable": null,
+        "round": 3,
+        "status": 200,
+        "tier": "serving-runtime"
+      },
+      {
+        "atEpochMs": 1789575535364,
+        "bodyBytes": 18,
+        "bodySha256": "bc24b0b5a305d5afc198c725890c8fb91053be2dbd8672779de73cac19a008fa",
+        "conditionId": null,
+        "detail": "alive",
+        "errorCode": null,
+        "latencyMs": 167,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/live",
+        "phase": "recovered",
+        "probeId": "api-liveness",
+        "retryable": null,
+        "round": 3,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575535938,
+        "bodyBytes": 57,
+        "bodySha256": "c78a4556f294e185cf126e9589cf16217b8f87f51ae841671b555bbce1cba549",
+        "conditionId": null,
+        "detail": "ready, adapterKind=real, state=serving",
+        "errorCode": null,
+        "latencyMs": 187,
+        "method": "GET",
+        "outputTokens": null,
+        "path": "/health/ready",
+        "phase": "recovered",
+        "probeId": "api-readiness",
+        "retryable": null,
+        "round": 3,
+        "status": 200,
+        "tier": "platform-api"
+      },
+      {
+        "atEpochMs": 1789575536525,
+        "bodyBytes": 502,
+        "bodySha256": "e1fa1b46fd77df0ffb8c789b22b7c83295189a018f8fe1c36da2434edda7e7ff",
+        "conditionId": null,
+        "detail": "served, finish_reason=stop",
+        "errorCode": null,
+        "latencyMs": 454,
+        "method": "POST",
+        "outputTokens": 3,
+        "path": "/v1/chat/completions",
+        "phase": "recovered",
+        "probeId": "api-completion",
+        "retryable": null,
+        "round": 3,
+        "status": 200,
+        "tier": "platform-api"
+      }
+    ],
+    "roundsAfterRecovery": 3,
+    "roundsWhileUnready": 8,
+    "surfaces": [
+      {
+        "expectation": "The runtime's own answer, and the one input `src/inferops/adapters/llama_cpp/readiness.py` maps. 503 is `ReadinessState.LOADING` and 200 is `READY`; there is no third answer this adapter reads as ready.",
+        "expectedRecoveredStatus": 200,
+        "expectedUnreadyStatus": 503,
+        "method": "GET",
+        "path": "/health",
+        "probeId": "runtime-health",
+        "recovered": {
+          "asked": 3,
+          "errorCodes": {
+            "null": 3
+          },
+          "statuses": {
+            "200": 3
+          }
+        },
+        "tier": "serving-runtime",
+        "unready": {
+          "asked": 8,
+          "errorCodes": {
+            "null": 8
+          },
+          "statuses": {
+            "503": 8
+          }
+        }
+      },
+      {
+        "expectation": "Answerable while the model is loading, by design. If this were not 200 the API pod would be restarted for being not-ready, which is the defect the chart's two-path split exists to prevent.",
+        "expectedRecoveredStatus": 200,
+        "expectedUnreadyStatus": 200,
+        "method": "GET",
+        "path": "/health/live",
+        "probeId": "api-liveness",
+        "recovered": {
+          "asked": 3,
+          "errorCodes": {
+            "null": 3
+          },
+          "statuses": {
+            "200": 3
+          }
+        },
+        "tier": "platform-api",
+        "unready": {
+          "asked": 8,
+          "errorCodes": {
+            "null": 8
+          },
+          "statuses": {
+            "200": 8
+          }
+        }
+      },
+      {
+        "expectation": "The conjunction of the API accepting work and the adapter reporting itself able. While the model is not ready this is 503 and the API counts one `inferops_readiness_check_failures_total` against `serving-adapter` per ask.",
+        "expectedRecoveredStatus": 200,
+        "expectedUnreadyStatus": 503,
+        "method": "GET",
+        "path": "/health/ready",
+        "probeId": "api-readiness",
+        "recovered": {
+          "asked": 3,
+          "errorCodes": {
+            "null": 3
+          },
+          "statuses": {
+            "200": 3
+          }
+        },
+        "tier": "platform-api",
+        "unready": {
+          "asked": 8,
+          "errorCodes": {
+            "null": 8
+          },
+          "statuses": {
+            "503": 8
+          }
+        }
+      },
+      {
+        "expectation": "The canonical refusal a caller receives. ADR 0010 D8 maps a loading runtime to `model-not-ready` and an unreachable one to `capability-unavailable`; both are 503 and both are retryable, and which one arrives depends on whether the adapter could reach the runtime at all. The record states the code that was observed and does not assume either.",
+        "expectedRecoveredStatus": 200,
+        "expectedUnreadyStatus": 503,
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "probeId": "api-completion",
+        "recovered": {
+          "asked": 3,
+          "errorCodes": {
+            "null": 3
+          },
+          "statuses": {
+            "200": 3
+          }
+        },
+        "tier": "platform-api",
+        "unready": {
+          "asked": 8,
+          "errorCodes": {
+            "capability-unavailable": 8
+          },
+          "statuses": {
+            "503": 8
+          }
+        }
+      }
+    ]
+  },
+  "certificationCeiling": "C2",
+  "checks": [
+    {
+      "checkId": "the-release-installed-with-the-misconfiguration",
+      "detail": "revision 1 installed and the 'verify-model' init container exited 0; chart validation and the model integrity check both accepted it",
+      "passed": true
+    },
+    {
+      "checkId": "the-model-artifact-was-never-in-question",
+      "detail": "the byte count and SHA-256 check passed in both the misconfigured pod and the corrected one, which is what separates this from an artifact fault",
+      "passed": true
+    },
+    {
+      "checkId": "the-runtime-container-started-and-opened-its-port",
+      "detail": "21 sample(s) across the unready window, every one of them with a serving runtime pod present; the process answered on its own port 20272 ms after the container was reported running, which is what satisfies the chart's TCP liveness probe",
+      "passed": true
+    },
+    {
+      "checkId": "readiness-was-false-for-the-whole-unready-window",
+      "detail": "no sample in the unready window reported a ready serving runtime pod",
+      "passed": true
+    },
+    {
+      "checkId": "the-runtime-service-had-no-ready-endpoint-while-unready",
+      "detail": "the runtime Service was willing to send traffic to no address for the whole window",
+      "passed": true
+    },
+    {
+      "checkId": "the-runtime-answered-the-loading-status-throughout",
+      "detail": "8 of 8 asks answered 503, which is the status the adapter maps to LOADING",
+      "passed": true
+    },
+    {
+      "checkId": "liveness-did-not-restart-a-healthy-process",
+      "detail": "the serving runtime container's restart count was 0 at every sample. The chart's liveness probe is a TCP connect and the socket was open throughout, which is why a model that never became ready did not become a restart loop inside this window",
+      "passed": true
+    },
+    {
+      "checkId": "every-completion-while-unready-was-refused-canonically",
+      "detail": "8 completion(s) asked while the model was unready; statuses {'503': 8}, codes {'capability-unavailable': 8}",
+      "passed": true
+    },
+    {
+      "checkId": "one-canonical-code-answered-the-whole-unready-window",
+      "detail": "the codes observed were capability-unavailable. More than one would mean a caller could not have been told the same thing twice",
+      "passed": true
+    },
+    {
+      "checkId": "every-canonical-refusal-was-retryable",
+      "detail": "each refusal carried retryable=true, which is what both codes ADR 0010 D8 maps this situation to are defined as",
+      "passed": true
+    },
+    {
+      "checkId": "the-api-stayed-answerable-while-its-adapter-could-not-serve",
+      "detail": "the API's liveness path answered 200 at every ask while its readiness path refused, which is the split that stops a not-ready API being restarted",
+      "passed": true
+    },
+    {
+      "checkId": "the-api-reported-itself-not-ready-while-unready",
+      "detail": "the API's readiness path answered 503 at every ask in the unready window",
+      "passed": true
+    },
+    {
+      "checkId": "every-registered-diagnostic-was-captured",
+      "detail": "runtime-describe kept 147 line(s); runtime-log kept 10 line(s); api-log kept 56 line(s); api-readiness-body kept 1 line(s); runtime-resources kept 1 line(s)",
+      "passed": true
+    },
+    {
+      "checkId": "every-capture-excerpt-is-publishable",
+      "detail": "runtime-describe withheld 1 line(s); runtime-log withheld 9 line(s); api-log withheld 0 line(s); api-readiness-body withheld 0 line(s); runtime-resources withheld 0 line(s)",
+      "passed": true
+    },
+    {
+      "checkId": "a-diagnostic-registered-as-naming-the-cause-was-captured",
+      "detail": "runtime-log; runtime-resources",
+      "passed": true
+    },
+    {
+      "checkId": "the-misconfiguration-is-readable-from-the-cluster",
+      "detail": "the serving runtime container's processor limit was 10m while unready and 6 after the fix, read from the Deployment rather than from the values file",
+      "passed": true
+    },
+    {
+      "checkId": "the-fix-moved-the-release-revision",
+      "detail": "revision 1 became 2",
+      "passed": true
+    },
+    {
+      "checkId": "the-corrected-pod-is-not-the-misconfigured-one",
+      "detail": "the serving runtime pod after the fix carries a different uid from the one that was starved; a first execution of this experiment stamped the recovery from the misconfigured pod, whose starved load had finished, and the check exists because of it",
+      "passed": true
+    },
+    {
+      "checkId": "the-runtime-became-ready-after-the-fix",
+      "detail": "a sample after the upgrade reported a ready serving runtime pod, and the pod's own Ready condition agrees",
+      "passed": true
+    },
+    {
+      "checkId": "a-real-completion-came-back-after-the-fix",
+      "detail": "a completion came back 36687 ms after the upgrade with 3 output token(s)",
+      "passed": true
+    },
+    {
+      "checkId": "the-runtime-reported-ready-to-a-caller-after-the-fix",
+      "detail": "the runtime answered 200 at 3 of 3 asks after the fix",
+      "passed": true
+    },
+    {
+      "checkId": "every-tier-was-ready-after-the-fix",
+      "detail": "each of the three tiers reports a pod whose Ready condition is true",
+      "passed": true
+    },
+    {
+      "checkId": "the-service-was-restored-within-the-recovery-budget",
+      "detail": "36687 ms against a budget of 1500000 ms",
+      "passed": true
+    },
+    {
+      "checkId": "no-published-interval-is-negative",
+      "detail": "every interval a reader would take as a duration is zero or more",
+      "passed": true
+    },
+    {
+      "checkId": "readiness-samples-cover-the-unready-window",
+      "detail": "21 sample(s), widest gap 18702 ms against a ceiling of 30000 ms",
+      "passed": true
+    },
+    {
+      "checkId": "the-only-intervention-was-the-registered-fix",
+      "detail": "the operating script recorded ['corrected-the-values-and-upgraded']. This experiment expects exactly one intervention: a model that cannot load is not a state a controller reverses",
+      "passed": true
+    },
+    {
+      "checkId": "claim-count-unchanged",
+      "detail": "1 claim(s) either side",
+      "passed": true
+    },
+    {
+      "checkId": "telemetry-registered-absences-are-absent",
+      "detail": "model-readiness-by-workload returned 0 series; pod-container-restarts returned 0 series",
+      "passed": true
+    },
+    {
+      "checkId": "telemetry-registered-signals-answered",
+      "detail": "model-readiness-absence success with 1 series; api-errors-by-code success with 1 series; api-readiness-check-failures success with 1 series; api-requests-by-outcome success with 2 series; serving-runtime-scrape-up success with 2 series; scrape-target-health-by-job success with 2 series; runtime-requests-processing success with 1 series; api-build-identity success with 1 series",
+      "passed": true
+    }
+  ],
+  "descriptorSha256": "7220395254fe7da172d438df1252a59b66a376685937c94d5b7834276c4fdb59",
+  "diagnostics": {
+    "captures": [
+      {
+        "bytes": 6588,
+        "captureId": "runtime-describe",
+        "empty": false,
+        "excerpt": "Events:\n  Type     Reason     Age                   From               Message\n  ----     ------     ----                  ----               -------\n  Normal   Scheduled  4m37s                 default-scheduler  Successfully assigned inferops-release/inferops-inferops-llm-runtime-6d9588c68d-kgncv to desktop-control-plane\n  Normal   Pulled     4m37s                 kubelet            Container image \"docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0\" already present on machine\n  Normal   Created    4m37s                 kubelet            Created container: verify-model\n  Normal   Started    4m37s                 kubelet            Started container verify-model\n  Normal   Pulled     4m33s                 kubelet            Container image \"ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\" already present on machine\n  Normal   Created    4m33s                 kubelet            Created container: runtime\n  Normal   Started    4m26s                 kubelet            Started container runtime\n  Warning  Unhealthy  55s (x21 over 4m17s)  kubelet            Startup probe failed: HTTP probe failed with statuscode: 503",
+        "excerptLinesWithheld": 1,
+        "expectation": "Events and container state. The init container's success is here, which is what separates this from an artifact fault.",
+        "identifiesCause": "probable",
+        "lines": 147,
+        "phase": "unready",
+        "sha256": "ccf23fa697255e0cfc85eff9c20c2d21b76c6ee4978c50e015f0a0cfb1d81ac0",
+        "what": "kubectl describe of the serving runtime pod"
+      },
+      {
+        "bytes": 887,
+        "captureId": "runtime-log",
+        "empty": false,
+        "excerpt": "warn: LLAMA_ARG_HOST environment variable is set, but will be overwritten by command line argument --host",
+        "excerptLinesWithheld": 9,
+        "expectation": "`llama-server` names the artifact it is loading and stops there. The line that identifies the cause is the absence of a completed load, read together with the container's CPU limit.",
+        "identifiesCause": "yes",
+        "lines": 10,
+        "phase": "unready",
+        "sha256": "51b600704cd66adeae51c9820b4c6aae9966945787d39283edaef92f52ae9008",
+        "what": "the serving runtime container's log"
+      },
+      {
+        "bytes": 43870,
+        "captureId": "api-log",
+        "empty": false,
+        "excerpt": "{\"timestamp\":\"2026-09-16T16:16:39.515Z\",\"level\":\"warn\",\"inferops.event\":\"readiness.failed\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"dbd4782a-a641-4ac5-82e7-f26c2b854a20\",\"inferops.component\":\"serving-adapter\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:16:49.514Z\",\"level\":\"warn\",\"inferops.event\":\"readiness.failed\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"7c789ec3-a3bb-423e-8f76-94fa9d9b9424\",\"inferops.component\":\"serving-adapter\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:16:59.512Z\",\"level\":\"warn\",\"inferops.event\":\"readiness.failed\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"b018f672-4c62-49a4-8c2f-c95a0cf39c98\",\"inferops.component\":\"serving-adapter\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:17:01.319Z\",\"level\":\"warn\",\"inferops.event\":\"readiness.failed\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"018a9f32-b153-4a99-947e-38c830269fe2\",\"inferops.component\":\"serving-adapter\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:17:01.735Z\",\"level\":\"info\",\"inferops.event\":\"request.received\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"c3fe5685-d3ad-4c34-bc49-d87b6d82554c\",\"inferops.request.id\":\"db279943-77de-443a-a24d-da9c3d1b11fd\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:17:01.736Z\",\"level\":\"warn\",\"inferops.event\":\"request.refused\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"c3fe5685-d3ad-4c34-bc49-d87b6d82554c\",\"inferops.request.id\":\"db279943-77de-443a-a24d-da9c3d1b11fd\",\"inferops.model.id\":\"qwen3-1-7b-q8-0\",\"inferops.runtime.id\":\"llama-cpp-server\",\"inferops.outcome\":\"server-error\",\"inferops.error.code\":\"capability-unavailable\",\"http.response.status_code\":503,\"inferops.duration.ms\":0.356}\n{\"timestamp\":\"2026-09-16T16:17:09.512Z\",\"level\":\"warn\",\"inferops.event\":\"readiness.failed\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"1f53ca08-bad4-43cc-aadb-e45b3d70c9de\",\"inferops.component\":\"serving-adapter\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:17:19.511Z\",\"level\":\"warn\",\"inferops.event\":\"readiness.failed\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"8f076863-ba5d-465a-a17e-f6ab74ff5cb1\",\"inferops.component\":\"serving-adapter\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:17:29.511Z\",\"level\":\"warn\",\"inferops.event\":\"readiness.failed\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"1bc1ac0e-972f-4df1-90a0-ae773dfd899c\",\"inferops.component\":\"serving-adapter\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:17:29.591Z\",\"level\":\"warn\",\"inferops.event\":\"readiness.failed\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"4aba7899-fdeb-4d39-9b0e-889243e2460f\",\"inferops.component\":\"serving-adapter\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:17:30.063Z\",\"level\":\"info\",\"inferops.event\":\"request.received\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"ee04b803-6cb2-441a-8e17-b073bafed149\",\"inferops.request.id\":\"b1a776f6-4e75-408e-9ee1-135d31258912\",\"inferops.runtime.id\":\"llama-cpp-server\"}\n{\"timestamp\":\"2026-09-16T16:17:30.064Z\",\"level\":\"warn\",\"inferops.event\":\"request.refused\",\"service.name\":\"inferops-api\",\"deployment.environment\":\"dev\",\"inferops.capability.id\":\"inferops-native-serving\",\"inferops.release.id\":\"inferops\",\"k8s.pod.name\":\"inferops-inferops-llm-5c4bbb988c-t8x6d\",\"inferops.model.revision\":\"90862c4b9d2787eaed51d12237eafdfe7c5f6077\",\"inferops.runtime.image.digest\":\"sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384\",\"inferops.adapter.kind\":\"real\",\"inferops.workload.id\":\"support-assistant\",\"inferops.workload.version\":\"0.1.0\",\"inferops.owner.id\":\"team-platform-demo\",\"inferops.correlation.id\":\"ee04b803-6cb2-441a-8e17-b073bafed149\",\"inferops.request.id\":\"b1a776f6-4e75-408e-9ee1-135d31258912\",\"inferops.model.id\":\"qwen3-1-7b-q8-0\",\"inferops.runtime.id\":\"llama-cpp-server\",\"inferops.outcome\":\"server-error\",\"inferops.error.code\":\"capability-unavailable\",\"http.response.status_code\":503,\"inferops.duration.ms\":0.518}",
+        "excerptLinesWithheld": 0,
+        "expectation": "The API's own view. It says the adapter is not ready; it does not say why the model is not loading, and it is not supposed to.",
+        "identifiesCause": "partial",
+        "lines": 56,
+        "phase": "unready",
+        "sha256": "23e2271ab158a809be5af185bfe1b6dff265b873eabc38670dec3b3cceee7516",
+        "what": "the platform API container's log"
+      },
+      {
+        "bytes": 61,
+        "captureId": "api-readiness-body",
+        "empty": false,
+        "excerpt": "{\"status\":\"not-ready\",\"adapterKind\":\"real\",\"state\":\"serving\"}",
+        "excerptLinesWithheld": 0,
+        "expectation": "The adapter kind and the lifecycle state, which distinguish a not-ready adapter from a draining API.",
+        "identifiesCause": "partial",
+        "lines": 1,
+        "phase": "unready",
+        "sha256": "afcc07e8d2a0e32989109abbe9d456ffd80df730d60479533191d25179d085cc",
+        "what": "the body of the API's own readiness endpoint"
+      },
+      {
+        "bytes": 82,
+        "captureId": "runtime-resources",
+        "empty": false,
+        "excerpt": "runtime requests={\"cpu\":\"10m\",\"memory\":\"2Gi\"} limits={\"cpu\":\"10m\",\"memory\":\"3Gi\"}",
+        "excerptLinesWithheld": 0,
+        "expectation": "The misconfiguration itself, readable from the cluster rather than from the values file the operator passed.",
+        "identifiesCause": "yes",
+        "lines": 1,
+        "phase": "unready",
+        "sha256": "e8f6d5a2b9211c112e3c8e24f6b26c2329240727e531944f1273b48c278d9f43",
+        "what": "the serving runtime container's declared resource requests and limits"
+      }
+    ],
+    "note": "What an operator would look at, captured while the release was in the unready state. The excerpts are bounded and every capture is refused if it carries a host path, a user directory, or an address that is not loopback. Whether a capture *explains* the cause is a reviewed judgement and is not decided here; what is decided is whether it was captured and whether it is safe to publish."
+  },
+  "disruption": {
+    "appliedAt": "install",
+    "integrityInitContainer": "verify-model",
+    "integrityInitExitCode": 0,
+    "mechanism": "starve-serving-runtime-cpu-at-install",
+    "overlaySetsOnly": [
+      "runtime.resources.requests.cpu",
+      "runtime.resources.limits.cpu"
+    ],
+    "rejectedMechanisms": [
+      "artifact-size-or-hash-mismatch: refused by the verify-model init container before the runtime container is started, which is an install-time refusal and is V1-S3-008's mechanism rather than this one's",
+      "absent-artifact-or-another-revision-subdirectory: the init container reads the same derived container path the runtime is given, by design and in one expression, so a file that is not there fails the init container rather than the model load",
+      "a-well-sized-file-that-is-not-a-gguf: measured against the pinned image, `llama-server` logs `exiting due to model loading error` and exits 1, which is container-restart churn and not a healthy process serving an unready model",
+      "context-size-at-the-schema-maximum: a large integer supplied from a values file renders in scientific notation, which the API refuses at start-up and which `llama-server` reads as a context of 1 and aborts on; and the allocation it asks for does not hold the process in a stable loading state",
+      "a-health-path-the-runtime-does-not-serve: the model would be ready and the probe would be wrong, which proves nothing about an unready model"
+    ],
+    "reversedBy": "values-fix-and-upgrade",
+    "scope": "release-values",
+    "servingRuntimeCpu": {
+      "recovered": {
+        "limit": "6",
+        "request": "1"
+      },
+      "unready": {
+        "limit": "10m",
+        "request": "10m"
+      }
+    },
+    "target": "serving-runtime",
+    "valuesOverlayRef": "deploy/serving/experiments/unready-model-values.v1.yaml"
+  },
+  "distinctProofQuestion": "ADR 0010 D8 records `model-not-ready` as the one row of the accepted error mapping anything ever observed, and records it from a control-plane line seen incidentally during the Sprint 0 feasibility trial. `MockScenario.MODEL_NOT_READY` reproduces the shape in a fixture, and docs/serving/mock-and-real-boundary.md states as its rule that a mock serving path may never be used to certify real local runtime behaviour, however faithfully it reproduces the API surface. This experiment deliberately installs a release whose model does not become ready, on a real cluster, and records what readiness, liveness, the canonical error surface, diagnostics, and telemetry actually do while it is in that state, and what a values fix and an upgrade get back. It is not V1-S3-008's artifact mismatch, which is refused before the runtime container starts, and it is not V1-S4-006's deletion of a healthy pod.",
+  "environment": {
+    "background": {
+      "namespacesWithRunningPodsOutsideRelease": 3,
+      "runningPodsOutsideRelease": 12
+    },
+    "cluster": "docker-desktop",
+    "configuration": {
+      "INFEROPS_LLAMA_SERVER_CONTEXT_SIZE": "4096",
+      "INFEROPS_LLAMA_SERVER_METRICS_ENABLED": "true",
+      "INFEROPS_LLAMA_SERVER_THREADS": "6",
+      "INFEROPS_MAX_OUTPUT_TOKENS": "128",
+      "INFEROPS_MODEL_IDENTIFIER": "qwen3-1-7b-q8-0",
+      "INFEROPS_MODEL_REVISION": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "INFEROPS_REQUEST_TIMEOUT_MS": "120000",
+      "INFEROPS_RUNTIME_IMAGE_DIGEST": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "INFEROPS_SERVING_ADAPTER": "real"
+    },
+    "context": "docker-desktop",
+    "engine": {
+      "cpus": 12,
+      "memoryBytes": 10432536576,
+      "serverVersion": "29.7.2"
+    },
+    "kubernetes": {
+      "helmVersion": "v3.19.0+g3d8990f",
+      "kubectlVersion": "v1.34.3",
+      "serverVersion": "v1.34.3"
+    },
+    "node": {
+      "allocatable": {
+        "cpu": "12",
+        "memory": "10188024Ki"
+      },
+      "capacity": {
+        "cpu": "12",
+        "memory": "10188024Ki"
+      },
+      "containerRuntimeVersion": "containerd://2.2.0",
+      "imageDigest": "sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48",
+      "kernelVersion": "5.15.146.1-microsoft-standard-WSL2",
+      "kubeletVersion": "v1.34.3",
+      "name": "desktop-control-plane",
+      "osImage": "Debian GNU/Linux 12 (bookworm)"
+    },
+    "podsRecovered": [
+      {
+        "containersReady": true,
+        "containersStarted": true,
+        "imageIds": [
+          "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63"
+        ],
+        "initExitCodes": [],
+        "name": "inferops-inferops-llm-5c4bbb988c-t8x6d",
+        "phase": "Running",
+        "ready": true,
+        "restartCount": 0,
+        "role": "api",
+        "uid": "fcee6abc-7793-42a0-bfc8-e94fbb67821b"
+      },
+      {
+        "containersReady": true,
+        "containersStarted": true,
+        "imageIds": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "initExitCodes": [
+          0
+        ],
+        "name": "inferops-inferops-llm-runtime-56546cfdbd-nthdz",
+        "phase": "Running",
+        "ready": true,
+        "restartCount": 0,
+        "role": "runtime",
+        "uid": "8b8cca21-6d5f-453b-8815-0445fcf54b40"
+      },
+      {
+        "containersReady": true,
+        "containersStarted": true,
+        "imageIds": [
+          "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+        ],
+        "initExitCodes": [],
+        "name": "inferops-inferops-llm-collector-55c95c4b8c-pltvm",
+        "phase": "Running",
+        "ready": true,
+        "restartCount": 0,
+        "role": "collector",
+        "uid": "29b79b3f-5643-4bfd-b285-ba23744f3d92"
+      }
+    ],
+    "podsUnready": [
+      {
+        "containersReady": false,
+        "containersStarted": true,
+        "imageIds": [
+          "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63"
+        ],
+        "initExitCodes": [],
+        "name": "inferops-inferops-llm-5c4bbb988c-t8x6d",
+        "phase": "Running",
+        "ready": false,
+        "restartCount": 0,
+        "role": "api",
+        "uid": "fcee6abc-7793-42a0-bfc8-e94fbb67821b"
+      },
+      {
+        "containersReady": false,
+        "containersStarted": false,
+        "imageIds": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "initExitCodes": [
+          0
+        ],
+        "name": "inferops-inferops-llm-runtime-6d9588c68d-kgncv",
+        "phase": "Running",
+        "ready": false,
+        "restartCount": 0,
+        "role": "runtime",
+        "uid": "de12e68b-6f28-45a1-94aa-69787f25e661"
+      },
+      {
+        "containersReady": true,
+        "containersStarted": true,
+        "imageIds": [
+          "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+        ],
+        "initExitCodes": [],
+        "name": "inferops-inferops-llm-collector-55c95c4b8c-pltvm",
+        "phase": "Running",
+        "ready": true,
+        "restartCount": 0,
+        "role": "collector",
+        "uid": "29b79b3f-5643-4bfd-b285-ba23744f3d92"
+      }
+    ],
+    "provider": "docker-desktop",
+    "release": {
+      "appVersion": "0.1.0",
+      "chart": "inferops-llm-0.3.0",
+      "name": "inferops",
+      "namespace": "inferops-release",
+      "revision": 2,
+      "status": "deployed"
+    },
+    "repository": {
+      "executedFiles": {
+        "charts/inferops-llm/Chart.yaml": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b",
+        "charts/inferops-llm/ci/real-values.yaml": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48",
+        "charts/inferops-llm/values.yaml": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9",
+        "deploy/serving/experiments/unready-model-recovery.v1.json": "7220395254fe7da172d438df1252a59b66a376685937c94d5b7834276c4fdb59",
+        "deploy/serving/experiments/unready-model-values.v1.yaml": "4ed92f844f2158dae6b4fbef5e0c7a084c8932009730280b1434534d8ffcbfb5",
+        "scripts/environment/lib.sh": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd",
+        "scripts/environment/unready-model-recovery.sh": "2cb043655cef6b68da8d588504451009abbe77f2f4629936fc3b069c3f1f623f",
+        "tools/unready_model_recovery/__main__.py": "428cb4ae67b6b68610ae716d3a2794bb471cd95e4edfe60ed61480a56bccc6b3",
+        "tools/unready_model_recovery/core.py": "2ffe2418f99a1e2c0ea53efd50d659717cc04aeaa01fc227814daceeb17f2493",
+        "tools/unready_model_recovery/live.py": "02cec608934df36431d22b4dbcb66f712b9da69c1cd789c80e52be590fa777b3"
+      },
+      "revision": "0c784d8b3fd939fec1ce0e47f846368e28b08f02",
+      "trackedChangesPresent": true,
+      "untrackedFilesPresent": true
+    },
+    "servingRuntimeCpu": {
+      "recovered": {
+        "limit": "6",
+        "request": "1"
+      },
+      "unready": {
+        "limit": "10m",
+        "request": "10m"
+      }
+    },
+    "verifiedAt": "2026-09-16T16:12:19Z",
+    "workloads": {
+      "recovered": {
+        "api": {
+          "availableReplicas": 1,
+          "containers": [
+            {
+              "image": "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087",
+              "name": "api",
+              "resources": {
+                "limits": {
+                  "cpu": "1",
+                  "memory": "512Mi"
+                },
+                "requests": {
+                  "cpu": "100m",
+                  "memory": "128Mi"
+                }
+              }
+            }
+          ],
+          "deployment": "inferops-inferops-llm",
+          "desiredReplicas": 1
+        },
+        "collector": {
+          "availableReplicas": 1,
+          "containers": [
+            {
+              "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+              "name": "collector",
+              "resources": {
+                "limits": {
+                  "cpu": "1",
+                  "memory": "512Mi"
+                },
+                "requests": {
+                  "cpu": "100m",
+                  "memory": "128Mi"
+                }
+              }
+            }
+          ],
+          "deployment": "inferops-inferops-llm-collector",
+          "desiredReplicas": 1
+        },
+        "runtime": {
+          "availableReplicas": 1,
+          "containers": [
+            {
+              "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+              "name": "runtime",
+              "resources": {
+                "limits": {
+                  "cpu": "6",
+                  "memory": "3Gi"
+                },
+                "requests": {
+                  "cpu": "1",
+                  "memory": "2Gi"
+                }
+              }
+            }
+          ],
+          "deployment": "inferops-inferops-llm-runtime",
+          "desiredReplicas": 1
+        }
+      },
+      "unready": {
+        "api": {
+          "availableReplicas": 0,
+          "containers": [
+            {
+              "image": "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087",
+              "name": "api",
+              "resources": {
+                "limits": {
+                  "cpu": "1",
+                  "memory": "512Mi"
+                },
+                "requests": {
+                  "cpu": "100m",
+                  "memory": "128Mi"
+                }
+              }
+            }
+          ],
+          "deployment": "inferops-inferops-llm",
+          "desiredReplicas": 1
+        },
+        "collector": {
+          "availableReplicas": 1,
+          "containers": [
+            {
+              "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+              "name": "collector",
+              "resources": {
+                "limits": {
+                  "cpu": "1",
+                  "memory": "512Mi"
+                },
+                "requests": {
+                  "cpu": "100m",
+                  "memory": "128Mi"
+                }
+              }
+            }
+          ],
+          "deployment": "inferops-inferops-llm-collector",
+          "desiredReplicas": 1
+        },
+        "runtime": {
+          "availableReplicas": 0,
+          "containers": [
+            {
+              "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+              "name": "runtime",
+              "resources": {
+                "limits": {
+                  "cpu": "10m",
+                  "memory": "3Gi"
+                },
+                "requests": {
+                  "cpu": "10m",
+                  "memory": "2Gi"
+                }
+              }
+            }
+          ],
+          "deployment": "inferops-inferops-llm-runtime",
+          "desiredReplicas": 1
+        }
+      }
+    }
+  },
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "experimentId": "inferops-unready-model-recovery",
+  "experimentVersion": "1.0.0",
+  "humanAction": {
+    "authorisationRequired": true,
+    "interventions": [
+      "corrected-the-values-and-upgraded"
+    ],
+    "note": "This experiment expects one intervention and registers it in advance. A model that cannot load is not a state the Deployment controller reverses -- unlike a deleted pod, which V1-S4-006 measured -- and a record claiming otherwise would be claiming a self-healing property this platform does not have. The operating script issues exactly two mutating commands after the install: the corrected upgrade and the uninstall, and a test reads the script to establish that.",
+    "recoveryInterventionExpected": true,
+    "valuesFileSuppliedByOperator": true
+  },
+  "inputs": {
+    "diagnostics": "bb2dde31fa377e8d3b8db8d094149afe527e0e7e54cc2bf8a263f2019e38b0d1",
+    "environment": "bc3ce036320aac4308247e56ad5fa9860abdfa06e7e8e3b17dd14d81a3cae87b",
+    "lifecycle": "6112dca7333ecae9fb9dbab1e1ba837f421855639d6ad2c2278d272df8058d9b",
+    "probes": "c33b488099c689cb3b58baddb6560215fb2ab070f6c257712df0d6947b567c94",
+    "readiness": "0145dc3c2ae3bceb13f9049b46a0f6bfda9f4e5c6d1040a5c94cb3680ff10022",
+    "telemetry": "f35281a9fdac3825ca61f1fc5aa8d3610b9052822a956f0516a3a1c454afd536"
+  },
+  "kind": "inferops-unready-model-recovery-record",
+  "limitations": [
+    "One provider, one host, one single-replica release, one model, one runtime build, one chart, and one misconfiguration applied once. Nothing here is portable to another provider, host, replica count, model, or runtime configuration, and nothing here is an availability figure, a service-level objective, an error budget, or a recovery-time objective.",
+    "The model did not become ready within the registered observation window, and that is not the same as proving it never would. The load was starved rather than failed. A first execution held the release unready for 307 673 ms and then observed the starved load complete, so the window is registered at 180 s against a starved load of roughly twice that, and `10m` is the smallest quota a container runtime will enforce rather than the smallest number this experiment could have written. Every restart count published here is bounded the same way, by the runtime's own startup probe budget, after which the kubelet restarts the container into the same load.",
+    "The disruption is a processor limit and not a corrupt artifact, a wrong revision, or an unloadable file. Those are refused earlier -- by chart validation or by the `verify-model` init container -- and this experiment says nothing about what the runtime process would do if it reached one of them, beyond the direct measurement recorded in the descriptor's own list of rejected mechanisms.",
+    "Both request surfaces are reached through a loopback forward to a pod rather than to a Service, because a release whose model is not ready has no ready endpoint on either Service. What the probes record is therefore what each workload answers, not what a caller arriving through a Service would have met -- and a caller arriving through the API Service in this state would have met no endpoint at all, which is a different observation and is stated rather than measured here.",
+    "The recovery is an operator changing a value and issuing an upgrade. Nothing here says a controller would have reversed it, and nothing here measures how long a person takes to notice.",
+    "The collector scrapes every 30 seconds, so a telemetry series locates a transition to within a scrape and a rule evaluation, never to the request. No figure published here is derived from a telemetry series.",
+    "One round of probes is sent every registered interval, not a load profile. This experiment measures what a caller is told, not what a fleet of callers experiences: V1-S4-006 owns the under-load question and this one deliberately does not repeat it.",
+    "Other workloads on the same node and virtual machine are not controlled, and the host's file cache is in whatever state the preceding run left it -- which matters more here than usual, because the thing being starved is a load whose cost depends on it."
+  ],
+  "observations": [
+    "The model's readiness is read from the runtime's own answer, not inferred from the API's conclusion. 503 is the status src/inferops/adapters/llama_cpp/readiness.py maps to LOADING and 200 is the only one it maps to READY, so asking the runtime directly is asking the question the adapter asks.",
+    "Both request surfaces are reached through a forward to a pod rather than to a Service. A release whose model is not ready has no ready endpoint on either Service, so a Service forward would have measured kube-proxy refusing a connection rather than a workload answering.",
+    "The canonical code a caller met while the model was not ready: capability-unavailable. ADR 0010 D8 maps a loading runtime to model-not-ready and an unreachable one to capability-unavailable, and which one arrives depends on whether the adapter could reach the runtime at all -- a question the release's own readiness gating answers before the adapter does. The condition the API named for it: runtime-unreachable.",
+    "The socket is the liveness answer. The runtime answered on its own port 20272 ms after its container was reported running and went on answering for the whole window, which is what a TCP-connect liveness probe asks and is why a model that never became ready did not look like a dead process to the kubelet.",
+    "The serving runtime container's restart count across the unready window: 0. The window was held for 179755 ms against a startup probe budget of 600000 ms, so this says the process was not killed inside that budget and says nothing about what happens past it.",
+    "The model load was starved rather than failed. Nothing here establishes that the model would never have loaded; it establishes that it had not, that the process was healthy while it had not, and that correcting one value got it back.",
+    "That the artifact is intact is not inferred. The integrity init container ran in both pods and exited zero in both, which is the same check a replacement pod runs and is why an artifact fault is excluded rather than assumed away.",
+    "The diagnostics an operator would look at are safe to publish only after 10 line(s) were withheld from their excerpts. `kubectl describe pod` prints the pod's address, and an address is one of the three shapes a committed record in this repository may not carry. The captures themselves are written whole into the run directory, which version control ignores.",
+    "The instants the cluster reported for the runtime container are kept as the strings it emitted. They come from the node's clock and nothing here subtracts them from an instant read on the host's."
+  ],
+  "podsUnready": [
+    {
+      "containersReady": false,
+      "containersStarted": true,
+      "imageIds": [
+        "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63"
+      ],
+      "initExitCodes": [],
+      "name": "inferops-inferops-llm-5c4bbb988c-t8x6d",
+      "phase": "Running",
+      "ready": false,
+      "restartCount": 0,
+      "role": "api",
+      "uid": "fcee6abc-7793-42a0-bfc8-e94fbb67821b"
+    },
+    {
+      "containersReady": false,
+      "containersStarted": false,
+      "imageIds": [
+        "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      ],
+      "initExitCodes": [
+        0
+      ],
+      "name": "inferops-inferops-llm-runtime-6d9588c68d-kgncv",
+      "phase": "Running",
+      "ready": false,
+      "restartCount": 0,
+      "role": "runtime",
+      "uid": "de12e68b-6f28-45a1-94aa-69787f25e661"
+    },
+    {
+      "containersReady": true,
+      "containersStarted": true,
+      "imageIds": [
+        "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+      ],
+      "initExitCodes": [],
+      "name": "inferops-inferops-llm-collector-55c95c4b8c-pltvm",
+      "phase": "Running",
+      "ready": true,
+      "restartCount": 0,
+      "role": "collector",
+      "uid": "29b79b3f-5643-4bfd-b285-ba23744f3d92"
+    }
+  ],
+  "portableCapacityClaim": false,
+  "productionBenchmark": false,
+  "readinessAcrossTheWindow": {
+    "note": "Four places that disagree on purpose: the runtime pod's own Ready condition, the addresses the runtime Service is willing to use, the API pod's own Ready condition, and the runtime container's restart count. The last is the one this experiment is really asking about.",
+    "recovered": {
+      "apiEndpointsReady": {
+        "1": 8
+      },
+      "runtimeEndpointsReady": {
+        "1": 8
+      },
+      "runtimePodsReady": {
+        "1": 8
+      },
+      "samples": 8
+    },
+    "samples": [
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575270710,
+        "phase": "unready",
+        "readTookMs": 1832,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575280720,
+        "phase": "unready",
+        "readTookMs": 1711,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575287734,
+        "phase": "unready",
+        "readTookMs": 1871,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575294914,
+        "phase": "unready",
+        "readTookMs": 1891,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575304673,
+        "phase": "unready",
+        "readTookMs": 1863,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575311779,
+        "phase": "unready",
+        "readTookMs": 1784,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575318807,
+        "phase": "unready",
+        "readTookMs": 1798,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575328269,
+        "phase": "unready",
+        "readTookMs": 2049,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575335559,
+        "phase": "unready",
+        "readTookMs": 1818,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575342732,
+        "phase": "unready",
+        "readTookMs": 1760,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575352146,
+        "phase": "unready",
+        "readTookMs": 1862,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575359324,
+        "phase": "unready",
+        "readTookMs": 1918,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575366513,
+        "phase": "unready",
+        "readTookMs": 1838,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575376567,
+        "phase": "unready",
+        "readTookMs": 1703,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575383496,
+        "phase": "unready",
+        "readTookMs": 1922,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575390741,
+        "phase": "unready",
+        "readTookMs": 1709,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575400813,
+        "phase": "unready",
+        "readTookMs": 2331,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575408452,
+        "phase": "unready",
+        "readTookMs": 1922,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575427154,
+        "phase": "unready",
+        "readTookMs": 1762,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575434148,
+        "phase": "unready",
+        "readTookMs": 2577,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 0,
+        "apiPodsReady": 0,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575442132,
+        "phase": "unready",
+        "readTookMs": 2251,
+        "runtimeEndpointsReady": 0,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 0,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 1,
+        "apiPodsReady": 1,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575485731,
+        "phase": "recovered",
+        "readTookMs": 2019,
+        "runtimeEndpointsReady": 1,
+        "runtimePodsPresent": 2,
+        "runtimePodsReady": 1,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 1,
+        "apiPodsReady": 1,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575496866,
+        "phase": "recovered",
+        "readTookMs": 2549,
+        "runtimeEndpointsReady": 1,
+        "runtimePodsPresent": 2,
+        "runtimePodsReady": 1,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 1,
+        "apiPodsReady": 1,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575504932,
+        "phase": "recovered",
+        "readTookMs": 3834,
+        "runtimeEndpointsReady": 1,
+        "runtimePodsPresent": 2,
+        "runtimePodsReady": 1,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 1,
+        "apiPodsReady": 1,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575518218,
+        "phase": "recovered",
+        "readTookMs": 2342,
+        "runtimeEndpointsReady": 1,
+        "runtimePodsPresent": 2,
+        "runtimePodsReady": 1,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 1,
+        "apiPodsReady": 1,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575525879,
+        "phase": "recovered",
+        "readTookMs": 1635,
+        "runtimeEndpointsReady": 1,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 1,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 1,
+        "apiPodsReady": 1,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575532776,
+        "phase": "recovered",
+        "readTookMs": 1800,
+        "runtimeEndpointsReady": 1,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 1,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 1,
+        "apiPodsReady": 1,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575542398,
+        "phase": "recovered",
+        "readTookMs": 1825,
+        "runtimeEndpointsReady": 1,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 1,
+        "runtimeRestartCount": 0
+      },
+      {
+        "apiEndpointsReady": 1,
+        "apiPodsReady": 1,
+        "apiRestartCount": 0,
+        "atEpochMs": 1789575549487,
+        "phase": "recovered",
+        "readTookMs": 1694,
+        "runtimeEndpointsReady": 1,
+        "runtimePodsPresent": 1,
+        "runtimePodsReady": 1,
+        "runtimeRestartCount": 0
+      }
+    ],
+    "unready": {
+      "apiEndpointsReady": {
+        "0": 21
+      },
+      "apiPodsReady": {
+        "0": 21
+      },
+      "highestApiRestartCount": 0,
+      "highestRuntimeRestartCount": 0,
+      "runtimeEndpointsReady": {
+        "0": 21
+      },
+      "runtimePodsReady": {
+        "0": 21
+      },
+      "samples": 21,
+      "widestSampleGapMs": 18702
+    }
+  },
+  "schedule": {
+    "idleBaseline": {
+      "endEpochMs": 1789575270636,
+      "startEpochMs": 1789575210552
+    },
+    "install": {
+      "initContainerName": "verify-model",
+      "initExitCode": 0,
+      "issuedEpochMs": 1789575164494,
+      "runtimeContainerRunningEpochMs": 1789575186125,
+      "runtimeContainerStartedAt": "2026-09-16T16:13:04Z",
+      "runtimePodName": "inferops-inferops-llm-runtime-6d9588c68d-kgncv",
+      "runtimePodUid": "de12e68b-6f28-45a1-94aa-69787f25e661",
+      "runtimeSocketOpenEpochMs": 1789575206397
+    },
+    "recoveredWindow": {
+      "endEpochMs": 1789575551467,
+      "startEpochMs": 1789575485685
+    },
+    "settledEpochMs": 1789575642707,
+    "unreadyWindow": {
+      "endEpochMs": 1789575450422,
+      "heldMs": 179755,
+      "startEpochMs": 1789575270667
+    },
+    "upgrade": {
+      "apiReadyEpochMs": 1789575481459,
+      "initContainerName": "verify-model",
+      "initExitCode": 0,
+      "issuedEpochMs": 1789575453662,
+      "runtimePodName": "inferops-inferops-llm-runtime-56546cfdbd-nthdz",
+      "runtimePodUid": "8b8cca21-6d5f-453b-8815-0445fcf54b40",
+      "runtimeReadyEpochMs": 1789575474542
+    }
+  },
+  "schemaVersion": "inferops.io/v1alpha1",
+  "telemetry": {
+    "collectorVersion": "3.5.0",
+    "note": "Whether a signal exposed the state is not decided here. Each expression's registered expectation and its readings while unready and after the recovery are recorded, and the reading of the pair belongs to a reviewed document.",
+    "range": {
+      "endEpochMs": 1789575642707,
+      "startEpochMs": 1789575180552,
+      "stepSeconds": 15
+    },
+    "series": [
+      {
+        "answerability": "not-answerable-nothing-emits",
+        "error": null,
+        "expectation": "The telemetry catalog assigns this to the serving-runtime adapter and marks it not emitted, with the reason that the adapter is not instrumented. It is the one metric in this repository whose whole purpose is to answer this experiment's question, and nothing puts it on any endpoint, so it answers with no series however unready the model is.",
+        "exposure": "nothing-emits",
+        "expr": "inferops_model_ready",
+        "labelSetsAfterRecovery": [],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [],
+        "readingAfterRecovery": {},
+        "readingWhileUnready": {},
+        "seriesId": "model-readiness-by-workload",
+        "seriesReturned": 0,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The recorded rule that publishes the absence above rather than an empty series. It reads 1 throughout, in both phases, which is what makes it useless for telling a loading model from a loaded one.",
+        "exposure": "expected-not-to-expose",
+        "expr": "inferops:model_ready_absent:platform_api",
+        "labelSetsAfterRecovery": [
+          "__name__=inferops:model_ready_absent:platform_api,k8s_component=platform-api,k8s_namespace=inferops-release"
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [
+          "__name__=inferops:model_ready_absent:platform_api,k8s_component=platform-api,k8s_namespace=inferops-release"
+        ],
+        "readingAfterRecovery": {
+          "__name__=inferops:model_ready_absent:platform_api,k8s_component=platform-api,k8s_namespace=inferops-release": "1"
+        },
+        "readingWhileUnready": {
+          "__name__=inferops:model_ready_absent:platform_api,k8s_component=platform-api,k8s_namespace=inferops-release": "1"
+        },
+        "seriesId": "model-readiness-absence",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "no-source",
+        "error": null,
+        "expectation": "Would need kube-state-metrics, which this release does not install and this project has not adopted. The restart count this experiment publishes is read from the pod's own container status instead.",
+        "exposure": "no-source",
+        "expr": "kube_pod_container_status_restarts_total",
+        "labelSetsAfterRecovery": [],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [],
+        "readingAfterRecovery": {},
+        "readingWhileUnready": {},
+        "seriesId": "pod-container-restarts",
+        "seriesReturned": 0,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The canonical code the API assigned to what it could not serve, by workload. V1-S4-006 recorded this as the signal that identified what was wrong when the pod was lost; here it is the signal that says which of the two 503 refusals a caller actually met.",
+        "exposure": "expected-to-expose",
+        "expr": "sum by (inferops_workload_id, inferops_error_code) (inferops_inference_errors_total)",
+        "labelSetsAfterRecovery": [
+          "inferops_error_code=capability-unavailable,inferops_workload_id=support-assistant"
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [
+          "inferops_error_code=capability-unavailable,inferops_workload_id=support-assistant"
+        ],
+        "readingAfterRecovery": {
+          "inferops_error_code=capability-unavailable,inferops_workload_id=support-assistant": "8"
+        },
+        "readingWhileUnready": {
+          "inferops_error_code=capability-unavailable,inferops_workload_id=support-assistant": "7"
+        },
+        "seriesId": "api-errors-by-code",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [
+          "inferops_error_code=capability-unavailable,inferops_workload_id=support-assistant"
+        ],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The API's own readiness check against its adapter, labelled by component. A model that never loads makes this climb once per kubelet probe against `serving-adapter`, and it is the closest thing this system emits to the gauge the catalog marks not emitted.",
+        "exposure": "expected-to-expose",
+        "expr": "sum by (inferops_workload_id, inferops_component) (inferops_readiness_check_failures_total)",
+        "labelSetsAfterRecovery": [
+          "inferops_component=serving-adapter,inferops_workload_id=support-assistant"
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [
+          "inferops_component=serving-adapter,inferops_workload_id=support-assistant"
+        ],
+        "readingAfterRecovery": {
+          "inferops_component=serving-adapter,inferops_workload_id=support-assistant": "41"
+        },
+        "readingWhileUnready": {
+          "inferops_component=serving-adapter,inferops_workload_id=support-assistant": "34"
+        },
+        "seriesId": "api-readiness-check-failures",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [
+          "inferops_component=serving-adapter,inferops_workload_id=support-assistant"
+        ],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "Every request the API answered, by outcome. An outcome other than success during the unready window is the counter noticing.",
+        "exposure": "expected-to-expose",
+        "expr": "sum by (inferops_outcome) (inferops_inference_requests_total)",
+        "labelSetsAfterRecovery": [
+          "inferops_outcome=server-error",
+          "inferops_outcome=success"
+        ],
+        "labelSetsThatAppeared": [
+          "inferops_outcome=success"
+        ],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [
+          "inferops_outcome=server-error"
+        ],
+        "readingAfterRecovery": {
+          "inferops_outcome=server-error": "8",
+          "inferops_outcome=success": "3"
+        },
+        "readingWhileUnready": {
+          "inferops_outcome=server-error": "7",
+          "inferops_outcome=success": null
+        },
+        "seriesId": "api-requests-by-outcome",
+        "seriesReturned": 2,
+        "sharedLabelSetsWithChangedValues": [
+          "inferops_outcome=server-error"
+        ],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "Registered as expected to expose, and registered that way for a reason this experiment can state in advance: the runtime answers `/metrics` with the same 503 it answers everything else with while it loads, so the scrape fails. V1-S4-006 and V1-S3-011-PR2 both recorded this signal as uninformative about readiness when a pod was terminating; this failure mode is the one where it is not, and the difference is that the process is up and refusing rather than up and answering.",
+        "exposure": "expected-to-expose",
+        "expr": "up{job=\"inferops-inferops-llm-serving-runtime\"}",
+        "labelSetsAfterRecovery": [
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-nthdz,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release",
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-6d9588c68d-kgncv,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "labelSetsThatAppeared": [
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-nthdz,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-6d9588c68d-kgncv,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "readingAfterRecovery": {
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-nthdz,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "1",
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-6d9588c68d-kgncv,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "0"
+        },
+        "readingWhileUnready": {
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-nthdz,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": null,
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-6d9588c68d-kgncv,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "0"
+        },
+        "seriesId": "serving-runtime-scrape-up",
+        "seriesReturned": 2,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The ratio of targets up to targets discovered, for the same reason as the row above.",
+        "exposure": "expected-to-expose",
+        "expr": "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
+        "labelSetsAfterRecovery": [
+          "job=inferops-inferops-llm-platform-api,k8s_component=platform-api,k8s_namespace=inferops-release",
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [
+          "job=inferops-inferops-llm-platform-api,k8s_component=platform-api,k8s_namespace=inferops-release",
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "readingAfterRecovery": {
+          "job=inferops-inferops-llm-platform-api,k8s_component=platform-api,k8s_namespace=inferops-release": "1",
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "1"
+        },
+        "readingWhileUnready": {
+          "job=inferops-inferops-llm-platform-api,k8s_component=platform-api,k8s_namespace=inferops-release": "1",
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "0"
+        },
+        "seriesId": "scrape-target-health-by-job",
+        "seriesReturned": 2,
+        "sharedLabelSetsWithChangedValues": [
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "A recorded mapping of the runtime's own gauge. A runtime that never finished loading published no metrics at all, so this is empty for the unready window -- an absence that says the scrape failed, not that no work was in flight.",
+        "exposure": "expected-not-to-expose",
+        "expr": "sum(inferops:inference_requests_in_flight:runtime)",
+        "labelSetsAfterRecovery": [
+          ""
+        ],
+        "labelSetsThatAppeared": [
+          ""
+        ],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [],
+        "readingAfterRecovery": {
+          "": "0"
+        },
+        "readingWhileUnready": {
+          "": null
+        },
+        "seriesId": "runtime-requests-processing",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The API publishes its identity whether or not its adapter can serve, so this is the same either side and says nothing about the model.",
+        "exposure": "expected-not-to-expose",
+        "expr": "count by (k8s_component) (inferops_build_info)",
+        "labelSetsAfterRecovery": [
+          "k8s_component=platform-api"
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "labelSetsWhileUnready": [
+          "k8s_component=platform-api"
+        ],
+        "readingAfterRecovery": {
+          "k8s_component=platform-api": "1"
+        },
+        "readingWhileUnready": {
+          "k8s_component=platform-api": "1"
+        },
+        "seriesId": "api-build-identity",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      }
+    ]
+  },
+  "timings": {
+    "firstServedCompletionEpochMs": 1789575490349,
+    "installToRuntimeContainerRunningMs": 21631,
+    "note": "One release, misconfigured once, on one host. Not an availability figure, a service-level objective, an error budget, a recovery-time objective, or a number anything may be compared against. The unready window is how long this run held the release in that state, not how long the model would have taken to load: the load was starved rather than failed, and the kubelet's own startup budget is the upper bound on how long Kubernetes would have left it there.",
+    "registeredUnreadyWindowMs": 180000,
+    "runtimeContainerRunningToSocketOpenMs": 20272,
+    "runtimeStartupProbeBudgetMs": 600000,
+    "unreadyWindowAsShareOfStartupBudget": 0.2996,
+    "unreadyWindowHeldMs": 179755,
+    "upgradeToApiReadyMs": 27797,
+    "upgradeToFirstServedCompletionMs": 36687,
+    "upgradeToRuntimeReadyMs": 20880
+  },
+  "usable": true,
+  "valuesOverlaySha256": "4ed92f844f2158dae6b4fbef5e0c7a084c8932009730280b1434534d8ffcbfb5"
+}

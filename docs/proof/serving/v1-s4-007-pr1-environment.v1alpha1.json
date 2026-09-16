@@ -1,0 +1,306 @@
+{
+  "background": {
+    "namespacesWithRunningPodsOutsideRelease": 3,
+    "runningPodsOutsideRelease": 12
+  },
+  "cluster": "docker-desktop",
+  "configuration": {
+    "INFEROPS_LLAMA_SERVER_CONTEXT_SIZE": "4096",
+    "INFEROPS_LLAMA_SERVER_METRICS_ENABLED": "true",
+    "INFEROPS_LLAMA_SERVER_THREADS": "6",
+    "INFEROPS_MAX_OUTPUT_TOKENS": "128",
+    "INFEROPS_MODEL_IDENTIFIER": "qwen3-1-7b-q8-0",
+    "INFEROPS_MODEL_REVISION": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "INFEROPS_REQUEST_TIMEOUT_MS": "120000",
+    "INFEROPS_RUNTIME_IMAGE_DIGEST": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "INFEROPS_SERVING_ADAPTER": "real"
+  },
+  "context": "docker-desktop",
+  "engine": {
+    "cpus": 12,
+    "memoryBytes": 10432536576,
+    "serverVersion": "29.7.2"
+  },
+  "kubernetes": {
+    "helmVersion": "v3.19.0+g3d8990f",
+    "kubectlVersion": "v1.34.3",
+    "serverVersion": "v1.34.3"
+  },
+  "node": {
+    "allocatable": {
+      "cpu": "12",
+      "memory": "10188024Ki"
+    },
+    "capacity": {
+      "cpu": "12",
+      "memory": "10188024Ki"
+    },
+    "containerRuntimeVersion": "containerd://2.2.0",
+    "imageDigest": "sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48",
+    "kernelVersion": "5.15.146.1-microsoft-standard-WSL2",
+    "kubeletVersion": "v1.34.3",
+    "name": "desktop-control-plane",
+    "osImage": "Debian GNU/Linux 12 (bookworm)"
+  },
+  "podsRecovered": [
+    {
+      "containersReady": true,
+      "containersStarted": true,
+      "imageIds": [
+        "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63"
+      ],
+      "initExitCodes": [],
+      "name": "inferops-inferops-llm-5c4bbb988c-t8x6d",
+      "phase": "Running",
+      "ready": true,
+      "restartCount": 0,
+      "role": "api",
+      "uid": "fcee6abc-7793-42a0-bfc8-e94fbb67821b"
+    },
+    {
+      "containersReady": true,
+      "containersStarted": true,
+      "imageIds": [
+        "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      ],
+      "initExitCodes": [
+        0
+      ],
+      "name": "inferops-inferops-llm-runtime-56546cfdbd-nthdz",
+      "phase": "Running",
+      "ready": true,
+      "restartCount": 0,
+      "role": "runtime",
+      "uid": "8b8cca21-6d5f-453b-8815-0445fcf54b40"
+    },
+    {
+      "containersReady": true,
+      "containersStarted": true,
+      "imageIds": [
+        "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+      ],
+      "initExitCodes": [],
+      "name": "inferops-inferops-llm-collector-55c95c4b8c-pltvm",
+      "phase": "Running",
+      "ready": true,
+      "restartCount": 0,
+      "role": "collector",
+      "uid": "29b79b3f-5643-4bfd-b285-ba23744f3d92"
+    }
+  ],
+  "podsUnready": [
+    {
+      "containersReady": false,
+      "containersStarted": true,
+      "imageIds": [
+        "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63"
+      ],
+      "initExitCodes": [],
+      "name": "inferops-inferops-llm-5c4bbb988c-t8x6d",
+      "phase": "Running",
+      "ready": false,
+      "restartCount": 0,
+      "role": "api",
+      "uid": "fcee6abc-7793-42a0-bfc8-e94fbb67821b"
+    },
+    {
+      "containersReady": false,
+      "containersStarted": false,
+      "imageIds": [
+        "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      ],
+      "initExitCodes": [
+        0
+      ],
+      "name": "inferops-inferops-llm-runtime-6d9588c68d-kgncv",
+      "phase": "Running",
+      "ready": false,
+      "restartCount": 0,
+      "role": "runtime",
+      "uid": "de12e68b-6f28-45a1-94aa-69787f25e661"
+    },
+    {
+      "containersReady": true,
+      "containersStarted": true,
+      "imageIds": [
+        "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+      ],
+      "initExitCodes": [],
+      "name": "inferops-inferops-llm-collector-55c95c4b8c-pltvm",
+      "phase": "Running",
+      "ready": true,
+      "restartCount": 0,
+      "role": "collector",
+      "uid": "29b79b3f-5643-4bfd-b285-ba23744f3d92"
+    }
+  ],
+  "provider": "docker-desktop",
+  "release": {
+    "appVersion": "0.1.0",
+    "chart": "inferops-llm-0.3.0",
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "revision": 2,
+    "status": "deployed"
+  },
+  "repository": {
+    "executedFiles": {
+      "charts/inferops-llm/Chart.yaml": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b",
+      "charts/inferops-llm/ci/real-values.yaml": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48",
+      "charts/inferops-llm/values.yaml": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9",
+      "deploy/serving/experiments/unready-model-recovery.v1.json": "7220395254fe7da172d438df1252a59b66a376685937c94d5b7834276c4fdb59",
+      "deploy/serving/experiments/unready-model-values.v1.yaml": "4ed92f844f2158dae6b4fbef5e0c7a084c8932009730280b1434534d8ffcbfb5",
+      "scripts/environment/lib.sh": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd",
+      "scripts/environment/unready-model-recovery.sh": "2cb043655cef6b68da8d588504451009abbe77f2f4629936fc3b069c3f1f623f",
+      "tools/unready_model_recovery/__main__.py": "428cb4ae67b6b68610ae716d3a2794bb471cd95e4edfe60ed61480a56bccc6b3",
+      "tools/unready_model_recovery/core.py": "2ffe2418f99a1e2c0ea53efd50d659717cc04aeaa01fc227814daceeb17f2493",
+      "tools/unready_model_recovery/live.py": "02cec608934df36431d22b4dbcb66f712b9da69c1cd789c80e52be590fa777b3"
+    },
+    "revision": "0c784d8b3fd939fec1ce0e47f846368e28b08f02",
+    "trackedChangesPresent": true,
+    "untrackedFilesPresent": true
+  },
+  "servingRuntimeCpu": {
+    "recovered": {
+      "limit": "6",
+      "request": "1"
+    },
+    "unready": {
+      "limit": "10m",
+      "request": "10m"
+    }
+  },
+  "verifiedAt": "2026-09-16T16:12:19Z",
+  "workloads": {
+    "recovered": {
+      "api": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "image": "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087",
+            "name": "api",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm",
+        "desiredReplicas": 1
+      },
+      "collector": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+            "name": "collector",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm-collector",
+        "desiredReplicas": 1
+      },
+      "runtime": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+            "name": "runtime",
+            "resources": {
+              "limits": {
+                "cpu": "6",
+                "memory": "3Gi"
+              },
+              "requests": {
+                "cpu": "1",
+                "memory": "2Gi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm-runtime",
+        "desiredReplicas": 1
+      }
+    },
+    "unready": {
+      "api": {
+        "availableReplicas": 0,
+        "containers": [
+          {
+            "image": "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087",
+            "name": "api",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm",
+        "desiredReplicas": 1
+      },
+      "collector": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+            "name": "collector",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm-collector",
+        "desiredReplicas": 1
+      },
+      "runtime": {
+        "availableReplicas": 0,
+        "containers": [
+          {
+            "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+            "name": "runtime",
+            "resources": {
+              "limits": {
+                "cpu": "10m",
+                "memory": "3Gi"
+              },
+              "requests": {
+                "cpu": "10m",
+                "memory": "2Gi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm-runtime",
+        "desiredReplicas": 1
+      }
+    }
+  }
+}
