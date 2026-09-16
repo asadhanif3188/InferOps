@@ -157,6 +157,17 @@ Synthetic, mock, and rehearsal output never qualifies, however it is labelled.
 > figure is not machine-checked anywhere, and a reviewer is the only thing that
 > stops it.
 
+> **Implementation update, 2026-09-16 (`V1-S4-007-PR1`).** A fourth committed
+> descriptor of the kind clause 1 requires —
+> [`unready-model-recovery.v1.json`](../../../deploy/serving/experiments/unready-model-recovery.v1.json),
+> for one release whose model does not become ready — and a fourth tool that refuses a
+> record without its boundary, `tools.unready_model_recovery`. Nothing in the clause
+> changes. The new tool applies the same three checks and the `availabilityClaim` one
+> the third added, plus a fifth of its own: its boundary sentence must also refuse
+> **recovery-time objective**, because a record that publishes an interval from a fix
+> to a served completion is the shape somebody reads as one. The gap D2 states remains
+> exactly as stated.
+
 ## D4 — Saturation is stated by an analysis, and bounded
 
 **Accepted as a rule.** The tools place figures side by side; they do not judge them.

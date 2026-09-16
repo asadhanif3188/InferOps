@@ -1,0 +1,49 @@
+{
+  "acquisition": {
+    "jobCountAfter": 0,
+    "jobCountBefore": 0
+  },
+  "claims": {
+    "countAfter": 1,
+    "countBefore": 1
+  },
+  "idleBaseline": {
+    "endEpochMs": 1789575270636,
+    "startEpochMs": 1789575210552
+  },
+  "install": {
+    "initContainerName": "verify-model",
+    "initExitCode": 0,
+    "issuedEpochMs": 1789575164494,
+    "runtimeContainerRunningEpochMs": 1789575186125,
+    "runtimeContainerStartedAt": "2026-09-16T16:13:04Z",
+    "runtimePodName": "inferops-inferops-llm-runtime-6d9588c68d-kgncv",
+    "runtimePodUid": "de12e68b-6f28-45a1-94aa-69787f25e661",
+    "runtimeSocketOpenEpochMs": 1789575206397
+  },
+  "interventions": [
+    "corrected-the-values-and-upgraded"
+  ],
+  "recoveredWindow": {
+    "endEpochMs": 1789575551467,
+    "startEpochMs": 1789575485685
+  },
+  "release": {
+    "revisionAfter": 2,
+    "revisionBefore": 1
+  },
+  "settledEpochMs": 1789575642707,
+  "unreadyWindow": {
+    "endEpochMs": 1789575450422,
+    "startEpochMs": 1789575270667
+  },
+  "upgrade": {
+    "apiReadyEpochMs": 1789575481459,
+    "initContainerName": "verify-model",
+    "initExitCode": 0,
+    "issuedEpochMs": 1789575453662,
+    "runtimePodName": "inferops-inferops-llm-runtime-56546cfdbd-nthdz",
+    "runtimePodUid": "8b8cca21-6d5f-453b-8815-0445fcf54b40",
+    "runtimeReadyEpochMs": 1789575474542
+  }
+}

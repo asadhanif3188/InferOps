@@ -428,6 +428,27 @@ argument: the counter is not optional platform polish, it is the compensation th
 exception was accepted on, and an API built without it leaves a blocking threshold
 failed with nothing in its place.
 
+> **Implementation update, 2026-09-16 (`V1-S4-007-PR1`).** The `Observed` column above
+> is unchanged and no row of the mapping is amended. What is recorded here is what
+> happened when the one row marked **Yes** was arranged deliberately instead of met by
+> accident. A release was installed on a real cluster with the serving runtime starved
+> of processor time, so that `llama-server` bound its port, began loading the model,
+> and did not finish. Asked directly, the runtime answered `503` throughout, with the
+> message `Loading model` and the type `unavailable_error` — the condition this table
+> calls
+> *the runtime reports not-ready while the model loads*. Asked through the platform
+> API, a caller did **not** receive `model-not-ready`. It received
+> `capability-unavailable`, condition `runtime-unreachable`, `retryable: true`, because
+> the runtime pod's readiness probe is an HTTP GET against the same endpoint, so the
+> runtime Service had dropped its only address before the adapter could observe the
+> 503 at all. Both rows of this table are correct; **which of them a Service-fronted
+> release reaches is decided by the readiness gate rather than by the adapter**, and
+> that was not written down anywhere before. The consequence for a reader of this
+> table is that `model-not-ready` is reachable from a runtime the adapter can still
+> talk to — a sidecar, a direct endpoint, a runtime whose readiness has not yet gone
+> false — and not from this chart's topology. The measured record is
+> [`V1-S4-007-PR1`](../../proof/serving/v1-s4-007-pr1-unready-model-recovery.md).
+
 ### What the adapter interface must expose
 
 `V1-S1-002` freezes the adapter interface one story before the API is written, which

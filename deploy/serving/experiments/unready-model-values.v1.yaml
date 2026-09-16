@@ -1,0 +1,50 @@
+# The one misconfiguration this experiment installs, and nothing else.
+#
+# Pass it *after* the values files a real install already needs. It overrides two
+# values, both halves of one setting: the serving runtime container's CPU request
+# and its CPU limit, from the `1` and `6` the chart defaults to, down to `10m`.
+#
+# It changes no model value. `model.artifact.sizeBytes`, `model.artifact.sha256`,
+# `model.revision`, and `model.cache.*` are untouched, so the `verify-model` init
+# container reads the same bytes it always reads, compares them against the same
+# pinned byte count and SHA-256, and exits 0. This is deliberately **not**
+# `V1-S3-008`'s mechanism: that one is refused before the runtime container is ever
+# started, and this one is not refused at all.
+#
+# What it produces, measured directly against the pinned llama.cpp image and the
+# cached artifact before this experiment was written, at `--cpus 0.01` with the
+# chart's own memory limit:
+#
+#   - `llama-server` parses its flags, binds `0.0.0.0:8080` about twenty seconds
+#     in, and starts its HTTP server;
+#   - it logs `load_model: loading model '/models/Qwen3-1.7B-Q8_0.gguf'` and stays
+#     there. Loading the same artifact with the chart's normal CPU limit took
+#     102 s on this host; at one hundredth of a processor it does not complete;
+#   - every endpoint -- `/health`, `/metrics`, and the completion path -- answers
+#     `503 {"error":{"message":"Loading model","type":"unavailable_error","code":503}}`,
+#     which is exactly the status `src/inferops/adapters/llama_cpp/readiness.py`
+#     maps to `ReadinessState.LOADING`;
+#   - the process does not exit, is not OOM-killed, and holds its socket open, so
+#     the chart's TCP liveness probe is satisfied throughout.
+#
+# That is the state this experiment exists to observe: a process that is healthy by
+# every liveness question the chart asks, serving a model that is not ready.
+#
+# It is bounded, and the bound is Kubernetes' own. The runtime's startup probe is
+# the HTTP one, with `runtime.probes.startup.budgetMs` of 600 000 at a 10 s period,
+# so the kubelet allows 60 consecutive startup failures before it kills the
+# container and restarts it into the same load. The experiment's observation window
+# is registered well inside that budget, and the record says so rather than
+# implying the container would have sat there forever.
+#
+# Reversing it is a values fix and an upgrade: install with this file, upgrade
+# without it. Nothing else has to change.
+#
+# It carries no host path, no digest of anything built on one machine, and no
+# secret. It is the whole disruption.
+runtime:
+  resources:
+    requests:
+      cpu: 10m
+    limits:
+      cpu: 10m

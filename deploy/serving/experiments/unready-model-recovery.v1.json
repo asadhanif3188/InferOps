@@ -1,0 +1,355 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "experimentId": "inferops-unready-model-recovery",
+  "experimentVersion": "1.0.0",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "certificationCeiling": "C2",
+  "lane": "real-runtime",
+  "productionBenchmark": false,
+  "portableCapacityClaim": false,
+  "availabilityClaim": false,
+  "boundary": "Bounded observations of one release installed once with one runtime misconfiguration, on the provider, host, model, runtime, chart, and release recorded beside them. They are not an availability figure, a service-level objective, an error budget, a portable capacity figure, a recovery-time objective, or a benchmark of Kubernetes, the model, the runtime, or any provider.",
+  "decisionRef": "docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md",
+  "procedureRef": "docs/serving/unready-model-recovery.md",
+  "reportTemplateRef": "docs/proof/serving/TEMPLATE-unready-model-recovery.md",
+  "chartRef": "charts/inferops-llm",
+  "extendsRef": "docs/serving/mock-and-real-boundary.md",
+  "distinctProofQuestion": "ADR 0010 D8 records `model-not-ready` as the one row of the accepted error mapping anything ever observed, and records it from a control-plane line seen incidentally during the Sprint 0 feasibility trial. `MockScenario.MODEL_NOT_READY` reproduces the shape in a fixture, and docs/serving/mock-and-real-boundary.md states as its rule that a mock serving path may never be used to certify real local runtime behaviour, however faithfully it reproduces the API surface. This experiment deliberately installs a release whose model does not become ready, on a real cluster, and records what readiness, liveness, the canonical error surface, diagnostics, and telemetry actually do while it is in that state, and what a values fix and an upgrade get back. It is not V1-S3-008's artifact mismatch, which is refused before the runtime container starts, and it is not V1-S4-006's deletion of a healthy pod.",
+  "cluster": {
+    "providers": [
+      {
+        "providerId": "docker-desktop",
+        "name": "docker-desktop",
+        "context": "docker-desktop"
+      }
+    ]
+  },
+  "release": {
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real",
+    "apiServiceName": "inferops-inferops-llm",
+    "apiServicePort": 8090,
+    "apiContainerPort": 8090,
+    "apiDeploymentName": "inferops-inferops-llm",
+    "runtimeServiceName": "inferops-inferops-llm-runtime",
+    "runtimeServicePort": 8080,
+    "runtimeContainerPort": 8080,
+    "runtimeDeploymentName": "inferops-inferops-llm-runtime",
+    "collectorServiceName": "inferops-inferops-llm-collector",
+    "collectorServicePort": 9090,
+    "collectorDeploymentName": "inferops-inferops-llm-collector",
+    "configMapName": "inferops-inferops-llm-configuration",
+    "apiComponent": "platform-api",
+    "runtimeComponent": "serving-runtime",
+    "collectorComponent": "telemetry-collector",
+    "acquisitionComponent": "model-acquisition",
+    "instanceSelector": "app.kubernetes.io/instance=inferops",
+    "apiReplicas": 1,
+    "runtimeReplicas": 1
+  },
+  "disruption": {
+    "description": "One values overlay, passed to the install and dropped from the upgrade. It starves the serving runtime container of processor time so that `llama-server` binds its port and begins loading the model and does not finish within the window this experiment observes: the process is healthy, its socket is open, and the model is not ready. `10m` is the floor rather than a choice -- the container runtime's smallest enforceable quota is one millisecond in a hundred, so a smaller number in a values file buys nothing. No declared object is deleted, no pod is killed, no claim is touched, nothing cluster-scoped is changed, and nothing in another namespace is read or written.",
+    "mechanism": "starve-serving-runtime-cpu-at-install",
+    "target": "serving-runtime",
+    "scope": "release-values",
+    "appliedAt": "install",
+    "valuesOverlayRef": "deploy/serving/experiments/unready-model-values.v1.yaml",
+    "overlaySetsOnly": [
+      "runtime.resources.requests.cpu",
+      "runtime.resources.limits.cpu"
+    ],
+    "reversedBy": "values-fix-and-upgrade",
+    "passesChartValidation": true,
+    "passesModelIntegrityInitContainer": true,
+    "changesNoModelValue": true,
+    "changesNoPersistentVolumeClaim": true,
+    "changesNoClusterScopedObject": true,
+    "touchesNoOtherNamespace": true,
+    "deletesNoPod": true,
+    "rejectedMechanisms": [
+      "artifact-size-or-hash-mismatch: refused by the verify-model init container before the runtime container is started, which is an install-time refusal and is V1-S3-008's mechanism rather than this one's",
+      "absent-artifact-or-another-revision-subdirectory: the init container reads the same derived container path the runtime is given, by design and in one expression, so a file that is not there fails the init container rather than the model load",
+      "a-well-sized-file-that-is-not-a-gguf: measured against the pinned image, `llama-server` logs `exiting due to model loading error` and exits 1, which is container-restart churn and not a healthy process serving an unready model",
+      "context-size-at-the-schema-maximum: a large integer supplied from a values file renders in scientific notation, which the API refuses at start-up and which `llama-server` reads as a context of 1 and aborts on; and the allocation it asks for does not hold the process in a stable loading state",
+      "a-health-path-the-runtime-does-not-serve: the model would be ready and the probe would be wrong, which proves nothing about an unready model"
+    ]
+  },
+  "humanAction": {
+    "description": "What a person had to do, recorded so that a recovery nobody had to intervene in is distinguishable from one that was rescued by hand. The three authorisations below are required before the run. The recovery here is deliberately **not** automatic: a model that cannot load is not a state any controller reverses, and the fix is an operator changing a value. That is registered rather than discovered.",
+    "authorisationRequired": true,
+    "valuesFileSuppliedByOperator": true,
+    "recoveryInterventionExpected": true,
+    "expectedRecoveryIntervention": "corrected-the-values-and-upgraded",
+    "interventionVocabulary": [
+      "none",
+      "corrected-the-values-and-upgraded",
+      "restarted-a-workload",
+      "rolled-back-a-release",
+      "edited-a-declared-object",
+      "recreated-a-prerequisite"
+    ]
+  },
+  "observation": {
+    "description": "What readiness looked like while the model was not ready, sampled from four places that disagree on purpose: the runtime pod's own Ready condition, the number of addresses the runtime Service is willing to send traffic to, the API pod's own Ready condition, and the runtime container's restart count. The restart count is the one this experiment is really asking about: the chart's liveness probe is a TCP connect precisely so that a healthy process loading a model is not killed, and nothing has ever measured that against a model that does not finish loading. The window is 180 s and the figure it is set against is measured rather than chosen: an earlier execution of this experiment held the release unready for 307 673 ms and then watched the starved load complete, so the starved load takes roughly 1.7 times the window it is observed over. The record says that, and does not claim the model would never have loaded. `socketAnswerMeasuredFrom` registers the one interval whose far end this workflow stamps rather than the platform: it is a ceiling containing the script's own install bookkeeping, and it is published under a name that says so.",
+    "pollIntervalMs": 5000,
+    "minimumSamples": 6,
+    "unreadyWindowSeconds": 180,
+    "recoveredWindowSeconds": 60,
+    "requireReadinessRecord": true,
+    "requireEndpointSamples": true,
+    "requireRestartCounts": true,
+    "socketAnswerMeasuredFrom": "container-running-including-workflow-setup"
+  },
+  "probes": {
+    "description": "The request surfaces this experiment asks, and what each was registered as expected to answer before anything ran. Both service-fronted tiers are reached through a forward to the **pod**, not to the Service: a release whose model is not ready has no ready endpoint on either the runtime Service or the API Service, so a Service forward would measure kube-proxy rather than the workload. Which of the two canonical refusals the API produces is a result this experiment reads off the run, not an arrangement made here.",
+    "roundIntervalMs": 15000,
+    "requestTimeoutMs": 20000,
+    "retainGeneratedText": false,
+    "surfaces": [
+      {
+        "probeId": "runtime-health",
+        "tier": "serving-runtime",
+        "method": "GET",
+        "path": "/health",
+        "phases": [
+          "unready",
+          "recovered"
+        ],
+        "expectedUnreadyStatus": 503,
+        "expectedRecoveredStatus": 200,
+        "expectation": "The runtime's own answer, and the one input `src/inferops/adapters/llama_cpp/readiness.py` maps. 503 is `ReadinessState.LOADING` and 200 is `READY`; there is no third answer this adapter reads as ready."
+      },
+      {
+        "probeId": "api-liveness",
+        "tier": "platform-api",
+        "method": "GET",
+        "path": "/health/live",
+        "phases": [
+          "unready",
+          "recovered"
+        ],
+        "expectedUnreadyStatus": 200,
+        "expectedRecoveredStatus": 200,
+        "expectation": "Answerable while the model is loading, by design. If this were not 200 the API pod would be restarted for being not-ready, which is the defect the chart's two-path split exists to prevent."
+      },
+      {
+        "probeId": "api-readiness",
+        "tier": "platform-api",
+        "method": "GET",
+        "path": "/health/ready",
+        "phases": [
+          "unready",
+          "recovered"
+        ],
+        "expectedUnreadyStatus": 503,
+        "expectedRecoveredStatus": 200,
+        "expectation": "The conjunction of the API accepting work and the adapter reporting itself able. While the model is not ready this is 503 and the API counts one `inferops_readiness_check_failures_total` against `serving-adapter` per ask."
+      },
+      {
+        "probeId": "api-completion",
+        "tier": "platform-api",
+        "method": "POST",
+        "path": "/v1/chat/completions",
+        "phases": [
+          "unready",
+          "recovered"
+        ],
+        "expectedUnreadyStatus": 503,
+        "expectedRecoveredStatus": 200,
+        "expectation": "The canonical refusal a caller receives. ADR 0010 D8 maps a loading runtime to `model-not-ready` and an unreachable one to `capability-unavailable`; both are 503 and both are retryable, and which one arrives depends on whether the adapter could reach the runtime at all. The record states the code that was observed and does not assume either."
+      }
+    ],
+    "canonicalRefusalCodes": [
+      "model-not-ready",
+      "capability-unavailable",
+      "upstream-timeout",
+      "request-timeout",
+      "internal-error",
+      "contract-invalid",
+      "version-unsupported",
+      "rate-limited"
+    ]
+  },
+  "diagnostics": {
+    "description": "What an operator would look at, captured while the release was in the unready state and kept as evidence. Every capture is read back by the record tool and refused if it carries a host path, a user directory, or an address that is not loopback -- a diagnostic bundle is exactly where one of those reaches a commit.",
+    "captures": [
+      {
+        "captureId": "runtime-describe",
+        "what": "kubectl describe of the serving runtime pod",
+        "identifiesCause": "probable",
+        "expectation": "Events and container state. The init container's success is here, which is what separates this from an artifact fault."
+      },
+      {
+        "captureId": "runtime-log",
+        "what": "the serving runtime container's log",
+        "identifiesCause": "yes",
+        "expectation": "`llama-server` names the artifact it is loading and stops there. The line that identifies the cause is the absence of a completed load, read together with the container's CPU limit."
+      },
+      {
+        "captureId": "api-log",
+        "what": "the platform API container's log",
+        "identifiesCause": "partial",
+        "expectation": "The API's own view. It says the adapter is not ready; it does not say why the model is not loading, and it is not supposed to."
+      },
+      {
+        "captureId": "api-readiness-body",
+        "what": "the body of the API's own readiness endpoint",
+        "identifiesCause": "partial",
+        "expectation": "The adapter kind and the lifecycle state, which distinguish a not-ready adapter from a draining API."
+      },
+      {
+        "captureId": "runtime-resources",
+        "what": "the serving runtime container's declared resource requests and limits",
+        "identifiesCause": "yes",
+        "expectation": "The misconfiguration itself, readable from the cluster rather than from the values file the operator passed."
+      }
+    ],
+    "logTailLines": 200,
+    "requireNoSecretInCaptures": true,
+    "requireNoHostPathInCaptures": true,
+    "excerptLines": 12
+  },
+  "recovery": {
+    "description": "Where each published interval begins and ends. The origin of the recovery intervals is the moment the corrected upgrade was issued, stamped by the operating script on the host's own clock. A recovery is stamped from a served completion, never from a forward accepting a connection and never from a rollout command returning.",
+    "mechanism": "helm-upgrade-without-the-overlay",
+    "upgradeIssuedFrom": "operating-script",
+    "runtimeReadyFrom": "upgrade-issued",
+    "apiReadyFrom": "upgrade-issued",
+    "firstServedCompletionFrom": "upgrade-issued",
+    "requireServedCompletionAfterRecovery": true,
+    "requireCanonicalRefusalWhileUnready": true,
+    "requireReleaseRevisionToMove": true,
+    "sameReleaseBecause": "A reinstall would produce a different release and a different set of objects, and the question is whether *this* release can be got back. The upgrade keeps the release name, the namespace, the claim, and the model, and moves only the value that was wrong."
+  },
+  "telemetry": {
+    "description": "What the release's own collector could and could not answer about a model that did not become ready. Every expression is asked over the whole run, and each carries a pre-registered expectation so that a signal which did not expose the state is recorded as such rather than left out. The expressions are the committed dashboard's, not new ones: this experiment invents no metric and no alert.",
+    "rangeStepSeconds": 15,
+    "scrapeIntervalSeconds": 30,
+    "series": [
+      {
+        "seriesId": "model-readiness-by-workload",
+        "expr": "inferops_model_ready",
+        "answerability": "not-answerable-nothing-emits",
+        "exposure": "nothing-emits",
+        "expectation": "The telemetry catalog assigns this to the serving-runtime adapter and marks it not emitted, with the reason that the adapter is not instrumented. It is the one metric in this repository whose whole purpose is to answer this experiment's question, and nothing puts it on any endpoint, so it answers with no series however unready the model is."
+      },
+      {
+        "seriesId": "model-readiness-absence",
+        "expr": "inferops:model_ready_absent:platform_api",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-not-to-expose",
+        "expectation": "The recorded rule that publishes the absence above rather than an empty series. It reads 1 throughout, in both phases, which is what makes it useless for telling a loading model from a loaded one."
+      },
+      {
+        "seriesId": "pod-container-restarts",
+        "expr": "kube_pod_container_status_restarts_total",
+        "answerability": "no-source",
+        "exposure": "no-source",
+        "expectation": "Would need kube-state-metrics, which this release does not install and this project has not adopted. The restart count this experiment publishes is read from the pod's own container status instead."
+      },
+      {
+        "seriesId": "api-errors-by-code",
+        "expr": "sum by (inferops_workload_id, inferops_error_code) (inferops_inference_errors_total)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "The canonical code the API assigned to what it could not serve, by workload. V1-S4-006 recorded this as the signal that identified what was wrong when the pod was lost; here it is the signal that says which of the two 503 refusals a caller actually met."
+      },
+      {
+        "seriesId": "api-readiness-check-failures",
+        "expr": "sum by (inferops_workload_id, inferops_component) (inferops_readiness_check_failures_total)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "The API's own readiness check against its adapter, labelled by component. A model that never loads makes this climb once per kubelet probe against `serving-adapter`, and it is the closest thing this system emits to the gauge the catalog marks not emitted."
+      },
+      {
+        "seriesId": "api-requests-by-outcome",
+        "expr": "sum by (inferops_outcome) (inferops_inference_requests_total)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "Every request the API answered, by outcome. An outcome other than success during the unready window is the counter noticing."
+      },
+      {
+        "seriesId": "serving-runtime-scrape-up",
+        "expr": "up{job=\"inferops-inferops-llm-serving-runtime\"}",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "Registered as expected to expose, and registered that way for a reason this experiment can state in advance: the runtime answers `/metrics` with the same 503 it answers everything else with while it loads, so the scrape fails. V1-S4-006 and V1-S3-011-PR2 both recorded this signal as uninformative about readiness when a pod was terminating; this failure mode is the one where it is not, and the difference is that the process is up and refusing rather than up and answering."
+      },
+      {
+        "seriesId": "scrape-target-health-by-job",
+        "expr": "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "The ratio of targets up to targets discovered, for the same reason as the row above."
+      },
+      {
+        "seriesId": "runtime-requests-processing",
+        "expr": "sum(inferops:inference_requests_in_flight:runtime)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-not-to-expose",
+        "expectation": "A recorded mapping of the runtime's own gauge. A runtime that never finished loading published no metrics at all, so this is empty for the unready window -- an absence that says the scrape failed, not that no work was in flight."
+      },
+      {
+        "seriesId": "api-build-identity",
+        "expr": "count by (k8s_component) (inferops_build_info)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-not-to-expose",
+        "expectation": "The API publishes its identity whether or not its adapter can serve, so this is the same either side and says nothing about the model."
+      }
+    ]
+  },
+  "readiness": {
+    "runtimeContainerRunningBudgetMs": 300000,
+    "apiContainerRunningBudgetMs": 300000,
+    "collectorRolloutBudgetMs": 300000,
+    "forwardBudgetMs": 30000,
+    "recoveryRolloutBudgetMs": 900000,
+    "recoveryBudgetMs": 1500000,
+    "uninstallBudgetMs": 600000
+  },
+  "schedule": {
+    "phases": [
+      "unready",
+      "recovered"
+    ],
+    "idleBaselineSeconds": 60,
+    "settleAfterRecoverySeconds": 90
+  },
+  "forwards": {
+    "description": "Four loopback ports, and the fourth exists because of what a forward is made of here. `inferops::target_kubectl` is a shell function, so backgrounding it backgrounds a subshell, and this script holds traps -- which is exactly the case in which bash does not replace that subshell with the command it runs. Signalling the job therefore signals the subshell and leaves `kubectl` holding the socket, and a run that re-used the port straight afterwards found the new forward refusing to bind and its own probes answered by the old one, pointed at the pod the upgrade had replaced. The serving runtime's pod is the one the upgrade replaces, so its forward after the fix is opened on a port of its own and the port it used before is never asked again.",
+    "host": "127.0.0.1",
+    "apiPort": 18096,
+    "runtimePort": 18097,
+    "recoveredRuntimePort": 18098,
+    "collectorPort": 19096
+  },
+  "evidence": {
+    "directory": ".cache/inferops/experiments/unready-model-recovery",
+    "environmentFile": "environment.json",
+    "lifecycleFile": "lifecycle.json",
+    "readinessFile": "readiness.json",
+    "probesFile": "probes.jsonl",
+    "diagnosticsFile": "diagnostics.json",
+    "telemetryFile": "telemetry.json",
+    "recordDirectory": "record",
+    "retainGeneratedText": false
+  },
+  "cleanup": {
+    "uninstallsRelease": true,
+    "removesPrerequisites": false,
+    "removesCluster": false,
+    "removesModelCacheClaim": false
+  },
+  "limitations": [
+    "One provider, one host, one single-replica release, one model, one runtime build, one chart, and one misconfiguration applied once. Nothing here is portable to another provider, host, replica count, model, or runtime configuration, and nothing here is an availability figure, a service-level objective, an error budget, or a recovery-time objective.",
+    "The model did not become ready within the registered observation window, and that is not the same as proving it never would. The load was starved rather than failed. An earlier execution held the release unready for 307 673 ms and then observed the starved load complete, so the window is registered at 180 s against a starved load of roughly 1.7 times that, and `10m` is the smallest quota a container runtime will enforce rather than the smallest number this experiment could have written. Every restart count published here is bounded the same way, by the runtime's own startup probe budget, after which the kubelet restarts the container into the same load.",
+    "The disruption is a processor limit and not a corrupt artifact, a wrong revision, or an unloadable file. Those are refused earlier -- by chart validation or by the `verify-model` init container -- and this experiment says nothing about what the runtime process would do if it reached one of them, beyond the direct measurement recorded in the descriptor's own list of rejected mechanisms.",
+    "Both request surfaces are reached through a loopback forward to a pod rather than to a Service, because a release whose model is not ready has no ready endpoint on either Service. What the probes record is therefore what each workload answers, not what a caller arriving through a Service would have met -- and a caller arriving through the API Service in this state would have met no endpoint at all, which is a different observation and is stated rather than measured here.",
+    "The recovery is an operator changing a value and issuing an upgrade. Nothing here says a controller would have reversed it, and nothing here measures how long a person takes to notice.",
+    "The collector scrapes every 30 seconds, so a telemetry series locates a transition to within a scrape and a rule evaluation, never to the request. No figure published here is derived from a telemetry series.",
+    "One round of probes is sent every registered interval, not a load profile. This experiment measures what a caller is told, not what a fleet of callers experiences: V1-S4-006 owns the under-load question and this one deliberately does not repeat it.",
+    "Other workloads on the same node and virtual machine are not controlled, and the host's file cache is in whatever state the preceding run left it -- which matters more here than usual, because the thing being starved is a load whose cost depends on it."
+  ]
+}
