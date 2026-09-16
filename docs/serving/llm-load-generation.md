@@ -1,8 +1,10 @@
 # Repeatable LLM load generation
 
 Status: **implemented, rehearsed, and run against a real release** by
-[the performance scenarios](performance-scenarios.md), which install the release,
-derive the facts file from the cluster, and run this profile twice. The
+[the performance scenarios](performance-scenarios.md) and by
+[the inference pod recovery experiment](inference-pod-recovery.md), both of which
+install the release, derive the facts file from the cluster, and run this profile
+twice. The
 versioned profile
 [`llm-load-profile.v1.json`](../../deploy/serving/load/llm-load-profile.v1.json) and
 the [`tools.llm_load`](../../tools/llm_load/) command send a fixed, bounded inference

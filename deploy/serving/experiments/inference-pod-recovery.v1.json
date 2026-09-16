@@ -1,0 +1,249 @@
+{
+  "schemaVersion": "inferops.io/v1alpha1",
+  "experimentId": "inferops-inference-pod-recovery",
+  "experimentVersion": "1.0.0",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "certificationCeiling": "C2",
+  "lane": "real-runtime",
+  "productionBenchmark": false,
+  "portableCapacityClaim": false,
+  "availabilityClaim": false,
+  "boundary": "Bounded observations of one inference pod lost once, under one load profile, on the provider, host, model, runtime, release, and repetition recorded beside them. They are not an availability figure, a service-level objective, an error budget, a portable capacity figure, or a benchmark of Kubernetes, the model, the runtime, or any provider.",
+  "decisionRef": "docs/architecture/decisions/ADR-0013-bounded-local-performance-observations.md",
+  "procedureRef": "docs/serving/inference-pod-recovery.md",
+  "reportTemplateRef": "docs/proof/serving/TEMPLATE-inference-pod-recovery.md",
+  "chartRef": "charts/inferops-llm",
+  "extendsRef": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md",
+  "distinctProofQuestion": "V1-S3-003-PR2 proved that the model artifact survives a pod replacement and recorded, as its own limitation, that nothing there measured the replacement window from a caller's side. This experiment measures exactly that: what callers and operators observe while traffic is running when the serving runtime pod is lost.",
+  "load": {
+    "profileRef": "deploy/serving/load/llm-load-profile.v1.json",
+    "profileSha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+    "module": "tools.llm_load"
+  },
+  "cluster": {
+    "providers": [
+      {
+        "providerId": "docker-desktop",
+        "name": "docker-desktop",
+        "context": "docker-desktop"
+      }
+    ]
+  },
+  "release": {
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real",
+    "apiServiceName": "inferops-inferops-llm",
+    "apiServicePort": 8090,
+    "apiDeploymentName": "inferops-inferops-llm",
+    "runtimeServiceName": "inferops-inferops-llm-runtime",
+    "runtimeDeploymentName": "inferops-inferops-llm-runtime",
+    "collectorServiceName": "inferops-inferops-llm-collector",
+    "collectorServicePort": 9090,
+    "collectorDeploymentName": "inferops-inferops-llm-collector",
+    "configMapName": "inferops-inferops-llm-configuration",
+    "apiComponent": "platform-api",
+    "runtimeComponent": "serving-runtime",
+    "collectorComponent": "telemetry-collector",
+    "acquisitionComponent": "model-acquisition",
+    "instanceSelector": "app.kubernetes.io/instance=inferops",
+    "apiReplicas": 1,
+    "runtimeReplicas": 1
+  },
+  "scenarios": [
+    {
+      "scenarioId": "warmup",
+      "role": "warm-up",
+      "loadPhase": "warmup",
+      "concurrency": 1
+    },
+    {
+      "scenarioId": "c1",
+      "role": "disrupted",
+      "loadPhase": "measured",
+      "concurrency": 1
+    },
+    {
+      "scenarioId": "c2",
+      "role": "post-recovery",
+      "loadPhase": "measured",
+      "concurrency": 2
+    },
+    {
+      "scenarioId": "c4",
+      "role": "post-recovery",
+      "loadPhase": "measured",
+      "concurrency": 4
+    }
+  ],
+  "disruption": {
+    "description": "One delete, addressed to the one running serving runtime pod by the name the cluster gave it, issued while the committed load profile is mid-flight. No declared object is changed: not the Deployment, not the claim, not the release revision, not a cluster-scoped object, and nothing in another namespace.",
+    "mechanism": "delete-serving-runtime-pod-under-load",
+    "target": "serving-runtime",
+    "scope": "pod",
+    "duringScenarioId": "c1",
+    "issueAfterLoadStartMs": 30000,
+    "deletesDeclaredObject": false,
+    "changesNoDeployment": true,
+    "changesNoPersistentVolumeClaim": true,
+    "changesNoReleaseRevision": true,
+    "changesNoClusterScopedObject": true,
+    "touchesNoOtherNamespace": true,
+    "reversedBy": "deployment-controller",
+    "gracePeriodSeconds": null
+  },
+  "humanAction": {
+    "description": "What a person had to do, recorded so that a recovery nobody had to intervene in is distinguishable from one that was rescued by hand. The two authorisations below are required before the run; the third field is derived from what the workflow did afterwards, not declared.",
+    "authorisationRequired": true,
+    "valuesFileSuppliedByOperator": true,
+    "recoveryInterventionExpected": false,
+    "interventionVocabulary": [
+      "none",
+      "restarted-a-workload",
+      "rolled-back-a-release",
+      "edited-a-declared-object",
+      "recreated-a-prerequisite"
+    ]
+  },
+  "observation": {
+    "description": "What readiness looked like across the replacement, sampled from three places that disagree on purpose: the Deployment's aggregate, the replacement pod's own Ready condition, and the number of addresses the runtime Service is willing to send traffic to. V1-S3-011-PR2 recorded that a deleted pod keeps answering scrapes inside its termination grace period, so an aggregate is not a caller's view.",
+    "pollIntervalMs": 2000,
+    "minimumSamples": 5,
+    "requireReadinessRecord": true,
+    "requireEndpointSamples": true
+  },
+  "recovery": {
+    "description": "Where each published interval begins and ends. The origin of every one of them is the moment the delete was issued, stamped by the operating script. A recovery is stamped from a served completion in a raw load record set, never from a forward accepting a connection.",
+    "replacementScheduledFrom": "deletion",
+    "replacementReadyFrom": "deletion",
+    "firstServedCompletionFrom": "deletion",
+    "modelReloadFrom": "replacement-container-started",
+    "callerVisibleOutageFrom": "first-unsuccessful-request-after-deletion",
+    "recoveredRunStartsWhen": "replacement-reports-ready",
+    "requireServedCompletionAfterRecovery": true,
+    "requireUnsuccessfulRequestsDuringOutage": true,
+    "twoRunsBecause": "A refused request comes back far faster than a served one, so one run of the committed profile spends its whole remaining request budget within seconds of losing the pod and ends before anything is ready again. The disrupted run measures what the loss cost callers; a second run of the same profile, at the same concurrency levels, measures what they get back."
+  },
+  "telemetry": {
+    "description": "What the release's own collector could and could not answer about the disruption. Every expression is asked over the whole run, and each carries a pre-registered expectation so that a signal which did not expose the event is recorded as such rather than left out.",
+    "rangeStepSeconds": 15,
+    "scrapeIntervalSeconds": 30,
+    "series": [
+      {
+        "seriesId": "serving-runtime-scrape-up",
+        "expr": "up{job=\"inferops-inferops-llm-serving-runtime\"}",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-not-to-expose",
+        "expectation": "A scrape that succeeds says the target answered, not that the workload is ready. V1-S3-011-PR2 observed the deleted pod reporting 1 for roughly 50 s and the replacement reporting 1 while it was still loading the model."
+      },
+      {
+        "seriesId": "scrape-target-health-by-job",
+        "expr": "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-not-to-expose",
+        "expectation": "The ratio of targets up to targets discovered, for the same reason as the row above."
+      },
+      {
+        "seriesId": "api-requests-by-outcome",
+        "expr": "sum by (inferops_outcome) (inferops_inference_requests_total)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "The API counts every request it answered by outcome, so an outcome other than success appearing during the window is the counter noticing."
+      },
+      {
+        "seriesId": "api-errors-by-code",
+        "expr": "sum by (inferops_error_code) (inferops_inference_errors_total)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "The canonical error code the API assigned to what it could not serve."
+      },
+      {
+        "seriesId": "api-readiness-check-failures",
+        "expr": "sum(inferops_readiness_check_failures_total)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "The API's own readiness check against its serving adapter. V1-S3-011-PR2 recorded this as the closest thing this system emits to a restart signal, and it is a side effect of a probe rather than a restart signal."
+      },
+      {
+        "seriesId": "api-requests-in-flight",
+        "expr": "sum(inferops_inference_requests_in_flight)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "Requests the API is holding. It is a gauge, so it locates the window to within a scrape."
+      },
+      {
+        "seriesId": "runtime-requests-processing",
+        "expr": "sum(llamacpp:requests_processing)",
+        "answerability": "answerable-once-collected",
+        "exposure": "expected-to-expose",
+        "expectation": "A recorded runtime gauge. A deleted pod's series linger until staleness applies, so an absence here locates the event no more precisely than a scrape."
+      },
+      {
+        "seriesId": "model-readiness-by-workload",
+        "expr": "inferops_model_ready",
+        "answerability": "not-answerable-nothing-emits",
+        "exposure": "nothing-emits",
+        "expectation": "The telemetry catalog assigns this to the serving-runtime adapter and marks it not emitted. Nothing puts it on any endpoint, so it answers with no series whatever happens."
+      },
+      {
+        "seriesId": "pod-container-restarts",
+        "expr": "kube_pod_container_status_restarts_total",
+        "answerability": "no-source",
+        "exposure": "no-source",
+        "expectation": "Would need kube-state-metrics, which this release does not install and this project has not adopted."
+      }
+    ]
+  },
+  "readiness": {
+    "runtimeRolloutBudgetMs": 900000,
+    "apiRolloutBudgetMs": 300000,
+    "collectorRolloutBudgetMs": 300000,
+    "forwardBudgetMs": 30000,
+    "replacementBudgetMs": 900000,
+    "recoveryBudgetMs": 1500000,
+    "uninstallBudgetMs": 600000
+  },
+  "schedule": {
+    "repetitions": 2,
+    "runRoles": [
+      "disrupted",
+      "recovered"
+    ],
+    "idleBaselineSeconds": 60,
+    "settleBetweenRunsSeconds": 30,
+    "settleAfterRunSeconds": 90
+  },
+  "forwards": {
+    "host": "127.0.0.1",
+    "apiPort": 18094,
+    "collectorPort": 19094
+  },
+  "evidence": {
+    "directory": ".cache/inferops/experiments/inference-pod-recovery",
+    "environmentFile": "environment.json",
+    "lifecycleFile": "lifecycle.json",
+    "readinessFile": "readiness.json",
+    "telemetryFile": "telemetry.json",
+    "disruptedRawFile": "run-1-raw.jsonl",
+    "recoveredRawFile": "run-2-raw.jsonl",
+    "recordDirectory": "record",
+    "retainGeneratedText": false
+  },
+  "cleanup": {
+    "uninstallsRelease": true,
+    "removesPrerequisites": false,
+    "removesCluster": false,
+    "removesModelCacheClaim": false
+  },
+  "limitations": [
+    "One provider, one host, one single-replica release, one model, one runtime build, one load profile, and one pod lost once. Nothing here is portable to another provider, host, replica count, workload mix, or runtime configuration, and nothing here is an availability figure, a service-level objective, or an error budget.",
+    "The serving runtime runs one replica, so every unsuccessful request recorded here is the consequence of that choice rather than of Kubernetes. A second replica would have changed the result and this experiment says nothing about what it would have changed it to.",
+    "Traffic is sent in two runs of the same profile rather than one continuous stream. The first is disrupted and the second starts once the replacement reports Ready, so the requests after the recovery are a second run's rather than the same run's, and the interval from the deletion to a served completion includes this workflow's own readiness polling and the load generator's start-up wherever the recovery was seen in the second run.",
+    "Load reaches the API through a loopback port-forward to one pod, held open across the disruption. The forward is to the platform API, which is not the tier being deleted, so what the load records is the API's answer while its upstream was gone rather than a connection that died.",
+    "A deleted pod is not a lost node. Nothing here says anything about a node that goes away, a claim that fails to reattach, a corrupted volume, or a runtime that starts and answers wrongly.",
+    "The collector scrapes every 30 seconds, so a telemetry series locates the disruption to within a scrape and a rule evaluation, never to the request. No figure published here is derived from a telemetry series.",
+    "That the model artifact survives a pod replacement is not re-proven here. It was established by V1-S3-003-PR2 by comparing the artifact's inode and modification time either side, and this experiment records only that no acquisition Job appeared and that the replacement served real completions.",
+    "Other workloads on the same node and virtual machine are not controlled, and the host's file cache is in whatever state the preceding run left it."
+  ]
+}

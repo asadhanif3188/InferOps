@@ -10,6 +10,36 @@ once versioned releases begin.
 
 ### Added
 
+- **Losing the inference pod while callers are waiting, measured.** A committed
+  experiment descriptor, an operating script, and `python -m tools.inference_pod_recovery`
+  delete exactly one serving runtime pod by the name the cluster gave it, a registered
+  number of milliseconds after the committed load profile starts, and record what
+  callers and operators saw. The record slices both raw load record sets by dispatch
+  instant into what was served before the delete, what the draining pod still served,
+  the outage, and what came after; it stamps the outage from the first request that was
+  not served to the first one dispatched from then on that was, never from the delete
+  and never from a forward accepting a connection; and it asks every registered
+  collector expression, including two registered as having nothing to emit and no
+  source. Twenty-three checks decide whether it is usable, and one of them refuses any
+  interval a reader would take as a duration and that came out below zero.
+  [The result](docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md) regenerates
+  from its six committed inputs.
+
+  **What it states, for one single-replica release on `docker-desktop`:** the
+  replacement pod reported itself Ready 33 665 ms after the delete; forty requests came
+  back `503` `capability-unavailable` in 20–83 ms each and one that was already in
+  flight hung and returned `500` `internal-error`, across a caller-visible outage of
+  31 960 ms; no person intervened between the delete and the uninstall; the runtime
+  Service reported **no** ready endpoint for the whole outage while the deleted pod's
+  own `Ready` condition still read `True`; and the signal that identified what was
+  wrong was `inferops_inference_errors_total` by canonical code, not scrape health.
+  **What it is not:** an availability figure, a service-level objective, an error
+  budget, a portable capacity figure, or a benchmark. The record carries
+  `availabilityClaim: false` beside the two flags ADR 0013 D3 already required, and
+  ADR 0013 gains two dated implementation notes recording that a third descriptor and a
+  third refusing tool now exist. That the model artifact survives a pod replacement is
+  **not** re-proven here; it stays `V1-S3-003-PR2`'s result.
+
 - **The V1 cost baseline: estimated records from measured use, at synthetic prices.**
   `python -m tools.cost_baseline` reads the committed `V1-S4-004` performance record, and
   refuses unless it regenerates byte for byte from its inputs, is `local-real-cpu`

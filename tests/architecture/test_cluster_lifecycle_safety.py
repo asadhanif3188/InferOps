@@ -73,6 +73,7 @@ ENTRY_POINTS = (
     "helm-upgrade-rollback.sh",
     "kubernetes-pod-restart.sh",
     "performance-scenarios.sh",
+    "inference-pod-recovery.sh",
     "telemetry-collection-verify.sh",
     "target-detect.sh",
 )
