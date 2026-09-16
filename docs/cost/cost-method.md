@@ -6,7 +6,8 @@ Status: **accepted**, in
 [ADR 0014](../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)
 so that V1 calculates the `estimated` basis only. The method is committed as data and
 machine-checked. A repository tool, [the cost calculation](cost-calculation.md),
-applies it by hand to one declared input; no platform component produces, emits,
+applies it by hand to one declared input, and [the cost baseline](../proof/cost/v1-s4-005-pr2-cost-baseline.md)
+applies it to use taken from committed samples; no platform component produces, emits,
 stores, or reads a cost record, no invoice has ever been seen, and the only rate card
 committed here is synthetic.
 
@@ -45,7 +46,7 @@ lands on `none`.
 |---|---|---|
 | `actual` | Taken from a provider's invoice or billing export for the period it covers | No. This project has no provider account, no invoice, and no billing export |
 | `allocated` | A price applied to the capacity a workload reserved, whether or not it used any | No, since ADR 0014. It is specified, and the worked example demonstrates it, but a V1 calculation does not produce it: an allocation beside an estimate of the same window is two numbers read as one |
-| `estimated` | A price applied to observed utilisation over the window | Yes, and it is the only one. Measured use comes from a committed bounded experiment and is typed into the calculation input by hand |
+| `estimated` | A price applied to observed utilisation over the window | Yes, and it is the only one. Measured use comes from a committed bounded experiment, typed into the calculation input by hand or taken from its samples by `tools/cost_baseline` |
 
 Three rules travel with the basis:
 
@@ -296,8 +297,8 @@ whether it exists today.
 | `usage.requests` | How many requests is this amount divided by? | measured | `inferops_inference_requests_total` |
 | `usage.inputTokens` | How many input tokens did it process? | measured | `inferops_inference_tokens_total` |
 | `usage.outputTokens` | How many output tokens did it produce? | measured | `inferops_inference_tokens_total` |
-| `usage.cpuSeconds` | How much processor time did it actually consume? | measured | none in the catalog; pod cgroup samples of a declared experiment, typed in by hand |
-| `usage.memoryByteSeconds` | How much memory did it actually hold, over time? | measured | none in the catalog; pod cgroup samples of a declared experiment, typed in by hand |
+| `usage.cpuSeconds` | How much processor time did it actually consume? | measured | none in the catalog; pod cgroup samples of a declared experiment, typed in by hand or read by `tools/cost_baseline` |
+| `usage.memoryByteSeconds` | How much memory did it actually hold, over time? | measured | none in the catalog; pod cgroup samples of a declared experiment, typed in by hand or read by `tools/cost_baseline` |
 | `usage.acceleratorSeconds` | How much accelerator time did it consume? | unavailable | none |
 | `usage.readySeconds` | For how much of the window could it answer at all? | derived | `inferops_model_ready`, partially |
 | `identity.workloadId` | Which workload is this record about? | declared | `inferops.workload.id` |
@@ -314,10 +315,11 @@ an input cannot claim a source the catalog does not declare.
 
 **No usage input is read from a running system.** Coverage describes what the catalog
 would supply, not what exists. Processor seconds, memory byte-seconds, requests, and
-tokens are obtainable in V1 only from a committed bounded experiment, and only by
-typing them into a calculation input by hand;
+tokens are obtainable in V1 only from a committed bounded experiment: typed into a
+calculation input by hand, or taken from the experiment's committed files by
+`tools/cost_baseline`, which applies
 [ADR 0014](../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md)
-D3 states how each is taken from the samples, and no reader applies it yet.
+D3 and reads no running system.
 Accelerator seconds and ready seconds are not obtainable at all. A test holds that
 split.
 
@@ -411,10 +413,10 @@ costs.
 
 | Gap | What it blocks |
 |---|---|
-| No container or node resource metric, and no metrics server | Any `estimated` record whose use is read from telemetry; today measured use reaches a calculation only from a committed bounded experiment, by hand |
+| No container or node resource metric, and no metrics server | Any `estimated` record whose use is read from telemetry; today measured use reaches a calculation only from a committed bounded experiment, typed in by hand or taken from its samples by `tools/cost_baseline` |
 | No accelerator metric, and no accelerator ever used | Any accelerator line above an allocation from a declaration |
 | No collector keeps a utilisation series, and no durable store holds one | Reading any usage input from a running system, including the ones with full catalog coverage |
-| No reader takes usage from committed samples | Checking that a calculation's hand-typed usage matches the evidence it names |
+| No check ties a hand-typed input to its samples | Knowing that a hand-typed usage value matches the evidence it names; an input `tools/cost_baseline` wrote is checked by regenerating it |
 
 Two questions are **not decided** here and are not this record's to decide: which
 provider rate cards a comparison against hosted capacity would use, and which platform
@@ -430,13 +432,14 @@ Fourteen are recorded in the data. These are the ones that change how this docum
 should be read:
 
 - **No platform component computes any of this.** A repository tool computes a record
-  by hand from a declared input; no invoice has been read, and no cost record has been
-  calculated from measured evidence.
+  by hand from a declared input; no invoice has been read. Two records have been
+  calculated from measured use, and both are priced from the synthetic card.
 - **The only rate card is synthetic**, so every amount here is arithmetically correct
   and economically meaningless.
-- **There is no utilisation series.** Measured use reaches a calculation only as values
-  typed in by hand from a committed bounded experiment, and nothing checks them against
-  that experiment.
+- **There is no utilisation series.** Measured use reaches a calculation only from a
+  committed bounded experiment's files: typed in by hand, which nothing checks against
+  that experiment, or taken from them by `tools/cost_baseline`, whose verify command
+  regenerates the input.
 - **An estimate does not charge idle reservations** to the workload that made them; they
   are on the unallocated line.
 - **Node capacity is a declared input.** Nothing reads it from a cluster, so a record

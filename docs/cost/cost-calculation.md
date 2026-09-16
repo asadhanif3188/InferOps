@@ -11,9 +11,10 @@ method publishes. It is run by hand, contacts nothing, and emits no telemetry.
 > **No cost figure is published here, and none can be produced that means anything.**
 > The only rate card committed in this repository is synthetic, so every record the
 > tool writes has confidence `none`. Both committed fixtures are synthetic: no request
-> in them was served and no processor second in them was measured. Every usage value
-> in an input is typed in by hand. No calculation has been run over the `V1-S4-004`
-> evidence.
+> in them was served and no processor second in them was measured. Usage in an input is
+> typed in by hand unless `tools/cost_baseline` wrote the input from committed samples,
+> as it did for [the V1 cost baseline](../proof/cost/v1-s4-005-pr2-cost-baseline.md):
+> two records of measured use over the `V1-S4-004` runs, still at synthetic prices.
 
 ## What it computes
 
@@ -124,20 +125,22 @@ Before writing any figure, the tool refuses:
 
 ## What is still supplied by hand
 
-| Input | Where it would come from | Today |
-|---|---|---|
-| Processor seconds | Each pod's cgroup processor counter, increase between the samples bounding the window, summed over the workload's pods (ADR 0014 D3) | Typed in by hand |
-| Memory byte-seconds | Each pod's cgroup working set, integrated trapezoidally between samples inside the window (ADR 0014 D3) | Typed in by hand |
-| Requests and tokens | The experiment's raw records, reconciled with the collector's counters | Typed in by hand |
-| Node capacity | The node's allocatable resources | Declared by hand; nothing reads a cluster |
-| Reservation and replicas | The workload document and the release | Declared by hand |
-| Window | The experiment's phase boundaries | Declared by hand |
+| Input | Where it would come from | Typed input | Written by `tools/cost_baseline` |
+|---|---|---|---|
+| Processor seconds | Each pod's cgroup processor counter, increase between the samples bounding the window, summed over the workload's pods (ADR 0014 D3) | Typed in by hand | Taken from the samples |
+| Memory byte-seconds | Each pod's cgroup working set, integrated trapezoidally between samples inside the window (ADR 0014 D3) | Typed in by hand | Taken from the samples |
+| Requests and tokens | The experiment's raw records, reconciled with the collector's counters | Typed in by hand | Counted from the raw records |
+| Node capacity | The node's allocatable resources | Declared by hand; nothing reads a cluster | Read from the environment the experiment captured |
+| Reservation and replicas | The workload document and the release | Declared by hand | Read from the environment the experiment captured |
+| Window | The experiment's phase boundaries | Declared by hand | The samples bounding a run's phases |
+| Identity | The workload document and the release | Declared by hand | The collector's labels; the owner from the executed values file |
 
-The integration rules in that table are written and not executed: no reader in this
-repository takes a usage value from committed samples. The tool can check that a value
-is well formed and fits within the node, and that a measured class names a committed
-record of that class; it cannot check that the value matches that record, which it does
-not read beyond its class.
+`tools/cost_calculation` itself still reads no samples. For a typed input it can check
+that a value is well formed and fits within the node, and that a measured class names a
+committed record of that class; it cannot check that the value matches that record. An
+input `tools/cost_baseline` wrote is checked by that tool's `verify`, which refuses a
+record that does not regenerate from its inputs and regenerates the input byte for byte.
+The tool and its rules are described in [the cost baseline](../proof/cost/v1-s4-005-pr2-cost-baseline.md).
 
 ## The committed fixtures
 
@@ -170,7 +173,8 @@ still stated, because it does not depend on use.
 
 - **Every figure is synthetic.** It demonstrates the arithmetic and says nothing about a
   price.
-- **Hand-typed usage** is as good as whoever typed it.
+- **Hand-typed usage** is as good as whoever typed it. Usage taken from samples is as
+  good as the samples, which were read every few seconds on one host.
 - **A working set counts file-backed pages** the kernel charges to a pod, and a cgroup
   processor counter counts every thread in it; both are what the kernel reported, not
   what a request needed.

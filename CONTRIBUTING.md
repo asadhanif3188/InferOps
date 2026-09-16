@@ -813,11 +813,18 @@ values worked out by hand. A calculation input's committed result must regenerat
 python -m tools.cost_calculation verify --input INPUT.json --result RESULT.json
 ```
 
+The committed cost baseline, whose inputs are taken from the `V1-S4-004` samples rather
+than typed, must regenerate from that record:
+
+```sh
+python -m tools.cost_baseline verify --record-dir docs/proof/serving --record-prefix v1-s4-004-pr1- --dir docs/proof/cost --prefix v1-s4-005-pr2-
+```
+
 It checks a method and its arithmetic, not a cost. No platform component computes,
-emits, or reads a cost record, no invoice has ever been seen, every usage value in a
-calculation input is typed in by hand, and the only rate card committed here is
-synthetic, so every amount the suite verifies is arithmetically correct and
-economically meaningless.
+emits, or reads a cost record, no invoice has ever been seen, usage in a calculation
+input is typed in by hand unless `tools/cost_baseline` took it from committed samples,
+and the only rate card committed here is synthetic, so every amount the suite verifies
+is arithmetically correct and economically meaningless.
 
 A change that adds an input adds the signal it would come from or records that none
 exists. A change that adds an amount to the worked example adds a number the suite
