@@ -76,6 +76,9 @@ DECISION = (
 EXTENDS = REPO_ROOT / "docs/serving/mock-and-real-boundary.md"
 TEMPLATE = REPO_ROOT / "docs/proof/serving/TEMPLATE-unready-model-recovery.md"
 
+PROOF_DIR = REPO_ROOT / "docs/proof/serving"
+PROOF_PREFIX = "v1-s4-007-pr1-"
+
 UNREADY_POD = "inferops-inferops-llm-runtime-aaaaaaaaaa-11111"
 RECOVERED_POD = "inferops-inferops-llm-runtime-bbbbbbbbbb-22222"
 API_POD = "inferops-inferops-llm-cccccccccc-33333"
@@ -544,7 +547,24 @@ def probes_text(
     return "\n".join(lines) + "\n"
 
 
+#: A capture longer than the excerpt ceiling, so that the synthetic document exercises
+#: the truncation the reconciliation is about rather than the trivial case.
+SYNTHETIC_CAPTURE_LINES = 14
+
+
 def diagnostics_document(*, empty: str | None = None) -> dict[str, Any]:
+    """Captures whose published accounting adds up, as a real one's must.
+
+    ``excerptLinesKept + excerptLinesWithheld`` has to equal the number of lines the
+    builder considered, which is ``min(lines, excerptLines)``. A builder here that
+    produced a one-line excerpt from a fourteen-line capture would be describing a
+    redaction nobody performed, and the record now refuses it.
+    """
+    ceiling = DESCRIPTOR.excerpt_lines
+    kept = min(SYNTHETIC_CAPTURE_LINES, ceiling)
+    excerpt = "\n".join(
+        [f"load_model: loading model, line {index}" for index in range(kept)]
+    )
     captures = []
     for capture in DESCRIPTOR.captures:
         blank = capture.capture_id == empty
@@ -552,13 +572,11 @@ def diagnostics_document(*, empty: str | None = None) -> dict[str, Any]:
             {
                 "captureId": capture.capture_id,
                 "phase": "unready",
-                "lines": 0 if blank else 14,
+                "lines": 0 if blank else SYNTHETIC_CAPTURE_LINES,
                 "bytes": 0 if blank else 900,
                 "sha256": "a" * 64,
                 "excerptLinesWithheld": 0,
-                "excerpt": "(empty)"
-                if blank
-                else "load_model: loading model '/models/Qwen3-1.7B-Q8_0.gguf'",
+                "excerpt": core.EMPTY_EXCERPT if blank else excerpt,
             }
         )
     return {"diagnostics": {"captures": captures}}
@@ -1039,9 +1057,82 @@ def test_the_install_passes_the_committed_overlay_and_the_script_supplies_it() -
 
 
 def test_the_script_never_keeps_a_completion_body() -> None:
-    """`retainGeneratedText` is false, and a completion body is generated text."""
+    """`retainGeneratedText` is false, and a completion body is generated text.
+
+    Three assertions, and the third is the one that means anything. An earlier version
+    asserted only that a *comment* saying the text is not read appeared in the script,
+    which independent review rightly called an overclaim: a comment establishes nothing
+    about behaviour. What is asserted now is the classifier's own source — that the one
+    place a completion body is parsed reads `finish_reason` and `completion_tokens` and
+    never reaches for the message, the content, or the text — and the shape of every
+    record it may write.
+    """
     assert DOCUMENT["probes"]["retainGeneratedText"] is False
-    assert "The completion's text is deliberately not read" in SCRIPT_TEXT
+
+    classifier = SCRIPT_TEXT[
+        SCRIPT_TEXT.index("PROBE_PYTHON") : SCRIPT_TEXT.rindex("PROBE_PYTHON")
+    ]
+    assert 'choice.get("finish_reason")' in classifier
+    assert 'usage.get("completion_tokens")' in classifier
+    # `error.get("message")` is allowed and used: an API error message is the platform's
+    # own words about a refusal, not anything a model generated. What may not appear is
+    # a reach into a *choice* for what it said.
+    for reach in ('"content"', '"text"', '["message"]', 'choice.get("message")'):
+        assert reach not in classifier, reach
+
+    # And the line it writes: a fixed set of keys, none of which can hold a completion.
+    line = classifier[classifier.index("line = {") : classifier.index("sys.stdout")]
+    keys = set(re.findall(r'"([A-Za-z0-9]+)":', line))
+    assert keys == {
+        "phase",
+        "round",
+        "probeId",
+        "tier",
+        "method",
+        "path",
+        "atEpochMs",
+        "latencyMs",
+        "status",
+        "errorCode",
+        "conditionId",
+        "retryable",
+        "detail",
+        "bodyBytes",
+        "bodySha256",
+        "outputTokens",
+    }, sorted(keys)
+
+
+def test_no_committed_probe_record_carries_a_completion() -> None:
+    """The published probe set, read key by key against the same fixed shape."""
+    committed = (PROOF_DIR / f"{PROOF_PREFIX}probes.v1alpha1.jsonl").read_text(
+        encoding="utf-8"
+    )
+    allowed = {
+        "phase",
+        "round",
+        "probeId",
+        "tier",
+        "method",
+        "path",
+        "atEpochMs",
+        "latencyMs",
+        "status",
+        "errorCode",
+        "conditionId",
+        "retryable",
+        "detail",
+        "bodyBytes",
+        "bodySha256",
+        "outputTokens",
+    }
+    rows = [json.loads(line) for line in committed.splitlines() if line.strip()]
+    assert rows
+    for row in rows:
+        assert set(row) == allowed, sorted(set(row) ^ allowed)
+        # The detail of a served completion names its finish reason and nothing it said.
+        if row["status"] == 200 and row["probeId"] == "api-completion":
+            assert row["detail"].startswith("served, finish_reason=")
 
 
 def test_the_script_records_exactly_the_one_intervention_it_registers() -> None:
@@ -1229,15 +1320,43 @@ def test_instants_out_of_order_are_refused(tmp_path: Path) -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("dotted", "value"),
+    [
+        ("install__runtimeContainerRunningEpochMs", ORIGIN - 1),
+        ("install__runtimeSocketOpenEpochMs", ORIGIN + 29_000),
+        ("idleBaseline__startEpochMs", ORIGIN + 34_000),
+        ("unreadyWindow__endEpochMs", ORIGIN + 95_000),
+        ("upgrade__runtimeReadyEpochMs", ORIGIN + 100),
+        ("upgrade__apiReadyEpochMs", ORIGIN + 100),
+    ],
+)
+def test_the_lifecycle_reader_refuses_every_ordering_inversion(
+    dotted: str, value: int
+) -> None:
+    """Where `no-published-interval-is-negative` is actually guaranteed.
+
+    That check is a tripwire on the derivation and cannot fail for a record whose
+    inputs this reader accepted — every instant its differences are taken between
+    carries an ordering minimum here. Independent review asked for a negative control
+    on the check; the honest one is a control per inversion on the thing that makes the
+    check unreachable, because weakening any of these is what would reach it.
+    """
+    with pytest.raises(UnreadyError, match="at least"):
+        parse_lifecycle(lifecycle_document(**{dotted: value}), DESCRIPTOR)
+
+
 def test_no_published_interval_is_ever_negative(tmp_path: Path) -> None:
     record = record_from(tmp_path)
     for name in (
         "installToRuntimeContainerRunningMs",
-        "runtimeContainerRunningToSocketOpenMs",
+        "runtimeContainerRunningToSocketAnsweredCeilingMs",
         "unreadyWindowHeldMs",
         "upgradeToRuntimeReadyMs",
         "upgradeToApiReadyMs",
         "upgradeToFirstServedCompletionMs",
+        "upgradeToRecoveredWindowOpenMs",
+        "recoveredWindowOpenToFirstServedCompletionMs",
     ):
         assert record["timings"][name] >= 0
     assert "no-published-interval-is-negative" not in failed(record)
@@ -1389,6 +1508,69 @@ def test_the_environment_keeps_a_pod_that_was_never_ready(tmp_path: Path) -> Non
     assert runtime["containersStarted"] is True
 
 
+def test_a_sample_labelled_with_a_phase_it_was_not_taken_in_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The hole independent review found, and the record it produced.
+
+    A sample taken five seconds into the unready window, relabelled `recovered` and
+    given a ready pod, used to satisfy `the-runtime-became-ready-after-the-fix` from
+    205 seconds before the recovered window opened — with `usable: True` and no failed
+    check. A row's phase is a claim about *when* it was taken, and it is now checked
+    against the window that phase opened and closed.
+    """
+    document = readiness_document()
+    early = document["readiness"]["samples"][1]
+    assert early["phase"] == "unready"
+    early["phase"] = "recovered"
+    early["runtimePodsReady"] = 1
+    with pytest.raises(UnreadyRefused, match="outside the recovered window"):
+        record_from(tmp_path, readiness=document)
+
+
+def test_a_sample_stamped_before_its_own_window_opened_is_refused(
+    tmp_path: Path,
+) -> None:
+    document = readiness_document()
+    document["readiness"]["samples"][0]["atEpochMs"] = ORIGIN + 96_000 - 1
+    with pytest.raises(UnreadyRefused, match="outside the unready window"):
+        record_from(tmp_path, readiness=document)
+
+
+def test_a_probe_labelled_with_a_phase_it_was_not_sent_in_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The same hole on the surface that decides what a caller was told."""
+    rogue = probes_text().replace('"phase": "unready"', '"phase": "recovered"', 1)
+    with pytest.raises(UnreadyRefused, match="outside the recovered window"):
+        record_from(tmp_path, probes=rogue)
+
+
+def test_a_row_stamped_just_after_its_window_closed_is_accepted() -> None:
+    """One poll of slack, forwards only, and none backwards.
+
+    The sampling loop reads the clock before it writes and the window is closed by the
+    next statement, so a row can land fractionally late through no fault of the run.
+    Nothing is allowed early, which is the direction the relabelling hole ran in. Asked
+    of the reader rather than of a whole record, because the record's other rules are
+    about coverage and this one is about the bound.
+    """
+    lifecycle = parse_lifecycle(lifecycle_document(), DESCRIPTOR)
+    end = int(lifecycle["unreadyWindow"]["endEpochMs"])
+    document = readiness_document()
+    unready = [s for s in document["readiness"]["samples"] if s["phase"] == "unready"]
+    late = dict(unready[-1])
+    late["atEpochMs"] = end + DESCRIPTOR.poll_interval_ms - 1
+    document["readiness"]["samples"] = [*unready, late]
+    assert parse_readiness(document, DESCRIPTOR, lifecycle)
+
+    too_late = dict(late)
+    too_late["atEpochMs"] = end + DESCRIPTOR.poll_interval_ms + 1
+    document["readiness"]["samples"] = [*unready, too_late]
+    with pytest.raises(UnreadyRefused, match="outside the unready window"):
+        parse_readiness(document, DESCRIPTOR, lifecycle)
+
+
 def test_the_readiness_reader_refuses_samples_out_of_order(tmp_path: Path) -> None:
     document = readiness_document()
     document["readiness"]["samples"][3]["atEpochMs"] = ORIGIN
@@ -1431,12 +1613,47 @@ def test_a_capture_excerpt_carrying_a_private_value_is_not_publishable(
         record_from(tmp_path, diagnostics=document)
 
 
-def test_the_record_publishes_how_many_lines_were_withheld(tmp_path: Path) -> None:
+def test_the_record_publishes_what_was_kept_as_well_as_what_was_withheld(
+    tmp_path: Path,
+) -> None:
+    """`lines` is the whole capture; `excerptLinesKept` is what a reader sees.
+
+    Independent review found the published table quoting the first as the second and
+    overstating one capture's published content about thirteenfold, so the record now
+    carries both and the reconciliation below ties them together.
+    """
+    record = record_from(tmp_path)
+    row = record["diagnostics"]["captures"][0]
+    assert row["lines"] == SYNTHETIC_CAPTURE_LINES
+    assert row["excerptLinesKept"] == len(row["excerpt"].splitlines())
+    assert (
+        row["excerptLinesKept"] + row["excerptLinesWithheld"]
+        == row["excerptLinesConsidered"]
+    )
+    assert record["usable"], failed(record)
+
+
+def test_a_withheld_count_that_does_not_reconcile_is_not_usable(
+    tmp_path: Path,
+) -> None:
+    """What replaced a check that could not fail.
+
+    `every-capture-excerpt-is-publishable` asked whether an excerpt carried a private
+    value, which `build_record` already refuses over the same text before any check
+    runs — so it could only ever pass and it inflated `usable`. The refusal stays; the
+    check now asks the reachable question.
+    """
     document = diagnostics_document()
     document["diagnostics"]["captures"][0]["excerptLinesWithheld"] = 3
     record = record_from(tmp_path, diagnostics=document)
-    assert record["diagnostics"]["captures"][0]["excerptLinesWithheld"] == 3
-    assert record["usable"], failed(record)
+    assert "the-withheld-line-accounting-reconciles" in failed(record)
+
+
+def test_the_excerpt_ceiling_is_the_descriptors(tmp_path: Path) -> None:
+    """One decision, one home: the shell no longer carries its own copy."""
+    assert DESCRIPTOR.excerpt_lines == DOCUMENT["diagnostics"]["excerptLines"]
+    assert "INFEROPS_EXCERPT_LINES" not in SCRIPT_TEXT
+    assert "diagnostics.excerptLines" in SCRIPT_TEXT
 
 
 def test_the_diagnostics_builder_withholds_a_line_with_an_address(

@@ -433,8 +433,9 @@ failed with nothing in its place.
 > happened when the one row marked **Yes** was arranged deliberately instead of met by
 > accident. A release was installed on a real cluster with the serving runtime starved
 > of processor time, so that `llama-server` bound its port, began loading the model,
-> and did not finish. Asked directly, the runtime answered `503` with
-> `{"message":"Loading model"}` throughout — the condition this table calls
+> and did not finish. Asked directly, the runtime answered `503` throughout, with the
+> message `Loading model` and the type `unavailable_error` — the condition this table
+> calls
 > *the runtime reports not-ready while the model loads*. Asked through the platform
 > API, a caller did **not** receive `model-not-ready`. It received
 > `capability-unavailable`, condition `runtime-unreachable`, `retryable: true`, because

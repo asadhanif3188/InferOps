@@ -61,11 +61,6 @@ readonly INFEROPS_EXPERIMENT_REL="deploy/serving/experiments/unready-model-recov
 readonly INFEROPS_EXPERIMENT_MODULE="tools.unready_model_recovery"
 readonly INFEROPS_UNREADY_OVERLAY_REL="deploy/serving/experiments/unready-model-values.v1.yaml"
 
-# How much of each capture is kept in the record as an excerpt. The capture itself is
-# written whole into the run directory; the excerpt is what a published record carries,
-# and it is bounded because a log is not.
-readonly INFEROPS_EXCERPT_LINES="12"
-
 action=""
 values_files=()
 confirmed=0
@@ -182,7 +177,8 @@ if ! descriptor_fields="$(cd "${INFEROPS_ROOT}" && inferops::python -m "${INFERO
   release.runtimeComponent release.acquisitionComponent \
   observation.pollIntervalMs observation.minimumSamples observation.unreadyWindowSeconds \
   observation.recoveredWindowSeconds probes.roundIntervalMs probes.requestTimeoutMs \
-  diagnostics.logTailLines schedule.idleBaselineSeconds schedule.settleAfterRecoverySeconds \
+  diagnostics.logTailLines diagnostics.excerptLines \
+  schedule.idleBaselineSeconds schedule.settleAfterRecoverySeconds \
   readiness.runtimeContainerRunningBudgetMs readiness.apiContainerRunningBudgetMs \
   readiness.collectorRolloutBudgetMs readiness.forwardBudgetMs \
   readiness.recoveryRolloutBudgetMs readiness.uninstallBudgetMs \
@@ -216,6 +212,7 @@ fi
   read -r round_interval_ms
   read -r request_timeout_ms
   read -r log_tail_lines
+  read -r excerpt_lines
   read -r idle_seconds
   read -r settle_seconds
   read -r runtime_running_budget_ms
@@ -242,7 +239,8 @@ fi
 # to be reordered.
 for number in api_container_port runtime_container_port collector_service_port \
   poll_interval_ms minimum_samples unready_window_seconds recovered_window_seconds \
-  round_interval_ms request_timeout_ms log_tail_lines idle_seconds settle_seconds \
+  round_interval_ms request_timeout_ms log_tail_lines excerpt_lines idle_seconds \
+  settle_seconds \
   runtime_running_budget_ms api_running_budget_ms collector_rollout_budget_ms \
   forward_budget_ms recovery_rollout_budget_ms uninstall_budget_ms \
   api_forward_port runtime_forward_port recovered_runtime_forward_port \
@@ -508,7 +506,7 @@ inferops::target_helm install "${INFEROPS_RELEASE_NAME}" "${chart_path}" --names
 wait_for_container_running() {
   local component="$1" container="$2" budget_ms="$3" label="$4"
   local deadline=$((SECONDS + budget_ms / 1000))
-  local pod started
+  local pod started names
   while [ "${SECONDS}" -lt "${deadline}" ]; do
     if names="$(component_pod_names "${component}")" && [ "$(count_lines "${names}")" = "1" ]; then
       pod="$(printf '%s\n' "${names}" | head -1)"
@@ -1050,7 +1048,7 @@ capture runtime-resources unready inferops::target_kubectl get deployment "${run
 # Built by the record tool rather than here, because deciding what of a capture is
 # publishable is the same decision the record's own privacy check makes, and there
 # may be only one definition of it.
-(cd "${INFEROPS_ROOT}" && python -m "${INFEROPS_EXPERIMENT_MODULE}" diagnostics --run-dir "$(inferops::native_path "${run_dir}")" --excerpt-lines "${INFEROPS_EXCERPT_LINES}")
+(cd "${INFEROPS_ROOT}" && python -m "${INFEROPS_EXPERIMENT_MODULE}" diagnostics --run-dir "$(inferops::native_path "${run_dir}")" --excerpt-lines "${excerpt_lines}")
 
 # --- the fix: one value, one upgrade, the same release ------------------------
 

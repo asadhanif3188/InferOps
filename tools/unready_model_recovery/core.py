@@ -112,6 +112,15 @@ EXPOSURE = (
     "no-source",
 )
 
+#: How the far end of the one interval this workflow stamps itself is obtained. It
+#: is registered because an independent review found the interval published as though
+#: it described the runtime: the script stamps it when its first forward answers, and
+#: everything it does between the container being reported running and that forward
+#: being opened is inside the figure. The vocabulary has one member on purpose -- there
+#: is one honest description of what that stamp is -- and registering it is what makes
+#: the ceiling a pre-registered property rather than a caveat added afterwards.
+SOCKET_ANSWER_ORIGINS = ("container-running-including-workflow-setup",)
+
 #: What a person may have had to do. Unlike `V1-S4-006`, this experiment *expects*
 #: an intervention: a model that cannot load is not a state any controller reverses.
 #: The expected one is registered, and anything else is a finding.
@@ -362,6 +371,7 @@ class Descriptor:
     unready_window_seconds: int
     recovered_window_seconds: int
     round_interval_ms: int
+    excerpt_lines: int
     range_step_seconds: int
     scrape_interval_seconds: int
     refusal_codes: tuple[str, ...]
@@ -587,6 +597,11 @@ def _validate_observation(document: Mapping[str, Any]) -> tuple[int, int, int, i
         "minimumSamples",
         minimum=MINIMUM_READINESS_SAMPLES,
     )
+    _member(
+        observation.get("socketAnswerMeasuredFrom"),
+        "observation.socketAnswerMeasuredFrom",
+        SOCKET_ANSWER_ORIGINS,
+    )
     unready = _integer(
         observation.get("unreadyWindowSeconds"),
         "unreadyWindowSeconds",
@@ -717,12 +732,20 @@ def _validate_probes(
     return tuple(surfaces), interval, codes
 
 
-def _validate_diagnostics(document: Mapping[str, Any]) -> tuple[Capture, ...]:
+def _validate_diagnostics(
+    document: Mapping[str, Any],
+) -> tuple[tuple[Capture, ...], int]:
     diagnostics = _object(document.get("diagnostics"), "diagnostics")
     _string(diagnostics.get("description"), "diagnostics.description")
     _true(diagnostics.get("requireNoSecretInCaptures"), "requireNoSecretInCaptures")
     _true(diagnostics.get("requireNoHostPathInCaptures"), "requireNoHostPathInCaptures")
     _integer(diagnostics.get("logTailLines"), "logTailLines", minimum=1, maximum=5000)
+    # How many trailing lines of a capture a published excerpt may carry. It lives here
+    # rather than in the operating script so that the record has something to reconcile
+    # the withheld-line accounting against, and so that one decision has one home.
+    excerpt_lines = _integer(
+        diagnostics.get("excerptLines"), "excerptLines", minimum=1, maximum=200
+    )
     captures: list[Capture] = []
     entries = _list(diagnostics.get("captures"), "diagnostics.captures")
     if not entries or len(entries) > MAXIMUM_CAPTURES:
@@ -752,7 +775,7 @@ def _validate_diagnostics(document: Mapping[str, Any]) -> tuple[Capture, ...]:
             "no capture is registered as naming the cause, so the record could not say "
             "whether the diagnostics identified it"
         )
-    return tuple(captures)
+    return tuple(captures), excerpt_lines
 
 
 def _validate_recovery(document: Mapping[str, Any]) -> None:
@@ -981,7 +1004,7 @@ def validate_descriptor(
     _, overlay_sha256 = _validate_disruption(document, repo_root=repo_root)
     poll, samples, unready, recovered = _validate_observation(document)
     surfaces, round_interval, codes = _validate_probes(document)
-    captures = _validate_diagnostics(document)
+    captures, excerpt_lines = _validate_diagnostics(document)
     series, step, scrape = _validate_telemetry(document)
     limitations = _validate_limitations(document)
 
@@ -1008,6 +1031,7 @@ def validate_descriptor(
         unready_window_seconds=unready,
         recovered_window_seconds=recovered,
         round_interval_ms=round_interval,
+        excerpt_lines=excerpt_lines,
         range_step_seconds=step,
         scrape_interval_seconds=scrape,
         refusal_codes=codes,
@@ -1545,8 +1569,55 @@ def parse_lifecycle(document: Any, descriptor: Descriptor) -> dict[str, Any]:
     }
 
 
-def parse_readiness(document: Any, descriptor: Descriptor) -> list[dict[str, Any]]:
-    """The readiness samples, checked for order, shape, phase, and count."""
+def _phase_window(lifecycle: Mapping[str, Any], phase: str) -> tuple[int, int]:
+    """The instants a phase's own window opened and closed.
+
+    A row carries the name of a phase; this is what that name has to be true of. An
+    earlier version of this module took the name and checked only that it was one of
+    the two, so a sample taken five seconds into the unready window could be labelled
+    `recovered`, report a ready pod, and satisfy `the-runtime-became-ready-after-the-fix`
+    from 205 seconds before the recovered window opened -- with every check passing.
+    Independent review found it; this is the fix.
+    """
+    window = "unreadyWindow" if phase == "unready" else "recoveredWindow"
+    body = _object(lifecycle.get(window), window)
+    return int(body["startEpochMs"]), int(body["endEpochMs"])
+
+
+def _in_phase_window(
+    lifecycle: Mapping[str, Any],
+    *,
+    phase: str,
+    at_ms: int,
+    slack_ms: int,
+    what: str,
+) -> None:
+    """Refuse a row whose instant is outside the window its own phase names.
+
+    The slack is one poll or one round interval, in one direction only: a row may be
+    stamped fractionally after a window closed, because the loop that writes it reads
+    the clock before it writes and the window is closed by the next statement. Nothing
+    is allowed *before* a window opened.
+    """
+    start, end = _phase_window(lifecycle, phase)
+    if at_ms < start or at_ms > end + slack_ms:
+        raise UnreadyRefused(
+            f"a {what} is labelled '{phase}' and was stamped at {at_ms}, which is "
+            f"outside the {phase} window ({start} to {end}). A row's phase is a claim "
+            "about when it was taken, and a record that took the label on trust could "
+            "satisfy a recovery check from a sample taken before the fix"
+        )
+
+
+def parse_readiness(
+    document: Any, descriptor: Descriptor, lifecycle: Mapping[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """The readiness samples, checked for order, shape, phase, window, and count.
+
+    ``lifecycle`` is optional only so that this reader can be exercised on its own;
+    :func:`build_record` always passes it, and without it a row's phase is not checked
+    against the window it names.
+    """
     # The operating script writes the samples under a "readiness" member so that the
     # file says what it is; a bare list of samples is accepted as well, because a
     # reader of this function should not have to know which one it was handed.
@@ -1597,6 +1668,15 @@ def parse_readiness(document: Any, descriptor: Descriptor) -> list[dict[str, Any
                 ),
             }
         )
+    if lifecycle is not None:
+        for sample in parsed:
+            _in_phase_window(
+                lifecycle,
+                phase=str(sample["phase"]),
+                at_ms=int(sample["atEpochMs"]),
+                slack_ms=descriptor.poll_interval_ms,
+                what="readiness sample",
+            )
     if not any(sample["phase"] == "unready" for sample in parsed):
         raise UnreadyRefused(
             "no readiness sample was taken while the model was unready"
@@ -1604,12 +1684,16 @@ def parse_readiness(document: Any, descriptor: Descriptor) -> list[dict[str, Any
     return parsed
 
 
-def parse_probes(text: str, descriptor: Descriptor) -> list[dict[str, Any]]:
+def parse_probes(
+    text: str, descriptor: Descriptor, lifecycle: Mapping[str, Any] | None = None
+) -> list[dict[str, Any]]:
     """Every probe the run sent, checked against the surfaces the descriptor registers.
 
     A probe naming a surface, a method, or a path the descriptor does not register is
     refused rather than kept: an expectation registered before a run is only worth
-    something if what ran is what was registered.
+    something if what ran is what was registered. The same is true of the phase it
+    names, which is why ``lifecycle`` is passed: a probe's phase is a claim about when
+    it was sent, and it is checked against the window that phase opened and closed.
     """
     by_id = {surface.probe_id: surface for surface in descriptor.surfaces}
     parsed: list[dict[str, Any]] = []
@@ -1683,6 +1767,15 @@ def parse_probes(text: str, descriptor: Descriptor) -> list[dict[str, Any]]:
                 "outputTokens": tokens,
             }
         )
+    if lifecycle is not None:
+        for row in parsed:
+            _in_phase_window(
+                lifecycle,
+                phase=str(row["phase"]),
+                at_ms=int(row["atEpochMs"]),
+                slack_ms=descriptor.round_interval_ms,
+                what="probe",
+            )
     if not parsed:
         raise UnreadyRefused("the probe record set is empty")
     return parsed
@@ -1719,12 +1812,19 @@ def build_diagnostics(index_path: Path, *, excerpt_lines: int) -> dict[str, Any]
             {
                 "captureId": capture_id,
                 "phase": phase,
+                # The whole capture, which is written into the run directory and is not
+                # what a reader of this record sees. `excerptLinesConsidered` and
+                # `excerptLinesKept` are what it sees, and they are published beside it
+                # because an earlier reading of this record quoted `lines` as the
+                # published content and overstated one capture by about thirteen times.
                 "lines": len(lines),
+                "excerptLines": excerpt_lines,
+                "excerptLinesConsidered": len(tail),
+                "excerptLinesKept": len(kept),
+                "excerptLinesWithheld": len(tail) - len(kept),
                 "bytes": len(raw),
                 "sha256": text_digest(text),
-                "excerptLinesWithheld": len(tail) - len(kept),
-                "excerpt": "\n".join(kept)
-                or "(every line of this excerpt was withheld)",
+                "excerpt": "\n".join(kept) or EMPTY_EXCERPT,
             }
         )
     return {"diagnostics": {"captures": captures}}
@@ -1749,6 +1849,16 @@ def parse_diagnostics(document: Any, descriptor: Descriptor) -> list[dict[str, A
                 "registers"
             )
         lines = _integer(entry.get("lines"), "capture.lines")
+        withheld = _integer(
+            entry.get("excerptLinesWithheld"), "capture.excerptLinesWithheld"
+        )
+        # Derived here rather than read back, so that a capture written by any version
+        # of the builder reconciles against one definition. The builder writes the same
+        # three numbers into the capture file for a reader's convenience; this works
+        # them out from the excerpt itself, which is the thing a reader can check.
+        ceiling = descriptor.excerpt_lines
+        kept = _excerpt_line_count(_string(entry.get("excerpt"), "capture.excerpt"))
+        considered = kept + withheld
         rows.append(
             {
                 "captureId": registered.capture_id,
@@ -1760,6 +1870,9 @@ def parse_diagnostics(document: Any, descriptor: Descriptor) -> list[dict[str, A
                 "bytes": _integer(entry.get("bytes"), "capture.bytes"),
                 "sha256": _string(entry.get("sha256"), "capture.sha256"),
                 "empty": lines == 0,
+                "excerptLines": ceiling,
+                "excerptLinesConsidered": considered,
+                "excerptLinesKept": kept,
                 # How many lines of the excerpt were withheld because they carried a
                 # host path, a user directory, or an address. Published rather than
                 # silently dropped: a redaction nobody can count is a redaction
@@ -1786,24 +1899,37 @@ def _label_key(labels: Mapping[str, Any]) -> str:
     return ",".join(f"{key}={labels[key]}" for key in sorted(labels))
 
 
-def _reading(element: Mapping[str, Any], at_ms: int | None) -> str | None:
-    """The last value at or before an instant, as the string Prometheus returned."""
+def _reading(
+    element: Mapping[str, Any], at_ms: int | None
+) -> tuple[str | None, int | None]:
+    """The last value at or before an instant, and the instant that value is from.
+
+    Both, because the value alone has no lower bound. The captured range is widened by
+    a scrape interval on the way in and starts at the idle baseline, so a series whose
+    last point predates a window would otherwise be published under that window's key
+    with nothing to say it was stale. The point's own instant is returned beside it and
+    published, so staleness is visible rather than inferred.
+    """
     if at_ms is None:
-        return None
+        return None, None
     latest: str | None = None
+    latest_at: int | None = None
     for point in _list(element.get("values"), "series.values"):
         pair = _list(point, "series.values[]")
         if len(pair) != 2:
             raise UnreadyError("a range sample is not a pair")
-        if float(pair[0]) * 1000 <= at_ms:
+        point_at = int(float(pair[0]) * 1000)
+        if point_at <= at_ms:
             latest = str(pair[1])
-    return latest
+            latest_at = point_at
+    return latest, latest_at
 
 
 def _telemetry_series(
     descriptor: Descriptor,
     telemetry: Mapping[str, Any],
     *,
+    unready_start_ms: int,
     unready_end_ms: int,
     settled_ms: int,
 ) -> list[dict[str, Any]]:
@@ -1839,10 +1965,16 @@ def _telemetry_series(
         ]
         while_unready: dict[str, str | None] = {}
         after_recovery: dict[str, str | None] = {}
+        unready_as_of: dict[str, int | None] = {}
+        after_as_of: dict[str, int | None] = {}
+        stale: list[str] = []
         for element in elements:
             key = _label_key(_object(element.get("labels"), "series.labels"))
-            while_unready[key] = _reading(element, unready_end_ms)
-            after_recovery[key] = _reading(element, settled_ms)
+            while_unready[key], unready_as_of[key] = _reading(element, unready_end_ms)
+            after_recovery[key], after_as_of[key] = _reading(element, settled_ms)
+            at = unready_as_of[key]
+            if at is not None and at < unready_start_ms:
+                stale.append(key)
         present_unready = sorted(
             key for key, value in while_unready.items() if value is not None
         )
@@ -1872,6 +2004,12 @@ def _telemetry_series(
                     key for key in shared if while_unready[key] != after_recovery[key]
                 ],
                 "readingWhileUnready": dict(sorted(while_unready.items())),
+                # When each of those readings is from. A reading whose point predates
+                # the unready window describes the release before it was disrupted, and
+                # is listed as such rather than left to look current.
+                "readingWhileUnreadyAsOf": dict(sorted(unready_as_of.items())),
+                "readingAfterRecoveryAsOf": dict(sorted(after_as_of.items())),
+                "labelSetsWhoseUnreadyReadingPredatesTheWindow": sorted(stale),
                 "readingAfterRecovery": dict(sorted(after_recovery.items())),
             }
         )
@@ -1881,6 +2019,31 @@ def _telemetry_series(
 # --------------------------------------------------------------------------
 # The record
 # --------------------------------------------------------------------------
+
+
+#: What the builder writes when a capture's whole excerpt was withheld. It is one
+#: line of text and zero lines of capture, and the reconciliation below has to know
+#: the difference.
+EMPTY_EXCERPT = "(every line of this excerpt was withheld)"
+
+
+def _excerpt_line_count(excerpt: str) -> int:
+    """How many lines of a capture an excerpt actually carries."""
+    if excerpt == EMPTY_EXCERPT:
+        return 0
+    return len(excerpt.splitlines())
+
+
+def _executed_digest(environment: Mapping[str, Any], relative: str) -> str | None:
+    """The digest a run recorded for one of the files that decided what it did."""
+    repository = environment.get("repository")
+    if not isinstance(repository, dict):
+        return None
+    executed = repository.get("executedFiles")
+    if not isinstance(executed, dict):
+        return None
+    value = executed.get(relative)
+    return str(value) if isinstance(value, str) else None
 
 
 def _check(name: str, passed: bool, detail: str) -> dict[str, Any]:
@@ -1948,9 +2111,9 @@ def build_record(
         _read_json_text(lifecycle_text, "lifecycle record"), descriptor
     )
     readiness = parse_readiness(
-        _read_json_text(readiness_text, "readiness record"), descriptor
+        _read_json_text(readiness_text, "readiness record"), descriptor, lifecycle
     )
-    probes = parse_probes(probes_text, descriptor)
+    probes = parse_probes(probes_text, descriptor, lifecycle)
     diagnostics = parse_diagnostics(
         _read_json_text(diagnostics_text, "diagnostics record"), descriptor
     )
@@ -1958,6 +2121,7 @@ def build_record(
         _read_json_text(telemetry_text, "telemetry record"), "telemetry record"
     )
 
+    unready_start = int(lifecycle["unreadyWindow"]["startEpochMs"])
     unready_end = int(lifecycle["unreadyWindow"]["endEpochMs"])
     upgraded_ms = int(lifecycle["upgrade"]["issuedEpochMs"])
     runtime_ready_ms = int(lifecycle["upgrade"]["runtimeReadyEpochMs"])
@@ -2013,7 +2177,17 @@ def build_record(
             lifecycle["install"]["runtimeContainerRunningEpochMs"]
         )
         - int(lifecycle["install"]["issuedEpochMs"]),
-        "runtimeContainerRunningToSocketOpenMs": int(
+        # A **ceiling**, and named so that it cannot be read as anything else. The
+        # operating script stamps the far end when the first forward it opens gets an
+        # answer, and between the two stamps it waits for the API container, waits for
+        # the collector's rollout, runs five pod queries and seven cluster dumps, reads
+        # the helm and engine versions, runs the repository subprocess, waits for the
+        # local port to be free, opens the API forward, and then polls at three-second
+        # granularity. `llama-server` may have been listening for most of that. What
+        # this bounds is: by this long after the container was reported running, the
+        # socket was answering. Independent review found the earlier name and the
+        # earlier observation reading it as a runtime property.
+        "runtimeContainerRunningToSocketAnsweredCeilingMs": int(
             lifecycle["install"]["runtimeSocketOpenEpochMs"]
         )
         - int(lifecycle["install"]["runtimeContainerRunningEpochMs"]),
@@ -2025,8 +2199,36 @@ def build_record(
         ),
         "upgradeToRuntimeReadyMs": runtime_ready_ms - upgraded_ms,
         "upgradeToApiReadyMs": api_ready_ms - upgraded_ms,
+        # Also a ceiling, for a smaller and disclosed reason: between the API
+        # reporting Ready and the first probe round being sent, the script looks the
+        # replaced pod up, kills the old forward, waits for its port, opens a new one,
+        # and runs three pod queries. `upgradeToRecoveredWindowOpenMs` is that overhead
+        # plus the rollout, published beside it so the difference is visible instead of
+        # folded into a figure whose name reads as a restoration time.
         "upgradeToFirstServedCompletionMs": recovery_ms,
+        "upgradeToRecoveredWindowOpenMs": int(
+            lifecycle["recoveredWindow"]["startEpochMs"]
+        )
+        - upgraded_ms,
+        "recoveredWindowOpenToFirstServedCompletionMs": (
+            None
+            if served_at_ms is None
+            else served_at_ms - int(lifecycle["recoveredWindow"]["startEpochMs"])
+        ),
         "firstServedCompletionEpochMs": served_at_ms,
+        "ceilings": (
+            "Two of these contain work this workflow did rather than work the platform "
+            "did, and both say so in their names. "
+            "`runtimeContainerRunningToSocketAnsweredCeilingMs` is bounded above by "
+            "everything the script does between reporting the container running and "
+            "opening its first forward, so it is an upper bound on how long the socket "
+            "took to answer and not a measurement of it. "
+            "`upgradeToFirstServedCompletionMs` contains the rollout, the forward being "
+            "re-opened against the replaced pod, and the probe round's own schedule; "
+            "`upgradeToRecoveredWindowOpenMs` and "
+            "`recoveredWindowOpenToFirstServedCompletionMs` split it so the parts are "
+            "visible."
+        ),
         "note": (
             "One release, misconfigured once, on one host. Not an availability figure, "
             "a service-level objective, an error budget, a recovery-time objective, or "
@@ -2042,9 +2244,18 @@ def build_record(
     #: stamped from the wrong end, which is the defect an independent review of
     #: V1-S3-003-PR2 found and the first execution of V1-S4-006 repeated, so it is
     #: refused rather than published.
+    #:
+    #: It is a tripwire on the derivation rather than a filter on the inputs, and it
+    #: is unreachable from a record whose inputs `parse_lifecycle` accepted: every
+    #: instant these differences are taken between carries an ordering minimum there,
+    #: and each probe's instant is now bound to the window its phase names. That is
+    #: where the guarantee lives, the suite proves it one inversion at a time, and
+    #: this stays so that relaxing any of it fails here rather than silently.
     non_negative = (
         "installToRuntimeContainerRunningMs",
-        "runtimeContainerRunningToSocketOpenMs",
+        "runtimeContainerRunningToSocketAnsweredCeilingMs",
+        "upgradeToRecoveredWindowOpenMs",
+        "recoveredWindowOpenToFirstServedCompletionMs",
         "unreadyWindowHeldMs",
         "upgradeToRuntimeReadyMs",
         "upgradeToApiReadyMs",
@@ -2057,7 +2268,11 @@ def build_record(
     }
 
     series_rows = _telemetry_series(
-        descriptor, telemetry, unready_end_ms=unready_end, settled_ms=settled_ms
+        descriptor,
+        telemetry,
+        unready_start_ms=unready_start,
+        unready_end_ms=unready_end,
+        settled_ms=settled_ms,
     )
     absences = [
         row for row in series_rows if row["exposure"] in ("nothing-emits", "no-source")
@@ -2093,7 +2308,12 @@ def build_record(
     checks = [
         _check(
             "the-release-installed-with-the-misconfiguration",
-            int(lifecycle["release"]["revisionBefore"]) >= 1
+            # Revision 1 and not merely "at least 1": this experiment installs its own
+            # release so that the environment it records is the one it made, and a
+            # higher revision would mean it had been run against something already
+            # there. `>= 1` was the earlier form and the parser already guarantees it,
+            # so only the init exit code could ever have failed.
+            int(lifecycle["release"]["revisionBefore"]) == 1
             and int(lifecycle["install"]["initExitCode"]) == 0,
             f"revision {lifecycle['release']['revisionBefore']} installed and the "
             f"'{lifecycle['install']['initContainerName']}' init container exited "
@@ -2113,9 +2333,12 @@ def build_record(
             and bool(unready_samples),
             f"{len(unready_samples)} sample(s) across the unready window, every one of "
             "them with a serving runtime pod present; the process answered on its own "
-            f"port {timings['runtimeContainerRunningToSocketOpenMs']} ms after the "
-            "container was reported running, which is what satisfies the chart's TCP "
-            "liveness probe",
+            "port no later than "
+            f"{timings['runtimeContainerRunningToSocketAnsweredCeilingMs']} ms after "
+            "the container was reported running -- a ceiling containing this "
+            "workflow's own install bookkeeping, not a measurement of how long the "
+            "socket took -- and it is the socket answering that satisfies the chart's "
+            "TCP liveness probe",
         ),
         _check(
             "readiness-was-false-for-the-whole-unready-window",
@@ -2199,11 +2422,27 @@ def build_record(
                 f"{row['captureId']} kept {row['lines']} line(s)" for row in diagnostics
             ),
         ),
+        # What replaced `every-capture-excerpt-is-publishable`, which could not fail:
+        # `build_record` refuses the whole diagnostics text over the same shapes before
+        # any check runs, so a capture that would have failed it raises first. Refusing
+        # is right -- a failed check carrying a private value would publish it -- so the
+        # refusal stays as the enforcement and the check asks the reachable question
+        # instead: does the published accounting add up? A hand-edited or miscounted
+        # capture fails this one.
         _check(
-            "every-capture-excerpt-is-publishable",
-            all(not carries_private_value(str(row["excerpt"])) for row in diagnostics),
+            "the-withheld-line-accounting-reconciles",
+            all(
+                row["excerptLinesKept"] + row["excerptLinesWithheld"]
+                == row["excerptLinesConsidered"]
+                and row["excerptLinesConsidered"]
+                == min(row["lines"], row["excerptLines"])
+                and row["excerptLinesKept"] == _excerpt_line_count(str(row["excerpt"]))
+                for row in diagnostics
+            ),
             "; ".join(
-                f"{row['captureId']} withheld {row['excerptLinesWithheld']} line(s)"
+                f"{row['captureId']} kept {row['excerptLinesKept']} and withheld "
+                f"{row['excerptLinesWithheld']} of {row['excerptLinesConsidered']} "
+                f"considered, from {row['lines']} line(s)"
                 for row in diagnostics
             ),
         ),
@@ -2234,7 +2473,7 @@ def build_record(
             lifecycle["upgrade"]["runtimePodUid"]
             != lifecycle["install"]["runtimePodUid"],
             "the serving runtime pod after the fix carries a different uid from the "
-            "one that was starved; a first execution of this experiment stamped the "
+            "one that was starved; an earlier execution of this experiment stamped the "
             "recovery from the misconfigured pod, whose starved load had finished, and "
             "the check exists because of it",
         ),
@@ -2280,7 +2519,9 @@ def build_record(
             "no-published-interval-is-negative",
             not negative,
             "; ".join(f"{name} is {value} ms" for name, value in negative.items())
-            or "every interval a reader would take as a duration is zero or more",
+            or "every interval a reader would take as a duration is zero or more, "
+            "which the lifecycle reader's ordering minimums already guarantee; this "
+            "is the tripwire for a change that relaxes them",
         ),
         _check(
             "readiness-samples-cover-the-unready-window",
@@ -2310,14 +2551,23 @@ def build_record(
             )
             or "no absence was registered",
         ),
+        # Asked of each row as it was registered, not of all of them alike. A row
+        # registered `expected-not-to-expose` may legitimately answer with no series --
+        # `runtime-requests-processing` is registered as empty for the unready window
+        # precisely because the runtime published no metrics while it loaded -- and an
+        # earlier form of this check would have made a run unusable for behaving exactly
+        # as it was pre-registered to. What both kinds must do is answer at all.
         _check(
             "telemetry-registered-signals-answered",
-            all(
-                row["status"] == "success" and row["seriesReturned"] > 0
+            all(row["status"] == "success" for row in registered_present)
+            and all(
+                row["seriesReturned"] > 0
                 for row in registered_present
+                if row["exposure"] == "expected-to-expose"
             ),
             "; ".join(
-                f"{row['seriesId']} {row['status']} with {row['seriesReturned']} series"
+                f"{row['seriesId']} ({row['exposure']}) {row['status']} with "
+                f"{row['seriesReturned']} series"
                 for row in registered_present
             ),
         ),
@@ -2340,11 +2590,15 @@ def build_record(
         "at all -- a question the release's own readiness gating answers before the "
         "adapter does. The condition the API named for it: "
         f"{', '.join(observed_conditions) or 'none reported'}.",
-        "The socket is the liveness answer. The runtime answered on its own port "
-        f"{timings['runtimeContainerRunningToSocketOpenMs']} ms after its container "
-        "was reported running and went on answering for the whole window, which is "
-        "what a TCP-connect liveness probe asks and is why a model that never became "
-        "ready did not look like a dead process to the kubelet.",
+        "The socket is the liveness answer. The runtime was answering on its own "
+        "port no later than "
+        f"{timings['runtimeContainerRunningToSocketAnsweredCeilingMs']} ms after its "
+        "container was reported running, and went on answering for the whole window, "
+        "which is what a TCP-connect liveness probe asks and is why a model that never "
+        "became ready did not look like a dead process to the kubelet. That figure is "
+        "a ceiling: the operating script does its whole install bookkeeping between "
+        "the two stamps, so the socket may have opened much earlier and nothing here "
+        "measures when.",
         f"The serving runtime container's restart count across the unready window: "
         f"{highest_restart}. The window was held for "
         f"{lifecycle['unreadyWindow']['heldMs']} ms against a startup probe budget of "
@@ -2363,6 +2617,12 @@ def build_record(
         "address, and an address is one of the three shapes a committed record in "
         "this repository may not carry. The captures themselves are written whole "
         "into the run directory, which version control ignores.",
+        "Where `derivation.regeneratedFromUnchangedInputs` is true, this record was "
+        "rebuilt after the run from the same six inputs by a later revision of the "
+        "descriptor and the tool, following an independent review. The inputs are "
+        "untouched and every figure here still comes out of them; what changed is what "
+        "is derived from them and what the checks ask. The digests either side are "
+        "published so the difference is a fact rather than an inference.",
         "The instants the cluster reported for the runtime container are kept as the "
         "strings it emitted. They come from the node's clock and nothing here "
         "subtracts them from an instant read on the host's.",
@@ -2384,6 +2644,31 @@ def build_record(
         "experimentVersion": descriptor.document["experimentVersion"],
         "descriptorSha256": descriptor.sha256,
         "valuesOverlaySha256": descriptor.overlay_sha256,
+        # What the run executed, against what this record was derived with. They are
+        # the same for a record built by the run that produced it, and they differ for
+        # one regenerated afterwards from unchanged inputs -- which is legitimate and
+        # is exactly the case a reader must not have to infer. `environment.repository
+        # .executedFiles` carries the same comparison for every other file that decides
+        # what a run does.
+        "derivation": {
+            "descriptorSha256AtRun": _executed_digest(
+                environment, "deploy/serving/experiments/unready-model-recovery.v1.json"
+            ),
+            "recordToolSha256AtRun": _executed_digest(
+                environment, "tools/unready_model_recovery/core.py"
+            ),
+            "regeneratedFromUnchangedInputs": _executed_digest(
+                environment, "deploy/serving/experiments/unready-model-recovery.v1.json"
+            )
+            != descriptor.sha256,
+            "note": (
+                "Where `regeneratedFromUnchangedInputs` is true, the six inputs are "
+                "the ones the run wrote and only the derivation changed: a later "
+                "revision of the descriptor and the record tool read the same bytes "
+                "and produced this. No measurement was re-taken and none could be -- "
+                "the release is gone."
+            ),
+        },
         "evidenceClass": EXPECTED_EVIDENCE_CLASS,
         "evidenceLabel": EXPECTED_EVIDENCE_LABEL,
         "certificationCeiling": EXPECTED_CEILING,
@@ -2453,8 +2738,18 @@ def build_record(
                 "runtimeEndpointsReady": _counted(
                     [sample["runtimeEndpointsReady"] for sample in recovered_samples]
                 ),
+                "apiPodsReady": _counted(
+                    [sample["apiPodsReady"] for sample in recovered_samples]
+                ),
                 "apiEndpointsReady": _counted(
                     [sample["apiEndpointsReady"] for sample in recovered_samples]
+                ),
+                "highestRuntimeRestartCount": max(
+                    (
+                        int(sample["runtimeRestartCount"])
+                        for sample in recovered_samples
+                    ),
+                    default=0,
                 ),
             },
             "samples": readiness,

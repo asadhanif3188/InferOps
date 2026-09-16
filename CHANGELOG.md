@@ -23,29 +23,34 @@ once versioned releases begin.
   `MockScenario.MODEL_NOT_READY` reproduces the shape, and
   [the mock and real boundary](docs/serving/mock-and-real-boundary.md) says a mock may
   never certify real local runtime behaviour. This arranges it. Twenty-nine checks
-  decide whether a record is usable, and the descriptor carries the four mechanisms that
-  were measured and rejected -- an artifact mismatch, an absent artifact, a file that is
-  not a GGUF, and a context size at the schema maximum -- so that the choice of
-  disruption is readable rather than asserted.
+  decide whether a record is usable, and the descriptor carries the five mechanisms that
+  were considered and rejected -- two of them measured directly against the pinned image
+  and the cached artifact, three of them ruled out by reading the chart -- so that the
+  choice of disruption is readable rather than asserted.
   [The result](docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md) regenerates
   from its six committed inputs.
 
   **What it states, for one single-replica release on `docker-desktop`:** the release
   installed, the `verify-model` init container exited `0` in both the misconfigured pod
-  and the corrected one, and the runtime answered on its own port 20 272 ms after its
-  container started and went on answering for the whole 179 755 ms window with
-  `503 {"message":"Loading model"}` -- with **zero container restarts**, which is the
-  TCP-connect liveness probe doing the job the chart's probe asymmetry exists for, inside
-  30.0% of that runtime's own startup-probe budget. **No caller ever received
+  and the corrected one, and the runtime was answering on its own port no later than
+  20 272 ms after its container started -- a ceiling, not a measurement -- and went on
+  answering for the whole 179 755 ms window with
+  `503`, message `Loading model`, type `unavailable_error` -- with **zero container
+  restarts**, which is the TCP-connect liveness probe doing the job the chart's probe
+  asymmetry exists for, inside 30.0% of that runtime's own startup-probe budget. The
+  socket figure is published as a ceiling, because the workflow does its whole install
+  bookkeeping between the two instants it is stamped from. **No caller ever received
   `model-not-ready`.** All eight completions came back `503 capability-unavailable`,
   condition `runtime-unreachable`, retryable, because the runtime pod's readiness probe
   had already removed its only address from the Service before the adapter could observe
   the `503` -- so which row of D8 a Service-fronted release reaches is decided by the
   probe, and that was written down nowhere. Both Services held **no** ready endpoint for
-  the whole window. `up` for the serving runtime read `0` and then `1`, which reverses
-  what `V1-S3-011-PR2` and `V1-S4-006` recorded about scrape health and readiness, and
-  for a stated reason: there the pod was terminating and still answering, here it is up
-  and refusing. `inferops_model_ready` -- the one metric the catalog declares for exactly
+  the whole window. Scrape health for the serving runtime went from a
+  job whose only target was down to one whose only target was up -- no single `up` series
+  transitions, because the upgrade replaces the pod, and it is the per-job ratio that
+  moves -- which reverses what `V1-S3-011-PR2` and `V1-S4-006` recorded about scrape
+  health and readiness, and for a stated reason: there the pod was terminating and still
+  answering, here it is up and refusing. `inferops_model_ready` -- the one metric the catalog declares for exactly
   this question -- returned **0 series**, and the rule that publishes its absence read
   `1` in both phases. Dropping the overlay and upgrading moved the release from revision
   1 to 2 and a real completion came back 36 687 ms later, three output tokens, content
@@ -53,9 +58,9 @@ once versioned releases begin.
 
   **What it is not:** an availability figure, a service-level objective, an error budget,
   a recovery-time objective, or a benchmark. The load was starved rather than failed, and
-  an earlier attempt watched the starved load finish, so the window is set at 180 s
-  against that measurement and the record does not claim the model would never have
-  loaded. The record carries `availabilityClaim: false` beside the two flags ADR 0013 D3
+  an earlier execution watched the starved load finish at 307 673 ms, so the window is
+  set at 180 s against that measurement -- roughly 1.7 times it -- and the record does
+  not claim the model would never have loaded. The record carries `availabilityClaim: false` beside the two flags ADR 0013 D3
   already required, and its boundary sentence must also refuse *recovery-time objective*.
   ADR 0010 and ADR 0013 each gain one dated implementation note; no accepted sentence is
   changed and no decision is amended. Publishing the diagnostics required withholding ten

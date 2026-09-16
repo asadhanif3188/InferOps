@@ -62,7 +62,9 @@ runtime and wrong about what a caller meets**.
 | Input | Immutable identifier |
 |---|---|
 | Repository revision | `0c784d8b3fd939fec1ce0e47f846368e28b08f02`, with this change's own tracked and untracked files present |
-| Experiment descriptor | `sha256:7220395254fe7da172d438df1252a59b66a376685937c94d5b7834276c4fdb59` |
+| Experiment descriptor, as this record was derived | `sha256:8586ce0861ff1639e0f97283c8e7ae277d82a06710c2c2075fa1153e572c71d2` |
+| Experiment descriptor, as the run executed it | `sha256:7220395254fe7da172d438df1252a59b66a376685937c94d5b7834276c4fdb59` |
+| Record tool, as the run executed it | `sha256:2ffe2418f99a1e2c0ea53efd50d659717cc04aeaa01fc227814daceeb17f2493` |
 | Values overlay | `sha256:4ed92f844f2158dae6b4fbef5e0c7a084c8932009730280b1434534d8ffcbfb5` |
 | Provider | `docker-desktop`, verified at `2026-09-16T16:12:19Z` |
 | Kubernetes | server `v1.34.3`, client `v1.34.3` |
@@ -77,6 +79,14 @@ runtime and wrong about what a caller meets**.
 | Serving runtime processor, misconfigured | request `10m`, limit `10m` |
 | Serving runtime processor, corrected | request `1`, limit `6` |
 | Other workloads | 12 running pods outside the release, across 3 other namespaces, uncontrolled |
+
+**This record was rebuilt after the run, and the two descriptor digests above are how a
+reader can tell.** Independent review found defects in what the tool derived and in what
+this document said; the fixes changed the derivation, so the record was regenerated from
+**the same six committed inputs**, which are untouched. No measurement was re-taken and
+none could be — the release is gone. The record carries the comparison itself under
+`derivation`, and `environment.repository.executedFiles` carries it for every other file
+that decided what the run did.
 
 ## Environment
 
@@ -160,10 +170,13 @@ readiness path is the conjunction of the API accepting work and its adapter repo
 itself able — so a release whose model is not ready has no ready endpoint anywhere. That
 is why both forwards in this experiment address pods.
 
-**Liveness did not restart a healthy process.** The runtime answered on its own port
-20 272 ms after its container was reported running, and went on answering for the whole
-window; the restart count was `0` at every sample. That is what a TCP-connect liveness
-probe asks, and it is the asymmetry the chart exists to get right.
+**Liveness did not restart a healthy process.** The runtime was answering on its own
+port no later than 20 272 ms after its container was reported running — a ceiling, for
+the reason given under the timings below — and went on answering for the whole window;
+the restart count was `0` at every sample. That is what a TCP-connect liveness probe
+asks, and it is the asymmetry the chart exists to get right. What the argument needs is
+that the socket *was* answering throughout, which every probe round establishes
+directly; when it opened is not measured here.
 
 **It is bounded, and the bound is the kubelet's.** The window was held for 179 755 ms,
 which is **30.0%** of the runtime's own `runtime.probes.startup.budgetMs` of 600 000 ms.
@@ -177,10 +190,19 @@ Eight probe rounds while unready, three after the fix.
 
 | Surface | While unready | After the fix |
 |---|---|---|
-| `runtime-health` | `503` × 8, body `{"message":"Loading model"}` | `200` × 3, body `{"status":"ok"}` |
+| `runtime-health` | `503` × 8, detail `Loading model`, type `unavailable_error`, 75 body bytes | `200` × 3, detail `ok`, 15 body bytes |
 | `api-liveness` | `200` × 8 | `200` × 3 |
 | `api-readiness` | `503` × 8, body `not-ready, adapterKind=real, state=serving` | `200` × 3 |
 | `api-completion` | `503` × 8, **`capability-unavailable`**, condition **`runtime-unreachable`**, `retryable: true` | `200` × 3, 3 output tokens each |
+
+The record keeps a classification of each body and never the body itself, so the
+figures above are what was stored: the status, the canonical code where there was one,
+the condition, the retryable flag, the byte count, and a digest. `llama-server`'s 503
+body is
+`{"error":{"message":"Loading model","type":"unavailable_error","code":503}}`, which is
+75 bytes and matches the byte count every one of these eight probes recorded; it is
+quoted here from the runtime's published envelope rather than reconstructed from the
+record, and the byte count is what ties the two together.
 
 **The headline finding, and it is not the one `ADR 0010` D8 would have been read as
 predicting.** The runtime's own answer *is* the row D8 marks observed: `503`, `Loading
@@ -205,29 +227,69 @@ loading — which is the honest cost of the vocabulary having no member meaning
 
 ### Timing — one release, misconfigured once, on one host
 
-| | ms |
-|---|---:|
-| Install to the runtime container running | 21 631 |
-| Container running to the socket answering | 20 272 |
-| Unready window held | 179 755 |
-| Upgrade to the runtime reporting Ready | 20 880 |
-| Upgrade to the API reporting Ready | 27 797 |
-| Upgrade to a served completion | 36 687 |
+| | ms | |
+|---|---:|---|
+| Install to the runtime container running | 21 631 | measured |
+| Container running to the socket answering | ≤ 20 272 | **ceiling** — see below |
+| Unready window held | 179 755 | measured |
+| Upgrade to the runtime reporting Ready | 20 880 | measured |
+| Upgrade to the API reporting Ready | 27 797 | measured |
+| Upgrade to the recovered window opening | 32 023 | measured, and contains the forward re-open |
+| Recovered window opening to a served completion | 4 664 | measured |
+| Upgrade to a served completion | 36 687 | **ceiling** — the sum of the two above |
 
-**They are not a benchmark.** The corrected model loaded in about 21 s against the
-133 515–215 906 ms `V1-S2-007` measured for a cold start, because this run had just
-spent three minutes reading the same file: the host's page cache is the difference, and
-it is not controlled.
+**Two of these bound rather than measure, and both now say so in their names.**
+
+*Container running to the socket answering* is stamped at one end when the container is
+reported running and at the other when the **first forward this workflow opens** gets an
+answer. Between the two the script waits for the API container, waits for the
+collector's rollout, runs five pod queries and seven cluster dumps, reads the Helm and
+engine versions, runs the repository subprocess, waits for the local port to be free,
+opens the API forward, and then polls at three-second granularity. `llama-server` may
+have been listening for most of that. What 20 272 ms establishes is that **by** then the
+socket was answering — which is all the liveness argument needs — and not that the
+socket took that long to open. Nothing here measures when it opened. The descriptor now
+pre-registers this as `observation.socketAnswerMeasuredFrom`, because nothing did before
+and that is why the earlier version of this table read it as a runtime property.
+
+*Upgrade to a served completion* contains the rollout, the replaced pod being looked up,
+the old forward being killed, its port being waited for, a new forward being opened,
+three pod queries, and the probe round's own schedule. 32 023 ms of the 36 687 ms is
+everything up to the first probe round being possible; 4 664 ms is the round itself.
+
+**They are not a benchmark, and they are not comparable to anything.** The corrected
+model reported Ready 20 880 ms after the upgrade, which is fast for this model, and the
+likely reason is that this run had just spent three minutes reading the same file — the
+host's page cache was warm, and it is not controlled. That is a stated limitation and
+not a measurement: nothing here establishes a cold/warm difference, and this record
+deliberately does **not** compare the figure to `V1-S2-007`'s model-load timings, which
+[that record forbids being cited](v1-s2-007-pr1-cold-warm-start.md#limitations) by any
+claim about model-load cost, were taken on a different host, and were concluded there to
+establish no cold/warm difference at all. An earlier version of this section made
+exactly that comparison and quoted a warm-arm figure inside a range labelled cold;
+independent review caught it.
 
 ### What the diagnostics said
 
-| Capture | Registered as naming the cause | Kept | Excerpt lines withheld | What it showed |
-|---|---|---|---:|---|
-| `runtime-resources` | **yes** | 1 line | 0 | `runtime requests={"cpu":"10m","memory":"2Gi"} limits={"cpu":"10m","memory":"3Gi"}` — the misconfiguration itself, read from the Deployment rather than from the values file |
-| `runtime-log` | **yes** | 10 lines | **9** | the one line that survived is a `LLAMA_ARG_HOST` warning; see below |
-| `runtime-describe` | probable | 147 lines | 1 | the events, including the init container succeeding |
-| `api-readiness-body` | partial | 1 line | 0 | `{"status":"not-ready","adapterKind":"real","state":"serving"}` — a not-ready adapter, not a draining API |
-| `api-log` | partial | 56 lines | 0 | `readiness.failed` at `warn`, naming the component and not the cause |
+The **published** column is what a reader of this record sees. The **captured** column
+is the whole capture, which is written into the run directory and is not published. An
+earlier version of this table printed the second under the heading of the first and
+overstated `runtime-describe`'s published content about thirteenfold; independent review
+caught it, and the record now carries both numbers so the table cannot be written that
+way again.
+
+| Capture | Registered as naming the cause | Captured lines | Published lines | Withheld | What it showed |
+|---|---|---:|---:|---:|---|
+| `runtime-resources` | **yes** | 1 | 1 | 0 | `runtime requests={"cpu":"10m","memory":"2Gi"} limits={"cpu":"10m","memory":"3Gi"}` — the misconfiguration itself, read from the Deployment rather than from the values file |
+| `runtime-log` | **yes** | 10 | **1** | **9** | the one line that survived is a `LLAMA_ARG_HOST` warning; see below |
+| `runtime-describe` | probable | 147 | 11 | 1 | the last twelve lines are the events, including the init container succeeding |
+| `api-readiness-body` | partial | 1 | 1 | 0 | `{"status":"not-ready","adapterKind":"real","state":"serving"}` — a not-ready adapter, not a draining API |
+| `api-log` | partial | 56 | 12 | 0 | `readiness.failed` at `warn`, naming the component and not the cause |
+
+The excerpt ceiling is twelve lines, registered in the descriptor, so a capture longer
+than that contributes its last twelve and no more. `Captured + published` do not add up
+to each other for that reason; `published + withheld` equals the number of lines
+considered, and the record carries a check that says so.
 
 **An operator holding these could name the cause**, from `runtime-resources` alone: a
 serving runtime given `10m` of processor, and a log that stops at *loading model*.
@@ -250,7 +312,7 @@ lines that carry none of the three and **counts the rest**:
 
 | Signal | Registered as | Answered | While unready → after the fix | Exposed it? |
 |---|---|---|---|---|
-| `up{job="…-serving-runtime"}` | expected to expose | yes, 2 series | `0` → `1` | **yes** |
+| `up{job="…-serving-runtime"}` | expected to expose | yes, 2 series | the misconfigured pod's series reads `0` in both phases; the replacement's is absent while unready and reads `1` after | **yes, through the pair** |
 | `inferops:scrape_targets_up:sum / inferops:scrape_targets:count` | expected to expose | yes, 2 series | serving-runtime `0` → `1`; platform-api `1` → `1` | **yes** |
 | `sum by (workload, code) (inferops_inference_errors_total)` | expected to expose | yes, 1 series | `capability-unavailable` `7` → `8` | **yes** |
 | `sum by (workload, component) (inferops_readiness_check_failures_total)` | expected to expose | yes, 1 series | `serving-adapter` `34` → `41` | **yes** |
@@ -260,6 +322,12 @@ lines that carry none of the three and **counts the rest**:
 | `inferops:model_ready_absent:platform_api` | expected **not** to expose | yes, 1 series | `1` → `1` | **no — it reads `1` in both phases and cannot tell a loading model from a loaded one** |
 | `inferops_model_ready` | nothing emits | yes, **0 series** | nothing, as registered | **no — nothing emits it** |
 | `kube_pod_container_status_restarts_total` | no source | yes, **0 series** | nothing, as registered | **no — no source** |
+
+No single `up` series transitions from `0` to `1` — there is one series per pod, and
+the upgrade replaces the pod. What transitions is the per-job ratio in the row below it,
+which is the aggregate a reader would actually look at. An earlier version of this
+record and its changelog entry said "`0` then `1`" of `up` itself, which is
+substantively right and literally wrong.
 
 **Scrape health exposed this one, and that is a reversal worth stating.**
 [`V1-S3-011-PR2`](../telemetry/v1-s3-011-pr2-telemetry-during-recovery.md) and
@@ -278,6 +346,14 @@ either phase. The recorded rule that publishes its absence returned `1` in both 
 which is correct and useless. **Nothing in this platform's telemetry says the model was
 not ready**; what said so was an error code on a request counter and a readiness-check
 counter, both emitted by the API.
+
+Every reading above is published with the instant the point it came from carries, in
+`readingWhileUnreadyAsOf` and `readingAfterRecoveryAsOf`, and any label set whose
+unready reading predates the unready window is listed in
+`labelSetsWhoseUnreadyReadingPredatesTheWindow`. The captured range starts at the idle
+baseline and is widened by a scrape interval, so without those a stale point would have
+been published under a window's name with nothing to say it was stale. For this run that
+list is empty in every row.
 
 The record states each expression's registered expectation and its readings either side;
 it does not decide whether a signal exposed the state. This section does, and it is a
@@ -343,13 +419,14 @@ never been run.
    is withheld here for the same reason it was refused there.
 ```
 
-## What an earlier attempt established that this one does not
+## What an earlier execution established that this one does not
 
-A fifth complete attempt held the release unready for 307 673 ms and then watched the
+An earlier execution held the release unready for 307 673 ms and then watched the
 starved load **finish**. The window is registered at 180 s against that measurement. So
 this record does **not** claim the model would never have loaded: it claims the model
 had not loaded, that the process was healthy while it had not, and that correcting one
-value got it back. `10m` is the smallest quota a container runtime will enforce — one
+value got it back. The window is registered at 180 s against that measurement, which is
+roughly 1.7 times it. `10m` is the smallest quota a container runtime will enforce — one
 millisecond in a hundred — so a smaller number in a values file would have bought
 nothing.
 

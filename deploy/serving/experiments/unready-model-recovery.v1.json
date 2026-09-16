@@ -92,14 +92,15 @@
     ]
   },
   "observation": {
-    "description": "What readiness looked like while the model was not ready, sampled from four places that disagree on purpose: the runtime pod's own Ready condition, the number of addresses the runtime Service is willing to send traffic to, the API pod's own Ready condition, and the runtime container's restart count. The restart count is the one this experiment is really asking about: the chart's liveness probe is a TCP connect precisely so that a healthy process loading a model is not killed, and nothing has ever measured that against a model that does not finish loading. The window is 180 s and the figure it is set against is measured rather than chosen: a first execution of this experiment held the release unready for 307 673 ms and then watched the starved load complete, so the starved load takes roughly twice the window it is observed over. The record says that, and does not claim the model would never have loaded.",
+    "description": "What readiness looked like while the model was not ready, sampled from four places that disagree on purpose: the runtime pod's own Ready condition, the number of addresses the runtime Service is willing to send traffic to, the API pod's own Ready condition, and the runtime container's restart count. The restart count is the one this experiment is really asking about: the chart's liveness probe is a TCP connect precisely so that a healthy process loading a model is not killed, and nothing has ever measured that against a model that does not finish loading. The window is 180 s and the figure it is set against is measured rather than chosen: an earlier execution of this experiment held the release unready for 307 673 ms and then watched the starved load complete, so the starved load takes roughly 1.7 times the window it is observed over. The record says that, and does not claim the model would never have loaded. `socketAnswerMeasuredFrom` registers the one interval whose far end this workflow stamps rather than the platform: it is a ceiling containing the script's own install bookkeeping, and it is published under a name that says so.",
     "pollIntervalMs": 5000,
     "minimumSamples": 6,
     "unreadyWindowSeconds": 180,
     "recoveredWindowSeconds": 60,
     "requireReadinessRecord": true,
     "requireEndpointSamples": true,
-    "requireRestartCounts": true
+    "requireRestartCounts": true,
+    "socketAnswerMeasuredFrom": "container-running-including-workflow-setup"
   },
   "probes": {
     "description": "The request surfaces this experiment asks, and what each was registered as expected to answer before anything ran. Both service-fronted tiers are reached through a forward to the **pod**, not to the Service: a release whose model is not ready has no ready endpoint on either the runtime Service or the API Service, so a Service forward would measure kube-proxy rather than the workload. Which of the two canonical refusals the API produces is a result this experiment reads off the run, not an arrangement made here.",
@@ -207,7 +208,8 @@
     ],
     "logTailLines": 200,
     "requireNoSecretInCaptures": true,
-    "requireNoHostPathInCaptures": true
+    "requireNoHostPathInCaptures": true,
+    "excerptLines": 12
   },
   "recovery": {
     "description": "Where each published interval begins and ends. The origin of the recovery intervals is the moment the corrected upgrade was issued, stamped by the operating script on the host's own clock. A recovery is stamped from a served completion, never from a forward accepting a connection and never from a rollout command returning.",
@@ -342,7 +344,7 @@
   },
   "limitations": [
     "One provider, one host, one single-replica release, one model, one runtime build, one chart, and one misconfiguration applied once. Nothing here is portable to another provider, host, replica count, model, or runtime configuration, and nothing here is an availability figure, a service-level objective, an error budget, or a recovery-time objective.",
-    "The model did not become ready within the registered observation window, and that is not the same as proving it never would. The load was starved rather than failed. A first execution held the release unready for 307 673 ms and then observed the starved load complete, so the window is registered at 180 s against a starved load of roughly twice that, and `10m` is the smallest quota a container runtime will enforce rather than the smallest number this experiment could have written. Every restart count published here is bounded the same way, by the runtime's own startup probe budget, after which the kubelet restarts the container into the same load.",
+    "The model did not become ready within the registered observation window, and that is not the same as proving it never would. The load was starved rather than failed. An earlier execution held the release unready for 307 673 ms and then observed the starved load complete, so the window is registered at 180 s against a starved load of roughly 1.7 times that, and `10m` is the smallest quota a container runtime will enforce rather than the smallest number this experiment could have written. Every restart count published here is bounded the same way, by the runtime's own startup probe budget, after which the kubelet restarts the container into the same load.",
     "The disruption is a processor limit and not a corrupt artifact, a wrong revision, or an unloadable file. Those are refused earlier -- by chart validation or by the `verify-model` init container -- and this experiment says nothing about what the runtime process would do if it reached one of them, beyond the direct measurement recorded in the descriptor's own list of rejected mechanisms.",
     "Both request surfaces are reached through a loopback forward to a pod rather than to a Service, because a release whose model is not ready has no ready endpoint on either Service. What the probes record is therefore what each workload answers, not what a caller arriving through a Service would have met -- and a caller arriving through the API Service in this state would have met no endpoint at all, which is a different observation and is stated rather than measured here.",
     "The recovery is an operator changing a value and issuing an upgrade. Nothing here says a controller would have reversed it, and nothing here measures how long a person takes to notice.",
