@@ -1024,6 +1024,22 @@ def test_the_service_is_restored_at_the_next_request_that_was_served(run: Run) -
     assert record["timings"]["callerVisibleOutageMs"] >= 0
 
 
+def test_the_disrupted_runs_window_borrows_no_instant_from_the_other_run(
+    run: Run,
+) -> None:
+    """An independent review of this change found it doing exactly that.
+
+    ``afterInTheDisruptedRun`` is empty whenever the service was restored in the
+    second run, and an earlier version still stamped its start from that second
+    run's request -- a window named for one run carrying an instant from the other.
+    """
+    record = run.build()
+    assert record["timings"]["serviceRestoredObservedIn"] == "recovered-run"
+    window_ = window(record, "afterInTheDisruptedRun")
+    assert window_["dispatched"] == 0
+    assert window_["startEpochMs"] is None
+
+
 def test_no_published_interval_is_ever_negative(run: Run) -> None:
     """The check that exists because the first execution published two that were."""
     record = run.build()
@@ -1245,16 +1261,45 @@ def test_the_record_does_not_claim_the_artifact_survived(run: Run) -> None:
 
 
 def test_the_in_flight_requests_at_the_deletion_are_counted(run: Run) -> None:
+    """Counted against the raw set rather than asserted to be a number."""
     record = run.build()
-    assert "inFlightAtDeletion" in record["callerImpact"]
-    assert record["callerImpact"]["inFlightAtDeletion"]["dispatched"] >= 0
+    placed = place_requests(load.parse_raw(run.disrupted_raw_text))
+    expected = [
+        entry
+        for entry in placed
+        if entry.dispatched_at_ms < run.deleted <= entry.completed_at_ms
+    ]
+    in_flight = record["callerImpact"]["inFlightAtDeletion"]
+    assert in_flight["dispatched"] == len(expected)
+    assert in_flight["outcomes"]["success"] == sum(
+        1 for entry in expected if entry.record.outcome == load.OUTCOME_SUCCESS
+    )
+    assert sum(in_flight["outcomes"].values()) == in_flight["dispatched"]
 
 
-def test_the_same_phase_comparison_says_whether_it_is_available(run: Run) -> None:
+def test_the_same_phase_comparison_is_available_when_both_sides_were_served(
+    run: Run,
+) -> None:
     record = run.build()
     comparison = record["callerImpact"]["withinTheDisruptedScenario"]
     assert comparison["scenarioId"] == "c1"
-    assert isinstance(comparison["comparable"], bool)
+    assert comparison["comparable"] is True
+    assert comparison["before"]["observations"] > 0
+    assert comparison["after"]["observations"] > 0
+
+
+def test_the_same_phase_comparison_says_so_when_one_side_was_not_served(
+    run: Run,
+) -> None:
+    """Nothing of the disrupted scenario is served afterwards, in either run."""
+    record = run.build(
+        disruptedRaw=real_raw(run.origin, refuse=range(4, 500)),
+        recoveredRaw=real_raw(run.recovered_origin, refuse=range(0, 500)),
+    )
+    comparison = record["callerImpact"]["withinTheDisruptedScenario"]
+    assert comparison["comparable"] is False
+    assert comparison["after"]["observations"] == 0
+    assert comparison["after"]["p50Ms"] is None
 
 
 @pytest.mark.parametrize(

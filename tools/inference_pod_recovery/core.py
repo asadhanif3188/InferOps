@@ -2226,7 +2226,15 @@ def build_record(
                     "afterInTheDisruptedRun",
                     after_in_disrupted,
                     percentiles,
-                    start_ms=None if restored is None else restored.dispatched_at_ms,
+                    # Only when the disrupted run is where the service came back.
+                    # Where the recovered run is, this window is empty, and
+                    # stamping it from that run's request would put an instant
+                    # from one run under a name that says the other.
+                    start_ms=(
+                        restored.dispatched_at_ms
+                        if restored is not None and restored_in == "disrupted-run"
+                        else None
+                    ),
                     end_ms=None,
                 ),
                 _window(

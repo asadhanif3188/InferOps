@@ -73,6 +73,14 @@ git diff --check                                                   clean
 [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) publishes was **not run**. `bash -n` was.
 That gap is this repository's existing one and is not closed here.
 
+**Two pre-existing suites were seen to fail once, under load, and are not this
+change's.** In one full-lane run taken while other work was running on the same host,
+`test_target_verification.py::test_a_mechanism_this_project_does_not_implement_refuses_before_loading`
+and `test_terraform_prerequisites.py::test_the_configuration_validates` failed; both
+shell out to `terraform` or to fake `kubectl`/`docker` binaries and both passed on a
+quiet host, in isolation and in a clean lane. Neither file is touched by this branch.
+It is recorded because a failure that is omitted is the one the next person repeats.
+
 The new offline suite carries `pytestmark = pytest.mark.architecture` and is in the
 default lane, because it contacts nothing: raw load record sets are produced by
 `tools.llm_load.execute` against an injected transport and a fake clock, the cluster's
