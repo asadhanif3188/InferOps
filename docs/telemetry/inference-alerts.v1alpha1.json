@@ -1,0 +1,837 @@
+{
+  "$id": "https://inferops.io/telemetry/inference-alerts.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "InferOps V1 inference alerts, v1alpha1",
+  "description": "The conditions a V1 operator is told about, as data: the expression each one is asked in, the window it has to hold across, where its number comes from, who owns it, what a caller is experiencing while it fires, what to do, and the runbook section that says how. Alerts that the accepted telemetry cannot observe are recorded as deferred rather than approximated, and alerts that a metric being available would suggest are recorded as refused with the rule that refuses them. No receiver, routing tree, or on-call rotation is selected, so nothing here has ever told anybody anything.",
+  "decisionRef": "docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md",
+  "documentRef": "docs/telemetry/inference-alerts.md",
+  "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "queryRecordRef": "docs/telemetry/telemetry-correlation-queries.v1alpha1.json",
+  "collectionRef": "docs/telemetry/kubernetes-telemetry-collection.v1alpha1.json",
+  "dashboardRecordRef": "docs/telemetry/inference-operations-dashboard.v1alpha1.json",
+  "chartRef": "charts/inferops-llm",
+  "fixtureDir": "tests/telemetry/fixtures/alerts",
+  "renderRefs": {
+    "mock": "deploy/prometheus/inferops-inference-alerts.mock.yaml",
+    "real": "deploy/prometheus/inferops-inference-alerts.real.yaml"
+  },
+  "evidenceRef": "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+  "verificationStatus": {
+    "policyChecked": true,
+    "evaluatedAgainstFixtures": true,
+    "evaluatedByAPrometheus": false,
+    "ruleFileLoadedByPromtool": "yes, promtool 3.5.0 from the pinned collector image: SUCCESS, 6 rules found (real) and 5 rules found (mock)",
+    "everRouted": false,
+    "everNotifiedAnybody": false,
+    "evidenceClass": "local-static",
+    "note": "Every alert here has been parsed, held to the correlation query policy under each profile it declares, and evaluated instant by instant across eight committed fixtures. Every alert but one was then replayed over the telemetry three real experiments recorded on the docker-desktop provider, through the reconstruction tools/inference_alerts/replay.py declares; one fires over one capture. The rendered rule files are accepted by the pinned collector's own promtool. No Prometheus has loaded them in a cluster, no alerting rule existed during any of the three experiments, and no alert has fired anywhere but in this repository's own evaluator.",
+    "replayedAgainstRealCaptures": true,
+    "everFiredInACluster": false
+  },
+  "routing": {
+    "receiver": null,
+    "routingTree": null,
+    "onCall": null,
+    "alertmanager": null,
+    "statement": "Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file."
+  },
+  "evaluation": {
+    "scrapeIntervalSeconds": 30,
+    "ruleEvaluationIntervalSeconds": 30,
+    "rangeWindowSeconds": 300,
+    "statement": "Every rate here reads a five-minute window and every `for` is at least that long, so no single scrape's worth of trouble can hold a condition across its window. The 30-second interval is the rendered rule group's own: the chart declares telemetry.collection.scrapeIntervalSeconds: 30 and declares no evaluation_interval at all, so a group that inherited Prometheus's one-minute default would be evaluated less often than the release is scraped. The fixtures step at 60 s and all three real captures at 15 s; a result over either is a statement about the instants it carries."
+  },
+  "owners": [
+    {
+      "ownerId": "serving",
+      "name": "Whoever owns the release's serving path",
+      "responsibility": "The platform API, the serving-runtime adapter, the runtime pod, and the model it loads. Every alert about what a caller experiences is theirs.",
+      "note": "This project has no on-call rotation and no team directory. The owner is the role an installation has to fill, named here so that an alert cannot be added without one."
+    },
+    {
+      "ownerId": "platform",
+      "name": "Whoever owns the release's collection",
+      "responsibility": "The release-scoped collector, its scrape configuration, and its recording rules. The one alert that says the other five cannot be trusted is theirs.",
+      "note": "Same limitation: a role, not a person, and nothing pages either of them."
+    }
+  ],
+  "severities": [
+    {
+      "severityId": "critical",
+      "meaning": "Callers are being refused or served nothing right now.",
+      "response": "Act immediately. Every critical alert here has a runbook whose first step is a read-only diagnosis.",
+      "routing": "Would page, if a routing path existed. None does."
+    },
+    {
+      "severityId": "warning",
+      "meaning": "The release is still answering and something will stop it, or something is asking a question nobody can answer.",
+      "response": "Act inside a working day. A warning that has to be acted on within minutes is a critical that was mislabelled.",
+      "routing": "Would be a ticket, if a routing path existed. None does."
+    }
+  ],
+  "thresholdBases": [
+    {
+      "basisId": "zero-is-the-boundary",
+      "meaning": "The threshold is zero, and zero is the boundary because any occurrence at all is the condition. Nothing was chosen, so nothing can be tuned to make the alert look better.",
+      "whyItTravels": "Zero means the same thing on every host."
+    },
+    {
+      "basisId": "declared-chart-configuration",
+      "meaning": "The threshold is derived from a value the chart declares and an installation can read, and it moves when that value moves.",
+      "whyItTravels": "An installation that changed the configuration changed the threshold with it, rather than inheriting one taken from somebody else's host."
+    },
+    {
+      "basisId": "declared-histogram-boundary",
+      "meaning": "The threshold is one of the request-duration histogram's own bucket boundaries, so the quantile it is compared against is interpolated across a boundary the catalog declares rather than inside one.",
+      "whyItTravels": "The boundaries are the catalog's and are the same in every installation of this release."
+    }
+  ],
+  "alerts": [
+    {
+      "alertId": "inference-callers-refused",
+      "name": "InferOpsInferenceCallersRefused",
+      "families": [
+        "availability"
+      ],
+      "signal": "workload",
+      "owner": "serving",
+      "severity": "critical",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "expr": "sum by (inferops_workload_id) (rate(inferops_inference_errors_total{inferops_error_code=\"capability-unavailable\"}[5m])) > 0",
+      "forSeconds": 300,
+      "thresholdBasis": "zero-is-the-boundary",
+      "thresholdRationale": "capability-unavailable is the API saying it could not reach a serving capability at all; one of them is a caller who got nothing, so the threshold is zero and nothing is tuned. The window is the range window: a single scrape interval's worth of refusals keeps a five-minute rate above zero for five minutes, and a `for` shorter than that would page for it. The `one-scrape-of-trouble` scenario is that case.",
+      "condition": "The platform has been refusing completions with capability-unavailable for five minutes.",
+      "userImpact": "Callers are receiving 503 and no completion. It is the code both recorded failure experiments produced and it is not the only code either produced: the pod-loss run counted forty capability-unavailable and one internal-error, and this alert would not have counted that one. InferOpsInferenceServingNothing is the backstop for a code nobody selected for.",
+      "operatorAction": "Ask which Service has no endpoint before restarting anything: the runbook's read-only `get svc,endpointslice`. capability-unavailable is the API saying it could not reach the runtime at all, and a runtime whose readiness probe is failing has already had its only address removed -- which is a different fault from a pod that is gone, and the endpoint listing tells them apart.",
+      "evidenceQueryRef": "error-rate-by-workload-and-code",
+      "evidenceQuery": "sum by (inferops_workload_id, inferops_error_code) (rate(inferops_inference_errors_total[5m]))",
+      "evidenceQueryIsFor": "Every canonical code, not only the one that fired. The pod-loss run produced an internal-error this alert does not count, and this is where it would be seen.",
+      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#service-network-and-the-policy-that-is-not-enforced",
+      "emptyMeans": "No API process is publishing this counter. That is either a release serving with no refusals since its processes started -- the counter is created on its first event, so it is genuinely absent rather than zero -- or an API nothing is scraping, which InferOpsPlatformApiScrapeJobAbsent separates.",
+      "whatItCannotSee": "Two things, both measured rather than supposed. A caller who never reached the API: every series it reads is emitted by the API, so a release whose API is gone is silent here and visible only to the collection alert. And the first burst on a release: the API creates a labelled counter series on its first event, so the series appears already carrying what it has counted, and a rate over it reads no increase. V1-S4-006-PR1's entire outage arrived that way -- forty refusals inside 32 s, a series born at 40 and never incremented again -- and the replay of this alert over that capture is silent for exactly that reason, not because the window was too long.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ],
+      "evidenceLabel": "local real Kubernetes, on one provider and one host",
+      "scenarioExpectations": {
+        "healthy-real-serving": "silent",
+        "serving-pod-lost": "fires",
+        "model-never-becomes-ready": "fires",
+        "inference-slower-than-the-request-budget": "silent",
+        "runtime-defers-requests": "silent",
+        "platform-api-not-discovered": "silent",
+        "one-scrape-of-trouble": "silent",
+        "healthy-mock-serving": "silent"
+      }
+    },
+    {
+      "alertId": "inference-serving-nothing",
+      "name": "InferOpsInferenceServingNothing",
+      "families": [
+        "errors",
+        "availability"
+      ],
+      "signal": "workload",
+      "owner": "serving",
+      "severity": "critical",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "expr": "sum(rate(inferops_inference_requests_total{inferops_outcome=\"success\"}[5m])) == 0 and sum(rate(inferops_inference_requests_total[5m])) > 0",
+      "forSeconds": 300,
+      "thresholdBasis": "zero-is-the-boundary",
+      "thresholdRationale": "Traffic is arriving and none of it is succeeding. Both numbers are zero rather than a share, because no error budget is decided anywhere in this project and a share between nothing and everything would be a figure with no source. The window is the range window, for the reason the availability alert's is.",
+      "condition": "Completions have been arriving for five minutes and none of them has succeeded.",
+      "userImpact": "Every caller is getting an error, for a reason this alert does not name. It is the backstop for a cause nobody predicted, which is why it reads the outcome and not a code.",
+      "operatorAction": "Read the error counter by code first -- the dashboard's errors-by-code panel, or sum by (inferops_error_code) over inferops_inference_errors_total -- and then follow the runbook section for whichever component that names. Do not restart until the code is known.",
+      "evidenceQueryRef": "request-throughput-by-workload-model-and-outcome",
+      "evidenceQuery": "sum by (inferops_workload_id, inferops_model_id, inferops_outcome) (rate(inferops_inference_requests_total[5m]))",
+      "evidenceQueryIsFor": "The outcome split. It says how much is arriving and how much of it is failing, which is what decides whether this is a fault or an absence of traffic.",
+      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#reading-the-apis-and-the-runtimes-logs",
+      "emptyMeans": "No traffic, or no API publishing the counter. An idle release cannot fire this and is not meant to: nobody is being refused.",
+      "whatItCannotSee": "A release that has never served. The success counter series does not exist until the first success, so a rate over it is empty rather than zero, and an install whose model never became ready has no success series to read as zero. That is not a hypothesis: the V1-S4-007-PR1 run recorded the success series first appearing after the correction, and the model-never-becomes-ready scenario reproduces it and expects this alert to stay silent.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ],
+      "evidenceLabel": "local real Kubernetes, on one provider and one host",
+      "scenarioExpectations": {
+        "healthy-real-serving": "silent",
+        "serving-pod-lost": "fires",
+        "model-never-becomes-ready": "silent",
+        "inference-slower-than-the-request-budget": "silent",
+        "runtime-defers-requests": "silent",
+        "platform-api-not-discovered": "silent",
+        "one-scrape-of-trouble": "silent",
+        "healthy-mock-serving": "silent"
+      }
+    },
+    {
+      "alertId": "readiness-refusals-sustained",
+      "name": "InferOpsReadinessRefusalsSustained",
+      "families": [
+        "availability"
+      ],
+      "signal": "workload",
+      "owner": "serving",
+      "severity": "critical",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "expr": "sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m])) > 0.05",
+      "forSeconds": 300,
+      "thresholdBasis": "declared-chart-configuration",
+      "thresholdRationale": "The kubelet asks /health/ready every api.probes.readiness.periodSeconds, which the chart defaults to 10, and removes the endpoint after failureThreshold: 3 consecutive refusals. Every probe failing is therefore 0.1 refusals a second, and 0.05 is half of that: more probes are being refused than answered. It moves when an installation changes periodSeconds. It is a lower bound on probe failures only while the probes are the only caller of that endpoint, which is what the chart configures.",
+      "condition": "More than half the readiness probes of a component have been refused for five minutes.",
+      "userImpact": "The named component is about to stop receiving traffic, or already has: three consecutive refusals remove its endpoint from the Service. This is the one alert that sees an outage before any caller does, and it fires on a release nobody is sending traffic to.",
+      "operatorAction": "The component label says which half answered no -- platform-api or serving-adapter. Check the pod's probe configuration and its endpoint before anything else, and read the runtime log if the adapter is the one refusing.",
+      "evidenceQueryRef": "readiness-check-failures-by-component",
+      "evidenceQuery": "sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m]))",
+      "evidenceQueryIsFor": "The same rate the condition compares, grouped the same way, so the component label that named the fault is the one an operator reads.",
+      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#probes",
+      "emptyMeans": "No API process is publishing this counter, or none of its readiness checks has ever failed. The counter is created on its first refusal.",
+      "whatItCannotSee": "Which of the several things the adapter checks said no. The counter names the component and not the reason, and the reason is in the log rather than in a metric.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md"
+      ],
+      "evidenceLabel": "local real Kubernetes, on one provider and one host",
+      "scenarioExpectations": {
+        "healthy-real-serving": "silent",
+        "serving-pod-lost": "fires",
+        "model-never-becomes-ready": "fires",
+        "inference-slower-than-the-request-budget": "silent",
+        "runtime-defers-requests": "silent",
+        "platform-api-not-discovered": "silent",
+        "one-scrape-of-trouble": "silent",
+        "healthy-mock-serving": "silent"
+      }
+    },
+    {
+      "alertId": "inference-latency-past-half-the-request-budget",
+      "name": "InferOpsInferenceLatencyPastHalfTheRequestBudget",
+      "families": [
+        "latency"
+      ],
+      "signal": "workload",
+      "owner": "serving",
+      "severity": "warning",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "expr": "histogram_quantile(0.95, sum by (le, inferops_workload_id) (rate(inferops_inference_request_duration_seconds_bucket[5m]))) > 60",
+      "forSeconds": 600,
+      "thresholdBasis": "declared-histogram-boundary",
+      "thresholdRationale": "60 seconds is half the chart's default api.requestTimeoutMs of 120 000 and is also one of the request-duration histogram's declared bucket boundaries, so the quantile is interpolated across a boundary rather than inside one. A request at this point has spent half the budget the adapter would abandon it at, and the next one may be refused as request-timeout. It is not a service-level objective, not an error budget, and not derived from anything this project measured: the slowest client-measured 95th percentile in the local performance matrix was 8 614 ms, and publishing that as a threshold would have made one host's figure into everybody's. The window is twice the range window, because latency is a trend and not an event.",
+      "condition": "The 95th percentile of completion time has been past half the configured request timeout for ten minutes.",
+      "userImpact": "Callers are waiting. Nothing has been refused yet, and a request that crosses the whole budget will be.",
+      "operatorAction": "Establish whether the host is the answer before changing the release: read the runtime container's processor and memory use and what else is on the node. Raising a timeout to stop this alert is the one action that makes the fault invisible rather than absent.",
+      "evidenceQueryRef": "request-latency-p95-by-workload-and-model",
+      "evidenceQuery": "histogram_quantile(0.95, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_request_duration_seconds_bucket[5m])))",
+      "evidenceQueryIsFor": "The same quantile the condition compares, split by model as well, which is the split the condition deliberately does not make.",
+      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory",
+      "emptyMeans": "No completion was observed in the window. A quantile over an empty distribution is NaN, which is not greater than anything, so an idle release is silent here rather than reading zero.",
+      "whatItCannotSee": "Where the time went. The queue-duration histogram is the signal that would separate waiting from working and nothing emits it, so this says a request was slow and never which part of it was.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-004-pr2-performance-findings.md"
+      ],
+      "evidenceLabel": "synthetic; the threshold is configuration and the fixture is hand-written",
+      "scenarioExpectations": {
+        "healthy-real-serving": "silent",
+        "serving-pod-lost": "silent",
+        "model-never-becomes-ready": "silent",
+        "inference-slower-than-the-request-budget": "fires",
+        "runtime-defers-requests": "silent",
+        "platform-api-not-discovered": "silent",
+        "one-scrape-of-trouble": "silent",
+        "healthy-mock-serving": "silent"
+      }
+    },
+    {
+      "alertId": "runtime-defers-requests",
+      "name": "InferOpsRuntimeDefersRequests",
+      "families": [
+        "saturation"
+      ],
+      "signal": "workload",
+      "owner": "serving",
+      "severity": "warning",
+      "profiles": [
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "expr": "sum by (inferops_workload_id) (inferops:inference_requests_deferred:runtime) > 0",
+      "forSeconds": 600,
+      "thresholdBasis": "declared-chart-configuration",
+      "thresholdRationale": "The chart's runtime.parallelSlots defaults to 1, so anything the runtime defers is demand past what this release is configured to serve at once. Zero is the boundary because the configuration says so, not because zero was a comfortable number, and an installation that raised parallelSlots raised what the runtime accepts before deferring rather than changing this threshold. The window is what keeps that honest: the measured performance matrix recorded deferrals of at most 0, 1 and 3 at concurrency 1, 2 and 4, so the threshold alone was crossed in four of its six measured phases. Ten minutes of continuous deferral is the condition; a deferral is not.",
+      "condition": "The serving runtime has been holding requests it has no parallel slot for, continuously, for ten minutes.",
+      "userImpact": "Callers are waiting longer than the runtime takes to answer, because they are queueing before it starts. Nothing is refused.",
+      "operatorAction": "Decide between less demand and more capacity: reduce caller concurrency, or raise runtime.parallelSlots or the replica count and re-measure. Do not read the deferral count as a queue length in seconds -- it is a count of requests and says nothing about how long any of them waited.",
+      "evidenceQueryRef": "runtime-deferred-requests",
+      "evidenceQuery": "sum by (inferops_workload_id, inferops_model_id) (inferops:inference_requests_deferred:runtime)",
+      "evidenceQueryIsFor": "The deferral count itself, per workload and model. It is a count of requests and never a wait.",
+      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory",
+      "emptyMeans": "No serving-runtime target is publishing llamacpp:requests_deferred, which the collection alert and the scrape panels separate from a runtime that is deferring nothing.",
+      "whatItCannotSee": "How long anything waited. The queue-duration histogram is the adapter's measurement and the adapter is not instrumented, so this is a count of deferrals and never a wait.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-004-pr1-validation.md"
+      ],
+      "evidenceLabel": "synthetic fixture; the threshold is configuration and the measured performance matrix crossed it instantaneously at concurrency 2 and 4 without ever sustaining it",
+      "scenarioExpectations": {
+        "healthy-real-serving": "silent",
+        "serving-pod-lost": "silent",
+        "model-never-becomes-ready": "silent",
+        "inference-slower-than-the-request-budget": "silent",
+        "runtime-defers-requests": "fires",
+        "platform-api-not-discovered": "silent",
+        "one-scrape-of-trouble": "silent"
+      }
+    },
+    {
+      "alertId": "platform-api-scrape-job-absent",
+      "name": "InferOpsPlatformApiScrapeJobAbsent",
+      "families": [
+        "collection"
+      ],
+      "signal": "scrape-reachability",
+      "owner": "platform",
+      "severity": "warning",
+      "profiles": [
+        "mock",
+        "real"
+      ],
+      "answerability": "answerable-once-collected",
+      "expr": "inferops:scrape_job_absent:platform_api == 1",
+      "forSeconds": 600,
+      "thresholdBasis": "zero-is-the-boundary",
+      "thresholdRationale": "The recorded series is absent() over the job, so it is 1 or it is nothing, and the comparison is to the only other value it can take. The window is twice the range window so that a rollout, in which the job momentarily matches no pod, is not an alert.",
+      "condition": "The collector's platform-api job has matched no target for ten minutes.",
+      "userImpact": "None directly. This is a statement about the collection and not about the release: every other alert in this set reads a series that job would have collected, so while this fires their silence means nothing was asked rather than that nothing was wrong.",
+      "operatorAction": "Check the collector's own targets page and the discovery it is configured with before touching the release. A job that matches nothing is usually a selector, a namespace, or a port name, and none of those is fixed by restarting anything.",
+      "evidenceQueryRef": "scrape-target-health-by-job",
+      "evidenceQuery": "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
+      "evidenceQueryIsFor": "Which tier is answering a scrape and which is not. It says the collector reached a process and nothing about whether that process can serve.",
+      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#telemetry-scrape",
+      "emptyMeans": "The job matched at least one target, or no collector is evaluating this release's recording rules at all. The second case is the blind spot below.",
+      "whatItCannotSee": "A collector that is itself gone. absent() is evaluated by the collector, so a collector that is not running evaluates nothing and tells nobody, and no rule in this file can close that. Nor does it say anything about whether a discovered target can serve: a target that answers a scrape has been observed both while its pod was deleted and while its model was still loading.",
+      "evidenceRefs": [
+        "docs/proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md"
+      ],
+      "evidenceLabel": "synthetic; the recording rule it reads was evaluated by a real Prometheus in V1-S3-011-PR1, with the job present",
+      "scenarioExpectations": {
+        "healthy-real-serving": "silent",
+        "serving-pod-lost": "silent",
+        "model-never-becomes-ready": "silent",
+        "inference-slower-than-the-request-budget": "silent",
+        "runtime-defers-requests": "silent",
+        "platform-api-not-discovered": "fires",
+        "one-scrape-of-trouble": "silent",
+        "healthy-mock-serving": "silent"
+      }
+    }
+  ],
+  "replays": [
+    {
+      "captureId": "v1-s4-004-pr1",
+      "captureRef": "docs/proof/serving/v1-s4-004-pr1-telemetry.v1alpha1.json",
+      "experimentRef": "docs/proof/serving/v1-s4-004-pr1-validation.md",
+      "whatHappened": "The performance scenario matrix: a warm-up and three concurrency levels run twice against a real release on the docker-desktop provider, 360 requests, 0 unsuccessful. A release working, under the only sustained load this project has measured.",
+      "rangeSeconds": 924,
+      "stepSeconds": 15,
+      "metricsTheCaptureHolds": [
+        "inferops:inference_requests_deferred:runtime",
+        "inferops:inference_requests_in_flight:runtime",
+        "inferops_inference_request_duration_seconds_bucket",
+        "inferops_inference_requests_in_flight",
+        "inferops_inference_requests_total",
+        "inferops_inference_tokens_total",
+        "llamacpp:n_decode_total",
+        "llamacpp:prompt_tokens_total",
+        "llamacpp:requests_deferred",
+        "llamacpp:requests_processing",
+        "llamacpp:tokens_predicted_total"
+      ],
+      "expressionsRefusedByTheReconstruction": [],
+      "results": [
+        {
+          "alertId": "inference-callers-refused",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops_inference_errors_total"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops_inference_errors_total. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        },
+        {
+          "alertId": "inference-serving-nothing",
+          "verdict": "silent",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, over the only sustained load this project has measured: 360 requests and 0 unsuccessful, so the success rate is never zero."
+        },
+        {
+          "alertId": "readiness-refusals-sustained",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops_readiness_check_failures_total"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops_readiness_check_failures_total. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        },
+        {
+          "alertId": "inference-latency-past-half-the-request-budget",
+          "verdict": "silent",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, by roughly a factor of six. The alert's own expression returns a 95th percentile between 2.425 s and 9.491 s across the run, against a threshold of 60 s. That figure is the histogram-derived one the alert reads and is not the client-measured 8 614 ms the findings record publishes; neither is a threshold, and the alert is quiet under the load the release was measured at."
+        },
+        {
+          "alertId": "runtime-defers-requests",
+          "verdict": "silent",
+          "heldInstants": 14,
+          "heldSeconds": 195.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, and this is the result the threshold's rationale rests on. The runtime did defer -- the value reaches 3, matching the maxima of 0, 1 and 3 the findings record publishes for concurrency 1, 2 and 4 -- so the threshold of zero was crossed. The condition held for 14 consecutive evaluations, 195 s, against a window needing 41. The ten-minute window, not the threshold, is what keeps this alert quiet under a load the release handled."
+        },
+        {
+          "alertId": "platform-api-scrape-job-absent",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops:scrape_job_absent:platform_api"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops:scrape_job_absent:platform_api. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        }
+      ]
+    },
+    {
+      "captureId": "v1-s4-006-pr1",
+      "captureRef": "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+      "experimentRef": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+      "whatHappened": "One serving-runtime pod deleted under load on the docker-desktop provider. Caller-visible outage 31 960 ms; service restored by the Deployment controller with no human action.",
+      "rangeSeconds": 1220,
+      "stepSeconds": 15,
+      "metricsTheCaptureHolds": [
+        "inferops:inference_requests_in_flight:runtime",
+        "inferops_inference_errors_total",
+        "inferops_inference_requests_in_flight",
+        "inferops_inference_requests_total",
+        "inferops_model_ready",
+        "inferops_readiness_check_failures_total",
+        "kube_pod_container_status_restarts_total",
+        "llamacpp:requests_processing",
+        "up"
+      ],
+      "expressionsRefusedByTheReconstruction": [
+        "inferops:scrape_targets_up:sum / inferops:scrape_targets:count"
+      ],
+      "results": [
+        {
+          "alertId": "inference-callers-refused",
+          "verdict": "silent",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, and not because the window was too long. The capture's capability-unavailable series appears at 1789549405 already reading 40 and never increments again: the API creates a labelled counter series on its first event, so the whole outage -- forty refusals inside 32 s -- is a series born at its value, and a rate over it reads no increase at any instant."
+        },
+        {
+          "alertId": "inference-serving-nothing",
+          "verdict": "silent",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, correctly. The release went on serving throughout: the success counter rose from 3 to 273 across the capture, so the success rate is never zero."
+        },
+        {
+          "alertId": "readiness-refusals-sustained",
+          "verdict": "silent",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent. The adapter refused two readiness probes across 1 185 s -- the counter moved 2 to 4 -- which is a five-minute rate of at most 0.0067/s against a threshold of 0.05/s. A 32-second disruption that Kubernetes reversed without a person is not what this alert is for."
+        },
+        {
+          "alertId": "inference-latency-past-half-the-request-budget",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops_inference_request_duration_seconds_bucket"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops_inference_request_duration_seconds_bucket. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        },
+        {
+          "alertId": "runtime-defers-requests",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops:inference_requests_deferred:runtime"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops:inference_requests_deferred:runtime. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        },
+        {
+          "alertId": "platform-api-scrape-job-absent",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops:scrape_job_absent:platform_api"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops:scrape_job_absent:platform_api. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        }
+      ]
+    },
+    {
+      "captureId": "v1-s4-007-pr1",
+      "captureRef": "docs/proof/serving/v1-s4-007-pr1-telemetry.v1alpha1.json",
+      "experimentRef": "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+      "whatHappened": "One release installed with a serving runtime starved of processor, so the model began loading and did not finish. The unready window was held for 179 755 ms and ended by an operator changing one value.",
+      "rangeSeconds": 462,
+      "stepSeconds": 15,
+      "metricsTheCaptureHolds": [
+        "inferops:inference_requests_in_flight:runtime",
+        "inferops:model_ready_absent:platform_api",
+        "inferops_inference_errors_total",
+        "inferops_inference_requests_total",
+        "inferops_model_ready",
+        "inferops_readiness_check_failures_total",
+        "kube_pod_container_status_restarts_total",
+        "up"
+      ],
+      "expressionsRefusedByTheReconstruction": [
+        "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
+        "count by (k8s_component) (inferops_build_info)"
+      ],
+      "results": [
+        {
+          "alertId": "inference-callers-refused",
+          "verdict": "silent",
+          "heldInstants": 20,
+          "heldSeconds": 285.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent by one evaluation. The condition held for 20 consecutive evaluations, 285 s, against a window needing 21. The capture is 462 s long and the recording stopped one 15-second step before the alert would have fired; nothing here says the condition ended."
+        },
+        {
+          "alertId": "inference-serving-nothing",
+          "verdict": "silent",
+          "heldInstants": 1,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, for the reason the alert's own whatItCannotSee gives: the release had never served, so no success counter series existed until the correction and a rate over it is empty rather than zero."
+        },
+        {
+          "alertId": "readiness-refusals-sustained",
+          "verdict": "fires",
+          "heldInstants": 28,
+          "heldSeconds": 405.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": 1789575525.552,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Fires. The adapter refused every probe for the whole unready window -- the counter moved 2 to 41 across 435 s, a five-minute rate of up to 0.129/s against a threshold of 0.05/s -- and the condition held for 28 consecutive evaluations against a window needing 21. This is the one alert in this set that a recorded failure would have raised."
+        },
+        {
+          "alertId": "inference-latency-past-half-the-request-budget",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops_inference_request_duration_seconds_bucket"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops_inference_request_duration_seconds_bucket. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        },
+        {
+          "alertId": "runtime-defers-requests",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops:inference_requests_deferred:runtime"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops:inference_requests_deferred:runtime. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        },
+        {
+          "alertId": "platform-api-scrape-job-absent",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops:scrape_job_absent:platform_api"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops:scrape_job_absent:platform_api. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        }
+      ]
+    }
+  ],
+  "deferredAlerts": [
+    {
+      "deferredId": "container-restart-spike",
+      "condition": "A serving-runtime or API container restarting repeatedly.",
+      "whyDeferred": "There is no series to write it against. kube_pod_container_status_restarts_total is kube-state-metrics's, no chart in this repository installs kube-state-metrics, no ADR assigns it an owner, and the release's collector scrapes two InferOps jobs and nothing else.",
+      "notObserved": "Both failure experiments queried that metric against the real collector and both got an empty result: V1-S4-006-PR1 and V1-S4-007-PR1 each record it with no series returned. The absence is measured rather than assumed.",
+      "whatWouldBeNeeded": "An owner for kube-state-metrics or an equivalent, a scrape job for it, and a decision about whether a restart count belongs to this release's collector at all.",
+      "doNotApproximate": "A restart is not visible in anything this release emits. The API's process counters restart with the process and read as a counter reset, which is what a rate already absorbs, so nothing here could stand in for it.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-006-pr1-validation.md",
+        "docs/proof/serving/v1-s4-007-pr1-validation.md"
+      ]
+    },
+    {
+      "deferredId": "abnormal-model-load-duration",
+      "condition": "A model taking abnormally long to become servable, or failing to load.",
+      "whyDeferred": "inferops_model_load_duration_seconds is specified in the telemetry catalog and emitted by nothing. It belongs to the serving-runtime adapter, which is the only component that sees that boundary and is not instrumented.",
+      "notObserved": "V1-S4-007-PR1 held a release for 179 755 ms with a model that never finished loading, and no load-duration series existed to record any part of it. What the run had instead was the runtime's own 503 and the adapter's readiness refusals, which is what the readiness alert reads.",
+      "whatWouldBeNeeded": "The adapter instrumented for the metric the catalog already specifies, and then a threshold with a source -- the runtime's own startup-probe budget is the candidate, because the chart declares it.",
+      "doNotApproximate": "The interval from a pod being created to its Ready condition is a Kubernetes measurement, not a model-load measurement, and it is not collected here either. Substituting it would have produced an alert whose name claimed one thing and whose expression measured another.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ]
+    },
+    {
+      "deferredId": "model-not-ready",
+      "condition": "The model reporting itself not servable.",
+      "whyDeferred": "inferops_model_ready is specified and emitted by nothing, for the same reason: it is the adapter's. The chart does render inferops:model_ready_absent:platform_api, and that series reads 1 in every release today because the metric is absent everywhere -- V1-S4-007-PR1 recorded it at 1 across the whole run, in the broken state and in the corrected one alike. An alert on it would fire on every installation for ever and say nothing about any model.",
+      "notObserved": "Both experiments queried inferops_model_ready directly and both got an empty result.",
+      "whatWouldBeNeeded": "The adapter emitting the gauge. The recording rule is already there to say when it is not.",
+      "doNotApproximate": "Readiness refusals are the API's conclusion about the adapter and are alerted on separately; they are not the model's own answer, and the two disagree exactly when a release is being rolled out.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md"
+      ]
+    },
+    {
+      "deferredId": "error-share-above-a-budget",
+      "condition": "Some fraction of completions failing, short of all of them.",
+      "whyDeferred": "No error budget, service-level objective, or acceptable failure share is decided anywhere in this project. Any number between zero and everything would have been chosen here rather than derived, and would then have travelled to other installations as though it meant something.",
+      "notObserved": "The measured performance matrix recorded 360 requests with 0 unsuccessful, so this project has no observation of a partial failure rate under steady load either.",
+      "whatWouldBeNeeded": "A decided service-level objective, with an owner. Then the threshold has a source and this alert is one line.",
+      "doNotApproximate": "InferOpsInferenceServingNothing covers the total case at a threshold of zero. Widening it to a share would have replaced a derived boundary with a preference.",
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-004-pr2-performance-findings.md"
+      ]
+    },
+    {
+      "deferredId": "api-process-resource-exhaustion",
+      "condition": "The API process running out of memory.",
+      "whyDeferred": "inferops_process_resident_memory_bytes has no source this distribution may read. The telemetry catalog records why, and the endpoint names the absence rather than publishing a zero.",
+      "notObserved": "No run in this project has recorded an API process memory figure at all.",
+      "whatWouldBeNeeded": "A memory source the domain dependency boundary permits, or a container-level metric from a collector add-on nobody owns.",
+      "doNotApproximate": "Processor time is emitted and memory is not, and an alert on the first named for the second would be the plainest version of alerting on what is available.",
+      "evidenceRefs": [
+        "docs/telemetry/telemetry-catalog.md"
+      ]
+    }
+  ],
+  "refusedAlerts": [
+    {
+      "refusedId": "up-as-inference-down",
+      "expr": "up == 0",
+      "rule": "scrape-signal-presented-as-workload-health",
+      "why": "Scrape reachability has been observed wrong in both directions. V1-S3-011-PR2 recorded a deleted serving pod still reading 1 for roughly fifty seconds, and V1-S4-007-PR1 recorded a runtime whose process was alive and answering its own port reading 0 for the whole time its model was loading. An alert reading it as availability would have been late in one direction and wrong in the other.",
+      "insteadUse": "inference-callers-refused and readiness-refusals-sustained, which read what the API concluded rather than what the collector reached."
+    },
+    {
+      "refusedId": "model-ready-absence-as-model-health",
+      "expr": "inferops:model_ready_absent:platform_api == 1",
+      "rule": "alert-has-no-operator-action",
+      "why": "The series reads 1 in every release, because the metric it asks about is emitted by nothing. An alert on it fires on a correct installation and on a broken one alike, and there is no action that would clear it except instrumenting the adapter.",
+      "insteadUse": "The deferred model-not-ready entry, which says what would have to exist."
+    },
+    {
+      "refusedId": "in-flight-above-a-number",
+      "expr": "sum(inferops_inference_requests_in_flight) > 8",
+      "rule": "alert-threshold-has-no-declared-source",
+      "why": "Nothing declares how many requests may be in flight at the API. The runtime declares how many it serves at once -- runtime.parallelSlots -- and that is what the saturation alert reads instead.",
+      "insteadUse": "runtime-defers-requests."
+    },
+    {
+      "refusedId": "processor-time-rising",
+      "expr": "rate(inferops_process_cpu_seconds_total[5m]) > 0.9",
+      "rule": "alert-has-no-operator-action",
+      "why": "The metric is emitted, which is the entire argument for the alert. A busy API and a wedged API look identical here, no threshold has a source, and there is no action a reader could take that they would not have taken from the latency alert.",
+      "insteadUse": "inference-latency-past-half-the-request-budget, which reads the thing the caller experiences."
+    },
+    {
+      "refusedId": "token-throughput-dropped",
+      "expr": "sum(rate(inferops_inference_tokens_total[5m])) < 100",
+      "rule": "alert-threshold-has-no-declared-source",
+      "why": "A fall in tokens is a fall in demand far more often than it is a fault, and the number is a measurement of one host's traffic. It would fire every night and be silenced by whoever was on call until it was deleted.",
+      "insteadUse": "Nothing. A throughput reading is a dashboard panel, and it already is one."
+    },
+    {
+      "refusedId": "queue-duration-rising",
+      "expr": "histogram_quantile(0.95, sum by (le) (rate(inferops_inference_queue_duration_seconds_bucket[5m]))) > 5",
+      "rule": "alert-expression-refused-by-the-correlation-policy",
+      "why": "The queue histogram is specified and emitted by nothing, so the expression is empty in every release and the alert never fires. The correlation policy refuses it before this record's own rules see it, under query-claims-an-answer-a-signal-nothing-emits-cannot-give.",
+      "insteadUse": "The deferred abnormal-model-load-duration entry's sibling problem: instrument the adapter."
+    },
+    {
+      "refusedId": "scrape-job-named-in-the-expression",
+      "expr": "absent(up{job=\"inferops-inferops-llm-platform-api\"}) == 1",
+      "rule": "alert-names-a-job",
+      "why": "Job names are release-qualified, which is what lets two releases' scrape fragments merge into one collector. An alert naming one works in exactly one installation and is silent in every other, and silence is the failure mode an alert cannot have.",
+      "insteadUse": "platform-api-scrape-job-absent, which reads the recorded name the chart renders per release."
+    },
+    {
+      "refusedId": "refusals-without-a-window",
+      "expr": "sum(rate(inferops_inference_errors_total[5m])) > 0",
+      "rule": "alert-window-is-shorter-than-two-evaluations",
+      "why": "Written with no `for`, or with one shorter than the range window it reads. A single scrape interval's worth of refusals keeps a five-minute rate above zero for five minutes, so this pages for one failed request. The one-scrape-of-trouble scenario exists to catch exactly this.",
+      "insteadUse": "inference-callers-refused, whose window is the range window."
+    }
+  ],
+  "scenarios": [
+    {
+      "scenarioId": "healthy-real-serving",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/alerts/healthy-real-serving.yaml",
+      "whatItShows": "A release serving thirty completions a minute with one readiness refusal every five minutes and a runtime deferring nothing, which is what the measured matrix recorded at concurrency 1. Every alert is silent, and the fixture carries a non-zero fault rate on purpose: an alert set that is only quiet against a perfect system is an alert set nobody can run.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "serving-pod-lost",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/alerts/serving-pod-lost.yaml",
+      "whatItShows": "The shape V1-S4-006-PR1 recorded, held long enough to exercise a window: the serving pod lost under load, callers refused capability-unavailable, the API answering scrapes throughout so its counters go flat rather than away, and a replacement answering later. Three alerts fire. What that run's own capture does is a different question and is answered by the replay below, where none of them does.",
+      "classification": "synthetic, shaped from a local-real experiment",
+      "shapedFrom": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md"
+    },
+    {
+      "scenarioId": "model-never-becomes-ready",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/alerts/model-never-becomes-ready.yaml",
+      "whatItShows": "The shape V1-S4-007-PR1 recorded: a runtime that starts, binds its port and never finishes loading; a scrape of it that fails for the whole window while the process is alive; every completion refused; and no success counter in existence until the release is corrected. Two alerts fire, and the third stays silent for a reason worth knowing.",
+      "classification": "synthetic, shaped from a local-real experiment",
+      "shapedFrom": "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+    },
+    {
+      "scenarioId": "inference-slower-than-the-request-budget",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/alerts/inference-slower-than-the-request-budget.yaml",
+      "whatItShows": "Everything served, nothing refused, and four completions in five slower than half the configured request timeout. Only the latency alert fires, which is what separates it from the availability set.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "runtime-defers-requests",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/alerts/runtime-defers-requests.yaml",
+      "whatItShows": "Everything served promptly and the runtime holding two requests it has no parallel slot for, continuously. Only the saturation alert fires. The measured performance matrix reached a deferral of 3 at concurrency 4 and never held one for ten minutes, so what is constructed here is the duration rather than the value.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "platform-api-not-discovered",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/alerts/platform-api-not-discovered.yaml",
+      "whatItShows": "The collector's platform-api job matched no pod, so every series the workload alerts read is absent and all five are silent. One alert fires, it is about the collection, and it is the reason the other five may be believed when they are quiet.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "one-scrape-of-trouble",
+      "profile": "real",
+      "fixtureRef": "tests/telemetry/fixtures/alerts/one-scrape-of-trouble.yaml",
+      "whatItShows": "Six refusals and eighteen failed readiness probes inside one minute, with the release serving normally either side. No alert fires. This is the scenario that decides whether the windows are long enough, and an earlier draft of every rate alert failed it.",
+      "classification": "synthetic"
+    },
+    {
+      "scenarioId": "healthy-mock-serving",
+      "profile": "mock",
+      "fixtureRef": "tests/telemetry/fixtures/alerts/healthy-mock-serving.yaml",
+      "whatItShows": "A mock release serving, with one job and no serving-runtime target. Every alert rendered into the mock rule file is silent. It certifies no provider and says nothing about a real runtime.",
+      "classification": "synthetic"
+    }
+  ],
+  "gaps": [
+    {
+      "gapId": "nothing-evaluates-these",
+      "statement": "No Prometheus in any cluster has loaded this rule file, and no alert here has ever fired outside this repository's own evaluator. Where the pinned collector image is available locally, its promtool parses the rendered file; that establishes that the file loads and says nothing about a sample."
+    },
+    {
+      "gapId": "nothing-routes-these",
+      "statement": "No receiver, routing tree, Alertmanager, or on-call rotation is selected. A firing alert would be a row in a collector's own user interface and nothing else."
+    },
+    {
+      "gapId": "fixtures-are-coarser-than-a-collector",
+      "statement": "The fixtures step at 60 seconds and a release would evaluate every 30. A `for` satisfied over a fixture is satisfied at the instants the fixture carries; a collector would ask twice as often, and a condition that flickered between two fixture instants would be invisible here."
+    },
+    {
+      "gapId": "one-workload-and-one-release",
+      "statement": "Every alert sums over the store it is evaluated against, and no expression filters by namespace or release. A store holding two releases' series at once is not supported, exactly as the dashboard record says of its panels."
+    },
+    {
+      "gapId": "a-collector-that-is-gone-tells-nobody",
+      "statement": "Every alert here is evaluated by the release's own collector. A collector that is not running evaluates nothing, including the alert about collection, and nothing in this repository closes that."
+    },
+    {
+      "gapId": "a-disruption-shorter-than-the-window-is-not-alerted",
+      "statement": "Deliberate, and measured. Replaying the alerts over V1-S4-006-PR1's own capture fires nothing: the caller-visible outage was 31 960 ms against windows of five and ten minutes, and the Deployment controller had restored service before any of them could be satisfied. The same shape appears in the load capture, where the runtime deferred requests continuously for 195 s against a ten-minute window. An alert set that paged for either would be paging for something the release absorbed, and the rules about windows in this record exist to prevent it. What it costs is that a short, repeated disruption is invisible here."
+    },
+    {
+      "gapId": "a-counter-series-born-at-its-value-feeds-no-rate",
+      "statement": "The API creates a labelled counter series on its first event, so the series appears already carrying what it has counted and a rate over it reads no increase until the next one. V1-S4-006-PR1's capability-unavailable series was born at 40 and stayed there. Every rate alert here inherits that, the dashboard record documents the same property for panels, and nothing in this record closes it."
+    },
+    {
+      "gapId": "the-collection-alert-has-no-real-run-evidence",
+      "statement": "Five of the six alerts have been replayed over a capture that holds the series they read. InferOpsPlatformApiScrapeJobAbsent has not, and cannot be from what is committed: no experiment here has ever recorded a collector whose platform-api job discovered nothing, so no capture holds inferops:scrape_job_absent:platform_api. It is exercised over the platform-api-not-discovered fixture and nowhere else. Closing this needs an experiment that breaks discovery on purpose, which no story owns."
+    }
+  ],
+  "limitations": [
+    "Six alerts and five deferred conditions. The deferred ones are not a backlog of work that was skipped: three of them name a metric the catalog specifies and nothing emits, and one names a metric no chart here collects.",
+    "Every threshold is either zero, a value the chart declares, or a bucket boundary the catalog declares. None is a figure this project measured, and the one measurement mentioned -- a 95th percentile of 8 614 ms on one host -- is named to say what the threshold is not.",
+    "The two failure shapes the fixtures are built from were measured on one provider, one host, one single-replica release, one model and one runtime build. The fixtures reproduce their shape and none of their durations; no interval in any fixture is a recovery time, an availability figure, or a service-level objective.",
+    "An alert firing is a statement about one release's own collector. Nothing here is a statement about a durable store, because no durable store is selected and the collector's series live in an emptyDir that goes with its pod.",
+    "The scrape alert is the only one that can fire while the workload is well, and the workload alerts are the only ones that can fire while collection is well. Neither set covers the other, and the fixture in which the API job discovers nothing is what makes that visible.",
+    "The severity vocabulary describes what an installation would do, not what this project does. Nothing here pages anybody, because there is nobody and no path.",
+    "The replay applies exactly one class of recording rule to a reconstruction: a rendered rule whose whole expression is a bare selector, which is a rename. Every other rendered rule is refused, and the absent() ones are why -- a capture holds the series its experiment asked for and no others, so absent() over one would report a scrape job missing when the experiment merely never asked about it. That would be a fabricated alert from real data."
+  ]
+}

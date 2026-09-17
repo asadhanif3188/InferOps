@@ -1,0 +1,143 @@
+# InferOps inference alerts, real profile. GENERATED -- do not edit.
+#
+# Generated from inference-alerts.v1alpha1.json by
+# python -m tools.inference_alerts --rules real
+# and compared against it by tests/telemetry/test_inference_alerts.py.
+#
+# Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
+groups:
+- name: inferops-inference-alerts
+  interval: 30s
+  rules:
+  - alert: InferOpsInferenceCallersRefused
+    expr: sum by (inferops_workload_id) (rate(inferops_inference_errors_total{inferops_error_code="capability-unavailable"}[5m])) > 0
+    for: 5m
+    labels:
+      severity: critical
+      owner: serving
+      signal: workload
+      inferops_alert_id: inference-callers-refused
+    annotations:
+      summary: |-
+        The platform has been refusing completions with capability-unavailable for five minutes.
+      impact: |-
+        Callers are receiving 503 and no completion. It is the code both recorded failure experiments produced and it is not the only code either produced: the pod-loss run counted forty capability-unavailable and one internal-error, and this alert would not have counted that one. InferOpsInferenceServingNothing is the backstop for a code nobody selected for.
+      action: |-
+        Ask which Service has no endpoint before restarting anything: the runbook's read-only `get svc,endpointslice`. capability-unavailable is the API saying it could not reach the runtime at all, and a runtime whose readiness probe is failing has already had its only address removed -- which is a different fault from a pod that is gone, and the endpoint listing tells them apart.
+      blind_spot: |-
+        Two things, both measured rather than supposed. A caller who never reached the API: every series it reads is emitted by the API, so a release whose API is gone is silent here and visible only to the collection alert. And the first burst on a release: the API creates a labelled counter series on its first event, so the series appears already carrying what it has counted, and a rate over it reads no increase. V1-S4-006-PR1's entire outage arrived that way -- forty refusals inside 32 s, a series born at 40 and never incremented again -- and the replay of this alert over that capture is silent for exactly that reason, not because the window was too long.
+      evidence_query: sum by (inferops_workload_id, inferops_error_code) (rate(inferops_inference_errors_total[5m]))
+      runbook: docs/environment/kubernetes-troubleshooting.md#service-network-and-the-policy-that-is-not-enforced
+      evidence: docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md, docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md
+      not_routed: |-
+        Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
+  - alert: InferOpsInferenceServingNothing
+    expr: sum(rate(inferops_inference_requests_total{inferops_outcome="success"}[5m])) == 0 and sum(rate(inferops_inference_requests_total[5m])) > 0
+    for: 5m
+    labels:
+      severity: critical
+      owner: serving
+      signal: workload
+      inferops_alert_id: inference-serving-nothing
+    annotations:
+      summary: |-
+        Completions have been arriving for five minutes and none of them has succeeded.
+      impact: |-
+        Every caller is getting an error, for a reason this alert does not name. It is the backstop for a cause nobody predicted, which is why it reads the outcome and not a code.
+      action: |-
+        Read the error counter by code first -- the dashboard's errors-by-code panel, or sum by (inferops_error_code) over inferops_inference_errors_total -- and then follow the runbook section for whichever component that names. Do not restart until the code is known.
+      blind_spot: |-
+        A release that has never served. The success counter series does not exist until the first success, so a rate over it is empty rather than zero, and an install whose model never became ready has no success series to read as zero. That is not a hypothesis: the V1-S4-007-PR1 run recorded the success series first appearing after the correction, and the model-never-becomes-ready scenario reproduces it and expects this alert to stay silent.
+      evidence_query: sum by (inferops_workload_id, inferops_model_id, inferops_outcome) (rate(inferops_inference_requests_total[5m]))
+      runbook: docs/environment/kubernetes-troubleshooting.md#reading-the-apis-and-the-runtimes-logs
+      evidence: docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md, docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md
+      not_routed: |-
+        Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
+  - alert: InferOpsReadinessRefusalsSustained
+    expr: sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m])) > 0.05
+    for: 5m
+    labels:
+      severity: critical
+      owner: serving
+      signal: workload
+      inferops_alert_id: readiness-refusals-sustained
+    annotations:
+      summary: |-
+        More than half the readiness probes of a component have been refused for five minutes.
+      impact: |-
+        The named component is about to stop receiving traffic, or already has: three consecutive refusals remove its endpoint from the Service. This is the one alert that sees an outage before any caller does, and it fires on a release nobody is sending traffic to.
+      action: |-
+        The component label says which half answered no -- platform-api or serving-adapter. Check the pod's probe configuration and its endpoint before anything else, and read the runtime log if the adapter is the one refusing.
+      blind_spot: |-
+        Which of the several things the adapter checks said no. The counter names the component and not the reason, and the reason is in the log rather than in a metric.
+      evidence_query: sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m]))
+      runbook: docs/environment/kubernetes-troubleshooting.md#probes
+      evidence: docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md, docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md
+      not_routed: |-
+        Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
+  - alert: InferOpsInferenceLatencyPastHalfTheRequestBudget
+    expr: histogram_quantile(0.95, sum by (le, inferops_workload_id) (rate(inferops_inference_request_duration_seconds_bucket[5m]))) > 60
+    for: 10m
+    labels:
+      severity: warning
+      owner: serving
+      signal: workload
+      inferops_alert_id: inference-latency-past-half-the-request-budget
+    annotations:
+      summary: |-
+        The 95th percentile of completion time has been past half the configured request timeout for ten minutes.
+      impact: |-
+        Callers are waiting. Nothing has been refused yet, and a request that crosses the whole budget will be.
+      action: |-
+        Establish whether the host is the answer before changing the release: read the runtime container's processor and memory use and what else is on the node. Raising a timeout to stop this alert is the one action that makes the fault invisible rather than absent.
+      blind_spot: |-
+        Where the time went. The queue-duration histogram is the signal that would separate waiting from working and nothing emits it, so this says a request was slow and never which part of it was.
+      evidence_query: histogram_quantile(0.95, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_request_duration_seconds_bucket[5m])))
+      runbook: docs/environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory
+      evidence: docs/proof/serving/v1-s4-004-pr2-performance-findings.md
+      not_routed: |-
+        Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
+  - alert: InferOpsRuntimeDefersRequests
+    expr: sum by (inferops_workload_id) (inferops:inference_requests_deferred:runtime) > 0
+    for: 10m
+    labels:
+      severity: warning
+      owner: serving
+      signal: workload
+      inferops_alert_id: runtime-defers-requests
+    annotations:
+      summary: |-
+        The serving runtime has been holding requests it has no parallel slot for, continuously, for ten minutes.
+      impact: |-
+        Callers are waiting longer than the runtime takes to answer, because they are queueing before it starts. Nothing is refused.
+      action: |-
+        Decide between less demand and more capacity: reduce caller concurrency, or raise runtime.parallelSlots or the replica count and re-measure. Do not read the deferral count as a queue length in seconds -- it is a count of requests and says nothing about how long any of them waited.
+      blind_spot: |-
+        How long anything waited. The queue-duration histogram is the adapter's measurement and the adapter is not instrumented, so this is a count of deferrals and never a wait.
+      evidence_query: sum by (inferops_workload_id, inferops_model_id) (inferops:inference_requests_deferred:runtime)
+      runbook: docs/environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory
+      evidence: docs/proof/serving/v1-s4-004-pr1-validation.md
+      not_routed: |-
+        Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
+  - alert: InferOpsPlatformApiScrapeJobAbsent
+    expr: inferops:scrape_job_absent:platform_api == 1
+    for: 10m
+    labels:
+      severity: warning
+      owner: platform
+      signal: scrape-reachability
+      inferops_alert_id: platform-api-scrape-job-absent
+    annotations:
+      summary: |-
+        The collector's platform-api job has matched no target for ten minutes.
+      impact: |-
+        None directly. This is a statement about the collection and not about the release: every other alert in this set reads a series that job would have collected, so while this fires their silence means nothing was asked rather than that nothing was wrong.
+      action: |-
+        Check the collector's own targets page and the discovery it is configured with before touching the release. A job that matches nothing is usually a selector, a namespace, or a port name, and none of those is fixed by restarting anything.
+      blind_spot: |-
+        A collector that is itself gone. absent() is evaluated by the collector, so a collector that is not running evaluates nothing and tells nobody, and no rule in this file can close that. Nor does it say anything about whether a discovered target can serve: a target that answers a scrape has been observed both while its pod was deleted and while its model was still loading.
+      evidence_query: inferops:scrape_targets_up:sum / inferops:scrape_targets:count
+      runbook: docs/environment/kubernetes-troubleshooting.md#telemetry-scrape
+      evidence: docs/proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md
+      not_routed: |-
+        Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.

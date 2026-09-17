@@ -28,3 +28,10 @@ uv.lock text eol=lf
 # every platform: before this, the committed renders carried checksums derived
 # from a Windows working tree, and the first hosted Linux run failed both.
 charts/** text eol=lf
+
+# The generated Prometheus rule files are compared byte for byte against what
+# `python -m tools.inference_alerts --rules` prints, and a collector's promtool
+# reads them out of a Linux container. `text=auto` already normalises what is
+# stored; this pins what is checked out, so neither comparison depends on which
+# platform wrote the file.
+deploy/prometheus/*.yaml text eol=lf

@@ -223,6 +223,7 @@ inside one.
 | `workload-contract-schema` | `repository` | The input to every layer, produced by none of them |
 | `evidence-records` | `repository` | Written by a reviewed change. Nothing in a cluster writes here |
 | `inference-operations-dashboard` | `repository` | The dashboard's panels, queries and empty-state texts as a committed record, and the Grafana JSON generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-13. `implemented` means the definition exists and is checked against the query policy and synthetic scenarios; one throwaway Grafana imported it once for the V1-S4-002-PR2 validation, and nothing here runs one |
+| `inference-alert-definitions` | `repository` | The six V1 alerts -- expression, window, threshold source, owner, severity, caller impact, action, runbook -- as a committed record, and the Prometheus rule file per profile generated from it. Split out of `telemetry-backend` by the `ADR 0004` `D7` amendment of 2026-09-17. `implemented` means the definition exists and is checked against the query policy and eight committed scenarios; no Prometheus in a cluster has loaded it, nothing routes an alert, and nobody has ever been told about one |
 | `workload-contract-document` | `workload-owner` | The platform reads it and never writes it back |
 | `workload-secret-material` | `workload-owner` | Referenced by name. This project never creates, rotates, or reads it |
 | `serving-runtime-container-image` | `external-publisher` | Pinned by digest. Availability is not this project's to guarantee |
@@ -238,7 +239,7 @@ inside one.
 
 | `resourceId` | Why it has no owner |
 |---|---|
-| `telemetry-backend` | A dashboard server and an alert routing path. Narrowed twice: the Sprint 3 remediation took the collector out of it, and the `ADR 0004` `D7` amendment of 2026-09-13 took the dashboard *definition* out of it, as `inference-operations-dashboard`. What is left is genuinely open -- a Grafana server needs an owner, somewhere to run and an exposure decision, and an alert needs a receiver, a routing tree and somebody on the other end |
+| `telemetry-backend` | A dashboard server and an alert routing path. Narrowed three times: the Sprint 3 remediation took the collector out of it, the `ADR 0004` `D7` amendment of 2026-09-13 took the dashboard *definition* out of it, as `inference-operations-dashboard`, and the amendment of 2026-09-17 took the alert *definition* out of it, as `inference-alert-definitions`. What is left is genuinely open -- a Grafana server needs an owner, somewhere to run and an exposure decision, and an alert needs a receiver, a routing tree and somebody on the other end |
 | `ingress-and-load-balancing` | `kind` ships neither, and installing them was recorded as an open cost; what Docker Desktop provides has not been examined here. Until one is chosen, every service is ClusterIP |
 
 ## Teardown, and why the order is not a preference

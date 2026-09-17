@@ -18,8 +18,9 @@
 > release-scoped collector has scraped both InferOps jobs. Still absent: no
 > component emits a span, no tracer or exporter is selected, the collector's series
 > live in an `emptyDir` and no durable store exists, and there is no alerting path.
-> A dashboard exists only as a checked definition in this repository: nothing
-> imports it and no dashboard server is selected.
+> A dashboard and an alert set exist only as checked definitions in this repository:
+> nothing imports the dashboard and no dashboard server is selected, nothing loads
+> the alert rules and no receiver is selected.
 >
 > One half of it is machine-checked. The catalog is committed as data and validated
 > by `tests/telemetry/test_telemetry_catalog.py`, which derives every field's
@@ -48,7 +49,7 @@
 | D5 | Structured logs with a required field set, a bounded event identifier, and no free-form message | **Accepted** as a rule | Review, plus tests that every named field is declared and permitted in a log |
 | D6 | Four versioned evidence templates with seven mandatory sections | **Accepted** | The templates exist and a test reads each one for every required section |
 | D7 | What would allow prompt and response capture: classification, redaction, retention, access, lawful basis | **Not decided** | Nothing. Capture is disabled and there is no flag to change that |
-| D8 | Which telemetry SDK, exporter, collector, and store, and who owns them | **Partly decided elsewhere.** ADR 0004 `D7` was amended 2026-09-09, making the collector Helm-owned and release-scoped, and 2026-09-13, making the dashboard definition a repository artifact | SDK, exporter, durable store, dashboard server and alerting path remain undecided, and `telemetry-backend` remains deferred |
+| D8 | Which telemetry SDK, exporter, collector, and store, and who owns them | **Partly decided elsewhere.** ADR 0004 `D7` was amended 2026-09-09, making the collector Helm-owned and release-scoped, 2026-09-13, making the dashboard definition a repository artifact, and 2026-09-17, making the alert definition one | SDK, exporter, durable store, dashboard server and alert routing path remain undecided, and `telemetry-backend` remains deferred |
 
 ## Context
 
@@ -283,11 +284,13 @@ does not answer it, and the catalog is written against no vendor's conventions e
 the OpenTelemetry attribute names, which are used because they cost nothing to adopt
 and would cost a rename to avoid.
 
-**Amended.** ADR 0004 `D7` has since answered two parts of this, and this record
-still answers none of them: the collector is Helm-owned and release-scoped, and the
+**Amended.** ADR 0004 `D7` has since answered three parts of this, and this record
+still answers none of them: the collector is Helm-owned and release-scoped, the
 dashboard *definition* is a repository artifact written in Grafana's dashboard
-format. An SDK, an exporter, a durable store, a dashboard server, and an alerting
-path remain unselected.
+format, and the alert *definition* is one written in Prometheus's rule format. An
+SDK, an exporter, a durable store, a dashboard server, and an alert routing path
+remain unselected — a rule file that nothing loads and nothing routes is not an
+alerting path.
 
 ## Consequences
 
@@ -315,10 +318,11 @@ path on an existing layer; no layer, lane, marker, or certification level change
 Attribute and metric names are published here for the first time and are versioned
 as `v1alpha1`. Renaming one after a component emits it would be a breaking change for
 any dashboard or query built on it; today the API emits eight of them and a
-release-scoped collector queries them, and a committed dashboard definition reads
-them, while nothing durable and no alert depends on the names. A rename is still
-cheap, because every query and panel that reads a name is checked against the
-catalog and would fail rather than go quietly empty — and it is no longer free.
+release-scoped collector queries them, and a committed dashboard definition and a
+committed alert definition both read them, while nothing durable depends on the
+names. A rename is still cheap, because every query, panel and alert expression that
+reads a name is checked against the catalog and would fail rather than go quietly
+empty — and it is no longer free.
 
 ## Security considerations
 

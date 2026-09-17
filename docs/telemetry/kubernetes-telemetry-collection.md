@@ -271,9 +271,12 @@ catalog, assigned to the adapter, and marked not emitted. A rule that averaged a
 metric nothing produces would have published an empty series, which reads as a
 healthy system rather than an absent one — so this publishes the absence instead.
 
-**No alerting rule is written.** An alert needs a receiver, a routing tree, and
-somebody on the other end, and none of the three is decided. A recorded absence that
-nobody is paged for is a query, not a control.
+**Alerting rules are written now, and nothing evaluates or routes them.** Six of
+them, in [the alert record](inference-alerts.md), rendered to a Prometheus rule file
+per profile that no collector in any cluster has loaded. An alert still needs a
+receiver, a routing tree, and somebody on the other end, and none of the three is
+decided. A recorded absence that nobody is paged for is a query, not a control — and
+so is a rule file nobody has loaded.
 
 ## 7. What has no source at all
 
