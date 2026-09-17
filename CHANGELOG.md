@@ -54,11 +54,18 @@ once versioned releases begin.
   Eight more alerts are recorded as refused, each with the rule that refuses it, and
   the suite splices each one into the record and fails if the policy accepts it.
 
-  **And then replayed over two real failures.** Three of the six are replayed over the
-  telemetry [the pod-loss run](docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md)
-  and [the unready-model run](docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md)
+  **And then replayed over three real runs.** Five of the six are replayed over the
+  telemetry [the load matrix](docs/proof/serving/v1-s4-004-pr1-validation.md),
+  [the pod-loss run](docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md) and
+  [the unready-model run](docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md)
   actually recorded, through a declared reconstruction that refuses the captured
-  expressions it cannot read back. **`InferOpsReadinessRefusalsSustained` fires over
+  expressions it cannot read back — and that applies exactly one class of recording
+  rule, a bare rename, because an `absent()` rule over a capture holding only what its
+  experiment asked for would report a scrape job missing that was never asked about.
+  Under the measured load both latency and saturation stay quiet, and the saturation
+  one is the result its rationale rests on: the runtime **did** defer, reaching 3, so
+  the threshold of zero was crossed and the condition held for 195 s against a
+  ten-minute window. The window, not the threshold, is what keeps it quiet. **`InferOpsReadinessRefusalsSustained` fires over
   the unready-model capture** — `2` to `41` refusals across 435 s, `0.129/s` against a
   `0.05/s` threshold derived from the kubelet's own cadence — and **nothing fires over
   the pod-loss capture**, for two reasons that are now recorded gaps rather than
@@ -77,6 +84,11 @@ once versioned releases begin.
   the whole reason the sixth exists.
   [The validation](docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md) publishes
   both matrices.
+
+  **The rendered files load.** `promtool 3.5.0`, out of the image the chart pins by
+  digest, accepts both: `SUCCESS: 6 rules found` and `SUCCESS: 5 rules found`. That is
+  the engine that would evaluate them agreeing they are rule files, and it is a
+  smaller thing than a collector running them.
 
   **Nothing routes any of this.** No receiver, routing tree, Alertmanager, or on-call
   rotation is selected; `ADR 0004` `D7` is amended to make the alert *definition* a

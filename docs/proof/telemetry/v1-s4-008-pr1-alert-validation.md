@@ -32,10 +32,27 @@ anybody — no receiver, routing tree, Alertmanager, or on-call rotation is sele
 | Python | 3.12.6 |
 | `pytest` | 8.4.2 |
 | `ruff` | as locked in `uv.lock` |
+| `promtool` | 3.5.0, out of `prom/prometheus` at the digest the chart pins |
 
 ```text
 uv run --locked python -m pytest tests/telemetry/test_inference_alerts.py -q
+uv run --locked python -m tools.inference_alerts --replay
+uv run --locked python -m pytest tests/architecture/test_inference_alert_rules.py -q
 ```
+
+The last one runs the pinned collector's own `promtool check rules` over both rendered
+files, out of the image the chart pins by digest:
+
+```text
+Checking inferops-inference-alerts.real.yaml
+  SUCCESS: 6 rules found
+Checking inferops-inference-alerts.mock.yaml
+  SUCCESS: 5 rules found
+```
+
+That is the engine that would evaluate these rules agreeing they are rule files it
+loads and that every expression parses there. It is not an evaluation, and it did not
+run a single rule.
 
 ## The alert set
 
@@ -136,32 +153,55 @@ alert does not. The readiness alert is the only one of the six that fires on a r
 nobody is sending traffic to, which is why it is not folded into the availability
 alert.
 
-## Replayed over what two real failures recorded
+## Replayed over what three real runs recorded
 
 Same six alerts, over telemetry a real Prometheus returned on the `docker-desktop`
-provider while a real failure was happening. The captures are query *results*, so the
-replay declares its reconstruction: `sum(metric)` and `sum by (…) (metric)` are read
-back as the metric, a bare selector as itself, and anything else is refused and named.
-`v1-s4-006-pr1` refuses one expression (`inferops:scrape_targets_up:sum /
-inferops:scrape_targets:count`); `v1-s4-007-pr1` refuses that and `count by
-(k8s_component) (inferops_build_info)`.
+provider. The captures are query *results*, so the replay declares its reconstruction:
+`sum(metric)` and `sum by (…) (metric)` are read back as the metric, a bare selector as
+itself, and anything else is refused and named. `v1-s4-006-pr1` refuses one expression
+(`inferops:scrape_targets_up:sum / inferops:scrape_targets:count`); `v1-s4-007-pr1`
+refuses that and `count by (k8s_component) (inferops_build_info)`; `v1-s4-004-pr1`
+refuses nothing.
+
+Exactly one class of recording rule is applied — a rendered rule whose whole expression
+is a bare selector, which is a rename. Every other rendered rule is refused, and the
+`absent()` ones are why: a capture holds the series its experiment asked for and no
+others, so `absent(up{job=…})` over one would read `1` and report a scrape job missing
+that was never asked about. That would be a fabricated alert from real data.
 
 ```text
 uv run --locked python -m tools.inference_alerts --replay
 ```
 
-| Alert | `v1-s4-006-pr1` (1 220 s at 15 s) | `v1-s4-007-pr1` (462 s at 15 s) |
-|---|---|---|
-| `InferOpsInferenceCallersRefused` | silent, held 0 of 21 needed | silent, held **20** of 21 needed |
-| `InferOpsInferenceServingNothing` | silent, held 0 | silent, held 1 |
-| `InferOpsReadinessRefusalsSustained` | silent, held 0 | **fires**, held 28 |
-| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | not in the capture | not in the capture |
-| `InferOpsRuntimeDefersRequests` | not in the capture | not in the capture |
-| `InferOpsPlatformApiScrapeJobAbsent` | not in the capture | not in the capture |
+| Alert | `v1-s4-004-pr1` (924 s) | `v1-s4-006-pr1` (1 220 s) | `v1-s4-007-pr1` (462 s) |
+|---|---|---|---|
+| `InferOpsInferenceCallersRefused` | not in the capture | silent, held 0 of 21 | silent, held **20** of 21 |
+| `InferOpsInferenceServingNothing` | silent, held 0 | silent, held 0 | silent, held 1 |
+| `InferOpsReadinessRefusalsSustained` | not in the capture | silent, held 0 | **fires**, held 28 |
+| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | **silent**, held 0 of 41 | not in the capture | not in the capture |
+| `InferOpsRuntimeDefersRequests` | **silent**, held 14 of 41 | not in the capture | not in the capture |
+| `InferOpsPlatformApiScrapeJobAbsent` | not in the capture | not in the capture | not in the capture |
 
-**`not in the capture` is not silence.** Those three read series neither experiment
-asked for. Reporting them as quiet would have claimed they were quiet during a real
-failure, which nothing here supports.
+All three captures step at 15 s. **`not in the capture` is not silence** — the
+experiment did not ask for the series that alert reads.
+
+### Under measured load, latency and saturation stay quiet
+
+`v1-s4-004-pr1` is the performance matrix: 360 requests, 0 unsuccessful, the only
+sustained load this project has measured. It answers the two alerts the failure runs
+cannot.
+
+The latency alert's own expression returns a 95th percentile between **2.425 s and
+9.491 s** across the run, against a threshold of 60 s — silent by roughly a factor of
+six. That is the histogram-derived figure the alert reads, not the client-measured
+8 614 ms the findings record publishes, and neither is a threshold.
+
+The saturation alert is the more interesting one, because it is where the threshold's
+rationale was an argument and is now a measurement. **The runtime did defer**: the
+value reaches `3`, matching the maxima of 0, 1 and 3 the findings record publishes for
+concurrency 1, 2 and 4, so a threshold of zero was crossed. The condition held for 14
+consecutive evaluations — 195 seconds — against a window needing 41. The window, not
+the threshold, is what keeps that alert quiet under a load the release handled.
 
 ### Nothing fires for the pod that was lost
 
@@ -213,15 +253,13 @@ zero.
 
 ## What this does not establish
 
-- That any Prometheus has evaluated these rules, in a cluster or during either
-  experiment. No alerting rule existed when either was run. The replay is this
-  repository's own evaluator over a reconstruction it declares.
-- That the three alerts reported `not-in-the-capture` would have been silent during
-  either failure.
-- That any Prometheus has loaded these rules. The `promtool check rules` control
-  in `tests/architecture/test_inference_alert_rules.py` establishes that the rendered
-  files *load*, and it **did not run** for this record: the pinned collector image is
-  not present on this host and the check skipped, loudly, as it is written to.
+- That any Prometheus has *evaluated* these rules, in a cluster or during any of the
+  three experiments. No alerting rule existed when any of them was run. The replay is
+  this repository's own evaluator over a reconstruction it declares. `promtool` has
+  loaded both files, which is a different and smaller thing.
+- That an alert reported `not-in-the-capture` would have been silent during that run.
+- Anything from a real run about `InferOpsPlatformApiScrapeJobAbsent`: no capture
+  holds the series it reads, and no experiment here has broken discovery on purpose.
 - That any alert has fired outside this repository's own evaluator.
 - That anybody would be told if one did.
 - That any threshold is right for an installation other than this chart's defaults.

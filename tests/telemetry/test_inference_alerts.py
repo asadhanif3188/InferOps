@@ -809,7 +809,7 @@ def test_no_alert_result_carries_the_pod_name() -> None:
 
 
 # --------------------------------------------------------------------------
-# The replay, over what two real failures actually recorded
+# The replay, over what three real runs actually recorded
 # --------------------------------------------------------------------------
 
 
@@ -853,7 +853,17 @@ def test_the_published_reconstruction_is_the_one_the_replay_performs(
     _, held, refused = reconstruct(load_capture(CAPTURE_PATHS[capture_id]))
     assert entry["metricsTheCaptureHolds"] == sorted(held)
     assert entry["expressionsRefusedByTheReconstruction"] == refused
-    assert refused, "a reconstruction that refused nothing has not been exercised"
+
+
+def test_the_reconstruction_refuses_something_somewhere() -> None:
+    """Not every capture has an expression it cannot read back -- the load one does
+    not -- but a refusal path nothing exercises is a refusal path nobody has run."""
+    refusals = [
+        expression
+        for entry in REPLAYS.values()
+        for expression in entry["expressionsRefusedByTheReconstruction"]
+    ]
+    assert refusals
 
 
 def test_a_series_no_capture_holds_is_not_reported_as_silence() -> None:
@@ -871,6 +881,137 @@ def test_a_series_no_capture_holds_is_not_reported_as_silence() -> None:
                 assert "absence of evidence" in row["note"]
             else:
                 assert not row["seriesTheCaptureDoesNotHold"], alert_id
+
+
+def test_only_the_collection_alert_lacks_real_run_evidence() -> None:
+    """Five of six are answerable from a capture that holds what they read.
+
+    The sixth reads a recorded absence no experiment has ever produced, and the
+    record carries that as a gap rather than leaving a reader to notice it.
+    """
+    answerable = {
+        alert_id
+        for entry in REPLAYS.values()
+        for row in entry["results"]
+        if row["verdict"] != "not-in-the-capture"
+        for alert_id in [row["alertId"]]
+    }
+    assert set(ALERTS) - answerable == {"platform-api-scrape-job-absent"}
+    gaps = {gap["gapId"] for gap in RECORD["gaps"]}
+    assert "the-collection-alert-has-no-real-run-evidence" in gaps
+
+
+def test_the_load_capture_keeps_the_saturation_alert_quiet_by_its_window() -> None:
+    """The result the deferral threshold's rationale rests on.
+
+    The runtime really did defer during the measured load, so a threshold of zero
+    was crossed. What kept the alert quiet is the window, and the replay is what
+    turns that from an argument into a measurement.
+    """
+    row = {r["alertId"]: r for r in REPLAYS["v1-s4-004-pr1"]["results"]}[
+        "runtime-defers-requests"
+    ]
+    assert row["verdict"] == "silent"
+    assert row["heldInstants"] > 0, "the capture no longer exercises the window"
+    assert row["heldSeconds"] < row["windowSeconds"]
+    assert "the threshold, is what keeps this alert quiet" in row["note"]
+
+
+def test_a_partial_capture_never_synthesises_an_absence(tmp_path: Path) -> None:
+    """The trap the reconstruction refuses, driven rather than asserted.
+
+    `absent(up{job=...})` over a store holding only the series one experiment asked
+    for would read 1 and report a scrape job missing that was never asked about.
+    Only a rendered rule that is a bare rename is applied, so the recorded absences
+    are never derived and the alert reading one stays not-in-the-capture.
+    """
+    from tools.inference_alerts.replay import _renaming_rules
+
+    applied = dict(_renaming_rules())
+    assert applied == {
+        "inferops:inference_requests_in_flight:runtime": "llamacpp:requests_processing",
+        "inferops:inference_requests_deferred:runtime": "llamacpp:requests_deferred",
+    }
+    for entry in REPLAYS.values():
+        held = entry["metricsTheCaptureHolds"]
+        assert (
+            not [name for name in held if "_absent:" in name]
+            or entry["captureId"] == "v1-s4-007-pr1"
+        ), entry["captureId"]
+        row = {r["alertId"]: r for r in entry["results"]}[
+            "platform-api-scrape-job-absent"
+        ]
+        assert row["verdict"] == "not-in-the-capture", entry["captureId"]
+
+
+def test_a_capture_holding_only_a_count_cannot_answer_a_bucket_alert() -> None:
+    """The near-miss independent review reproduced, driven here.
+
+    An alert reading `..._bucket` must not be answered by a capture that asked for
+    `..._count`: a histogram's aggregate carries no distribution, so a verdict of
+    silent over it would be a silence the capture cannot support. Names are
+    compared exactly, suffix included, and this is what holds that.
+    """
+    capture = {
+        "range": {"startEpochMs": 0, "endEpochMs": 900_000, "stepSeconds": 15},
+        "series": [
+            {
+                "expr": "sum(inferops_inference_request_duration_seconds_count)",
+                "result": [{"labels": {}, "values": [[0, "1"], [900, "2"]]}],
+            }
+        ],
+    }
+    verdicts = {entry.alert_id: entry for entry in replay_alerts(RECORD, capture)}
+    latency = verdicts["inference-latency-past-half-the-request-budget"]
+    assert latency.verdict == "not-in-the-capture"
+    assert latency.missing == ("inferops_inference_request_duration_seconds_bucket",)
+
+
+def test_a_capture_holding_both_sides_of_a_rename_is_not_doubled() -> None:
+    """The second near-miss review reproduced.
+
+    A capture may ask for a recorded name directly -- V1-S4-007-PR1 already does,
+    for the in-flight rule -- and deriving the rename on top of it would leave two
+    series under one name and read double through a sum.
+    """
+    capture = {
+        "range": {"startEpochMs": 0, "endEpochMs": 900_000, "stepSeconds": 15},
+        "series": [
+            {
+                "expr": "sum(llamacpp:requests_deferred)",
+                "result": [{"labels": {}, "values": [[0, "5"], [900, "5"]]}],
+            },
+            {
+                "expr": "sum(inferops:inference_requests_deferred:runtime)",
+                "result": [{"labels": {}, "values": [[0, "2"], [900, "2"]]}],
+            },
+        ],
+    }
+    series, held, _ = reconstruct(capture)
+    recorded = [
+        entry
+        for entry in series
+        if dict(entry.labels).get("__name__")
+        == "inferops:inference_requests_deferred:runtime"
+    ]
+    assert len(recorded) == 1, "the capture's own answer is the measurement"
+    assert recorded[0].points[0][1] == 2.0
+    assert "inferops:inference_requests_deferred:runtime" in held
+
+
+def test_a_rename_is_applied_where_the_capture_holds_only_the_source() -> None:
+    """And the rename still happens when it is the only way to the recorded name."""
+    capture = {
+        "range": {"startEpochMs": 0, "endEpochMs": 900_000, "stepSeconds": 15},
+        "series": [
+            {
+                "expr": "sum(llamacpp:requests_deferred)",
+                "result": [{"labels": {}, "values": [[0, "5"], [900, "5"]]}],
+            }
+        ],
+    }
+    _, held, _ = reconstruct(capture)
+    assert "inferops:inference_requests_deferred:runtime" in held
 
 
 def test_the_pod_loss_capture_fires_nothing_and_the_record_says_why() -> None:

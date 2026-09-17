@@ -30,19 +30,19 @@ satisfies the correlation query policy under **each profile it declares**; each 
 thirteen alert rules refuses a record corrupted to break it; each of the eight refused
 alerts is refused when spliced into the record; every alert fires and stays silent
 across the eight committed **synthetic** scenarios exactly as the record declares;
-three of the six were **replayed over the telemetry two real failure experiments
-recorded**, where one fires over one capture and nothing fires over the other; and
-both committed rule files are what the record generates.
+five of the six were **replayed over the telemetry three real experiments
+recorded**, where one fires over one capture; both committed rule files are what the
+record generates; and the pinned collector's own `promtool` loads both.
 
-**What this record does not establish.** It is not evidence that a Prometheus accepts
-the rendered rule files — that control exists and **did not run here**; see *What was
-not run* below. No alerting rule existed during either failure experiment, so the
-replay is this repository's own evaluator over a reconstruction it declares, not a
-rule a collector ran. It is not evidence that any alert has fired in a cluster, that
-anybody would be told if one did, or that any threshold is right for an installation
-other than this chart's defaults. It publishes no latency, throughput, or capacity
-figure of its own: every number in the scenario results was written by hand into a
-fixture, and the measured figures it quotes — a client-measured 95th percentile of
+**What this record does not establish.** It is not evidence that a Prometheus has
+*evaluated* these rules: `promtool` loaded both rendered files, which is a smaller
+thing than a collector running them. No alerting rule existed during any of the three
+experiments, so the replay is this repository's own evaluator over a reconstruction it
+declares, not a rule a collector ran. It is not evidence that any alert has fired in a
+cluster, that anybody would be told if one did, or that any threshold is right for an
+installation other than this chart's defaults. It publishes no latency, throughput, or
+capacity figure of its own: every number in the scenario results was written by hand
+into a fixture, and the measured figures it quotes — a client-measured 95th percentile of
 8 614 ms, and deferrals of 0, 1 and 3 — are quoted to say what the thresholds are
 *not* and what the windows are for.
 
@@ -54,17 +54,18 @@ fixture, and the measured figures it quotes — a client-measured 95th percentil
 | Python | 3.12.6 |
 | `uv` | the repository's locked toolchain (`uv sync --locked`) |
 | `pytest` | 8.4.2 |
-| Docker engine | **not running on this host** |
+| Docker engine | running; the pinned collector image pulled by digest for the `promtool` control |
+| `promtool` | 3.5.0, out of the image the chart pins |
 
 ## What was built
 
 | File | What it is |
 |---|---|
-| `docs/telemetry/inference-alerts.v1alpha1.json` | The record: 6 alerts, 5 deferred conditions, 8 refused alerts, 8 scenarios, 2 owners, 2 severities, 3 threshold bases, 7 gaps, 6 limitations |
+| `docs/telemetry/inference-alerts.v1alpha1.json` | The record: 6 alerts, 5 deferred conditions, 8 refused alerts, 8 scenarios, 2 owners, 2 severities, 3 threshold bases, 8 gaps, 7 limitations |
 | `docs/telemetry/inference-alerts.md` | The document that publishes it |
 | `deploy/prometheus/inferops-inference-alerts.real.yaml` | The rule file for the real profile: 6 rules |
 | `deploy/prometheus/inferops-inference-alerts.mock.yaml` | The rule file for the mock profile: 5 rules |
-| `tools/inference_alerts/replay.py` | The replay over the two committed experiment captures, and the reconstruction it declares |
+| `tools/inference_alerts/replay.py` | The replay over the three committed experiment captures, and the reconstruction it declares |
 | `tools/inference_alerts/` | The policy, the fixture-window evaluator, the renderer, and the command |
 | `tests/telemetry/fixtures/alerts/*.yaml` | Eight scenarios on a 60-second grid |
 | `tests/telemetry/test_inference_alerts.py` | The suite |
@@ -78,38 +79,53 @@ a metric nothing emits is refused there before any rule here sees it.
 
 ```text
 uv run --locked ruff format --check .
-439 files already formatted
+442 files already formatted
 
 uv run --locked ruff check .
 All checks passed!
 
 uv run --locked python -m mypy
-Success: no issues found in 247 source files
+Success: no issues found in 248 source files
 
 uv run --locked python -m tools.inference_alerts
 ok      6 alert(s) satisfy the alert policy
 
 uv run --locked python -m tools.inference_alerts --evaluate
-(48 cells, no DISAGREES; the matrix is published in the alert-validation report)
+(48 cells, no DISAGREES; the matrix is published in the alert-validation record)
 
 uv run --locked python -m tools.inference_alerts --replay
-(six verdicts per capture; the matrix is published in the alert-validation report)
+(six verdicts for each of three captures; the matrix is in the alert-validation record)
+
+uv run --locked python -m pytest tests/architecture/test_inference_alert_rules.py -q
+6 passed
+   promtool 3.5.0, out of the image the chart pins by digest:
+   Checking inferops-inference-alerts.real.yaml   SUCCESS: 6 rules found
+   Checking inferops-inference-alerts.mock.yaml   SUCCESS: 5 rules found
 
 uv run --locked python -m pytest tests/telemetry/test_inference_alerts.py -q
-91 passed
+103 passed
 
 uv run --locked python -m pytest -q
-9709 passed, 33 skipped, 14 deselected
+9724 passed, 30 skipped, 14 deselected
 ```
 
 `git diff --check` reports nothing.
 
-One full-lane run before this one reported a single failure in
-`tests/serving/test_performance_scenarios.py`, a `ConnectionAbortedError` from a
-loopback stub this change does not touch. It passes in isolation, passes with its own
-module, and passes on `main` with this branch stashed; the run above is a clean repeat.
-It is recorded here rather than left out, because a flake nobody wrote down is a flake
-somebody rediscovers.
+The skip count fell from 33 to 30 when the pinned collector image was pulled: the two
+`promtool` parametrisations this change adds began to run, and so did the collector's
+own long-standing one, which had been skipping on this host for the same reason.
+
+**A pre-existing flake, in a module this change does not touch.** Two of the six
+full-lane runs made during this change reported a failure in
+`tests/serving/test_performance_scenarios.py::test_the_collector_is_asked_by_get_without_parameters_and_by_post_with_them`
+-- a `ConnectionAbortedError` from a loopback stub. It was characterised rather than
+re-run until green: the test passes 5 of 5 in isolation with this change applied, the
+whole `tests/serving` suite passes 3 of 3 on `main` with this branch stashed, and the
+failure has appeared only inside a full-lane run, and not in the final one quoted
+above. That points at a Windows loopback socket under load rather than at anything
+here. It is recorded because a flake nobody
+writes down is a flake somebody rediscovers, and it belongs to that module rather than
+to this change.
 
 ## What the scenarios showed
 
@@ -161,14 +177,12 @@ Four results are worth repeating here because each changed the design:
 
 ## What was not run, and why
 
-- **`promtool check rules` did not run.** The control exists in
-  `tests/architecture/test_inference_alert_rules.py` and would run the pinned
-  collector's own binary over both rendered files. The Docker engine is not running on
-  this host and the pinned image is not present, so both parametrisations **skipped,
-  loudly**, with the pull command in the skip reason. Nothing in this record therefore
-  establishes that a Prometheus accepts these files; it establishes that this
-  repository's own subset parser accepts every expression and that the YAML is a rule
-  group with the fields the format requires.
+- **`promtool check rules` ran, and it is not an evaluation.** It establishes that
+  each rendered file is one the pinned engine loads, and that every expression parses
+  there rather than only in this repository's own subset parser. It says nothing about
+  whether any of them would ever be true. The check skips, loudly, where the image is
+  absent — including on a continuous-integration runner, because no workflow here
+  pulls it.
 - No collector, cluster, release, model, or runtime was started. No experiment was
   executed; the two failure shapes the fixtures take were measured by V1-S4-006-PR1
   and V1-S4-007-PR1 and are read from their committed records.
@@ -181,7 +195,7 @@ Applied to this PR's boundary only.
 | Criterion | Status |
 |---|---|
 | Each alert has owner, severity, condition, evidence query, and runbook link | **Met.** Every alert carries all five. The evidence query is a field distinct from the condition and is an accepted correlation query repeated verbatim, refused if a byte differs or if it restates the condition; the runbook link's file *and* heading are checked, and the section has to name something to run. Each alert also carries the window, the threshold's declared source, the caller impact, the operator action, what an empty result means, and what the alert cannot see |
-| Alerts are validated against failure experiments | **Met, with its class stated.** Three of the six alerts were replayed over the telemetry V1-S4-006-PR1 and V1-S4-007-PR1 actually recorded: `InferOpsReadinessRefusalsSustained` fires over the unready-model capture, nothing fires over the pod-loss capture, and the three alerts whose series neither experiment asked for are reported `not-in-the-capture` rather than silent. No alerting rule existed during either run, so this is a replay and not a rule a collector evaluated. The two fixtures shaped from those runs are synthetic and carry none of their durations |
+| Alerts are validated against failure experiments | **Met, with its class stated.** Five of the six alerts were replayed over the telemetry V1-S4-004-PR1, V1-S4-006-PR1 and V1-S4-007-PR1 actually recorded: `InferOpsReadinessRefusalsSustained` fires over the unready-model capture, nothing fires over the pod-loss capture, and latency and saturation are both silent under the measured load -- saturation with its threshold crossed and its window unmet, which is what its rationale claims. An alert whose series a capture does not hold is reported `not-in-the-capture` rather than silent. No alerting rule existed during any of the three runs, so this is a replay and not a rule a collector evaluated. `InferOpsPlatformApiScrapeJobAbsent` has no real-run evidence at all, and that is a recorded gap |
 | No alert exists solely because a metric is available | **Met.** Eight such alerts are recorded as refused with the rule that refuses each, and the suite splices each into the record and fails if it is accepted. Five conditions are deferred rather than approximated, and each carries a `doNotApproximate` field naming the nearby signal somebody would reach for |
 | Local proof thresholds are not presented as universal production thresholds | **Met.** No threshold is a measured figure; a `thresholdBasis` of `measurement` is refused by the policy. The one measured figure quoted anywhere is quoted to say what the threshold is not |
 | No alert claims to detect a condition the accepted telemetry cannot observe | **Met.** The correlation policy refuses an expression reading a metric nothing emits, and the suite re-asserts it directly so removing that refusal there does not remove it here |

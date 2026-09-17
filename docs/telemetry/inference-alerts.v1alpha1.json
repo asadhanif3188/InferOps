@@ -20,11 +20,11 @@
     "policyChecked": true,
     "evaluatedAgainstFixtures": true,
     "evaluatedByAPrometheus": false,
-    "ruleFileLoadedByPromtool": "checked where the pinned collector image is present locally; the check skips loudly where it is not",
+    "ruleFileLoadedByPromtool": "yes, promtool 3.5.0 from the pinned collector image: SUCCESS, 6 rules found (real) and 5 rules found (mock)",
     "everRouted": false,
     "everNotifiedAnybody": false,
     "evidenceClass": "local-static",
-    "note": "Every alert here has been parsed, held to the correlation query policy under each profile it declares, and evaluated instant by instant across eight committed fixtures. Three of the six were then replayed over the telemetry two real failure experiments recorded on the docker-desktop provider, through the reconstruction tools/inference_alerts/replay.py declares; the other three read series neither capture holds. One alert fires over one capture. No Prometheus has ever loaded these rules in a cluster, no alerting rule existed during either experiment, and no alert has fired anywhere but in this repository's own evaluator.",
+    "note": "Every alert here has been parsed, held to the correlation query policy under each profile it declares, and evaluated instant by instant across eight committed fixtures. Every alert but one was then replayed over the telemetry three real experiments recorded on the docker-desktop provider, through the reconstruction tools/inference_alerts/replay.py declares; one fires over one capture. The rendered rule files are accepted by the pinned collector's own promtool. No Prometheus has loaded them in a cluster, no alerting rule existed during any of the three experiments, and no alert has fired anywhere but in this repository's own evaluator.",
     "replayedAgainstRealCaptures": true,
     "everFiredInACluster": false
   },
@@ -39,7 +39,7 @@
     "scrapeIntervalSeconds": 30,
     "ruleEvaluationIntervalSeconds": 30,
     "rangeWindowSeconds": 300,
-    "statement": "Every rate here reads a five-minute window and every `for` is at least that long, so no single scrape's worth of trouble can hold a condition across its window. The 30-second interval is the rendered rule group's own: the chart declares telemetry.collection.scrapeIntervalSeconds: 30 and declares no evaluation_interval at all, so a group that inherited Prometheus's one-minute default would be evaluated less often than the release is scraped. The fixtures step at 60 s and the two real captures at 15 s; a result over either is a statement about the instants it carries."
+    "statement": "Every rate here reads a five-minute window and every `for` is at least that long, so no single scrape's worth of trouble can hold a condition across its window. The 30-second interval is the rendered rule group's own: the chart declares telemetry.collection.scrapeIntervalSeconds: 30 and declares no evaluation_interval at all, so a group that inherited Prometheus's one-minute default would be evaluated less often than the release is scraped. The fixtures step at 60 s and all three real captures at 15 s; a result over either is a statement about the instants it carries."
   },
   "owners": [
     {
@@ -344,6 +344,96 @@
   ],
   "replays": [
     {
+      "captureId": "v1-s4-004-pr1",
+      "captureRef": "docs/proof/serving/v1-s4-004-pr1-telemetry.v1alpha1.json",
+      "experimentRef": "docs/proof/serving/v1-s4-004-pr1-validation.md",
+      "whatHappened": "The performance scenario matrix: a warm-up and three concurrency levels run twice against a real release on the docker-desktop provider, 360 requests, 0 unsuccessful. A release working, under the only sustained load this project has measured.",
+      "rangeSeconds": 924,
+      "stepSeconds": 15,
+      "metricsTheCaptureHolds": [
+        "inferops:inference_requests_deferred:runtime",
+        "inferops:inference_requests_in_flight:runtime",
+        "inferops_inference_request_duration_seconds_bucket",
+        "inferops_inference_requests_in_flight",
+        "inferops_inference_requests_total",
+        "inferops_inference_tokens_total",
+        "llamacpp:n_decode_total",
+        "llamacpp:prompt_tokens_total",
+        "llamacpp:requests_deferred",
+        "llamacpp:requests_processing",
+        "llamacpp:tokens_predicted_total"
+      ],
+      "expressionsRefusedByTheReconstruction": [],
+      "results": [
+        {
+          "alertId": "inference-callers-refused",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops_inference_errors_total"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops_inference_errors_total. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        },
+        {
+          "alertId": "inference-serving-nothing",
+          "verdict": "silent",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, over the only sustained load this project has measured: 360 requests and 0 unsuccessful, so the success rate is never zero."
+        },
+        {
+          "alertId": "readiness-refusals-sustained",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 300.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops_readiness_check_failures_total"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops_readiness_check_failures_total. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        },
+        {
+          "alertId": "inference-latency-past-half-the-request-budget",
+          "verdict": "silent",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, by roughly a factor of six. The alert's own expression returns a 95th percentile between 2.425 s and 9.491 s across the run, against a threshold of 60 s. That figure is the histogram-derived one the alert reads and is not the client-measured 8 614 ms the findings record publishes; neither is a threshold, and the alert is quiet under the load the release was measured at."
+        },
+        {
+          "alertId": "runtime-defers-requests",
+          "verdict": "silent",
+          "heldInstants": 14,
+          "heldSeconds": 195.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [],
+          "note": "Silent, and this is the result the threshold's rationale rests on. The runtime did defer -- the value reaches 3, matching the maxima of 0, 1 and 3 the findings record publishes for concurrency 1, 2 and 4 -- so the threshold of zero was crossed. The condition held for 14 consecutive evaluations, 195 s, against a window needing 41. The ten-minute window, not the threshold, is what keeps this alert quiet under a load the release handled."
+        },
+        {
+          "alertId": "platform-api-scrape-job-absent",
+          "verdict": "not-in-the-capture",
+          "heldInstants": 0,
+          "heldSeconds": 0.0,
+          "windowSeconds": 600.0,
+          "firstFiringInstant": null,
+          "seriesTheCaptureDoesNotHold": [
+            "inferops:scrape_job_absent:platform_api"
+          ],
+          "note": "Not answerable from this capture: it holds no result for inferops:scrape_job_absent:platform_api. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+        }
+      ]
+    },
+    {
       "captureId": "v1-s4-006-pr1",
       "captureRef": "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
       "experimentRef": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
@@ -351,6 +441,7 @@
       "rangeSeconds": 1220,
       "stepSeconds": 15,
       "metricsTheCaptureHolds": [
+        "inferops:inference_requests_in_flight:runtime",
         "inferops_inference_errors_total",
         "inferops_inference_requests_in_flight",
         "inferops_inference_requests_total",
@@ -402,9 +493,9 @@
           "windowSeconds": 600.0,
           "firstFiringInstant": null,
           "seriesTheCaptureDoesNotHold": [
-            "inferops_inference_request_duration_seconds"
+            "inferops_inference_request_duration_seconds_bucket"
           ],
-          "note": "Not answerable from this capture: it holds no result for inferops_inference_request_duration_seconds. The experiment asked nine range queries and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+          "note": "Not answerable from this capture: it holds no result for inferops_inference_request_duration_seconds_bucket. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
         },
         {
           "alertId": "runtime-defers-requests",
@@ -416,7 +507,7 @@
           "seriesTheCaptureDoesNotHold": [
             "inferops:inference_requests_deferred:runtime"
           ],
-          "note": "Not answerable from this capture: it holds no result for inferops:inference_requests_deferred:runtime. The experiment asked nine range queries and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+          "note": "Not answerable from this capture: it holds no result for inferops:inference_requests_deferred:runtime. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
         },
         {
           "alertId": "platform-api-scrape-job-absent",
@@ -428,7 +519,7 @@
           "seriesTheCaptureDoesNotHold": [
             "inferops:scrape_job_absent:platform_api"
           ],
-          "note": "Not answerable from this capture: it holds no result for inferops:scrape_job_absent:platform_api. The experiment asked nine range queries and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+          "note": "Not answerable from this capture: it holds no result for inferops:scrape_job_absent:platform_api. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
         }
       ]
     },
@@ -492,9 +583,9 @@
           "windowSeconds": 600.0,
           "firstFiringInstant": null,
           "seriesTheCaptureDoesNotHold": [
-            "inferops_inference_request_duration_seconds"
+            "inferops_inference_request_duration_seconds_bucket"
           ],
-          "note": "Not answerable from this capture: it holds no result for inferops_inference_request_duration_seconds. The experiment asked nine range queries and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+          "note": "Not answerable from this capture: it holds no result for inferops_inference_request_duration_seconds_bucket. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
         },
         {
           "alertId": "runtime-defers-requests",
@@ -506,7 +597,7 @@
           "seriesTheCaptureDoesNotHold": [
             "inferops:inference_requests_deferred:runtime"
           ],
-          "note": "Not answerable from this capture: it holds no result for inferops:inference_requests_deferred:runtime. The experiment asked nine range queries and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+          "note": "Not answerable from this capture: it holds no result for inferops:inference_requests_deferred:runtime. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
         },
         {
           "alertId": "platform-api-scrape-job-absent",
@@ -518,7 +609,7 @@
           "seriesTheCaptureDoesNotHold": [
             "inferops:scrape_job_absent:platform_api"
           ],
-          "note": "Not answerable from this capture: it holds no result for inferops:scrape_job_absent:platform_api. The experiment asked nine range queries and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
+          "note": "Not answerable from this capture: it holds no result for inferops:scrape_job_absent:platform_api. The experiment asked the range queries its own question needed, and this alert reads a series none of them named, so this is an absence of evidence and not evidence that the alert was silent."
         }
       ]
     }
@@ -723,11 +814,15 @@
     },
     {
       "gapId": "a-disruption-shorter-than-the-window-is-not-alerted",
-      "statement": "Deliberate, and measured. Replaying the alerts over V1-S4-006-PR1's own capture fires nothing: the caller-visible outage was 31 960 ms against windows of five and ten minutes, and the Deployment controller had restored service before any of them could be satisfied. An alert set that paged for that disruption would be paging for something Kubernetes fixed by itself, and the three rules about windows in this record exist to prevent it. What it costs is that a short, repeated disruption is invisible here."
+      "statement": "Deliberate, and measured. Replaying the alerts over V1-S4-006-PR1's own capture fires nothing: the caller-visible outage was 31 960 ms against windows of five and ten minutes, and the Deployment controller had restored service before any of them could be satisfied. The same shape appears in the load capture, where the runtime deferred requests continuously for 195 s against a ten-minute window. An alert set that paged for either would be paging for something the release absorbed, and the rules about windows in this record exist to prevent it. What it costs is that a short, repeated disruption is invisible here."
     },
     {
       "gapId": "a-counter-series-born-at-its-value-feeds-no-rate",
       "statement": "The API creates a labelled counter series on its first event, so the series appears already carrying what it has counted and a rate over it reads no increase until the next one. V1-S4-006-PR1's capability-unavailable series was born at 40 and stayed there. Every rate alert here inherits that, the dashboard record documents the same property for panels, and nothing in this record closes it."
+    },
+    {
+      "gapId": "the-collection-alert-has-no-real-run-evidence",
+      "statement": "Five of the six alerts have been replayed over a capture that holds the series they read. InferOpsPlatformApiScrapeJobAbsent has not, and cannot be from what is committed: no experiment here has ever recorded a collector whose platform-api job discovered nothing, so no capture holds inferops:scrape_job_absent:platform_api. It is exercised over the platform-api-not-discovered fixture and nowhere else. Closing this needs an experiment that breaks discovery on purpose, which no story owns."
     }
   ],
   "limitations": [
@@ -736,6 +831,7 @@
     "The two failure shapes the fixtures are built from were measured on one provider, one host, one single-replica release, one model and one runtime build. The fixtures reproduce their shape and none of their durations; no interval in any fixture is a recovery time, an availability figure, or a service-level objective.",
     "An alert firing is a statement about one release's own collector. Nothing here is a statement about a durable store, because no durable store is selected and the collector's series live in an emptyDir that goes with its pod.",
     "The scrape alert is the only one that can fire while the workload is well, and the workload alerts are the only ones that can fire while collection is well. Neither set covers the other, and the fixture in which the API job discovers nothing is what makes that visible.",
-    "The severity vocabulary describes what an installation would do, not what this project does. Nothing here pages anybody, because there is nobody and no path."
+    "The severity vocabulary describes what an installation would do, not what this project does. Nothing here pages anybody, because there is nobody and no path.",
+    "The replay applies exactly one class of recording rule to a reconstruction: a rendered rule whose whole expression is a bare selector, which is a rename. Every other rendered rule is refused, and the absent() ones are why -- a capture holds the series its experiment asked for and no others, so absent() over one would report a scrape job missing when the experiment merely never asked about it. That would be a fabricated alert from real data."
   ]
 }

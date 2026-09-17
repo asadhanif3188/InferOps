@@ -10,9 +10,9 @@ never been shown both to fire and to stay silent over the committed scenarios.
 
 It then evaluates every accepted alert across each scenario fixture instant by
 instant, so that ``for`` is a property the fixtures establish rather than a field
-somebody wrote -- and replays every alert it can over the telemetry two real failure
-experiments recorded, so that what an alert would have done during a measured failure
-is a result rather than an intention.
+somebody wrote -- and replays every alert it can over the telemetry three real
+experiments recorded, so that what an alert would have done during a measured run is
+a result rather than an intention.
 
 It contacts no cluster and scrapes nothing. **No receiver, routing tree, or on-call
 rotation is selected in V1**, so an alert this accepts is an alert nothing evaluates

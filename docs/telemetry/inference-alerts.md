@@ -1,12 +1,13 @@
 # The V1 alerts, and the conditions nobody may be woken for
 
-Status: **defined as code, checked, driven across fixtures, and replayed over two
-real failure captures.** Six alerts are a committed record, every expression is held
-to the correlation query policy under each profile it declares, and each one is driven
-instant by instant across eight scenarios. Three of the six are then replayed over the
-telemetry two failure experiments recorded on a real cluster; **one of them fires over
-one capture, and nothing fires over the other.** Two Prometheus rule files are
-generated from the record and compared against it byte for byte.
+Status: **defined as code, checked, driven across fixtures, replayed over three real
+captures, and loaded by the pinned collector's own `promtool`.** Six alerts are a
+committed record, every expression is held to the correlation query policy under each
+profile it declares, and each one is driven instant by instant across eight scenarios.
+**Five of the six are then replayed over the telemetry three real experiments
+recorded** on a real cluster; one fires, over one capture. Two Prometheus rule files
+are generated from the record, compared against it byte for byte, and accepted by
+`promtool 3.5.0` out of the image the chart pins.
 
 **Nothing routes any of this.** No receiver, no routing tree, no Alertmanager, no
 on-call rotation. [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md)
@@ -257,33 +258,57 @@ at once — not because the platform is well, but because nothing is being asked
 is the whole reason the sixth alert exists, and the `platform-api-not-discovered`
 fixture is what makes it a property rather than a claim.
 
-## What they did over two real failures
+## What they did over three real runs
 
-The fixtures say what an alert does over telemetry somebody wrote. This says what
-each one would have done over telemetry **a real Prometheus returned, on a real
-cluster, while a real failure was happening** — which is the question the acceptance
-criterion asks and the one a fixture cannot answer.
+The fixtures say what an alert does over telemetry somebody wrote. This says what each
+one would have done over telemetry **a real Prometheus returned, on a real cluster,
+while a real thing was happening** — which is the question the acceptance criterion
+asks and the one a fixture cannot answer.
 
-Both failure experiments committed the answers to a handful of range queries. Those
-are query *results*, not the store they came from, so the replay in
+Each experiment committed the answers to a handful of range queries. Those are query
+*results*, not the store they came from, so the replay in
 [`tools/inference_alerts/replay.py`](../../tools/inference_alerts/replay.py) declares
 its reconstruction — `sum(metric)` and `sum by (…) (metric)` are read back as the
-metric, a bare selector as itself, and **anything else is refused and named**. Both
-captures contain an expression it refuses (`a / b`), and one contains a second
-(`count by (…)`).
+metric, a bare selector as itself, and **anything else is refused and named**. Two of
+the three captures contain an expression it refuses.
 
-| Alert | V1-S4-006-PR1, the pod lost under load | V1-S4-007-PR1, the model that never loaded |
-|---|---|---|
-| `InferOpsInferenceCallersRefused` | silent | silent, by one evaluation |
-| `InferOpsInferenceServingNothing` | silent | silent |
-| `InferOpsReadinessRefusalsSustained` | silent | **fires** |
-| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | not in the capture | not in the capture |
-| `InferOpsRuntimeDefersRequests` | not in the capture | not in the capture |
-| `InferOpsPlatformApiScrapeJobAbsent` | not in the capture | not in the capture |
+**Exactly one class of recording rule is applied**, and the reason is not a nicety.
+The chart renders two rules whose whole expression is a bare selector — a rename — and
+a rename over a series the capture holds is the same number under the name an alert
+reads. Every other rendered rule is refused, and the `absent()` ones are why: a capture
+holds the series its experiment asked for and no others, so `absent(up{job=…})` over
+one would read `1` and report a scrape job missing when the experiment merely never
+asked about it. That is a fabricated alert built from real data, and refusing the rule
+is what prevents it.
 
-**Not in the capture is not silence.** Three alerts read series neither experiment
-asked for. Reporting those as quiet would have claimed they were quiet during a real
-failure, which nothing here supports.
+| Alert | `v1-s4-004-pr1`, the load matrix | `v1-s4-006-pr1`, the pod lost | `v1-s4-007-pr1`, the model that never loaded |
+|---|---|---|---|
+| `InferOpsInferenceCallersRefused` | not in the capture | silent | silent, by one evaluation |
+| `InferOpsInferenceServingNothing` | silent | silent | silent |
+| `InferOpsReadinessRefusalsSustained` | not in the capture | silent | **fires** |
+| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | **silent** | not in the capture | not in the capture |
+| `InferOpsRuntimeDefersRequests` | **silent** | not in the capture | not in the capture |
+| `InferOpsPlatformApiScrapeJobAbsent` | not in the capture | not in the capture | not in the capture |
+
+**Not in the capture is not silence.** An alert reads a series the experiment did not
+ask for; reporting that as quiet would claim the alert was quiet during a real run,
+which nothing supports.
+
+### Under the only sustained load this project has measured, two alerts stay quiet
+
+The performance matrix — 360 requests, 0 unsuccessful — is the capture that answers the
+two alerts the failure runs cannot.
+
+**Latency is silent by roughly a factor of six.** The alert's own expression returns a
+95th percentile between 2.425 s and 9.491 s across the run, against a threshold of
+60 s. That is the histogram-derived figure the alert reads, and it is not the
+client-measured 8 614 ms the findings record publishes; neither is a threshold.
+
+**Saturation is silent because of its window, not its threshold** — which is exactly
+what its rationale claims, now measured rather than argued. The runtime *did* defer:
+the value reaches `3`, matching the maxima of 0, 1 and 3 the findings record publishes
+for concurrency 1, 2 and 4, so a threshold of zero was crossed. The condition held for
+14 consecutive evaluations — 195 seconds — against a window needing 41.
 
 ### Nothing fires for the pod that was lost, and that is the design
 
@@ -329,28 +354,41 @@ The first is the authoritative check and runs in the default lane. The second ap
 the same policy to the committed record and is usable as a gate. The third drives
 every alert across every scenario and prints what fires. The fourth prints the rule
 file the committed one is compared against. The fifth replays every alert it can over
-the two committed experiment captures.
+the three committed experiment captures.
 
 All four read files in this repository. None contacts a cluster, starts a Prometheus,
 loads a rule file, or knows what a receiver is.
 
 [`tests/architecture/test_inference_alert_rules.py`](../../tests/architecture/test_inference_alert_rules.py)
-carries a control that would run the pinned collector's own `promtool check rules`
-over both committed files, where that image is available locally. **It has not run.**
-On the host this change was made and validated the Docker engine was not running and
-the image was not present, so both parametrisations skipped, loudly. Nothing here
-establishes that a Prometheus accepts these files; what is established is that this
-repository's own subset parser accepts every expression and that each file is a rule
-group with the fields the format requires.
+runs the pinned collector's own `promtool check rules` over both committed files, out
+of the image the chart pins by digest. **It has run**, on `promtool 3.5.0`:
+
+```text
+Checking inferops-inference-alerts.real.yaml
+  SUCCESS: 6 rules found
+Checking inferops-inference-alerts.mock.yaml
+  SUCCESS: 5 rules found
+```
+
+That establishes that each file is one the engine that would evaluate these rules will
+load, and that every expression parses there and not only in this repository's subset
+parser. It is not an evaluation and not a firing alert. The check skips, loudly, where
+the image is not present — including on a continuous-integration runner, because no
+workflow here pulls it.
 
 ## What this does not establish
 
-- That any Prometheus has ever evaluated these rules in a cluster. No alerting rule
-  existed during either experiment, so the replay is this repository's own evaluator
-  over a reconstruction it declares, not a rule a collector ran.
+- That any Prometheus has ever *evaluated* these rules in a cluster. `promtool`
+  loading a file is not a rule a collector ran, and no alerting rule existed during
+  any of the three experiments, so the replay is this repository's own evaluator over
+  a reconstruction it declares.
 - That any alert has ever fired outside this repository's own evaluator.
-- That the three alerts reported as `not-in-the-capture` would have been silent during
-  either failure. Neither experiment asked for the series they read.
+- That an alert reported `not-in-the-capture` would have been silent during that run.
+  The experiment did not ask for the series it reads.
+- Anything at all, from a real run, about `InferOpsPlatformApiScrapeJobAbsent`. No
+  experiment here has recorded a collector whose `platform-api` job discovered
+  nothing, so no capture holds the series it reads. It is exercised over a fixture and
+  nowhere else, and that is a recorded gap.
 - That anybody would be told if one did. There is no receiver and no rotation.
 - That the thresholds are right for an installation that is not this one. They are
   derived from this chart's declared defaults, and an installation that changed those
