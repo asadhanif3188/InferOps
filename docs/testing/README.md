@@ -18,7 +18,8 @@ A fifth question arrived with Sprint 4, and it is the one a reader outside this
 project actually asks: **what has been run, where, and what may it be used to say?**
 [The claim and evidence matrix](claim-evidence-matrix.md) is that answer, and it is
 the only document here that carries claims this project deliberately does **not**
-make.
+make. [The V1 proof dashboard](../proof/dashboard.md) is the same answer in one
+page, generated from the matrix's data rather than written beside it.
 
 ## Documents
 

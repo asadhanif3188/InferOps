@@ -29,6 +29,13 @@ uv.lock text eol=lf
 # from a Windows working tree, and the first hosted Linux run failed both.
 charts/** text eol=lf
 
+# The proof dashboard is generated from the claim and evidence register and
+# compared with what `python -m tools.proof_dashboard --page` prints, and the
+# generator writes LF on every platform so that the same register produces the
+# same bytes everywhere. Pinning the checkout keeps a Windows working tree from
+# acquiring CRLF that the next `--write` would immediately undo.
+docs/proof/dashboard.md text eol=lf
+
 # The generated Prometheus rule files are compared byte for byte against what
 # `python -m tools.inference_alerts --rules` prints, and a collector's promtool
 # reads them out of a Linux container. `text=auto` already normalises what is

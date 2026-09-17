@@ -718,6 +718,16 @@
       "note": "It reads committed files. It establishes that references resolve, that ranks and ceilings hold, and that the two directions agree; it cannot establish that a statement is true or that a record says what the row citing it says it says. Eight of its rules are driven over a row corrupted to break them."
     },
     {
+      "module": "tests/testing/test_proof_dashboard.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The generated V1 proof dashboard against the claim and evidence register it is derived from: the committed page is byte for byte what the register renders today, so an edit made by hand is a failing build; every count on the page recomputes from the register; every statement, status, certification level, evidence label, provider, environment, record link, and limitation shown for a claim is the register's own value; every claim the register does not certify appears in the page's list of what V1 does not claim; every record the page links resolves from the page's own directory; and every rule the generator applies before rendering is driven over a register, or a capability selection, corrupted to break it.",
+      "claims": [
+        "the-published-strategy-and-its-data-cannot-drift-apart"
+      ],
+      "note": "It reads committed files. It establishes that the page is derived rather than asserted; it cannot establish that a statement on the page is true, which is the register's own first limitation and is inherited whole. The capability grouping the page reads by is a judgement made in tools/proof_dashboard, and no test here decides whether a claim belongs under one heading rather than another."
+    },
+    {
       "module": "tests/testing/test_ci_gate_matrix.py",
       "layer": "documentation",
       "marker": "docs",

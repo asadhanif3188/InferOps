@@ -13,6 +13,21 @@ the layer that produced it, and the certification ceiling that class carries, in
 [the certification document](../testing/certification.md). A record does not get to
 nominate its own strength.
 
+## Start here
+
+[The V1 proof dashboard](dashboard.md) is the shortest way into everything below.
+It is one generated page: what is certified, what is planned, what is deferred, and
+what this project states it does **not** have, each with its certification level,
+evidence class, provider, environment, limitation, and a link into the record that
+supports it. It is produced by `python -m tools.proof_dashboard` from
+[the claim and evidence register](../testing/claim-evidence-matrix.v1alpha1.json)
+and compared with it by a test, so it cannot drift from the register or say more
+than it does.
+
+It answers *what has been proven*. [The inference operations
+dashboard](../telemetry/inference-operations-dashboard.md) answers *what is
+happening now*, of a running release, and the two are not substitutes.
+
 ## Records
 
 | Area | Records |
@@ -23,7 +38,7 @@ nominate its own strength.
 | Contracts | [`v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) |
 | Domain | [`v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md), [`v1-s1-001-pr2-validation.md`](domain/v1-s1-001-pr2-validation.md) |
 | Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md), [`v1-s3-002-pr1-validation.md`](architecture/v1-s3-002-pr1-validation.md), [`v1-s3-002-pr2-validation.md`](architecture/v1-s3-002-pr2-validation.md), [`v1-s3-003-pr1-validation.md`](architecture/v1-s3-003-pr1-validation.md), and the [provider realignment validation](architecture/v1-s3-010-pr1-validation.md) |
-| Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md), [`v1-s1-007-pr1-validation.md`](testing/v1-s1-007-pr1-validation.md), [the continuous-integration gate validation](testing/v1-s4-001-pr1-validation.md), and [the claim-evidence register's validation](testing/v1-s4-009-pr1-validation.md) |
+| Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md), [`v1-s1-007-pr1-validation.md`](testing/v1-s1-007-pr1-validation.md), [the continuous-integration gate validation](testing/v1-s4-001-pr1-validation.md), [the claim-evidence register's validation](testing/v1-s4-009-pr1-validation.md), and [the proof dashboard's validation](testing/v1-s4-009-pr2-validation.md) |
 | Telemetry | [`v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md), [`v1-s1-008-pr1-validation.md`](telemetry/v1-s1-008-pr1-validation.md), [`v1-s3-007-pr1-validation.md`](telemetry/v1-s3-007-pr1-validation.md), [`v1-s3-007-pr2-validation.md`](telemetry/v1-s3-007-pr2-validation.md), the [query evaluation record](telemetry/v1-s3-007-pr2-query-evaluation.md), [what telemetry saw while a serving pod was replaced](telemetry/v1-s3-011-pr2-telemetry-during-recovery.md), [`v1-s4-002-pr1-validation.md`](telemetry/v1-s4-002-pr1-validation.md), [the dashboard asked of a real Prometheus and rendered by a real Grafana](telemetry/v1-s4-002-pr2-dashboard-validation.md), and [the V1 alert set validated against its scenarios](telemetry/v1-s4-008-pr1-alert-validation.md) with [`v1-s4-008-pr1-validation.md`](telemetry/v1-s4-008-pr1-validation.md) |
 | Cost | [`v1-s0-008-pr1-validation.md`](cost/v1-s0-008-pr1-validation.md), the [cost calculation validation](cost/v1-s4-005-pr1-validation.md), and [the V1 cost baseline](cost/v1-s4-005-pr2-cost-baseline.md) with [its validation](cost/v1-s4-005-pr2-validation.md) |
 | Security | [`v1-s0-009-pr1-validation.md`](security/v1-s0-009-pr1-validation.md), [`v1-s2-006-pr1-validation.md`](security/v1-s2-006-pr1-validation.md), [`v1-s3-004-pr1-validation.md`](security/v1-s3-004-pr1-validation.md), the [executed network-policy enforcement result](security/v1-s3-004-pr1-network-policy-enforcement.md) |

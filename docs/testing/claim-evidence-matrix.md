@@ -380,10 +380,10 @@ the claim weaker than silence would; both make the absence checkable.
 
 ## Surfaces that make no capability claim
 
-7 public entry points in the README are reference or policy rather than a
-claim about what the software does. They are listed rather than skipped, so that
-the completeness check has something to compare against and the exclusion list
-cannot quietly grow.
+8 public entry points in the README are reference, policy, or a
+projection of this register rather than a claim about what the software does. They
+are listed rather than skipped, so that the completeness check has something to
+compare against and the exclusion list cannot quietly grow.
 
 | Surface | Why it claims nothing |
 |---|---|
@@ -394,6 +394,7 @@ cannot quietly grow.
 | [SECURITY.md](../../SECURITY.md) | Reporting expectations, and a recorded gap: no private channel is published. The gap belongs to the security rows above. |
 | [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) | Interim conduct expectations, with a formal policy deferred. |
 | [LICENSE](../../LICENSE) | The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does. |
+| [docs/proof/dashboard.md](../proof/dashboard.md) | A generated projection of this register. Every status, certification level, evidence label, provider, environment, record, and limitation it shows is read from this file when the page is rendered, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them. |
 
 ## What this matrix does not do
 

@@ -2200,6 +2200,10 @@
     {
       "path": "LICENSE",
       "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+    },
+    {
+      "path": "docs/proof/dashboard.md",
+      "reason": "A generated projection of this register. Every status, certification level, evidence label, provider, environment, record, and limitation it shows is read from this file when the page is rendered, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
     }
   ],
   "prohibitions": [
