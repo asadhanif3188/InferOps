@@ -14,6 +14,12 @@ what it may certify — and if that is left undecided, the cheapest suite decide
 The fourth is the one nobody could answer before `V1-S1-007`, and
 [the inventory](test-inventory.md) is that answer.
 
+A fifth question arrived with Sprint 4, and it is the one a reader outside this
+project actually asks: **what has been run, where, and what may it be used to say?**
+[The claim and evidence matrix](claim-evidence-matrix.md) is that answer, and it is
+the only document here that carries claims this project deliberately does **not**
+make.
+
 ## Documents
 
 | Document | What it covers |
@@ -21,9 +27,11 @@ The fourth is the one nobody could answer before `V1-S1-007`, and
 | [Test and CI strategy](test-strategy.md) | Eleven test layers, four lanes, markers, prerequisites, timeouts, artifacts, failure diagnostics, and evidence retention |
 | [Certification levels](certification.md) | What C0 to C2 mean, what each evidence class may support, why a mock stops at C1, and what a real record must contain |
 | [Claim and test matrix](claim-test-matrix.md) | Every public claim, with its layers, environment, required level, and evidence owner |
+| [Claim and evidence matrix](claim-evidence-matrix.md) | Every claim V1 intends to publish, with its implementation, tests, gates, executed record, evidence label, limitation, and status — including the ones that are planned, deferred, and not claimed |
 | [Test inventory](test-inventory.md) | Every pytest module, its layer and lane, the claim it protects, and the claims no module protects |
 | [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json) | The authoritative form of the first three, validated by [`tests/testing/`](../../tests/testing/) |
 | [`test-inventory.v1alpha1.json`](test-inventory.v1alpha1.json) | The authoritative form of the inventory, compared with the test tree and the strategy in both directions |
+| [`claim-evidence-matrix.v1alpha1.json`](claim-evidence-matrix.v1alpha1.json) | The authoritative form of the claim and evidence matrix, compared with its document, the strategy, the inventory, the gate matrix, and the README in both directions |
 
 The same `docs` marker also collects [`tests/telemetry/`](../../tests/telemetry/),
 which holds [the telemetry catalog](../telemetry/telemetry-catalog.md) to its own

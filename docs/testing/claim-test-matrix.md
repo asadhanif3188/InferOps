@@ -17,6 +17,13 @@ Layer names, lane names, and what each layer may certify are in
 [the test strategy](test-strategy.md). Level meanings are in
 [the certification document](certification.md).
 
+What this document does **not** say is what has actually been run, where, and what
+the result may be used to say. That is
+[the claim and evidence matrix](claim-evidence-matrix.md), which names every row
+below and is refused by a test if it ever carries a stronger status than this table
+does. It also holds claims that have no row here at all — the ones this project
+deliberately does not make.
+
 ## How to read a row
 
 Every claim names at least one test layer, an environment, a required level, and an

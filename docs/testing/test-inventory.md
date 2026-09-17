@@ -143,7 +143,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Thirty modules. Committed machine-readable data checked against the documents
+Thirty-one modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -165,7 +165,10 @@ applied to a declared input, its refusals, its arithmetic on synthetic fixtures 
 values worked out by hand, and every record it writes validated against the method's
 record shape. The newest is the cost baseline: usage taken from the committed samples
 only when the record regenerates, every value recomputed from the sample lines by a
-second route, and the published report's figures held to its results.
+second route, and the published report's figures held to its results. The newest is
+the claim and evidence matrix: every row held to its own limitation, its status held
+to the strategy's, its level held to its evidence label's ceiling, and the README's
+public entry points held to the rows that govern them.
 
 The count said seventeen until this story and had been wrong since `V1-S3-007-PR1`
 added the eighteenth. It is not machine-checked, which is why it drifted — the same
@@ -173,7 +176,8 @@ way `architecture-inventory`'s did, and it is recorded here for the same reason.
 drifted once more: by `V1-S4-003-PR1` twenty-five modules existed while the sentence
 said nineteen. That change added the twenty-sixth and corrected the count.
 `V1-S4-004-PR1` added the twenty-seventh, `V1-S4-004-PR2` the twenty-eighth,
-`V1-S4-005-PR1` the twenty-ninth, and `V1-S4-005-PR2` the thirtieth.
+`V1-S4-005-PR1` the twenty-ninth, `V1-S4-005-PR2` the thirtieth, and
+`V1-S4-009-PR1` the thirty-first.
 
 One is the odd one in this layer: `tests/security/test_workload_policy.py`
 reads manifests rather than a record, applying

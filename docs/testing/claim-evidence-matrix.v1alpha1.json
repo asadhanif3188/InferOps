@@ -1,0 +1,2268 @@
+{
+  "$id": "https://inferops.io/testing/claim-evidence-matrix.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 claim and evidence matrix, v1alpha1",
+  "description": "Every claim InferOps intends to publish about V1, bound to the implementation behind it, the automated tests that would fail if it stopped being true, the continuous-integration gates that run them, the executed record that certifies it, the environment and immutable versions that record names, the evidence label that decides what the record may support, the limitation that travels with the claim, and its status. Where a claim also has a row in the claim and test matrix, this file names it and may never carry a stronger status than that row does. The rows that are not certified are the point: a public claim register listing only what worked would be an advertisement.",
+  "documentRef": "docs/testing/claim-evidence-matrix.md",
+  "readmeRef": "README.md",
+  "strategyRef": "docs/testing/test-strategy.v1alpha1.json",
+  "strategyDocumentRef": "docs/testing/test-strategy.md",
+  "matrixRef": "docs/testing/claim-test-matrix.md",
+  "inventoryRef": "docs/testing/test-inventory.v1alpha1.json",
+  "ciGateMatrixRef": "docs/testing/ci-gate-matrix.v1alpha1.json",
+  "certificationRef": "docs/testing/certification.md",
+  "providerContractRef": "docs/environment/local-cluster-provider-contract.v1alpha1.json",
+  "costMethodRef": "docs/cost/cost-method.v1alpha1.json",
+  "boundariesRef": "docs/architecture/project-boundaries.md",
+  "contributingRef": "CONTRIBUTING.md",
+  "evidenceRoot": "docs/proof",
+  "templateRoot": "docs/proof/templates",
+  "claimStatuses": [
+    {
+      "statusId": "certified",
+      "meaning": "An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states.",
+      "mayCiteEvidence": true,
+      "mayBePublishedAsACapability": true,
+      "rank": 3
+    },
+    {
+      "statusId": "planned",
+      "meaning": "V1 intends it and nothing has proven it. It may be published only as an intention, and it may cite no evidence record.",
+      "mayCiteEvidence": false,
+      "mayBePublishedAsACapability": false,
+      "rank": 2
+    },
+    {
+      "statusId": "deferred",
+      "meaning": "Out of V1 scope by an accepted decision. It may not be published as a capability at all, and it may cite no evidence record.",
+      "mayCiteEvidence": false,
+      "mayBePublishedAsACapability": false,
+      "rank": 1
+    },
+    {
+      "statusId": "not-claimed",
+      "meaning": "A reader would reasonably expect it and V1 states that it does not have it. It may cite the record that measured the absence, because an absence somebody measured is worth more than one nobody mentions.",
+      "mayCiteEvidence": true,
+      "mayBePublishedAsACapability": false,
+      "rank": 0
+    }
+  ],
+  "evidenceLabels": [
+    {
+      "labelId": "documented-unexecuted",
+      "meaning": "A statement in a document. Nothing ran.",
+      "ceiling": "none",
+      "maySupportRealBehaviour": false,
+      "reachedInV1": true
+    },
+    {
+      "labelId": "local-static",
+      "meaning": "A deterministic check over files in this repository. No network, no cluster, no model, no clock, no randomness.",
+      "ceiling": "C0",
+      "maySupportRealBehaviour": false,
+      "reachedInV1": true
+    },
+    {
+      "labelId": "mock",
+      "meaning": "A labelled mock provider that loads no model.",
+      "ceiling": "C1",
+      "maySupportRealBehaviour": false,
+      "reachedInV1": true
+    },
+    {
+      "labelId": "synthetic",
+      "meaning": "Generated inputs or a simulated environment rather than the real one.",
+      "ceiling": "C1",
+      "maySupportRealBehaviour": false,
+      "reachedInV1": true
+    },
+    {
+      "labelId": "estimated",
+      "meaning": "A calculation rather than a measurement.",
+      "ceiling": "none",
+      "maySupportRealBehaviour": false,
+      "reachedInV1": true
+    },
+    {
+      "labelId": "local-real-cpu",
+      "meaning": "The real component, on a contributor's own machine, on CPU, with versions and commands recorded.",
+      "ceiling": "C2",
+      "maySupportRealBehaviour": true,
+      "reachedInV1": true
+    },
+    {
+      "labelId": "cloud-real-cpu",
+      "meaning": "The real component on authorized cloud CPU capacity, with provider, region, node shape, budget, and verified cleanup recorded.",
+      "ceiling": "C2",
+      "maySupportRealBehaviour": true,
+      "reachedInV1": false
+    },
+    {
+      "labelId": "cloud-real-gpu",
+      "meaning": "The real component on authorized cloud GPU capacity, with the accelerator stack, allocation mode, budget window, and verified cleanup recorded.",
+      "ceiling": "C2",
+      "maySupportRealBehaviour": true,
+      "reachedInV1": false
+    },
+    {
+      "labelId": "production-experience",
+      "meaning": "Operating the thing in an organization's production. Part of the published evidence vocabulary and unreachable from this repository.",
+      "ceiling": "none",
+      "maySupportRealBehaviour": false,
+      "reachedInV1": false
+    }
+  ],
+  "areas": [
+    {
+      "areaId": "contracts-and-domain",
+      "name": "Contracts and domain"
+    },
+    {
+      "areaId": "scaffolding",
+      "name": "Scaffolding and the quick start"
+    },
+    {
+      "areaId": "serving-api",
+      "name": "The inference API and its adapters"
+    },
+    {
+      "areaId": "serving-local-real",
+      "name": "Real serving on a contributor's machine"
+    },
+    {
+      "areaId": "kubernetes",
+      "name": "Kubernetes deployment and lifecycle"
+    },
+    {
+      "areaId": "performance",
+      "name": "Load and performance"
+    },
+    {
+      "areaId": "reliability",
+      "name": "Failure and recovery"
+    },
+    {
+      "areaId": "telemetry",
+      "name": "Telemetry, dashboard, and alerts"
+    },
+    {
+      "areaId": "cost",
+      "name": "Cost"
+    },
+    {
+      "areaId": "security",
+      "name": "Security"
+    },
+    {
+      "areaId": "delivery",
+      "name": "Tests, continuous integration, and evidence"
+    }
+  ],
+  "claims": [
+    {
+      "claimId": "the-workload-contract-and-its-rejection-matrix-are-published",
+      "area": "contracts-and-domain",
+      "statement": "InferOps publishes a `WorkloadContract` `v1alpha1` schema with valid and invalid fixtures, versioning and compatibility rules, and a canonical rejection matrix.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "contracts/workload",
+        "tools/contract_validation"
+      ],
+      "automatedTestRefs": [
+        "tests/contracts/test_workload_contract_v1alpha1.py",
+        "tests/contracts/test_platform_contract_regression.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "expected-failures"
+      ],
+      "evidenceRefs": [
+        "docs/proof/contracts/v1-s0-004-pr1-validation.md",
+        "docs/proof/contracts/v1-s0-004-pr2-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
+      "limitation": "The schema and its fixtures are files. No runtime component consumes the contract, so publishing it establishes nothing about what a deployment does with one.",
+      "doesNotEstablish": "That any workload was ever deployed from a contract document.",
+      "readmeRefs": [
+        "docs/contracts/README.md",
+        "docs/contracts/workload-contract.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "an-invalid-workload-document-is-refused-with-a-published-reason",
+      "area": "contracts-and-domain",
+      "statement": "Every document the validator refuses is refused with a canonical error code, a stable rule identifier, and a field location that the contract document publishes.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "an-invalid-workload-document-is-refused-with-a-published-reason",
+        "the-rejection-interface-cannot-change-without-a-failing-build"
+      ],
+      "implementationRefs": [
+        "src/inferops/domain",
+        "tools/contract_validation"
+      ],
+      "automatedTestRefs": [
+        "tests/contracts/test_workload_contract_validation.py",
+        "tests/contracts/test_platform_contract_regression.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "expected-failures"
+      ],
+      "evidenceRefs": [
+        "docs/proof/contracts/v1-s0-004-pr2-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
+      "limitation": "A refusal is a property of the validator reading a file. The controls behind it in the default lane are fixtures compared against a committed record of which rule each must produce.",
+      "doesNotEstablish": "That anything admits, schedules, or refuses a workload in a running system.",
+      "readmeRefs": [
+        "docs/contracts/workload-contract.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-workload-domain-parses-a-contract-document-into-typed-objects",
+      "area": "contracts-and-domain",
+      "statement": "A contract document is parsed into typed domain objects with explicit contract-version handling, and seven semantic validation rules are applied to what parsing produced.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "src/inferops/domain"
+      ],
+      "automatedTestRefs": [
+        "tests/domain/test_workload_domain.py",
+        "tests/domain/test_workload_schema_agreement.py",
+        "tests/domain/test_workload_validation.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/domain/v1-s1-001-pr1-validation.md",
+        "docs/proof/domain/v1-s1-001-pr2-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/domain/v1-s1-001-pr1-validation.md",
+      "limitation": "Parsing, version handling, and the semantic rules are implemented and tested; what the domain model describes and nothing builds is the rendering of a deployment from what they produce. The record that carries the immutable versions is the first of the two cited: the second records no environment table of its own, and its results section disagrees with its own evidence block on how many tests ran.",
+      "doesNotEstablish": "That a deployment is derived from a parsed document. Nothing renders one.",
+      "readmeRefs": [
+        "docs/domain/workload-domain-model.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-platform-serves-a-workload-the-contract-describes",
+      "area": "contracts-and-domain",
+      "statement": "A workload described by a `WorkloadContract` document is served by the platform that document configures.",
+      "status": "planned",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [
+        "the-platform-serves-a-workload-the-contract-describes"
+      ],
+      "implementationRefs": [
+        "src/inferops/api",
+        "src/inferops/adapters"
+      ],
+      "automatedTestRefs": [
+        "tests/api/test_api_contract_regression.py",
+        "tests/realruntime/test_api_real_adapter_smoke.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "Every real run so far deployed the runtime from a feasibility manifest or from the Helm chart, not from a generated `WorkloadContract`. The mock layers show the API maps the call; they cannot show a document drove the deployment.",
+      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "readmeRefs": [
+        "docs/architecture/system-architecture.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "deployment-values-derive-only-from-a-validated-document",
+      "area": "contracts-and-domain",
+      "statement": "Deployment values are derived only from a document that has passed validation.",
+      "status": "planned",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "deployment-values-derive-only-from-a-validated-document"
+      ],
+      "implementationRefs": [
+        "src/inferops/domain"
+      ],
+      "automatedTestRefs": [
+        "tests/domain/test_workload_validation.py",
+        "tests/api/test_api_adapter_selection.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "Deployment rendering does not exist. The chart's values are written by an operator, not derived from a document.",
+      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "readmeRefs": [
+        "docs/architecture/resource-ownership.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-workload-scaffold-is-generated-without-overwriting-anything",
+      "area": "scaffolding",
+      "statement": "The scaffolding command renders a workload project for the mock and synchronous profiles and refuses to overwrite a file that already exists.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "src/inferops/scaffolding",
+        "tools/workload_scaffold"
+      ],
+      "automatedTestRefs": [
+        "tests/scaffolding/test_workload_scaffolder.py",
+        "tests/scaffolding/test_workload_template_rendering.py",
+        "tests/scaffolding/test_workload_template_parameters.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/scaffolding/v1-s1-006-pr2-validation.md",
+        "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md"
+      ],
+      "versionsRecordedIn": "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md",
+      "limitation": "The walkthrough was executed on one Windows host by an independent Codex reviewer rather than a human second engineer, and the record says so. The synchronous profile was generated and validated, never deployed. The change-validation record cited beside it states that it certifies no claim in the test matrix and moves no layer; what supports this row is the executed walkthrough, not that record.",
+      "doesNotEstablish": "That a generated workload runs anywhere. No generated workload is committed and none was deployed.",
+      "readmeRefs": [
+        "docs/scaffolding/workload-template.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout",
+      "area": "scaffolding",
+      "statement": "The published developer quick start was followed on a clean checkout and its mock workflow completed, and the authorization-gated real-runtime smoke it points at has been executed and recorded separately.",
+      "status": "certified",
+      "certificationLevel": "C1",
+      "evidenceLabel": "mock",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/developer-quick-start.md",
+        "tools/workload_scaffold"
+      ],
+      "automatedTestRefs": [
+        "tests/scaffolding/test_workload_scaffolder.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/quickstart/v1-s1-009-pr1-validation.md",
+        "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md",
+        "docs/proof/serving/v1-s1-real-runtime-closure.md"
+      ],
+      "versionsRecordedIn": "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md",
+      "limitation": "One Windows host, one executor, mock adapter throughout. The API was driven in process through ASGI and no network socket was opened. In the quick start's own record the real-runtime lane is seven skips, because the runtime settings were absent, and a skipped session is not a smoke run; the execution is the third record cited, which is a separate authorized run on a capable host.",
+      "doesNotEstablish": "That a clean clone reproduces the whole V1 journey. That is a separate claim and it is planned.",
+      "readmeRefs": [
+        "docs/developer-quick-start.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+      "area": "scaffolding",
+      "statement": "A reviewer starting from a clean clone reaches mock tests, model acquisition, local real inference, a Kubernetes deployment, telemetry, load, a failure experiment, and a scoped cleanup, with every manual step and the elapsed time recorded.",
+      "status": "planned",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/developer-quick-start.md",
+        "scripts/environment"
+      ],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "No clean-clone run of the whole journey has been executed or recorded. The pieces have each been run, at different times, on the same host, by the author.",
+      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "readmeRefs": [
+        "docs/developer-quick-start.md",
+        "docs/prerequisites.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection",
+      "area": "serving-api",
+      "statement": "The InferOps inference API implements five ASGI routes and selects the mock or the real serving adapter explicitly, never by falling back.",
+      "status": "certified",
+      "certificationLevel": "C1",
+      "evidenceLabel": "mock",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "src/inferops/api",
+        "src/inferops/adapters",
+        "tools/api_carrier"
+      ],
+      "automatedTestRefs": [
+        "tests/api/test_api_end_to_end_mock.py",
+        "tests/api/test_api_adapter_selection.py",
+        "tests/serving/test_inference_api_surface.py",
+        "tests/serving/test_inference_api_implementation_agreement.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s1-005-pr1-validation.md",
+        "docs/proof/serving/v1-s1-005-pr2-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s1-005-pr1-validation.md",
+      "limitation": "The published surface is five endpoints served in part. The distribution carries no server dependency; the repository's loopback-only HTTP carrier is tooling rather than a product.",
+      "doesNotEstablish": "That a production network server exists. None does, and nothing here is authenticated, authorized, or exposed to a network.",
+      "readmeRefs": [
+        "docs/serving/inference-api.md",
+        "docs/serving/inference-api-surface.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-mock-serving-path-identifies-itself-as-a-mock",
+      "area": "serving-api",
+      "statement": "The mock serving path declares its own kind and refuses a model identity that is not mock-labelled, so a mock result cannot be mistaken for a real one.",
+      "status": "planned",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "the-mock-serving-path-identifies-itself-as-a-mock"
+      ],
+      "implementationRefs": [
+        "src/inferops/adapters"
+      ],
+      "automatedTestRefs": [
+        "tests/adapters/test_mock_serving_adapter.py",
+        "tests/adapters/test_llama_server_agreement.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "The behaviour is implemented and exercised by the adapter and mock-integration layers. The claim and test matrix has not promoted it, and no evidence record binds it.",
+      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "readmeRefs": [
+        "docs/serving/mock-and-real-boundary.md",
+        "docs/serving/inference-api.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-mock-result-can-never-certify-real-runtime-behaviour",
+      "area": "serving-api",
+      "statement": "A mock, a simulation, or an estimate certifies at most `C1` however faithful it is, and the ceiling is enforced in the strategy data rather than asked for in review.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/testing/test-strategy.v1alpha1.json",
+        "pytest.ini"
+      ],
+      "automatedTestRefs": [
+        "tests/testing/test_test_strategy.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/testing/v1-s0-006-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/testing/v1-s0-006-pr1-validation.md",
+      "limitation": "The ceiling is enforced over the committed strategy data. It stops a layer certifying above its class; it cannot tell an honestly planned layer from one nobody will write.",
+      "doesNotEstablish": "That any particular record was classified correctly. A record still nominates its own class, and a reviewer still has to read it.",
+      "readmeRefs": [
+        "docs/serving/mock-and-real-boundary.md",
+        "docs/testing/certification.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-model-that-is-not-ready-is-a-canonical-error",
+      "area": "serving-api",
+      "statement": "A model that is not ready produces a canonical error rather than an unhandled failure or a fabricated answer.",
+      "status": "planned",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [
+        "a-model-that-is-not-ready-is-a-canonical-error"
+      ],
+      "implementationRefs": [
+        "src/inferops/adapters",
+        "src/inferops/api"
+      ],
+      "automatedTestRefs": [
+        "tests/adapters/test_llama_server_readiness.py",
+        "tests/api/test_api_error_contract.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "The unready-model experiment measured the real condition and found that no caller ever received `model-not-ready`: all eight completions came back `capability-unavailable` with condition `runtime-unreachable`. That is a measured fact about the deployed shape, and it is a reason this claim stays planned rather than a reason to promote it.",
+      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "readmeRefs": [
+        "docs/serving/inference-api.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "an-unreachable-runtime-is-a-canonical-error",
+      "area": "serving-api",
+      "statement": "A runtime that cannot be reached produces a canonical error rather than an unhandled failure.",
+      "status": "planned",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [
+        "an-unreachable-runtime-is-a-canonical-error"
+      ],
+      "implementationRefs": [
+        "src/inferops/adapters",
+        "src/inferops/api"
+      ],
+      "automatedTestRefs": [
+        "tests/adapters/test_llama_server_transport.py",
+        "tests/api/test_api_error_contract.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "The mock layers show the API maps the condition to the right error. They cannot show the condition occurs, or that the runtime produces it in the way the mock's author imagined.",
+      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "readmeRefs": [
+        "docs/serving/inference-api.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure",
+      "area": "serving-local-real",
+      "statement": "One serving runtime and one model revision were selected by a published feasibility procedure executed once against twelve pre-registered thresholds, eleven met and one recorded as failed.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/serving/feasibility-workflow.md",
+        "tools/runtime_configuration",
+        "tools/runtime_packaging"
+      ],
+      "automatedTestRefs": [
+        "tests/serving/test_runtime_configuration.py",
+        "tests/serving/test_runtime_packaging.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "limitation": "One host, one architecture, one point in time on 2026-08-24, single-request throughout. `T7` — a cumulative request counter — is a blocking threshold recorded as not met as written, and ADR 0002 accepted the pair with that exception. The runtime was started in the container desktop distribution's own single-node cluster and answered through cluster DNS and a Service, so this is a Kubernetes result; the record predates ADR 0011 and names that cluster descriptively rather than by provider identifier, and the provider here is read from its description rather than from a field the record carries.",
+      "doesNotEstablish": "Anything about throughput, concurrency, queueing, load, model quality, another host, or any GPU path. A genuinely page-cache-cold start was attempted and not measured.",
+      "readmeRefs": [
+        "docs/serving/feasibility-workflow.md",
+        "docs/serving/local-runtime-profile.md",
+        "docs/serving/local-runtime-package.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-model-artifact-matches-its-published-hash",
+      "area": "serving-local-real",
+      "statement": "The model artifact this project uses is acquired revision-pinned and resumable, and its bytes are compared against the published SHA-256 before anything loads it.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [
+        "the-model-artifact-matches-its-published-hash"
+      ],
+      "implementationRefs": [
+        "tools/model_acquisition"
+      ],
+      "automatedTestRefs": [
+        "tests/serving/test_model_acquisition.py"
+      ],
+      "recordedCoverageGaps": [
+        "the-model-artifact-matches-its-published-hash"
+      ],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+        "docs/proof/serving/v1-s1-real-runtime-closure.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s1-real-runtime-closure.md",
+      "limitation": "The downloader does not validate TLS certificates, so the published hash is the whole integrity argument for the transfer rather than a redundant check on it. Resumption after interruption is proved synthetically; the executed acquisition took 866 seconds over three bounded resume attempts on one host. Both records cited also ran in a cluster, and this row carries no provider because the comparison it is about happens in the download procedure on the host rather than inside one. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "doesNotEstablish": "That the published hash itself is trustworthy, or that the bytes came from who they appear to have come from. No provenance is verified and `DR-08` still carries that gap.",
+      "readmeRefs": [
+        "docs/serving/model-acquisition.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-selected-model-serves-a-real-completion-through-the-inferops-api",
+      "area": "serving-local-real",
+      "statement": "The pinned runtime loads the hash-verified model and the InferOps API returns a real completion from it, on a contributor's own machine, certified at `C2` by one authorized run.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/runtime_certification",
+        "tools/local_composition",
+        "src/inferops/adapters"
+      ],
+      "automatedTestRefs": [
+        "tests/serving/test_runtime_certification.py",
+        "tests/api/test_local_real_composition.py",
+        "tests/realruntime/test_llama_server_real_smoke.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s2-004-c2-certification-result.md",
+        "docs/proof/serving/v1-s1-real-runtime-closure.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s2-004-c2-certification-result.md",
+      "limitation": "One host, one run, one day on 2026-09-04, CPU only, loopback composition rather than Kubernetes, one fixed request. Runtime readiness was 285,828 ms against a pinned 300,000 ms budget — under five per cent of headroom — and the record says the budget is not comfortable. The request and correlation identifiers were not echoed back.",
+      "doesNotEstablish": "Any latency, throughput, or capacity figure; any variance, from a single run; that the readiness budget is adequate in general; and nothing about a cluster, because the in-cluster completion is a separate record with its own boundary.",
+      "readmeRefs": [
+        "docs/serving/real-runtime-certification.md",
+        "docs/serving/local-real-composition.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+      "area": "serving-local-real",
+      "statement": "A local serving baseline was executed against a fixture, a warm-up, and five thresholds registered before the run, and all thirty measured requests succeeded with every threshold met.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/serving_baseline",
+        "deploy/serving"
+      ],
+      "automatedTestRefs": [
+        "tests/serving/test_serving_baseline.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s2-005-local-baseline-experiment.md",
+        "docs/proof/serving/v1-s2-005-baseline-raw-results.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s2-005-baseline-raw-results.md",
+      "limitation": "One host, one day on 2026-09-03, CPU only, concurrency one, one request shape. The five thresholds were registered before the run; the fixture was not the one registered — the original two-message fixture was refused by the API on all thirty requests of the prior attempt and was rewritten to be answerable before this run, which the experiment record states in its own correction section. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load.",
+      "doesNotEstablish": "Concurrent serving, sustained load, GPU execution, or Kubernetes. The 30.9-second margin against the load budget must not be read as a reliable start-within-budget: the same host was 58.7 seconds over that budget in the prior attempt.",
+      "readmeRefs": [
+        "docs/serving/local-serving-baseline.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-model-lifecycle-states-were-measured-across-six-real-starts",
+      "area": "serving-local-real",
+      "statement": "The published model lifecycle ordering — liveness holding while the model loads, readiness false until it is ready, the artifact surviving a restart, and a cache hit in both arms — held in all three cold and warm comparisons measured.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/model_lifecycle"
+      ],
+      "automatedTestRefs": [
+        "tests/serving/test_model_lifecycle.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md",
+        "docs/proof/serving/v1-s2-007-cache-miss-observation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md",
+      "limitation": "Six starts on one host on 2026-09-03, CPU only. The cold arm was not cold — Windows offers no supported page-cache drop — and the host was memory-constrained throughout, with 904 to 1,725 MiB free of 16,057 MiB. The cache-miss observation cited beside it is from 2026-09-04 and establishes the miss classification and the refusal it triggers; it says nothing about the six starts or either arm.",
+      "doesNotEstablish": "Any cold-start effect. Warm was slower in every comparison, and the cold arm's own spread of 82,157 ms is larger than every within-comparison delta, so no such effect is claimed. These figures may not be cited for serving performance, capacity, cold-start cost, or model-load cost.",
+      "readmeRefs": [
+        "docs/serving/model-lifecycle.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes",
+      "area": "serving-local-real",
+      "statement": "The local runtime troubleshooting guide's symptoms, commands, and quoted figures are checked against the repository and the evidence records they come from, and every diagnostic in it was executed on one host.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/serving/local-runtime-troubleshooting.md"
+      ],
+      "automatedTestRefs": [
+        "tests/serving/test_local_runtime_troubleshooting.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "documentation"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s2-008-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s2-008-pr1-validation.md",
+      "limitation": "The authorization-gated recoveries are described rather than run, and the check establishes that a command and a figure match the repository rather than that following the guide fixes anything.",
+      "doesNotEstablish": "That an operator following it recovers. No operator other than the author has followed it.",
+      "readmeRefs": [
+        "docs/serving/local-runtime-troubleshooting.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating",
+      "area": "kubernetes",
+      "statement": "InferOps requires an explicitly selected, already existing local cluster, positively verifies the target before it mutates anything, and creates, resets, reconfigures, or deletes no cluster.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/environment/local-cluster-provider-contract.v1alpha1.json",
+        "scripts/environment",
+        "infra/terraform"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_local_cluster_provider_contract.py",
+        "tests/architecture/test_target_verification.py",
+        "tests/architecture/test_cluster_lifecycle_safety.py",
+        "tests/architecture/test_terraform_destroy_guard.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+        "docs/proof/architecture/v1-s3-010-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+      "limitation": "`docker-desktop` is the executed V1 reference provider, verified by binding the node container's published API-server port to the port the verified kubeconfig dials. `kind` is supported by a guard and is certified by none of this evidence. Two things the Docker Desktop identity check cannot refuse are accepted as `EX-06`.",
+      "doesNotEstablish": "That the guard cannot be defeated. It identifies a cluster by facts this project chose, and a deliberate collision would satisfy it; the `kind` guard's own name check has the same shape.",
+      "readmeRefs": [
+        "docs/environment/local-cluster-provider-contract.md",
+        "docs/environment/local-cluster.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+      "area": "kubernetes",
+      "statement": "The optional `kind` helper creates a local development cluster, runs a workload inside it, and removes it leaving no residue the verifier can find.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "kind",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [
+        "a-local-cluster-is-created-and-removed-without-residue"
+      ],
+      "implementationRefs": [
+        "scripts/environment",
+        "deploy/kind"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_cluster_lifecycle_safety.py"
+      ],
+      "recordedCoverageGaps": [
+        "a-local-cluster-is-created-and-removed-without-residue"
+      ],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md",
+      "limitation": "One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "doesNotEstablish": "Anything about inference, models, serving runtimes, throughput, capacity, ingress, load balancing, or any other operating system. No ingress controller and no `Service type=LoadBalancer` was exercised.",
+      "readmeRefs": [
+        "docs/environment/local-cluster.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-selected-runtime-serves-a-real-completion-in-a-cluster",
+      "area": "kubernetes",
+      "statement": "A Helm release installed into the operator's Kubernetes cluster loads the pinned model from a Terraform-owned claim and serves a real completion through the release's own Service.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [
+        "the-selected-runtime-serves-a-real-completion-in-a-cluster"
+      ],
+      "implementationRefs": [
+        "charts/inferops-llm",
+        "infra/terraform",
+        "tools/kubernetes_certification"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_kubernetes_certification.py",
+        "tests/architecture/test_helm_chart.py",
+        "tests/realruntime/test_api_real_adapter_smoke.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "helm-chart",
+        "terraform"
+      ],
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+        "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+      "limitation": "One provider, `docker-desktop`; one Windows host; one Docker Desktop installation; CPU; one replica of each tier; one moment on 2026-09-12. Docker Desktop chooses its own Kubernetes version and node image and InferOps pins neither. Three inference requests were sent and their timings were deliberately not recorded.",
+      "doesNotEstablish": "Anything about `kind`, another host, a GPU, or more than one replica. Three inference requests are not a measurement.",
+      "readmeRefs": [
+        "docs/environment/kubernetes-troubleshooting.md",
+        "docs/architecture/system-architecture.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "area": "kubernetes",
+      "statement": "`helm uninstall` removes every object the release owns and leaves the operator's cluster, its node, its storage class, and the Terraform-owned prerequisites intact.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [
+        "a-helm-release-installs-and-uninstalls-without-residue"
+      ],
+      "implementationRefs": [
+        "charts/inferops-llm",
+        "scripts/environment",
+        "infra/terraform"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_helm_chart.py",
+        "tests/architecture/test_terraform_prerequisites.py"
+      ],
+      "recordedCoverageGaps": [
+        "a-helm-release-installs-and-uninstalls-without-residue"
+      ],
+      "ciGateIds": [
+        "helm-chart",
+        "terraform"
+      ],
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s3-011-pr2-scoped-cleanup.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr2-scoped-cleanup.md",
+      "limitation": "One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "doesNotEstablish": "That every InferOps object anywhere is removed. A `V1-S0-003` namespace from 2026-09-02 survives, has no owning teardown in any committed workflow, and is recorded as a gap; what a Docker Desktop reset would reclaim, including a 1.83 GB seed image in the node's containerd, was not observed.",
+      "readmeRefs": [
+        "docs/environment/kubernetes-troubleshooting.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+      "area": "kubernetes",
+      "statement": "A deliberately broken release revision was detected by an init container's non-zero exit 6,425 ms after the fault, rolled back in 1,512 ms, and served a real completion 7,983 ms after detection.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [
+        "a-controlled-release-change-can-be-reversed-and-real-inference-restored"
+      ],
+      "implementationRefs": [
+        "tools/helm_upgrade_rollback",
+        "charts/inferops-llm",
+        "scripts/environment"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_helm_upgrade_rollback.py"
+      ],
+      "recordedCoverageGaps": [
+        "a-controlled-release-change-can-be-reversed-and-real-inference-restored"
+      ],
+      "ciGateIds": [
+        "helm-chart"
+      ],
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md",
+      "limitation": "One provider, one host, one moment, one replica of each tier, and one injected fault — an artifact byte-count mismatch. Five attempts were made and four failed for reasons the record lists. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "doesNotEstablish": "Anything about faults that were not injected, including a runtime that starts and answers wrongly; anything about a chart version change, a schema change, or a persisted-state migration; and nothing about behaviour under load, since caller impact was three readiness probes through one forward.",
+      "readmeRefs": [
+        "docs/environment/kubernetes-troubleshooting.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+      "area": "kubernetes",
+      "statement": "A deleted serving pod is replaced against the surviving Terraform-owned claim, with the artifact's byte count, SHA-256, inode, and mtime unchanged and no re-acquisition Job created.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim"
+      ],
+      "implementationRefs": [
+        "tools/kubernetes_pod_restart",
+        "charts/inferops-llm",
+        "infra/terraform"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_kubernetes_pod_restart.py"
+      ],
+      "recordedCoverageGaps": [
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim"
+      ],
+      "ciGateIds": [
+        "helm-chart",
+        "terraform"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md",
+      "limitation": "One provider, one host, one pod deleted once on 2026-09-12, with one replica. Four defects were found: two by running it, and two more by an independent review of the change afterwards, both of the second pair defects in a published figure rather than in a run that failed, which is why running it did not find them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "doesNotEstablish": "High availability. The replacement window is an outage for any caller reaching that Service, a deleted pod is not a lost node, the claim's durability across a Docker Desktop reset is recorded as unknown, and nothing here says what an upgrade would re-acquire.",
+      "readmeRefs": [
+        "docs/environment/kubernetes-troubleshooting.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "multi-replica-serving-is-certified",
+      "area": "kubernetes",
+      "statement": "Two real serving replicas are certified to serve real inference in a cluster.",
+      "status": "not-claimed",
+      "certificationLevel": null,
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/serving/kubernetes-multi-replica-certification.md"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_kubernetes_multi_replica_certification.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+      "limitation": "The refusal is the evidence. It is recorded in the paved-road record and it is not a weaker form of a certification.",
+      "doesNotEstablish": "Anything about two serving replicas. No multi-replica `C2` record exists and no multi-replica claim appears anywhere in this repository.",
+      "readmeRefs": [
+        "docs/architecture/system-architecture.md"
+      ],
+      "notClaimedReason": "The workflow was run on the reference host and refused at the capacity gate before it installed anything: 8,484,278,272 bytes of uncommitted cluster memory available against 8,657,043,456 required, a shortfall of about 165 MiB held by unrelated workloads that were not this project's to remove. The gate was not weakened and the replica count was not reduced to fit."
+    },
+    {
+      "claimId": "kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed",
+      "area": "kubernetes",
+      "statement": "A symptom-oriented Kubernetes troubleshooting guide covering cluster, scheduling, memory, storage, model load, probe, Service, telemetry, Helm, and Terraform faults, with four separated cleanup radii, is published and machine-checked against the repository.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/environment/kubernetes-troubleshooting.md",
+        "scripts/environment"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_kubernetes_troubleshooting.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "documentation"
+      ],
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s3-009-pr1-validation.md",
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+        "docs/proof/environment/v1-s3-011-pr2-scoped-cleanup.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s3-009-pr1-validation.md",
+      "limitation": "Every command is checked against the repository, which is a property of strings rather than of a cluster. The record that machine-checks the guide contacted no cluster, and states that when it was written the release half had never been run by anybody; `V1-S3-011` ran that half afterwards, on one Windows host, on `docker-desktop`, and those two records are cited beside it.",
+      "doesNotEstablish": "That an operator following it recovers from a fault the records did not produce.",
+      "readmeRefs": [
+        "docs/environment/kubernetes-troubleshooting.md",
+        "docs/prerequisites.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile",
+      "area": "performance",
+      "statement": "A versioned load profile with a warm-up, rising concurrency levels, duration and request bounds, a client deadline above the API's, and a fixed response classification generates repeatable load and a raw record set whose accounting is checked on read.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/llm_load",
+        "deploy/serving"
+      ],
+      "automatedTestRefs": [
+        "tests/serving/test_llm_load.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-004-pr1-validation.md",
+        "docs/proof/serving/v1-s4-003-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s4-004-pr1-validation.md",
+      "limitation": "The tool's own rehearsal is synthetic — an in-process stub whose latencies are a 20 ms sleep plus loopback and thread scheduling — and it says so. Its first real load was sent by the performance scenarios, on `docker-desktop`, on one host, twice, in one window.",
+      "doesNotEstablish": "Any figure that is capacity, a service-level objective, or a benchmark. A Service port-forward reaches one selected pod and adds its own cost to every latency.",
+      "readmeRefs": [
+        "docs/serving/llm-load-generation.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+      "area": "performance",
+      "statement": "The load profile ran twice against a release the workflow installs, all 366 requests answered HTTP 200, and for that one single-slot release and fixed prompt the observed degradation point is concurrency 2: completed requests stayed between 0.554 and 0.575 per second from concurrency 1 to 4 while median latency rose about twofold and fourfold.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/performance_scenarios",
+        "tools/performance_findings",
+        "scripts/environment"
+      ],
+      "automatedTestRefs": [
+        "tests/serving/test_performance_scenarios.py",
+        "tests/serving/test_performance_findings.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-004-pr1-validation.md",
+        "docs/proof/serving/v1-s4-004-pr2-performance-findings.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s4-004-pr1-validation.md",
+      "limitation": "One provider, one host, one release, one prompt, two repetitions in one window on 2026-09-14, published as a bounded local observation under ADR 0013. The node was shared with twelve other running pods, every latency includes a loopback port-forward, the prompt cache serves nearly all of every prompt after the first, and the repository was not committed when the run was made.",
+      "doesNotEstablish": "A capacity figure, a service-level objective, or a benchmark. 0.554 to 0.575 requests per second is not a rate anything supports. No tool judged saturation, and whether the processor limit throttled the runtime is unknown because throttling counters were not sampled.",
+      "readmeRefs": [
+        "docs/serving/performance-scenarios.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "sustained-throughput-and-capacity-under-load",
+      "area": "performance",
+      "statement": "InferOps sustains a stated throughput and capacity under load.",
+      "status": "deferred",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [
+        "sustained-throughput-and-capacity-under-load"
+      ],
+      "implementationRefs": [],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [
+        "sustained-throughput-and-capacity-under-load"
+      ],
+      "ciGateIds": [],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "Deferred out of V1 by the project boundaries and left deferred by ADR 0013, which narrowed the rule only far enough to allow a bounded observation of one declared, authorized local experiment. This is the portable claim, and it stays deferred. It is also a recorded coverage gap in the test inventory: the capacity layer declares no test paths and its marker is deselected by default, so no pytest module would notice if it were promoted.",
+      "doesNotEstablish": "Anything. It is written down rather than omitted so that publishing a capacity figure would mean deleting a deferral in public.",
+      "readmeRefs": [
+        "docs/architecture/project-boundaries.md",
+        "docs/serving/llm-load-generation.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+      "area": "reliability",
+      "statement": "One serving pod deleted by name mid-load produced a 31,960 ms caller-visible outage in which 40 of 41 dispatched requests were refused with `capability-unavailable`, the replacement reported itself Ready 33,665 ms after the delete, and no person intervened.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/inference_pod_recovery",
+        "scripts/environment",
+        "deploy/serving"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_inference_pod_recovery.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+      "limitation": "One provider, one host, one single-replica release, one load profile, one pod lost once on 2026-09-16, as a bounded observation under ADR 0013. One replica is the cause of the outage. The forward is in every latency, and the readiness sampler takes 1.7 to 5.4 seconds to answer.",
+      "doesNotEstablish": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: for the whole outage the deleted pod went on reporting `Ready: True` while the Service had no ready endpoint at all.",
+      "readmeRefs": [
+        "docs/serving/inference-pod-recovery.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+      "area": "reliability",
+      "statement": "A release starved of processor time started, bound its port, began loading the model and did not finish for 179,755 ms; four request surfaces were asked and readiness sampled from four places throughout; and dropping the overlay and upgrading returned it to a served completion.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/unready_model_recovery",
+        "scripts/environment",
+        "deploy/serving"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_unready_model_recovery.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ],
+      "versionsRecordedIn": "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+      "limitation": "One provider, one host, one single-replica release, one misconfiguration applied once on 2026-09-16, as a bounded observation under ADR 0013. The model did not become ready inside the registered observation window, which is not the same as proving it never would: the load was starved rather than failed. The recovery is an operator changing a value and issuing an upgrade.",
+      "doesNotEstablish": "An availability figure, a service-level objective, an error budget, or a recovery-time objective. It says nothing about a corrupt artifact or a wrong revision, which are different mechanisms the descriptor lists and rejects.",
+      "readmeRefs": [
+        "docs/serving/unready-model-recovery.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-api-emits-catalog-metrics-and-structured-request-records",
+      "area": "telemetry",
+      "statement": "The InferOps API emits eight catalog metrics and structured request records when its ASGI interface is exercised, each inside a declared series budget.",
+      "status": "certified",
+      "certificationLevel": "C1",
+      "evidenceLabel": "mock",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "src/inferops/telemetry",
+        "src/inferops/api"
+      ],
+      "automatedTestRefs": [
+        "tests/telemetry/test_api_telemetry_agreement.py",
+        "tests/api/test_api_observability.py",
+        "tests/api/test_api_health_models_and_metrics.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/telemetry/v1-s1-008-pr1-validation.md",
+      "limitation": "Repository-local, mock-backed evidence, and at the date of the record nothing collected any of it — no exporter, collector, store, dashboard, or alert was selected. A release-scoped collector has since scraped these metrics, which is a separate row with its own record. No component emits a span.",
+      "doesNotEstablish": "Anything about a deployed network service, a real selected-model response, a durable store, or a trace.",
+      "readmeRefs": [
+        "docs/telemetry/README.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label",
+      "area": "telemetry",
+      "statement": "A prompt, a response, a provider error body, and a secret have no permitted placement in the committed telemetry catalog at all, and a tenant identifier, a correlation identifier, and any unbounded or measured value are excluded from metric labels.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+      ],
+      "implementationRefs": [
+        "docs/telemetry/telemetry-catalog.v1alpha1.json",
+        "src/inferops/telemetry"
+      ],
+      "automatedTestRefs": [
+        "tests/telemetry/test_telemetry_catalog.py",
+        "tests/telemetry/test_api_telemetry_agreement.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
+        "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/telemetry/v1-s1-008-pr1-validation.md",
+      "limitation": "Content capture is disabled at the API's metric-declaration and structured-record sinks and has no policy that could enable it. The first record cited predates every one of those sinks — when it was written nothing in this repository emitted a metric, a log record, or a span, and it checks the committed catalog alone; the second is where the sinks arrive. The check is over committed data and the sinks that read it.",
+      "doesNotEstablish": "That nothing leaks anywhere. Whether a real run keeps a prompt, a response, or a secret out of a log and a metric is a separate claim, and it is planned.",
+      "readmeRefs": [
+        "docs/telemetry/redaction.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "no-prompt-response-or-secret-reaches-a-log-or-a-metric",
+      "area": "telemetry",
+      "statement": "In a real run, no prompt, response, or secret reaches a log or a metric.",
+      "status": "planned",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": true,
+      "provider": "not-applicable",
+      "environment": "capable-host",
+      "strategyClaimIds": [
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ],
+      "implementationRefs": [
+        "src/inferops/telemetry",
+        "docs/telemetry/redaction.md"
+      ],
+      "automatedTestRefs": [
+        "tests/api/test_api_observability.py",
+        "tests/api/test_api_request_validation.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "The mock-integration suite checks that forbidden content reaches neither sink. The claim requires `C2` and a real layer, and no record binds it.",
+      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "readmeRefs": [
+        "docs/telemetry/redaction.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+      "area": "telemetry",
+      "statement": "The collector the release installs discovered and scraped both InferOps scrape jobs on `docker-desktop`, and a real Prometheus evaluated every accepted correlation query against what it collected.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/telemetry_collection",
+        "tools/telemetry_correlation",
+        "deploy/prometheus",
+        "charts/inferops-llm"
+      ],
+      "automatedTestRefs": [
+        "tests/telemetry/test_kubernetes_telemetry_collection.py",
+        "tests/telemetry/test_telemetry_collection_verify.py",
+        "tests/telemetry/test_telemetry_correlation.py",
+        "tests/architecture/test_telemetry_collector.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "helm-chart"
+      ],
+      "evidenceRefs": [
+        "docs/proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md",
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+      "limitation": "One provider, one Windows host, one moment, one replica of each tier, sampled every five seconds. The collector's series are ephemeral and no durable store exists.",
+      "doesNotEstablish": "That telemetry would have detected the failure. It did not, in the sense that matters: the upgrade and rollback fault was detected through the Kubernetes API's init-container exit status rather than through a metric. `inferops_model_ready` was not emitted at all and `kube_pod_container_status_restarts_total` had no source.",
+      "readmeRefs": [
+        "docs/telemetry/README.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered",
+      "area": "telemetry",
+      "statement": "A real Prometheus parsed and evaluated all 30 panel expressions in nine states and refused none, and a real Grafana imported the generated JSON and rendered all 29 panels.",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/inference_dashboard",
+        "docs/telemetry/inference-operations-dashboard.v1alpha1.json",
+        "deploy/grafana"
+      ],
+      "automatedTestRefs": [
+        "tests/telemetry/test_inference_dashboard.py",
+        "tests/telemetry/test_inference_dashboard_validation.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/telemetry/v1-s4-002-pr2-dashboard-validation.md",
+        "docs/proof/telemetry/v1-s4-002-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/telemetry/v1-s4-002-pr2-dashboard-validation.md",
+      "limitation": "One provider, one host, one single-replica release, one Grafana version, one run of about twelve minutes on 2026-09-14. Grafana ran as a local container outside the cluster and no server runs it. Of 270 readings, 152 were a value, 81 empty and 37 zero.",
+      "doesNotEstablish": "A latency, throughput, or capacity figure. The quantile panels read bucket boundaries, so a panel reading of 2.41 seconds says 'between 1 and 2.5 seconds'. No dashboard server exists, and no alert appeared because none existed at the time.",
+      "readmeRefs": [
+        "docs/telemetry/README.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link",
+      "area": "telemetry",
+      "statement": "Six alerts are published, each with an owner, a severity, the condition, what a caller is experiencing, an evidence query repeated verbatim from an accepted correlation query, an operator action, a runbook link, a declared threshold basis, and what it will be quiet for; five conditions are deferred — three because nothing emits the signal, one because no chart here installs the exporter that would, and one because no error budget is decided anywhere in this project — and eight more are refused by a named rule.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/inference_alerts",
+        "docs/telemetry/inference-alerts.v1alpha1.json",
+        "deploy/prometheus",
+        "charts/inferops-llm"
+      ],
+      "automatedTestRefs": [
+        "tests/telemetry/test_inference_alerts.py",
+        "tests/architecture/test_inference_alert_rules.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "helm-chart"
+      ],
+      "evidenceRefs": [
+        "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+        "docs/proof/telemetry/v1-s4-008-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/telemetry/v1-s4-008-pr1-validation.md",
+      "limitation": "The scenario fixtures are synthetic — every number in them was written by hand — and the evaluator is not Prometheus. The pinned collector's own `promtool` loads both rendered rule files, which is a smaller thing than evaluating them. No threshold is a figure this project measured.",
+      "doesNotEstablish": "That any Prometheus has evaluated these rules, that any alert has fired outside this repository's own evaluator, or that anybody would be told if one did. Nothing routes: no receiver, no routing tree, nobody on the other end.",
+      "readmeRefs": [
+        "docs/telemetry/inference-alerts.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded",
+      "area": "telemetry",
+      "statement": "Five of the six alerts were replayed over the telemetry captured by three real `docker-desktop` experiments; one fired, over one capture, and every silence carries the reason it was silent.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/inference_alerts",
+        "docs/telemetry/inference-alerts.v1alpha1.json"
+      ],
+      "automatedTestRefs": [
+        "tests/telemetry/test_inference_alerts.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ],
+      "versionsRecordedIn": "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+      "limitation": "The captures are real, from `docker-desktop`, and they step at 15 seconds; the replay over them is this repository's own evaluator, which its record classifies `local-static` — so this row is a `C0` claim about a replay, not a `C2` claim about a runtime. The 60-second step belongs to the synthetic fixtures rather than to these captures. One alert missed the same run by one evaluation, and that is recorded rather than tuned away.",
+      "doesNotEstablish": "That any alert has been evaluated by a Prometheus, delivered, or acted on. No alerting rule existed during any of the three experiments.",
+      "readmeRefs": [
+        "docs/telemetry/inference-alerts.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "an-alert-reaches-somebody",
+      "area": "telemetry",
+      "statement": "An operator is notified when an InferOps alert fires.",
+      "status": "not-claimed",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "The gap is published in the alerts document rather than left to be discovered.",
+      "doesNotEstablish": "Anything. It is stated so that a reader does not infer a paging path from the existence of alert rules.",
+      "readmeRefs": [
+        "docs/telemetry/inference-alerts.md"
+      ],
+      "notClaimedReason": "No alert manager, receiver, routing tree, or notification path is committed or installed. The rules render into the chart and nothing evaluates or routes them."
+    },
+    {
+      "claimId": "a-cost-figure-cannot-be-presented-as-a-bill",
+      "area": "cost",
+      "statement": "Every amount declares its basis, no amount whose basis is not `actual` may carry the vocabulary or the reference of an invoice, every unit cost carries the count it was divided by and vanishes below a declared minimum, and a record's confidence is recomputed from its own inputs rather than read from a field its producer filled in.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "a-cost-figure-cannot-be-presented-as-a-bill"
+      ],
+      "implementationRefs": [
+        "docs/cost/cost-method.v1alpha1.json",
+        "tools/cost_calculation",
+        "tools/cost_baseline"
+      ],
+      "automatedTestRefs": [
+        "tests/cost/test_cost_method.py",
+        "tests/cost/test_cost_calculation.py",
+        "tests/cost/test_cost_baseline.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/cost/v1-s0-008-pr1-validation.md",
+        "docs/proof/cost/v1-s4-005-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/cost/v1-s4-005-pr1-validation.md",
+      "limitation": "The only rate card committed is synthetic and says so in its own contents, so every record it prices has confidence `none`. ADR 0014 narrows V1 to the estimated basis; the allocated basis stays specified and unreachable.",
+      "doesNotEstablish": "What anything costs. No provider account exists, no provider statement has ever been read, and no platform component computes a cost record.",
+      "readmeRefs": [
+        "docs/cost/README.md",
+        "docs/cost/worked-example.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-cost-method-was-applied-to-use-taken-from-a-measured-run",
+      "area": "cost",
+      "statement": "Two committed cost records derive their processor and memory use by tool from the committed samples of the `V1-S4-004` performance run rather than from a typed-in figure, and each regenerates from its own input and the committed method.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "tools/cost_baseline",
+        "tools/cost_calculation"
+      ],
+      "automatedTestRefs": [
+        "tests/cost/test_cost_baseline.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
+        "docs/proof/cost/v1-s4-005-pr2-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
+      "limitation": "What is certified here is a file-reading operation: that the use is taken from committed samples by tool rather than typed in, and that each record regenerates from its own input and the committed method. The samples themselves are local real CPU evidence measured on `docker-desktop` during `V1-S4-004` — one host, one release, one prompt, two runs — and that measurement is a different row with its own record; every price is from the synthetic rate card, so both cost records carry confidence `none` and certify nothing themselves. The window is a load span rather than an accounting hour, the collector is left on the unallocated line by a choice rather than a measurement, and the owner is declared rather than observed.",
+      "doesNotEstablish": "What anything costs. An estimate certifies nothing, the amounts are structurally valid and economically meaningless, and cost per million tokens is null because the sample of 9,516 tokens is below the declared minimum.",
+      "readmeRefs": [
+        "docs/cost/README.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "what-running-an-inference-workload-costs-on-a-provider",
+      "area": "cost",
+      "statement": "Running this inference workload costs a stated amount on a real provider.",
+      "status": "not-claimed",
+      "certificationLevel": null,
+      "evidenceLabel": "estimated",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "The arithmetic that would consume a real rate card is specified and tested against synthetic fixtures. Nothing else about the figure would be different; the price would.",
+      "doesNotEstablish": "Anything. It is stated so that the estimated records are not read as the thing they model.",
+      "readmeRefs": [
+        "docs/cost/README.md",
+        "docs/cost/worked-example.md"
+      ],
+      "notClaimedReason": "Nothing here has ever been paid for. It runs on a local single-node cluster on a contributor's own machine, no provider account exists, and the `actual` basis is therefore unreachable in V1."
+    },
+    {
+      "claimId": "a-security-control-cannot-claim-enforcement-it-does-not-have",
+      "area": "security",
+      "statement": "Every control in the committed security baseline derives its status from the verification it names, a control naming an automated test or a shell guard names one that exists, and no control claims to act inside a running system.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "a-security-control-cannot-claim-enforcement-it-does-not-have"
+      ],
+      "implementationRefs": [
+        "docs/security/security-baseline.v1alpha1.json"
+      ],
+      "automatedTestRefs": [
+        "tests/security/test_security_baseline.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/security/v1-s0-009-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/security/v1-s0-009-pr1-validation.md",
+      "limitation": "The cited record measured ten of thirty-two controls with no verification at all. The committed baseline has since grown to thirty-eight, of which six have no verification and nine are enforced by nothing automated; those three figures are properties of the data committed today rather than of the record, and the suite that reads it is what holds them. Twelve risks are carried rather than reduced, and ten of the twelve block production use.",
+      "doesNotEstablish": "That anything is defended. Nothing in this repository authenticates a caller, authorises a request, or admits a pod, and no assessment by an outside party has ever been performed.",
+      "readmeRefs": [
+        "docs/security/README.md",
+        "docs/security/deferred-risks.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-workload-manifest-that-omits-a-required-security-control-is-refused",
+      "area": "security",
+      "statement": "A committed manifest dropping a required workload security control is refused citing the rules it drops and no others, checked in both directions against nine fixtures that each drop one control.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+      ],
+      "implementationRefs": [
+        "tools/workload_policy",
+        "charts/inferops-llm"
+      ],
+      "automatedTestRefs": [
+        "tests/security/test_workload_policy.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "expected-failures",
+        "helm-chart"
+      ],
+      "evidenceRefs": [
+        "docs/proof/security/v1-s3-004-pr1-validation.md",
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
+      ],
+      "versionsRecordedIn": "docs/proof/security/v1-s3-004-pr1-validation.md",
+      "limitation": "The validator reads YAML. It holds no credential, contacts no cluster, and stops nothing being applied; no admission control applies any of its rules to a pod. When the first record cited was written no release had been installed and none could be, because no API image was published; `V1-S3-011` installed one from those renders afterwards, which is the second record cited, and no check in either reads a pod that resulted.",
+      "doesNotEstablish": "Anything about a running workload. `DR-04` and `DR-05` carry both gaps and `EX-05` records the first.",
+      "readmeRefs": [
+        "docs/security/README.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-rendered-network-policy-is-enforced-by-the-cluster",
+      "area": "security",
+      "statement": "The NetworkPolicy objects the chart renders restrict traffic in the clusters this project runs on.",
+      "status": "not-claimed",
+      "certificationLevel": null,
+      "evidenceLabel": "local-real-cpu",
+      "assertsRealBehaviour": true,
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "charts/inferops-llm"
+      ],
+      "automatedTestRefs": [
+        "tests/security/test_workload_policy.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [
+        "docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md"
+      ],
+      "versionsRecordedIn": "docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md",
+      "limitation": "One host, one day, on Docker Desktop's Kubernetes rather than the cluster ADR 0001 accepted, and the record says substituting a cluster is a substitution rather than an equivalence.",
+      "doesNotEstablish": "That the policies are wrong — they were never exercised. It moved `DR-04` from untested to tested-and-not-enforced, which is a worse position than the register recorded, and it is why that risk still blocks production use.",
+      "readmeRefs": [
+        "docs/security/deferred-risks.md"
+      ],
+      "notClaimedReason": "An executed experiment on 2026-09-06 applied a total-denial policy and nothing was refused: pod-to-pod by address, a DNS lookup, and a direct query to CoreDNS all succeeded, because the observed network plugin runs with no policy controller enabled. The four policy objects the chart renders are inert on that plugin."
+    },
+    {
+      "claimId": "the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published",
+      "area": "security",
+      "statement": "An image scanner and a dependency auditor were each run once by hand against the pinned runtime image and the committed lockfile at the committed severity threshold, and two CycloneDX bills of materials were published.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "scripts/security"
+      ],
+      "automatedTestRefs": [
+        "tests/security/test_security_baseline.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "dependency-and-image-scan",
+        "software-bill-of-materials"
+      ],
+      "evidenceRefs": [
+        "docs/proof/security/v1-s2-006-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/security/v1-s2-006-pr1-validation.md",
+      "limitation": "One host, one day on 2026-09-03, against one vulnerability database version. A rerun tomorrow can find something today's run did not, so a green result dates rather than proves. The dependency scan covers Python distributions only. No provenance is verified and `DR-08` still carries that gap. The record describes itself as local real evidence in the older vocabulary; the strategy assigns the `security-scan` layer the `local-static` class with a `C0` ceiling, and this row follows the strategy, because reading a pinned image is not running one.",
+      "doesNotEstablish": "That the repository is free of vulnerabilities. A scanner is a detector rather than a proof of absence: the full-severity counts were 622 medium and 59 low in the image and one medium in the lockfile.",
+      "readmeRefs": [
+        "docs/security/README.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "no-credential-or-model-artifact-enters-public-history",
+      "area": "security",
+      "statement": "No credential and no model artifact enters this repository's public history.",
+      "status": "planned",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "no-credential-or-model-artifact-enters-public-history"
+      ],
+      "implementationRefs": [
+        ".gitleaks.toml",
+        "scripts/security"
+      ],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [
+        "no-credential-or-model-artifact-enters-public-history"
+      ],
+      "ciGateIds": [
+        "secret-scan"
+      ],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "A secret scanner has run once by hand from its published container image, over 134 commits, and found no leaks; the gate that installs the pinned release archive has since passed on the service, but that run is observed rather than recorded. The claim stays planned on the strength of one run. It is a recorded coverage gap in the test inventory: no pytest module scans history for a credential, and the suite that reads the scanner configuration checks only that it is committed, parses, and exempts things that exist.",
+      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "readmeRefs": [
+        "docs/security/README.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-deployed-inferops-workload-is-defended",
+      "area": "security",
+      "statement": "A deployed InferOps workload is authenticated, authorized, isolated, and defended.",
+      "status": "not-claimed",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "local-kubernetes",
+      "strategyClaimIds": [],
+      "implementationRefs": [],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "The rendered pod-security settings are carried by workloads a release deployed. That is a property of the manifests, and no check reads a pod that resulted.",
+      "doesNotEstablish": "Anything. It is stated so that a published security baseline is not read as a defended system.",
+      "readmeRefs": [
+        "docs/security/deferred-risks.md",
+        "docs/security/README.md"
+      ],
+      "notClaimedReason": "Nothing in this repository authenticates a caller, authorises a request, or admits a pod. There is no admission control, no gateway, and no multi-tenancy. Twelve risks are carried rather than reduced and ten of them block production use."
+    },
+    {
+      "claimId": "published-documents-link-only-to-things-that-exist",
+      "area": "delivery",
+      "statement": "Every relative link in every committed Markdown document resolves from the directory of the file that contains it.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "published-documents-link-only-to-things-that-exist"
+      ],
+      "implementationRefs": [
+        "CONTRIBUTING.md"
+      ],
+      "automatedTestRefs": [
+        "tests/testing/test_document_links.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "documentation"
+      ],
+      "evidenceRefs": [
+        "docs/proof/testing/v1-s0-006-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/testing/v1-s0-006-pr1-validation.md",
+      "limitation": "It establishes that a path resolves, and nothing more. It runs over committed Markdown only, reads a target up to its first closing parenthesis, and skips fenced blocks, so a command sample is never mistaken for a link and a link inside one is never checked.",
+      "doesNotEstablish": "That the document at the other end says what the citing sentence claims it says. No check reads meaning, and this matrix is where that gap is worked by hand.",
+      "readmeRefs": [
+        "docs/testing/test-strategy.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-published-strategy-and-its-data-cannot-drift-apart",
+      "area": "delivery",
+      "statement": "The test strategy, the claim and test matrix, the test inventory, the gate matrix, this claim and evidence matrix, and the pytest configuration are compared with their committed data in both directions, so none can gain or lose an identifier without a failing build.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "the-published-strategy-and-its-data-cannot-drift-apart"
+      ],
+      "implementationRefs": [
+        "docs/testing/test-strategy.v1alpha1.json",
+        "docs/testing/test-inventory.v1alpha1.json",
+        "docs/testing/ci-gate-matrix.v1alpha1.json",
+        "docs/testing/claim-evidence-matrix.v1alpha1.json"
+      ],
+      "automatedTestRefs": [
+        "tests/testing/test_test_strategy.py",
+        "tests/testing/test_test_inventory.py",
+        "tests/testing/test_ci_gate_matrix.py",
+        "tests/testing/test_claim_evidence_matrix.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "documentation"
+      ],
+      "evidenceRefs": [
+        "docs/proof/testing/v1-s0-006-pr1-validation.md",
+        "docs/proof/testing/v1-s1-007-pr1-validation.md",
+        "docs/proof/testing/v1-s4-001-pr1-validation.md",
+        "docs/proof/testing/v1-s4-009-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/testing/v1-s4-009-pr1-validation.md",
+      "limitation": "It stops each document drifting from its data. The four records cited arrive in that order — the strategy, the inventory, the gate matrix, this register — because the first covers the strategy and its three documents alone and nothing else existed to compare when it was written. Most layers have no code behind them, and the suite cannot tell an honestly planned layer from one that will never be written.",
+      "doesNotEstablish": "That the tests the strategy describes exist, or that a claim's status is the right one.",
+      "readmeRefs": [
+        "docs/testing/test-strategy.md",
+        "docs/testing/claim-test-matrix.md",
+        "docs/testing/claim-evidence-matrix.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "the-default-lane-cannot-execute-a-real-model",
+      "area": "delivery",
+      "statement": "The default test lane downloads no model and reaches no cluster, because every marker belonging to a layer that needs one is deselected by the committed default marker expression and a test compares that expression with the strategy in both directions.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "the-default-lane-cannot-execute-a-real-model"
+      ],
+      "implementationRefs": [
+        "pytest.ini",
+        ".github/workflows/checks.yml"
+      ],
+      "automatedTestRefs": [
+        "tests/testing/test_test_strategy.py",
+        "tests/testing/test_infrastructure_gates.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "helm-chart",
+        "terraform"
+      ],
+      "evidenceRefs": [
+        "docs/proof/testing/v1-s0-006-pr1-validation.md",
+        "docs/proof/testing/v1-s4-001-pr2-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/testing/v1-s4-001-pr2-validation.md",
+      "limitation": "The marker expression is what the first record cited establishes, and when it was written no continuous-integration lane existed at all. Helm and Terraform arrived with the second: they run in the lane only as subcommands that read files, and a check refuses anything else it can recognise. The lane is cheap and reproducible rather than hermetic — five gates consume the network — and three lanes still run entirely by hand.",
+      "doesNotEstablish": "That an opt-in lane is safe, or that any lane runs anywhere but on one host by hand except the default one. No runner is labelled capable.",
+      "readmeRefs": [
+        "docs/testing/test-strategy.md",
+        "docs/testing/ci-gate-matrix.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "no-resource-in-the-architecture-has-two-owners",
+      "area": "delivery",
+      "statement": "Every resource in the committed ownership inventory has exactly one owner, and since the chart and the Terraform configuration exist the inventory is compared with them in both directions.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [
+        "no-resource-in-the-architecture-has-two-owners"
+      ],
+      "implementationRefs": [
+        "docs/architecture/resource-ownership.v1alpha1.json",
+        "charts/inferops-llm",
+        "infra/terraform"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_resource_ownership.py",
+        "tests/architecture/test_helm_chart.py",
+        "tests/architecture/test_terraform_prerequisites.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "expected-failures",
+        "helm-chart",
+        "terraform"
+      ],
+      "evidenceRefs": [
+        "docs/proof/architecture/v1-s0-005-pr1-validation.md",
+        "docs/proof/architecture/v1-s3-002-pr2-validation.md",
+        "docs/proof/architecture/v1-s3-010-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/architecture/v1-s3-010-pr1-validation.md",
+      "limitation": "When the first record cited was written there was no Terraform configuration and no Helm chart, so nothing compared the inventory to an implementation and its own dump counted nineteen planned rows against eight implemented. The committed inventory holds thirty-five resources today, thirty implemented, three deferred and two planned, and each implemented row cites the run that moved it. Deployment rendering is still not built.",
+      "doesNotEstablish": "That the ownership is correct, only that it is single and that the artifacts agree with it.",
+      "readmeRefs": [
+        "docs/architecture/resource-ownership.md",
+        "docs/architecture/system-architecture.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend",
+      "area": "delivery",
+      "statement": "Eleven gates are committed as one workflow and as a matrix that maps each to the claims it defends or to a recorded reason it defends none, compared with the workflow in both directions; nine of them have passed on the selected service.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        ".github/workflows/checks.yml",
+        "docs/testing/ci-gate-matrix.v1alpha1.json",
+        "tools/ci_gates"
+      ],
+      "automatedTestRefs": [
+        "tests/testing/test_ci_gate_matrix.py",
+        "tests/testing/test_infrastructure_gates.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "code-quality"
+      ],
+      "evidenceRefs": [
+        "docs/proof/testing/v1-s4-001-pr1-validation.md",
+        "docs/proof/testing/v1-s4-001-pr2-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/testing/v1-s4-001-pr2-validation.md",
+      "limitation": "The first record cited committed nine gates and no job had then executed on the service; its one hosted run failed three jobs. The second is where the count reaches eleven and where the nine are read back from the service's public API on 2026-09-13. No log or artifact from those runs is promoted into a record and the logs expire, the two infrastructure gates have never run there, and two gates are not deterministic because a vulnerability database moves daily.",
+      "doesNotEstablish": "Any certification ceiling above `C1`. Automating the mock lane leaves a mock at `C1`, and the claims about a real runtime and a real cluster take no support from this workflow at all.",
+      "readmeRefs": [
+        "docs/testing/ci-gate-matrix.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-cluster-or-real-runtime-lane-runs-in-continuous-integration",
+      "area": "delivery",
+      "statement": "A continuous-integration lane installs a release into a cluster or executes a real model.",
+      "status": "not-claimed",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "Normal continuous integration must not discover an ambient cluster and mutate it, and the lane is checked to be unable to reach one.",
+      "doesNotEstablish": "Anything. It is stated so that eleven green gates are not read as a real-runtime pipeline.",
+      "readmeRefs": [
+        "docs/testing/ci-gate-matrix.md"
+      ],
+      "notClaimedReason": "No workflow for a cluster lane is committed, only the rules one must satisfy. No runner is labelled capable and no hosted runner is authorized to hold the pinned model artifact; ADR 0005 D6 leaves that half open on purpose."
+    },
+    {
+      "claimId": "every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary",
+      "area": "delivery",
+      "statement": "Evidence that certifies a claim is committed under `docs/proof/`, carries classification, provenance, environment, method, results, limitations, and authorisation, and is produced by a reviewed change rather than by a job.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/proof",
+        "docs/proof/templates"
+      ],
+      "automatedTestRefs": [
+        "tests/telemetry/test_telemetry_catalog.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
+      "evidenceRefs": [
+        "docs/proof/telemetry/v1-s0-007-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
+      "limitation": "The cited record is from the day the four templates were published, when they had produced nothing. Two have produced records since — one experiment record and five raw-result records, counted by a suite from the declarations those records carry — and `environment` and `claim-evidence` still have none. This matrix does not change that: binding claims in a table is not the one-claim-per-record form the fourth template exists to enforce.",
+      "doesNotEstablish": "That a record classified itself correctly. The four templates share the same required headings, so nothing can tell a record that declares `raw-result` from one that should have declared `environment`.",
+      "readmeRefs": [
+        "docs/proof/README.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
+      "claimId": "a-v1-release-has-been-published",
+      "area": "delivery",
+      "statement": "InferOps has published a versioned V1 release.",
+      "status": "not-claimed",
+      "certificationLevel": null,
+      "evidenceLabel": "documented-unexecuted",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "Semantic versioning is an intention that begins when versioned releases begin.",
+      "doesNotEstablish": "Anything. It is stated so that a documented process is not read as a shipped artifact.",
+      "readmeRefs": [
+        "docs/releases.md",
+        "CHANGELOG.md"
+      ],
+      "notClaimedReason": "The release process is documented and no release has been executed. The changelog holds unreleased changes only."
+    },
+    {
+      "claimId": "inferops-is-a-portable-production-platform",
+      "area": "delivery",
+      "statement": "InferOps is a production-ready, portable inference platform someone can deploy for someone else.",
+      "status": "not-claimed",
+      "certificationLevel": null,
+      "evidenceLabel": "production-experience",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [],
+      "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [],
+      "evidenceRefs": [],
+      "versionsRecordedIn": null,
+      "limitation": "The certification levels define `C3` and `C4` so the ceiling is visible rather than implied. V1 claims nothing above `C2`, and `C4` is not reachable at all because there is no second project.",
+      "doesNotEstablish": "Anything. It is the sentence the rest of this matrix exists to make unnecessary to argue about.",
+      "readmeRefs": [
+        "docs/architecture/project-boundaries.md",
+        "docs/prerequisites.md"
+      ],
+      "notClaimedReason": "`production-experience` is unreachable from this repository: there is no organizational production to draw it from, and public-cloud execution is not production operation. Every executed result is one Windows host, one provider, CPU, one replica of each tier, started by hand under explicit authorization against a cluster the operator already owns."
+    }
+  ],
+  "nonClaimSurfaces": [
+    {
+      "path": "CONTRIBUTING.md",
+      "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+    },
+    {
+      "path": "docs/governance/repository.md",
+      "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+    },
+    {
+      "path": "docs/architecture/README.md",
+      "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+    },
+    {
+      "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+      "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+    },
+    {
+      "path": "SECURITY.md",
+      "reason": "Reporting expectations, and a recorded gap: no private channel is published. The gap belongs to the security rows above."
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "reason": "Interim conduct expectations, with a formal policy deferred."
+    },
+    {
+      "path": "LICENSE",
+      "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+    }
+  ],
+  "prohibitions": [
+    {
+      "ruleId": "a-row-may-not-outrank-the-claim-it-maps-to",
+      "statement": "A row mapped to a claim in the test strategy may not carry a stronger status than that claim's own. It may be more conservative; it may never be bolder.",
+      "controlledBy": "test_the_rank_rule_refuses_a_row_certified_above_a_planned_strategy_claim"
+    },
+    {
+      "ruleId": "a-real-behaviour-claim-needs-real-evidence",
+      "statement": "A certified row asserting real serving, performance, or reliability behaviour must carry an evidence label whose class may support real behaviour, and must cite at least one record.",
+      "controlledBy": "test_the_real_behaviour_rule_refuses_a_serving_claim_backed_by_a_mock"
+    },
+    {
+      "ruleId": "no-estimate-is-a-bill",
+      "statement": "No statement, limitation, or reason in this matrix describes an amount as billing, an invoice, a charge, or spend. The `actual` basis is unreachable in V1 and that vocabulary belongs to it alone.",
+      "controlledBy": "test_the_vocabulary_rule_refuses_an_estimate_described_as_a_bill"
+    },
+    {
+      "ruleId": "an-uncertified-claim-cites-no-record",
+      "statement": "A `planned` or `deferred` row cites no evidence record and carries no certification level. A `not-claimed` row may cite the record that measured the absence, and carries no level either.",
+      "controlledBy": "test_the_citation_rule_refuses_a_planned_row_that_cites_a_record"
+    },
+    {
+      "ruleId": "a-level-may-not-exceed-its-labels-ceiling",
+      "statement": "A row's certification level may not exceed the ceiling its evidence label carries.",
+      "controlledBy": "test_the_ceiling_rule_refuses_a_mock_certified_at_c2"
+    },
+    {
+      "ruleId": "every-readme-entry-point-is-governed",
+      "statement": "Every relative link target in the README's public entry-point table is either cited by a row or listed as a surface that makes no capability claim, with a reason. Neither list may name a path the other does.",
+      "controlledBy": "test_the_completeness_rule_refuses_an_ungoverned_readme_entry_point"
+    },
+    {
+      "ruleId": "a-real-record-names-its-provider",
+      "statement": "A row whose evidence is a real Kubernetes result declares the provider it ran on, and that provider is one the cluster provider contract publishes. Docker Desktop evidence certifies no other provider.",
+      "controlledBy": "test_the_provider_rule_refuses_a_real_kubernetes_row_with_no_provider"
+    },
+    {
+      "ruleId": "every-row-states-what-it-does-not-establish",
+      "statement": "Every row carries a limitation and a statement of what it does not establish, whatever its status.",
+      "controlledBy": "test_the_limitation_rule_refuses_a_row_that_states_none"
+    },
+    {
+      "ruleId": "a-recorded-coverage-gap-is-restated-rather-than-papered-over",
+      "statement": "A row mapping a claim the test inventory records as covered by no pytest module lists that gap and says so in its limitation. The modules such a row names are adjacent to the claim; citing them without the gap would let the register imply coverage the inventory denies.",
+      "controlledBy": "test_the_coverage_gap_rule_refuses_a_row_that_drops_a_recorded_gap"
+    },
+    {
+      "ruleId": "a-template-is-not-evidence",
+      "statement": "No row cites a path under docs/proof/templates/. A format is not a record.",
+      "controlledBy": "test_the_evidence_rule_refuses_a_template_cited_as_a_record"
+    }
+  ],
+  "limitations": [
+    "This matrix is maintained by hand and checked by a suite. The suite establishes that a row's references resolve, that its status is not stronger than the strategy's, that its level fits its label, and that every README entry point is governed. It cannot establish that a statement is true, that a limitation is complete, or that a record says what the row says it says. Those remain a reading, and the reading is the work.",
+    "Every real result cited here comes from one Windows host. Most are on the `docker-desktop` provider; the C2 certification, the serving baseline, and the lifecycle comparison are loopback compositions rather than Kubernetes results, the feasibility trial ran inside the container desktop distribution's own cluster before the provider contract existed, and the cluster smoke is the only `kind` result in the table. None of them generalizes to another provider, another host, a GPU, or more than one replica.",
+    "The bounded performance, recovery, and cost figures quoted in these rows are published under ADR 0013 and ADR 0014 as observations of one declared local experiment. They are not capacity, service-level objectives, availability figures, error budgets, recovery-time objectives, benchmarks, or costs.",
+    "The statuses here are the repository's own. No outside party has reviewed a claim against its evidence, and no maintainer roster exists to arbitrate a dispute — the same governance gap that stops an owner being named as a person.",
+    "The `claim-evidence` template under docs/proof/templates/ has still produced no record. This matrix binds claims to evidence in a table, which is a weaker form than the one-claim-per-record document that template exists to enforce, and it does not raise that count.",
+    "A row's automated tests name modules rather than test functions. A module that protects a claim may protect several, and nothing here says which function would fail first if the claim stopped being true. Five rows name modules for a claim the inventory records as covered by none; those rows carry the gap in `recordedCoverageGaps` and in their limitation, and the modules they name are adjacent to the claim rather than proof of it.",
+    "Nine of the eleven continuous-integration gates have passed on the selected service and no log from those runs is promoted into a record. Every other check cited here was run by hand, on one host, by the author.",
+    "Twenty-two of the fifty-eight rows were corrected before this register was merged, and fourteen of those shared one shape: the row stated the repository's state today while citing a record that froze an earlier one — the security control counts, the ownership row counts, the gate counts, the template counts, the strategy-drift scope, and the claim that a release had been installed among them. Each was fixed by citing the later record as well, or by restating the figure the cited record actually holds; four more were misreadings of a record, and four could not be fixed by re-citing at all. Nothing in the suite would have caught any of them: they are exactly what the first limitation above describes, and they were found by an independent reader opening all forty-six cited records and comparing them with the rows citing them.",
+    "The case study this matrix is meant to govern has not been written. Its claims are expected to be drawn from these rows; until it exists, `readmeRefs` is the only surface binding a row to published text, and a future case-study claim with no row here would be caught by nothing."
+  ]
+}
