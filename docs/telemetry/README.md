@@ -7,9 +7,11 @@ The InferOps API emits eight of the thirteen active metrics and writes the speci
 log records; the serving-runtime adapter, the contract validator, and every span do
 not. A release-scoped collector now exists and has scraped both InferOps jobs on the
 `docker-desktop` reference provider; its series are ephemeral, and no durable
-backend, dashboard server, or alerting path is selected. The dashboard exists as a
-checked definition, validated once on `docker-desktop` in a throwaway Grafana, with
+backend, dashboard server, or alert routing path is selected. The dashboard exists as
+a checked definition, validated once on `docker-desktop` in a throwaway Grafana, with
 [a thirty-second operator guide](inference-operations-dashboard-operator-guide.md).
+Six alerts exist the same way: a checked definition and two rendered rule files that
+nothing has loaded and nothing routes.
 
 This directory answers a question that is easy to answer by accumulation: which
 signals a system should emit. The failure mode is not emitting too few — it is
@@ -33,6 +35,8 @@ and never a key. None of those is a convention anybody has to remember.
 | [The inference operations dashboard](inference-operations-dashboard.md) | Twenty-nine panels for the V1 operational questions, what each shows when there is no number — zero, missing, not emitted, or not answerable — the nine rules that refuse a misleading panel, and the Grafana JSON generated from it |
 | [The operator guide](inference-operations-dashboard-operator-guide.md) | How to read the dashboard in thirty seconds, and for every panel the conclusion it cannot support, written from a real run in nine states |
 | [`inference-operations-dashboard.v1alpha1.json`](inference-operations-dashboard.v1alpha1.json) | The authoritative form of that document, held to the correlation query policy and evaluated against fixtures by [`tests/telemetry/`](../../tests/telemetry/) |
+| [The V1 alerts](inference-alerts.md) | Six alerts with an owner, a severity, a caller impact, an action and a runbook section; five conditions deferred because nothing emits the signal; eight alerts refused with the rule that refuses each; and the twelve rules an alert has to satisfy |
+| [`inference-alerts.v1alpha1.json`](inference-alerts.v1alpha1.json) | The authoritative form of that document, held to the correlation query policy and driven across eight scenarios by [`tests/telemetry/`](../../tests/telemetry/) |
 | [Correlated telemetry queries](telemetry-correlation-queries.md) | What an operator can ask of the release's own collector, and what a durable store would add: twenty-three questions, the vocabulary a query may use, the identity join, ten deliberately wrong queries and the rule that refuses each, and the six questions with no answer |
 | [`telemetry-correlation-queries.v1alpha1.json`](telemetry-correlation-queries.v1alpha1.json) | The authoritative form of that document, checked against the catalog and the collection record and evaluated against fixtures by [`tests/telemetry/`](../../tests/telemetry/) |
 | [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json) | The authoritative form of both, validated by [`tests/telemetry/`](../../tests/telemetry/) |
@@ -63,14 +67,17 @@ data.
 
 ```sh
 python -m pytest tests/telemetry -q
+python -m tools.inference_alerts --evaluate
 ```
 
-It reads only files in this repository and needs `pytest` alone.
+The first reads only files in this repository and needs `pytest` alone. The second
+drives every alert across every committed scenario and prints what fires.
 
 ## What is not here
 
-No exporter, no durable store, no dashboard server, and no alert. No tracer and no
-propagator. A logger and a redacting sink now exist, and they write to a stream:
+No exporter, no durable store, no dashboard server, and no path from a firing alert to
+a person: the alerts are defined and checked, and no receiver, routing tree,
+Alertmanager, or on-call rotation is selected. No tracer and no propagator. A logger and a redacting sink now exist, and they write to a stream:
 nothing collects that stream, and no retention window, shipper, or access rule is
 selected. The ownership inventory
 [records what is still missing](../architecture/resource-ownership.md) — a durable
@@ -94,7 +101,7 @@ evaluated every one against a real scrape — on one provider, on one host.
 [The query document](telemetry-correlation-queries.md) publishes what each returns,
 what an empty result would mean, and the four things that cannot be correlated at
 all. Nobody is told when an answer changes: there is a dashboard definition no server
-runs, and no alerting path.
+runs, and six alert definitions nothing evaluates and nothing routes.
 
 The one thing here that was measured rather than specified is the list of series the
 selected serving runtime exposes. That came from

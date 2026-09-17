@@ -10,6 +10,57 @@ once versioned releases begin.
 
 ### Added
 
+- **Six alerts, and the five conditions nobody may be alerted on.** A committed alert
+  record, two Prometheus rule files generated from it and compared byte for byte, an
+  alert policy in `tools/inference_alerts/`, eight scenario fixtures, and
+  [the document that publishes all of it](docs/telemetry/inference-alerts.md). Every
+  alert carries an owner, a severity, the condition, what a caller is experiencing,
+  what to do, and a link to the runbook section that says how — and two fields that
+  are less usual: where its threshold came from, and what it will be quiet for. Every
+  expression is first held to
+  [the correlation query policy](docs/telemetry/telemetry-correlation-queries.md), so
+  an alert cannot read a series nothing emits or a label the catalog bars, and twelve
+  further rules refuse an alert that would wake somebody for nothing or stay silent
+  for something. Each of the twelve is driven over a record corrupted to break it.
+
+  **No threshold is a figure this project measured.** Three are zero, two are derived
+  from values the chart declares — `api.probes.readiness.periodSeconds` and
+  `runtime.parallelSlots` — and one is half `api.requestTimeoutMs` at a declared
+  histogram bucket boundary. The slowest 95th percentile this project ever recorded,
+  **8 614 ms on one host**, appears only as a statement of what the latency threshold
+  is not, and a `thresholdBasis` of `measurement` is refused by the policy.
+
+  **Every `for` is at least as long as the range window its expression reads.** A
+  single scrape interval's worth of refusals keeps a five-minute rate above zero for
+  five minutes; an earlier draft of every rate alert used a shorter window and fired
+  for one minute of trouble. The `one-scrape-of-trouble` scenario and the rule
+  `alert-window-is-shorter-than-its-range-window` are what remain of that draft, and
+  the suite re-runs the alert with the short window to prove the fixture still bites.
+
+  **Five conditions are deferred because the signal does not exist**, and the absence
+  is measured rather than assumed: both failure experiments queried
+  `kube_pod_container_status_restarts_total` and `inferops_model_ready` against the
+  real collector and both returned no series at all. `inferops:model_ready_absent:platform_api`
+  read `1` for the whole of the unready-model run — in the broken state and the
+  corrected one alike — so an alert on it would fire on every installation for ever.
+  Eight more alerts are recorded as refused, each with the rule that refuses it, and
+  the suite splices each one into the record and fails if the policy accepts it.
+
+  **What the scenarios showed.** `InferOpsInferenceServingNothing` cannot fire for a
+  release that has never served: the success counter series does not exist until the
+  first success, so a rate over it is empty rather than zero — which is exactly what
+  [the unready-model run](docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md)
+  recorded. And when the platform-api scrape job discovers nothing, all five workload
+  alerts go silent at once, which is the whole reason the sixth exists.
+  [The validation](docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md) publishes
+  the full matrix.
+
+  **Nothing routes any of this.** No receiver, routing tree, Alertmanager, or on-call
+  rotation is selected; `ADR 0004` `D7` is amended to make the alert *definition* a
+  repository artifact and leaves all four with `telemetry-backend`, deferred. No
+  Prometheus in a cluster has loaded these rules, no alert has fired outside this
+  repository's own evaluator, and nobody has ever been told about one.
+
 - **A model that does not become ready, arranged on purpose.** A committed experiment
   descriptor, a one-setting values overlay, an operating script, and
   `python -m tools.unready_model_recovery` install a release whose serving runtime is

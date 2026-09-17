@@ -419,6 +419,11 @@ other is committed and immutable.
                    |  repository artifact, never   |
                    |  imported.                    |
                    |                               |
+                   |  Alert definitions: also a    |
+                   |  repository artifact. Nothing |
+                   |  has loaded them; nothing     |
+                   |  routes one.                  |
+                   |                               |
                    |  Durable store, dashboard     |
                    |  server, alert routing: NOT   |
                    |  SELECTED. telemetry-backend  |

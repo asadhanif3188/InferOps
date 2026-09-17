@@ -35,11 +35,12 @@
 > D7 is **decided in part**. Amended 2026-09-09: the telemetry collector is
 > Helm-owned and release-scoped, and a release has installed one. Amended
 > 2026-09-13: the dashboard *definition* is a repository artifact, and nothing
-> installs a dashboard server. An ingress controller, a load-balancer
-> implementation, a durable store, a dashboard server and an alert routing path
-> remain **not decided** — two resources still carry an `undecided` owner, are
-> recorded as unowned, and are deferred out of V1 rather than assigned to a tool for
-> tidiness.
+> installs a dashboard server. Amended 2026-09-17: the alert *definition* is a
+> repository artifact too, and nothing routes an alert. An ingress controller, a
+> load-balancer implementation, a durable store, a dashboard server and an alert
+> routing path remain **not decided** — two resources still carry an `undecided`
+> owner, are recorded as unowned, and are deferred out of V1 rather than assigned to
+> a tool for tidiness.
 
 ## Decision status
 
@@ -51,7 +52,7 @@
 | D4 | The model cache is a prerequisite, not a release resource | **Accepted** | The teardown finding in the feasibility record: a cache inside the release's own scope was destroyed and cost a full re-download |
 | D5 | The trust boundary map | **Accepted as a map only** | Every control it names is unimplemented. It records where controls would go and who owns deciding them |
 | D6 | Two serving capabilities, and no gateway or deep-serving work | **Accepted** as a scope rule; **amended 2026-09-14** so that a bounded local performance observation may be published and a portable capacity, SLO, or benchmark figure still may not ([ADR 0013](ADR-0013-bounded-local-performance-observations.md)) | Review only, plus the record checks ADR 0013 D3 names |
-| D7 | Who owns a telemetry collector, a dashboard, and an ingress or load-balancer implementation | **Amended 2026-09-09 and 2026-09-13.** The collector is Helm-owned and release-scoped; the dashboard definition is a repository artifact; a dashboard server, alert routing, ingress and load balancing remain not decided | The Sprint 3 review, for the collector. For the dashboard, `V1-S4-002` required one, and a first panel built without a decision would have made the rendering tool its owner by default |
+| D7 | Who owns a telemetry collector, a dashboard, and an ingress or load-balancer implementation | **Amended 2026-09-09, 2026-09-13 and 2026-09-17.** The collector is Helm-owned and release-scoped; the dashboard definition and the alert definition are repository artifacts; a dashboard server, alert routing, ingress and load balancing remain not decided | The Sprint 3 review, for the collector. For the dashboard, `V1-S4-002` required one, and a first panel built without a decision would have made the rendering tool its owner by default. For the alerts, `V1-S4-008` required them, and the same argument applies to the tool that would have rendered the first rule |
 
 ## Context
 
@@ -298,8 +299,9 @@ limitation and it is stated rather than designed around.
 - dashboards and an alert routing path — a dashboard needs somebody to read it,
   and an alert needs a receiver, a routing tree, and somebody on the other end;
   none of the three is chosen, and `telemetry-backend` carries that (narrowed
-  again by the 2026-09-13 amendment below, which assigns the dashboard definition
-  and leaves a dashboard server and alert routing here);
+  again by the 2026-09-13 amendment below, which assigns the dashboard definition,
+  and by the 2026-09-17 one, which assigns the alert definition; a dashboard
+  server and alert routing stay here);
 - an ingress controller and a load-balancer implementation — the accepted local
   cluster ships neither, and installing them was recorded as an open cost.
 
@@ -346,6 +348,42 @@ runs, and how it is exposed and authenticated; and alert routing. No chart, no
 Terraform module, and no script in this repository installs a dashboard server or
 imports the dashboard, and nothing may start doing so without deciding those
 first.
+
+### Amended 2026-09-17: the alert definition is a repository artifact
+
+`V1-S4-008` requires a V1 alert set, and the first alerting rule is the moment the
+2026-09-13 amendment was written for: the question is answered here rather than in
+a chart, and rather than by whichever template happened to render the first rule.
+
+**Decided.** The alerts — the expression each one is asked in, the window it holds
+across, where its threshold comes from, who owns it, what a caller is experiencing,
+what to do, and the runbook section that says how — are a **committed record**, and
+a Prometheus alerting-rule file per profile is generated from it and compared
+against it. Both are owned by the repository and change by a reviewed pull request.
+`inference-alert-definitions` in the inventory carries that ownership. The record is
+[`inference-alerts.v1alpha1.json`](../../telemetry/inference-alerts.v1alpha1.json).
+
+Why a repository artifact rather than a release resource, again. Rendering the
+rules into the collector's ConfigMap would have presupposed that the release's own
+collector is where they belong, and that is a decision about who evaluates an alert
+and who receives it — the two things `telemetry-backend` exists to hold. A file
+whose every expression is held to the correlation query policy is usable by whatever
+evaluates it, and costs nothing to move into a release later.
+
+**Two files, one per profile**, which is the one place this differs from the
+dashboard. One alert reads a recorded series the chart renders only under the real
+profile, and a single file would have carried into a mock release an expression that
+can only ever be empty — an alert that never fires, which is the one failure an alert
+file must not have.
+
+**Still not decided**, and `telemetry-backend` is narrowed again to carry exactly
+this: which Alertmanager or equivalent receives a firing alert, who owns it, what the
+routing tree is, and who is on the other end of it; and the dashboard server. No
+chart, no Terraform module, and no script in this repository loads these rules into a
+collector, installs a receiver, or routes anything, and nothing may start doing so
+without deciding those first. `implemented` on the new row means the definition
+exists and is checked. It does not mean an alert has ever fired, and nobody has ever
+been told about one.
 
 ## Consequences
 

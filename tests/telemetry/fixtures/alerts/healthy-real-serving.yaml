@@ -1,0 +1,103 @@
+# One release serving on the real profile. Nothing fires.
+#
+# Every series below was written by hand, from the shape a recorded run had. Nothing
+# here was scraped and no value here was measured. The label sets are copied from the
+# relabelling the real profile's committed render performs, so an alert that
+# behaves correctly against this fixture is an alert written against the labels that
+# configuration would attach -- and against nothing that has ever existed.
+#
+# Samples sit on a 60-second grid from 0 to 2400 seconds. A release scrapes and
+# evaluates rules every 30 seconds, so this grid is deliberately coarser than a
+# collector's: what a result over it establishes is that a condition held at the
+# instants written here, and not at every instant a collector would have asked at.
+# `firstEvaluationInstant` is the first instant at which every five-minute range
+# window inside an alert expression is full; before it, a rate reads a window that
+# starts before the fixture does.
+#
+# This is the baseline every other scenario is a departure from, and it is what
+# decides whether an alert is quiet when nothing is wrong.
+scenarioId: healthy-real-serving
+profile: real
+stepSeconds: 60
+firstEvaluationInstant: 300
+evaluationInstant: 2400
+applyCollectorRelabel: true
+description: >-
+  One API replica and one serving-runtime replica, every target answering, thirty
+  completions a minute all served, one readiness refusal every five minutes, and a
+  runtime deferring nothing. Every alert is silent.
+
+labelSets:
+  apiA: &apiA
+    job: inferops-inferops-llm-platform-api
+    k8s_namespace: inferops-platform
+    k8s_component: platform-api
+    instance: inferops-inferops-llm-api-7c9f4b8d6-h2m5x
+  runtimeOld: &runtimeOld
+    job: inferops-inferops-llm-serving-runtime
+    k8s_namespace: inferops-platform
+    k8s_component: serving-runtime
+    instance: inferops-inferops-llm-runtime-56546cfdbd-jg7jl
+    deployment_environment: dev
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_runtime_id: llama-cpp-server
+  runtimeNew: &runtimeNew
+    job: inferops-inferops-llm-serving-runtime
+    k8s_namespace: inferops-platform
+    k8s_component: serving-runtime
+    instance: inferops-inferops-llm-runtime-56546cfdbd-kgs9c
+    deployment_environment: dev
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_runtime_id: llama-cpp-server
+  identity: &identity
+    service_version: 0.1.0
+    inferops_capability_id: inferops-native-serving
+    inferops_release_id: inferops
+    deployment_environment: dev
+    inferops_adapter_kind: real
+    inferops_model_id: qwen3-1-7b-q8-0
+    inferops_model_revision: 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+    inferops_runtime_id: llama-cpp-server
+    inferops_runtime_image_digest: sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  work: &work
+    inferops_workload_id: support-assistant
+    inferops_model_id: qwen3-1-7b-q8-0
+
+series:
+  # -- what Prometheus synthesises for every target it scrapes ----------------
+  - {name: up, labels: {<<: *apiA}, points: [[0, 1], [60, 1], [120, 1], [180, 1], [240, 1], [300, 1], [360, 1], [420, 1], [480, 1], [540, 1], [600, 1], [660, 1], [720, 1], [780, 1], [840, 1], [900, 1], [960, 1], [1020, 1], [1080, 1], [1140, 1], [1200, 1], [1260, 1], [1320, 1], [1380, 1], [1440, 1], [1500, 1], [1560, 1], [1620, 1], [1680, 1], [1740, 1], [1800, 1], [1860, 1], [1920, 1], [1980, 1], [2040, 1], [2100, 1], [2160, 1], [2220, 1], [2280, 1], [2340, 1], [2400, 1]]}
+  - {name: up, labels: {<<: *runtimeOld}, points: [[0, 1], [60, 1], [120, 1], [180, 1], [240, 1], [300, 1], [360, 1], [420, 1], [480, 1], [540, 1], [600, 1], [660, 1], [720, 1], [780, 1], [840, 1], [900, 1], [960, 1], [1020, 1], [1080, 1], [1140, 1], [1200, 1], [1260, 1], [1320, 1], [1380, 1], [1440, 1], [1500, 1], [1560, 1], [1620, 1], [1680, 1], [1740, 1], [1800, 1], [1860, 1], [1920, 1], [1980, 1], [2040, 1], [2100, 1], [2160, 1], [2220, 1], [2280, 1], [2340, 1], [2400, 1]]}
+
+  # -- identity: one series per API process, always 1 -------------------------
+  - {name: inferops_build_info, labels: {<<: *apiA, <<: *identity}, points: [[0, 1], [60, 1], [120, 1], [180, 1], [240, 1], [300, 1], [360, 1], [420, 1], [480, 1], [540, 1], [600, 1], [660, 1], [720, 1], [780, 1], [840, 1], [900, 1], [960, 1], [1020, 1], [1080, 1], [1140, 1], [1200, 1], [1260, 1], [1320, 1], [1380, 1], [1440, 1], [1500, 1], [1560, 1], [1620, 1], [1680, 1], [1740, 1], [1800, 1], [1860, 1], [1920, 1], [1980, 1], [2040, 1], [2100, 1], [2160, 1], [2220, 1], [2280, 1], [2340, 1], [2400, 1]]}
+
+  # -- throughput: thirty completions a minute, every one of them served ------
+  - {name: inferops_inference_requests_total, labels: {<<: *apiA, <<: *work, inferops_outcome: success}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+
+  # -- readiness: one refusal every five minutes, which is what a rollout or a
+  #    momentarily busy adapter produces. 1/300 s is 0.0033/s, well under the
+  #    0.05/s the readiness alert asks for, and it is here rather than absent so
+  #    that the alert is held to a system with a fault rate rather than to an
+  #    idealised one.
+  - {name: inferops_readiness_check_failures_total, labels: {<<: *apiA, inferops_workload_id: support-assistant, inferops_component: serving-adapter}, points: [[0, 0], [60, 0], [120, 0], [180, 0], [240, 0], [300, 1], [360, 1], [420, 1], [480, 1], [540, 1], [600, 2], [660, 2], [720, 2], [780, 2], [840, 2], [900, 3], [960, 3], [1020, 3], [1080, 3], [1140, 3], [1200, 4], [1260, 4], [1320, 4], [1380, 4], [1440, 4], [1500, 5], [1560, 5], [1620, 5], [1680, 5], [1740, 5], [1800, 6], [1860, 6], [1920, 6], [1980, 6], [2040, 6], [2100, 7], [2160, 7], [2220, 7], [2280, 7], [2340, 7], [2400, 8]]}
+
+  # -- latency: every request in the (1, 2.5] bucket --------------------------
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "0.5"}, points: [[0, 0], [60, 0], [120, 0], [180, 0], [240, 0], [300, 0], [360, 0], [420, 0], [480, 0], [540, 0], [600, 0], [660, 0], [720, 0], [780, 0], [840, 0], [900, 0], [960, 0], [1020, 0], [1080, 0], [1140, 0], [1200, 0], [1260, 0], [1320, 0], [1380, 0], [1440, 0], [1500, 0], [1560, 0], [1620, 0], [1680, 0], [1740, 0], [1800, 0], [1860, 0], [1920, 0], [1980, 0], [2040, 0], [2100, 0], [2160, 0], [2220, 0], [2280, 0], [2340, 0], [2400, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "1"}, points: [[0, 0], [60, 0], [120, 0], [180, 0], [240, 0], [300, 0], [360, 0], [420, 0], [480, 0], [540, 0], [600, 0], [660, 0], [720, 0], [780, 0], [840, 0], [900, 0], [960, 0], [1020, 0], [1080, 0], [1140, 0], [1200, 0], [1260, 0], [1320, 0], [1380, 0], [1440, 0], [1500, 0], [1560, 0], [1620, 0], [1680, 0], [1740, 0], [1800, 0], [1860, 0], [1920, 0], [1980, 0], [2040, 0], [2100, 0], [2160, 0], [2220, 0], [2280, 0], [2340, 0], [2400, 0]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "2.5"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "5"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "10"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "20"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "30"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "45"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "60"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "120"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "300"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+  - {name: inferops_inference_request_duration_seconds_bucket, labels: {<<: *apiA, le: "+Inf"}, points: [[0, 0], [60, 30], [120, 60], [180, 90], [240, 120], [300, 150], [360, 180], [420, 210], [480, 240], [540, 270], [600, 300], [660, 330], [720, 360], [780, 390], [840, 420], [900, 450], [960, 480], [1020, 510], [1080, 540], [1140, 570], [1200, 600], [1260, 630], [1320, 660], [1380, 690], [1440, 720], [1500, 750], [1560, 780], [1620, 810], [1680, 840], [1740, 870], [1800, 900], [1860, 930], [1920, 960], [1980, 990], [2040, 1020], [2100, 1050], [2160, 1080], [2220, 1110], [2280, 1140], [2340, 1170], [2400, 1200]]}
+
+  # -- in flight, and what llama-server publishes about its own queue ---------
+  - {name: inferops_inference_requests_in_flight, labels: {<<: *apiA, <<: *work}, points: [[0, 1], [60, 1], [120, 1], [180, 1], [240, 1], [300, 1], [360, 1], [420, 1], [480, 1], [540, 1], [600, 1], [660, 1], [720, 1], [780, 1], [840, 1], [900, 1], [960, 1], [1020, 1], [1080, 1], [1140, 1], [1200, 1], [1260, 1], [1320, 1], [1380, 1], [1440, 1], [1500, 1], [1560, 1], [1620, 1], [1680, 1], [1740, 1], [1800, 1], [1860, 1], [1920, 1], [1980, 1], [2040, 1], [2100, 1], [2160, 1], [2220, 1], [2280, 1], [2340, 1], [2400, 1]]}
+  - {name: llamacpp:requests_processing, labels: {<<: *runtimeOld}, points: [[0, 1], [60, 1], [120, 1], [180, 1], [240, 1], [300, 1], [360, 1], [420, 1], [480, 1], [540, 1], [600, 1], [660, 1], [720, 1], [780, 1], [840, 1], [900, 1], [960, 1], [1020, 1], [1080, 1], [1140, 1], [1200, 1], [1260, 1], [1320, 1], [1380, 1], [1440, 1], [1500, 1], [1560, 1], [1620, 1], [1680, 1], [1740, 1], [1800, 1], [1860, 1], [1920, 1], [1980, 1], [2040, 1], [2100, 1], [2160, 1], [2220, 1], [2280, 1], [2340, 1], [2400, 1]]}
+  - {name: llamacpp:requests_deferred, labels: {<<: *runtimeOld}, points: [[0, 0], [60, 0], [120, 0], [180, 0], [240, 0], [300, 0], [360, 0], [420, 0], [480, 0], [540, 0], [600, 0], [660, 0], [720, 0], [780, 0], [840, 0], [900, 0], [960, 0], [1020, 0], [1080, 0], [1140, 0], [1200, 0], [1260, 0], [1320, 0], [1380, 0], [1440, 0], [1500, 0], [1560, 0], [1620, 0], [1680, 0], [1740, 0], [1800, 0], [1860, 0], [1920, 0], [1980, 0], [2040, 0], [2100, 0], [2160, 0], [2220, 0], [2280, 0], [2340, 0], [2400, 0]]}
