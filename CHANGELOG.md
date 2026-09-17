@@ -10,6 +10,71 @@ once versioned releases begin.
 
 ### Added
 
+- **One page for "what has this project actually proven?"**
+  [A generated V1 proof dashboard](docs/proof/dashboard.md), the generator behind it
+  in [`tools/proof_dashboard/`](tools/proof_dashboard/), and
+  [a suite that regenerates it and refuses a page the register did not produce](tests/testing/test_proof_dashboard.py).
+  It is derived from
+  [the claim and evidence register](docs/testing/claim-evidence-matrix.v1alpha1.json)
+  rather than written beside it: every status, certification level, evidence label,
+  provider, environment, record link, and limitation on it is read from the register
+  at render time, and every count is computed from its rows. There is no field in the
+  generator that a capability count could be typed into, which is the only reason a
+  page like this can be trusted.
+
+  **It is complete about what is missing, and selective about what is not.** Eleven
+  capability groups — real serving, Kubernetes deployment, model integrity, pod
+  recovery, rollback, telemetry, performance, cost, the security boundary,
+  multi-replica serving, and how all of them are governed — show 41 claims with the
+  four things a summary usually loses kept beside each one. The table after them is
+  the one that matters: **all 17 claims V1 does not certify**, derived rather than
+  listed, so a claim that stops being certified joins it without anybody adding it. A
+  page that can only be complete about its successes is an advertisement.
+
+  **An absence is never given a colour.** No group carries a status of its own, because
+  a group holding one certified row and one measured absence is not one status.
+  Multi-replica serving is a heading with a single `not-claimed` row under it — the
+  exact promotion a dashboard makes by accident, and the one a test now watches.
+
+  **Eleven rules, each driven over a register corrupted to break it**, applied before
+  a page is rendered at all: a group may name only claims the register holds, and no
+  claim twice; a certified row cites a committed record that exists, is not a template,
+  and lives under `docs/proof/`, and a planned or deferred one cites none; every status
+  and every evidence label shown is one the register defines; a level never exceeds its
+  evidence label's ceiling; a certified row asserting real behaviour rests on a label
+  whose class may support one, so a mock cannot appear behind a serving sentence; a
+  certified in-cluster result names its provider, so Docker Desktop evidence cannot be
+  read as `kind`; and no value printed into a table cell carries a line break, which
+  would end the row and take the rest of the value out of the table. A finding renders
+  nothing — `--page`, `--check`, and `--write` each refuse, because a published page is
+  exactly where a broken rule stops being visible.
+
+  **An independent review found two of those eleven missing, four of one rule's
+  branches unwatched, and two hand-written counts wrong.** The page itself held: every
+  number on it was recomputed from the register and every one matched. The prose around
+  it did not. `docs/testing/test-inventory.md` said eighteen `architecture-inventory`
+  modules against nineteen and thirty-two `documentation` modules against thirty-three
+  — the second of those this change's own off-by-one, inherited by adding one to a
+  count that was already wrong. That document narrates its own drift six times, each
+  time recording "it is not machine-checked" as the reason; every layer's count is now
+  recomputed from the data by a test, as is the register document's count of the
+  surfaces that claim nothing. The review also caught the repository claiming that
+  `--page` prints what the committed file holds when on Windows it printed CRLF and
+  CP-1252; `--page` now pins both, and a test compares its bytes with the file.
+
+  **It is not Grafana and says so.** This page answers what has been proven and reads
+  committed files; [the inference operations dashboard](docs/telemetry/inference-operations-dashboard.md)
+  answers what is happening now and is asked of a Prometheus. The page also states what
+  it deliberately is not: a freshness signal, an environment fleet view, a continuous
+  verification schedule, or a release gate. Nothing consumes it to decide whether
+  anything may ship.
+
+  What it does not do is establish that any statement on it is true. It inherits the
+  register's first limitation whole. It also inherits a new one of its own: which claim
+  belongs under which capability heading is a judgement in the generator, no test
+  decides it, and seven certified claims sit in no group at all — counted in every
+  total on the page, and read in the register instead.
+
 - **Every V1 claim, and the eight this project will not make.**
   [A claim and evidence matrix](docs/testing/claim-evidence-matrix.md) with
   [its authoritative data](docs/testing/claim-evidence-matrix.v1alpha1.json) and

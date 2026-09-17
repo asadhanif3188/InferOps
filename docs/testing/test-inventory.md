@@ -103,7 +103,7 @@ read a WorkloadContract.
 
 ### `architecture-inventory` — [`tests/architecture/`](../../tests/architecture/)
 
-Eighteen modules. The committed ownership inventory against the documents describing
+Nineteen modules. The committed ownership inventory against the documents describing
 it; the local cluster provider contract against its document, the ownership
 inventory, the guard functions in `lib.sh`, and the Terraform module; every module under `src/inferops/` read for the imports the dependency rule
 forbids; the cluster and release lifecycle scripts read for the safety rules
@@ -124,7 +124,10 @@ here rather than quietly corrected. It drifted once more after that: by
 `V1-S3-010-PR1` thirteen modules existed while the sentence said nine, and that
 change added the fourteenth. It drifted again: by `V1-S4-003-PR1` sixteen modules
 existed while the sentence said fourteen. That change added no module to this
-layer and corrected the sentence.
+layer and corrected the sentence. It drifted a fourth time, and `V1-S4-009-PR2`
+found it: nineteen modules existed while the sentence said eighteen. That change
+added no module to this layer either, corrected the sentence, and added the check
+below, so this paragraph is the last entry this list can gain by drifting.
 
 ### `adapter` — [`tests/adapters/`](../../tests/adapters/)
 
@@ -143,7 +146,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Thirty-one modules. Committed machine-readable data checked against the documents
+Thirty-three modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -165,10 +168,13 @@ applied to a declared input, its refusals, its arithmetic on synthetic fixtures 
 values worked out by hand, and every record it writes validated against the method's
 record shape. The newest is the cost baseline: usage taken from the committed samples
 only when the record regenerates, every value recomputed from the sample lines by a
-second route, and the published report's figures held to its results. The newest is
+second route, and the published report's figures held to its results. Then came
 the claim and evidence matrix: every row held to its own limitation, its status held
 to the strategy's, its level held to its evidence label's ceiling, and the README's
-public entry points held to the rows that govern them.
+public entry points held to the rows that govern them. The newest is the proof
+dashboard generated from that register: the committed page regenerated and compared,
+every count on it recomputed, and each of the nine rules its generator applies driven
+over a register corrupted to break it.
 
 The count said seventeen until this story and had been wrong since `V1-S3-007-PR1`
 added the eighteenth. It is not machine-checked, which is why it drifted — the same
@@ -176,8 +182,16 @@ way `architecture-inventory`'s did, and it is recorded here for the same reason.
 drifted once more: by `V1-S4-003-PR1` twenty-five modules existed while the sentence
 said nineteen. That change added the twenty-sixth and corrected the count.
 `V1-S4-004-PR1` added the twenty-seventh, `V1-S4-004-PR2` the twenty-eighth,
-`V1-S4-005-PR1` the twenty-ninth, `V1-S4-005-PR2` the thirtieth, and
-`V1-S4-009-PR1` the thirty-first.
+`V1-S4-005-PR1` the twenty-ninth, `V1-S4-005-PR2` the thirtieth,
+`V1-S4-009-PR1` the thirty-second, and `V1-S4-009-PR2` the thirty-third.
+
+That sentence is itself a correction. `V1-S4-009-PR1` added a module and wrote
+"thirty-first", and an independent review of `V1-S4-009-PR2` found thirty-two
+modules behind it: the count had drifted once more before `V1-S4-009-PR1` added
+to it, and adding one to a wrong number kept it wrong. Both layers' counts are
+now recomputed from the data by
+[`tests/testing/test_test_inventory.py`](../../tests/testing/test_test_inventory.py),
+which is the thing every one of these paragraphs said was missing.
 
 One is the odd one in this layer: `tests/security/test_workload_policy.py`
 reads manifests rather than a record, applying

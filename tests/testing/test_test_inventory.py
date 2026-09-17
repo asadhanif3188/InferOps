@@ -420,6 +420,10 @@ NUMBER_WORDS: dict[int, str] = {
     29: "twenty-nine",
     30: "thirty",
     31: "thirty-one",
+    32: "thirty-two",
+    33: "thirty-three",
+    34: "thirty-four",
+    35: "thirty-five",
 }
 
 WORD_NUMBERS: dict[str, int] = {word: value for value, word in NUMBER_WORDS.items()}
@@ -466,6 +470,40 @@ def test_a_document_counting_the_layers_counts_them_correctly(document: str) -> 
             "document": document,
             "sentence": match.group(0),
             "the data says": expected,
+        }
+
+
+#: "### `documentation` — ..." followed by "Thirty-three modules." The layer
+#: identifier and the count it introduces, which is the sentence that has drifted
+#: in this document more often than any other.
+LAYER_MODULE_COUNT = re.compile(
+    r"^### `(?P<layer>[a-z0-9-]+)`[^\n]*\n\n(?P<count>[A-Za-z-]+) modules\b",
+    flags=re.MULTILINE,
+)
+
+
+def test_the_document_counts_the_modules_in_every_layer_correctly(
+    inventory_document: str,
+) -> None:
+    """Every layer section opens with a count, and none of them was checked.
+
+    The document narrates this drift three times for `architecture-inventory` and
+    three times for `documentation`, each time recording that the sentence is not
+    machine-checked as the reason. It was wrong twice more when this check was
+    written: nineteen modules under `architecture-inventory` while the sentence
+    said eighteen, and thirty-three under `documentation` while the sentence said
+    thirty-two. Narrating a drift is not the same as stopping one.
+    """
+    found = LAYER_MODULE_COUNT.findall(inventory_document)
+    assert found, "no layer section states a module count"
+
+    for layer, written in found:
+        counted = sum(1 for entry in MODULES if entry["layer"] == layer)
+        assert written.lower() == NUMBER_WORDS[counted], {
+            "layer": layer,
+            "modules in the data": counted,
+            "the document says": written,
+            "the document should say": NUMBER_WORDS[counted].capitalize(),
         }
 
 
