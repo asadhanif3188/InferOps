@@ -73,9 +73,15 @@ what the last row of the table above does.
 
 ## The rules, and where they are enforced
 
-Nine rules hold this register to its own vocabulary. Every one is a test rather
-than an intention, and each is driven over a row corrupted to break it, because a
-rule nobody has watched fail may already be unreachable.
+10 rules hold this register to its own vocabulary. Every one is a test rather
+than an intention, and each **names in the data the control that has been watched
+refusing it**, because a rule nobody has watched fail may already be unreachable.
+
+That naming is itself a correction. This paragraph used to assert that every rule
+was driven over a row corrupted to break it, and an independent review found that
+nine of the ten were — the tenth, `every-readme-entry-point-is-governed`, had no such
+control at all. A test now refuses a rule whose named control is not a function in
+the suite, and refuses two rules that share one.
 
 | Rule | Statement |
 |---|---|
@@ -87,16 +93,30 @@ rule nobody has watched fail may already be unreachable.
 | `every-readme-entry-point-is-governed` | Every relative link target in the README's public entry-point table is either cited by a row or listed as a surface that makes no capability claim, with a reason. Neither list may name a path the other does. |
 | `a-real-record-names-its-provider` | A row whose evidence is a real Kubernetes result declares the provider it ran on, and that provider is one the cluster provider contract publishes. Docker Desktop evidence certifies no other provider. |
 | `every-row-states-what-it-does-not-establish` | Every row carries a limitation and a statement of what it does not establish, whatever its status. |
+| `a-recorded-coverage-gap-is-restated-rather-than-papered-over` | A row mapping a claim the test inventory records as covered by no pytest module lists that gap and says so in its limitation. The modules such a row names are adjacent to the claim; citing them without the gap would let the register imply coverage the inventory denies. |
 | `a-template-is-not-evidence` | No row cites a path under docs/proof/templates/. A format is not a record. |
 
-The sixth is the completeness check. Every relative link in the README's public
+`every-readme-entry-point-is-governed` is the completeness check. Every relative link in the README's public
 entry-point table is either cited by a row here or listed as a surface that claims
 nothing, with a reason — and a path may not appear in both lists, or in neither.
 That is what makes "every planned public claim has evidence and a limitation" a
 property rather than a promise: a new entry point in the README with no row here
 fails the build.
 
-The third is narrower than it looks and it is worth stating why. A reserved word
+`a-recorded-coverage-gap-is-restated-rather-than-papered-over` is the one this
+register needed and did not have when it was first written. Five rows name test
+modules for a claim
+[the test inventory](test-inventory.md) records as covered by **no** pytest module
+at all — the artifact hash, the cluster lifecycle, the Helm release lifecycle, the
+upgrade and rollback, and the pod replacement. The modules they name are adjacent:
+they check how the scripts are written, or the mechanics around the artifact. Citing
+them without the gap lets a register imply coverage the inventory denies, so the gap
+is now a field on the row, checked against the inventory in both directions, and the
+row's limitation has to say it in words. Two further rows — the deferred capacity
+claim and the credential-history claim — map a gapped claim and name no module at
+all, and carry the gap for the same reason.
+
+`no-estimate-is-a-bill` is narrower than it looks and it is worth stating why. A reserved word
 survives inside a sentence that denies it and nowhere else. Banning the words
 outright was tried first and was wrong: it makes the rule unsayable, and a
 register that cannot name the vocabulary it refuses cannot tell a reader what the
@@ -106,13 +126,13 @@ refusal is.
 
 ### Contracts and domain
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `an-invalid-workload-document-is-refused-with-a-published-reason` | certified | C0 | `local-static` | repository-only | [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) |
-| `the-workload-contract-and-its-rejection-matrix-are-published` | certified | C0 | `local-static` | repository-only | [v1-s0-004-pr1-validation.md](../proof/contracts/v1-s0-004-pr1-validation.md) |
-| `the-workload-domain-parses-a-contract-document-into-typed-objects` | certified | C0 | `local-static` | repository-only | [v1-s1-001-pr1-validation.md](../proof/domain/v1-s1-001-pr1-validation.md), [v1-s1-001-pr2-validation.md](../proof/domain/v1-s1-001-pr2-validation.md) |
-| `deployment-values-derive-only-from-a-validated-document` | planned | — | `documented-unexecuted` | repository-only | none, by rule |
-| `the-platform-serves-a-workload-the-contract-describes` | planned | — | `documented-unexecuted` | capable-host | none, by rule |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `an-invalid-workload-document-is-refused-with-a-published-reason` | certified | C0 | `local-static` | repository-only | [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) | 2 module(s) |
+| `the-workload-contract-and-its-rejection-matrix-are-published` | certified | C0 | `local-static` | repository-only | [v1-s0-004-pr1-validation.md](../proof/contracts/v1-s0-004-pr1-validation.md), [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) | 2 module(s) |
+| `the-workload-domain-parses-a-contract-document-into-typed-objects` | certified | C0 | `local-static` | repository-only | [v1-s1-001-pr1-validation.md](../proof/domain/v1-s1-001-pr1-validation.md), [v1-s1-001-pr2-validation.md](../proof/domain/v1-s1-001-pr2-validation.md) | 3 module(s) |
+| `deployment-values-derive-only-from-a-validated-document` | planned | — | `documented-unexecuted` | repository-only | none, by rule | 2 module(s) |
+| `the-platform-serves-a-workload-the-contract-describes` | planned | — | `documented-unexecuted` | capable-host | none, by rule | 2 module(s) |
 
 The two planned rows here are the ones to read first, because they are the
 distance between what this project publishes and what it does. A contract is
@@ -123,11 +143,11 @@ cites no record on purpose.
 
 ### Scaffolding and the quick start
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `a-workload-scaffold-is-generated-without-overwriting-anything` | certified | C0 | `local-static` | repository-only | [v1-s1-006-pr2-validation.md](../proof/scaffolding/v1-s1-006-pr2-validation.md), [v1-s1-006-independent-walkthrough.md](../proof/scaffolding/v1-s1-006-independent-walkthrough.md) |
-| `the-developer-quick-start-runs-end-to-end-on-a-clean-checkout` | certified | C1 | `mock` | repository-only | [v1-s1-009-pr1-validation.md](../proof/quickstart/v1-s1-009-pr1-validation.md), [v1-s1-006-independent-walkthrough.md](../proof/scaffolding/v1-s1-006-independent-walkthrough.md) |
-| `a-reviewer-can-reproduce-v1-from-a-clean-clone` | planned | — | `documented-unexecuted` | capable-host | none, by rule |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `a-workload-scaffold-is-generated-without-overwriting-anything` | certified | C0 | `local-static` | repository-only | [v1-s1-006-pr2-validation.md](../proof/scaffolding/v1-s1-006-pr2-validation.md), [v1-s1-006-independent-walkthrough.md](../proof/scaffolding/v1-s1-006-independent-walkthrough.md) | 3 module(s) |
+| `the-developer-quick-start-runs-end-to-end-on-a-clean-checkout` | certified | C1 | `mock` | repository-only | [v1-s1-009-pr1-validation.md](../proof/quickstart/v1-s1-009-pr1-validation.md), [v1-s1-006-independent-walkthrough.md](../proof/scaffolding/v1-s1-006-independent-walkthrough.md), [v1-s1-real-runtime-closure.md](../proof/serving/v1-s1-real-runtime-closure.md) | 1 module(s) |
+| `a-reviewer-can-reproduce-v1-from-a-clean-clone` | planned | — | `documented-unexecuted` | capable-host | none, by rule | none |
 
 `a-reviewer-can-reproduce-v1-from-a-clean-clone` is planned rather than certified
 and the difference is not a formality. Every piece of the journey has been run;
@@ -138,13 +158,13 @@ second engineer, and its own record says so.
 
 ### The inference API and its adapters
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `a-mock-result-can-never-certify-real-runtime-behaviour` | certified | C0 | `local-static` | repository-only | [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md) |
-| `the-inference-api-serves-five-routes-with-explicit-adapter-selection` | certified | C1 | `mock` | repository-only | [v1-s2-002-pr2-validation.md](../proof/serving/v1-s2-002-pr2-validation.md) |
-| `a-model-that-is-not-ready-is-a-canonical-error` | planned | — | `documented-unexecuted` | capable-host | none, by rule |
-| `an-unreachable-runtime-is-a-canonical-error` | planned | — | `documented-unexecuted` | capable-host | none, by rule |
-| `the-mock-serving-path-identifies-itself-as-a-mock` | planned | — | `documented-unexecuted` | repository-only | none, by rule |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `a-mock-result-can-never-certify-real-runtime-behaviour` | certified | C0 | `local-static` | repository-only | [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md) | 1 module(s) |
+| `the-inference-api-serves-five-routes-with-explicit-adapter-selection` | certified | C1 | `mock` | repository-only | [v1-s1-005-pr1-validation.md](../proof/serving/v1-s1-005-pr1-validation.md), [v1-s1-005-pr2-validation.md](../proof/serving/v1-s1-005-pr2-validation.md) | 4 module(s) |
+| `a-model-that-is-not-ready-is-a-canonical-error` | planned | — | `documented-unexecuted` | capable-host | none, by rule | 2 module(s) |
+| `an-unreachable-runtime-is-a-canonical-error` | planned | — | `documented-unexecuted` | capable-host | none, by rule | 2 module(s) |
+| `the-mock-serving-path-identifies-itself-as-a-mock` | planned | — | `documented-unexecuted` | repository-only | none, by rule | 2 module(s) |
 
 Three of these five are planned, and all three are planned for the same reason:
 the mock layers establish that the API maps a condition to the right error, and
@@ -157,21 +177,28 @@ it.
 
 ### Real serving on a contributor's machine
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `a-local-serving-baseline-was-measured-under-a-method-registered-first` | certified | C2 | `local-real-cpu` | capable-host | [v1-s2-005-local-baseline-experiment.md](../proof/serving/v1-s2-005-local-baseline-experiment.md), [v1-s2-005-baseline-raw-results.md](../proof/serving/v1-s2-005-baseline-raw-results.md) |
-| `a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure` | certified | C2 | `local-real-cpu` | capable-host | [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
-| `local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes` | certified | C0 | `local-static` | repository-only | [v1-s2-008-pr1-validation.md](../proof/serving/v1-s2-008-pr1-validation.md) |
-| `the-model-artifact-matches-its-published-hash` | certified | C2 | `local-real-cpu` | capable-host | [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md), [v1-s1-real-runtime-closure.md](../proof/serving/v1-s1-real-runtime-closure.md) |
-| `the-model-lifecycle-states-were-measured-across-six-real-starts` | certified | C2 | `local-real-cpu` | capable-host | [v1-s2-007-pr1-cold-warm-start.md](../proof/serving/v1-s2-007-pr1-cold-warm-start.md), [v1-s2-007-cache-miss-observation.md](../proof/serving/v1-s2-007-cache-miss-observation.md) |
-| `the-selected-model-serves-a-real-completion-through-the-inferops-api` | certified | C2 | `local-real-cpu` | capable-host | [v1-s2-004-c2-certification-result.md](../proof/serving/v1-s2-004-c2-certification-result.md), [v1-s1-real-runtime-closure.md](../proof/serving/v1-s1-real-runtime-closure.md) |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `a-local-serving-baseline-was-measured-under-a-method-registered-first` | certified | C2 | `local-real-cpu` | capable-host | [v1-s2-005-local-baseline-experiment.md](../proof/serving/v1-s2-005-local-baseline-experiment.md), [v1-s2-005-baseline-raw-results.md](../proof/serving/v1-s2-005-baseline-raw-results.md) | 1 module(s) |
+| `a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) | 2 module(s) |
+| `local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes` | certified | C0 | `local-static` | repository-only | [v1-s2-008-pr1-validation.md](../proof/serving/v1-s2-008-pr1-validation.md) | 1 module(s) |
+| `the-model-artifact-matches-its-published-hash` | certified | C2 | `local-real-cpu` | capable-host | [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md), [v1-s1-real-runtime-closure.md](../proof/serving/v1-s1-real-runtime-closure.md) | **recorded gap** |
+| `the-model-lifecycle-states-were-measured-across-six-real-starts` | certified | C2 | `local-real-cpu` | capable-host | [v1-s2-007-pr1-cold-warm-start.md](../proof/serving/v1-s2-007-pr1-cold-warm-start.md), [v1-s2-007-cache-miss-observation.md](../proof/serving/v1-s2-007-cache-miss-observation.md) | 1 module(s) |
+| `the-selected-model-serves-a-real-completion-through-the-inferops-api` | certified | C2 | `local-real-cpu` | capable-host | [v1-s2-004-c2-certification-result.md](../proof/serving/v1-s2-004-c2-certification-result.md), [v1-s1-real-runtime-closure.md](../proof/serving/v1-s1-real-runtime-closure.md) | 3 module(s) |
 
 Five of these six are `C2` results from **one Windows host, on CPU**; the sixth is
 a `C0` check over the troubleshooting guide. None of them is a result about a
-cluster InferOps selected — the feasibility trial ran inside the container desktop
-distribution's own cluster before ADR 0011 existed, and the certification run and
-the baseline were loopback compositions with no cluster at all. Two figures are
-worth carrying out of the table. The certification run had 14,172 ms of headroom
+cluster InferOps selected under the provider contract. The certification run, the
+baseline and the lifecycle comparison were loopback compositions with no cluster at
+all; the feasibility trial **was** a Kubernetes result — the runtime started in the
+container desktop distribution's own single-node cluster and answered through
+cluster DNS and a Service — but it ran before ADR 0011 existed, so its record names
+that cluster descriptively rather than by provider identifier, and the provider in
+its row is read from that description. An independent review caught this row calling
+itself `not-applicable`, and caught this paragraph saying it was not a Kubernetes
+result at all.
+
+Two figures are worth carrying out of the table. The certification run had 14,172 ms of headroom
 against a 300,000 ms readiness budget — under five per cent, and its record says
 the budget is not comfortable. And the cold-and-warm comparison found warm
 *slower* in all three pairs, with a within-arm spread larger than every delta, so
@@ -179,16 +206,16 @@ it claims no cold-start effect at all.
 
 ### Kubernetes deployment and lifecycle
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr2-upgrade-rollback.md](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md) |
-| `a-helm-release-installs-and-uninstalls-without-residue` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) |
-| `a-local-cluster-is-created-and-removed-without-residue` | certified | C2 | `local-real-cpu` | local-kubernetes, `kind` | [v1-s0-002-pr2-cluster-smoke.md](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
-| `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [v1-s3-010-pr1-validation.md](../proof/architecture/v1-s3-010-pr1-validation.md) |
-| `kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed` | certified | C0 | `local-static` | repository-only | [v1-s3-009-pr1-validation.md](../proof/environment/v1-s3-009-pr1-validation.md) |
-| `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-003-pr2-kubernetes-pod-restart.md](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md) |
-| `the-selected-runtime-serves-a-real-completion-in-a-cluster` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
-| `multi-replica-serving-is-certified` | not-claimed | — | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr2-upgrade-rollback.md](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md) | **recorded gap** |
+| `a-helm-release-installs-and-uninstalls-without-residue` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) | **recorded gap** |
+| `a-local-cluster-is-created-and-removed-without-residue` | certified | C2 | `local-real-cpu` | local-kubernetes, `kind` | [v1-s0-002-pr2-cluster-smoke.md](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) | **recorded gap** |
+| `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [v1-s3-010-pr1-validation.md](../proof/architecture/v1-s3-010-pr1-validation.md) | 4 module(s) |
+| `kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed` | certified | C0 | `local-static` | repository-only | [v1-s3-009-pr1-validation.md](../proof/environment/v1-s3-009-pr1-validation.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) | 1 module(s) |
+| `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-003-pr2-kubernetes-pod-restart.md](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md) | **recorded gap** |
+| `the-selected-runtime-serves-a-real-completion-in-a-cluster` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) | 3 module(s) |
+| `multi-replica-serving-is-certified` | not-claimed | — | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 1 module(s) |
 
 Seven certified rows and one refusal. Five of the seven ran on `docker-desktop`,
 one on `kind`, and one is a `C0` check over the troubleshooting guide.
@@ -205,11 +232,11 @@ form of a certification.**
 
 ### Load and performance
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-004-pr2-performance-findings.md](../proof/serving/v1-s4-004-pr2-performance-findings.md) |
-| `repeatable-llm-load-can-be-generated-from-a-versioned-profile` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-003-pr1-validation.md](../proof/serving/v1-s4-003-pr1-validation.md) |
-| `sustained-throughput-and-capacity-under-load` | deferred | — | `documented-unexecuted` | capable-host | none, by rule |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-004-pr2-performance-findings.md](../proof/serving/v1-s4-004-pr2-performance-findings.md) | 2 module(s) |
+| `repeatable-llm-load-can-be-generated-from-a-versioned-profile` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-003-pr1-validation.md](../proof/serving/v1-s4-003-pr1-validation.md) | 1 module(s) |
+| `sustained-throughput-and-capacity-under-load` | deferred | — | `documented-unexecuted` | capable-host | none, by rule | **recorded gap** |
 
 Both certified rows are bounded observations under
 [ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md),
@@ -221,10 +248,10 @@ that publishing a capacity figure would mean deleting a deferral in public.
 
 ### Failure and recovery
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `an-unready-model-was-held-unready-and-recovered-by-an-operator` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md) |
-| `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-006-pr1-inference-pod-recovery.md](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md) |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `an-unready-model-was-held-unready-and-recovered-by-an-operator` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md) | 1 module(s) |
+| `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-006-pr1-inference-pod-recovery.md](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md) | 1 module(s) |
 
 Both rows measure what a caller experienced, and both refuse to turn that into a
 figure about availability. The pod-loss run's most useful result is a
@@ -235,21 +262,24 @@ figure, a service-level objective, an error budget, or a recovery-time objective
 
 ### Telemetry, dashboard, and alerts
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr2-telemetry-during-recovery.md](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) |
-| `six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link` | certified | C0 | `local-static` | repository-only | [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-008-pr1-validation.md](../proof/telemetry/v1-s4-008-pr1-validation.md) |
-| `the-api-emits-catalog-metrics-and-structured-request-records` | certified | C1 | `mock` | repository-only | [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md) |
-| `the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-002-pr2-dashboard-validation.md](../proof/telemetry/v1-s4-002-pr2-dashboard-validation.md), [v1-s4-002-pr1-validation.md](../proof/telemetry/v1-s4-002-pr1-validation.md) |
-| `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | certified | C0 | `local-static` | repository-only | [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md) |
-| `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md) |
-| `no-prompt-response-or-secret-reaches-a-log-or-a-metric` | planned | — | `documented-unexecuted` | capable-host | none, by rule |
-| `an-alert-reaches-somebody` | not-claimed | — | `documented-unexecuted` | local-kubernetes | none, by rule |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-011-pr2-telemetry-during-recovery.md](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 4 module(s) |
+| `six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link` | certified | C0 | `local-static` | repository-only | [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-008-pr1-validation.md](../proof/telemetry/v1-s4-008-pr1-validation.md) | 2 module(s) |
+| `the-api-emits-catalog-metrics-and-structured-request-records` | certified | C1 | `mock` | repository-only | [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md) | 3 module(s) |
+| `the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-002-pr2-dashboard-validation.md](../proof/telemetry/v1-s4-002-pr2-dashboard-validation.md), [v1-s4-002-pr1-validation.md](../proof/telemetry/v1-s4-002-pr1-validation.md) | 2 module(s) |
+| `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | certified | C0 | `local-static` | repository-only | [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md), [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md) | 2 module(s) |
+| `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded` | certified | C0 | `local-static` | repository-only | [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md) | 1 module(s) |
+| `no-prompt-response-or-secret-reaches-a-log-or-a-metric` | planned | — | `documented-unexecuted` | capable-host | none, by rule | 2 module(s) |
+| `an-alert-reaches-somebody` | not-claimed | — | `documented-unexecuted` | local-kubernetes | none, by rule | none |
 
 The alert rows are two claims rather than one, deliberately. The alert *set* is a
-`local-static` result over synthetic fixtures; the *replay* is a `local-real-cpu`
-result over telemetry three real experiments recorded. Neither reaches the thing
-a reader will assume: **nothing evaluates or routes any of it.** There is no
+`local-static` result over synthetic fixtures; the *replay* reads telemetry that
+three real `docker-desktop` experiments captured, and is **also** `local-static`,
+because the evaluator over those captures is this repository's own and its record
+classifies itself that way. The replay row claimed `local-real-cpu` at `C2` until an
+independent review compared it with the record it cites. Neither row reaches the
+thing a reader will assume: **nothing evaluates or routes any of it.** There is no
 receiver, no routing tree, and nobody on the other end, which is why
 `an-alert-reaches-somebody` is a row here and its status is `not-claimed`.
 
@@ -260,30 +290,32 @@ init-container exit status did. `inferops_model_ready` was not emitted at all, a
 
 ### Cost
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `a-cost-figure-cannot-be-presented-as-a-bill` | certified | C0 | `local-static` | repository-only | [v1-s0-008-pr1-validation.md](../proof/cost/v1-s0-008-pr1-validation.md), [v1-s4-005-pr1-validation.md](../proof/cost/v1-s4-005-pr1-validation.md) |
-| `the-cost-method-was-applied-to-use-taken-from-a-measured-run` | certified | C0 | `local-static` | repository-only | [v1-s4-005-pr2-cost-baseline.md](../proof/cost/v1-s4-005-pr2-cost-baseline.md), [v1-s4-005-pr2-validation.md](../proof/cost/v1-s4-005-pr2-validation.md) |
-| `what-running-an-inference-workload-costs-on-a-provider` | not-claimed | — | `estimated` | repository-only | none, by rule |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `a-cost-figure-cannot-be-presented-as-a-bill` | certified | C0 | `local-static` | repository-only | [v1-s0-008-pr1-validation.md](../proof/cost/v1-s0-008-pr1-validation.md), [v1-s4-005-pr1-validation.md](../proof/cost/v1-s4-005-pr1-validation.md) | 3 module(s) |
+| `the-cost-method-was-applied-to-use-taken-from-a-measured-run` | certified | C0 | `local-static` | repository-only | [v1-s4-005-pr2-cost-baseline.md](../proof/cost/v1-s4-005-pr2-cost-baseline.md), [v1-s4-005-pr2-validation.md](../proof/cost/v1-s4-005-pr2-validation.md) | 1 module(s) |
+| `what-running-an-inference-workload-costs-on-a-provider` | not-claimed | — | `estimated` | repository-only | none, by rule | none |
 
-The certified rows are about **method**, not money. One certifies that the
-vocabulary of a provider statement is refused to any basis that has not earned it;
-the other certifies that two records take their use from committed samples by tool
-and regenerate from their own inputs. Every price behind them comes from a
+The certified rows are about **method**, not money, and both are file-reading
+operations. One certifies that the vocabulary of a provider statement is refused to
+any basis that has not earned it; the other certifies that two cost records take
+their use from committed samples by tool rather than from a typed-in figure, and
+regenerate from their own inputs. The samples themselves were measured on
+`docker-desktop`; that measurement is the performance row, not this one. Every price behind them comes from a
 synthetic rate card, so both records carry confidence `none` and certify nothing
 themselves. Nothing here has ever been paid for, so `actual` is unreachable and
 `what-running-an-inference-workload-costs-on-a-provider` is not claimed.
 
 ### Security
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `a-security-control-cannot-claim-enforcement-it-does-not-have` | certified | C0 | `local-static` | repository-only | [v1-s0-009-pr1-validation.md](../proof/security/v1-s0-009-pr1-validation.md) |
-| `a-workload-manifest-that-omits-a-required-security-control-is-refused` | certified | C0 | `local-static` | repository-only | [v1-s3-004-pr1-validation.md](../proof/security/v1-s3-004-pr1-validation.md) |
-| `the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published` | certified | C0 | `local-static` | repository-only | [v1-s2-006-pr1-validation.md](../proof/security/v1-s2-006-pr1-validation.md) |
-| `no-credential-or-model-artifact-enters-public-history` | planned | — | `documented-unexecuted` | repository-only | none, by rule |
-| `a-deployed-inferops-workload-is-defended` | not-claimed | — | `documented-unexecuted` | local-kubernetes | none, by rule |
-| `the-rendered-network-policy-is-enforced-by-the-cluster` | not-claimed | — | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-004-pr1-network-policy-enforcement.md](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md) |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `a-security-control-cannot-claim-enforcement-it-does-not-have` | certified | C0 | `local-static` | repository-only | [v1-s0-009-pr1-validation.md](../proof/security/v1-s0-009-pr1-validation.md) | 1 module(s) |
+| `a-workload-manifest-that-omits-a-required-security-control-is-refused` | certified | C0 | `local-static` | repository-only | [v1-s3-004-pr1-validation.md](../proof/security/v1-s3-004-pr1-validation.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 1 module(s) |
+| `the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published` | certified | C0 | `local-static` | repository-only | [v1-s2-006-pr1-validation.md](../proof/security/v1-s2-006-pr1-validation.md) | 1 module(s) |
+| `no-credential-or-model-artifact-enters-public-history` | planned | — | `documented-unexecuted` | repository-only | none, by rule | **recorded gap** |
+| `a-deployed-inferops-workload-is-defended` | not-claimed | — | `documented-unexecuted` | local-kubernetes | none, by rule | none |
+| `the-rendered-network-policy-is-enforced-by-the-cluster` | not-claimed | — | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s3-004-pr1-network-policy-enforcement.md](../proof/security/v1-s3-004-pr1-network-policy-enforcement.md) | 1 module(s) |
 
 Three certified rows, one planned, and two not claimed — a ratio that is the
 honest shape of V1's security position. The certified rows are about documents,
@@ -301,17 +333,17 @@ register had recorded.
 
 ### Tests, continuous integration, and evidence
 
-| Claim | Status | Level | Evidence label | Where it ran | Record |
-|---|---|---|---|---|---|
-| `eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend` | certified | C0 | `local-static` | repository-only | [v1-s4-001-pr1-validation.md](../proof/testing/v1-s4-001-pr1-validation.md) |
-| `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary` | certified | C0 | `local-static` | repository-only | [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md) |
-| `no-resource-in-the-architecture-has-two-owners` | certified | C0 | `local-static` | repository-only | [v1-s0-005-pr1-validation.md](../proof/architecture/v1-s0-005-pr1-validation.md) |
-| `published-documents-link-only-to-things-that-exist` | certified | C0 | `local-static` | repository-only | [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md) |
-| `the-default-lane-cannot-execute-a-real-model` | certified | C0 | `local-static` | repository-only | [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md) |
-| `the-published-strategy-and-its-data-cannot-drift-apart` | certified | C0 | `local-static` | repository-only | [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md) |
-| `a-cluster-or-real-runtime-lane-runs-in-continuous-integration` | not-claimed | — | `documented-unexecuted` | repository-only | none, by rule |
-| `a-v1-release-has-been-published` | not-claimed | — | `documented-unexecuted` | repository-only | none, by rule |
-| `inferops-is-a-portable-production-platform` | not-claimed | — | `production-experience` | repository-only | none, by rule |
+| Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
+|---|---|---|---|---|---|---|
+| `eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend` | certified | C0 | `local-static` | repository-only | [v1-s4-001-pr1-validation.md](../proof/testing/v1-s4-001-pr1-validation.md), [v1-s4-001-pr2-validation.md](../proof/testing/v1-s4-001-pr2-validation.md) | 2 module(s) |
+| `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary` | certified | C0 | `local-static` | repository-only | [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md) | 1 module(s) |
+| `no-resource-in-the-architecture-has-two-owners` | certified | C0 | `local-static` | repository-only | [v1-s0-005-pr1-validation.md](../proof/architecture/v1-s0-005-pr1-validation.md), [v1-s3-002-pr2-validation.md](../proof/architecture/v1-s3-002-pr2-validation.md), [v1-s3-010-pr1-validation.md](../proof/architecture/v1-s3-010-pr1-validation.md) | 3 module(s) |
+| `published-documents-link-only-to-things-that-exist` | certified | C0 | `local-static` | repository-only | [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md) | 1 module(s) |
+| `the-default-lane-cannot-execute-a-real-model` | certified | C0 | `local-static` | repository-only | [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md), [v1-s4-001-pr2-validation.md](../proof/testing/v1-s4-001-pr2-validation.md) | 2 module(s) |
+| `the-published-strategy-and-its-data-cannot-drift-apart` | certified | C0 | `local-static` | repository-only | [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md), [v1-s1-007-pr1-validation.md](../proof/testing/v1-s1-007-pr1-validation.md), [v1-s4-001-pr1-validation.md](../proof/testing/v1-s4-001-pr1-validation.md), [v1-s4-009-pr1-validation.md](../proof/testing/v1-s4-009-pr1-validation.md) | 4 module(s) |
+| `a-cluster-or-real-runtime-lane-runs-in-continuous-integration` | not-claimed | — | `documented-unexecuted` | repository-only | none, by rule | none |
+| `a-v1-release-has-been-published` | not-claimed | — | `documented-unexecuted` | repository-only | none, by rule | none |
+| `inferops-is-a-portable-production-platform` | not-claimed | — | `production-experience` | repository-only | none, by rule | none |
 
 Six of these nine certify properties of this repository's own discipline, which is
 the weakest kind of claim and the one most easily mistaken for a strong one.
@@ -381,11 +413,52 @@ cannot quietly grow.
 
 ## Limitations
 
-- This matrix is maintained by hand and checked by a suite. The suite establishes that a row's references resolve, that its status is not stronger than the strategy's, that its level fits its label, and that every README entry point is governed. It cannot establish that a statement is true, that a limitation is complete, or that a record says what the row says it says. Those remain a reading, and the reading is the work.
-- Every real result cited here comes from one Windows host. Most are on the `docker-desktop` provider; the feasibility trial, the C2 certification, the serving baseline, and the lifecycle comparison are not Kubernetes results at all, and the cluster smoke is the only `kind` result in the table. None of them generalizes to another provider, another host, a GPU, or more than one replica.
-- The bounded performance, recovery, and cost figures quoted in these rows are published under ADR 0013 and ADR 0014 as observations of one declared local experiment. They are not capacity, service-level objectives, availability figures, error budgets, recovery-time objectives, benchmarks, or costs.
-- The statuses here are the repository's own. No outside party has reviewed a claim against its evidence, and no maintainer roster exists to arbitrate a dispute — the same governance gap that stops an owner being named as a person.
-- The `claim-evidence` template under docs/proof/templates/ has still produced no record. This matrix binds claims to evidence in a table, which is a weaker form than the one-claim-per-record document that template exists to enforce, and it does not raise that count.
-- A row's automated tests name modules rather than test functions. A module that protects a claim may protect several, and nothing here says which function would fail first if the claim stopped being true.
-- Nine of the eleven continuous-integration gates have passed on the selected service and no log from those runs is promoted into a record. Every other check cited here was run by hand, on one host, by the author.
-- The case study this matrix is meant to govern has not been written. Its claims are expected to be drawn from these rows; until it exists, `readmeRefs` is the only surface binding a row to published text, and a future case-study claim with no row here would be caught by nothing.
+- This matrix is maintained by hand and checked by a suite. The suite
+  establishes that a row's references resolve, that its status is not stronger
+  than the strategy's, that its level fits its label, and that every README
+  entry point is governed. It cannot establish that a statement is true, that a
+  limitation is complete, or that a record says what the row says it says. Those
+  remain a reading, and the reading is the work.
+- Every real result cited here comes from one Windows host. Most are on the
+  `docker-desktop` provider; the C2 certification, the serving baseline, and the
+  lifecycle comparison are loopback compositions rather than Kubernetes results,
+  the feasibility trial ran inside the container desktop distribution's own
+  cluster before the provider contract existed, and the cluster smoke is the
+  only `kind` result in the table. None of them generalizes to another provider,
+  another host, a GPU, or more than one replica.
+- The bounded performance, recovery, and cost figures quoted in these rows are
+  published under ADR 0013 and ADR 0014 as observations of one declared local
+  experiment. They are not capacity, service-level objectives, availability
+  figures, error budgets, recovery-time objectives, benchmarks, or costs.
+- The statuses here are the repository's own. No outside party has reviewed a
+  claim against its evidence, and no maintainer roster exists to arbitrate a
+  dispute — the same governance gap that stops an owner being named as a person.
+- The `claim-evidence` template under docs/proof/templates/ has still produced
+  no record. This matrix binds claims to evidence in a table, which is a weaker
+  form than the one-claim-per-record document that template exists to enforce,
+  and it does not raise that count.
+- A row's automated tests name modules rather than test functions. A module that
+  protects a claim may protect several, and nothing here says which function
+  would fail first if the claim stopped being true. Five rows name modules for a
+  claim the inventory records as covered by none; those rows carry the gap in
+  `recordedCoverageGaps` and in their limitation, and the modules they name are
+  adjacent to the claim rather than proof of it.
+- Nine of the eleven continuous-integration gates have passed on the selected
+  service and no log from those runs is promoted into a record. Every other
+  check cited here was run by hand, on one host, by the author.
+- Twenty-two of the fifty-eight rows were corrected before this register was
+  merged, and fourteen of those shared one shape: the row stated the
+  repository's state today while citing a record that froze an earlier one — the
+  security control counts, the ownership row counts, the gate counts, the
+  template counts, the strategy-drift scope, and the claim that a release had
+  been installed among them. Each was fixed by citing the later record as well,
+  or by restating the figure the cited record actually holds; four more were
+  misreadings of a record, and four could not be fixed by re-citing at all.
+  Nothing in the suite would have caught any of them: they are exactly what the
+  first limitation above describes, and they were found by an independent reader
+  opening all forty-six cited records and comparing them with the rows citing
+  them.
+- The case study this matrix is meant to govern has not been written. Its claims
+  are expected to be drawn from these rows; until it exists, `readmeRefs` is the
+  only surface binding a row to published text, and a future case-study claim
+  with no row here would be caught by nothing.

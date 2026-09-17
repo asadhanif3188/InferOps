@@ -4,7 +4,8 @@ Date: 2026-09-17
 
 Change: [the V1 claim and evidence matrix](../../testing/claim-evidence-matrix.md)
 and [its authoritative data](../../testing/claim-evidence-matrix.v1alpha1.json),
-[the suite that holds it to its own rules](../../../tests/testing/test_claim_evidence_matrix.py),
+[the suite that holds it to its own
+rules](../../../tests/testing/test_claim_evidence_matrix.py),
 the row that suite adds to
 [the test inventory](../../testing/test-inventory.v1alpha1.json) and
 [its document](../../testing/test-inventory.md), the entry point the register
@@ -71,18 +72,18 @@ run rather than as passing.
 | Deferred | 1 |
 | Not claimed | 8 |
 | Rows citing at least one record | 43 |
-| Distinct records cited | 46 |
+| Distinct records cited | 51 |
 | Distinct test modules cited | 70 |
 | Distinct continuous-integration gates cited | 9 of 11 |
 | Test-strategy claims mapped | 24 of 24 |
 | README entry points claimed by a row | 43 |
 | README entry points declared to claim nothing | 7 |
-| Rows asserting real behaviour | 26 |
-| Rows at `C2` | 18 |
+| Rows asserting real behaviour | 25 |
+| Rows at `C2` | 17 |
 | Rows whose provider is `docker-desktop` | 14 |
 | Rows whose provider is `kind` | 1 |
 
-Evidence labels in use: `local-static` 20, `local-real-cpu` 20,
+Evidence labels in use: `local-static` 21, `local-real-cpu` 19,
 `documented-unexecuted` 13, `mock` 3, `estimated` 1, `production-experience` 1.
 `cloud-real-cpu` and `cloud-real-gpu` are declared and used by nothing, which is
 the same statement the certification document already makes about them.
@@ -97,12 +98,12 @@ Run from the repository root, in Git Bash, through the locked environment.
 
 | Command | Result |
 |---|---|
-| `python -m pytest tests/testing/test_claim_evidence_matrix.py -q` | `1599 passed` |
+| `python -m pytest tests/testing/test_claim_evidence_matrix.py -q` | `1793 passed` |
 | `python -m pytest tests/testing/test_test_inventory.py -q` | `836 passed` |
 | `uv run --locked ruff format --check .` | `445 files already formatted` |
 | `uv run --locked ruff check .` | `All checks passed!` |
 | `uv run --locked python -m mypy` | `Success: no issues found in 249 source files` |
-| `uv run --locked python -m pytest -q` | `11336 passed, 30 skipped, 14 deselected in 758.43s` |
+| `uv run --locked python -m pytest -q` | `11530 passed, 30 skipped, 14 deselected in 648.52s`, on the final tree; an earlier run of the same command on the tree before the review corrections read `11336 passed, 30 skipped, 14 deselected in 758.43s` |
 | `git diff --check main...HEAD` | no output, exit 0 |
 | `git ls-files -z '*.md' \| xargs -0 grep -n '[[:blank:]]$'` | no match |
 | `git ls-files -z '*.md' \| xargs -0 grep -n "$(printf '\t')"` | no match |
@@ -137,7 +138,7 @@ will see the same two lines.
 
 ## What the suite refuses
 
-Eight rules, each driven over a row corrupted to break it, and one positive control.
+Ten rules, each driven over a row corrupted to break it, and one positive control.
 A rule nobody has watched fail may already be unreachable, and one of these refused
 a sentence it should have accepted until the control was added.
 
@@ -151,6 +152,8 @@ a sentence it should have accepted until the control was added.
 | No estimate is described in an invoice's vocabulary | a limitation naming an invoice without denying it |
 | A real Kubernetes row names its provider | a `docker-desktop` row with its provider removed |
 | Every row states a limitation | a row with its limitation emptied |
+| A recorded coverage gap is restated rather than papered over | a row with its gap list emptied, and a row whose limitation hides it |
+| A row on real evidence declares that it asserts real behaviour | a `local-real-cpu` row with the declaration removed |
 | The vocabulary rule admits a denial | a limitation that names the word in order to refuse it |
 
 The last is a positive control rather than a negative one, and it exists because
@@ -161,7 +164,8 @@ nowhere else, and both directions are now driven.
 
 ## Defects this change found in its own data
 
-Six, all found by running the suite rather than by reading the file.
+Seven. Six were found by running the suite; the seventh was found by reading the
+data against the test inventory, before the rule that now catches it existed.
 
 1. **A cost claim certified on an evidence label that certifies nothing.** The row
    binding the cost method to the `V1-S4-004` samples was labelled `estimated` and
@@ -186,6 +190,21 @@ Six, all found by running the suite rather than by reading the file.
 6. **Counts in prose with nothing checking them.** The document's and the README's
    claim counts are now derived and compared, after the test inventory's per-layer
    counts drifted three times for exactly this reason.
+7. **Five rows implying automated coverage the inventory denies.** The artifact
+   hash, the cluster lifecycle, the Helm release lifecycle, the upgrade and
+   rollback, and the pod replacement each name test modules in their
+   `automatedTestRefs`, and
+   [the test inventory](../../testing/test-inventory.v1alpha1.json) records all five
+   claims as covered by **no** pytest module: the modules named are adjacent, and
+   check how the scripts are written or the mechanics around the artifact. A
+   register that cites them without the gap implies coverage the inventory refuses.
+   Two more rows — the deferred capacity claim and the credential-history claim —
+   map a gapped claim and cite no module at all, and were equally silent about it.
+   Every affected row now carries `recordedCoverageGaps`, derived from the inventory
+   and compared with it in both directions, and states the gap in its limitation;
+   the document renders it as an `Automated coverage` column reading
+   **recorded gap**. This was found by reading rather than by a check, which is
+   the failure mode the whole register exists to reduce and did not, here, prevent.
 
 One further defect was found outside this change's own data, while adding a row to
 the evidence index: the `Testing` row of [that index](../README.md) did not list
@@ -194,6 +213,96 @@ committed since 2026-09-12. Nothing checks that index against the directory it
 describes. The missing link is added here rather than left for a later change,
 because the register this PR publishes cites the index it is missing from; the
 absent check is not fixed here and stays a gap.
+
+## What an independent review found after the first commit
+
+Two reviewers read the change against the records it cites, one adversarially over
+the diff and one exhaustively over all 49 rows whose status is `certified` or
+`not-claimed`, opening all 46 records those rows then named. Both found defects
+the suite could not have caught, and both are recorded here rather than folded
+silently into a second commit.
+
+### The two defects in the apparatus
+
+1. **An unrendered template expression in the published document.** The document is
+   assembled once from the data and then maintained by hand, and the sentence that
+   states the rule count shipped as a literal `{len(DATA[...])}` rather than as the
+   number. The suite compared the document's identifiers and its claim counts with
+   the data and had nothing to say about a sentence that was neither. A general
+   check now refuses any such expression, with a control that asserts the check
+   would have caught this one, and the rule count joined the counts the document may
+   not type by hand.
+2. **One rule of ten with no negative control.** The document, the changelog, and
+   this record all said each rule is driven over a row corrupted to break it. Nine
+   were. The tenth — `every-readme-entry-point-is-governed`, the completeness check
+   the whole register rests on — had none. Each rule now names its control in the
+   data, a test refuses a name that is not a function in the suite, and no two rules
+   may share one. The missing controls are written, in both directions.
+
+### Twenty-two rows corrected
+
+Fourteen share one shape: **the row states the repository's state today while citing
+a record that froze an earlier one.** The security control counts (38/6/9 against a
+record measuring 32/10), the ownership counts (a record whose own dump reads
+nineteen planned against eight implemented, written when neither Terraform nor Helm
+existed), the gate counts (eleven gates and nine service runs against a record that
+committed nine and ran none there), the template counts (two produced against a
+record from the day all four had produced nothing), the strategy-drift scope, the
+default lane's gates and network, the troubleshooting guide's executed halves, the
+claim that a release had been installed from the committed renders, and the domain
+row's assertion that the validation pipeline is not implemented, which a cited
+record contradicts by title. Each is now fixed by citing the later record as well —
+they exist and are committed — or by restating the figure the cited record holds.
+
+Four more are misreadings of a record rather than staleness: the baseline row
+implied the fixture as well as the thresholds was registered before the run, when
+the record's own correction section says the fixture was rewritten after the prior
+attempt refused all thirty requests; the lifecycle row said "one day" over two
+records dated a day apart, one of which is about a different subject; the
+pod-replacement row said four defects were found before the run stood up, where two
+were found by running it and two by a review afterwards; and the alert row gave one
+reason for five deferrals where the record gives three.
+
+Four are harder and could not be fixed by re-citing:
+
+- **A row citing the wrong record entirely.** The API's five routes and explicit
+  adapter selection cited `v1-s2-002-pr2-validation.md`, which is the llama.cpp
+  runtime-packaging record and explicitly disclaims composing the InferOps API. It
+  now cites the two records that decided and exercised the routes.
+- **A Kubernetes result recorded as not one.** The feasibility trial's row declared
+  `provider: not-applicable` and `environment: capable-host`, and the file's own
+  limitations said it was not a Kubernetes result at all. The record says the runtime
+  was started in a cluster and answered from inside it, through cluster DNS and a
+  Service, with no port-forward. The row is now `local-kubernetes` on
+  `docker-desktop`, with the caveat that the record predates ADR 0011 and names that
+  cluster descriptively rather than by provider identifier.
+- **A `C2` claim on a `local-static` record.** The alert-replay row carried
+  `local-real-cpu` at `C2` because the captures it replays are real. Its own cited
+  record classifies itself `local-static`: the captures are measurements, the replay
+  over them is this repository's evaluator. The row is now `C0`, `local-static`,
+  `repository-only`, and it no longer asserts real behaviour.
+- **A cost row contradicting its own limitation.** It declared `local-static` and
+  `repository-only` while its limitation said the use is local real CPU evidence from
+  `docker-desktop`. Both halves are true of different things, and the row now says
+  which: what it certifies is a file-reading operation over committed samples, and
+  the measurement that produced those samples is the performance row.
+
+The replay row also said the captures step at 60 seconds. That is the synthetic
+fixtures' grid; the captures step at 15.
+
+**Twenty-seven of the forty-nine rows read were verified clean**, figure by figure,
+including every quoted measurement in the performance, recovery, dashboard, cost,
+and capacity-refusal rows. No overclaim was found in any of them.
+
+### What this says about the register
+
+Every one of the twenty-two row corrections is an instance of the limitation the matrix
+already carried: the suite cannot establish that a record says what the row citing it
+says it says. That clause was written before any of them were known, it was accurate,
+and it was not sufficient — the register still carried twenty-two of them into a
+first commit. The matrix now names the episode in its own limitations, because a register
+whose stated weakness has been exercised once is more useful than one whose weakness
+is only theoretical.
 
 ## Acceptance criteria
 
@@ -205,7 +314,7 @@ absent check is not fixed here and stays a gap.
 | The final matrix preserves provider boundaries | **Met.** Every real Kubernetes row names a provider the cluster provider contract publishes; 14 rows are `docker-desktop` and 1 is `kind`; the multi-replica row is `not claimed` and cites the capacity refusal |
 | Bounded load figures are not portable capacity claims | **Met.** The performance rows are bounded observations under ADR 0013 and say so; `sustained-throughput-and-capacity-under-load` stays `deferred` |
 | Synthetic cost output is not an actual cost | **Met.** No row describes an amount in the vocabulary reserved for an invoice except in a sentence denying it, and what running the workload costs on a provider is `not claimed` |
-| A lightweight completeness check where practical | **Met.** 1599 checks; the README direction is the completeness half |
+| A lightweight completeness check where practical | **Met.** Ten rules over 58 rows, each naming a control that has been watched refusing it, plus the README direction as the completeness half |
 | Deferred to PR2 | The light V1 proof dashboard. This PR publishes the authoritative data it will be generated from or validated against, and builds no dashboard |
 
 ## Limitations
@@ -239,7 +348,9 @@ absent check is not fixed here and stays a gap.
 Required: **no**. Nothing here downloads a large artifact, costs money, or touches
 anything outside this repository's working tree.
 
-Review: the change was reviewed against this record by an independent reviewer
-before the second commit on this branch. No maintainer roster exists to name a
+Review: two independent reviewers read the change against the records it cites
+before the second commit on this branch — one over the diff, one over all 49 rows and
+the 46 records they then named. Their findings are the section above, and every defect they
+raised is closed in that commit. No maintainer roster exists to name a
 person, which is the governance gap
 [CONTRIBUTING](../../../CONTRIBUTING.md) records.

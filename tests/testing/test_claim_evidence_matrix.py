@@ -13,9 +13,12 @@ carries; that a row asserting real serving, performance, or reliability behaviou
 rests on an evidence label that may support one, so a mock can never appear behind
 a serving claim; that a real Kubernetes row names a provider the cluster provider
 contract publishes, so Docker Desktop evidence cannot be read as `kind`; that no
-row describes an amount in the vocabulary reserved for an invoice; and that every
-public entry point the README publishes is either claimed by a row or listed, with
-a reason, as a surface that claims nothing.
+row describes an amount in the vocabulary reserved for an invoice; that a row whose
+mapped claim the test inventory records as covered by no pytest module carries that
+gap rather than letting the modules it names imply coverage; that every rule names the
+control that has been watched refusing it; that the published document carries no
+unrendered template expression; and that every public entry point the README publishes
+is either claimed by a row or listed, with a reason, as a surface that claims nothing.
 
 What it does not establish is that any statement in the matrix is true. It checks
 references, ranks, ceilings, and vocabulary. Whether a record says what the row
@@ -100,6 +103,7 @@ REQUIRED_CLAIM_FIELDS = (
     "automatedTestRefs",
     "ciGateIds",
     "evidenceRefs",
+    "recordedCoverageGaps",
     "versionsRecordedIn",
     "limitation",
     "doesNotEstablish",
@@ -157,6 +161,7 @@ STRATEGY_ENVIRONMENTS = set(STRATEGY["environments"])
 STRATEGY_LEVELS = {row["levelId"]: row for row in STRATEGY["certificationLevels"]}
 STRATEGY_CLASSES = {row["classId"] for row in STRATEGY["evidenceClasses"]}
 INVENTORY_MODULES = {row["module"] for row in INVENTORY["modules"]}
+INVENTORY_COVERAGE_GAPS = {gap["claimId"] for gap in INVENTORY["coverageGaps"]}
 GATE_IDS = {row["gateId"] for row in GATE_MATRIX["gates"]}
 PROVIDER_IDS = {row["providerId"] for row in PROVIDER_CONTRACT["providers"]}
 
@@ -437,6 +442,52 @@ def test_every_test_reference_is_a_module_the_inventory_knows(row: dict) -> None
 
 
 @pytest.mark.parametrize("row", CLAIMS, ids=ids)
+def test_a_row_records_the_coverage_gaps_the_inventory_records(row: dict) -> None:
+    """Both directions, so neither list can drift from the other.
+
+    Five rows name test modules for a claim the inventory records as covered by
+    no module at all. The modules are adjacent — they check how the scripts are
+    written, or the mechanics around the artifact — and citing them without the
+    gap lets the register imply coverage the inventory denies.
+    """
+    expected = sorted(
+        claim_id
+        for claim_id in row["strategyClaimIds"]
+        if claim_id in INVENTORY_COVERAGE_GAPS
+    )
+    assert row["recordedCoverageGaps"] == expected, {
+        "claim": row["claimId"],
+        "recorded here": row["recordedCoverageGaps"],
+        "recorded by the inventory": expected,
+    }
+
+
+@pytest.mark.parametrize("row", CLAIMS, ids=ids)
+def test_a_row_with_a_recorded_coverage_gap_says_so_in_its_limitation(
+    row: dict,
+) -> None:
+    """A field nobody reads is not a disclosure."""
+    if not row["recordedCoverageGaps"]:
+        return
+    assert "recorded coverage gap" in row["limitation"], row["claimId"]
+
+
+@pytest.mark.parametrize("row", CLAIMS, ids=ids)
+def test_a_row_on_real_evidence_declares_that_it_asserts_real_behaviour(
+    row: dict,
+) -> None:
+    """The word list above is a floor. This is the rule with teeth.
+
+    A row resting on evidence from a real component is a row about a real
+    component, whatever its sentence happens to say, and it has to declare that
+    so the label rule can reach it.
+    """
+    if not LABEL_BY_ID[row["evidenceLabel"]]["maySupportRealBehaviour"]:
+        return
+    assert row["assertsRealBehaviour"] is True, row["claimId"]
+
+
+@pytest.mark.parametrize("row", CLAIMS, ids=ids)
 def test_every_gate_reference_is_a_gate_the_gate_matrix_declares(row: dict) -> None:
     for gate_id in row["ciGateIds"]:
         assert gate_id in GATE_IDS, (row["claimId"], gate_id)
@@ -515,7 +566,11 @@ def test_no_row_describes_an_amount_in_an_invoices_vocabulary(
     """
     for sentence in re.split(r"(?<=[.;])\s+", value):
         lowered = sentence.lower()
-        found = [word for word in INVOICE_VOCABULARY if word in lowered]
+        found = [
+            word
+            for word in INVOICE_VOCABULARY
+            if re.search(rf"\b{re.escape(word)}\b", lowered)
+        ]
         if not found:
             continue
         assert any(denial in lowered for denial in DENIALS), {
@@ -624,6 +679,54 @@ def test_every_prohibition_is_a_slug_with_a_statement(row: dict) -> None:
     assert len(row["statement"]) > 40, row["ruleId"]
 
 
+@pytest.mark.parametrize("row", MATRIX["prohibitions"], ids=lambda row: row["ruleId"])
+def test_every_prohibition_names_the_control_that_watches_it_fail(row: dict) -> None:
+    """The document says each rule is driven over a row corrupted to break it.
+
+    That sentence was true of nine of the ten when it was written, and an
+    independent review found the tenth. Saying it and checking it are now the
+    same thing: each rule names its control, and the control has to exist here.
+    """
+    control = row["controlledBy"]
+    assert control, row["ruleId"]
+    assert control in globals(), (row["ruleId"], control)
+    assert callable(globals()[control]), (row["ruleId"], control)
+
+
+def test_no_control_is_shared_by_two_rules() -> None:
+    """A control watching two rules would leave one of them unwatched."""
+    named = [row["controlledBy"] for row in MATRIX["prohibitions"]]
+    assert len(named) == len(set(named)), sorted(
+        control for control in set(named) if named.count(control) > 1
+    )
+
+
+#: What an unrendered template expression looks like in Markdown. The document
+#: is assembled once and then maintained by hand, and the first version of it
+#: shipped a literal ``{len(DATA[...])}`` expression into the published file.
+PLACEHOLDER = re.compile(r"\{(?:len\(|DATA\[|COUNTS\[|row\[)")
+
+
+def test_the_document_carries_no_unrendered_placeholder() -> None:
+    """Found by an independent review, in the published document, after a green suite.
+
+    The suite compared the document's identifiers and its counts with the data
+    and had nothing to say about a sentence that was neither. This is the cheap
+    general check that was missing.
+    """
+    found = [
+        (number, line)
+        for number, line in enumerate(DOCUMENT_TEXT.splitlines(), start=1)
+        if PLACEHOLDER.search(line)
+    ]
+    assert not found, {"unrendered expressions": found}
+
+
+def test_the_placeholder_check_would_catch_the_defect_it_was_written_for() -> None:
+    assert PLACEHOLDER.search('{len(DATA["prohibitions"])} rules hold this register')
+    assert not PLACEHOLDER.search("10 rules hold this register to its own vocabulary.")
+
+
 def test_the_document_states_the_counts_the_data_produces() -> None:
     """A count in prose is a number somebody typed unless something checks it."""
     counts = {
@@ -631,6 +734,9 @@ def test_the_document_states_the_counts_the_data_produces() -> None:
         for status in STATUS_BY_ID
     }
     assert f"{len(CLAIMS)} claims" in DOCUMENT_TEXT, len(CLAIMS)
+    assert f"{len(MATRIX['prohibitions'])} rules" in DOCUMENT_TEXT, len(
+        MATRIX["prohibitions"]
+    )
     for status, count in counts.items():
         # The document spells a status readably — "not claimed" rather than the
         # identifier — so both forms count.
@@ -732,8 +838,51 @@ def test_the_provider_rule_refuses_a_real_kubernetes_row_with_no_provider() -> N
         test_a_real_kubernetes_row_names_the_provider_it_ran_on(row)
 
 
+def test_the_coverage_gap_rule_refuses_a_row_that_drops_a_recorded_gap() -> None:
+    row = _first(lambda row: row["recordedCoverageGaps"])
+    row["recordedCoverageGaps"] = []
+    with pytest.raises(AssertionError):
+        test_a_row_records_the_coverage_gaps_the_inventory_records(row)
+
+
+def test_the_coverage_gap_rule_refuses_a_gap_the_limitation_hides() -> None:
+    row = _first(lambda row: row["recordedCoverageGaps"])
+    row["limitation"] = "One host, one day, and nothing else worth saying about it."
+    with pytest.raises(AssertionError):
+        test_a_row_with_a_recorded_coverage_gap_says_so_in_its_limitation(row)
+
+
+def test_the_real_evidence_rule_refuses_a_real_row_that_does_not_declare_it() -> None:
+    row = _first(lambda row: row["evidenceLabel"] == "local-real-cpu")
+    row["assertsRealBehaviour"] = False
+    with pytest.raises(AssertionError):
+        test_a_row_on_real_evidence_declares_that_it_asserts_real_behaviour(row)
+
+
 def test_the_limitation_rule_refuses_a_row_that_states_none() -> None:
     row = _first(lambda row: True)
     row["limitation"] = ""
     with pytest.raises(AssertionError):
         test_every_row_states_a_limitation_and_what_it_does_not_establish(row)
+
+
+def test_the_completeness_rule_refuses_an_ungoverned_readme_entry_point() -> None:
+    """The rule this suite shipped without a control, added after a review.
+
+    It is the rule the register rests on — a README entry point that no row
+    claims and no exclusion excuses — and it was the only one of the ten never
+    watched failing. An independent review found that, which is the thing the
+    suite's own docstring says a control exists to prevent.
+    """
+    ungoverned = "docs/a-surface-nobody-registered.md"
+    assert ungoverned not in CLAIMED_PATHS
+    assert ungoverned not in NON_CLAIM_PATHS
+    remaining = {*README_TARGETS, ungoverned} - CLAIMED_PATHS - NON_CLAIM_PATHS
+    assert remaining == {ungoverned}, remaining
+
+
+def test_the_completeness_rule_refuses_an_excuse_the_readme_does_not_show() -> None:
+    """The other direction, so the exclusion list cannot become a parking space."""
+    invented = "docs/a-surface-the-readme-does-not-show.md"
+    absent = (NON_CLAIM_PATHS | {invented}) - set(README_TARGETS)
+    assert absent == {invented}, absent

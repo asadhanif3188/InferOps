@@ -178,14 +178,16 @@
         "tests/contracts/test_workload_contract_v1alpha1.py",
         "tests/contracts/test_platform_contract_regression.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "expected-failures"
       ],
       "evidenceRefs": [
-        "docs/proof/contracts/v1-s0-004-pr1-validation.md"
+        "docs/proof/contracts/v1-s0-004-pr1-validation.md",
+        "docs/proof/contracts/v1-s0-004-pr2-validation.md"
       ],
-      "versionsRecordedIn": "docs/proof/contracts/v1-s0-004-pr1-validation.md",
+      "versionsRecordedIn": "docs/proof/contracts/v1-s0-004-pr2-validation.md",
       "limitation": "The schema and its fixtures are files. No runtime component consumes the contract, so publishing it establishes nothing about what a deployment does with one.",
       "doesNotEstablish": "That any workload was ever deployed from a contract document.",
       "readmeRefs": [
@@ -216,6 +218,7 @@
         "tests/contracts/test_workload_contract_validation.py",
         "tests/contracts/test_platform_contract_regression.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "expected-failures"
@@ -234,7 +237,7 @@
     {
       "claimId": "the-workload-domain-parses-a-contract-document-into-typed-objects",
       "area": "contracts-and-domain",
-      "statement": "A validated contract document is parsed into typed domain objects with explicit contract-version handling.",
+      "statement": "A contract document is parsed into typed domain objects with explicit contract-version handling, and seven semantic validation rules are applied to what parsing produced.",
       "status": "certified",
       "certificationLevel": "C0",
       "evidenceLabel": "local-static",
@@ -250,6 +253,7 @@
         "tests/domain/test_workload_schema_agreement.py",
         "tests/domain/test_workload_validation.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -257,8 +261,8 @@
         "docs/proof/domain/v1-s1-001-pr1-validation.md",
         "docs/proof/domain/v1-s1-001-pr2-validation.md"
       ],
-      "versionsRecordedIn": "docs/proof/domain/v1-s1-001-pr2-validation.md",
-      "limitation": "The validation rule pipeline the domain model describes is not implemented. Parsing and version handling are.",
+      "versionsRecordedIn": "docs/proof/domain/v1-s1-001-pr1-validation.md",
+      "limitation": "Parsing, version handling, and the semantic rules are implemented and tested; what the domain model describes and nothing builds is the rendering of a deployment from what they produce. The record that carries the immutable versions is the first of the two cited: the second records no environment table of its own, and its results section disagrees with its own evidence block on how many tests ran.",
       "doesNotEstablish": "That a deployment is derived from a parsed document. Nothing renders one.",
       "readmeRefs": [
         "docs/domain/workload-domain-model.md"
@@ -286,6 +290,7 @@
         "tests/api/test_api_contract_regression.py",
         "tests/realruntime/test_api_real_adapter_smoke.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -318,6 +323,7 @@
         "tests/domain/test_workload_validation.py",
         "tests/api/test_api_adapter_selection.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -350,6 +356,7 @@
         "tests/scaffolding/test_workload_template_rendering.py",
         "tests/scaffolding/test_workload_template_parameters.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -358,7 +365,7 @@
         "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md"
       ],
       "versionsRecordedIn": "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md",
-      "limitation": "The walkthrough was executed on one Windows host by an independent Codex reviewer rather than a human second engineer, and the record says so. The synchronous profile was generated and validated, never deployed.",
+      "limitation": "The walkthrough was executed on one Windows host by an independent Codex reviewer rather than a human second engineer, and the record says so. The synchronous profile was generated and validated, never deployed. The change-validation record cited beside it states that it certifies no claim in the test matrix and moves no layer; what supports this row is the executed walkthrough, not that record.",
       "doesNotEstablish": "That a generated workload runs anywhere. No generated workload is committed and none was deployed.",
       "readmeRefs": [
         "docs/scaffolding/workload-template.md"
@@ -383,15 +390,17 @@
       "automatedTestRefs": [
         "tests/scaffolding/test_workload_scaffolder.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
       "evidenceRefs": [
         "docs/proof/quickstart/v1-s1-009-pr1-validation.md",
-        "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md"
+        "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md",
+        "docs/proof/serving/v1-s1-real-runtime-closure.md"
       ],
       "versionsRecordedIn": "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md",
-      "limitation": "One Windows host, one executor, mock adapter throughout. The API was driven in process through ASGI and no network socket was opened.",
+      "limitation": "One Windows host, one executor, mock adapter throughout. The API was driven in process through ASGI and no network socket was opened. In the quick start's own record the real-runtime lane is seven skips, because the runtime settings were absent, and a skipped session is not a smoke run; the execution is the third record cited, which is a separate authorized run on a capable host.",
       "doesNotEstablish": "That a clean clone reproduces the whole V1 journey. That is a separate claim and it is planned.",
       "readmeRefs": [
         "docs/developer-quick-start.md"
@@ -414,6 +423,7 @@
         "scripts/environment"
       ],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
@@ -447,13 +457,15 @@
         "tests/serving/test_inference_api_surface.py",
         "tests/serving/test_inference_api_implementation_agreement.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
       "evidenceRefs": [
-        "docs/proof/serving/v1-s2-002-pr2-validation.md"
+        "docs/proof/serving/v1-s1-005-pr1-validation.md",
+        "docs/proof/serving/v1-s1-005-pr2-validation.md"
       ],
-      "versionsRecordedIn": "docs/proof/serving/v1-s2-002-pr2-validation.md",
+      "versionsRecordedIn": "docs/proof/serving/v1-s1-005-pr1-validation.md",
       "limitation": "The published surface is five endpoints served in part. The distribution carries no server dependency; the repository's loopback-only HTTP carrier is tooling rather than a product.",
       "doesNotEstablish": "That a production network server exists. None does, and nothing here is authenticated, authorized, or exposed to a network.",
       "readmeRefs": [
@@ -482,6 +494,7 @@
         "tests/adapters/test_mock_serving_adapter.py",
         "tests/adapters/test_llama_server_agreement.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -513,6 +526,7 @@
       "automatedTestRefs": [
         "tests/testing/test_test_strategy.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -549,6 +563,7 @@
         "tests/adapters/test_llama_server_readiness.py",
         "tests/api/test_api_error_contract.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -582,6 +597,7 @@
         "tests/adapters/test_llama_server_transport.py",
         "tests/api/test_api_error_contract.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -602,8 +618,8 @@
       "certificationLevel": "C2",
       "evidenceLabel": "local-real-cpu",
       "assertsRealBehaviour": true,
-      "provider": "not-applicable",
-      "environment": "capable-host",
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
       "strategyClaimIds": [],
       "implementationRefs": [
         "docs/serving/feasibility-workflow.md",
@@ -614,6 +630,7 @@
         "tests/serving/test_runtime_configuration.py",
         "tests/serving/test_runtime_packaging.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -621,7 +638,7 @@
         "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md"
       ],
       "versionsRecordedIn": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
-      "limitation": "One host, one architecture, one point in time on 2026-08-24, single-request throughout. `T7` — a cumulative request counter — is a blocking threshold recorded as not met as written, and ADR 0002 accepted the pair with that exception. The cluster was the container desktop distribution's own, not a cluster this project selected.",
+      "limitation": "One host, one architecture, one point in time on 2026-08-24, single-request throughout. `T7` — a cumulative request counter — is a blocking threshold recorded as not met as written, and ADR 0002 accepted the pair with that exception. The runtime was started in the container desktop distribution's own single-node cluster and answered through cluster DNS and a Service, so this is a Kubernetes result; the record predates ADR 0011 and names that cluster descriptively rather than by provider identifier, and the provider here is read from its description rather than from a field the record carries.",
       "doesNotEstablish": "Anything about throughput, concurrency, queueing, load, model quality, another host, or any GPU path. A genuinely page-cache-cold start was attempted and not measured.",
       "readmeRefs": [
         "docs/serving/feasibility-workflow.md",
@@ -649,6 +666,9 @@
       "automatedTestRefs": [
         "tests/serving/test_model_acquisition.py"
       ],
+      "recordedCoverageGaps": [
+        "the-model-artifact-matches-its-published-hash"
+      ],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -657,7 +677,7 @@
         "docs/proof/serving/v1-s1-real-runtime-closure.md"
       ],
       "versionsRecordedIn": "docs/proof/serving/v1-s1-real-runtime-closure.md",
-      "limitation": "The downloader does not validate TLS certificates, so the published hash is the whole integrity argument for the transfer rather than a redundant check on it. Resumption after interruption is proved synthetically; the executed acquisition took 866 seconds over three bounded resume attempts on one host.",
+      "limitation": "The downloader does not validate TLS certificates, so the published hash is the whole integrity argument for the transfer rather than a redundant check on it. Resumption after interruption is proved synthetically; the executed acquisition took 866 seconds over three bounded resume attempts on one host. Both records cited also ran in a cluster, and this row carries no provider because the comparison it is about happens in the download procedure on the host rather than inside one. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
       "doesNotEstablish": "That the published hash itself is trustworthy, or that the bytes came from who they appear to have come from. No provenance is verified and `DR-08` still carries that gap.",
       "readmeRefs": [
         "docs/serving/model-acquisition.md"
@@ -685,6 +705,7 @@
         "tests/api/test_local_real_composition.py",
         "tests/realruntime/test_llama_server_real_smoke.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -719,6 +740,7 @@
       "automatedTestRefs": [
         "tests/serving/test_serving_baseline.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -727,7 +749,7 @@
         "docs/proof/serving/v1-s2-005-baseline-raw-results.md"
       ],
       "versionsRecordedIn": "docs/proof/serving/v1-s2-005-baseline-raw-results.md",
-      "limitation": "One host, one day on 2026-09-03, CPU only, concurrency one, one request shape. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load.",
+      "limitation": "One host, one day on 2026-09-03, CPU only, concurrency one, one request shape. The five thresholds were registered before the run; the fixture was not the one registered — the original two-message fixture was refused by the API on all thirty requests of the prior attempt and was rewritten to be answerable before this run, which the experiment record states in its own correction section. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load.",
       "doesNotEstablish": "Concurrent serving, sustained load, GPU execution, or Kubernetes. The 30.9-second margin against the load budget must not be read as a reliable start-within-budget: the same host was 58.7 seconds over that budget in the prior attempt.",
       "readmeRefs": [
         "docs/serving/local-serving-baseline.md"
@@ -751,6 +773,7 @@
       "automatedTestRefs": [
         "tests/serving/test_model_lifecycle.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -759,7 +782,7 @@
         "docs/proof/serving/v1-s2-007-cache-miss-observation.md"
       ],
       "versionsRecordedIn": "docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md",
-      "limitation": "One host, one day, six starts, CPU only. The cold arm was not cold — Windows offers no supported page-cache drop — and the host was memory-constrained throughout, with 904 to 1,725 MiB free of 16,057 MiB.",
+      "limitation": "Six starts on one host on 2026-09-03, CPU only. The cold arm was not cold — Windows offers no supported page-cache drop — and the host was memory-constrained throughout, with 904 to 1,725 MiB free of 16,057 MiB. The cache-miss observation cited beside it is from 2026-09-04 and establishes the miss classification and the refusal it triggers; it says nothing about the six starts or either arm.",
       "doesNotEstablish": "Any cold-start effect. Warm was slower in every comparison, and the cold arm's own spread of 82,157 ms is larger than every within-comparison delta, so no such effect is claimed. These figures may not be cited for serving performance, capacity, cold-start cost, or model-load cost.",
       "readmeRefs": [
         "docs/serving/model-lifecycle.md"
@@ -783,6 +806,7 @@
       "automatedTestRefs": [
         "tests/serving/test_local_runtime_troubleshooting.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "documentation"
@@ -820,6 +844,7 @@
         "tests/architecture/test_cluster_lifecycle_safety.py",
         "tests/architecture/test_terraform_destroy_guard.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -856,6 +881,9 @@
       "automatedTestRefs": [
         "tests/architecture/test_cluster_lifecycle_safety.py"
       ],
+      "recordedCoverageGaps": [
+        "a-local-cluster-is-created-and-removed-without-residue"
+      ],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -863,7 +891,7 @@
         "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md"
       ],
       "versionsRecordedIn": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md",
-      "limitation": "One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design.",
+      "limitation": "One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
       "doesNotEstablish": "Anything about inference, models, serving runtimes, throughput, capacity, ingress, load balancing, or any other operating system. No ingress controller and no `Service type=LoadBalancer` was exercised.",
       "readmeRefs": [
         "docs/environment/local-cluster.md"
@@ -893,6 +921,7 @@
         "tests/architecture/test_helm_chart.py",
         "tests/realruntime/test_api_real_adapter_smoke.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "helm-chart",
@@ -933,6 +962,9 @@
         "tests/architecture/test_helm_chart.py",
         "tests/architecture/test_terraform_prerequisites.py"
       ],
+      "recordedCoverageGaps": [
+        "a-helm-release-installs-and-uninstalls-without-residue"
+      ],
       "ciGateIds": [
         "helm-chart",
         "terraform"
@@ -941,7 +973,7 @@
         "docs/proof/environment/v1-s3-011-pr2-scoped-cleanup.md"
       ],
       "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr2-scoped-cleanup.md",
-      "limitation": "One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them.",
+      "limitation": "One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
       "doesNotEstablish": "That every InferOps object anywhere is removed. A `V1-S0-003` namespace from 2026-09-02 survives, has no owning teardown in any committed workflow, and is recorded as a gap; what a Docker Desktop reset would reclaim, including a 1.83 GB seed image in the node's containerd, was not observed.",
       "readmeRefs": [
         "docs/environment/kubernetes-troubleshooting.md"
@@ -969,6 +1001,9 @@
       "automatedTestRefs": [
         "tests/architecture/test_helm_upgrade_rollback.py"
       ],
+      "recordedCoverageGaps": [
+        "a-controlled-release-change-can-be-reversed-and-real-inference-restored"
+      ],
       "ciGateIds": [
         "helm-chart"
       ],
@@ -976,7 +1011,7 @@
         "docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md"
       ],
       "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md",
-      "limitation": "One provider, one host, one moment, one replica of each tier, and one injected fault — an artifact byte-count mismatch. Five attempts were made and four failed for reasons the record lists. Detection and rollback were both performed by an operating script a person started.",
+      "limitation": "One provider, one host, one moment, one replica of each tier, and one injected fault — an artifact byte-count mismatch. Five attempts were made and four failed for reasons the record lists. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
       "doesNotEstablish": "Anything about faults that were not injected, including a runtime that starts and answers wrongly; anything about a chart version change, a schema change, or a persisted-state migration; and nothing about behaviour under load, since caller impact was three readiness probes through one forward.",
       "readmeRefs": [
         "docs/environment/kubernetes-troubleshooting.md"
@@ -1004,6 +1039,9 @@
       "automatedTestRefs": [
         "tests/architecture/test_kubernetes_pod_restart.py"
       ],
+      "recordedCoverageGaps": [
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim"
+      ],
       "ciGateIds": [
         "helm-chart",
         "terraform"
@@ -1012,7 +1050,7 @@
         "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md"
       ],
       "versionsRecordedIn": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md",
-      "limitation": "One provider, one host, one pod deleted once on 2026-09-12, with one replica. Four defects were found before the run stood up, two of them by an independent review.",
+      "limitation": "One provider, one host, one pod deleted once on 2026-09-12, with one replica. Four defects were found: two by running it, and two more by an independent review of the change afterwards, both of the second pair defects in a published figure rather than in a run that failed, which is why running it did not find them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
       "doesNotEstablish": "High availability. The replacement window is an outage for any caller reaching that Service, a deleted pod is not a lost node, the claim's durability across a Docker Desktop reset is recorded as unknown, and nothing here says what an upgrade would re-acquire.",
       "readmeRefs": [
         "docs/environment/kubernetes-troubleshooting.md"
@@ -1036,6 +1074,7 @@
       "automatedTestRefs": [
         "tests/architecture/test_kubernetes_multi_replica_certification.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [
         "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
@@ -1051,7 +1090,7 @@
     {
       "claimId": "kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed",
       "area": "kubernetes",
-      "statement": "A symptom-oriented Kubernetes troubleshooting guide covering cluster, scheduling, memory, storage, model load, probe, Service, telemetry, Helm, and Terraform faults, with four separated cleanup radii, is published and machine-checked against the repository, and both halves have been executed.",
+      "statement": "A symptom-oriented Kubernetes troubleshooting guide covering cluster, scheduling, memory, storage, model load, probe, Service, telemetry, Helm, and Terraform faults, with four separated cleanup radii, is published and machine-checked against the repository.",
       "status": "certified",
       "certificationLevel": "C0",
       "evidenceLabel": "local-static",
@@ -1066,15 +1105,18 @@
       "automatedTestRefs": [
         "tests/architecture/test_kubernetes_troubleshooting.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "documentation"
       ],
       "evidenceRefs": [
-        "docs/proof/environment/v1-s3-009-pr1-validation.md"
+        "docs/proof/environment/v1-s3-009-pr1-validation.md",
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+        "docs/proof/environment/v1-s3-011-pr2-scoped-cleanup.md"
       ],
       "versionsRecordedIn": "docs/proof/environment/v1-s3-009-pr1-validation.md",
-      "limitation": "Every command is checked against the repository, which is a property of strings rather than of a cluster. The executions behind it are the Sprint 3 records, on one Windows host, on `docker-desktop`.",
+      "limitation": "Every command is checked against the repository, which is a property of strings rather than of a cluster. The record that machine-checks the guide contacted no cluster, and states that when it was written the release half had never been run by anybody; `V1-S3-011` ran that half afterwards, on one Windows host, on `docker-desktop`, and those two records are cited beside it.",
       "doesNotEstablish": "That an operator following it recovers from a fault the records did not produce.",
       "readmeRefs": [
         "docs/environment/kubernetes-troubleshooting.md",
@@ -1100,6 +1142,7 @@
       "automatedTestRefs": [
         "tests/serving/test_llm_load.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1135,6 +1178,7 @@
         "tests/serving/test_performance_scenarios.py",
         "tests/serving/test_performance_findings.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1165,10 +1209,13 @@
       ],
       "implementationRefs": [],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [
+        "sustained-throughput-and-capacity-under-load"
+      ],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
-      "limitation": "Deferred out of V1 by the project boundaries and left deferred by ADR 0013, which narrowed the rule only far enough to allow a bounded observation of one declared, authorized local experiment. This is the portable claim, and it stays deferred.",
+      "limitation": "Deferred out of V1 by the project boundaries and left deferred by ADR 0013, which narrowed the rule only far enough to allow a bounded observation of one declared, authorized local experiment. This is the portable claim, and it stays deferred. It is also a recorded coverage gap in the test inventory: the capacity layer declares no test paths and its marker is deselected by default, so no pytest module would notice if it were promoted.",
       "doesNotEstablish": "Anything. It is written down rather than omitted so that publishing a capacity figure would mean deleting a deferral in public.",
       "readmeRefs": [
         "docs/architecture/project-boundaries.md",
@@ -1195,6 +1242,7 @@
       "automatedTestRefs": [
         "tests/architecture/test_inference_pod_recovery.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1228,6 +1276,7 @@
       "automatedTestRefs": [
         "tests/architecture/test_unready_model_recovery.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1262,6 +1311,7 @@
         "tests/api/test_api_observability.py",
         "tests/api/test_api_health_models_and_metrics.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1269,7 +1319,7 @@
         "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
       ],
       "versionsRecordedIn": "docs/proof/telemetry/v1-s1-008-pr1-validation.md",
-      "limitation": "Repository-local, mock-backed evidence. No component emits a span, and the release collector's series live in an `emptyDir` and go with its pod.",
+      "limitation": "Repository-local, mock-backed evidence, and at the date of the record nothing collected any of it — no exporter, collector, store, dashboard, or alert was selected. A release-scoped collector has since scraped these metrics, which is a separate row with its own record. No component emits a span.",
       "doesNotEstablish": "Anything about a deployed network service, a real selected-model response, a durable store, or a trace.",
       "readmeRefs": [
         "docs/telemetry/README.md"
@@ -1297,14 +1347,16 @@
         "tests/telemetry/test_telemetry_catalog.py",
         "tests/telemetry/test_api_telemetry_agreement.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
       "evidenceRefs": [
-        "docs/proof/telemetry/v1-s0-007-pr1-validation.md"
+        "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
+        "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
       ],
-      "versionsRecordedIn": "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
-      "limitation": "Content capture is disabled at the API's metric-declaration and structured-record sinks and has no policy that could enable it. The check is over committed data and the sinks that read it.",
+      "versionsRecordedIn": "docs/proof/telemetry/v1-s1-008-pr1-validation.md",
+      "limitation": "Content capture is disabled at the API's metric-declaration and structured-record sinks and has no policy that could enable it. The first record cited predates every one of those sinks — when it was written nothing in this repository emitted a metric, a log record, or a span, and it checks the committed catalog alone; the second is where the sinks arrive. The check is over committed data and the sinks that read it.",
       "doesNotEstablish": "That nothing leaks anywhere. Whether a real run keeps a prompt, a response, or a secret out of a log and a metric is a separate claim, and it is planned.",
       "readmeRefs": [
         "docs/telemetry/redaction.md"
@@ -1332,6 +1384,7 @@
         "tests/api/test_api_observability.py",
         "tests/api/test_api_request_validation.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1367,6 +1420,7 @@
         "tests/telemetry/test_telemetry_correlation.py",
         "tests/architecture/test_telemetry_collector.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "helm-chart"
@@ -1403,6 +1457,7 @@
         "tests/telemetry/test_inference_dashboard.py",
         "tests/telemetry/test_inference_dashboard_validation.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1421,7 +1476,7 @@
     {
       "claimId": "six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link",
       "area": "telemetry",
-      "statement": "Six alerts are published, each with an owner, a severity, the condition, what a caller is experiencing, an evidence query repeated verbatim from an accepted correlation query, an operator action, a runbook link, a declared threshold basis, and what it will be quiet for; five conditions are deferred because nothing emits the signal and eight more are refused by a named rule.",
+      "statement": "Six alerts are published, each with an owner, a severity, the condition, what a caller is experiencing, an evidence query repeated verbatim from an accepted correlation query, an operator action, a runbook link, a declared threshold basis, and what it will be quiet for; five conditions are deferred — three because nothing emits the signal, one because no chart here installs the exporter that would, and one because no error budget is decided anywhere in this project — and eight more are refused by a named rule.",
       "status": "certified",
       "certificationLevel": "C0",
       "evidenceLabel": "local-static",
@@ -1439,6 +1494,7 @@
         "tests/telemetry/test_inference_alerts.py",
         "tests/architecture/test_inference_alert_rules.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "helm-chart"
@@ -1460,11 +1516,11 @@
       "area": "telemetry",
       "statement": "Five of the six alerts were replayed over the telemetry captured by three real `docker-desktop` experiments; one fired, over one capture, and every silence carries the reason it was silent.",
       "status": "certified",
-      "certificationLevel": "C2",
-      "evidenceLabel": "local-real-cpu",
-      "assertsRealBehaviour": true,
-      "provider": "docker-desktop",
-      "environment": "local-kubernetes",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
       "strategyClaimIds": [],
       "implementationRefs": [
         "tools/inference_alerts",
@@ -1473,6 +1529,7 @@
       "automatedTestRefs": [
         "tests/telemetry/test_inference_alerts.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1481,7 +1538,7 @@
         "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
       ],
       "versionsRecordedIn": "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
-      "limitation": "The captures are real and the replay is this repository's own evaluator over them, stepping at 60 seconds where a release would evaluate every 30. One alert missed the same run by one evaluation, and that is recorded rather than tuned away.",
+      "limitation": "The captures are real, from `docker-desktop`, and they step at 15 seconds; the replay over them is this repository's own evaluator, which its record classifies `local-static` — so this row is a `C0` claim about a replay, not a `C2` claim about a runtime. The 60-second step belongs to the synthetic fixtures rather than to these captures. One alert missed the same run by one evaluation, and that is recorded rather than tuned away.",
       "doesNotEstablish": "That any alert has been evaluated by a Prometheus, delivered, or acted on. No alerting rule existed during any of the three experiments.",
       "readmeRefs": [
         "docs/telemetry/inference-alerts.md"
@@ -1501,6 +1558,7 @@
       "strategyClaimIds": [],
       "implementationRefs": [],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
@@ -1534,6 +1592,7 @@
         "tests/cost/test_cost_calculation.py",
         "tests/cost/test_cost_baseline.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1568,6 +1627,7 @@
       "automatedTestRefs": [
         "tests/cost/test_cost_baseline.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1576,7 +1636,7 @@
         "docs/proof/cost/v1-s4-005-pr2-validation.md"
       ],
       "versionsRecordedIn": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
-      "limitation": "What is certified here is the derivation and the arithmetic, not the amounts. The use is local real CPU evidence from `docker-desktop` — one host, one release, one prompt, two runs — and every price is from the synthetic rate card, so both records carry confidence `none` and certify nothing themselves. The window is a load span rather than an accounting hour, the collector is left on the unallocated line by a choice rather than a measurement, and the owner is declared rather than observed.",
+      "limitation": "What is certified here is a file-reading operation: that the use is taken from committed samples by tool rather than typed in, and that each record regenerates from its own input and the committed method. The samples themselves are local real CPU evidence measured on `docker-desktop` during `V1-S4-004` — one host, one release, one prompt, two runs — and that measurement is a different row with its own record; every price is from the synthetic rate card, so both cost records carry confidence `none` and certify nothing themselves. The window is a load span rather than an accounting hour, the collector is left on the unallocated line by a choice rather than a measurement, and the owner is declared rather than observed.",
       "doesNotEstablish": "What anything costs. An estimate certifies nothing, the amounts are structurally valid and economically meaningless, and cost per million tokens is null because the sample of 9,516 tokens is below the declared minimum.",
       "readmeRefs": [
         "docs/cost/README.md"
@@ -1596,6 +1656,7 @@
       "strategyClaimIds": [],
       "implementationRefs": [],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
@@ -1626,6 +1687,7 @@
       "automatedTestRefs": [
         "tests/security/test_security_baseline.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -1633,7 +1695,7 @@
         "docs/proof/security/v1-s0-009-pr1-validation.md"
       ],
       "versionsRecordedIn": "docs/proof/security/v1-s0-009-pr1-validation.md",
-      "limitation": "Six of the thirty-eight controls have no verification at all and nine are enforced by nothing automated. Twelve risks are carried rather than reduced, and ten of the twelve block production use.",
+      "limitation": "The cited record measured ten of thirty-two controls with no verification at all. The committed baseline has since grown to thirty-eight, of which six have no verification and nine are enforced by nothing automated; those three figures are properties of the data committed today rather than of the record, and the suite that reads it is what holds them. Twelve risks are carried rather than reduced, and ten of the twelve block production use.",
       "doesNotEstablish": "That anything is defended. Nothing in this repository authenticates a caller, authorises a request, or admits a pod, and no assessment by an outside party has ever been performed.",
       "readmeRefs": [
         "docs/security/README.md",
@@ -1661,16 +1723,18 @@
       "automatedTestRefs": [
         "tests/security/test_workload_policy.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "expected-failures",
         "helm-chart"
       ],
       "evidenceRefs": [
-        "docs/proof/security/v1-s3-004-pr1-validation.md"
+        "docs/proof/security/v1-s3-004-pr1-validation.md",
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
       ],
       "versionsRecordedIn": "docs/proof/security/v1-s3-004-pr1-validation.md",
-      "limitation": "The validator reads YAML. It holds no credential, contacts no cluster, and stops nothing being applied; no admission control applies any of its rules to a pod. A release has been installed from the committed renders and the workloads carried the settings, and no check here reads a pod that resulted.",
+      "limitation": "The validator reads YAML. It holds no credential, contacts no cluster, and stops nothing being applied; no admission control applies any of its rules to a pod. When the first record cited was written no release had been installed and none could be, because no API image was published; `V1-S3-011` installed one from those renders afterwards, which is the second record cited, and no check in either reads a pod that resulted.",
       "doesNotEstablish": "Anything about a running workload. `DR-04` and `DR-05` carry both gaps and `EX-05` records the first.",
       "readmeRefs": [
         "docs/security/README.md"
@@ -1694,6 +1758,7 @@
       "automatedTestRefs": [
         "tests/security/test_workload_policy.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [
         "docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md"
@@ -1723,6 +1788,7 @@
       "automatedTestRefs": [
         "tests/security/test_security_baseline.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "dependency-and-image-scan",
         "software-bill-of-materials"
@@ -1756,12 +1822,15 @@
         "scripts/security"
       ],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [
+        "no-credential-or-model-artifact-enters-public-history"
+      ],
       "ciGateIds": [
         "secret-scan"
       ],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
-      "limitation": "A secret scanner has run once by hand from its published container image, over 134 commits, and found no leaks; the gate that installs the pinned release archive has since passed on the service, but that run is observed rather than recorded. The claim stays planned on the strength of one run.",
+      "limitation": "A secret scanner has run once by hand from its published container image, over 134 commits, and found no leaks; the gate that installs the pinned release archive has since passed on the service, but that run is observed rather than recorded. The claim stays planned on the strength of one run. It is a recorded coverage gap in the test inventory: no pytest module scans history for a credential, and the suite that reads the scanner configuration checks only that it is committed, parses, and exempts things that exist.",
       "doesNotEstablish": "Anything. It is an intention and cites no record.",
       "readmeRefs": [
         "docs/security/README.md"
@@ -1781,6 +1850,7 @@
       "strategyClaimIds": [],
       "implementationRefs": [],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
@@ -1811,6 +1881,7 @@
       "automatedTestRefs": [
         "tests/testing/test_document_links.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "documentation"
@@ -1851,15 +1922,19 @@
         "tests/testing/test_ci_gate_matrix.py",
         "tests/testing/test_claim_evidence_matrix.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "documentation"
       ],
       "evidenceRefs": [
-        "docs/proof/testing/v1-s0-006-pr1-validation.md"
+        "docs/proof/testing/v1-s0-006-pr1-validation.md",
+        "docs/proof/testing/v1-s1-007-pr1-validation.md",
+        "docs/proof/testing/v1-s4-001-pr1-validation.md",
+        "docs/proof/testing/v1-s4-009-pr1-validation.md"
       ],
-      "versionsRecordedIn": "docs/proof/testing/v1-s0-006-pr1-validation.md",
-      "limitation": "It stops the strategy drifting from its documents. Most layers have no code behind them, and the suite cannot tell an honestly planned layer from one that will never be written.",
+      "versionsRecordedIn": "docs/proof/testing/v1-s4-009-pr1-validation.md",
+      "limitation": "It stops each document drifting from its data. The four records cited arrive in that order — the strategy, the inventory, the gate matrix, this register — because the first covers the strategy and its three documents alone and nothing else existed to compare when it was written. Most layers have no code behind them, and the suite cannot tell an honestly planned layer from one that will never be written.",
       "doesNotEstablish": "That the tests the strategy describes exist, or that a claim's status is the right one.",
       "readmeRefs": [
         "docs/testing/test-strategy.md",
@@ -1889,17 +1964,19 @@
         "tests/testing/test_test_strategy.py",
         "tests/testing/test_infrastructure_gates.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "helm-chart",
         "terraform"
       ],
       "evidenceRefs": [
-        "docs/proof/testing/v1-s0-006-pr1-validation.md"
+        "docs/proof/testing/v1-s0-006-pr1-validation.md",
+        "docs/proof/testing/v1-s4-001-pr2-validation.md"
       ],
-      "versionsRecordedIn": "docs/proof/testing/v1-s0-006-pr1-validation.md",
-      "limitation": "Helm and Terraform run in the lane only as subcommands that read files, and a check refuses anything else it can recognise. The lane is cheap and reproducible rather than hermetic: five gates consume the network.",
-      "doesNotEstablish": "That an opt-in lane is safe. Three lanes still run entirely by hand, and no runner is labelled capable.",
+      "versionsRecordedIn": "docs/proof/testing/v1-s4-001-pr2-validation.md",
+      "limitation": "The marker expression is what the first record cited establishes, and when it was written no continuous-integration lane existed at all. Helm and Terraform arrived with the second: they run in the lane only as subcommands that read files, and a check refuses anything else it can recognise. The lane is cheap and reproducible rather than hermetic — five gates consume the network — and three lanes still run entirely by hand.",
+      "doesNotEstablish": "That an opt-in lane is safe, or that any lane runs anywhere but on one host by hand except the default one. No runner is labelled capable.",
       "readmeRefs": [
         "docs/testing/test-strategy.md",
         "docs/testing/ci-gate-matrix.md"
@@ -1909,7 +1986,7 @@
     {
       "claimId": "no-resource-in-the-architecture-has-two-owners",
       "area": "delivery",
-      "statement": "Every resource in the committed ownership inventory has exactly one owner, and the inventory is compared with the chart and the Terraform configuration that create them.",
+      "statement": "Every resource in the committed ownership inventory has exactly one owner, and since the chart and the Terraform configuration exist the inventory is compared with them in both directions.",
       "status": "certified",
       "certificationLevel": "C0",
       "evidenceLabel": "local-static",
@@ -1929,6 +2006,7 @@
         "tests/architecture/test_helm_chart.py",
         "tests/architecture/test_terraform_prerequisites.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "expected-failures",
@@ -1936,10 +2014,12 @@
         "terraform"
       ],
       "evidenceRefs": [
-        "docs/proof/architecture/v1-s0-005-pr1-validation.md"
+        "docs/proof/architecture/v1-s0-005-pr1-validation.md",
+        "docs/proof/architecture/v1-s3-002-pr2-validation.md",
+        "docs/proof/architecture/v1-s3-010-pr1-validation.md"
       ],
-      "versionsRecordedIn": "docs/proof/architecture/v1-s0-005-pr1-validation.md",
-      "limitation": "Twenty rows moved from planned to implemented when Terraform and Helm were applied and installed on `docker-desktop`, and each cites the run that moved it. Deployment rendering is still not built.",
+      "versionsRecordedIn": "docs/proof/architecture/v1-s3-010-pr1-validation.md",
+      "limitation": "When the first record cited was written there was no Terraform configuration and no Helm chart, so nothing compared the inventory to an implementation and its own dump counted nineteen planned rows against eight implemented. The committed inventory holds thirty-five resources today, thirty implemented, three deferred and two planned, and each implemented row cites the run that moved it. Deployment rendering is still not built.",
       "doesNotEstablish": "That the ownership is correct, only that it is single and that the artifacts agree with it.",
       "readmeRefs": [
         "docs/architecture/resource-ownership.md",
@@ -1967,15 +2047,17 @@
         "tests/testing/test_ci_gate_matrix.py",
         "tests/testing/test_infrastructure_gates.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests",
         "code-quality"
       ],
       "evidenceRefs": [
-        "docs/proof/testing/v1-s4-001-pr1-validation.md"
+        "docs/proof/testing/v1-s4-001-pr1-validation.md",
+        "docs/proof/testing/v1-s4-001-pr2-validation.md"
       ],
-      "versionsRecordedIn": "docs/proof/testing/v1-s4-001-pr1-validation.md",
-      "limitation": "Nine gates passed on the service on 2026-09-13, observed through the public Actions API; no log or artifact from those runs is promoted into a record and the logs expire. The two infrastructure gates have never run there. Two gates are not deterministic, because a vulnerability database moves daily.",
+      "versionsRecordedIn": "docs/proof/testing/v1-s4-001-pr2-validation.md",
+      "limitation": "The first record cited committed nine gates and no job had then executed on the service; its one hosted run failed three jobs. The second is where the count reaches eleven and where the nine are read back from the service's public API on 2026-09-13. No log or artifact from those runs is promoted into a record and the logs expire, the two infrastructure gates have never run there, and two gates are not deterministic because a vulnerability database moves daily.",
       "doesNotEstablish": "Any certification ceiling above `C1`. Automating the mock lane leaves a mock at `C1`, and the claims about a real runtime and a real cluster take no support from this workflow at all.",
       "readmeRefs": [
         "docs/testing/ci-gate-matrix.md"
@@ -1995,6 +2077,7 @@
       "strategyClaimIds": [],
       "implementationRefs": [],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
@@ -2023,6 +2106,7 @@
       "automatedTestRefs": [
         "tests/telemetry/test_telemetry_catalog.py"
       ],
+      "recordedCoverageGaps": [],
       "ciGateIds": [
         "default-lane-tests"
       ],
@@ -2030,7 +2114,7 @@
         "docs/proof/telemetry/v1-s0-007-pr1-validation.md"
       ],
       "versionsRecordedIn": "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
-      "limitation": "Four templates are published and two have produced records. The `environment` and `claim-evidence` templates have produced none, and this matrix does not change that: binding claims in a table is not the one-claim-per-record form the fourth template exists to enforce.",
+      "limitation": "The cited record is from the day the four templates were published, when they had produced nothing. Two have produced records since — one experiment record and five raw-result records, counted by a suite from the declarations those records carry — and `environment` and `claim-evidence` still have none. This matrix does not change that: binding claims in a table is not the one-claim-per-record form the fourth template exists to enforce.",
       "doesNotEstablish": "That a record classified itself correctly. The four templates share the same required headings, so nothing can tell a record that declares `raw-result` from one that should have declared `environment`.",
       "readmeRefs": [
         "docs/proof/README.md"
@@ -2050,6 +2134,7 @@
       "strategyClaimIds": [],
       "implementationRefs": [],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
@@ -2074,6 +2159,7 @@
       "strategyClaimIds": [],
       "implementationRefs": [],
       "automatedTestRefs": [],
+      "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
@@ -2119,49 +2205,64 @@
   "prohibitions": [
     {
       "ruleId": "a-row-may-not-outrank-the-claim-it-maps-to",
-      "statement": "A row mapped to a claim in the test strategy may not carry a stronger status than that claim's own. It may be more conservative; it may never be bolder."
+      "statement": "A row mapped to a claim in the test strategy may not carry a stronger status than that claim's own. It may be more conservative; it may never be bolder.",
+      "controlledBy": "test_the_rank_rule_refuses_a_row_certified_above_a_planned_strategy_claim"
     },
     {
       "ruleId": "a-real-behaviour-claim-needs-real-evidence",
-      "statement": "A certified row asserting real serving, performance, or reliability behaviour must carry an evidence label whose class may support real behaviour, and must cite at least one record."
+      "statement": "A certified row asserting real serving, performance, or reliability behaviour must carry an evidence label whose class may support real behaviour, and must cite at least one record.",
+      "controlledBy": "test_the_real_behaviour_rule_refuses_a_serving_claim_backed_by_a_mock"
     },
     {
       "ruleId": "no-estimate-is-a-bill",
-      "statement": "No statement, limitation, or reason in this matrix describes an amount as billing, an invoice, a charge, or spend. The `actual` basis is unreachable in V1 and that vocabulary belongs to it alone."
+      "statement": "No statement, limitation, or reason in this matrix describes an amount as billing, an invoice, a charge, or spend. The `actual` basis is unreachable in V1 and that vocabulary belongs to it alone.",
+      "controlledBy": "test_the_vocabulary_rule_refuses_an_estimate_described_as_a_bill"
     },
     {
       "ruleId": "an-uncertified-claim-cites-no-record",
-      "statement": "A `planned` or `deferred` row cites no evidence record and carries no certification level. A `not-claimed` row may cite the record that measured the absence, and carries no level either."
+      "statement": "A `planned` or `deferred` row cites no evidence record and carries no certification level. A `not-claimed` row may cite the record that measured the absence, and carries no level either.",
+      "controlledBy": "test_the_citation_rule_refuses_a_planned_row_that_cites_a_record"
     },
     {
       "ruleId": "a-level-may-not-exceed-its-labels-ceiling",
-      "statement": "A row's certification level may not exceed the ceiling its evidence label carries."
+      "statement": "A row's certification level may not exceed the ceiling its evidence label carries.",
+      "controlledBy": "test_the_ceiling_rule_refuses_a_mock_certified_at_c2"
     },
     {
       "ruleId": "every-readme-entry-point-is-governed",
-      "statement": "Every relative link target in the README's public entry-point table is either cited by a row or listed as a surface that makes no capability claim, with a reason. Neither list may name a path the other does."
+      "statement": "Every relative link target in the README's public entry-point table is either cited by a row or listed as a surface that makes no capability claim, with a reason. Neither list may name a path the other does.",
+      "controlledBy": "test_the_completeness_rule_refuses_an_ungoverned_readme_entry_point"
     },
     {
       "ruleId": "a-real-record-names-its-provider",
-      "statement": "A row whose evidence is a real Kubernetes result declares the provider it ran on, and that provider is one the cluster provider contract publishes. Docker Desktop evidence certifies no other provider."
+      "statement": "A row whose evidence is a real Kubernetes result declares the provider it ran on, and that provider is one the cluster provider contract publishes. Docker Desktop evidence certifies no other provider.",
+      "controlledBy": "test_the_provider_rule_refuses_a_real_kubernetes_row_with_no_provider"
     },
     {
       "ruleId": "every-row-states-what-it-does-not-establish",
-      "statement": "Every row carries a limitation and a statement of what it does not establish, whatever its status."
+      "statement": "Every row carries a limitation and a statement of what it does not establish, whatever its status.",
+      "controlledBy": "test_the_limitation_rule_refuses_a_row_that_states_none"
+    },
+    {
+      "ruleId": "a-recorded-coverage-gap-is-restated-rather-than-papered-over",
+      "statement": "A row mapping a claim the test inventory records as covered by no pytest module lists that gap and says so in its limitation. The modules such a row names are adjacent to the claim; citing them without the gap would let the register imply coverage the inventory denies.",
+      "controlledBy": "test_the_coverage_gap_rule_refuses_a_row_that_drops_a_recorded_gap"
     },
     {
       "ruleId": "a-template-is-not-evidence",
-      "statement": "No row cites a path under docs/proof/templates/. A format is not a record."
+      "statement": "No row cites a path under docs/proof/templates/. A format is not a record.",
+      "controlledBy": "test_the_evidence_rule_refuses_a_template_cited_as_a_record"
     }
   ],
   "limitations": [
     "This matrix is maintained by hand and checked by a suite. The suite establishes that a row's references resolve, that its status is not stronger than the strategy's, that its level fits its label, and that every README entry point is governed. It cannot establish that a statement is true, that a limitation is complete, or that a record says what the row says it says. Those remain a reading, and the reading is the work.",
-    "Every real result cited here comes from one Windows host. Most are on the `docker-desktop` provider; the feasibility trial, the C2 certification, the serving baseline, and the lifecycle comparison are not Kubernetes results at all, and the cluster smoke is the only `kind` result in the table. None of them generalizes to another provider, another host, a GPU, or more than one replica.",
+    "Every real result cited here comes from one Windows host. Most are on the `docker-desktop` provider; the C2 certification, the serving baseline, and the lifecycle comparison are loopback compositions rather than Kubernetes results, the feasibility trial ran inside the container desktop distribution's own cluster before the provider contract existed, and the cluster smoke is the only `kind` result in the table. None of them generalizes to another provider, another host, a GPU, or more than one replica.",
     "The bounded performance, recovery, and cost figures quoted in these rows are published under ADR 0013 and ADR 0014 as observations of one declared local experiment. They are not capacity, service-level objectives, availability figures, error budgets, recovery-time objectives, benchmarks, or costs.",
     "The statuses here are the repository's own. No outside party has reviewed a claim against its evidence, and no maintainer roster exists to arbitrate a dispute — the same governance gap that stops an owner being named as a person.",
     "The `claim-evidence` template under docs/proof/templates/ has still produced no record. This matrix binds claims to evidence in a table, which is a weaker form than the one-claim-per-record document that template exists to enforce, and it does not raise that count.",
-    "A row's automated tests name modules rather than test functions. A module that protects a claim may protect several, and nothing here says which function would fail first if the claim stopped being true.",
+    "A row's automated tests name modules rather than test functions. A module that protects a claim may protect several, and nothing here says which function would fail first if the claim stopped being true. Five rows name modules for a claim the inventory records as covered by none; those rows carry the gap in `recordedCoverageGaps` and in their limitation, and the modules they name are adjacent to the claim rather than proof of it.",
     "Nine of the eleven continuous-integration gates have passed on the selected service and no log from those runs is promoted into a record. Every other check cited here was run by hand, on one host, by the author.",
+    "Twenty-two of the fifty-eight rows were corrected before this register was merged, and fourteen of those shared one shape: the row stated the repository's state today while citing a record that froze an earlier one — the security control counts, the ownership row counts, the gate counts, the template counts, the strategy-drift scope, and the claim that a release had been installed among them. Each was fixed by citing the later record as well, or by restating the figure the cited record actually holds; four more were misreadings of a record, and four could not be fixed by re-citing at all. Nothing in the suite would have caught any of them: they are exactly what the first limitation above describes, and they were found by an independent reader opening all forty-six cited records and comparing them with the rows citing them.",
     "The case study this matrix is meant to govern has not been written. Its claims are expected to be drawn from these rows; until it exists, `readmeRefs` is the only surface binding a row to published text, and a future case-study claim with no row here would be caught by nothing."
   ]
 }
