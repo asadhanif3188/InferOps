@@ -21,12 +21,12 @@ groups:
       summary: |-
         The platform has been refusing completions with capability-unavailable for five minutes.
       impact: |-
-        Callers are receiving 503 and no completion. Both recorded failure experiments produced exactly this code and no other.
+        Callers are receiving 503 and no completion. It is the code both recorded failure experiments produced and it is not the only code either produced: the pod-loss run counted forty capability-unavailable and one internal-error, and this alert would not have counted that one. InferOpsInferenceServingNothing is the backstop for a code nobody selected for.
       action: |-
-        Find out which half is gone before restarting anything: read the serving runtime pod's state and events, then its log. A pod that is absent and a pod that is running and not ready are different faults with different runbook sections, and the diagnosis step tells them apart.
+        Ask which Service has no endpoint before restarting anything: the runbook's read-only `get svc,endpointslice`. capability-unavailable is the API saying it could not reach the runtime at all, and a runtime whose readiness probe is failing has already had its only address removed -- which is a different fault from a pod that is gone, and the endpoint listing tells them apart.
       blind_spot: |-
-        A caller who never reached the API. Every series it reads is emitted by the API, so a release whose API is gone, or whose API job discovered nothing, is silent here and visible only to the collection alert.
-      runbook: docs/environment/kubernetes-troubleshooting.md#the-checks-that-localise-almost-everything
+        Two things, both measured rather than supposed. A caller who never reached the API: every series it reads is emitted by the API, so a release whose API is gone is silent here and visible only to the collection alert. And the first burst on a release: the API creates a labelled counter series on its first event, so the series appears already carrying what it has counted, and a rate over it reads no increase. V1-S4-006-PR1's entire outage arrived that way -- forty refusals inside 32 s, a series born at 40 and never incremented again -- and the replay of this alert over that capture is silent for exactly that reason, not because the window was too long.
+      runbook: docs/environment/kubernetes-troubleshooting.md#service-network-and-the-policy-that-is-not-enforced
       evidence: docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md, docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md
       not_routed: |-
         Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.

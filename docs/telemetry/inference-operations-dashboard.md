@@ -237,5 +237,7 @@ is a loopback forward to a release's collector; the operator names it.
   identity at all. Nothing checks what a fill is keyed to — only that a panel filling
   one says what its zero means.
 - **Scrape state and identity counts lag.** Both follow discovery and scrape timing.
-- **No alert is defined.** A panel that nobody is watching tells nobody anything, and
-  alert routing is still undecided.
+- **A panel does not tell anybody anything.** Six alerts are defined, in
+  [the alert record](inference-alerts.md), and nothing evaluates or routes one; alert
+  routing is still undecided. Four of the six read expressions this dashboard also
+  panels, and the panel is what an operator opens *after* being told, not instead.

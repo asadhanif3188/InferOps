@@ -26,9 +26,13 @@ once versioned releases begin.
   **No threshold is a figure this project measured.** Three are zero, two are derived
   from values the chart declares — `api.probes.readiness.periodSeconds` and
   `runtime.parallelSlots` — and one is half `api.requestTimeoutMs` at a declared
-  histogram bucket boundary. The slowest 95th percentile this project ever recorded,
-  **8 614 ms on one host**, appears only as a statement of what the latency threshold
-  is not, and a `thresholdBasis` of `measurement` is refused by the policy.
+  histogram bucket boundary. The slowest client-measured 95th percentile in the local
+  performance matrix, **8 614 ms on one host**, appears only as a statement of what
+  the latency threshold is not, and a `thresholdBasis` of `measurement` is refused by
+  the policy. The saturation threshold is the one to read twice: `parallelSlots` is 1,
+  so any deferral is demand past the configuration — and the measured matrix recorded
+  deferrals of 0, 1 and 3 at concurrency 1, 2 and 4, so the *window* rather than the
+  threshold is what keeps that alert quiet under a load the release handled.
 
   **Every `for` is at least as long as the range window its expression reads.** A
   single scrape interval's worth of refusals keeps a five-minute rate above zero for
@@ -46,14 +50,29 @@ once versioned releases begin.
   Eight more alerts are recorded as refused, each with the rule that refuses it, and
   the suite splices each one into the record and fails if the policy accepts it.
 
+  **And then replayed over two real failures.** Three of the six are replayed over the
+  telemetry [the pod-loss run](docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md)
+  and [the unready-model run](docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md)
+  actually recorded, through a declared reconstruction that refuses the captured
+  expressions it cannot read back. **`InferOpsReadinessRefusalsSustained` fires over
+  the unready-model capture** — `2` to `41` refusals across 435 s, `0.129/s` against a
+  `0.05/s` threshold derived from the kubelet's own cadence — and **nothing fires over
+  the pod-loss capture**, for two reasons that are now recorded gaps rather than
+  surprises: the outage was 31 960 ms against five-minute windows, and its
+  `capability-unavailable` series was *born at 40* and never incremented, because the
+  API creates a labelled counter on its first event. The caller-refusal alert missed
+  the unready-model run by one evaluation, with the condition still true when the
+  recording stopped. The three alerts whose series neither experiment asked for are
+  reported `not-in-the-capture`, not silent.
+
   **What the scenarios showed.** `InferOpsInferenceServingNothing` cannot fire for a
   release that has never served: the success counter series does not exist until the
-  first success, so a rate over it is empty rather than zero — which is exactly what
-  [the unready-model run](docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md)
-  recorded. And when the platform-api scrape job discovers nothing, all five workload
-  alerts go silent at once, which is the whole reason the sixth exists.
+  first success, so a rate over it is empty rather than zero — which is what the
+  unready-model run recorded and what the replay confirms. And when the platform-api
+  scrape job discovers nothing, all five workload alerts go silent at once, which is
+  the whole reason the sixth exists.
   [The validation](docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md) publishes
-  the full matrix.
+  both matrices.
 
   **Nothing routes any of this.** No receiver, routing tree, Alertmanager, or on-call
   rotation is selected; `ADR 0004` `D7` is amended to make the alert *definition* a

@@ -42,6 +42,7 @@ import yaml
 from inferops.telemetry.registry import REQUEST_DURATION_BUCKETS
 from tools.inference_alerts import (
     ALERT_RECORD_PATH,
+    CAPTURE_PATHS,
     FIXTURE_DIR,
     GROUP_NAME,
     RENDER_PATHS,
@@ -50,7 +51,10 @@ from tools.inference_alerts import (
     evaluate_alerts,
     firing_instants,
     load_alert_record,
+    load_capture,
+    reconstruct,
     render_rules,
+    replay_alerts,
     runbook_anchors,
     serialise,
 )
@@ -77,6 +81,9 @@ SCENARIOS: dict[str, str] = {
 }
 FIXTURES = {
     scenario: load_fixture(FIXTURE_DIR / f"{scenario}.yaml") for scenario in SCENARIOS
+}
+REPLAYS: dict[str, dict[str, Any]] = {
+    entry["captureId"]: entry for entry in RECORD["replays"]
 }
 FIRING: dict[str, dict[str, bool]] = {
     scenario: {
@@ -215,6 +222,42 @@ def test_every_recorded_series_an_alert_reads_is_one_the_chart_renders() -> None
             for name in metrics_read(parse(alert["expr"])):
                 if name.startswith("inferops:"):
                     assert name in recorded, (alert_id, profile, name)
+
+
+def test_the_policy_refuses_an_alert_a_profile_it_declares_cannot_answer() -> None:
+    """The gate reads every profile an alert claims, not one chosen for the record.
+
+    Independent review of the first commit found `check_alerts` taking a single
+    profile for the whole record and never being called with `mock`. An alert
+    scoped to both profiles that read a series the chart renders only under `real`
+    would have been accepted by the gate and rendered into the mock rule file --
+    an expression that can only ever be empty, which is the one failure an alert
+    file must not have. Only a hand-written test outside the gate would have seen
+    it.
+    """
+
+    def mock_scoped(record: dict[str, Any]) -> None:
+        alert = _alert(record, "runtime-defers-requests")
+        alert["profiles"] = ["mock", "real"]
+        alert["scenarioExpectations"]["healthy-mock-serving"] = "silent"
+
+    findings = check_alerts(_mutate(mock_scoped))
+    refusals = [
+        finding
+        for finding in findings
+        if finding.rule == "alert-expression-refused-by-the-correlation-policy"
+    ]
+    assert refusals, findings
+    assert all("under the mock profile" in finding.message for finding in refusals)
+
+
+def test_the_committed_record_is_checked_under_both_profiles() -> None:
+    """And the alert that reads a real-only series is scoped to `real` alone."""
+    deferral = ALERTS["runtime-defers-requests"]
+    assert deferral["profiles"] == ["real"]
+    assert "inferops:inference_requests_deferred:runtime" not in RENDER_PATHS[
+        "mock"
+    ].read_text(encoding="utf-8")
 
 
 def test_no_alert_expression_names_a_label_outside_the_query_vocabulary() -> None:
@@ -580,6 +623,10 @@ def test_a_workload_word_the_list_was_not_given_is_still_accepted() -> None:
         {"alerts": []},
         {"alerts": [{"alertId": "a", "expr": 5}]},
         {"alerts": [{"alertId": "a", "scenarioExpectations": "not-a-mapping"}]},
+        {"alerts": [{"alertId": "a"}], "evaluation": "not-a-mapping"},
+        {"alerts": [{"alertId": "a"}], "scenarios": 5},
+        {"alerts": [{"alertId": "a"}], "owners": "not-a-list"},
+        {"alerts": [{"alertId": "a", "profiles": "real"}]},
     ],
     ids=[
         "null-alert",
@@ -588,12 +635,21 @@ def test_a_workload_word_the_list_was_not_given_is_still_accepted() -> None:
         "empty-alerts",
         "number-expression",
         "string-expectations",
+        "string-evaluation",
+        "number-scenarios",
+        "string-owners",
+        "string-profiles",
     ],
 )
 def test_a_malformed_record_is_refused_rather_than_crashing(
     malformed: dict[str, Any],
 ) -> None:
-    """The checker is a gate; a traceback is not a refusal anybody can read."""
+    """The checker is a gate; a traceback is not a refusal anybody can read.
+
+    The first commit guarded only the `alerts` key, and independent review found
+    that a malformed `evaluation` or `scenarios` raised instead of refusing --
+    which a caller reading an exit status cannot tell from a record that passed.
+    """
     findings = check_alerts(malformed)
     assert findings
     assert {finding.rule for finding in findings} <= set(RULE_IDS)
@@ -714,6 +770,120 @@ def test_no_alert_result_carries_the_pod_name() -> None:
         for rows in evaluate_alerts(RECORD, FIXTURES[scenario]).values():
             for row in rows:
                 assert "instance=" not in row, (scenario, row)
+
+
+# --------------------------------------------------------------------------
+# The replay, over what two real failures actually recorded
+# --------------------------------------------------------------------------
+
+
+def test_the_record_replays_over_both_committed_captures() -> None:
+    assert set(REPLAYS) == set(CAPTURE_PATHS)
+    for capture_id, entry in REPLAYS.items():
+        assert (REPO_ROOT / entry["captureRef"]).is_file(), capture_id
+        assert (REPO_ROOT / entry["experimentRef"]).is_file(), capture_id
+
+
+@pytest.mark.parametrize("capture_id", sorted(CAPTURE_PATHS))
+def test_every_published_replay_verdict_is_the_one_the_replay_produces(
+    capture_id: str,
+) -> None:
+    """The record publishes what each alert did over a real capture.
+
+    A published verdict nobody recomputes is a verdict that outlives the record it
+    describes, which is exactly what happened to two figures in the first commit
+    of this change.
+    """
+    capture = load_capture(CAPTURE_PATHS[capture_id])
+    computed = {entry.alert_id: entry for entry in replay_alerts(RECORD, capture)}
+    published = {row["alertId"]: row for row in REPLAYS[capture_id]["results"]}
+    assert set(published) == set(ALERTS)
+    for alert_id, row in published.items():
+        entry = computed[alert_id]
+        assert row["verdict"] == entry.verdict, alert_id
+        assert row["heldInstants"] == entry.held_instants, alert_id
+        assert row["heldSeconds"] == entry.held_seconds, alert_id
+        assert row["firstFiringInstant"] == entry.first_firing_instant, alert_id
+        assert row["seriesTheCaptureDoesNotHold"] == list(entry.missing), alert_id
+        assert row["note"].strip(), alert_id
+
+
+@pytest.mark.parametrize("capture_id", sorted(CAPTURE_PATHS))
+def test_the_published_reconstruction_is_the_one_the_replay_performs(
+    capture_id: str,
+) -> None:
+    """Including what it refused, which is the half a reader cannot infer."""
+    entry = REPLAYS[capture_id]
+    _, held, refused = reconstruct(load_capture(CAPTURE_PATHS[capture_id]))
+    assert entry["metricsTheCaptureHolds"] == sorted(held)
+    assert entry["expressionsRefusedByTheReconstruction"] == refused
+    assert refused, "a reconstruction that refused nothing has not been exercised"
+
+
+def test_a_series_no_capture_holds_is_not_reported_as_silence() -> None:
+    """The distinction the whole replay turns on.
+
+    Three alerts read series neither experiment asked for. Reporting those as
+    silent would have said the alerts were quiet during a real failure, which is
+    a claim nothing here supports.
+    """
+    for capture_id in CAPTURE_PATHS:
+        published = {row["alertId"]: row for row in REPLAYS[capture_id]["results"]}
+        for alert_id, row in published.items():
+            if row["verdict"] == "not-in-the-capture":
+                assert row["seriesTheCaptureDoesNotHold"], alert_id
+                assert "absence of evidence" in row["note"]
+            else:
+                assert not row["seriesTheCaptureDoesNotHold"], alert_id
+
+
+def test_the_pod_loss_capture_fires_nothing_and_the_record_says_why() -> None:
+    """The result that matters most, and the one the fixtures cannot give.
+
+    A 31 960 ms outage the Deployment controller reversed without a person raises
+    nothing here, and the caller-refusal alert is silent for a second reason the
+    record has to carry: its counter series was born at the value the outage left
+    it at.
+    """
+    published = {row["alertId"]: row for row in REPLAYS["v1-s4-006-pr1"]["results"]}
+    assert not any(row["verdict"] == "fires" for row in published.values())
+    note = published["inference-callers-refused"]["note"]
+    assert "born at" in note or "already reading 40" in note
+    blind = ALERTS["inference-callers-refused"]["whatItCannotSee"]
+    assert "first event" in blind
+    gaps = {gap["gapId"] for gap in RECORD["gaps"]}
+    assert "a-disruption-shorter-than-the-window-is-not-alerted" in gaps
+    assert "a-counter-series-born-at-its-value-feeds-no-rate" in gaps
+
+
+def test_one_alert_fires_over_a_real_capture() -> None:
+    """Otherwise the replay would establish only that nothing ever fires."""
+    published = {row["alertId"]: row for row in REPLAYS["v1-s4-007-pr1"]["results"]}
+    assert published["readiness-refusals-sustained"]["verdict"] == "fires"
+    assert published["readiness-refusals-sustained"]["heldInstants"] >= 21
+
+
+def test_the_near_miss_is_published_as_one() -> None:
+    """20 consecutive evaluations against a window needing 21, at the capture's end.
+
+    Publishing that as a plain silence would have hidden that the recording, not
+    the condition, is what stopped.
+    """
+    row = {r["alertId"]: r for r in REPLAYS["v1-s4-007-pr1"]["results"]}[
+        "inference-callers-refused"
+    ]
+    assert row["verdict"] == "silent"
+    assert row["heldInstants"] == 20
+    assert "one evaluation" in row["note"]
+
+
+def test_the_command_replays_and_prints_every_verdict() -> None:
+    result = _run("--replay")
+    assert result.returncode == 0, result.stderr
+    for capture_id in CAPTURE_PATHS:
+        assert f"== {capture_id}" in result.stdout
+    assert "not-in-the-capture" in result.stdout
+    assert "fires" in result.stdout
 
 
 # --------------------------------------------------------------------------

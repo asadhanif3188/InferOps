@@ -1,9 +1,11 @@
 # The V1 alerts, and the conditions nobody may be woken for
 
-Status: **defined as code, checked, and evaluated against fixtures only.** Six alerts
-are a committed record, every expression is held to the correlation query policy, and
-each one is driven instant by instant across eight scenarios — two of them shaped from
-failure experiments this project ran on a real cluster. Two Prometheus rule files are
+Status: **defined as code, checked, driven across fixtures, and replayed over two
+real failure captures.** Six alerts are a committed record, every expression is held
+to the correlation query policy under each profile it declares, and each one is driven
+instant by instant across eight scenarios. Three of the six are then replayed over the
+telemetry two failure experiments recorded on a real cluster; **one of them fires over
+one capture, and nothing fires over the other.** Two Prometheus rule files are
 generated from the record and compared against it byte for byte.
 
 **Nothing routes any of this.** No receiver, no routing tree, no Alertmanager, no
@@ -49,7 +51,7 @@ health.
 
 | Alert | Severity | Fires when | Runbook |
 |---|---|---|---|
-| `InferOpsInferenceCallersRefused` | critical | The platform has been refusing completions with `capability-unavailable` for five minutes | [the checks that localise almost everything](../environment/kubernetes-troubleshooting.md#the-checks-that-localise-almost-everything) |
+| `InferOpsInferenceCallersRefused` | critical | The platform has been refusing completions with `capability-unavailable` for five minutes | [Service, network, and the policy that is not enforced](../environment/kubernetes-troubleshooting.md#service-network-and-the-policy-that-is-not-enforced) |
 | `InferOpsInferenceServingNothing` | critical | Completions have been arriving for five minutes and none has succeeded | [reading the logs](../environment/kubernetes-troubleshooting.md#reading-the-apis-and-the-runtimes-logs) |
 | `InferOpsReadinessRefusalsSustained` | critical | More than half a component's readiness probes have been refused for five minutes | [probes](../environment/kubernetes-troubleshooting.md#probes) |
 | `InferOpsInferenceLatencyPastHalfTheRequestBudget` | warning | The 95th percentile of completion time has been past half the configured request timeout for ten minutes | [scheduling, resources, and out-of-memory](../environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory) |
@@ -69,10 +71,12 @@ fires on a release nobody is sending traffic to**. In the recorded unready-model
 the readiness counter was already climbing two minutes before the first caller was
 refused. It is the only one of the three that sees an outage before a user does.
 
-`InferOpsInferenceCallersRefused` reads one canonical error code, and it is the code
-both recorded failure experiments produced and the only one either produced. It says
-the serving capability could not be reached at all, which is a different first step
-from any other failure.
+`InferOpsInferenceCallersRefused` reads one canonical error code. It is the code both
+recorded failure experiments produced and it is **not** the only one either produced:
+the pod-loss run counted forty `capability-unavailable` and one `internal-error`, and
+this alert would not have counted that one. What it says is that the serving
+capability could not be reached at all, which is a different first step from any other
+failure — and the one code it does not cover is what the next alert is for.
 
 `InferOpsInferenceServingNothing` names no code. It is the backstop for a cause nobody
 predicted: traffic is arriving and none of it is succeeding, whatever the reason. Its
@@ -104,10 +108,14 @@ bucket boundaries, so the quantile is interpolated *across* a boundary rather th
 inside one. A request there has spent half the budget the adapter would abandon it at.
 
 That second one is where a local threshold would have been easiest to publish as a
-universal one. The measured performance matrix's slowest recorded 95th percentile was
-**8 614 ms**, on one host, on one day. Turning that into an alert threshold would have
-made one machine's figure into everybody's service-level objective, and it is named
-here only to say what the threshold is not.
+universal one. The slowest **client-measured** 95th percentile in the local
+performance matrix was **8 614 ms**, on one host, on one day. (The phase-end panel
+readings in the same record run higher — up to 9 526 ms — because a panel's window
+spans a phase boundary; the findings record says the raw sets are the source for a
+level's own distribution, which is why the client-measured figure is the one quoted.)
+Turning either into an alert threshold would have made one machine's figure into
+everybody's service-level objective, and both are named here only to say what the
+threshold is not.
 
 **And every window is at least as long as the range window its expression reads.** A
 single scrape interval's worth of refusals keeps a five-minute rate above zero for
@@ -230,6 +238,64 @@ at once — not because the platform is well, but because nothing is being asked
 is the whole reason the sixth alert exists, and the `platform-api-not-discovered`
 fixture is what makes it a property rather than a claim.
 
+## What they did over two real failures
+
+The fixtures say what an alert does over telemetry somebody wrote. This says what
+each one would have done over telemetry **a real Prometheus returned, on a real
+cluster, while a real failure was happening** — which is the question the acceptance
+criterion asks and the one a fixture cannot answer.
+
+Both failure experiments committed the answers to a handful of range queries. Those
+are query *results*, not the store they came from, so the replay in
+[`tools/inference_alerts/replay.py`](../../tools/inference_alerts/replay.py) declares
+its reconstruction — `sum(metric)` and `sum by (…) (metric)` are read back as the
+metric, a bare selector as itself, and **anything else is refused and named**. Both
+captures contain an expression it refuses (`a / b`), and one contains a second
+(`count by (…)`).
+
+| Alert | V1-S4-006-PR1, the pod lost under load | V1-S4-007-PR1, the model that never loaded |
+|---|---|---|
+| `InferOpsInferenceCallersRefused` | silent | silent, by one evaluation |
+| `InferOpsInferenceServingNothing` | silent | silent |
+| `InferOpsReadinessRefusalsSustained` | silent | **fires** |
+| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | not in the capture | not in the capture |
+| `InferOpsRuntimeDefersRequests` | not in the capture | not in the capture |
+| `InferOpsPlatformApiScrapeJobAbsent` | not in the capture | not in the capture |
+
+**Not in the capture is not silence.** Three alerts read series neither experiment
+asked for. Reporting those as quiet would have claimed they were quiet during a real
+failure, which nothing here supports.
+
+### Nothing fires for the pod that was lost, and that is the design
+
+The caller-visible outage was 31 960 ms. Every window here is five or ten minutes,
+and the Deployment controller had restored service before any of them could be
+satisfied. An alert set that paged for that would be paging for something Kubernetes
+fixed by itself — which is what most of the rules in this record exist to prevent.
+The cost is stated as a gap: a short, repeated disruption is invisible here.
+
+The caller-refusal alert is silent for a **second** reason, and it is the one worth
+knowing. Its `capability-unavailable` series appears in that capture already reading
+`40` and never increments again. The API creates a labelled counter series on its
+first event, so the whole outage — forty refusals inside 32 seconds — is a series
+*born at its value*, and a rate over it reads no increase at any instant. The
+dashboard record documents the same property for panels; every rate alert here
+inherits it, and nothing in this record closes it.
+
+### One alert fires, and it is the readiness one
+
+During the unready-model run the adapter refused every probe for the whole window:
+the counter moved `2` → `41` across 435 seconds, a five-minute rate of up to
+`0.129/s` against a threshold of `0.05/s`, and the condition held for 28 consecutive
+evaluations against a window needing 21. That is the threshold derived from
+`api.probes.readiness.periodSeconds` doing exactly what it was derived to do, against
+a measurement rather than a fixture.
+
+The caller-refusal alert missed the same run **by one evaluation** — 20 consecutive
+against 21 — because the recording stopped one 15-second step early. Nothing there
+says the condition ended, and publishing it as a plain silence would have hidden
+which of the two stopped.
+
 ## Running the checks
 
 ```sh
@@ -237,27 +303,35 @@ python -m pytest tests/telemetry/test_inference_alerts.py -q
 python -m tools.inference_alerts
 python -m tools.inference_alerts --evaluate
 python -m tools.inference_alerts --rules real
+python -m tools.inference_alerts --replay
 ```
 
 The first is the authoritative check and runs in the default lane. The second applies
 the same policy to the committed record and is usable as a gate. The third drives
 every alert across every scenario and prints what fires. The fourth prints the rule
-file the committed one is compared against.
+file the committed one is compared against. The fifth replays every alert it can over
+the two committed experiment captures.
 
 All four read files in this repository. None contacts a cluster, starts a Prometheus,
 loads a rule file, or knows what a receiver is.
 
-Where the pinned collector image is available locally,
 [`tests/architecture/test_inference_alert_rules.py`](../../tests/architecture/test_inference_alert_rules.py)
-also runs that collector's own `promtool check rules` over both committed files. That
-establishes that the files load and that the expressions parse in the engine that
-would evaluate them. It is not a sample and not a firing alert. The check skips,
-loudly, where the image is not present.
+carries a control that would run the pinned collector's own `promtool check rules`
+over both committed files, where that image is available locally. **It has not run.**
+On the host this change was made and validated the Docker engine was not running and
+the image was not present, so both parametrisations skipped, loudly. Nothing here
+establishes that a Prometheus accepts these files; what is established is that this
+repository's own subset parser accepts every expression and that each file is a rule
+group with the fields the format requires.
 
 ## What this does not establish
 
-- That any Prometheus has ever evaluated these rules in a cluster.
+- That any Prometheus has ever evaluated these rules in a cluster. No alerting rule
+  existed during either experiment, so the replay is this repository's own evaluator
+  over a reconstruction it declares, not a rule a collector ran.
 - That any alert has ever fired outside this repository's own evaluator.
+- That the three alerts reported as `not-in-the-capture` would have been silent during
+  either failure. Neither experiment asked for the series they read.
 - That anybody would be told if one did. There is no receiver and no rotation.
 - That the thresholds are right for an installation that is not this one. They are
   derived from this chart's declared defaults, and an installation that changed those

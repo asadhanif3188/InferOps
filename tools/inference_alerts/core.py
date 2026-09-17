@@ -111,7 +111,6 @@ __all__ = [
     "RENDER_PATHS",
     "RULE_IDS",
     "Finding",
-    "alert_queries",
     "check_alerts",
     "evaluate_alerts",
     "firing_instants",
@@ -234,24 +233,6 @@ def load_alert_record(path: Path = ALERT_RECORD_PATH) -> dict[str, Any]:
     """The committed alert record."""
     record: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return record
-
-
-def alert_queries(record: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Every alert expression in the shape the correlation policy reads.
-
-    That shape is what lets the correlation checker apply to an alert exactly as it
-    applies to a published query, rather than through a second derivation of the
-    catalog that could drift from the first.
-    """
-    return [
-        {
-            "queryId": alert.get("alertId"),
-            "expr": alert.get("expr"),
-            "answerability": alert.get("answerability", "answerable-once-collected"),
-            "profiles": alert.get("profiles"),
-        }
-        for alert in record.get("alerts") or []
-    ]
 
 
 # --------------------------------------------------------------------------
@@ -556,7 +537,24 @@ def _check_threshold(
         )
 
 
-def _check_expression(alert: Mapping[str, Any], profile: str) -> Iterator[Finding]:
+def _declared_profiles(alert: Mapping[str, Any]) -> tuple[str, ...]:
+    """Every profile this alert says it is rendered into, defaulting to both.
+
+    An alert is checked under each of them rather than under one, because the
+    series a release produces differ by profile: the chart renders the runtime
+    mapping rules only under ``real``, so an alert scoped to ``mock`` that read one
+    of them would be rendered into a mock release and could never fire. Checking a
+    single profile for the whole record made that alert invisible to the gate,
+    which independent review found before it cost anything.
+    """
+    declared = alert.get("profiles")
+    if not isinstance(declared, Sequence) or isinstance(declared, (str, bytes)):
+        return ("mock", "real")
+    profiles = tuple(str(entry) for entry in declared)
+    return profiles or ("mock", "real")
+
+
+def _check_expression(alert: Mapping[str, Any]) -> Iterator[Finding]:
     subject = _safe(str(alert.get("alertId", "<unnamed alert>")))
     expression = alert.get("expr")
     if not isinstance(expression, str) or not expression.strip():
@@ -567,21 +565,29 @@ def _check_expression(alert: Mapping[str, Any], profile: str) -> Iterator[Findin
             "an alert carries an expression; a deferred one belongs in deferredAlerts",
         )
         return
-    for finding in check_query(
-        {
-            "queryId": alert.get("alertId"),
-            "expr": expression,
-            "answerability": alert.get("answerability", "answerable-once-collected"),
-            "profiles": alert.get("profiles"),
-        },
-        profile,
-    ):
-        yield Finding(
-            "alert-expression-refused-by-the-correlation-policy",
-            subject,
-            "expr",
-            f"{finding.rule}: {finding.message}",
-        )
+    seen: set[str] = set()
+    for declared in _declared_profiles(alert):
+        for finding in check_query(
+            {
+                "queryId": alert.get("alertId"),
+                "expr": expression,
+                "answerability": alert.get(
+                    "answerability", "answerable-once-collected"
+                ),
+                "profiles": alert.get("profiles"),
+            },
+            declared,
+        ):
+            message = f"under the {declared} profile, {finding.rule}: {finding.message}"
+            if message in seen:
+                continue
+            seen.add(message)
+            yield Finding(
+                "alert-expression-refused-by-the-correlation-policy",
+                subject,
+                "expr",
+                message,
+            )
     try:
         node = parse(expression)
     except PromQLError:
@@ -742,6 +748,18 @@ def _check_validation(
         )
 
 
+def _seconds(value: Any) -> float:
+    """One declared interval as a number, and 0 for anything that is not one.
+
+    A gate that raised on a malformed field would be read as a gate that passed:
+    an interval of 0 makes every window pass the two-evaluation rule, which is
+    visible, where a traceback is not.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0.0
+    return float(value)
+
+
 def _declared(record: Mapping[str, Any], key: str, field: str) -> frozenset[str]:
     entries = record.get(key)
     if not isinstance(entries, Sequence) or isinstance(entries, (str, bytes)):
@@ -753,18 +771,32 @@ def _declared(record: Mapping[str, Any], key: str, field: str) -> frozenset[str]
     )
 
 
-def check_alerts(record: Mapping[str, Any], profile: str = "real") -> list[Finding]:
-    """Every refusal on the whole record, sorted so two runs read the same."""
+def check_alerts(record: Mapping[str, Any]) -> list[Finding]:
+    """Every refusal on the whole record, sorted so two runs read the same.
+
+    There is no profile parameter. Each alert declares the profiles it is rendered
+    into and is checked under every one of them, because a record checked under a
+    single profile cannot see an alert that would be rendered into a release whose
+    chart does not produce the series it reads.
+    """
     owners = _declared(record, "owners", "ownerId")
     severities = _declared(record, "severities", "severityId")
     bases = _declared(record, "thresholdBases", "basisId")
+    declared_scenarios = record.get("scenarios")
+    if not isinstance(declared_scenarios, Sequence) or isinstance(
+        declared_scenarios, (str, bytes)
+    ):
+        declared_scenarios = []
     scenarios = {
         str(scenario["scenarioId"]): str(scenario.get("profile"))
-        for scenario in record.get("scenarios") or []
+        for scenario in declared_scenarios
         if isinstance(scenario, Mapping) and "scenarioId" in scenario
     }
-    interval = float(
-        (record.get("evaluation") or {}).get("ruleEvaluationIntervalSeconds") or 0
+    evaluation = record.get("evaluation")
+    interval = _seconds(
+        evaluation.get("ruleEvaluationIntervalSeconds")
+        if isinstance(evaluation, Mapping)
+        else None
     )
 
     findings: list[Finding] = []
@@ -797,7 +829,7 @@ def check_alerts(record: Mapping[str, Any], profile: str = "real") -> list[Findi
         findings.extend(_check_action(alert, owners, severities))
         findings.extend(_check_runbook(alert))
         findings.extend(_check_threshold(alert, bases))
-        findings.extend(_check_expression(alert, profile))
+        findings.extend(_check_expression(alert))
         findings.extend(_check_scrape_signal(alert))
         findings.extend(_check_window(alert, interval))
         findings.extend(_check_validation(alert, scenarios))

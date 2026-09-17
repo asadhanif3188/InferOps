@@ -8,7 +8,10 @@ writes the records in section 10; the serving-runtime adapter's four metrics, th
 contract validator's one, and one metric assigned to the API itself are not
 emitted, and no component produces a span. A release-scoped collector is selected
 and has scraped this endpoint on the `docker-desktop` reference provider; its series
-are ephemeral, and no durable store, dashboard server, or alert path is selected.
+are ephemeral, and no durable store, dashboard server, or alert routing path is
+selected. A dashboard definition and
+[six alert definitions](inference-alerts.md) read these names; nothing runs the
+first and nothing evaluates the second.
 
 The authoritative form is
 [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json). This document

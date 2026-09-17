@@ -7,17 +7,22 @@ What this records: every alert in
 across every committed scenario, instant by instant, with what fired, what stayed
 silent, and what each result does and does not establish.
 
-Classification: **synthetic.** Evidence class `local-static`. Every number below was
-produced by this repository's own fixture evaluator over stores that were written by
-hand. **No Prometheus evaluated anything here.** No collector was started, no cluster
-was contacted, no model was loaded, and no alert has ever been routed or delivered to
-anybody — no receiver, routing tree, Alertmanager, or on-call rotation is selected.
+Classification: **local static.** Evidence class `local-static`, in two parts that
+must not be read as one.
 
-Two of the eight scenarios take their **shape** from experiments this project ran on
-a real cluster ([the inference pod lost under load](../serving/v1-s4-006-pr1-inference-pod-recovery.md)
-and [the model that did not become ready](../serving/v1-s4-007-pr1-unready-model-recovery.md)).
-They take none of their durations. A fixture interval is not a recovery time, an
-availability figure, an error budget, or a service-level objective.
+**The scenarios are synthetic.** Every number in the fixture matrix was produced by
+this repository's own evaluator over stores written by hand. Two of the eight take
+their *shape* from experiments this project ran on a real cluster and none of their
+durations; a fixture interval is not a recovery time, an availability figure, an error
+budget, or a service-level objective.
+
+**The replay is over measurements.** The last section runs the alerts over the
+telemetry [the pod-loss run](../serving/v1-s4-006-pr1-inference-pod-recovery.md) and
+[the unready-model run](../serving/v1-s4-007-pr1-unready-model-recovery.md) actually
+recorded, through a declared reconstruction. Those numbers were measured. What was
+*not* measured is the alerting: no alerting rule existed during either experiment, no
+Prometheus has ever loaded these rules, and no alert has been routed or delivered to
+anybody — no receiver, routing tree, Alertmanager, or on-call rotation is selected.
 
 ## Environment
 
@@ -47,8 +52,17 @@ Six alerts, five deferred conditions, eight refusals in the negative catalogue.
 
 **No threshold is a figure this project measured.** Three are zero, two are derived
 from values the chart declares, and one is a declared histogram bucket boundary. The
-slowest 95th percentile this project ever recorded — 8 614 ms, on one host — appears
-in the record only as a statement of what the latency threshold is *not*.
+slowest client-measured 95th percentile in the local performance matrix — 8 614 ms, on
+one host — appears in the record only as a statement of what the latency threshold is
+*not*. (The same record's phase-end panel readings reach 9 526 ms; its own findings
+say the raw sets are the source for a level's distribution, which is why the
+client-measured figure is the one quoted.)
+
+The deferral threshold is the one to read twice. `runtime.parallelSlots` is 1, so any
+deferral is demand past the configuration — and the measured matrix recorded deferrals
+of **0, 1 and 3** at concurrency 1, 2 and 4, so the threshold alone was crossed in
+four of its six measured phases. The ten-minute window, not the threshold, is what
+keeps that alert quiet under a load the release handled.
 
 ## What fired, and where
 
@@ -69,7 +83,7 @@ the forty-eighth is `not rendered`: the deferral alert reads a recorded series t
 chart renders only under the real profile, so it is absent from the mock rule file
 rather than present and permanently silent.
 
-## The four results worth reading
+## Four results from the scenarios
 
 ### A single scrape interval of trouble pages nobody
 
@@ -114,24 +128,97 @@ whose signal is `scrape-reachability` must fire.
 
 In `model-never-becomes-ready` the readiness alert and the availability alert both
 fire at 600 s, the earliest instant either could. In the recorded run they did not
-arrive together: the readiness counter was climbing from 1789575195 and the first
-caller error was counted at 1789575315, two minutes later. The readiness alert is the
-only one of the six that fires on a release nobody is sending traffic to, which is
-why it is not folded into the availability alert.
+arrive together: the readiness counter was already at `2` at the capture's first
+sample, `1789575195`, and first observed to increment at `1789575225`, while the first
+caller error was counted at `1789575315` — 120 seconds later. The replay below shows
+the consequence: over that capture the readiness alert fires and the caller-refusal
+alert does not. The readiness alert is the only one of the six that fires on a release
+nobody is sending traffic to, which is why it is not folded into the availability
+alert.
+
+## Replayed over what two real failures recorded
+
+Same six alerts, over telemetry a real Prometheus returned on the `docker-desktop`
+provider while a real failure was happening. The captures are query *results*, so the
+replay declares its reconstruction: `sum(metric)` and `sum by (…) (metric)` are read
+back as the metric, a bare selector as itself, and anything else is refused and named.
+`v1-s4-006-pr1` refuses one expression (`inferops:scrape_targets_up:sum /
+inferops:scrape_targets:count`); `v1-s4-007-pr1` refuses that and `count by
+(k8s_component) (inferops_build_info)`.
+
+```text
+uv run --locked python -m tools.inference_alerts --replay
+```
+
+| Alert | `v1-s4-006-pr1` (1 220 s at 15 s) | `v1-s4-007-pr1` (462 s at 15 s) |
+|---|---|---|
+| `InferOpsInferenceCallersRefused` | silent, held 0 of 21 needed | silent, held **20** of 21 needed |
+| `InferOpsInferenceServingNothing` | silent, held 0 | silent, held 1 |
+| `InferOpsReadinessRefusalsSustained` | silent, held 0 | **fires**, held 28 |
+| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | not in the capture | not in the capture |
+| `InferOpsRuntimeDefersRequests` | not in the capture | not in the capture |
+| `InferOpsPlatformApiScrapeJobAbsent` | not in the capture | not in the capture |
+
+**`not in the capture` is not silence.** Those three read series neither experiment
+asked for. Reporting them as quiet would have claimed they were quiet during a real
+failure, which nothing here supports.
+
+### Nothing fires for the pod that was lost
+
+The caller-visible outage was 31 960 ms against windows of five and ten minutes, and
+the Deployment controller restored service with no human action. An alert set that
+paged for that would be paging for something Kubernetes fixed by itself, which is what
+most of the rules in this record exist to prevent. It is recorded as the gap
+`a-disruption-shorter-than-the-window-is-not-alerted` rather than left implied.
+
+The caller-refusal alert is silent for a second reason, and it is the finding of this
+replay. Its `capability-unavailable` series appears in that capture at `1789549405`
+**already reading 40**, and never increments again. The API creates a labelled counter
+series on its first event, so the whole outage — forty refusals inside 32 seconds — is
+a series *born at its value*, and a rate over it reads no increase at any instant. The
+dashboard record documents the same property for panels. Every rate alert here
+inherits it; the gap `a-counter-series-born-at-its-value-feeds-no-rate` says so, and
+the alert's own `whatItCannotSee` carries it.
+
+Readiness was silent there too, and correctly: the counter moved `2` → `4` across
+1 185 seconds, a five-minute rate of at most `0.0067/s` against `0.05/s`.
+
+### One alert fires, and the threshold that fired it was derived from the chart
+
+During the unready-model run the adapter refused every probe for the whole window:
+`2` → `41` across 435 seconds, a five-minute rate reaching `0.129/s` against a
+threshold of `0.05/s` — which is half the kubelet's own cadence at
+`api.probes.readiness.periodSeconds: 10`. The condition held for 28 consecutive
+evaluations against a window needing 21.
+
+The caller-refusal alert missed the same run **by one evaluation**: 20 consecutive
+against 21, with the condition still true at the last sample. The recording stopped one
+15-second step before the alert would have fired. Publishing that as a plain silence
+would have hidden which of the two stopped, so the record carries the count.
+
+`InferOpsInferenceServingNothing` was silent there for the reason predicted before the
+replay was written: the release had never served, so no success counter series existed
+until the correction, and a rate over a series that is not there is empty rather than
+zero.
 
 ## What is deferred, and what was measured about it
 
 | Condition | Why there is no alert | How the absence is known |
 |---|---|---|
 | Container restart spike | `kube_pod_container_status_restarts_total` is kube-state-metrics's; no chart here installs it and no ADR owns it | **Both failure experiments queried it against the real collector and both returned no series.** The absence is measured, not assumed |
-| Abnormal model-load duration | `inferops_model_load_duration_seconds` is specified in the catalog and emitted by nothing | V1-S4-007-PR1 held a release for 179 755 ms with a model that never finished loading, and no load-duration series existed to record any part of it |
+| Abnormal model-load duration | `inferops_model_load_duration_seconds` is specified in the catalog and emitted by nothing | V1-S4-007-PR1 held a release for 179 755 ms with a model that had not finished loading -- it loaded once the release was corrected -- and no load-duration series existed to record any part of it |
 | Model not ready | `inferops_model_ready` is specified and emitted by nothing | Both experiments queried it directly and both returned no series. The recorded absence rule `inferops:model_ready_absent:platform_api` read `1` for the whole of V1-S4-007-PR1 — in the broken state and in the corrected one alike — so an alert on it would fire for ever and mean nothing |
 | Error share above a budget | No error budget or service-level objective is decided anywhere in this project | The measured performance matrix recorded 360 requests with 0 unsuccessful, so there is no observation of a partial failure rate either |
 | API process resource exhaustion | `inferops_process_resident_memory_bytes` has no source this distribution may read | The telemetry catalog records why, and the endpoint names the absence rather than publishing a zero |
 
 ## What this does not establish
 
-- That any Prometheus has evaluated these rules. The `promtool check rules` control
+- That any Prometheus has evaluated these rules, in a cluster or during either
+  experiment. No alerting rule existed when either was run. The replay is this
+  repository's own evaluator over a reconstruction it declares.
+- That the three alerts reported `not-in-the-capture` would have been silent during
+  either failure.
+- That any Prometheus has loaded these rules. The `promtool check rules` control
   in `tests/architecture/test_inference_alert_rules.py` establishes that the rendered
   files *load*, and it **did not run** for this record: the pinned collector image is
   not present on this host and the check skipped, loudly, as it is written to.
@@ -151,9 +238,11 @@ why it is not folded into the availability alert.
   [The correlation query document](../../telemetry/telemetry-correlation-queries.md)
   declares the differences, and they apply unchanged here because it is the same
   evaluator.
-- Six of the eight scenarios are constructed rather than shaped from a run. The
-  saturation scenario in particular describes a state this project has never
-  observed: the measured performance matrix recorded a maximum deferral of 0.
 - The `capability-unavailable` selector is the code both recorded experiments
-  produced. A failure mode that produced a different code would be caught by
-  `InferOpsInferenceServingNothing` only once *nothing* was succeeding.
+  produced, and not the only one either produced: the pod-loss run also counted one
+  `internal-error`, which this alert would not have counted. A failure mode producing
+  a different code reaches `InferOpsInferenceServingNothing` only once *nothing* is
+  succeeding.
+- Six of the eight scenarios are constructed. The saturation one constructs a
+  *duration* rather than a value: the measured matrix reached a deferral of 3 and
+  never held one for ten minutes.

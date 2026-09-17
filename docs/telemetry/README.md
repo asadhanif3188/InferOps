@@ -77,7 +77,8 @@ drives every alert across every committed scenario and prints what fires.
 
 No exporter, no durable store, no dashboard server, and no path from a firing alert to
 a person: the alerts are defined and checked, and no receiver, routing tree,
-Alertmanager, or on-call rotation is selected. No tracer and no propagator. A logger and a redacting sink now exist, and they write to a stream:
+Alertmanager, or on-call rotation is selected. No tracer and no propagator. A logger
+and a redacting sink now exist, and they write to a stream:
 nothing collects that stream, and no retention window, shipper, or access rule is
 selected. The ownership inventory
 [records what is still missing](../architecture/resource-ownership.md) — a durable

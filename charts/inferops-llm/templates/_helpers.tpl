@@ -1060,8 +1060,11 @@ catalog, assigned to the adapter, and marked not emitted. A rule that averaged a
 metric nothing produces would have published an empty series, which reads as a
 healthy system rather than an absent one. This publishes the absence instead.
 
-No alerting rule is written and no dashboard is built. An alert needs a receiver, a
-routing tree, and somebody on the other end, and none of the three is decided.
+No alerting rule is rendered here. A dashboard definition and an alert definition
+both exist in this repository, as committed records outside the chart: an alert needs
+a receiver, a routing tree, and somebody on the other end, none of the three is
+decided, and rendering rules into this ConfigMap would have decided the first of them
+by accident.
 */}}
 {{- define "inferops-llm.telemetryRecordingRules" -}}
 {{- $interval := printf "%ds" (int .Values.telemetry.collection.scrapeIntervalSeconds) -}}

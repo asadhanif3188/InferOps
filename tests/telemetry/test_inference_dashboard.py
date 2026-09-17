@@ -780,4 +780,8 @@ def test_the_document_says_what_has_not_been_done() -> None:
     assert "one grafana, one provider, one release" in flat
     assert "grafana's own schema validation" in flat
     assert "a long missing text does not render legibly" in flat
-    assert "no alert is defined" in flat
+    # Six alerts exist since V1-S4-008-PR1, so the limitation this pinned is no
+    # longer that none is defined. What a panel still cannot do is tell anybody
+    # anything, and that is what the document has to keep saying.
+    assert "a panel does not tell anybody anything" in flat
+    assert "nothing evaluates or routes one" in flat

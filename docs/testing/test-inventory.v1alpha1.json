@@ -701,11 +701,11 @@
       "module": "tests/telemetry/test_inference_alerts.py",
       "layer": "documentation",
       "marker": "docs",
-      "protects": "The V1 alert set: every alert expression satisfies the correlation query policy, no alert reads a metric nothing emits, every threshold names a declared source and never a measurement, every window is at least the range window its expression reads, a scrape signal is never read as workload health, every alert names an owner, a severity and a runbook section that exists and says what to run, each of the twelve alert rules refuses a record corrupted to break it, every alert both fires and stays silent across the eight committed scenarios exactly as the record says, one scrape interval of refusals fires nothing, every workload alert goes silent when the API job discovers nothing, and both committed Prometheus rule files are byte-identical to what the record generates.",
+      "protects": "The V1 alert set: every alert expression satisfies the correlation query policy under each profile the alert declares, no alert reads a metric nothing emits, every threshold names a declared source and never a measurement, every window is at least the range window its expression reads, a scrape signal is never read as workload health, every alert names an owner, a severity and a runbook section that exists and says what to run, each of the twelve alert rules refuses a record corrupted to break it, every alert both fires and stays silent across the eight committed scenarios exactly as the record says, one scrape interval of refusals fires nothing, every workload alert goes silent when the API job discovers nothing, every published replay verdict over the two real experiment captures is the one the replay produces, and both committed Prometheus rule files are byte-identical to what the record generates.",
       "claims": [
         "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
       ],
-      "note": "Every check reads files. The scenarios are synthetic: two of them take their shape from the V1-S4-006-PR1 and V1-S4-007-PR1 runs and none of their durations. No Prometheus evaluates anything here, nothing routes an alert, and no alert in this record has ever fired outside this repository's own evaluator."
+      "note": "The scenarios are synthetic and two of them take their shape from the V1-S4-006-PR1 and V1-S4-007-PR1 runs and none of their durations. The replay is over telemetry those runs measured, through a reconstruction the replay module declares and whose refusals are checked. No Prometheus evaluates anything here, no alerting rule existed during either experiment, nothing routes an alert, and no alert in this record has ever fired outside this repository's own evaluator."
     },
     {
       "module": "tests/testing/test_ci_gate_matrix.py",
@@ -828,9 +828,9 @@
       "module": "tests/architecture/test_inference_alert_rules.py",
       "layer": "architecture-inventory",
       "marker": "architecture",
-      "protects": "The alert definitions as an owned artifact: the inventory row the ADR 0004 D7 amendment of 2026-09-17 created is a repository artifact that survives every teardown, its handoff says that implemented means a checked definition and not a firing alert, and telemetry-backend still carries the receiver and the routing tree. And that the rendered rule files are files the pinned collector will load, checked by running that collector's own promtool over both of them.",
+      "protects": "The alert definitions as an owned artifact: the inventory row the ADR 0004 D7 amendment of 2026-09-17 created is a repository artifact that survives every teardown, its handoff says that implemented means a checked definition and not a firing alert, and telemetry-backend still carries the receiver and the routing tree. And a control that would establish the rendered rule files are files the pinned collector loads, by running that collector's own promtool over both of them.",
       "claims": [],
-      "note": "The promtool check runs the binary out of the image the chart pins, against the committed renders, so it establishes that the files load and that every expression parses in the engine that would evaluate them. It is not an evaluation and not a firing alert: nothing here starts a collector, installs a release, or reaches a cluster. That check skips, loudly, where the image is not present locally."
+      "note": "The promtool check would run the binary out of the image the chart pins, against the committed renders, and would establish that the files load and that every expression parses in the engine that would evaluate them. It skips, loudly, where the image is not present locally, and it had not run at the time this row was written. It is not an evaluation and not a firing alert: nothing here starts a collector, installs a release, or reaches a cluster."
     }
   ],
   "coverageGaps": [

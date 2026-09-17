@@ -26,20 +26,25 @@ to anybody.
 Claim boundary: six alerts are defined as data, each with an owner, a severity, a
 condition, a window, a declared threshold source, a caller impact, an operator action
 and a runbook section that exists and names something to run; every expression
-satisfies the correlation query policy; each of the twelve alert rules refuses a
-record corrupted to break it; each of the eight refused alerts is refused when spliced
-into the record; every alert fires and stays silent across the eight committed
-**synthetic** scenarios exactly as the record declares; and both committed rule files
-are what the record generates.
+satisfies the correlation query policy under **each profile it declares**; each of the
+twelve alert rules refuses a record corrupted to break it; each of the eight refused
+alerts is refused when spliced into the record; every alert fires and stays silent
+across the eight committed **synthetic** scenarios exactly as the record declares;
+three of the six were **replayed over the telemetry two real failure experiments
+recorded**, where one fires over one capture and nothing fires over the other; and
+both committed rule files are what the record generates.
 
 **What this record does not establish.** It is not evidence that a Prometheus accepts
 the rendered rule files — that control exists and **did not run here**; see *What was
-not run* below. It is not evidence that any alert has fired anywhere but in this
-repository's own fixture evaluator, that anybody would be told if one did, or that any
-threshold is right for an installation other than this chart's defaults. It publishes
-no latency, throughput, or capacity figure: every number in the scenario results was
-written by hand into a fixture, and the one measured figure it quotes — a 95th
-percentile of 8 614 ms — is quoted to say what the latency threshold is *not*.
+not run* below. No alerting rule existed during either failure experiment, so the
+replay is this repository's own evaluator over a reconstruction it declares, not a
+rule a collector ran. It is not evidence that any alert has fired in a cluster, that
+anybody would be told if one did, or that any threshold is right for an installation
+other than this chart's defaults. It publishes no latency, throughput, or capacity
+figure of its own: every number in the scenario results was written by hand into a
+fixture, and the measured figures it quotes — a client-measured 95th percentile of
+8 614 ms, and deferrals of 0, 1 and 3 — are quoted to say what the thresholds are
+*not* and what the windows are for.
 
 ## Environment
 
@@ -59,6 +64,7 @@ percentile of 8 614 ms — is quoted to say what the latency threshold is *not*.
 | `docs/telemetry/inference-alerts.md` | The document that publishes it |
 | `deploy/prometheus/inferops-inference-alerts.real.yaml` | The rule file for the real profile: 6 rules |
 | `deploy/prometheus/inferops-inference-alerts.mock.yaml` | The rule file for the mock profile: 5 rules |
+| `tools/inference_alerts/replay.py` | The replay over the two committed experiment captures, and the reconstruction it declares |
 | `tools/inference_alerts/` | The policy, the fixture-window evaluator, the renderer, and the command |
 | `tests/telemetry/fixtures/alerts/*.yaml` | Eight scenarios on a 60-second grid |
 | `tests/telemetry/test_inference_alerts.py` | The suite |
@@ -86,14 +92,24 @@ ok      6 alert(s) satisfy the alert policy
 uv run --locked python -m tools.inference_alerts --evaluate
 (48 cells, no DISAGREES; the matrix is published in the alert-validation report)
 
+uv run --locked python -m tools.inference_alerts --replay
+(six verdicts per capture; the matrix is published in the alert-validation report)
+
 uv run --locked python -m pytest tests/telemetry/test_inference_alerts.py -q
-75 passed
+91 passed
 
 uv run --locked python -m pytest -q
-9690 passed, 33 skipped, 14 deselected
+9709 passed, 33 skipped, 14 deselected
 ```
 
 `git diff --check` reports nothing.
+
+One full-lane run before this one reported a single failure in
+`tests/serving/test_performance_scenarios.py`, a `ConnectionAbortedError` from a
+loopback stub this change does not touch. It passes in isolation, passes with its own
+module, and passes on `main` with this branch stashed; the run above is a clean repeat.
+It is recorded here rather than left out, because a flake nobody wrote down is a flake
+somebody rediscovers.
 
 ## What the scenarios showed
 
@@ -114,7 +130,13 @@ Four results are worth repeating here because each changed the design:
 3. **When the platform-api job discovers nothing, all five workload alerts go
    silent.** That is the entire argument for the sixth, and the suite holds it as a
    property rather than a sentence.
-4. **The chart key was wrong in the first draft.** The latency rationale named
+4. **Over the real captures, one of the two runs raises nothing.** The pod-loss
+   run's outage was 31 960 ms against five- and ten-minute windows, and its
+   `capability-unavailable` counter series was born at 40 and never incremented, so a
+   rate over it reads no increase. Both are recorded as gaps rather than left implied.
+   Over the unready-model capture the readiness alert fires and the caller-refusal
+   alert misses by one evaluation because the recording stopped first.
+5. **The chart key was wrong in the first draft.** The latency rationale named
    `serving.requestTimeoutMs`; the chart declares `api.requestTimeoutMs`. The test
    that reads the threshold back out of `values.yaml` caught it. A rationale that
    names a configuration key and a number that drifted from it is worse than a number
@@ -159,7 +181,7 @@ Applied to this PR's boundary only.
 | Criterion | Status |
 |---|---|
 | Each alert has owner, severity, condition, evidence query, and runbook link | **Met.** Every alert carries all five, plus the window, the threshold's declared source, the caller impact, the operator action, what an empty result means, and what the alert cannot see. The runbook link's file *and* heading are checked, and the section has to name something to run |
-| Alerts are validated against failure experiments | **Met, with its class stated.** Two scenarios take their shape from V1-S4-006-PR1 and V1-S4-007-PR1 and the availability set fires in both. The scenarios themselves are synthetic: no alert was evaluated against a live collector during either experiment, and none of the fixtures carries a measured duration |
+| Alerts are validated against failure experiments | **Met, with its class stated.** Three of the six alerts were replayed over the telemetry V1-S4-006-PR1 and V1-S4-007-PR1 actually recorded: `InferOpsReadinessRefusalsSustained` fires over the unready-model capture, nothing fires over the pod-loss capture, and the three alerts whose series neither experiment asked for are reported `not-in-the-capture` rather than silent. No alerting rule existed during either run, so this is a replay and not a rule a collector evaluated. The two fixtures shaped from those runs are synthetic and carry none of their durations |
 | No alert exists solely because a metric is available | **Met.** Eight such alerts are recorded as refused with the rule that refuses each, and the suite splices each into the record and fails if it is accepted. Five conditions are deferred rather than approximated, and each carries a `doNotApproximate` field naming the nearby signal somebody would reach for |
 | Local proof thresholds are not presented as universal production thresholds | **Met.** No threshold is a measured figure; a `thresholdBasis` of `measurement` is refused by the policy. The one measured figure quoted anywhere is quoted to say what the threshold is not |
 | No alert claims to detect a condition the accepted telemetry cannot observe | **Met.** The correlation policy refuses an expression reading a metric nothing emits, and the suite re-asserts it directly so removing that refusal there does not remove it here |
@@ -181,11 +203,17 @@ Two parent-story criteria are **not** met by this PR and are not this PR's:
   satisfied here is satisfied at the instants the fixture carries.
 - The evaluator is not Prometheus; the differences are declared in the correlation
   query document and apply unchanged, because it is the same evaluator.
-- Six of eight scenarios are constructed rather than shaped from a run, and the
-  saturation one describes a state this project has never observed — the measured
-  performance matrix recorded a maximum deferral of 0.
+- Six of eight scenarios are constructed rather than shaped from a run. The
+  saturation one constructs a *duration* rather than a value: the measured
+  performance matrix reached a deferral of 3 at concurrency 4 and never held one for
+  ten minutes.
 - The `capability-unavailable` selector is the code both recorded experiments
-  produced. A failure producing a different code reaches
+  produced, and not the only one either produced: the pod-loss run also counted one
+  `internal-error`. A failure producing a different code reaches
   `InferOpsInferenceServingNothing` only once nothing at all is succeeding.
+- The replay reconstructs a store from query results. `sum` and `sum by` are read
+  back as the metric; two captured expressions are refused rather than approximated.
+  A replay verdict is a statement about that reconstruction, and the three alerts
+  reported `not-in-the-capture` are not evidence of silence.
 - The owners are roles, not people. Nothing pages either of them, because there is
   nobody and no path.

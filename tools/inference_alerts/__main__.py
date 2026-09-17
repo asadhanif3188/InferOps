@@ -5,6 +5,7 @@
     python -m tools.inference_alerts --evaluate
     python -m tools.inference_alerts --rules real
     python -m tools.inference_alerts --rules mock
+    python -m tools.inference_alerts --replay
 
 The first two apply the alert policy. Exit status is 0 when nothing is refused and
 1 when anything is, so the command is usable as a gate. ``--evaluate`` runs every
@@ -16,6 +17,11 @@ the one that needs the whole ``for`` window rather than one instant.
 ``--rules`` prints the Prometheus alerting-rule file for one profile, which is what
 the committed file under ``deploy/prometheus/`` is compared against. Nothing is
 written, and a record the policy refuses renders nothing.
+
+``--replay`` runs every alert over the telemetry the two failure experiments
+recorded, through the reconstruction :mod:`.replay` declares, and prints what each
+one would have done. An alert reading a series a capture does not hold is reported
+as ``not-in-the-capture`` rather than as silent.
 
 **Every mode reads files.** None starts a Prometheus, loads a rule file, or knows
 what a receiver is. See docs/telemetry/inference-alerts.md.
@@ -37,6 +43,7 @@ from .core import (
     load_alert_record,
 )
 from .render import render_rules, serialise
+from .replay import CAPTURE_PATHS, load_capture, replay_alerts
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -59,12 +66,17 @@ def main(argv: list[str] | None = None) -> int:
         choices=("mock", "real"),
         help="print the Prometheus alerting-rule file for this profile",
     )
+    group.add_argument(
+        "--replay",
+        action="store_true",
+        help="replay every alert over the committed experiment telemetry",
+    )
     arguments = parser.parse_args(argv)
 
     record = load_alert_record()
     findings = check_alerts(record)
 
-    if (arguments.evaluate or arguments.rules) and findings:
+    if (arguments.evaluate or arguments.rules or arguments.replay) and findings:
         print(
             "REFUSED  the alert record does not satisfy the alert policy",
             file=sys.stderr,
@@ -76,6 +88,19 @@ def main(argv: list[str] | None = None) -> int:
             serialise(render_rules(record, arguments.rules), arguments.rules, record),
             end="",
         )
+        return 0
+
+    if arguments.replay:
+        for capture_id, path in CAPTURE_PATHS.items():
+            capture = load_capture(path)
+            span = capture["range"]
+            seconds = round((span["endEpochMs"] - span["startEpochMs"]) / 1000)
+            print(f"== {capture_id}  ({seconds} s at {span['stepSeconds']} s)")
+            for entry in replay_alerts(record, capture):
+                held = f"held {entry.held_instants} of {entry.window_seconds:g}s"
+                print(f"   {entry.verdict:<19} {entry.alert_id}  ({held})")
+                if entry.missing:
+                    print(f"       the capture holds no {', '.join(entry.missing)}")
         return 0
 
     if arguments.evaluate:

@@ -10,7 +10,9 @@ never been shown both to fire and to stay silent over the committed scenarios.
 
 It then evaluates every accepted alert across each scenario fixture instant by
 instant, so that ``for`` is a property the fixtures establish rather than a field
-somebody wrote.
+somebody wrote -- and replays every alert it can over the telemetry two real failure
+experiments recorded, so that what an alert would have done during a measured failure
+is a result rather than an intention.
 
 It contacts no cluster and scrapes nothing. **No receiver, routing tree, or on-call
 rotation is selected in V1**, so an alert this accepts is an alert nothing evaluates
@@ -24,7 +26,6 @@ from .core import (
     RULE_IDS,
     SIGNALS,
     Finding,
-    alert_queries,
     check_alerts,
     evaluate_alerts,
     firing_instants,
@@ -32,21 +33,26 @@ from .core import (
     runbook_anchors,
 )
 from .render import GROUP_NAME, render_rules, serialise
+from .replay import CAPTURE_PATHS, Replay, load_capture, reconstruct, replay_alerts
 
 __all__ = [
     "ALERT_RECORD_PATH",
+    "CAPTURE_PATHS",
     "FIXTURE_DIR",
     "GROUP_NAME",
     "RENDER_PATHS",
     "RULE_IDS",
     "SIGNALS",
     "Finding",
-    "alert_queries",
+    "Replay",
     "check_alerts",
     "evaluate_alerts",
     "firing_instants",
     "load_alert_record",
+    "load_capture",
+    "reconstruct",
     "render_rules",
+    "replay_alerts",
     "runbook_anchors",
     "serialise",
 ]
