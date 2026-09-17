@@ -23,7 +23,7 @@ nominate its own strength.
 | Contracts | [`v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) |
 | Domain | [`v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md), [`v1-s1-001-pr2-validation.md`](domain/v1-s1-001-pr2-validation.md) |
 | Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md), [`v1-s3-002-pr1-validation.md`](architecture/v1-s3-002-pr1-validation.md), [`v1-s3-002-pr2-validation.md`](architecture/v1-s3-002-pr2-validation.md), [`v1-s3-003-pr1-validation.md`](architecture/v1-s3-003-pr1-validation.md), and the [provider realignment validation](architecture/v1-s3-010-pr1-validation.md) |
-| Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md), [`v1-s1-007-pr1-validation.md`](testing/v1-s1-007-pr1-validation.md) |
+| Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md), [`v1-s1-007-pr1-validation.md`](testing/v1-s1-007-pr1-validation.md), [the continuous-integration gate validation](testing/v1-s4-001-pr1-validation.md), and [the claim-evidence register's validation](testing/v1-s4-009-pr1-validation.md) |
 | Telemetry | [`v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md), [`v1-s1-008-pr1-validation.md`](telemetry/v1-s1-008-pr1-validation.md), [`v1-s3-007-pr1-validation.md`](telemetry/v1-s3-007-pr1-validation.md), [`v1-s3-007-pr2-validation.md`](telemetry/v1-s3-007-pr2-validation.md), the [query evaluation record](telemetry/v1-s3-007-pr2-query-evaluation.md), [what telemetry saw while a serving pod was replaced](telemetry/v1-s3-011-pr2-telemetry-during-recovery.md), [`v1-s4-002-pr1-validation.md`](telemetry/v1-s4-002-pr1-validation.md), [the dashboard asked of a real Prometheus and rendered by a real Grafana](telemetry/v1-s4-002-pr2-dashboard-validation.md), and [the V1 alert set validated against its scenarios](telemetry/v1-s4-008-pr1-alert-validation.md) with [`v1-s4-008-pr1-validation.md`](telemetry/v1-s4-008-pr1-validation.md) |
 | Cost | [`v1-s0-008-pr1-validation.md`](cost/v1-s0-008-pr1-validation.md), the [cost calculation validation](cost/v1-s4-005-pr1-validation.md), and [the V1 cost baseline](cost/v1-s4-005-pr2-cost-baseline.md) with [its validation](cost/v1-s4-005-pr2-validation.md) |
 | Security | [`v1-s0-009-pr1-validation.md`](security/v1-s0-009-pr1-validation.md), [`v1-s2-006-pr1-validation.md`](security/v1-s2-006-pr1-validation.md), [`v1-s3-004-pr1-validation.md`](security/v1-s3-004-pr1-validation.md), the [executed network-policy enforcement result](security/v1-s3-004-pr1-network-policy-enforcement.md) |
@@ -93,6 +93,14 @@ rather than hiding: the environment facts this project relies on are spread thro
 individual records instead of being collected once, and no claim in
 [the matrix](../testing/claim-test-matrix.md) has yet been bound to its evidence in
 the one-claim-per-record form the fourth template exists to enforce.
+
+`V1-S4-009-PR1` does not change that count, and the distinction is the point.
+[The claim and evidence matrix](../testing/claim-evidence-matrix.md) binds every
+claim in this project to the records here, in a table, checked by a suite. A table
+is a weaker form than a record: it carries one limitation per claim rather than the
+seven sections a record carries, and its classification is asserted by the row
+rather than derived by the run. The register is where a reader starts; it is not
+what the fourth template is for.
 
 One more thing these counts do not say. Every record they count is from Sprint 2 or
 earlier: no Sprint 3 record declares a template, so the five `local-real-cpu`

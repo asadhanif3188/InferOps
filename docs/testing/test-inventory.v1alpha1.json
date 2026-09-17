@@ -708,6 +708,16 @@
       "note": "The scenarios are synthetic and two of them take their shape from the V1-S4-006-PR1 and V1-S4-007-PR1 runs and none of their durations. The replay is over telemetry three real runs measured, through a reconstruction the replay module declares and whose refusals are checked. No Prometheus evaluates anything here, no alerting rule existed during any of the three experiments, nothing routes an alert, and no alert in this record has ever fired outside this repository's own evaluator."
     },
     {
+      "module": "tests/testing/test_claim_evidence_matrix.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The published claim and evidence matrix against its own data, the test strategy, the test inventory, the gate matrix, the cluster provider contract, and the README: every row names a limitation and what it does not establish; a row mapped to a strategy claim never carries a stronger status than that claim; a certified row cites a committed record that is not a template and an uncertified one cites none; a level never exceeds the ceiling its evidence label carries; a row asserting real behaviour rests on a label that may support one; a real Kubernetes row names a published provider; no row describes an amount in the vocabulary reserved for an invoice except to deny it; and every public entry point the README lists is either claimed by a row or declared to claim nothing.",
+      "claims": [
+        "the-published-strategy-and-its-data-cannot-drift-apart"
+      ],
+      "note": "It reads committed files. It establishes that references resolve, that ranks and ceilings hold, and that the two directions agree; it cannot establish that a statement is true or that a record says what the row citing it says it says. Eight of its rules are driven over a row corrupted to break them."
+    },
+    {
       "module": "tests/testing/test_ci_gate_matrix.py",
       "layer": "documentation",
       "marker": "docs",

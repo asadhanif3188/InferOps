@@ -10,6 +10,52 @@ once versioned releases begin.
 
 ### Added
 
+- **Every V1 claim, and the eight this project will not make.**
+  [A claim and evidence matrix](docs/testing/claim-evidence-matrix.md) with
+  [its authoritative data](docs/testing/claim-evidence-matrix.v1alpha1.json) and
+  [a suite that holds it to its own rules](tests/testing/test_claim_evidence_matrix.py).
+  Fifty-eight claims, each bound to the implementation behind it, the test modules that
+  would fail if it stopped being true, the gates that run them, the executed record that
+  certifies it, the record that names the immutable versions, the evidence label that
+  decides what that record may support, a limitation, a statement of what it does not
+  establish, and a status.
+
+  **Forty-one are certified; seventeen are not, and those are the rows worth reading.**
+  Eight are planned and cite no record, because a planned claim citing one is a failure
+  rather than an optimism. One — portable throughput and capacity — stays deferred. Eight
+  are marked `not claimed`: a state for something a reader would reasonably expect and V1
+  does not have. Multi-replica serving, refused at a capacity gate 165 MiB short on the
+  reference host. An alert reaching somebody, when nothing evaluates or routes any of the
+  six. A cost on a real provider, when nothing here has ever been paid for. A defended
+  deployed workload. A cluster lane in continuous integration. A published release. And
+  the rendered network policy, which an executed experiment measured **not** to be
+  enforced by the plugin the observed cluster runs.
+
+  Two of those eight cite a record, which `planned` and `deferred` may not. An absence
+  somebody measured is worth more than one nobody mentions, and the refusal and the
+  enforcement experiment are both stronger evidence than silence.
+
+  **Nine rules, each driven over a row corrupted to break it.** A row mapped to a claim
+  in the test strategy may be more conservative than that claim and never bolder. A
+  certified row asserting real serving, performance, or reliability behaviour must rest
+  on an evidence label whose class may support one, so a mock can never appear behind a
+  serving sentence. A level may not exceed its label's ceiling. A real Kubernetes row
+  names a provider the cluster provider contract publishes, so Docker Desktop evidence
+  cannot be read as `kind`. And no row describes an amount in the vocabulary reserved for
+  an invoice — except in a sentence that denies it, because banning the words outright
+  makes the rule itself unsayable.
+
+  **The completeness check is against the README.** Every relative link in its public
+  entry-point table is either claimed by a row or listed, with a reason, as a surface
+  that claims nothing; a path may appear in neither list or in both, and each is a
+  failing build. That is what makes "every planned public claim has evidence and a
+  limitation" a property rather than a promise.
+
+  What it does not do is establish that any statement in it is true. The suite checks
+  references, ranks, ceilings, and vocabulary. Whether a record says what the row citing
+  it says it says is a reading, no test performs one, and the matrix carries that in its
+  own limitations rather than only in the suite's docstring.
+
 - **Six alerts, and the five conditions nobody may be alerted on.** A committed alert
   record, two Prometheus rule files generated from it and compared byte for byte, an
   alert policy in `tools/inference_alerts/`, eight scenario fixtures, and
