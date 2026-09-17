@@ -40,12 +40,30 @@ that true:
 | `severity` | What acting means: now, or inside a working day |
 | `condition` and `forSeconds` | What has been true, and for how long |
 | `userImpact` | What a caller is experiencing while it fires |
+| `evidenceQuery` | The query that shows *what* is wrong, once the alert has said *that* something is |
 | `operatorAction` and `runbookRef` | What to do, and the section that says how |
 
 And two fields that are less usual and matter more: `thresholdBasis`, which says where
 the number came from, and `whatItCannotSee`, which says what the alert will be quiet
 for. An alert that never states its blind spot is an alert whose silence gets read as
 health.
+
+**The evidence query is an accepted correlation query repeated verbatim**, named by
+its `evidenceQueryRef` and refused if a byte differs. An operator following an alert
+therefore lands on an expression [the query policy](telemetry-correlation-queries.md)
+has already checked and the fixtures have already evaluated, rather than on one
+somebody wrote into an annotation. It is never the condition restated: the condition
+filters by a threshold and the evidence query does not, so the first says a component
+is refusing and the second says which codes, which outcomes, or which tier.
+
+| Alert | Evidence query |
+|---|---|
+| `InferOpsInferenceCallersRefused` | `error-rate-by-workload-and-code` — every code, including the `internal-error` this alert does not count |
+| `InferOpsInferenceServingNothing` | `request-throughput-by-workload-model-and-outcome` — how much is arriving and how much is failing |
+| `InferOpsReadinessRefusalsSustained` | `readiness-check-failures-by-component` — which half said no |
+| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | `request-latency-p95-by-workload-and-model` — the split the condition deliberately does not make |
+| `InferOpsRuntimeDefersRequests` | `runtime-deferred-requests` — a count of requests, never a wait |
+| `InferOpsPlatformApiScrapeJobAbsent` | `scrape-target-health-by-job` — which tier answers a scrape |
 
 ## The six alerts
 
@@ -175,7 +193,7 @@ impact describes the workload. The checker's word list is a list and has a list'
 limit; the suite pins one synonym it still accepts, so the gap stays a committed fact
 rather than an assumption that it was closed.
 
-## The twelve rules that refuse an alert
+## The thirteen rules that refuse an alert
 
 Every alert is first held to
 [the correlation query policy](telemetry-correlation-queries.md) — the same parser,
@@ -195,9 +213,10 @@ nothing emits, or a label the catalog bars, gets read. On top of that:
 | `alert-window-is-shorter-than-two-evaluations` | A `for` a single missed evaluation could satisfy |
 | `alert-window-is-shorter-than-its-range-window` | A `for` shorter than the range window the expression reads |
 | `alert-identifier-is-malformed-or-repeated` | An identifier that is not kebab-case, a name outside the `InferOps` + CamelCase convention, or either one twice |
+| `alert-evidence-query-drifted-from-the-accepted-query` | A missing evidence query, or one that names an accepted correlation query and is not that query verbatim |
 | `alert-record-is-malformed` | A record whose `alerts` is not a non-empty list of objects. A gate that answers with a traceback reads as a gate that passed |
 
-Each of the twelve is driven over a record corrupted to break it, and a rule with no
+Each of the thirteen is driven over a record corrupted to break it, and a rule with no
 corruption behind it fails the suite.
 
 ## The eight scenarios

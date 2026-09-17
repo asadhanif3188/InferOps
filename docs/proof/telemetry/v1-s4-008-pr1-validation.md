@@ -27,7 +27,7 @@ Claim boundary: six alerts are defined as data, each with an owner, a severity, 
 condition, a window, a declared threshold source, a caller impact, an operator action
 and a runbook section that exists and names something to run; every expression
 satisfies the correlation query policy under **each profile it declares**; each of the
-twelve alert rules refuses a record corrupted to break it; each of the eight refused
+thirteen alert rules refuses a record corrupted to break it; each of the eight refused
 alerts is refused when spliced into the record; every alert fires and stays silent
 across the eight committed **synthetic** scenarios exactly as the record declares;
 three of the six were **replayed over the telemetry two real failure experiments
@@ -60,7 +60,7 @@ fixture, and the measured figures it quotes — a client-measured 95th percentil
 
 | File | What it is |
 |---|---|
-| `docs/telemetry/inference-alerts.v1alpha1.json` | The record: 6 alerts, 5 deferred conditions, 8 refused alerts, 8 scenarios, 2 owners, 2 severities, 3 threshold bases, 5 gaps, 6 limitations |
+| `docs/telemetry/inference-alerts.v1alpha1.json` | The record: 6 alerts, 5 deferred conditions, 8 refused alerts, 8 scenarios, 2 owners, 2 severities, 3 threshold bases, 7 gaps, 6 limitations |
 | `docs/telemetry/inference-alerts.md` | The document that publishes it |
 | `deploy/prometheus/inferops-inference-alerts.real.yaml` | The rule file for the real profile: 6 rules |
 | `deploy/prometheus/inferops-inference-alerts.mock.yaml` | The rule file for the mock profile: 5 rules |
@@ -180,7 +180,7 @@ Applied to this PR's boundary only.
 
 | Criterion | Status |
 |---|---|
-| Each alert has owner, severity, condition, evidence query, and runbook link | **Met.** Every alert carries all five, plus the window, the threshold's declared source, the caller impact, the operator action, what an empty result means, and what the alert cannot see. The runbook link's file *and* heading are checked, and the section has to name something to run |
+| Each alert has owner, severity, condition, evidence query, and runbook link | **Met.** Every alert carries all five. The evidence query is a field distinct from the condition and is an accepted correlation query repeated verbatim, refused if a byte differs or if it restates the condition; the runbook link's file *and* heading are checked, and the section has to name something to run. Each alert also carries the window, the threshold's declared source, the caller impact, the operator action, what an empty result means, and what the alert cannot see |
 | Alerts are validated against failure experiments | **Met, with its class stated.** Three of the six alerts were replayed over the telemetry V1-S4-006-PR1 and V1-S4-007-PR1 actually recorded: `InferOpsReadinessRefusalsSustained` fires over the unready-model capture, nothing fires over the pod-loss capture, and the three alerts whose series neither experiment asked for are reported `not-in-the-capture` rather than silent. No alerting rule existed during either run, so this is a replay and not a rule a collector evaluated. The two fixtures shaped from those runs are synthetic and carry none of their durations |
 | No alert exists solely because a metric is available | **Met.** Eight such alerts are recorded as refused with the rule that refuses each, and the suite splices each into the record and fails if it is accepted. Five conditions are deferred rather than approximated, and each carries a `doNotApproximate` field naming the nearby signal somebody would reach for |
 | Local proof thresholds are not presented as universal production thresholds | **Met.** No threshold is a measured figure; a `thresholdBasis` of `measurement` is refused by the policy. The one measured figure quoted anywhere is quoted to say what the threshold is not |

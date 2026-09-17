@@ -39,7 +39,7 @@ uv run --locked python -m pytest tests/telemetry/test_inference_alerts.py -q
 
 ## The alert set
 
-Six alerts, five deferred conditions, eight refusals in the negative catalogue.
+Six alerts, five deferred conditions, eight refusals in the negative catalogue. Every alert also publishes an **evidence query** -- an accepted correlation query repeated verbatim, refused if a byte differs -- which is what an operator runs to see *what* is wrong once the alert has said *that* something is.
 
 | Alert | Severity | Owner | Threshold | Window |
 |---|---|---|---|---|

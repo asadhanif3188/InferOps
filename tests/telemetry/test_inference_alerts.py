@@ -61,6 +61,7 @@ from tools.inference_alerts import (
 from tools.telemetry_correlation import (
     SAFE_MESSAGE_CHARACTERS,
     load_fixture,
+    load_query_record,
     metrics_read,
     not_emitted_metric_names,
     parse,
@@ -167,7 +168,7 @@ def test_the_record_claims_no_routing_and_no_evaluation_by_a_prometheus() -> Non
 
 def test_the_published_counts_are_the_counts_the_record_has() -> None:
     """The document publishes numbers. A number nobody recomputes goes stale."""
-    words = {5: "five", 6: "six", 8: "eight", 12: "twelve"}
+    words = {5: "five", 6: "six", 8: "eight", 13: "thirteen"}
     assert f"{words[len(RECORD['alerts'])]} alerts" in DOCUMENT.lower()
     assert f"{words[len(RECORD['deferredAlerts'])]} deferred" in DOCUMENT.lower()
     assert f"{words[len(RECORD['scenarios'])]} scenarios" in DOCUMENT.lower()
@@ -331,6 +332,30 @@ def test_every_refused_alert_is_actually_refused() -> None:
 # --------------------------------------------------------------------------
 # What an alert owes its operator
 # --------------------------------------------------------------------------
+
+
+def test_every_alert_publishes_an_evidence_query_from_the_accepted_set() -> None:
+    """The condition says *that* something is wrong; this says *what*.
+
+    It is an accepted correlation query repeated verbatim rather than a new one,
+    so an operator following an alert lands on an expression the query policy has
+    already checked and the fixtures have already evaluated.
+    """
+    accepted = {
+        query["queryId"]: query["expr"]
+        for query in load_query_record()["queries"]
+        if query.get("expr")
+    }
+    for alert_id, alert in ALERTS.items():
+        assert alert["evidenceQueryRef"] in accepted, alert_id
+        assert alert["evidenceQuery"] == accepted[alert["evidenceQueryRef"]], alert_id
+        assert alert["evidenceQueryIsFor"].strip(), alert_id
+
+
+def test_no_evidence_query_is_the_alert_condition_restated() -> None:
+    """Otherwise the field is the expression again under a second name."""
+    for alert_id, alert in ALERTS.items():
+        assert alert["evidenceQuery"] != alert["expr"], alert_id
 
 
 def test_every_alert_names_an_owner_a_severity_and_a_runbook_section() -> None:
@@ -497,6 +522,12 @@ def _refused_by_correlation(record: dict[str, Any]) -> None:
     )
 
 
+def _evidence_query_drifted(record: dict[str, Any]) -> None:
+    _alert(record, "inference-callers-refused")["evidenceQuery"] = (
+        "sum by (inferops_error_code) (rate(inferops_inference_errors_total[5m]))"
+    )
+
+
 def _no_action(record: dict[str, Any]) -> None:
     _alert(record, "inference-callers-refused")["operatorAction"] = "   "
 
@@ -555,6 +586,11 @@ CORRUPTIONS: list[tuple[str, Callable[[dict[str, Any]], None], str]] = [
         "correlation",
         _refused_by_correlation,
         "alert-expression-refused-by-the-correlation-policy",
+    ),
+    (
+        "evidence-query-drift",
+        _evidence_query_drifted,
+        "alert-evidence-query-drifted-from-the-accepted-query",
     ),
     ("no-action", _no_action, "alert-has-no-operator-action"),
     ("identifier", _no_such_identifier, "alert-identifier-is-malformed-or-repeated"),
@@ -907,6 +943,7 @@ def test_the_rule_file_is_a_prometheus_rule_group_and_parses(profile: str) -> No
     assert group["interval"] == "30s"
     for rule in group["rules"]:
         assert set(rule) == {"alert", "expr", "for", "labels", "annotations"}
+        parse(rule["annotations"]["evidence_query"])
         parse(rule["expr"])
 
 
@@ -949,6 +986,7 @@ def test_every_rendered_rule_carries_the_owner_severity_and_runbook(
         assert rule["labels"]["owner"] == alert["owner"]
         assert rule["labels"]["severity"] == alert["severity"]
         assert rule["annotations"]["runbook"] == alert["runbookRef"]
+        assert rule["annotations"]["evidence_query"] == alert["evidenceQuery"]
         assert rule["annotations"]["action"].strip() == alert["operatorAction"]
         assert rule["annotations"]["impact"].strip() == alert["userImpact"]
         assert "No receiver" in rule["annotations"]["not_routed"]

@@ -15,13 +15,17 @@ once versioned releases begin.
   alert policy in `tools/inference_alerts/`, eight scenario fixtures, and
   [the document that publishes all of it](docs/telemetry/inference-alerts.md). Every
   alert carries an owner, a severity, the condition, what a caller is experiencing,
-  what to do, and a link to the runbook section that says how — and two fields that
-  are less usual: where its threshold came from, and what it will be quiet for. Every
+  the query that shows *what* is wrong once it has said *that* something is, what to
+  do, and a link to the runbook section that says how — and two fields that are less
+  usual: where its threshold came from, and what it will be quiet for. The evidence
+  query is an accepted correlation query repeated verbatim and refused if a byte
+  differs, so an operator following an alert lands on an expression the query policy
+  has already checked. Every
   expression is first held to
   [the correlation query policy](docs/telemetry/telemetry-correlation-queries.md), so
-  an alert cannot read a series nothing emits or a label the catalog bars, and twelve
+  an alert cannot read a series nothing emits or a label the catalog bars, and thirteen
   further rules refuse an alert that would wake somebody for nothing or stay silent
-  for something. Each of the twelve is driven over a record corrupted to break it.
+  for something. Each of the thirteen is driven over a record corrupted to break it.
 
   **No threshold is a figure this project measured.** Three are zero, two are derived
   from values the chart declares — `api.probes.readiness.periodSeconds` and

@@ -77,6 +77,7 @@ def _rule(alert: Mapping[str, Any], record: Mapping[str, Any]) -> dict[str, Any]
             "impact": _Block(alert["userImpact"]),
             "action": _Block(alert["operatorAction"]),
             "blind_spot": _Block(alert["whatItCannotSee"]),
+            "evidence_query": alert["evidenceQuery"],
             "runbook": alert["runbookRef"],
             "evidence": ", ".join(alert.get("evidenceRefs") or []),
             "not_routed": _Block(str(record["routing"]["statement"])),

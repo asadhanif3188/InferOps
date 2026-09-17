@@ -65,6 +65,13 @@ it adds the rules a query does not have to satisfy and an alert does:
     An alert identifier that is not kebab-case, a name that is not the Prometheus
     ``CamelCase`` convention, or either one appearing twice.
 
+``alert-evidence-query-drifted-from-the-accepted-query``
+    An alert with no evidence query, or one that names an accepted correlation query
+    and is not that query's expression verbatim. The condition says *that* something
+    is wrong; the evidence query is what an operator runs to see *what*, and one
+    edited away from the checked query it claims to be is an unchecked query wearing
+    a checked name.
+
 ``alert-record-is-malformed``
     A record whose ``alerts`` is not a list of objects, or is empty. This checker is
     a gate, and a gate that answered a malformed record with a traceback would be
@@ -98,6 +105,7 @@ from tools.telemetry_correlation import (
     collector_dropped_labels,
     evaluate,
     format_vector,
+    load_query_record,
     metrics_read,
     parse,
     with_recording_rules,
@@ -129,6 +137,7 @@ RENDER_PATHS: Final[dict[str, Path]] = {
 
 RULE_IDS: Final[tuple[str, ...]] = (
     "alert-condition-is-not-a-comparison",
+    "alert-evidence-query-drifted-from-the-accepted-query",
     "alert-expression-refused-by-the-correlation-policy",
     "alert-has-no-operator-action",
     "alert-identifier-is-malformed-or-repeated",
@@ -608,6 +617,56 @@ def _check_expression(alert: Mapping[str, Any]) -> Iterator[Finding]:
         )
 
 
+def _accepted_queries() -> dict[str, str]:
+    """Every accepted correlation query that publishes an expression, by identifier."""
+    return {
+        str(query["queryId"]): str(query["expr"])
+        for query in load_query_record()["queries"]
+        if query.get("expr")
+    }
+
+
+def _check_evidence_query(
+    alert: Mapping[str, Any], accepted: Mapping[str, str]
+) -> Iterator[Finding]:
+    subject = _safe(str(alert.get("alertId", "<unnamed alert>")))
+    reference = alert.get("evidenceQueryRef")
+    expression = alert.get("evidenceQuery")
+    if not isinstance(expression, str) or not expression.strip():
+        yield Finding(
+            "alert-evidence-query-drifted-from-the-accepted-query",
+            subject,
+            "evidenceQuery",
+            "an alert names the query an operator runs to see what is wrong",
+        )
+        return
+    if (
+        not isinstance(alert.get("evidenceQueryIsFor"), str)
+        or not str(alert.get("evidenceQueryIsFor")).strip()
+    ):
+        yield Finding(
+            "alert-evidence-query-drifted-from-the-accepted-query",
+            subject,
+            "evidenceQueryIsFor",
+            "an alert says what its evidence query shows that the condition does not",
+        )
+    if not isinstance(reference, str) or reference not in accepted:
+        yield Finding(
+            "alert-evidence-query-drifted-from-the-accepted-query",
+            subject,
+            "evidenceQueryRef",
+            "an evidence query is one of the accepted correlation queries",
+        )
+        return
+    if accepted[reference] != expression:
+        yield Finding(
+            "alert-evidence-query-drifted-from-the-accepted-query",
+            subject,
+            "evidenceQuery",
+            f"this is not {_safe(reference)} verbatim",
+        )
+
+
 def _check_scrape_signal(alert: Mapping[str, Any]) -> Iterator[Finding]:
     subject = _safe(str(alert.get("alertId", "<unnamed alert>")))
     expression = alert.get("expr")
@@ -792,6 +851,7 @@ def check_alerts(record: Mapping[str, Any]) -> list[Finding]:
         for scenario in declared_scenarios
         if isinstance(scenario, Mapping) and "scenarioId" in scenario
     }
+    accepted = _accepted_queries()
     evaluation = record.get("evaluation")
     interval = _seconds(
         evaluation.get("ruleEvaluationIntervalSeconds")
@@ -830,6 +890,7 @@ def check_alerts(record: Mapping[str, Any]) -> list[Finding]:
         findings.extend(_check_runbook(alert))
         findings.extend(_check_threshold(alert, bases))
         findings.extend(_check_expression(alert))
+        findings.extend(_check_evidence_query(alert, accepted))
         findings.extend(_check_scrape_signal(alert))
         findings.extend(_check_window(alert, interval))
         findings.extend(_check_validation(alert, scenarios))
