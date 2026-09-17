@@ -180,17 +180,32 @@ def test_the_page_refuses_to_generalise_one_provider_to_another() -> None:
 # --------------------------------------------- the rows are the register's values
 
 
+def _section(heading: str) -> str:
+    """The page text under one `###` heading, up to the next one.
+
+    Scoped rather than whole-page, so a row rendered under the wrong capability
+    would fail here rather than passing because its statement appears somewhere.
+    """
+    after = PAGE.split(f"### {heading}\n", 1)[1]
+    return after.split("\n### ", 1)[0].split("\n## ", 1)[0]
+
+
 @pytest.mark.parametrize(
     "capability", CAPABILITIES, ids=lambda capability: capability.capability_id
 )
 def test_every_capability_group_shows_the_registers_own_values(capability: Any) -> None:
+    section = _section(capability.name)
     for claim_id in capability.claim_ids:
         row = BY_ID[claim_id]
-        assert row["statement"].replace("|", r"\|") in PAGE, claim_id
-        assert row["limitation"].replace("|", r"\|") in PAGE, claim_id
-        assert f"`{row['evidenceLabel']}`" in PAGE, claim_id
+        assert row["statement"].replace("|", r"\|") in section, claim_id
+        assert row["limitation"].replace("|", r"\|") in section, claim_id
+        assert f"`{row['evidenceLabel']}`" in section, claim_id
+        assert f"`{row['status']}`" in section, claim_id
         if row["certificationLevel"]:
-            assert f"`{row['certificationLevel']}`" in PAGE, claim_id
+            assert f"`{row['certificationLevel']}`" in section, claim_id
+        for reference in row["evidenceRefs"]:
+            relative = link_from_dashboard(reference)
+            assert f"[`{relative}`]({relative})" in section, reference
 
 
 @pytest.mark.parametrize(
@@ -401,22 +416,34 @@ def test_the_rule_refusing_no_claim_is_shown_under_two_capabilities() -> None:
     )
 
 
-def test_the_rule_refusing_a_certified_claim_cites_a_record_that_exists() -> None:
+@pytest.mark.parametrize(
+    ("what", "citation"),
+    [
+        (
+            "a template rather than a record",
+            ["docs/proof/templates/TEMPLATE-claim-evidence.md"],
+        ),
+        ("nothing at all", []),
+        ("a path outside the evidence root", ["docs/testing/claim-evidence-matrix.md"]),
+        ("a record that does not exist", ["docs/proof/serving/a-run-nobody-made.md"]),
+    ],
+)
+def test_the_rule_refusing_a_certified_claim_cites_a_record_that_exists(
+    what: str, citation: list[str]
+) -> None:
+    """All four ways a citation fails, not the two that are easiest to write.
+
+    A rule with four branches and two controls is two-thirds of a rule. The last
+    two are the ones that would catch a typo'd path and a record somebody deleted
+    — the failures a reader of the page could not possibly notice.
+    """
     record = _corrupt()
     _row(record, "a-helm-release-installs-and-uninstalls-without-residue")[
         "evidenceRefs"
-    ] = ["docs/proof/templates/TEMPLATE-claim-evidence.md"]
+    ] = citation
     assert "a-certified-claim-cites-a-record-that-exists" in _rule_ids(
         check_view(record)
-    )
-
-    absent = _corrupt()
-    _row(absent, "a-helm-release-installs-and-uninstalls-without-residue")[
-        "evidenceRefs"
-    ] = []
-    assert "a-certified-claim-cites-a-record-that-exists" in _rule_ids(
-        check_view(absent)
-    )
+    ), what
 
 
 def test_the_rule_refusing_a_planned_or_deferred_claim_cites_no_record() -> None:
@@ -425,6 +452,20 @@ def test_the_rule_refusing_a_planned_or_deferred_claim_cites_no_record() -> None
         "docs/proof/serving/v1-s4-004-pr1-validation.md"
     ]
     assert "a-planned-or-deferred-claim-cites-no-record" in _rule_ids(
+        check_view(record)
+    )
+
+
+def test_the_rule_refusing_an_evidence_label_is_one_the_register_defines() -> None:
+    """A label the register does not define carries no ceiling to be held to.
+
+    It had been reported under the ceiling rule's name, which made one rule look
+    like it was watching two different failures. An independent review of this
+    change found it.
+    """
+    record = _corrupt()
+    _row(record, "multi-replica-serving-is-certified")["evidenceLabel"] = "field-proven"
+    assert "an-evidence-label-is-one-the-register-defines" in _rule_ids(
         check_view(record)
     )
 
@@ -458,6 +499,26 @@ def test_the_rule_refusing_a_real_cluster_result_names_its_provider() -> None:
         "provider"
     ] = "not-applicable"
     assert "a-real-cluster-result-names-its-provider" in _rule_ids(check_view(record))
+
+
+def test_the_rule_refusing_a_cell_value_fits_in_one_table_row() -> None:
+    """A pipe is escaped on the way into a cell; a line break cannot be.
+
+    It has never happened, which is the argument for checking it rather than
+    against: the day a limitation is written across two lines, the rest of it
+    leaves the table and nobody reading the page can tell.
+    """
+    record = _corrupt()
+    _row(record, "multi-replica-serving-is-certified")["limitation"] = (
+        "The refusal is the evidence.\nIt is recorded in the paved-road record."
+    )
+    assert "a-cell-value-fits-in-one-table-row" in _rule_ids(check_view(record))
+
+    meanings = _corrupt()
+    meanings["evidenceLabels"][0]["meaning"] = (
+        "A statement in a document.\nNothing ran."
+    )
+    assert "a-cell-value-fits-in-one-table-row" in _rule_ids(check_view(meanings))
 
 
 def test_the_rule_refusing_a_displayed_status_is_one_the_register_defines() -> None:
@@ -533,6 +594,30 @@ def test_the_command_line_reports_the_committed_page_as_current() -> None:
     )
     assert finished.returncode == 0, finished.stdout + finished.stderr
     assert "OK" in finished.stdout
+
+
+def test_printing_the_page_reproduces_the_committed_file_byte_for_byte() -> None:
+    """`--page` is meant to be comparable with the file, so its bytes are pinned.
+
+    Left to the platform, a Windows console hands the printed page back in
+    CP-1252 with CRLF endings: every em dash in the register becomes a
+    replacement byte and every line ending becomes a diff. An independent review
+    of this change found the repository claiming otherwise, which is what this
+    check now settles rather than asserts.
+    """
+    finished = subprocess.run(
+        [sys.executable, "-m", "tools.proof_dashboard", "--page"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    assert finished.returncode == 0, finished.stderr.decode("utf-8", "replace")
+    assert b"\r\n" not in finished.stdout, "the printed page carries CRLF"
+    assert finished.stdout.decode("utf-8") == PAGE, "the printed page is not the file"
+    assert finished.stdout == DASHBOARD_PATH.read_bytes(), (
+        "the committed page is not LF; `.gitattributes` pins it and this checkout "
+        "did not honour that"
+    )
 
 
 def test_the_command_line_applies_the_rules_and_exits_zero() -> None:

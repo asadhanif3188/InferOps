@@ -263,6 +263,14 @@ RULES: Final[tuple[Rule, ...]] = (
         ),
     ),
     Rule(
+        rule_id="an-evidence-label-is-one-the-register-defines",
+        statement=(
+            "Every evidence label shown is one the register's own evidence "
+            "vocabulary defines. A label the register does not define carries no "
+            "ceiling, so nothing could hold a level against it."
+        ),
+    ),
+    Rule(
         rule_id="a-level-may-not-exceed-its-labels-ceiling",
         statement=(
             "A certification level never exceeds the ceiling its evidence label "
@@ -283,6 +291,14 @@ RULES: Final[tuple[Rule, ...]] = (
             "A certified claim whose environment is a local Kubernetes cluster "
             "names the provider it ran on, so the page cannot generalise one "
             "provider's result to another."
+        ),
+    ),
+    Rule(
+        rule_id="a-cell-value-fits-in-one-table-row",
+        statement=(
+            "No text the page prints into a table cell carries a line break. A "
+            "pipe is escaped on the way in; a line break cannot be, and one would "
+            "end the row and take the rest of the value out of the table."
         ),
     ),
     Rule(
@@ -491,7 +507,7 @@ def _row_findings(
     if label is None:
         findings.append(
             Finding(
-                "a-level-may-not-exceed-its-labels-ceiling",
+                "an-evidence-label-is-one-the-register-defines",
                 claim_id,
                 f"carries label {row['evidenceLabel']}, which the register "
                 "does not define",
@@ -593,6 +609,34 @@ def selection_findings(
     return findings
 
 
+#: Every register field the page prints into a table cell, by the collection it
+#: belongs to. A field added to a cell and not added here is a field nothing
+#: checks, which is why the renderer takes its cell text from nowhere else.
+_CELL_FIELDS: Final[tuple[tuple[str, str, tuple[str, ...]], ...]] = (
+    ("claims", "claimId", ("statement", "limitation", "notClaimedReason")),
+    ("claimStatuses", "statusId", ("meaning",)),
+    ("evidenceLabels", "labelId", ("meaning",)),
+)
+
+
+def _cell_findings(record: Mapping[str, Any]) -> list[Finding]:
+    """A line break inside a cell value would take the rest of it out of the table."""
+    findings: list[Finding] = []
+    for collection, identifier, fields in _CELL_FIELDS:
+        for row in record[collection]:
+            for field in fields:
+                value = row.get(field)
+                if isinstance(value, str) and ("\n" in value or "\r" in value):
+                    findings.append(
+                        Finding(
+                            "a-cell-value-fits-in-one-table-row",
+                            str(row[identifier]),
+                            f"its {field} carries a line break",
+                        )
+                    )
+    return findings
+
+
 def check_view(
     record: Mapping[str, Any],
     capabilities: Sequence[Capability] = CAPABILITIES,
@@ -602,6 +646,7 @@ def check_view(
     labels = labels_by_id(record)
 
     findings = selection_findings(record, capabilities)
+    findings.extend(_cell_findings(record))
     for row in record["claims"]:
         findings.extend(_row_findings(record, row, statuses, labels))
     return findings

@@ -70,8 +70,8 @@ recorded as not run rather than as passing.
 | Claims listed under *what V1 does not claim* | 17 — 8 planned, 8 not claimed, 1 deferred |
 | Certified claims in no capability group | 7, counted in every total on the page and read in the register |
 | Distinct evidence records linked | 41, each resolving from `docs/proof/` |
-| Rules applied before the page renders | 9 |
-| Page size | 296 lines |
+| Rules applied before the page renders | 11 |
+| Page size | 303 lines |
 
 The seven certified claims that no capability group names are counted in the status,
 level, label, and provider tables and are not shown as rows. That is stated on the
@@ -88,17 +88,18 @@ Run from the repository root, in Git Bash.
 
 | Command | Result |
 |---|---|
-| `python -m tools.proof_dashboard` | `OK       58 claims satisfy 9 dashboard rules` |
+| `python -m tools.proof_dashboard` | `OK       58 claims satisfy 11 dashboard rules` |
 | `python -m tools.proof_dashboard --json` | `[]`, exit 0 |
 | `python -m tools.proof_dashboard --check` | `OK       dashboard.md is what the register produces` |
-| `python -m pytest tests/testing/test_proof_dashboard.py -q` | `112 passed, 7 skipped` |
-| `python -m pytest tests/testing/test_claim_evidence_matrix.py -q` | `1794 passed` |
-| `python -m pytest tests/testing/test_test_inventory.py -q` | `845 passed` |
-| `python -m pytest tests/testing -q` | `3816 passed, 7 skipped` |
+| `python -m tools.proof_dashboard --page` | the committed page's bytes exactly, LF and UTF-8 |
+| `python -m pytest tests/testing/test_proof_dashboard.py -q` | `118 passed, 7 skipped` |
+| `python -m pytest tests/testing/test_claim_evidence_matrix.py -q` | `1795 passed` |
+| `python -m pytest tests/testing/test_test_inventory.py -q` | `846 passed` |
+| `python -m pytest tests/testing -q` | `3824 passed, 7 skipped` |
 | `uv run --locked ruff format --check .` | `452 files already formatted` |
 | `uv run --locked ruff check .` | `All checks passed!` |
 | `uv run --locked python -m mypy` | `Success: no issues found in 254 source files` |
-| `uv run --locked python -m pytest -q` | `11656 passed, 37 skipped, 14 deselected in 499.92s` |
+| `uv run --locked python -m pytest -q` | `11664 passed, 37 skipped, 14 deselected in 578.21s`, on the final tree; the same command on the tree as first committed, before the independent review's corrections, read `11656 passed, 37 skipped, 14 deselected in 499.92s` |
 | `git diff --check main...HEAD` | no output, exit 0 |
 | `git ls-files -z '*.md' \| xargs -0 grep -n '[[:blank:]]$'` | no match |
 | `git ls-files -z '*.md' \| xargs -0 grep -n "$(printf '\t')"` | no match |
@@ -110,20 +111,23 @@ silently over them.
 
 ## What the rules refuse
 
-Nine rules are applied to the register before a page is produced, and no mode of the
-command reaches the renderer past a finding. Each is driven, in the suite, over a
+Eleven rules are applied to the register before a page is produced, and no mode of
+the command reaches the renderer past a finding. Each is driven, in the suite, over a
 register or a capability selection corrupted to break it — the practice
 `V1-S4-009-PR1` adopted after a review found one of its ten rules had no control at
-all.
+all. Two of the eleven, and four of the branches below, exist because the independent
+review of this change found them missing; see the section after this one.
 
 | Rule | Driven over |
 |---|---|
 | `a-capability-names-only-claims-the-register-holds` | a group naming a claim identifier the register does not hold |
 | `a-capability-group-shows-at-least-one-claim` | a group naming nothing |
 | `no-claim-is-shown-under-two-capabilities` | a group repeating a claim another group already shows |
-| `a-certified-claim-cites-a-record-that-exists` | a certified row citing a template, and a certified row citing nothing |
+| `a-certified-claim-cites-a-record-that-exists` | four corruptions: a certified row citing a template, one citing nothing, one citing a path outside `docs/proof/`, and one citing a record that does not exist |
 | `a-planned-or-deferred-claim-cites-no-record` | the deferred capacity claim, given a record |
+| `an-evidence-label-is-one-the-register-defines` | a row given an evidence label the register does not define |
 | `a-level-may-not-exceed-its-labels-ceiling` | a `mock` row raised to `C2` |
+| `a-cell-value-fits-in-one-table-row` | a limitation, and a label meaning, written across two lines |
 | `a-real-behaviour-capability-rests-on-real-evidence` | the real-completion claim moved onto `mock` evidence |
 | `a-real-cluster-result-names-its-provider` | the in-cluster serving claim stripped of its provider |
 | `a-displayed-status-is-one-the-register-defines` | a row given the status `shipped`, and a register that keeps the name `certified` while withdrawing its permission to publish |
@@ -134,6 +138,70 @@ rendered page changes — the check that the page is derived rather than describ
 page written by hand would not notice. The other promotes the deferred capacity claim
 and asserts that `--page`, `--check`, and `--write` each exit 1, print `REFUSED` on
 standard error, render nothing, and leave the committed page untouched.
+
+## What an independent review found after the first commit
+
+The page itself survived: every count on it was recomputed from the register by the
+reviewer and every one matched, and each rule named a control that genuinely drove it
+to fire. What did not survive was the hand-written prose around it, which is where
+this project's counts have always drifted.
+
+### A count this change got wrong, and one it inherited
+
+`docs/testing/test-inventory.md` opens each layer section with a written-out module
+count. Two of the seven were wrong:
+
+| Layer | The document said | The data held |
+|---|---|---|
+| `architecture-inventory` | Eighteen | 19 |
+| `documentation` | Thirty-two | 33 |
+
+The second is this change's own. `V1-S4-009-PR1` added a module and wrote
+"thirty-first" when thirty-two existed; this branch added the thirty-third and wrote
+"thirty-second", because adding one to a wrong number keeps it wrong. The first was
+already wrong on `main` and has nothing to do with this change except that the check
+added here refuses it.
+
+Both are corrected, and
+[`tests/testing/test_test_inventory.py`](../../../tests/testing/test_test_inventory.py)
+now recomputes every layer's count from the data and holds the sentence to it. That
+document narrates its own drift six times across two layers, each time recording
+"it is not machine-checked, which is why it drifted" as the explanation. The
+explanation is now false, which was the point.
+
+A second unchecked count was found beside it, in
+[the register's own document](../../testing/claim-evidence-matrix.md): the sentence
+counting the surfaces that make no capability claim, which this change moved from
+seven to eight. It was correct and unwatched. It is now checked.
+
+### Two rules, and four branches, that were not being watched
+
+- The refusal for an evidence label the register does not define was being reported
+  under the ceiling rule's identifier, so one rule appeared to be watching two
+  different failures and one of them had no control. It is now its own rule.
+- Nothing refused a line break inside a value the page prints into a table cell. A
+  pipe is escaped on the way in and a line break cannot be: the row would end and the
+  rest of the value would leave the table silently. No register value carries one
+  today, which is the argument for checking it rather than against. It is now a rule.
+- The citation rule has four failure branches and two controls. The two without them
+  were the ones that would catch a path outside `docs/proof/` and a record somebody
+  deleted — failures a reader of the page could not possibly notice. All four are now
+  driven.
+- The per-capability check compared a row's values against the whole page rather than
+  against that capability's own section, so a row rendered under the wrong heading
+  would have passed it. It is now scoped to the section.
+
+### A claim about newlines that was not true
+
+`.gitattributes` and this record both said the generator writes LF on every platform
+and that the committed page is compared with what `python -m tools.proof_dashboard
+--page` prints. The first half was true of `--write` and false of `--page`: Python
+translates a line feed to the platform's line ending on the way to a text stream, so
+on this Windows host `--page` emitted CRLF — and, worse, CP-1252, which turned em dashes
+in the register into a replacement byte. The comparison the repository actually
+performs never went through `--page`, so nothing was broken; the sentence describing
+it was. `--page` now pins both its encoding and its newline, a test asserts its bytes
+equal the committed file's, and the claim is true rather than corrected away.
 
 ## What this change does not add
 

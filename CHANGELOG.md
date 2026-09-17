@@ -36,16 +36,31 @@ once versioned releases begin.
   Multi-replica serving is a heading with a single `not-claimed` row under it — the
   exact promotion a dashboard makes by accident, and the one a test now watches.
 
-  **Nine rules, each driven over a register corrupted to break it**, applied before a
-  page is rendered at all: a group may name only claims the register holds, and no
-  claim twice; a certified row cites a committed record that exists and is not a
-  template, and a planned or deferred one cites none; a level never exceeds its
+  **Eleven rules, each driven over a register corrupted to break it**, applied before
+  a page is rendered at all: a group may name only claims the register holds, and no
+  claim twice; a certified row cites a committed record that exists, is not a template,
+  and lives under `docs/proof/`, and a planned or deferred one cites none; every status
+  and every evidence label shown is one the register defines; a level never exceeds its
   evidence label's ceiling; a certified row asserting real behaviour rests on a label
   whose class may support one, so a mock cannot appear behind a serving sentence; a
   certified in-cluster result names its provider, so Docker Desktop evidence cannot be
-  read as `kind`; and every status shown is one the register defines. A finding renders
+  read as `kind`; and no value printed into a table cell carries a line break, which
+  would end the row and take the rest of the value out of the table. A finding renders
   nothing — `--page`, `--check`, and `--write` each refuse, because a published page is
   exactly where a broken rule stops being visible.
+
+  **An independent review found two of those eleven missing, four of one rule's
+  branches unwatched, and two hand-written counts wrong.** The page itself held: every
+  number on it was recomputed from the register and every one matched. The prose around
+  it did not. `docs/testing/test-inventory.md` said eighteen `architecture-inventory`
+  modules against nineteen and thirty-two `documentation` modules against thirty-three
+  — the second of those this change's own off-by-one, inherited by adding one to a
+  count that was already wrong. That document narrates its own drift six times, each
+  time recording "it is not machine-checked" as the reason; every layer's count is now
+  recomputed from the data by a test, as is the register document's count of the
+  surfaces that claim nothing. The review also caught the repository claiming that
+  `--page` prints what the committed file holds when on Windows it printed CRLF and
+  CP-1252; `--page` now pins both, and a test compares its bytes with the file.
 
   **It is not Grafana and says so.** This page answers what has been proven and reads
   committed files; [the inference operations dashboard](docs/telemetry/inference-operations-dashboard.md)

@@ -29,11 +29,12 @@ uv.lock text eol=lf
 # from a Windows working tree, and the first hosted Linux run failed both.
 charts/** text eol=lf
 
-# The proof dashboard is generated from the claim and evidence register and
-# compared with what `python -m tools.proof_dashboard --page` prints, and the
-# generator writes LF on every platform so that the same register produces the
-# same bytes everywhere. Pinning the checkout keeps a Windows working tree from
-# acquiring CRLF that the next `--write` would immediately undo.
+# The proof dashboard is generated from the claim and evidence register, and the
+# generator pins its own newlines on every platform: `--write` opens the file with
+# `newline="\n"` and `--page` reconfigures the stream it prints to, so the same
+# register produces the same bytes wherever it runs. Pinning the checkout is the
+# other half — without it a Windows working tree acquires CRLF that the next
+# `--write` immediately undoes, which turns a no-op into a whole-file diff.
 docs/proof/dashboard.md text eol=lf
 
 # The generated Prometheus rule files are compared byte for byte against what

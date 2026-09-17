@@ -118,7 +118,16 @@ def main(argv: list[str] | None = None) -> int:
     page = render_dashboard(record) if not findings else ""
 
     if arguments.page:
-        print(page, end="")
+        # Written as bytes, for the same reason `--write` pins its newline: this
+        # output is meant to be comparable with the committed page. Through the
+        # text stream it would acquire whatever the platform console encodes and
+        # ends lines with -- on Windows, CP-1252 and CRLF, which turns every em
+        # dash in the register into a replacement byte and every line ending into
+        # a diff. An independent review of this change caught the repository
+        # claiming otherwise.
+        sys.stdout.flush()
+        sys.stdout.buffer.write(page.encode("utf-8"))
+        sys.stdout.buffer.flush()
         return 0
 
     if arguments.check:

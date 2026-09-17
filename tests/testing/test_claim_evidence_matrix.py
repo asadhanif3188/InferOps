@@ -649,6 +649,21 @@ def test_no_non_claim_surface_is_absent_from_the_readme() -> None:
     assert not absent, {"excused but not a README entry point": absent}
 
 
+def test_the_document_counts_the_excused_surfaces_correctly() -> None:
+    """The count beside the exclusion list is a claim about the exclusion list.
+
+    It was unchecked until `V1-S4-009-PR2` added the eighth surface and an
+    independent review pointed out that the count beside it could have said
+    anything. The inventory beside this document has drifted this exact way four
+    times, which is a better argument than any reasoning about likelihood.
+    """
+    written = f"{len(MATRIX['nonClaimSurfaces'])} public entry points in the README"
+    assert written in DOCUMENT_TEXT, {
+        "surfaces in the data": len(MATRIX["nonClaimSurfaces"]),
+        "the document should say": written,
+    }
+
+
 # --------------------------------------------------- agreement with the document
 
 
