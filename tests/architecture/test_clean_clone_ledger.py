@@ -31,6 +31,7 @@ from tools.clean_clone import (
     assert_same_run,
     begin,
     checkout_problems,
+    cleanup_problem,
     descriptor_problems,
     load_descriptor,
     note,
@@ -671,3 +672,61 @@ def test_the_runtime_image_a_step_pulls_is_the_pinned_one() -> None:
 
     reference = load_runtime_package().image_reference
     assert "@sha256:" in reference
+
+
+# --------------------------------------------------------------------------
+# The steps after a failure keep their own order
+# --------------------------------------------------------------------------
+#
+# Cleanup skips the forward path's ordering so that it can follow a failed step.
+# The first draft let that exemption reach further than it should: an independent
+# review found that nothing refused a second cleanup after one that passed, or a
+# survival check recorded with no cleanup in front of it.
+
+
+def _failed_cleanup(ledger: dict[str, Any]) -> dict[str, Any]:
+    return record(
+        ledger,
+        DESCRIPTOR,
+        step_id="cleanup",
+        outcome="failed",
+        exit_code=1,
+        started_epoch_ms=T0,
+        finished_epoch_ms=T0 + 1,
+    )
+
+
+def test_a_cleanup_after_one_that_passed_is_refused() -> None:
+    ledger = passed(certification_ledger(), "cleanup")
+    assert cleanup_problem(ledger) is not None
+    with pytest.raises(CleanCloneError, match="already cleaned up"):
+        passed(ledger, "cleanup", at=10)
+
+
+def test_a_cleanup_after_one_that_failed_may_be_retried() -> None:
+    ledger = _failed_cleanup(certification_ledger())
+    assert cleanup_problem(ledger) is None
+    ledger = passed(ledger, "cleanup", at=10)
+    assert [a["outcome"] for a in ledger["attempts"]] == ["failed", "passed"]
+
+
+def test_a_survival_check_with_no_cleanup_in_front_of_it_is_refused() -> None:
+    with pytest.raises(CleanCloneError, match="directly after 'cleanup'"):
+        passed(certification_ledger(), "cluster-survived")
+    forward = all_passed(certification_ledger(), FORWARD[:3])
+    with pytest.raises(CleanCloneError, match="directly after 'cleanup'"):
+        passed(forward, "cluster-survived", at=500)
+
+
+def test_a_survival_check_is_recorded_once_per_cleanup() -> None:
+    ledger = passed(
+        passed(certification_ledger(), "cleanup"), "cluster-survived", at=10
+    )
+    with pytest.raises(CleanCloneError, match="directly after 'cleanup'"):
+        passed(ledger, "cluster-survived", at=20)
+
+
+def test_a_survival_check_may_follow_a_cleanup_that_failed() -> None:
+    """A failed cleanup is exactly when whether the cluster survived matters most."""
+    ledger = passed(_failed_cleanup(certification_ledger()), "cluster-survived", at=10)
+    assert summarise(ledger, DESCRIPTOR)["status"] == "failed"

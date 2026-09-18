@@ -13,61 +13,83 @@ once versioned releases begin.
 - **One workflow for the V1 journey from a clean clone, and a ledger of it.**
   [`scripts/environment/clean-clone.sh`](scripts/environment/clean-clone.sh) runs,
   in the order [the checklist](docs/environment/clean-clone.v1alpha1.json) states,
-  every step from host prerequisites to scoped cleanup: the default-checks lane,
-  workload scaffolding, model acquisition, the pinned runtime image, the C2
-  real-runtime certification, provider verification, the release images, the
-  Terraform prerequisites, the Helm lifecycle, the Kubernetes C2 certification,
-  telemetry collection, the performance scenarios, and the inference pod recovery
-  experiment. [`tools/clean_clone`](tools/clean_clone/) keeps the ledger: every
-  attempt's start, finish, elapsed milliseconds, exit code, and outcome, and every
-  manual action an operator records with `note`. See
-  [the workflow's page](docs/environment/clean-clone.md).
+  every step from host prerequisites to scoped cleanup: the commands of the
+  default-checks lane's `code-quality` and `default-lane-tests` gates, workload
+  scaffolding, model acquisition, the pinned runtime image, the C2 real-runtime
+  certification, provider verification, the release images, the Terraform
+  prerequisites, the Helm lifecycle, the Kubernetes C2 certification, telemetry
+  collection, the performance scenarios, and the inference pod recovery experiment.
+  [`tools/clean_clone`](tools/clean_clone/) keeps the ledger: every attempt's start,
+  finish, elapsed milliseconds, exit code, and outcome, and every manual action an
+  operator records with `note`. See [the workflow's page](docs/environment/clean-clone.md).
 
   **It has not been run.** Nothing here is evidence that the journey completes, and
   `a-reviewer-can-reproduce-v1-from-a-clean-clone` stays `planned`. The run, and the
   record of its manual steps and elapsed time, are the next change's.
 
-  **It is an orchestrator.** Every step runs a workflow that already exists and
-  already guards itself, and the consent flags it is given are passed to that
-  workflow unchanged. It creates and deletes no cluster (ADR 0011 D1): the story's
-  "local cluster creation" step is, under that decision, explicit provider selection
-  and verification of a cluster the operator already has. Full clean-clone
-  certification is a complete run on `docker-desktop`; `kind` is supported, and a
-  complete run there is recorded as certifying nothing.
+  **Mostly an orchestrator.** Most steps run a workflow that already exists and
+  already guards itself, and hand it its own consent flag. Some carry logic of their
+  own, and those are the ones to read: the host prerequisites, the runtime image
+  pull, the namespace snapshot, the values merge, the survival check, and cleanup,
+  whose release uninstall is the one mutation this script makes directly. It creates
+  and deletes no cluster (ADR 0011 D1): the story's "local cluster creation" step is,
+  under that decision, explicit provider selection and verification of a cluster the
+  operator already has. Full clean-clone certification is a complete run on
+  `docker-desktop`; `kind` is supported, and a complete run there is recorded as
+  certifying nothing.
 
-  **Nothing real is skipped quietly.** A certification run needs every consent on
-  every invocation, including one that resumes, and may never record a step as not
-  run. Only a preparation run may, only for a step needing consent it was not given,
-  and only with a reason; a preparation ledger never summarises as complete. A
-  resumed run skips what passed, asks the checkout, the host, and the cluster's
-  identity again, and is refused on another revision, provider, kind cluster, or
-  mode, or after its own cleanup. An interval that ends before it starts is refused
-  -- the defect `V1-S4-006-PR1` published twice before a check existed for it.
+  **Nothing real is skipped quietly.** A certification run needs every forward-path
+  consent on every invocation, including one that resumes, and may never record a
+  step as not run. Only a preparation run may, only for a step needing consent it was
+  not given, and only with a reason; a preparation ledger never summarises as
+  complete. A resumed run skips what passed, asks the checkout, the host, and the
+  cluster's identity again, and is refused on another revision, provider, kind
+  cluster, or mode, or after its own cleanup. An interval that ends before it starts
+  is refused -- the defect that gave `V1-S4-006-PR1`'s first, uncommitted attempt two
+  negative intervals before a check existed for it.
 
   **Cleanup removes only what the run created.** A fresh certification run refuses a
   checkout with uncommitted changes or state a previous run left, and a cluster
-  already holding `inferops-release`, and records the cluster's namespaces before it
-  changes anything. Cleanup refuses a cluster other than the one the run verified, a
-  release listing that failed, and a release the run did not install; uninstalls a
-  release a failed step left; destroys the prerequisites through the guarded
-  wrapper; and then checks that the cluster still verifies, every node is Ready,
-  and every namespace present before the run is still there. A run that never
+  already holding `inferops-release`, and records the cluster's namespaces -- and the
+  UID of its `kube-system` namespace, which a reset or recreated cluster does not
+  keep -- before it changes anything. Cleanup refuses any other cluster, a release
+  listing that failed, a release the run did not install, and a run already cleaned
+  up; uninstalls a release a failed step left; destroys the prerequisites through the
+  guarded wrapper; and then checks that the cluster still verifies, every node is
+  Ready, and every namespace present before the run is still there. A run that never
   verified a cluster touches nothing in one.
 
-  **Two things an operator did by hand are now steps.** The C2 certification never
-  pulls its runtime image, so the workflow pulls the pinned digest. And six release
+  **Two things left to the operator are now steps.** The C2 certification never pulls
+  its runtime image, so the workflow pulls the pinned digest. And six release
   workflows take a single `--values` file, so the workflow composes one from the
-  committed real values and the two overlays the image scripts print, layered the
-  way `helm -f` would.
+  committed real values and the two overlays the image scripts print, layered the way
+  `helm -f` would.
 
   [`tests/architecture/test_clean_clone_workflow.py`](tests/architecture/test_clean_clone_workflow.py)
   runs the committed script in a sandbox that is its own git repository, with every
-  workflow and tool it calls replaced by a recording stub, and
-  [`tests/architecture/test_clean_clone_ledger.py`](tests/architecture/test_clean_clone_ledger.py)
-  drives each ledger and checklist rule over an input built to break it. Both
-  establish the orchestration and nothing about whether any step's own workflow
-  works. `clean-clone.sh` joins the two script lists the lifecycle and provider
-  contract suites read every script through.
+  sibling workflow and every external tool but `git` replaced by a recording stub,
+  and [`tests/architecture/test_clean_clone_ledger.py`](tests/architecture/test_clean_clone_ledger.py)
+  drives each ledger and checklist rule over an input built to break it. Both run in
+  the `default-lane-tests` gate; both establish the orchestration and nothing about
+  whether any step's own workflow works. `clean-clone.sh` joins the three script lists
+  -- `ENTRY_POINTS`, `PLATFORM_WORKFLOWS`, and `MUTATING_PLATFORM_WORKFLOWS` -- the
+  lifecycle and provider-contract suites read every script through.
+
+  **An independent review of the first commit found a bug and six more gaps.** A
+  standalone `cleanup --include-model-cache` ran the acquisition tool with the host's
+  own python, which cannot import the platform package; it now uses the locked
+  environment. A cluster reset under the same name passed the identity comparison,
+  because Docker Desktop's is always `docker-desktop`; the `kube-system` UID now
+  closes that. `run --restart` left the old run's cluster snapshot in place, so a
+  restarted run would have read as a resumption; the snapshot is now moved aside with
+  the ledger. The ledger accepted a second cleanup after one that passed, and a
+  survival check with no cleanup in front of it; both are now refused. A ledger that
+  refused a record ended the run without saying what the step itself did. A host
+  with no python was told its checkout could not stand for a clean clone. Beside
+  those, the first draft's prose overstated three things: that every step runs an
+  existing workflow, that the default-lane step runs the default-checks lane (it runs
+  two of that lane's eleven gates), and that `V1-S4-006-PR1` published a negative
+  interval (its first attempt produced two and was never committed).
 
 - **One page for "what has this project actually proven?"**
   [A generated V1 proof dashboard](docs/proof/dashboard.md), the generator behind it

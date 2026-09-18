@@ -8,6 +8,7 @@
     python -m tools.clean_clone resume --mode MODE [--provider P] [--cluster-name N]
                                        [--authorize ID ...]
     python -m tools.clean_clone pending
+    python -m tools.clean_clone cleanable
     python -m tools.clean_clone requires [--step ID]
     python -m tools.clean_clone record --step ID --outcome O --exit-code N
                                        --started-ms MS --finished-ms MS [--reason TEXT]
@@ -48,6 +49,7 @@ from .core import (
     begin,
     check_authorizations,
     checkout_problems,
+    cleanup_problem,
     descriptor_problems,
     load_descriptor,
     load_ledger,
@@ -148,6 +150,9 @@ def main(argv: list[str] | None = None) -> int:
 
     commands.add_parser(
         "pending", help="the steps the forward path should run, in order"
+    )
+    commands.add_parser(
+        "cleanable", help="whether cleanup may still run on this ledger"
     )
 
     needs = commands.add_parser(
@@ -291,6 +296,13 @@ def main(argv: list[str] | None = None) -> int:
                 cluster_name=arguments.cluster_name,
             )
             print(f"RESUMING {ledger['mode']} run begun {ledger['startedAt']}")
+            return EXIT_OK
+
+        if arguments.command == "cleanable":
+            refusal = cleanup_problem(ledger)
+            if refusal is not None:
+                raise CleanCloneError(refusal)
+            print("OK       this run has not been cleaned up")
             return EXIT_OK
 
         if arguments.command == "pending":

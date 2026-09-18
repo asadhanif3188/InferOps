@@ -430,7 +430,9 @@
         "tests/architecture/test_clean_clone_ledger.py"
       ],
       "recordedCoverageGaps": [],
-      "ciGateIds": [],
+      "ciGateIds": [
+        "default-lane-tests"
+      ],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
       "limitation": "No clean-clone run of the whole journey has been executed or recorded. The pieces have each been run, at different times, on the same host, by the author. The workflow that would run them in one sitting exists, and its two test modules drive it only against stubs: they establish its order, consent, ledger, and cleanup boundary, and nothing about whether the journey completes.",

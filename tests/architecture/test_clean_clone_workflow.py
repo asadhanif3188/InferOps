@@ -22,10 +22,12 @@ cleanup sees is what the run before it did.
 
 No cluster is contacted, no image built, no model downloaded, and nothing outside
 the sandbox is touched. The provider throughout is `kind`, because its identity
-check can be satisfied by stubs without imitating Docker Desktop's port binding;
-the orchestrator's code path does not branch on the provider, and whether a
-complete run certifies anything *is* provider-specific and is tested on the
-ledger directly, in `test_clean_clone_ledger.py`.
+check can be satisfied by stubs without imitating Docker Desktop's port binding.
+The orchestrator branches on the provider in two places -- `kind` is a required
+tool only when it is selected, and only `kind` passes a cluster name to the ledger
+-- and the `docker-desktop` side of both is not executed here. Whether a complete
+run certifies anything *is* provider-specific and is tested on the ledger
+directly, in `test_clean_clone_ledger.py`.
 
 What this establishes is the orchestration: order, consent, resumption, the
 ledger, and the boundary of the cleanup. It establishes nothing about whether any
@@ -102,6 +104,7 @@ _KUBECTL = (
   *"config get-contexts"*) printf '%s\\n' "${STUB_CONTEXT}" ;;
   *"config view --minify"*) printf 'kind: Config\\ncurrent-context: %s\\n' "${STUB_CONTEXT}" ;;
   *"config current-context"*) printf '%s\\n' "${STUB_CONTEXT}" ;;
+  *"get namespace kube-system"*) printf '%s' "${STUB_CLUSTER_UID:-uid-first-cluster}" ;;
   *"get namespaces -o name"*)
     if [ -n "${STUB_CRLF:-}" ]; then sed 's/$/\\r/' "${STUB_STATE}/namespaces"
     else cat "${STUB_STATE}/namespaces"; fi
@@ -530,7 +533,9 @@ def write_target_before(
     directory = root / ".artifacts" / "clean-clone"
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "target-before.txt").write_text(
-        f"provider={provider}\ncluster={cluster}\n", encoding="utf-8", newline="\n"
+        f"provider={provider}\ncluster={cluster}\nclusterUid=uid-first-cluster\n",
+        encoding="utf-8",
+        newline="\n",
     )
     (directory / "namespaces-before.txt").write_text(
         "".join(f"{ns}\n" for ns in sorted(NAMESPACES_BEFORE)),
@@ -982,8 +987,109 @@ def test_cleanup_removes_the_runs_scaffolds_and_keeps_the_model_cache_by_default
     assert not workloads.parent.exists()
     assert not run.ran("python", "model_acquisition clean")
 
+
+@needs_bash
+def test_the_model_cache_is_removed_by_the_locked_environments_python(
+    prepared: Seeded, tmp_path: Path
+) -> None:
+    """The acquisition tool imports the platform package, which only `.venv` holds.
+
+    The first draft ran it with whichever `python` came first on the operator's
+    PATH, because nothing in a standalone cleanup had put the locked environment
+    there. An independent review found it; the host's own python fails to import
+    the tool.
+    """
+    forked = prepared.fork(tmp_path / "repo")
+    venv_python = forked.root / ".venv" / "bin" / "python"
+    venv_python.write_text(
+        _PYTHON.replace("printf '%s %s\\n' python", "printf '%s %s\\n' venv-python"),
+        encoding="utf-8",
+        newline="\n",
+    )
+    venv_python.chmod(0o755)
+    run = forked.run("cleanup", "--confirm", "--include-model-cache")
+    assert run.returncode == 0, run.output
+    assert run.ran("venv-python", "-m tools.model_acquisition clean --confirm"), (
+        run.calls
+    )
+    assert not run.ran("python", "model_acquisition")
+
+
+@needs_bash
+def test_a_second_cleanup_after_one_that_passed_touches_nothing(
+    prepared: Seeded, tmp_path: Path
+) -> None:
+    forked = prepared.fork(tmp_path / "repo")
+    first = forked.run("cleanup", "--confirm")
+    assert first.returncode == 0, first.output
     again = forked.run("cleanup", "--confirm", "--include-model-cache")
-    assert again.ran("python", "tools.model_acquisition clean --confirm")
+    assert again.returncode == 3, again.output
+    assert "already cleaned up" in again.output
+    assert again.calls == []
+    assert [a["stepId"] for a in again.ledger["attempts"]].count("cleanup") == 1
+
+
+@needs_bash
+def test_cleanup_refuses_a_cluster_reset_under_the_same_name(
+    forward_done: Seeded, tmp_path: Path
+) -> None:
+    """A provider and a cluster name survive a reset; the cluster does not.
+
+    Docker Desktop's cluster is always called `docker-desktop`. The first draft
+    compared only those two, so a reset cluster -- whose namespaces the snapshot
+    no longer describes -- would have been cleaned up and judged against it.
+    """
+    run = forward_done.fork(tmp_path / "repo").run(
+        "cleanup", "--confirm", STUB_CLUSTER_UID="uid-after-a-reset"
+    )
+    assert run.returncode != 0, run.output
+    assert run.outcomes()["cleanup"] == "refused"
+    assert not run.ran("helm")
+    assert not run.ran("terraform-prerequisites.sh")
+
+
+@needs_bash
+def test_a_restart_moves_the_old_runs_cluster_snapshot_aside(
+    prepared: Seeded, tmp_path: Path
+) -> None:
+    """Otherwise the restarted run reads as a resumption of the old one.
+
+    Provider verification would skip the refusal of an existing release namespace
+    and take no snapshot of its own, and survival would be judged against a
+    cluster the new run never looked at. An independent review found it.
+    """
+    forked = prepared.fork(tmp_path / "repo")
+    write_target_before(forked.root)
+    run = forked.run("run", "--prepare-only", "--restart")
+    assert run.returncode == 0, run.output
+    directory = forked.root / ".artifacts" / "clean-clone"
+    assert not (directory / "target-before.txt").exists()
+    assert not (directory / "namespaces-before.txt").exists()
+    assert len(list(directory.glob("target-before.txt.attempt-*"))) == 1
+    assert len(list(directory.glob("namespaces-before.txt.attempt-*"))) == 1
+    assert len(list(directory.glob("ledger.*.v1alpha1.json"))) == 1
+
+
+def _python_reachable_without_the_stub() -> bool:
+    assert BASH is not None and GIT is not None
+    search = os.pathsep.join([str(Path(BASH).parent), str(Path(GIT).parent)])
+    return shutil.which("python", path=search) is not None
+
+
+@needs_bash
+def test_a_host_with_no_python_is_told_so_before_anything_else(
+    sandbox: Sandbox,
+) -> None:
+    if _python_reachable_without_the_stub():
+        pytest.skip(
+            "this host has a python beside bash or git; the case cannot be staged"
+        )
+    (sandbox.root / "bin" / "python").unlink()
+    run = sandbox.run("run", *ALL_CONSENT)
+    assert run.returncode == 1, run.output
+    assert "no 'python' on PATH" in run.output
+    assert not run.has_ledger
+    assert run.calls == []
 
 
 # --------------------------------------------------------------------------

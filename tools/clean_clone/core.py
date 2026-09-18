@@ -15,8 +15,9 @@ than it is:
   only with a reason. A preparation ledger can never summarise as ``complete``;
 * a step recorded out of order, so that a later pass stands on an earlier step
   that never passed;
-* an interval that ends before it starts -- the defect ``V1-S4-006-PR1`` published
-  twice before a check existed for it;
+* an interval that ends before it starts -- the defect that gave
+  ``V1-S4-006-PR1``'s first, uncommitted attempt two negative intervals before a
+  check existed for it;
 * a ledger resumed on a different revision, provider, or cluster than it began on,
   which would stitch two runs into one record;
 * a manual action written with a host path in it, which would make the ledger
@@ -489,6 +490,8 @@ def record(
                     f"{step_id}: '{earlier.step_id}' comes first and has not "
                     f"{'passed' if ledger['mode'] == MODE_CERTIFICATION else 'passed or been recorded as not run'}"
                 )
+    else:
+        _check_after_failure_order(ledger, descriptor, step)
 
     attempt = {
         "stepId": step_id,
@@ -502,6 +505,48 @@ def record(
         "reason": reason,
     }
     return {**ledger, "attempts": [*ledger["attempts"], attempt]}
+
+
+def cleanup_problem(ledger: dict[str, Any]) -> str | None:
+    """Why cleanup may not run on this ledger again, or None when it may.
+
+    Once a cleanup has passed, the run owns nothing any more. A second one would
+    find nothing to remove and add a record that reads as though it had.
+    """
+    latest = latest_outcomes(ledger).get("cleanup")
+    if latest is not None and latest["outcome"] == OUTCOME_PASSED:
+        return (
+            f"this run was already cleaned up at {latest['finishedAt']}; it owns nothing "
+            "further to remove"
+        )
+    return None
+
+
+def _check_after_failure_order(
+    ledger: dict[str, Any], descriptor: dict[str, Any], step: Step
+) -> None:
+    """The steps reachable after a failure still happen in their own order.
+
+    They skip the forward path's ordering, which is what lets cleanup follow a
+    failed step. That must not also let them be recorded in any order: a survival
+    check recorded with no cleanup in front of it would say a cluster survived a
+    teardown that never happened. So the first of them may not follow its own
+    pass, and each later one must directly follow the one before it.
+    """
+    tail = [s for s in steps(descriptor) if s.after_failure]
+    position = [s.step_id for s in tail].index(step.step_id)
+    if position == 0:
+        problem = cleanup_problem(ledger)
+        if problem is not None:
+            raise CleanCloneError(f"{step.step_id}: {problem}")
+        return
+    previous = tail[position - 1].step_id
+    attempts = ledger["attempts"]
+    if not attempts or attempts[-1]["stepId"] != previous:
+        raise CleanCloneError(
+            f"{step.step_id}: may only be recorded directly after '{previous}', which "
+            "is what it checks the result of"
+        )
 
 
 def _refuse_host_paths(text: str, what: str) -> None:

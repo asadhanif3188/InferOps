@@ -19,13 +19,15 @@
 # step skipped in a certification run, a step passed before the one it stands on,
 # an interval ending before it began, a ledger continued on another revision.
 #
-# This is an orchestrator, not a second implementation. Every step runs a
-# workflow that already exists and already guards itself; the consent flags given
-# here are handed to that workflow unchanged, and a step whose consent was not
-# given is never run. The cluster belongs to its operator (ADR 0011 D1): this
-# script selects nothing by default, verifies the selected cluster through
-# `inferops::resolve_target` before its first mutation, creates and deletes no
-# cluster, and runs no kind helper.
+# Mostly an orchestrator. Most steps run a workflow that already exists and
+# already guards itself, and hand it its own consent flag; a step whose consent
+# was not given is never run. Some steps carry logic of their own -- the host
+# prerequisites, the runtime image pull, the namespace snapshot, the values
+# merge, cleanup, and the survival check -- and cleanup's release uninstall is the
+# one mutation this script makes directly. The cluster belongs to its operator
+# (ADR 0011 D1): this script selects nothing by default, verifies the selected
+# cluster through `inferops::resolve_target` before its first mutation, creates
+# and deletes no cluster, and runs no kind helper.
 #
 # Cleanup is its own decision. `run` leaves a release a failed step left behind in
 # place for diagnosis, as every release workflow does; `cleanup --confirm` removes
@@ -45,12 +47,28 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 clean_clone::verify_target() {
   inferops::resolve_target
+  CLEAN_CLONE_CLUSTER_UID="$(clean_clone::cluster_uid)" ||
+    clean_clone::refuse "the verified cluster's identity could not be read, so it cannot be compared with the one this run began on."
   if [ -f "${CLEAN_CLONE_TARGET_BEFORE}" ]; then
-    local recorded
-    recorded="$(sed -n 's/^provider=//p' "${CLEAN_CLONE_TARGET_BEFORE}") $(sed -n 's/^cluster=//p' "${CLEAN_CLONE_TARGET_BEFORE}")"
-    [ "${recorded}" = "${INFEROPS_TARGET_PROVIDER} ${INFEROPS_TARGET_CLUSTER_NAME}" ] ||
-      clean_clone::refuse "this run first verified '${recorded}', and the selected target is now '${INFEROPS_TARGET_PROVIDER} ${INFEROPS_TARGET_CLUSTER_NAME}'. One ledger describes one cluster."
+    local recorded now
+    recorded="$(sed -n 's/^provider=//p' "${CLEAN_CLONE_TARGET_BEFORE}") $(sed -n 's/^cluster=//p' "${CLEAN_CLONE_TARGET_BEFORE}") $(sed -n 's/^clusterUid=//p' "${CLEAN_CLONE_TARGET_BEFORE}")"
+    now="${INFEROPS_TARGET_PROVIDER} ${INFEROPS_TARGET_CLUSTER_NAME} ${CLEAN_CLONE_CLUSTER_UID}"
+    [ "${recorded}" = "${now}" ] ||
+      clean_clone::refuse "this run first verified '${recorded}', and the selected target is now '${now}'. One ledger describes one cluster, and a cluster reset or recreated under the same name is not it."
   fi
+}
+
+# The UID of the cluster's own kube-system namespace. A provider and a cluster
+# name say which cluster the operator selected; they do not change when the
+# cluster is reset or recreated -- Docker Desktop's is always `docker-desktop` --
+# and this does. A snapshot of namespaces is only a statement about the cluster it
+# was taken on.
+clean_clone::cluster_uid() {
+  local uid
+  uid="$(inferops::target_kubectl get namespace kube-system -o jsonpath='{.metadata.uid}' | tr -d '\r')" ||
+    return 1
+  [ -n "${uid}" ] || return 1
+  printf '%s' "${uid}"
 }
 
 # --- Constants ----------------------------------------------------------------
@@ -92,7 +110,13 @@ clean_clone::now_ms() {
 }
 
 [ -n "${EPOCHREALTIME:-}" ] ||
-  inferops::fail "this bash has no EPOCHREALTIME; the clean-clone workflow and three of the workflows it runs need bash 5 or later."
+  inferops::fail "this bash has no EPOCHREALTIME; the clean-clone workflow and two of the workflows it runs need bash 5 or later."
+
+# Asked before anything else, because the checkout check that opens a run is
+# itself a python command: without this, a host with no python at all would be
+# told its checkout cannot stand for a clean clone.
+command -v python >/dev/null 2>&1 ||
+  inferops::fail "no 'python' on PATH. Until the toolchain-sync step installs the locked environment, the ledger is kept by the host's own CPython 3.12, using its standard library only. See docs/environment/clean-clone.md."
 
 clean_clone::ledger() {
   inferops::python -m tools.clean_clone --ledger "${CLEAN_CLONE_LEDGER}" "$@"
@@ -221,7 +245,8 @@ clean_clone::step_host_prerequisites() {
     needs_cluster_tools=1
   fi
 
-  local cluster_tools="kubectl helm terraform"
+  # sha256sum because the model seed image's build verifies the artifact with it.
+  local cluster_tools="kubectl helm terraform sha256sum"
   [ "${INFEROPS_PROVIDER:-}" = "kind" ] && cluster_tools="${cluster_tools} kind"
   for tool in docker ${cluster_tools}; do
     if command -v "${tool}" >/dev/null 2>&1; then
@@ -279,7 +304,9 @@ clean_clone::step_toolchain_sync() {
 }
 
 clean_clone::step_default_lane_checks() {
-  # The four commands the default-checks lane runs, in the order it runs them.
+  # The commands of two of the default-checks lane's gates, code-quality and
+  # default-lane-tests. The lane's other gates -- scans, renders, image builds, the
+  # link and expected-failure checks -- are not run here.
   uv run --locked ruff format --check .
   uv run --locked ruff check .
   uv run --locked python -m mypy
@@ -368,6 +395,7 @@ clean_clone::step_provider_verification() {
     printf 'provider=%s\n' "${INFEROPS_TARGET_PROVIDER}"
     printf 'cluster=%s\n' "${INFEROPS_TARGET_CLUSTER_NAME}"
     printf 'context=%s\n' "${INFEROPS_TARGET_CONTEXT}"
+    printf 'clusterUid=%s\n' "${CLEAN_CLONE_CLUSTER_UID}"
     printf 'serverVersion=%s\n' "${INFEROPS_TARGET_SERVER_VERSION}"
     printf 'verifiedAt=%s\n' "${INFEROPS_TARGET_VERIFIED_AT}"
   } >"${CLEAN_CLONE_TARGET_BEFORE}"
@@ -485,6 +513,11 @@ clean_clone::step_cleanup() {
   fi
 
   if [ "${include_model_cache}" = 1 ]; then
+    # The acquisition tool imports the platform package, which only the locked
+    # environment carries. Cleanup is often its own invocation, after a run that
+    # already ended, so nothing earlier in this shell has put that environment
+    # first on PATH -- and the host's own python would fail to import it.
+    clean_clone::activate_toolchain
     python -m tools.model_acquisition clean --confirm
   fi
 
@@ -571,8 +604,15 @@ clean_clone::attempt() {
     3) outcome="refused" ;;
     *) outcome="failed" ;;
   esac
-  clean_clone::ledger record --step "${step}" --outcome "${outcome}" --exit-code "${rc}" \
-    --started-ms "${started}" --finished-ms "${finished}"
+  # A ledger that refuses the record -- a wall clock stepped backwards during a
+  # long step is the realistic case -- must not end the orchestrator before it
+  # has said what the step itself did. The run stops either way, so that nothing
+  # after this step stands on an attempt the ledger does not hold.
+  if ! clean_clone::ledger record --step "${step}" --outcome "${outcome}" --exit-code "${rc}" \
+    --started-ms "${started}" --finished-ms "${finished}"; then
+    inferops::warn "step '${step}' exited ${rc}, and the ledger refused to record it. The run stops here; run again to repeat the step."
+    [ "${rc}" -ne 0 ] || rc=3
+  fi
   CLEAN_CLONE_LAST_RC="${rc}"
 }
 
@@ -630,6 +670,15 @@ clean_clone::run() {
     [ "${restart}" = 0 ] || again=(--restart)
     clean_clone::ledger begin --mode "${mode}" --started-ms "${checkout_started}" \
       "${selection[@]}" "${consent[@]}" "${again[@]}" || exit 3
+    # A restarted run is a new run, and the cluster snapshot is the old run's. Left
+    # in place it would make provider verification read the restart as a
+    # resumption -- skipping the refusal of an existing release namespace and the
+    # new snapshot -- and survival would be judged against the old run's cluster.
+    # Moved aside beside the old ledger, never deleted.
+    if [ "${restart}" = 1 ]; then
+      clean_clone::set_aside "${CLEAN_CLONE_TARGET_BEFORE}"
+      clean_clone::set_aside "${CLEAN_CLONE_NAMESPACES_BEFORE}"
+    fi
     clean_clone::ledger record --step clean-checkout --outcome passed --exit-code 0 \
       --started-ms "${checkout_started}" --finished-ms "${checkout_finished}"
     began_now=1
@@ -703,6 +752,10 @@ case "${action}" in
       clean_clone::refuse "cleanup uninstalls, destroys the Terraform prerequisites, and reclaims the model weights in the claim. Pass --confirm."
     [ -f "${CLEAN_CLONE_LEDGER}" ] ||
       clean_clone::refuse "no ledger at ${CLEAN_CLONE_LEDGER}; there is no run whose resources are known."
+    # Before anything is touched: a run whose cleanup already passed has nothing
+    # left that it owns, and a second pass would only add a record that reads as
+    # though it did.
+    clean_clone::ledger cleanable || exit 3
     clean_clone::load_requirements
     clean_clone::cleanup_path
     inferops::section "summary"
