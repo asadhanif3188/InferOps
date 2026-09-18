@@ -251,7 +251,16 @@ def run_target(
     elif not version_file.exists():
         version_file.write_text(MATCHING_VERSION_JSON, encoding="utf-8")
 
-    child_env = dict(os.environ)
+    # The operator's own selection is never inherited. A shell that exported
+    # INFEROPS_PROVIDER -- which the clean-clone workflow does for every step,
+    # the default-lane suite included -- would otherwise answer the question a
+    # test asks with no selection at all, and the refusal under test would be
+    # replaced by whatever the operator's cluster happens to say.
+    child_env = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith("INFEROPS_")
+    }
     ambient_path = child_env.get("PATH", "")
     child_env["PATH"] = os.pathsep.join([str(fake_bin), ambient_path])
     child_env["INFEROPS_TARGET_KUBECONFIG_POSIX_PATH"] = (
@@ -357,6 +366,22 @@ def test_no_provider_selected_refuses(fake_bin: Path, tmp_path: Path) -> None:
     result = run_target(fake_bin, tmp_path, {})
     assert result.returncode != 0
     assert "no-provider-selected" in result.stderr
+
+
+def test_an_operators_exported_selection_does_not_reach_the_refusals(
+    fake_bin: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The first clean-clone certification run failed here: it exports
+    # INFEROPS_PROVIDER=docker-desktop, the suite inherited it, and the
+    # no-selection refusal became a missing-context one.
+    monkeypatch.setenv("INFEROPS_PROVIDER", "docker-desktop")
+    monkeypatch.setenv("INFEROPS_KIND_CLUSTER_NAME", "inferops-dev")
+    none_selected = run_target(fake_bin, tmp_path, {})
+    assert none_selected.returncode != 0
+    assert "no-provider-selected" in none_selected.stderr
+    kind_without_a_name = run_target(fake_bin, tmp_path, {"INFEROPS_PROVIDER": "kind"})
+    assert kind_without_a_name.returncode != 0
+    assert "ambiguous-target" in kind_without_a_name.stderr
 
 
 def test_unsupported_provider_refuses(fake_bin: Path, tmp_path: Path) -> None:
