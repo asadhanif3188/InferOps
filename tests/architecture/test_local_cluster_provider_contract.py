@@ -110,6 +110,7 @@ PLATFORM_WORKFLOWS = (
     "api-image.sh",
     "model-seed-image.sh",
     "target-detect.sh",
+    "clean-clone.sh",
 )
 
 # The platform workflows that mutate a target, as distinct from target-detect.sh,
@@ -131,6 +132,7 @@ MUTATING_PLATFORM_WORKFLOWS = (
     "telemetry-collection-verify.sh",
     "api-image.sh",
     "model-seed-image.sh",
+    "clean-clone.sh",
 )
 KIND_HELPER = (
     "preflight.sh",

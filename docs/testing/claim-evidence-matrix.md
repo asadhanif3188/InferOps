@@ -147,7 +147,7 @@ cites no record on purpose.
 |---|---|---|---|---|---|---|
 | `a-workload-scaffold-is-generated-without-overwriting-anything` | certified | C0 | `local-static` | repository-only | [v1-s1-006-pr2-validation.md](../proof/scaffolding/v1-s1-006-pr2-validation.md), [v1-s1-006-independent-walkthrough.md](../proof/scaffolding/v1-s1-006-independent-walkthrough.md) | 3 module(s) |
 | `the-developer-quick-start-runs-end-to-end-on-a-clean-checkout` | certified | C1 | `mock` | repository-only | [v1-s1-009-pr1-validation.md](../proof/quickstart/v1-s1-009-pr1-validation.md), [v1-s1-006-independent-walkthrough.md](../proof/scaffolding/v1-s1-006-independent-walkthrough.md), [v1-s1-real-runtime-closure.md](../proof/serving/v1-s1-real-runtime-closure.md) | 1 module(s) |
-| `a-reviewer-can-reproduce-v1-from-a-clean-clone` | planned | — | `documented-unexecuted` | capable-host | none, by rule | none |
+| `a-reviewer-can-reproduce-v1-from-a-clean-clone` | planned | — | `documented-unexecuted` | capable-host | none, by rule | 2 module(s) |
 
 `a-reviewer-can-reproduce-v1-from-a-clean-clone` is planned rather than certified
 and the difference is not a formality. Every piece of the journey has been run;
@@ -155,6 +155,13 @@ none of them has been run in one sitting, from a clean clone, by somebody who di
 not write it, with the manual steps and elapsed time recorded. The independent
 walkthrough that exists was performed by a Codex reviewer rather than a human
 second engineer, and its own record says so.
+
+The workflow that would make that run now exists:
+[the clean-clone workflow](../environment/clean-clone.md), which walks the journey in
+order and records every step's outcome, elapsed time, and the manual actions around
+it. Its two test modules drive it against stubs. They establish how it orders,
+consents, resumes, and cleans up, and nothing about whether the journey completes,
+so the row stays `planned` and cites no record until a run produces one.
 
 ### The inference API and its adapters
 
