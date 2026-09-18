@@ -1702,14 +1702,32 @@ def test_the_command_takes_no_path_to_the_collected_facts() -> None:
 
 
 def test_the_command_refuses_a_forward_it_did_not_recognise(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    # A confirmed refusal writes a diagnostics record. Left at its default, the
+    # evidence directory is this checkout's own, so the suite used to leave a
+    # not-certified record there -- the first clean-clone run found one beside
+    # the certification it later made.
+    import tools.kubernetes_certification.__main__ as command
+
+    monkeypatch.setattr(
+        command,
+        "EvidenceDirectory",
+        lambda certification: core.EvidenceDirectory(certification, repo_root=tmp_path),
+    )
+
     exit_code = main(
         ["observe", "--confirm-real-kubernetes", "--base-url", "http://10.1.2.3:8090"]
     )
 
     assert exit_code == 3
     assert "must name 127.0.0.1" in capsys.readouterr().err
+    written = tmp_path / ".cache/inferops/certification"
+    assert [path.name for path in written.iterdir()] == [
+        core.load_certification().diagnostics_file
+    ]
 
 
 # --------------------------------------------------------------------------

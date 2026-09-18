@@ -56,6 +56,7 @@ from tools.runtime_configuration import load_runtime_profile
 from tools.runtime_packaging import (
     CommandRunner,
     RuntimePackage,
+    RuntimePackagingError,
     SubprocessRunner,
     load_runtime_package,
     preflight,
@@ -1120,6 +1121,17 @@ def certify(
             if reached_readiness
             else "the certified composition did not start or become ready",
             STAGE_CLEANUP if reached_readiness else STAGE_COMPOSE,
+        ) from error
+    except RuntimePackagingError as error:
+        # The runtime package's own refusals -- a readiness budget spent, a
+        # container that exited while loading -- reach here unwrapped whenever
+        # the teardown after them succeeded, because `run_foreground` wraps only
+        # a failed cleanup. Before this clause they escaped to the command's
+        # catch-all and were reported as an unexpected failure with no stage,
+        # no reason, and no diagnostics record.
+        raise CertificationFailed(
+            f"the serving runtime did not start or become ready: {error}",
+            STAGE_COMPOSE,
         ) from error
     if failures:
         raise failures[0]
