@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are thirty-one, and they are listed in their own section rather than
+empty list. There are thirty-three, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -103,7 +103,7 @@ read a WorkloadContract.
 
 ### `architecture-inventory` — [`tests/architecture/`](../../tests/architecture/)
 
-Nineteen modules. The committed ownership inventory against the documents describing
+Twenty-one modules. The committed ownership inventory against the documents describing
 it; the local cluster provider contract against its document, the ownership
 inventory, the guard functions in `lib.sh`, and the Terraform module; every module under `src/inferops/` read for the imports the dependency rule
 forbids; the cluster and release lifecycle scripts read for the safety rules
@@ -116,6 +116,8 @@ reaches that scoping, and that the file the init container verifies is the file
 the runtime is given; and the three Kubernetes workflows -- the single-replica
 certification, the multi-replica one, and the upgrade-and-rollback experiment --
 each read as a descriptor, a script, and the documents a run would have written.
+The newest two are the clean-clone workflow: its orchestrator executed in a sandbox
+against recording stubs, and the rules of the ledger it keeps.
 
 The count said two until `V1-S3-001-PR1`, then four, and it was wrong both times
 and again before this story: seven modules existed while the sentence said four.
@@ -128,6 +130,7 @@ layer and corrected the sentence. It drifted a fourth time, and `V1-S4-009-PR2`
 found it: nineteen modules existed while the sentence said eighteen. That change
 added no module to this layer either, corrected the sentence, and added the check
 below, so this paragraph is the last entry this list can gain by drifting.
+`V1-S5-001-PR1` added the twentieth and twenty-first.
 
 ### `adapter` — [`tests/adapters/`](../../tests/adapters/)
 
@@ -212,12 +215,14 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Thirty suites protect something no row of the claim matrix names. (This sentence
+Thirty-three suites protect something no row of the claim matrix names. (This sentence
 said twenty-four while the table below held twenty-five rows; `V1-S4-003-PR1` added
 the twenty-sixth row and corrected it. `V1-S4-004-PR1` added the twenty-seventh and
 first left this sentence at twenty-six; its review corrected it. `V1-S4-004-PR2` added
-the twenty-eighth, and `V1-S4-006-PR1` the twenty-ninth. The machine-checked count is
-the one in the opening section.) Each carries its
+the twenty-eighth, and `V1-S4-006-PR1` the twenty-ninth. It drifted again: by
+`V1-S5-001-PR1` the table held thirty-one rows while this sentence said thirty. That
+change added the thirty-second and thirty-third and corrected it. The machine-checked
+count is the one in the opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -253,6 +258,8 @@ matrix is complete needs to see them together.
 | [`tests/architecture/test_local_cluster_provider_contract.py`](../../tests/architecture/test_local_cluster_provider_contract.py) | The provider contract `ADR 0011` accepted: exactly two providers, no selection default, Terraform and Helm handed an address rather than a provider, an identity check, refusal, or rule claimed as enforced only where `lib.sh` or a test really defines it, every capability answer labelled with how it is known, each provider's cluster owned by its operator, and no platform workflow that creates or deletes a cluster. It also pins the open gaps. That a cluster is correctly identified or refused belongs to `test_target_verification.py`, which contacts a fake one, or to a layer that contacts a real one |
 | [`tests/architecture/test_target_verification.py`](../../tests/architecture/test_target_verification.py) | The provider-aware target guard in `lib.sh`, executed against fake `kubectl`/`kind`/`docker` rather than read as text: every documented refusal a fake tool can exercise, for both `kind` and `docker-desktop`, one positive verified case per provider, the target facts a verified run reports, and the capability refusal `api-image.sh`/`model-seed-image.sh` depend on. It contacts no real cluster, so it says nothing about whether a real one is identified or a real wrong one refused |
 | [`tests/architecture/test_inference_alert_rules.py`](../../tests/architecture/test_inference_alert_rules.py) | The alert definitions as the owned artifact the `ADR 0004` `D7` amendment of 2026-09-17 made them: a repository artifact that survives every teardown, a handoff saying `implemented` means a checked definition and not a firing alert, and `telemetry-backend` still holding the receiver and the routing tree. Its one executable check runs the pinned collector's own `promtool check rules` over both committed rule files, which establishes that they load and nothing about whether any alert would ever be true |
+| [`tests/architecture/test_clean_clone_workflow.py`](../../tests/architecture/test_clean_clone_workflow.py) | The clean-clone orchestrator, run in a sandbox against recording stubs: the checklist's order, each workflow handed its own consent, a certification run refused before it writes anything, a preparation run recording what it was not authorized to run, resumption that re-verifies the cluster, and a cleanup that removes only what the run created and proves the cluster survived. The claim that a reviewer can reproduce V1 from a clean clone is planned in the claim and evidence register and needs a real run; every answer here comes from a stub |
+| [`tests/architecture/test_clean_clone_ledger.py`](../../tests/architecture/test_clean_clone_ledger.py) | The rules of the clean-clone ledger: when a step may be recorded as not run, the order steps may pass in, intervals, resumption, manual actions without host paths, and which complete run certifies anything. It establishes what a record may say, never that a run said it |
 | [`tests/architecture/test_telemetry_collector.py`](../../tests/architecture/test_telemetry_collector.py) | The collector `ADR 0004` `D7` was amended to allow: owned but still `planned`, off by default, reading the scrape ConfigMap rather than a second copy of it, projecting an expiring token instead of automounting one, and storing series in a bounded `emptyDir`. Its one executable check runs the pinned collector's own `promtool` over the committed render, which establishes that the configuration loads and nothing about whether anything was collected |
 
 The two API-surface rows are the interesting pair. The matrix's drift claim,

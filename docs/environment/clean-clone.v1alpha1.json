@@ -1,0 +1,276 @@
+{
+  "$id": "https://github.com/asadhanif3188/InferOps/docs/environment/clean-clone.v1alpha1.json",
+  "contractVersion": "v1alpha1",
+  "title": "The V1 clean-clone checklist",
+  "description": "Every step of the V1 journey from a clean clone, in the order scripts/environment/clean-clone.sh runs them: what each one runs, what it needs, what its result may be labelled, and whether a later invocation may treat a pass as still standing. The workflow reads this file for nothing but its step order, which tests/architecture/test_clean_clone_workflow.py holds it to; tools/clean_clone reads it for everything the ledger may record.",
+  "documentRef": "docs/environment/clean-clone.md",
+  "workflowRef": "scripts/environment/clean-clone.sh",
+  "providerContractRef": "docs/environment/local-cluster-provider-contract.v1alpha1.json",
+  "supportedProviders": ["kind", "docker-desktop"],
+  "certifiedProvider": "docker-desktop",
+  "providerRule": "Full clean-clone certification is a complete run on docker-desktop. kind is a supported provider and the workflow runs on it, but a complete run there does not certify this checklist. Either way the cluster already exists before the run, InferOps creates and deletes none (ADR 0011 D1), and it is still reachable and intact after cleanup.",
+  "evidenceLabels": ["local-static", "mock", "local-real-cpu"],
+  "ledgerPath": ".artifacts/clean-clone/ledger.v1alpha1.json",
+  "authorizations": [
+    {
+      "authorizationId": "artifact-download",
+      "flag": "--confirm-downloads",
+      "grants": "Download the pinned model artifact, about 1.71 GiB, into the workspace cache, and pull the pinned serving runtime image by digest. Network, disk, and nothing else."
+    },
+    {
+      "authorizationId": "real-runtime",
+      "flag": "--confirm-real-runtime",
+      "grants": "Start the pinned runtime container on this host against the hash-verified model, send the certification's real requests to it, and remove it. The same consent tools.runtime_certification asks for itself."
+    },
+    {
+      "authorizationId": "real-kubernetes",
+      "flag": "--confirm-real-kubernetes",
+      "grants": "Contact the selected, already-existing cluster; build the API and model seed images and load them into its node; apply the Terraform prerequisites; install, test, upgrade, roll back, and uninstall the Helm release; send real inference, load, and a deliberate pod deletion to it. The same consent every release workflow asks for itself."
+    },
+    {
+      "authorizationId": "cleanup",
+      "flag": "--confirm",
+      "grants": "Uninstall a release this run left installed, destroy the Terraform prerequisites (the namespace cascades and the model weights in the claim are reclaimed), and remove the workload scaffolds this run wrote. Never the cluster, never another namespace, never the engine."
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "clean-checkout",
+      "title": "The checkout is a clean clone: no uncommitted change, and, on a fresh run, no state a previous run left",
+      "kind": "check",
+      "phase": "prerequisites",
+      "runs": ["tools.clean_clone"],
+      "requiresAuthorization": [],
+      "resumable": false,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-static",
+      "acceptance": "no-local-uncommitted-or-config-state-is-required"
+    },
+    {
+      "stepId": "host-prerequisites",
+      "title": "The host has every tool the journey runs, a bash with EPOCHREALTIME, and an engine that clears the ADR 0001 tier",
+      "kind": "check",
+      "phase": "prerequisites",
+      "runs": ["scripts/environment/lib.sh"],
+      "requiresAuthorization": [],
+      "resumable": false,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-static",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "toolchain-sync",
+      "title": "Install the locked Python toolchain, and put it first on PATH for every step after this one",
+      "kind": "preparation",
+      "phase": "testing",
+      "runs": ["uv.lock"],
+      "requiresAuthorization": [],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-static",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "default-lane-checks",
+      "title": "The default-checks lane, as continuous integration runs it: formatting, lint, types, and the default-lane test suite, which drives the mock end to end",
+      "kind": "preparation",
+      "phase": "testing",
+      "runs": ["pyproject.toml", "pytest.ini"],
+      "requiresAuthorization": [],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "mock",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "workload-scaffold",
+      "title": "Scaffold the quick start's mock and real workloads into this run's own directory, validate both contracts, and run their generated tests",
+      "kind": "preparation",
+      "phase": "scaffolding",
+      "runs": ["tools.workload_scaffold", "tools.contract_validation"],
+      "requiresAuthorization": [],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-static",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "model-acquisition",
+      "title": "Acquire the pinned model into the workspace cache and verify its SHA-256",
+      "kind": "real",
+      "phase": "model",
+      "runs": ["tools.model_acquisition"],
+      "requiresAuthorization": ["artifact-download"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "runtime-image",
+      "title": "Pull the pinned serving runtime image by digest, which no workflow does implicitly",
+      "kind": "real",
+      "phase": "model",
+      "runs": ["tools.runtime_packaging"],
+      "requiresAuthorization": ["artifact-download"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "local-real-inference",
+      "title": "The C2 real-runtime certification: the pinned runtime serves the verified model through the InferOps API on this host, and is removed",
+      "kind": "real",
+      "phase": "local-real",
+      "runs": ["tools.runtime_certification"],
+      "requiresAuthorization": ["real-runtime"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "provider-verification",
+      "title": "Verify the operator's explicitly selected, already-existing cluster, refuse one that already holds InferOps's namespace, and record the namespaces cleanup must leave behind",
+      "kind": "real",
+      "phase": "kubernetes",
+      "runs": ["scripts/environment/target-detect.sh", "scripts/environment/lib.sh"],
+      "requiresAuthorization": ["real-kubernetes"],
+      "resumable": false,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "cleanup-is-safe"
+    },
+    {
+      "stepId": "release-images",
+      "title": "Build the API and model seed images, load both into the verified node, and compose the values files every release workflow is given",
+      "kind": "real",
+      "phase": "kubernetes",
+      "runs": [
+        "scripts/environment/api-image.sh",
+        "scripts/environment/model-seed-image.sh",
+        "charts/inferops-llm/ci/real-values.yaml"
+      ],
+      "requiresAuthorization": ["real-kubernetes"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "no-local-uncommitted-or-config-state-is-required"
+    },
+    {
+      "stepId": "terraform-prerequisites",
+      "title": "Check, plan, and apply the Terraform prerequisites: the release namespace and the model cache claim",
+      "kind": "real",
+      "phase": "kubernetes",
+      "runs": ["scripts/environment/terraform-prerequisites.sh"],
+      "requiresAuthorization": ["real-kubernetes"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "helm-deployment",
+      "title": "Install the release, test it, upgrade it, roll it back, and uninstall it without residue",
+      "kind": "real",
+      "phase": "kubernetes",
+      "runs": ["scripts/environment/helm-lifecycle.sh"],
+      "requiresAuthorization": ["real-kubernetes"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "kubernetes-inference",
+      "title": "The single-replica Kubernetes C2 certification: a real completion through the release's own Service",
+      "kind": "real",
+      "phase": "kubernetes",
+      "runs": ["scripts/environment/kubernetes-certification.sh"],
+      "requiresAuthorization": ["real-kubernetes"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "telemetry-verification",
+      "title": "The release's collector discovers and scrapes both InferOps jobs, and a real Prometheus evaluates every accepted correlation query",
+      "kind": "real",
+      "phase": "kubernetes",
+      "runs": ["scripts/environment/telemetry-collection-verify.sh"],
+      "requiresAuthorization": ["real-kubernetes"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "load",
+      "title": "The committed performance scenarios: the load profile run twice against a release the workflow installs",
+      "kind": "real",
+      "phase": "load-and-failure",
+      "runs": ["scripts/environment/performance-scenarios.sh"],
+      "requiresAuthorization": ["real-kubernetes"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "failure",
+      "title": "The inference pod recovery experiment: one serving pod deleted under load, and what callers saw",
+      "kind": "real",
+      "phase": "load-and-failure",
+      "runs": ["scripts/environment/inference-pod-recovery.sh"],
+      "requiresAuthorization": ["real-kubernetes"],
+      "resumable": true,
+      "runsAfterFailure": false,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "clean-clone-completes-the-journey"
+    },
+    {
+      "stepId": "cleanup",
+      "title": "Remove what this run owns: any release it left installed, the Terraform prerequisites, and its workload scaffolds",
+      "kind": "cleanup",
+      "phase": "cleanup",
+      "runs": ["scripts/environment/terraform-prerequisites.sh", "tools.model_acquisition"],
+      "requiresAuthorization": ["cleanup"],
+      "resumable": false,
+      "runsAfterFailure": true,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "cleanup-is-safe"
+    },
+    {
+      "stepId": "cluster-survived",
+      "title": "The cluster still verifies, its nodes are Ready, and every namespace present before the run is still there",
+      "kind": "check",
+      "phase": "cleanup",
+      "runs": ["scripts/environment/lib.sh"],
+      "requiresAuthorization": [],
+      "resumable": false,
+      "runsAfterFailure": true,
+      "evidenceLabel": "local-real-cpu",
+      "acceptance": "cleanup-is-safe"
+    }
+  ],
+  "acceptance": [
+    {
+      "acceptanceId": "clean-clone-completes-the-journey",
+      "statement": "A clean clone completes the mock tests, model acquisition, local real inference, scaffolding, explicit provider selection and verification against an already-available cluster, Kubernetes deployment, telemetry, load, failure, and scoped cleanup."
+    },
+    {
+      "acceptanceId": "manual-steps-and-elapsed-time-are-recorded",
+      "statement": "Every step's start, finish, elapsed time, exit code, and outcome is recorded by the workflow, and every manual action by the operator through the note command."
+    },
+    {
+      "acceptanceId": "no-local-uncommitted-or-config-state-is-required",
+      "statement": "A fresh run refuses a checkout carrying uncommitted changes or state a previous run left, and composes every values file it passes from committed files and what its own steps printed."
+    },
+    {
+      "acceptanceId": "cleanup-is-safe",
+      "statement": "Cleanup removes only what this run owns, refuses a cluster whose InferOps footprint it did not see start empty, and proves afterwards that the cluster and every namespace it did not own survived."
+    }
+  ]
+}

@@ -420,18 +420,25 @@
       "strategyClaimIds": [],
       "implementationRefs": [
         "docs/developer-quick-start.md",
-        "scripts/environment"
+        "scripts/environment",
+        "scripts/environment/clean-clone.sh",
+        "docs/environment/clean-clone.v1alpha1.json",
+        "tools/clean_clone"
       ],
-      "automatedTestRefs": [],
+      "automatedTestRefs": [
+        "tests/architecture/test_clean_clone_workflow.py",
+        "tests/architecture/test_clean_clone_ledger.py"
+      ],
       "recordedCoverageGaps": [],
       "ciGateIds": [],
       "evidenceRefs": [],
       "versionsRecordedIn": null,
-      "limitation": "No clean-clone run of the whole journey has been executed or recorded. The pieces have each been run, at different times, on the same host, by the author.",
+      "limitation": "No clean-clone run of the whole journey has been executed or recorded. The pieces have each been run, at different times, on the same host, by the author. The workflow that would run them in one sitting exists, and its two test modules drive it only against stubs: they establish its order, consent, ledger, and cleanup boundary, and nothing about whether the journey completes.",
       "doesNotEstablish": "Anything. It is an intention and cites no record.",
       "readmeRefs": [
         "docs/developer-quick-start.md",
-        "docs/prerequisites.md"
+        "docs/prerequisites.md",
+        "docs/environment/clean-clone.md"
       ],
       "notClaimedReason": null
     },

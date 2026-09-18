@@ -77,6 +77,7 @@ ENTRY_POINTS = (
     "unready-model-recovery.sh",
     "telemetry-collection-verify.sh",
     "target-detect.sh",
+    "clean-clone.sh",
 )
 
 # Read-only by contract, and the contract is worth checking: cluster-verify.sh is
