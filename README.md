@@ -79,37 +79,41 @@ test refuses a page that disagrees with the register.
 ```text
   workload owner (an application team)                      reviewer
        |                                                        |
-       | writes a WorkloadContract v1alpha1 document            | reads
+       | authors a WorkloadContract v1alpha1 document           | reads
+       | (the scaffolder writes one, with tests, for them)      |
        v                                                        v
   +--------------------+   +------------------+   +-------------------------+
   | contract           |-->| platform domain  |   | proof register          |
   | validation         |   | typed objects,   |   | 58 claims, each bound   |
   | schema and cross-  |   | model/runtime    |   | to a record, a label,   |
   | field rules, each  |   | selection, policy|   | and a limitation;       |
-  | refusal canonical  |   +------------------+   | a dashboard is rendered |
-  +---------+----------+                          | from it, never typed    |
-            | scaffolder renders a workload       +------------^------------+
-            v                                                  | records
+  | refusal canonical  |   +--------+---------+   | a dashboard is rendered |
+  +--------------------+            |             | from it, never typed    |
+                                    v             +------------^------------+
+                   +----------------+---------------+          |
+                   | deployment rendering   UNBUILT |          | evidence
+                   | nothing turns a validated      |          | records,
+                   | document into release values;  |          | written by
+                   | a values file is written by    |          | reviewed
+                   | hand today                     |          | changes
+                   +----------------+---------------+          |
+                                    | release values, by hand  |
+                                    v                          |
   +-------------------------------------------------------------+-----------+
-  | InferOps API: five ASGI routes, adapter selected explicitly             |
-  |   mock adapter  -> deterministic fixture, ceiling C1, loads no model    |
-  |   real adapter  -> the serving runtime below, loopback only             |
-  +-----------------------------------+-------------------------------------+
-                                      |
-                                      v
+  | serving path: a Docker composition on one host, or a Helm release on    |
+  | Terraform prerequisites in a cluster                                    |
+  |                                                                         |
+  |   InferOps API: five ASGI routes, adapter selected explicitly           |
+  |     mock adapter -> deterministic fixture, ceiling C1, loads no model   |
+  |     real adapter -> llama.cpp server, image pinned by digest, serving   |
+  |                     Qwen3-1.7B GGUF Q8_0, revision-pinned, SHA-256      |
+  |                     compared on load; loopback only                     |
+  |   in a cluster: model-seed init container, Prometheus collector,        |
+  |     rendered pod-security settings, and Grafana JSON and alert rules    |
+  |     generated from checked records                                      |
   +-------------------------------------------------------------------------+
-  | serving runtime: llama.cpp server, image pinned by digest               |
-  | model: Qwen3-1.7B GGUF Q8_0, revision-pinned, SHA-256 compared on load  |
-  +-------------------------------------------------------------------------+
-      local path                          Kubernetes path
-      Docker composition on one host      Terraform: namespace and model-cache
-      started under explicit consent      claim, applied to a cluster the
-                                          operator already owns and selects
-                                          Helm release: API, runtime, model-seed
-                                          init container, Prometheus collector,
-                                          rendered pod-security settings
-                                          Grafana dashboard JSON and alert
-                                          rules generated from checked records
+      the cluster is the operator's: docker-desktop or kind, selected
+      explicitly, verified before anything is mutated, and never created
 ```
 
 Three decisions shape it:
@@ -274,7 +278,7 @@ under [ADR 0013](docs/architecture/decisions/ADR-0013-bounded-local-performance-
 
 ## Security boundary
 
-[The V1 security baseline](docs/security/README.md) is accepted and
+[The V1 security baseline](docs/security/README.md) is accepted in part and
 machine-checked, and it is a statement of what is not defended rather than of
 what is. Twelve risks are carried rather than reduced, and ten of the twelve
 block production use:
@@ -332,7 +336,7 @@ intention reads as a capability:
   document, the mock path's self-identification, canonical errors for an unready
   model and an unreachable runtime, redaction proven in a real run, and the
   absence of any credential or model artifact from public history.
-- **Deferred.** [Sustained throughput and capacity under load](docs/testing/claim-evidence-matrix.md#what-v1-does-not-claim)
+- **Deferred.** [Sustained throughput and capacity under load](docs/testing/claim-evidence-matrix.md#load-and-performance)
   is out of V1 by an accepted decision.
 - **Not claimed.** [Eight things a reader would expect](docs/proof/dashboard.md#what-v1-does-not-claim),
   stated as absent rather than omitted, including a delivered alert, an enforced

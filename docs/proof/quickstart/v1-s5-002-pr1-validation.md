@@ -113,15 +113,31 @@ git diff --check main...HEAD
 
 | Check | Result |
 |---|---|
-| The README-reading tests: every entry-point link governed by the register, the claim-count sentence, the layer-count sentence, every relative link, and the reserved-term scan over every Markdown document | `629 passed, 3495 deselected` |
-| `tests/testing` and `tests/security` in full, after this record was written | `4689 passed, 8 skipped` |
+| The README-reading tests: every entry-point link governed by the register, the claim-count sentence, the layer-count sentence, every relative link, and the reserved-term scan over every Markdown document | `631 passed, 3495 deselected` |
+| `tests/testing` and `tests/security` in full, with this record committed | `4690 passed, 8 skipped` |
 | Trailing whitespace and hard tabs in committed Markdown | no matches |
 | `git diff --check` | clean |
 
 The eight skips are the suites' own: checks that need a `helm` or `terraform`
 binary, or a cluster, none of which this change touches. The same full run made
 before this record existed failed exactly one test, the changelog's link to this
-file, which is what that test is for.
+file, which is what that test is for. The link suite reads `git ls-files`, so a
+record that is not yet tracked adds no test of its own; the counts above are from
+runs with every file of this change committed.
+
+## Independent review
+
+A second reader reviewed the first commit against the records it quotes, the
+documents its commands come from, the reserved-term rule, and the diff for private
+information, and confirmed every figure and every command. Three findings were
+fixed in a second commit: the architecture diagram drew the scaffolder as feeding
+the API and did not show deployment rendering as the unbuilt component, which
+contradicted the sentence beneath it and
+[the system architecture](../../architecture/system-architecture.md); the
+roadmap's deferred link pointed at the not-claimed table rather than the row that
+records the deferral; and the security section said the baseline is "accepted"
+where [its own page](../../security/README.md) says "accepted in part". The
+reviewer's rerun of both commands produced the counts in the table above.
 
 Not run, and not needed by a change that touches no Python: `ruff format`,
 `ruff check`, and `mypy`. Not run, because they are authorization-gated and this
