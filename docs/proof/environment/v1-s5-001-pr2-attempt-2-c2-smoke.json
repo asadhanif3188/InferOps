@@ -1,0 +1,73 @@
+{
+  "certificationId": "inferops-c2-real-runtime-smoke",
+  "certificationLevel": "C2",
+  "cleanup": {
+    "apiDrained": true,
+    "runtimeRemoved": true
+  },
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real runtime",
+  "host": {
+    "engineLogicalCpus": 12,
+    "engineMemoryBytes": 10432532480,
+    "machine": "AMD64",
+    "modelCacheFreeDiskBytes": 70057619456,
+    "operatingSystem": "Windows",
+    "pythonVersion": "3.12.12",
+    "release": "11"
+  },
+  "identity": {
+    "adapterKind": "real",
+    "modelIdentifier": "qwen3-1-7b-q8-0",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "runtimeName": "llama.cpp llama-server",
+    "runtimeVersion": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "tokenUsageDeclared": true
+  },
+  "inference": {
+    "completionCharacters": 123,
+    "completionTokens": 23,
+    "correlationIdEchoed": false,
+    "elapsedMs": 8875,
+    "generatedTextRetained": false,
+    "promptTokens": 20,
+    "requestIdEchoed": false,
+    "status": 200,
+    "totalTokens": 43
+  },
+  "outcome": "certified",
+  "prerequisites": [
+    {
+      "name": "engine-logical-cpus",
+      "observed": 12,
+      "required": 6,
+      "satisfied": true
+    },
+    {
+      "name": "engine-memory-bytes",
+      "observed": 10432532480,
+      "required": 4294967296,
+      "satisfied": true
+    },
+    {
+      "name": "model-cache-free-disk-bytes",
+      "observed": 70057619456,
+      "required": 2147483648,
+      "satisfied": true
+    }
+  ],
+  "provenance": {
+    "apiBaseUrl": "http://127.0.0.1:8090",
+    "compositionId": "inferops-local-real",
+    "modelFile": "Qwen3-1.7B-Q8_0.gguf",
+    "modelRepository": "Qwen/Qwen3-1.7B-GGUF",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "modelSha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    "runtimeBaseUrl": "http://127.0.0.1:8080",
+    "runtimeImage": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+  },
+  "readiness": {
+    "apiReadyMs": 47,
+    "runtimeReadyMs": 228937
+  }
+}

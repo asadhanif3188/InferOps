@@ -438,6 +438,7 @@
         "docs/proof/environment/v1-s5-001-pr2-attempt-1-ledger.v1alpha1.json",
         "docs/proof/environment/v1-s5-001-pr2-attempt-2-ledger.v1alpha1.json",
         "docs/proof/environment/v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json",
+        "docs/proof/environment/v1-s5-001-pr2-attempt-2-c2-smoke.json",
         "docs/proof/environment/v1-s5-001-pr2-c2-smoke.json",
         "docs/proof/environment/v1-s5-001-pr2-k8s-real-inference.json",
         "docs/proof/environment/v1-s5-001-pr2-telemetry-verification.json",

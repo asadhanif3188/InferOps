@@ -236,12 +236,12 @@ first time.
 
 The measured runtime readiness on this host on 2026-09-18, all from passing runs:
 
-| Run | Runtime readiness |
-|---|---:|
-| Direct, in attempt 2's clone, after its first failure | 264 563 ms |
-| Direct, in the working checkout, with the fix | 252 547 ms |
-| Attempt 2, the step's third attempt | 228 937 ms |
-| Attempt 3 | 183 015 ms |
+| Run | Runtime readiness | Source |
+|---|---:|---|
+| Direct, in attempt 2's clone, after its first failure | 264 563 ms | [attempt 2's ledger](v1-s5-001-pr2-attempt-2-ledger.v1alpha1.json), manual action |
+| Direct, in the working checkout, with the fix | 252 547 ms | [attempt 2's ledger](v1-s5-001-pr2-attempt-2-ledger.v1alpha1.json), manual action |
+| Attempt 2, the step's third attempt (the one that passed) | 228 937 ms | [attempt 2's own C2 result](v1-s5-001-pr2-attempt-2-c2-smoke.json) |
+| Attempt 3 | 183 015 ms | [the certified C2 result](v1-s5-001-pr2-c2-smoke.json) |
 
 against the 300 000 ms budget `docs/serving/runtime-profile.local.v1.json` pins,
 which [ADR 0002](../../architecture/decisions/ADR-0002-model-and-serving-runtime.md)
