@@ -1,0 +1,977 @@
+{
+  "availabilityClaim": false,
+  "boundary": "Bounded observations of one inference pod lost once, under one load profile, on the provider, host, model, runtime, release, and repetition recorded beside them. They are not an availability figure, a service-level objective, an error budget, a portable capacity figure, or a benchmark of Kubernetes, the model, the runtime, or any provider.",
+  "callerImpact": {
+    "inFlightAtDeletion": {
+      "dispatched": 1,
+      "outcomes": {
+        "http-error": 0,
+        "identity-refused": 0,
+        "invalid-response": 0,
+        "success": 1,
+        "timeout": 0,
+        "transport-error": 0
+      }
+    },
+    "percentileMethod": "nearest-rank",
+    "windows": [
+      {
+        "dispatched": 18,
+        "dispatchedByScenario": {
+          "c1": 15,
+          "warmup": 3
+        },
+        "endEpochMs": 1789742518285,
+        "errorCodes": {},
+        "httpStatuses": {
+          "200": 18
+        },
+        "latencyOfSuccesses": {
+          "maxMs": 3779,
+          "minMs": 1615,
+          "observations": 18,
+          "p50Ms": 1641,
+          "p95Ms": 3779,
+          "p99Ms": 3779
+        },
+        "outcomes": {
+          "http-error": 0,
+          "identity-refused": 0,
+          "invalid-response": 0,
+          "success": 18,
+          "timeout": 0,
+          "transport-error": 0
+        },
+        "startEpochMs": null,
+        "successful": 18,
+        "unsuccessful": 0,
+        "window": "before"
+      },
+      {
+        "dispatched": 0,
+        "dispatchedByScenario": {},
+        "endEpochMs": 1789742520893,
+        "errorCodes": {},
+        "httpStatuses": {},
+        "latencyOfSuccesses": {
+          "maxMs": null,
+          "minMs": null,
+          "observations": 0,
+          "p50Ms": null,
+          "p95Ms": null,
+          "p99Ms": null
+        },
+        "outcomes": {
+          "http-error": 0,
+          "identity-refused": 0,
+          "invalid-response": 0,
+          "success": 0,
+          "timeout": 0,
+          "transport-error": 0
+        },
+        "startEpochMs": 1789742518285,
+        "successful": 0,
+        "unsuccessful": 0,
+        "window": "servedWhileDraining"
+      },
+      {
+        "dispatched": 2,
+        "dispatchedByScenario": {
+          "c1": 2
+        },
+        "endEpochMs": 1789742551640,
+        "errorCodes": {
+          "internal-error": 1
+        },
+        "httpStatuses": {
+          "200": 1,
+          "500": 1
+        },
+        "latencyOfSuccesses": {
+          "maxMs": 2832,
+          "minMs": 2832,
+          "observations": 1,
+          "p50Ms": 2832,
+          "p95Ms": 2832,
+          "p99Ms": 2832
+        },
+        "outcomes": {
+          "http-error": 1,
+          "identity-refused": 0,
+          "invalid-response": 0,
+          "success": 1,
+          "timeout": 0,
+          "transport-error": 0
+        },
+        "startEpochMs": 1789742520893,
+        "successful": 1,
+        "unsuccessful": 1,
+        "window": "during"
+      },
+      {
+        "dispatched": 163,
+        "dispatchedByScenario": {
+          "c1": 43,
+          "c2": 60,
+          "c4": 60
+        },
+        "endEpochMs": null,
+        "errorCodes": {},
+        "httpStatuses": {
+          "200": 163
+        },
+        "latencyOfSuccesses": {
+          "maxMs": 6739,
+          "minMs": 1574,
+          "observations": 163,
+          "p50Ms": 3343,
+          "p95Ms": 6601,
+          "p99Ms": 6721
+        },
+        "outcomes": {
+          "http-error": 0,
+          "identity-refused": 0,
+          "invalid-response": 0,
+          "success": 163,
+          "timeout": 0,
+          "transport-error": 0
+        },
+        "startEpochMs": 1789742548808,
+        "successful": 163,
+        "unsuccessful": 0,
+        "window": "afterInTheDisruptedRun"
+      },
+      {
+        "dispatched": 183,
+        "dispatchedByScenario": {
+          "c1": 60,
+          "c2": 60,
+          "c4": 60,
+          "warmup": 3
+        },
+        "endEpochMs": 1789743166721,
+        "errorCodes": {},
+        "httpStatuses": {
+          "200": 183
+        },
+        "latencyOfSuccesses": {
+          "maxMs": 8879,
+          "minMs": 1622,
+          "observations": 183,
+          "p50Ms": 3297,
+          "p95Ms": 7009,
+          "p99Ms": 8456
+        },
+        "outcomes": {
+          "http-error": 0,
+          "identity-refused": 0,
+          "invalid-response": 0,
+          "success": 183,
+          "timeout": 0,
+          "transport-error": 0
+        },
+        "startEpochMs": 1789742854013,
+        "successful": 183,
+        "unsuccessful": 0,
+        "window": "afterRecovery"
+      }
+    ],
+    "windowsNote": "Membership is by dispatch instant. 'servedWhileDraining' holds requests dispatched after the delete but before the first one that was not served; 'during' runs from that first unserved request to the one that ended the outage, inclusive of both; 'afterInTheDisruptedRun' is what the same run sent afterwards, and 'afterRecovery' is the whole second run.",
+    "withinTheDisruptedScenario": {
+      "after": {
+        "maxMs": 1981,
+        "minMs": 1574,
+        "observations": 103,
+        "p50Ms": 1674,
+        "p95Ms": 1847,
+        "p99Ms": 1891
+      },
+      "before": {
+        "maxMs": 3779,
+        "minMs": 1615,
+        "observations": 15,
+        "p50Ms": 1637,
+        "p95Ms": 3779,
+        "p99Ms": 3779
+      },
+      "comparable": true,
+      "note": "The after side is every request of this scenario dispatched after the service was restored, in either run.",
+      "scenarioId": "c1"
+    }
+  },
+  "certificationCeiling": "C2",
+  "checks": [
+    {
+      "checkId": "deleted-exactly-one-pod",
+      "detail": "the selector matched 1 running serving-runtime pod(s) when the delete was issued",
+      "passed": true
+    },
+    {
+      "checkId": "replacement-is-a-different-pod",
+      "detail": "the pod after the deletion carries a different name and a different uid",
+      "passed": true
+    },
+    {
+      "checkId": "replacement-kept-the-same-owner",
+      "detail": "owned by ReplicaSet 'inferops-inferops-llm-runtime-56546cfdbd' either side",
+      "passed": true
+    },
+    {
+      "checkId": "no-release-revision-change",
+      "detail": "revision 1 either side; deleting a pod is not a release change",
+      "passed": true
+    },
+    {
+      "checkId": "no-new-acquisition-job",
+      "detail": "0 acquisition Job(s) either side; the hook runs on install and upgrade and a deletion is neither",
+      "passed": true
+    },
+    {
+      "checkId": "claim-count-unchanged",
+      "detail": "1 claim(s) either side",
+      "passed": true
+    },
+    {
+      "checkId": "disruption-landed-in-the-intended-scenario",
+      "detail": "the delete was issued inside phase 'c1' and the descriptor registered 'c1'",
+      "passed": true
+    },
+    {
+      "checkId": "traffic-served-before-the-deletion",
+      "detail": "18 of 18 requests dispatched before the delete came back served",
+      "passed": true
+    },
+    {
+      "checkId": "a-request-after-the-deletion-was-not-served",
+      "detail": "1 request(s) dispatched at or after the delete did not come back served",
+      "passed": true
+    },
+    {
+      "checkId": "the-service-was-restored-to-a-caller",
+      "detail": "the first request served after the outage began came back in the disrupted-run",
+      "passed": true
+    },
+    {
+      "checkId": "traffic-served-after-the-service-was-restored",
+      "detail": "163 served later in the disrupted run and 183 in the recovered run",
+      "passed": true
+    },
+    {
+      "checkId": "no-published-interval-is-negative",
+      "detail": "every interval a reader would take as a duration is zero or more",
+      "passed": true
+    },
+    {
+      "checkId": "the-runtime-service-lost-every-ready-endpoint",
+      "detail": "the lowest ready-endpoint count sampled was 0",
+      "passed": true
+    },
+    {
+      "checkId": "the-runtime-service-had-a-ready-endpoint-again",
+      "detail": "a sample after the one with no ready endpoint reported at least one",
+      "passed": true
+    },
+    {
+      "checkId": "readiness-samples-cover-the-replacement",
+      "detail": "5 sample(s), widest gap before the replacement was ready 4965 ms against a ceiling of 8000 ms",
+      "passed": true
+    },
+    {
+      "checkId": "no-intervention-after-the-deletion",
+      "detail": "the operating script issued no mutating command between the delete and the uninstall, and recorded none",
+      "passed": true
+    },
+    {
+      "checkId": "both-load-runs-completed",
+      "detail": "disrupted exited 0 and ended 'completed'; recovered exited 0 and ended 'completed'",
+      "passed": true
+    },
+    {
+      "checkId": "telemetry-registered-absences-are-absent",
+      "detail": "model-readiness-by-workload returned 0 series; pod-container-restarts returned 0 series",
+      "passed": true
+    },
+    {
+      "checkId": "telemetry-registered-signals-answered",
+      "detail": "serving-runtime-scrape-up success with 2 series; scrape-target-health-by-job success with 2 series; api-requests-by-outcome success with 2 series; api-errors-by-code success with 1 series; api-readiness-check-failures success with 1 series; api-requests-in-flight success with 1 series; runtime-requests-processing success with 1 series",
+      "passed": true
+    },
+    {
+      "checkId": "the-tiers-that-were-not-deleted-did-not-restart",
+      "detail": "the platform-api and telemetry-collector pods carry the same names as before the disruption and report no container restart",
+      "passed": true
+    },
+    {
+      "checkId": "every-tier-had-a-ready-pod-afterwards",
+      "detail": "each of the three tiers reports one running pod with every container ready",
+      "passed": true
+    },
+    {
+      "checkId": "the-replacement-was-ready-within-its-budget",
+      "detail": "12042 ms against a budget of 900000 ms",
+      "passed": true
+    },
+    {
+      "checkId": "the-service-was-restored-within-the-recovery-budget",
+      "detail": "33355 ms against a budget of 1500000 ms",
+      "passed": true
+    }
+  ],
+  "descriptorSha256": "62b30549c881dd4aae2b2f9b009e72a0f82e1e1222c6ed8e532c2f3dc8ecbf70",
+  "disruption": {
+    "issuedAfterLoadStartMs": 31319,
+    "issuedEpochMs": 1789742518285,
+    "landedInScenarioId": "c1",
+    "mechanism": "delete-serving-runtime-pod-under-load",
+    "pod": {
+      "name": "inferops-inferops-llm-runtime-56546cfdbd-rnkwn",
+      "nodeName": "desktop-control-plane",
+      "ownerKind": "ReplicaSet",
+      "ownerName": "inferops-inferops-llm-runtime-56546cfdbd",
+      "uid": "c887bde3-973a-4b59-bc72-981c3ed67961"
+    },
+    "podsMatchingSelector": 1,
+    "registeredOffsetMs": 30000,
+    "registeredScenarioId": "c1",
+    "reversedBy": "deployment-controller",
+    "scope": "pod",
+    "target": "serving-runtime"
+  },
+  "distinctProofQuestion": "V1-S3-003-PR2 proved that the model artifact survives a pod replacement and recorded, as its own limitation, that nothing there measured the replacement window from a caller's side. This experiment measures exactly that: what callers and operators observe while traffic is running when the serving runtime pod is lost.",
+  "environment": {
+    "background": {
+      "namespacesWithRunningPodsOutsideRelease": 3,
+      "runningPodsOutsideRelease": 12
+    },
+    "cluster": "docker-desktop",
+    "configuration": {
+      "INFEROPS_LLAMA_SERVER_CONTEXT_SIZE": "4096",
+      "INFEROPS_LLAMA_SERVER_METRICS_ENABLED": "true",
+      "INFEROPS_LLAMA_SERVER_THREADS": "6",
+      "INFEROPS_MAX_OUTPUT_TOKENS": "128",
+      "INFEROPS_MODEL_IDENTIFIER": "qwen3-1-7b-q8-0",
+      "INFEROPS_MODEL_REVISION": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "INFEROPS_REQUEST_TIMEOUT_MS": "120000",
+      "INFEROPS_RUNTIME_IMAGE_DIGEST": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "INFEROPS_SERVING_ADAPTER": "real"
+    },
+    "context": "docker-desktop",
+    "engine": {
+      "cpus": 12,
+      "memoryBytes": 10432532480,
+      "serverVersion": "29.7.2"
+    },
+    "images": {
+      "api": {
+        "configId": "sha256:fa912a7e56848652086afcf6807efcc039d1363a0b5e938246eb24015f7b5a21",
+        "podImageIds": [
+          "localhost/inferops-api@sha256:5e746a899819dabebcce4aa056eedce6383e0c91f4e0bb15105850070722416a"
+        ],
+        "repoDigests": [
+          "localhost/inferops-api@sha256:5e746a899819dabebcce4aa056eedce6383e0c91f4e0bb15105850070722416a",
+          "localhost/inferops-api@sha256:7755a501391c88954522109e45155db20ba86992aab7eb0dce61de3445affb4b",
+          "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63",
+          "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087"
+        ],
+        "template": "localhost/inferops-api@sha256:7755a501391c88954522109e45155db20ba86992aab7eb0dce61de3445affb4b"
+      },
+      "runtime": {
+        "configId": "sha256:5c22bb22018db939b6c099bfb7e7be2a08246152b386691fcd1d2a6362cfeec4",
+        "podImageIds": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "repoDigests": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "template": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      }
+    },
+    "kubernetes": {
+      "helmVersion": "v3.19.0+g3d8990f",
+      "kubectlVersion": "v1.34.3",
+      "serverVersion": "v1.34.3"
+    },
+    "node": {
+      "allocatable": {
+        "cpu": "12",
+        "memory": "10188020Ki"
+      },
+      "capacity": {
+        "cpu": "12",
+        "memory": "10188020Ki"
+      },
+      "containerRuntimeVersion": "containerd://2.2.0",
+      "imageDigest": "sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48",
+      "kernelVersion": "5.15.146.1-microsoft-standard-WSL2",
+      "kubeletVersion": "v1.34.3",
+      "name": "desktop-control-plane",
+      "osImage": "Debian GNU/Linux 12 (bookworm)"
+    },
+    "podsAfter": [
+      {
+        "imageIds": [
+          "localhost/inferops-api@sha256:5e746a899819dabebcce4aa056eedce6383e0c91f4e0bb15105850070722416a"
+        ],
+        "name": "inferops-inferops-llm-5dcbd9776b-x6pnv",
+        "ready": true,
+        "restartCount": 0,
+        "role": "api",
+        "uid": "4ba7454c-0bb1-40f0-ac74-51aee094e0a7"
+      },
+      {
+        "imageIds": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "name": "inferops-inferops-llm-runtime-56546cfdbd-ksmlx",
+        "ready": true,
+        "restartCount": 0,
+        "role": "runtime",
+        "uid": "a28398cd-ff54-4486-9d50-ca2f7e9a1a1b"
+      },
+      {
+        "imageIds": [
+          "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+        ],
+        "name": "inferops-inferops-llm-collector-55c95c4b8c-zzd5x",
+        "ready": true,
+        "restartCount": 0,
+        "role": "collector",
+        "uid": "1fd15832-0dd2-46fe-80f3-d32965481456"
+      }
+    ],
+    "podsBefore": [
+      {
+        "imageIds": [
+          "localhost/inferops-api@sha256:5e746a899819dabebcce4aa056eedce6383e0c91f4e0bb15105850070722416a"
+        ],
+        "name": "inferops-inferops-llm-5dcbd9776b-x6pnv",
+        "ready": true,
+        "restartCount": 0,
+        "role": "api",
+        "uid": "4ba7454c-0bb1-40f0-ac74-51aee094e0a7"
+      },
+      {
+        "imageIds": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "name": "inferops-inferops-llm-runtime-56546cfdbd-rnkwn",
+        "ready": true,
+        "restartCount": 0,
+        "role": "runtime",
+        "uid": "c887bde3-973a-4b59-bc72-981c3ed67961"
+      },
+      {
+        "imageIds": [
+          "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+        ],
+        "name": "inferops-inferops-llm-collector-55c95c4b8c-zzd5x",
+        "ready": true,
+        "restartCount": 0,
+        "role": "collector",
+        "uid": "1fd15832-0dd2-46fe-80f3-d32965481456"
+      }
+    ],
+    "provider": "docker-desktop",
+    "release": {
+      "appVersion": "0.1.0",
+      "chart": "inferops-llm-0.3.0",
+      "name": "inferops",
+      "namespace": "inferops-release",
+      "revision": 1,
+      "status": "deployed"
+    },
+    "repository": {
+      "executedFiles": {
+        "charts/inferops-llm/Chart.yaml": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b",
+        "charts/inferops-llm/ci/real-values.yaml": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48",
+        "charts/inferops-llm/values.yaml": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9",
+        "deploy/serving/experiments/inference-pod-recovery.v1.json": "62b30549c881dd4aae2b2f9b009e72a0f82e1e1222c6ed8e532c2f3dc8ecbf70",
+        "deploy/serving/load/llm-load-profile.v1.json": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+        "scripts/environment/inference-pod-recovery.sh": "b057c4b55dd616fd83a45fb91f8bdf1064082aca6e460c9eefa11982ff750386",
+        "scripts/environment/lib.sh": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd",
+        "tools/inference_pod_recovery/__main__.py": "60bf9b99435ce8cff8ca3d2cb85a0e6897a35257336ab5c446de565de1adfb7c",
+        "tools/inference_pod_recovery/core.py": "a1768a60fdf9918dd485245d25b9c7b03a33ce8649209bbf6d9cca4f9879de36",
+        "tools/inference_pod_recovery/live.py": "d41808fd115bd4e615c78a950f4b899641e07d926699d6104e54d186964cf8a0",
+        "tools/llm_load/__main__.py": "eacfd0172576145febf3a7fba8f12f57543293d79e266d3893f4c3db7d5b833e",
+        "tools/llm_load/core.py": "0fd164d1f4bcd34a64e88ea7ffa6907191b7e0deaaaf32bc5942c46b3d2d52ec"
+      },
+      "revision": "1cb7d861a33df12c6568bd7630f57dc30397bfa5",
+      "trackedChangesPresent": false,
+      "untrackedFilesPresent": false
+    },
+    "verifiedAt": "2026-09-18T14:39:41Z",
+    "workloads": {
+      "api": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "image": "localhost/inferops-api@sha256:7755a501391c88954522109e45155db20ba86992aab7eb0dce61de3445affb4b",
+            "name": "api",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm",
+        "desiredReplicas": 1
+      },
+      "collector": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+            "name": "collector",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm-collector",
+        "desiredReplicas": 1
+      },
+      "runtime": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+            "name": "runtime",
+            "resources": {
+              "limits": {
+                "cpu": "6",
+                "memory": "3Gi"
+              },
+              "requests": {
+                "cpu": "1",
+                "memory": "2Gi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm-runtime",
+        "desiredReplicas": 1
+      }
+    }
+  },
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "experimentId": "inferops-inference-pod-recovery",
+  "experimentVersion": "1.0.0",
+  "humanAction": {
+    "authorisationRequired": true,
+    "interventionsAfterDeletion": [],
+    "note": "What this can and cannot say. The operating script issues one mutating command after the delete -- the uninstall that ends the run -- and a test reads the script to establish that. So an empty list here means nothing in this workflow intervened; it does not establish that nothing outside it did.",
+    "recoveryIntervention": "none",
+    "valuesFileSuppliedByOperator": true
+  },
+  "inputs": {
+    "disruptedRaw": "0bbb21ab6e69ed157c3ee8a67a76826c6d873af2c1f3d5d8359c44d871b78def",
+    "environment": "10c1908edfd78861473e6e84792b6421cc74e6ad97ec1f0267e7441422060c25",
+    "lifecycle": "1ad73371cdbb76ea243c9248ede05a24423a7c582095734afca735a860518ac3",
+    "readiness": "31d6d6e7937b93ae2c5138f0edd9ca9711af6e0933a7442b4b1582e896c73b29",
+    "recoveredRaw": "c975dd44a2d80dffdc1208c3db67e638c1b631a478383ff5f97394748e979428",
+    "telemetry": "85de89e1f0aa8307ddd86df3c27ede6e2846e053f33a1ed838d7b0cf7ab29808"
+  },
+  "kind": "inferops-inference-pod-recovery-record",
+  "limitations": [
+    "One provider, one host, one single-replica release, one model, one runtime build, one load profile, and one pod lost once. Nothing here is portable to another provider, host, replica count, workload mix, or runtime configuration, and nothing here is an availability figure, a service-level objective, or an error budget.",
+    "The serving runtime runs one replica, so every unsuccessful request recorded here is the consequence of that choice rather than of Kubernetes. A second replica would have changed the result and this experiment says nothing about what it would have changed it to.",
+    "Traffic is sent in two runs of the same profile rather than one continuous stream. The first is disrupted and the second starts once the replacement reports Ready, so the requests after the recovery are a second run's rather than the same run's, and the interval from the deletion to a served completion includes this workflow's own readiness polling and the load generator's start-up wherever the recovery was seen in the second run.",
+    "Load reaches the API through a loopback port-forward to one pod, held open across the disruption. The forward is to the platform API, which is not the tier being deleted, so what the load records is the API's answer while its upstream was gone rather than a connection that died.",
+    "A deleted pod is not a lost node. Nothing here says anything about a node that goes away, a claim that fails to reattach, a corrupted volume, or a runtime that starts and answers wrongly.",
+    "The collector scrapes every 30 seconds, so a telemetry series locates the disruption to within a scrape and a rule evaluation, never to the request. No figure published here is derived from a telemetry series.",
+    "That the model artifact survives a pod replacement is not re-proven here. It was established by V1-S3-003-PR2 by comparing the artifact's inode and modification time either side, and this experiment records only that no acquisition Job appeared and that the replacement served real completions.",
+    "Other workloads on the same node and virtual machine are not controlled, and the host's file cache is in whatever state the preceding run left it."
+  ],
+  "loadProfileSha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+  "observations": [
+    "The outage is stamped from the raw load record sets: it begins at the completion of the first request after the delete that was not served, and ends at the completion of the first one dispatched from then on that was. Neither end is a forward accepting a connection. V1-S3-003-PR2 published a figure stamped that way and an independent review of that change corrected it; the first execution of this experiment found this module stamping the start of the outage at the delete instead, which published two negative intervals, and the check named no-published-interval-is-negative exists because of it.",
+    "The replacement interval ends at the replacement pod reporting itself Ready, not at the Deployment aggregate, which still counts a deleted pod inside its termination grace period.",
+    "Requests dispatched after the delete that the draining pod still served: 0 of 0. They are kept in their own window rather than counted on either side of the outage.",
+    "The service was observed restored in the disrupted-run.",
+    "Requests in flight when the delete was issued: 1.",
+    "The model reload is reported as the replacement pod from the operating script's first sighting of it to its own Ready condition. That interval is bounded by the sampling interval and includes scheduling and the integrity init container as well as loading the weights.",
+    "The two instants the cluster reported for the replacement container are kept as the strings it emitted. They come from the node's clock and nothing here subtracts them from an instant read on the host's.",
+    "That the model artifact survived the replacement is not established here. V1-S3-003-PR2 established it by comparing the artifact's inode and modification time either side of a replacement, and this run did not."
+  ],
+  "portableCapacityClaim": false,
+  "productionBenchmark": false,
+  "readinessSamples": [
+    {
+      "atEpochMs": 1789742518908,
+      "readTookMs": 1520,
+      "runtimeEndpointsReady": 0,
+      "runtimePodNames": [
+        "inferops-inferops-llm-runtime-56546cfdbd-ksmlx",
+        "inferops-inferops-llm-runtime-56546cfdbd-rnkwn"
+      ],
+      "runtimePodsPresent": 2,
+      "runtimePodsReady": 1
+    },
+    {
+      "atEpochMs": 1789742523873,
+      "readTookMs": 795,
+      "runtimeEndpointsReady": 0,
+      "runtimePodNames": [
+        "inferops-inferops-llm-runtime-56546cfdbd-ksmlx",
+        "inferops-inferops-llm-runtime-56546cfdbd-rnkwn"
+      ],
+      "runtimePodsPresent": 2,
+      "runtimePodsReady": 1
+    },
+    {
+      "atEpochMs": 1789742527240,
+      "readTookMs": 578,
+      "runtimeEndpointsReady": 0,
+      "runtimePodNames": [
+        "inferops-inferops-llm-runtime-56546cfdbd-ksmlx",
+        "inferops-inferops-llm-runtime-56546cfdbd-rnkwn"
+      ],
+      "runtimePodsPresent": 2,
+      "runtimePodsReady": 1
+    },
+    {
+      "atEpochMs": 1789742530327,
+      "readTookMs": 408,
+      "runtimeEndpointsReady": 1,
+      "runtimePodNames": [
+        "inferops-inferops-llm-runtime-56546cfdbd-ksmlx",
+        "inferops-inferops-llm-runtime-56546cfdbd-rnkwn"
+      ],
+      "runtimePodsPresent": 2,
+      "runtimePodsReady": 2
+    },
+    {
+      "atEpochMs": 1789742533164,
+      "readTookMs": 438,
+      "runtimeEndpointsReady": 1,
+      "runtimePodNames": [
+        "inferops-inferops-llm-runtime-56546cfdbd-ksmlx",
+        "inferops-inferops-llm-runtime-56546cfdbd-rnkwn"
+      ],
+      "runtimePodsPresent": 2,
+      "runtimePodsReady": 2
+    }
+  ],
+  "replacement": {
+    "acquisitionJobsAfter": 0,
+    "acquisitionJobsBefore": 0,
+    "containerStartedAt": "2026-09-18T14:42:05Z",
+    "integrityInitContainer": "verify-model",
+    "integrityInitExitCode": 0,
+    "observedEpochMs": 1789742518908,
+    "pod": {
+      "name": "inferops-inferops-llm-runtime-56546cfdbd-ksmlx",
+      "nodeName": "desktop-control-plane",
+      "ownerKind": "ReplicaSet",
+      "ownerName": "inferops-inferops-llm-runtime-56546cfdbd",
+      "uid": "a28398cd-ff54-4486-9d50-ca2f7e9a1a1b"
+    },
+    "readyConditionAt": "2026-09-18T14:42:10Z",
+    "readyEpochMs": 1789742530327,
+    "releaseRevisionAfter": 1,
+    "releaseRevisionBefore": 1,
+    "restartCount": 0
+  },
+  "schedule": {
+    "idleBaseline": {
+      "endEpochMs": 1789742485378,
+      "startEpochMs": 1789742425297
+    },
+    "runs": [
+      {
+        "dispatched": 183,
+        "endState": "completed",
+        "exitCode": 0,
+        "exitedEpochMs": 1789742823733,
+        "launchedEpochMs": 1789742486966,
+        "rawFile": "run-1-raw.jsonl",
+        "repetition": 1,
+        "role": "disrupted",
+        "runId": "load-20260918T144127Z"
+      },
+      {
+        "dispatched": 183,
+        "endState": "completed",
+        "exitCode": 0,
+        "exitedEpochMs": 1789743166721,
+        "launchedEpochMs": 1789742854013,
+        "rawFile": "run-2-raw.jsonl",
+        "repetition": 2,
+        "role": "recovered",
+        "runId": "load-20260918T144736Z"
+      }
+    ],
+    "settledEpochMs": 1789743257017
+  },
+  "schemaVersion": "inferops.io/v1alpha1",
+  "telemetry": {
+    "collectorVersion": "3.5.0",
+    "note": "Whether a signal exposed the disruption is not decided here. Each expression's registered expectation and its readings either side are recorded, and the reading of the pair belongs to a reviewed document.",
+    "range": {
+      "endEpochMs": 1789743257017,
+      "startEpochMs": 1789742395297,
+      "stepSeconds": 15
+    },
+    "series": [
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "A scrape that succeeds says the target answered, not that the workload is ready. V1-S3-011-PR2 observed the deleted pod reporting 1 for roughly 50 s and the replacement reporting 1 while it was still loading the model.",
+        "exposure": "expected-not-to-expose",
+        "expr": "up{job=\"inferops-inferops-llm-serving-runtime\"}",
+        "labelSetsAfterTheRun": [
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-ksmlx,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release",
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-rnkwn,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "labelSetsBeforeDeletion": [
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-rnkwn,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "labelSetsThatAppeared": [
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-ksmlx,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-ksmlx,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "1",
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-rnkwn,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "0"
+        },
+        "readingBeforeDeletion": {
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-ksmlx,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": null,
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-rnkwn,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "1"
+        },
+        "seriesId": "serving-runtime-scrape-up",
+        "seriesReturned": 2,
+        "sharedLabelSetsWithChangedValues": [
+          "__name__=up,deployment_environment=dev,inferops_model_id=qwen3-1-7b-q8-0,inferops_runtime_id=llama-cpp-server,inferops_workload_id=support-assistant,instance=inferops-inferops-llm-runtime-56546cfdbd-rnkwn,job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The ratio of targets up to targets discovered, for the same reason as the row above.",
+        "exposure": "expected-not-to-expose",
+        "expr": "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
+        "labelSetsAfterTheRun": [
+          "job=inferops-inferops-llm-platform-api,k8s_component=platform-api,k8s_namespace=inferops-release",
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "labelSetsBeforeDeletion": [
+          "job=inferops-inferops-llm-platform-api,k8s_component=platform-api,k8s_namespace=inferops-release",
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release"
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {
+          "job=inferops-inferops-llm-platform-api,k8s_component=platform-api,k8s_namespace=inferops-release": "1",
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "1"
+        },
+        "readingBeforeDeletion": {
+          "job=inferops-inferops-llm-platform-api,k8s_component=platform-api,k8s_namespace=inferops-release": "1",
+          "job=inferops-inferops-llm-serving-runtime,k8s_component=serving-runtime,k8s_namespace=inferops-release": "1"
+        },
+        "seriesId": "scrape-target-health-by-job",
+        "seriesReturned": 2,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The API counts every request it answered by outcome, so an outcome other than success appearing during the window is the counter noticing.",
+        "exposure": "expected-to-expose",
+        "expr": "sum by (inferops_outcome) (inferops_inference_requests_total)",
+        "labelSetsAfterTheRun": [
+          "inferops_outcome=server-error",
+          "inferops_outcome=success"
+        ],
+        "labelSetsBeforeDeletion": [],
+        "labelSetsThatAppeared": [
+          "inferops_outcome=server-error",
+          "inferops_outcome=success"
+        ],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {
+          "inferops_outcome=server-error": "1",
+          "inferops_outcome=success": "365"
+        },
+        "readingBeforeDeletion": {
+          "inferops_outcome=server-error": null,
+          "inferops_outcome=success": null
+        },
+        "seriesId": "api-requests-by-outcome",
+        "seriesReturned": 2,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The canonical error code the API assigned to what it could not serve.",
+        "exposure": "expected-to-expose",
+        "expr": "sum by (inferops_error_code) (inferops_inference_errors_total)",
+        "labelSetsAfterTheRun": [
+          "inferops_error_code=internal-error"
+        ],
+        "labelSetsBeforeDeletion": [],
+        "labelSetsThatAppeared": [
+          "inferops_error_code=internal-error"
+        ],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {
+          "inferops_error_code=internal-error": "1"
+        },
+        "readingBeforeDeletion": {
+          "inferops_error_code=internal-error": null
+        },
+        "seriesId": "api-errors-by-code",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "The API's own readiness check against its serving adapter. V1-S3-011-PR2 recorded this as the closest thing this system emits to a restart signal, and it is a side effect of a probe rather than a restart signal.",
+        "exposure": "expected-to-expose",
+        "expr": "sum(inferops_readiness_check_failures_total)",
+        "labelSetsAfterTheRun": [
+          ""
+        ],
+        "labelSetsBeforeDeletion": [
+          ""
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {
+          "": "3"
+        },
+        "readingBeforeDeletion": {
+          "": "2"
+        },
+        "seriesId": "api-readiness-check-failures",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [
+          ""
+        ],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "Requests the API is holding. It is a gauge, so it locates the window to within a scrape.",
+        "exposure": "expected-to-expose",
+        "expr": "sum(inferops_inference_requests_in_flight)",
+        "labelSetsAfterTheRun": [
+          ""
+        ],
+        "labelSetsBeforeDeletion": [
+          ""
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {
+          "": "0"
+        },
+        "readingBeforeDeletion": {
+          "": "1"
+        },
+        "seriesId": "api-requests-in-flight",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [
+          ""
+        ],
+        "status": "success"
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "error": null,
+        "expectation": "A recorded runtime gauge. A deleted pod's series linger until staleness applies, so an absence here locates the event no more precisely than a scrape.",
+        "exposure": "expected-to-expose",
+        "expr": "sum(llamacpp:requests_processing)",
+        "labelSetsAfterTheRun": [
+          ""
+        ],
+        "labelSetsBeforeDeletion": [
+          ""
+        ],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {
+          "": "0"
+        },
+        "readingBeforeDeletion": {
+          "": "1"
+        },
+        "seriesId": "runtime-requests-processing",
+        "seriesReturned": 1,
+        "sharedLabelSetsWithChangedValues": [
+          ""
+        ],
+        "status": "success"
+      },
+      {
+        "answerability": "not-answerable-nothing-emits",
+        "error": null,
+        "expectation": "The telemetry catalog assigns this to the serving-runtime adapter and marks it not emitted. Nothing puts it on any endpoint, so it answers with no series whatever happens.",
+        "exposure": "nothing-emits",
+        "expr": "inferops_model_ready",
+        "labelSetsAfterTheRun": [],
+        "labelSetsBeforeDeletion": [],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {},
+        "readingBeforeDeletion": {},
+        "seriesId": "model-readiness-by-workload",
+        "seriesReturned": 0,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      },
+      {
+        "answerability": "no-source",
+        "error": null,
+        "expectation": "Would need kube-state-metrics, which this release does not install and this project has not adopted.",
+        "exposure": "no-source",
+        "expr": "kube_pod_container_status_restarts_total",
+        "labelSetsAfterTheRun": [],
+        "labelSetsBeforeDeletion": [],
+        "labelSetsThatAppeared": [],
+        "labelSetsThatDisappeared": [],
+        "readingAfterTheRun": {},
+        "readingBeforeDeletion": {},
+        "seriesId": "pod-container-restarts",
+        "seriesReturned": 0,
+        "sharedLabelSetsWithChangedValues": [],
+        "status": "success"
+      }
+    ]
+  },
+  "timings": {
+    "callerVisibleOutageMs": 2832,
+    "deletionToFirstUnservedCompletionMs": 30523,
+    "deletionToReplacementObservedMs": 623,
+    "deletionToReplacementReadyMs": 12042,
+    "deletionToServiceRestoredMs": 33355,
+    "firstUnservedCompletionEpochMs": 1789742548808,
+    "lastCompletionServedWhileDrainingMs": null,
+    "modelReloadObservedToReadyMs": 11419,
+    "note": "One pod, deleted once, on one host, at one moment, under one load profile. Not an availability figure, a service-level objective, an error budget, a recovery benchmark, or a number anything may be compared against. The outage is measured from the first request after the delete that did not come back served to the first one dispatched from then on that did; it does not begin at the delete, because the pod that was going away went on serving for a while.",
+    "serviceRestoredEpochMs": 1789742551640,
+    "serviceRestoredObservedIn": "disrupted-run",
+    "serviceRestoredRelativeToObservedReadyMs": 21313
+  },
+  "usable": true
+}

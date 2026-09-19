@@ -25,7 +25,11 @@ from tools.local_composition import CompositionError, RunResult, load_compositio
 from tools.model_acquisition import load_manifest
 from tools.runtime_certification import core
 from tools.runtime_certification.__main__ import main
-from tools.runtime_packaging import CommandResult, load_runtime_package
+from tools.runtime_packaging import (
+    CommandResult,
+    RuntimePackagingError,
+    load_runtime_package,
+)
 
 pytestmark = pytest.mark.docs
 
@@ -442,11 +446,14 @@ def _fake_run_foreground(
     removed: bool = True,
     teardown_error: str | None = None,
     ready: bool = True,
+    runtime_error: Exception | None = None,
 ) -> tuple[Any, list[FakeServer]]:
     """The composition's ordered start, ready, observe, and tear down, faked.
 
     ``teardown_error`` reproduces the composition raising out of its own
     ``finally``, which is how a cleanup that also failed reaches the caller.
+    ``runtime_error`` is the shape a real runtime failure arrives in when the
+    teardown after it succeeded: the runtime package's own exception, unwrapped.
     """
     servers: list[FakeServer] = []
 
@@ -471,6 +478,8 @@ def _fake_run_foreground(
                 shutdown_timeout_seconds=1.0,
             )
         )
+        if runtime_error is not None:
+            raise runtime_error
         if not ready:
             raise CompositionError("the runtime did not become ready in its budget")
         on_ready(4_211, 37)
@@ -659,6 +668,45 @@ def test_a_composition_failure_names_the_stage_it_actually_reached(
     assert failure.value.stage == expected_stage
 
 
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "the runtime did not become ready within the startup budget",
+        "the runtime container stopped before becoming ready",
+    ],
+    ids=("startup-budget-spent", "container-stopped"),
+)
+def test_a_runtime_that_never_became_ready_fails_at_the_compose_stage(
+    monkeypatch: pytest.MonkeyPatch, reason: str
+) -> None:
+    """The runtime package's own failure, in the shape it really arrives in.
+
+    The first clean-clone certification run met this on a page-cold model: the
+    runtime package raised its own error, the teardown after it succeeded, and
+    nothing between the composition and the command caught it, so the run
+    reported an unexpected failure and wrote no diagnostics.
+    """
+    run_foreground, _servers = _fake_run_foreground(
+        runtime_error=RuntimePackagingError(reason)
+    )
+    monkeypatch.setattr(core, "run_foreground", run_foreground)
+    monkeypatch.setattr(core, "preflight", lambda *_a, **_k: Path("/models/pinned"))
+
+    with pytest.raises(core.CertificationFailed, match=reason) as failure:
+        core.certify(
+            core.load_certification(),
+            confirmed=True,
+            runner=CapacityRunner(),
+            server_factory=lambda *_a, **_k: FakeServer(),
+            get=_get(_models_body()),
+            post=_post(_completion_body()),
+            free_bytes=lambda _path: 1024**4,
+        )
+
+    assert failure.value.stage == core.STAGE_COMPOSE
+    assert isinstance(failure.value.__cause__, RuntimePackagingError)
+
+
 def test_real_certification_requires_explicit_confirmation() -> None:
     with pytest.raises(core.PrerequisiteUnmet, match="confirm-real-runtime"):
         core.certify(core.load_certification(), confirmed=False)
@@ -735,6 +783,73 @@ def test_the_offline_check_contacts_nothing(capsys: pytest.CaptureFixture[str]) 
     assert "C2; local-real-cpu" in printed
     assert "real-runtime; outside the default check lane" in printed
     assert "not started (offline certification validation only)" in printed
+
+
+def test_the_command_records_a_runtime_that_never_became_ready(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A spent readiness budget is a failed certification with a stage and a record."""
+    import tools.runtime_certification.__main__ as command
+
+    run_foreground, _servers = _fake_run_foreground(
+        runtime_error=RuntimePackagingError(
+            "the runtime did not become ready within the startup budget"
+        )
+    )
+    monkeypatch.setattr(core, "run_foreground", run_foreground)
+    monkeypatch.setattr(core, "preflight", lambda *_a, **_k: Path("/models/pinned"))
+
+    def certify(certification: core.Certification, *, confirmed: bool) -> Any:
+        return core.certify(
+            certification,
+            confirmed=confirmed,
+            runner=CapacityRunner(),
+            server_factory=lambda *_a, **_k: FakeServer(),
+            get=_get(_models_body()),
+            post=_post(_completion_body()),
+            free_bytes=lambda _path: 1024**4,
+        )
+
+    monkeypatch.setattr(command, "certify", certify)
+    monkeypatch.setattr(
+        command,
+        "EvidenceDirectory",
+        lambda certification: core.EvidenceDirectory(certification, repo_root=tmp_path),
+    )
+
+    assert main(["certify", "--confirm-real-runtime"]) == 4
+
+    printed = capsys.readouterr().err
+    assert "FAILED C2 certification at stage compose" in printed
+    assert "startup budget" in printed
+    assert "unexpected local failure" not in printed
+    diagnostics = json.loads(
+        (
+            tmp_path / ".cache/inferops/certification/c2-smoke-diagnostics.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert diagnostics["stage"] == "compose"
+    assert "startup budget" in diagnostics["reason"]
+
+
+def test_an_unexpected_failure_names_what_it_was(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import tools.runtime_certification.__main__ as command
+
+    def certify(_certification: core.Certification, *, confirmed: bool) -> Any:
+        del confirmed
+        raise ValueError("a failure nobody classified")
+
+    monkeypatch.setattr(command, "certify", certify)
+
+    assert main(["certify", "--confirm-real-runtime"]) == 4
+
+    printed = capsys.readouterr().err
+    assert "unexpected local failure" in printed
+    assert "ValueError: a failure nobody classified" in printed
 
 
 def test_the_command_refuses_an_unconfirmed_certification(

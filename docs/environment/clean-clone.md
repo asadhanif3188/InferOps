@@ -1,11 +1,14 @@
 # Reproducing V1 from a clean clone
 
-Status: **implemented, not executed.** The workflow, its checklist, and the ledger
-it keeps exist and are tested against stubs; nobody has yet run the whole journey
-with it, from a clean clone, against a real cluster. That run, and the record of
-its manual steps and elapsed time, is the next change's to make. Until it exists,
+Status: **implemented and executed once.** The workflow, its checklist, and the
+ledger it keeps were run to completion from a clean clone, against a real cluster,
+by the author of the change that ran them.
+[The executed record](../proof/environment/v1-s5-001-pr2-clean-clone-run.md) names
+what it establishes and what it does not -- principally, that **no second engineer
+has repeated it**. Until one does,
 [`a-reviewer-can-reproduce-v1-from-a-clean-clone`](../testing/claim-evidence-matrix.md#scaffolding-and-the-quick-start)
-stays `planned`, and nothing on this page is evidence that the journey completes.
+is certified at C2 with that limitation attached, not confirmed by an independent
+reviewer.
 
 The authoritative form is data:
 [`clean-clone.v1alpha1.json`](clean-clone.v1alpha1.json). The workflow is
@@ -65,6 +68,24 @@ out of a ledger. Cleanup's consent is asked for separately, when cleanup runs.
 `--confirm-downloads` is this workflow's own: neither step it covers belongs to a
 workflow that takes a consent flag. Cleanup's consent reaches the Terraform wrapper
 as that wrapper's own `destroy --confirm`.
+
+### What else reaches the network
+
+`--confirm-downloads` covers the two large, pinned artifacts. It is not the only
+thing a clean clone fetches, and the first executed run found the rest by meeting
+them:
+
+| Step | Fetches | From |
+|---|---|---|
+| `toolchain-sync` | the locked Python packages, unless `uv`'s own cache already holds them | the package index `uv.lock` names |
+| `release-images` | the two base images the Dockerfiles pin by digest, unless the engine already holds them | their registries |
+| `terraform-prerequisites` | the pinned Kubernetes provider plugin, into `infra/terraform/environments/local/.terraform/` | `registry.terraform.io` |
+
+None of these is gated by a consent flag, and none is a large model or runtime
+image. A host without network access to those three sources cannot complete a run,
+and a transient failure to reach one stops the step: the executed run's
+`terraform-prerequisites` failed once on a name-resolution failure for
+`registry.terraform.io` and passed on the next invocation.
 
 A **preparation run** (`--prepare-only`) needs none of them. It runs every step
 that needs no consent, runs any real step whose consent it *was* given, and records
@@ -280,10 +301,16 @@ a run should count those namespaces and name only InferOps's.
 
 ## What this does not establish
 
-- **That the journey completes.** No certification run has been made with this
-  workflow. The tests drive it against stubs: they establish the order, the
-  consent, the ledger's rules, and the cleanup boundary, and nothing about
-  whether any step's real workflow works on any host.
+One complete certification run exists:
+[the executed record](../proof/environment/v1-s5-001-pr2-clean-clone-run.md), on
+`docker-desktop`, on one Windows host, by the author of the change that made the
+run. Its own limitations section is the fuller statement; this list is what stays
+true regardless of that run.
+
+- **That the journey completes reliably.** One complete run, after two that
+  stopped on defects this change fixed, is not a distribution. The tests still
+  drive the ordering, consent, ledger, and cleanup rules against stubs, and one
+  execution is not exhaustive of what a real host can do to a real step.
 - **Anything about `kind`.** The workflow runs on it; nothing has certified it
   there, and a complete run on `kind` would not certify this checklist.
 - **The host prerequisites exhaustively.** The step checks tool presence --
@@ -293,4 +320,5 @@ a run should count those namespaces and name only InferOps's.
   skew is left to `inferops::resolve_target`, which refuses it at
   `provider-verification`.
 - **That a second engineer can follow it.** The story asks for that where it is
-  available; nothing here arranges it.
+  available; the executed run was made by the change's own author, and no
+  independent reviewer has repeated it.

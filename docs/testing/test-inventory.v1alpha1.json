@@ -246,7 +246,7 @@
       "module": "tests/architecture/test_cluster_lifecycle_safety.py",
       "layer": "architecture-inventory",
       "marker": "architecture",
-      "protects": "The local cluster and release lifecycle scripts against the safety and ownership rules ADR 0001 and ADR 0004 state for them: every deletion names the cluster or is namespaced and label-scoped, no kubectl or helm invocation can inherit an ambient kubeconfig, every release operation names a namespace, no command passes --create-namespace, nothing prunes the engine or sweeps all namespaces, the read-only scripts stay read-only, every script refuses an argument it does not understand, and the host thresholds and the node-image pin are the documented ones wherever they are written.",
+      "protects": "The local cluster and release lifecycle scripts against the safety and ownership rules ADR 0001 and ADR 0004 state for them: every deletion names the cluster or is namespaced and label-scoped, no kubectl or helm invocation can inherit an ambient kubeconfig, every release operation names a namespace, no command passes --create-namespace, nothing prunes the engine or sweeps all namespaces, the read-only scripts stay read-only, every script refuses an argument it does not understand, the host thresholds and the node-image pin are the documented ones wherever they are written, and every workflow that reports release residue asks inside a bounded retry rather than once, so a pod the garbage collector has not yet removed is not reported as residue.",
       "claims": [],
       "note": "No published claim covers it. The claims that a local cluster is created and removed without residue, and that a Helm release installs and uninstalls without residue, belong to the smoke layers, which run against a real engine; this suite reads the scripts as text and could not support either claim if it named them. It defends the properties that make a runtime result reproducible rather than the result itself."
     },
@@ -290,7 +290,7 @@
       "module": "tests/architecture/test_target_verification.py",
       "layer": "architecture-inventory",
       "marker": "architecture",
-      "protects": "The provider-aware target guard in lib.sh (inferops::resolve_target and the functions it calls), executed rather than read: every one of the nine documented refusals that a fake kubectl/kind/docker can exercise, for both kind and docker-desktop, a positive verified case for each provider, the target facts a verified run reports, and the capability refusal api-image.sh and model-seed-image.sh depend on to refuse loading an image into Docker Desktop.",
+      "protects": "The provider-aware target guard in lib.sh (inferops::resolve_target and the functions it calls), executed rather than read: every one of the nine documented refusals that a fake kubectl/kind/docker can exercise, for both kind and docker-desktop, a positive verified case for each provider, the target facts a verified run reports, and the capability refusal api-image.sh and model-seed-image.sh depend on to refuse loading an image into Docker Desktop. The guard is driven with no INFEROPS_ variable inherited from the operator's shell, and one test exports a selection to show it does not reach the refusals.",
       "claims": [],
       "note": "No published claim covers it. It contacts no real cluster -- kubectl, kind, and docker are fake executables answering from environment variables -- so it establishes that the guard's own logic refuses and verifies correctly, not that a real cluster is identified or a real wrong one is refused; that belongs to a layer that contacts one."
     },
@@ -567,7 +567,7 @@
       "module": "tests/serving/test_runtime_certification.py",
       "layer": "documentation",
       "marker": "docs",
-      "protects": "The C2 real-runtime smoke certification: the committed descriptor against the composition, package, profile, and model pins; refusal of a weakened level, class, prerequisite, or assertion; the hardware refusal that runs before the artifact hash; the mock-identity and mock-capability prohibitions; the bounded fixed request; and the machine-readable result and diagnostics records.",
+      "protects": "The C2 real-runtime smoke certification: the committed descriptor against the composition, package, profile, and model pins; refusal of a weakened level, class, prerequisite, or assertion; the hardware refusal that runs before the artifact hash; the mock-identity and mock-capability prohibitions; the bounded fixed request; the machine-readable result and diagnostics records; and that a runtime which never became ready fails at the compose stage with its reason, and an unclassified failure is named rather than reported bare.",
       "claims": [],
       "note": "No published real-runtime claim is certified by this repository-only suite. It drives the workflow through injected command, HTTP, capacity, and server seams, starts no container, reads no model byte, and contacts no runtime; the local-real-cpu label the workflow writes is truthful only for an authorized run on a capable host."
     },

@@ -1,0 +1,1035 @@
+{
+  "boundary": "Bounded observations of one executed scenario matrix, on the provider, host, model, runtime, release, and load profile recorded beside them. They are not a portable capacity figure, a production SLO, or a benchmark of Kubernetes, the model, the runtime, or any provider.",
+  "certificationCeiling": "C2",
+  "checks": [
+    {
+      "checkId": "every-deployment-available",
+      "detail": "every tier had its desired replicas available before load",
+      "passed": true
+    },
+    {
+      "checkId": "same-pods-throughout",
+      "detail": "the same pod served each tier before and after every run",
+      "passed": true
+    },
+    {
+      "checkId": "zero-container-restarts",
+      "detail": "no container restarted before or during the runs",
+      "passed": true
+    },
+    {
+      "checkId": "telemetry-series-answered",
+      "detail": "the collector answered every range query",
+      "passed": true
+    },
+    {
+      "checkId": "run-1-completed",
+      "detail": "run 1 ended 'completed' with exit code 0",
+      "passed": true
+    },
+    {
+      "checkId": "run-2-completed",
+      "detail": "run 2 ended 'completed' with exit code 0",
+      "passed": true
+    },
+    {
+      "checkId": "counters-reconcile-with-raw-records",
+      "detail": "every counter increase equals what the raw sets record",
+      "passed": true
+    },
+    {
+      "checkId": "resource-samples-cover-every-phase",
+      "detail": "297 samples; largest gap 3894 ms against 8000 ms allowed; 0 read(s) with a tier missing; every measured phase and the idle window had at least 3 samples",
+      "passed": true
+    }
+  ],
+  "descriptorSha256": "cae87607cd65fe3152f68fb487e723e0b085148abbabe99252ec0d9c153e4fc1",
+  "environment": {
+    "background": {
+      "namespacesWithRunningPodsOutsideRelease": 3,
+      "runningPodsOutsideRelease": 12
+    },
+    "cluster": "docker-desktop",
+    "configuration": {
+      "INFEROPS_LLAMA_SERVER_CONTEXT_SIZE": "4096",
+      "INFEROPS_LLAMA_SERVER_METRICS_ENABLED": "true",
+      "INFEROPS_LLAMA_SERVER_THREADS": "6",
+      "INFEROPS_MAX_OUTPUT_TOKENS": "128",
+      "INFEROPS_MODEL_IDENTIFIER": "qwen3-1-7b-q8-0",
+      "INFEROPS_MODEL_REVISION": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "INFEROPS_REQUEST_TIMEOUT_MS": "120000",
+      "INFEROPS_RUNTIME_IMAGE_DIGEST": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "INFEROPS_SERVING_ADAPTER": "real"
+    },
+    "context": "docker-desktop",
+    "engine": {
+      "cpus": 12,
+      "memoryBytes": 10432532480,
+      "serverVersion": "29.7.2"
+    },
+    "images": {
+      "api": {
+        "configId": "sha256:fa912a7e56848652086afcf6807efcc039d1363a0b5e938246eb24015f7b5a21",
+        "podImageIds": [
+          "localhost/inferops-api@sha256:5e746a899819dabebcce4aa056eedce6383e0c91f4e0bb15105850070722416a"
+        ],
+        "repoDigests": [
+          "localhost/inferops-api@sha256:5e746a899819dabebcce4aa056eedce6383e0c91f4e0bb15105850070722416a",
+          "localhost/inferops-api@sha256:7755a501391c88954522109e45155db20ba86992aab7eb0dce61de3445affb4b",
+          "localhost/inferops-api@sha256:783685ad116d8c9dfeeb68771af2f70473123276cf8f6b296fe12bd552ecbc63",
+          "localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087"
+        ],
+        "template": "localhost/inferops-api@sha256:7755a501391c88954522109e45155db20ba86992aab7eb0dce61de3445affb4b"
+      },
+      "runtime": {
+        "configId": "sha256:5c22bb22018db939b6c099bfb7e7be2a08246152b386691fcd1d2a6362cfeec4",
+        "podImageIds": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "repoDigests": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "template": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      }
+    },
+    "kubernetes": {
+      "helmVersion": "v3.19.0+g3d8990f",
+      "kubectlVersion": "v1.34.3",
+      "serverVersion": "v1.34.3"
+    },
+    "node": {
+      "allocatable": {
+        "cpu": "12",
+        "memory": "10188020Ki"
+      },
+      "capacity": {
+        "cpu": "12",
+        "memory": "10188020Ki"
+      },
+      "containerRuntimeVersion": "containerd://2.2.0",
+      "imageDigest": "sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48",
+      "kernelVersion": "5.15.146.1-microsoft-standard-WSL2",
+      "kubeletVersion": "v1.34.3",
+      "name": "desktop-control-plane",
+      "osImage": "Debian GNU/Linux 12 (bookworm)"
+    },
+    "podsAfter": [
+      {
+        "imageIds": [
+          "localhost/inferops-api@sha256:5e746a899819dabebcce4aa056eedce6383e0c91f4e0bb15105850070722416a"
+        ],
+        "name": "inferops-inferops-llm-5dcbd9776b-n5zw8",
+        "ready": true,
+        "restartCount": 0,
+        "role": "api",
+        "uid": "9474cd56-c846-4206-9097-bf8b8629253a"
+      },
+      {
+        "imageIds": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "name": "inferops-inferops-llm-runtime-56546cfdbd-znsvn",
+        "ready": true,
+        "restartCount": 0,
+        "role": "runtime",
+        "uid": "47d0eaaa-3b2d-4873-83f3-771c86d44891"
+      },
+      {
+        "imageIds": [
+          "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+        ],
+        "name": "inferops-inferops-llm-collector-55c95c4b8c-hq9z5",
+        "ready": true,
+        "restartCount": 0,
+        "role": "collector",
+        "uid": "1f1f31e6-03fe-499a-958d-f0c27e5101e3"
+      }
+    ],
+    "podsBefore": [
+      {
+        "imageIds": [
+          "localhost/inferops-api@sha256:5e746a899819dabebcce4aa056eedce6383e0c91f4e0bb15105850070722416a"
+        ],
+        "name": "inferops-inferops-llm-5dcbd9776b-n5zw8",
+        "ready": true,
+        "restartCount": 0,
+        "role": "api",
+        "uid": "9474cd56-c846-4206-9097-bf8b8629253a"
+      },
+      {
+        "imageIds": [
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "name": "inferops-inferops-llm-runtime-56546cfdbd-znsvn",
+        "ready": true,
+        "restartCount": 0,
+        "role": "runtime",
+        "uid": "47d0eaaa-3b2d-4873-83f3-771c86d44891"
+      },
+      {
+        "imageIds": [
+          "docker.io/prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996"
+        ],
+        "name": "inferops-inferops-llm-collector-55c95c4b8c-hq9z5",
+        "ready": true,
+        "restartCount": 0,
+        "role": "collector",
+        "uid": "1f1f31e6-03fe-499a-958d-f0c27e5101e3"
+      }
+    ],
+    "provider": "docker-desktop",
+    "release": {
+      "appVersion": "0.1.0",
+      "chart": "inferops-llm-0.3.0",
+      "name": "inferops",
+      "namespace": "inferops-release",
+      "revision": 1,
+      "status": "deployed"
+    },
+    "repository": {
+      "executedFiles": {
+        "charts/inferops-llm/Chart.yaml": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b",
+        "charts/inferops-llm/ci/real-values.yaml": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48",
+        "charts/inferops-llm/values.yaml": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9",
+        "deploy/serving/experiments/performance-scenarios.v1.json": "cae87607cd65fe3152f68fb487e723e0b085148abbabe99252ec0d9c153e4fc1",
+        "deploy/serving/load/llm-load-profile.v1.json": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+        "scripts/environment/lib.sh": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd",
+        "scripts/environment/performance-scenarios.sh": "fe82e3ea571da687c63bdaeda726b6df6bfe80130698e3ee474e6cd6356a7c4b",
+        "tools/llm_load/__main__.py": "eacfd0172576145febf3a7fba8f12f57543293d79e266d3893f4c3db7d5b833e",
+        "tools/llm_load/core.py": "0fd164d1f4bcd34a64e88ea7ffa6907191b7e0deaaaf32bc5942c46b3d2d52ec",
+        "tools/performance_scenarios/__main__.py": "48d7789606c9b58011d69f44d07a199465369e396d027338deeea08d14edf1cc",
+        "tools/performance_scenarios/core.py": "2c190edc34af83708ae30f70085a2c9850d579d9624d3e6f2b7c17993f558aa7",
+        "tools/performance_scenarios/live.py": "d670a4f0d6fcfadcc4076ef0a1a5e1937b0e7983cbe3d4eb63cd15a0e9a2f462"
+      },
+      "revision": "1cb7d861a33df12c6568bd7630f57dc30397bfa5",
+      "trackedChangesPresent": false,
+      "untrackedFilesPresent": false
+    },
+    "verifiedAt": "2026-09-18T14:23:22Z",
+    "virtualMachine": {
+      "cgroupVersion": 1,
+      "logicalCpus": 12
+    },
+    "workloads": {
+      "api": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "args": [],
+            "image": "localhost/inferops-api@sha256:7755a501391c88954522109e45155db20ba86992aab7eb0dce61de3445affb4b",
+            "name": "api",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm",
+        "desiredReplicas": 1
+      },
+      "collector": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "args": [
+              "--config.file=/etc/inferops/collector/prometheus.yaml",
+              "--storage.tsdb.path=/prometheus",
+              "--storage.tsdb.retention.time=2h",
+              "--storage.tsdb.retention.size=512MB",
+              "--web.listen-address=0.0.0.0:9090",
+              "--no-web.enable-lifecycle",
+              "--no-web.enable-admin-api"
+            ],
+            "image": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+            "name": "collector",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm-collector",
+        "desiredReplicas": 1
+      },
+      "runtime": {
+        "availableReplicas": 1,
+        "containers": [
+          {
+            "args": [
+              "--model",
+              "/models/Qwen3-1.7B-Q8_0.gguf",
+              "--alias",
+              "qwen3-1.7b-q8_0",
+              "--host",
+              "0.0.0.0",
+              "--port",
+              "8080",
+              "--ctx-size",
+              "4096",
+              "--threads",
+              "6",
+              "--parallel",
+              "1",
+              "--n-predict",
+              "128",
+              "--temp",
+              "0",
+              "--metrics"
+            ],
+            "image": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+            "name": "runtime",
+            "resources": {
+              "limits": {
+                "cpu": "6",
+                "memory": "3Gi"
+              },
+              "requests": {
+                "cpu": "1",
+                "memory": "2Gi"
+              }
+            }
+          }
+        ],
+        "deployment": "inferops-inferops-llm-runtime",
+        "desiredReplicas": 1
+      }
+    }
+  },
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "experimentId": "inferops-performance-scenarios",
+  "experimentVersion": "1.0.0",
+  "idleBaseline": {
+    "coveredMs": 58413,
+    "cpuMillicores": {
+      "api": 2,
+      "collector": 1,
+      "node": 309,
+      "nodeOutsideRelease": 305,
+      "runtime": 1,
+      "virtualMachine": 361
+    },
+    "memoryPeakWorkingSetBytes": {
+      "api": 21528576,
+      "collector": 22712320,
+      "node": 5848154112,
+      "runtime": 552353792
+    },
+    "samples": 25,
+    "sufficient": true,
+    "windowMs": 60085
+  },
+  "inputs": {
+    "environment": "66ba861bc45097441180f719ef03c8c603cdf7670dbb1af60a4b00ac595dae19",
+    "resourceSamples": "ce2c397a8d9b4c16b65e2a05f4d303707826ac6408aea083b392302d4b7065df",
+    "run-1-raw.jsonl": "6c25bc109c26a1da522a760da92cc71a04742bfed0bc1cb63217095f7423dcb9",
+    "run-2-raw.jsonl": "0d2c06292b3694f2492a462f9e31a4e43a7c121f41c554f9ca3fefa89b9cdb2b",
+    "telemetry": "e5e39d298963cfac7781a441f359587f8f916515586ed866b16f09778166558d",
+    "windows": "8b6509038a3b2d94b1bc28ae5869c00edc46c721c65d532d9ffa2e549b0c1491"
+  },
+  "kind": "inferops-performance-scenarios-record",
+  "limitations": [
+    "One provider, one host, one single-replica release, one model, one runtime build, one fixed prompt, and the repetitions recorded. Nothing here is portable to another provider, host, replica count, prompt mix, or runtime configuration.",
+    "Load reaches the API through a loopback port-forward to one pod, so every latency includes the forward and nothing describes how a Service spreads load.",
+    "Resource counters are read from the node's cgroup v1 hierarchy by one docker exec per sample. The sampler itself runs inside the node and is counted in the node and virtual-machine tiers.",
+    "The collector scrapes every 30 seconds, so a telemetry series locates an event to within a scrape and a rule evaluation, not to the request.",
+    "Other workloads on the same node and virtual machine are measured as background and not controlled."
+  ],
+  "loadProfileSha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5",
+  "observations": [],
+  "portableCapacityClaim": false,
+  "productionBenchmark": false,
+  "runs": [
+    {
+      "accounting": {
+        "dispatched": 183,
+        "outcomes": {
+          "http-error": 0,
+          "identity-refused": 0,
+          "invalid-response": 0,
+          "success": 183,
+          "timeout": 0,
+          "transport-error": 0
+        }
+      },
+      "end": {
+        "reason": null,
+        "state": "completed"
+      },
+      "exitCode": 0,
+      "generatorHost": {
+        "architecture": "AMD64",
+        "logicalCpus": 20,
+        "operatingSystem": "Windows",
+        "pythonVersion": "3.12.12",
+        "release": "11",
+        "totalMemoryBytes": 16836890624
+      },
+      "phases": [
+        {
+          "concurrency": 1,
+          "endEpochMs": 1789741523536,
+          "load": {
+            "concurrency": 1,
+            "dispatched": 3,
+            "durationSeconds": null,
+            "httpStatuses": {
+              "200": 3
+            },
+            "latencyOfSuccesses": {
+              "maxMs": 2462,
+              "minMs": 1642,
+              "p50Ms": 1657,
+              "p95Ms": 2462,
+              "p99Ms": 2462
+            },
+            "outcomes": {
+              "http-error": 0,
+              "identity-refused": 0,
+              "invalid-response": 0,
+              "success": 3,
+              "timeout": 0,
+              "transport-error": 0
+            },
+            "outputTokensPerSecondMilli": 8790,
+            "requestCeiling": 3,
+            "stopReason": "request-ceiling",
+            "successful": 3,
+            "successfulRequestsPerSecondMilli": 517,
+            "tokens": {
+              "inputTotal": 105,
+              "outputTotal": 51
+            },
+            "unsuccessful": 0,
+            "windowMs": 5802
+          },
+          "resources": {
+            "coveredMs": 3083,
+            "cpuMillicores": {
+              "api": 10,
+              "collector": 1,
+              "node": 6411,
+              "nodeOutsideRelease": 486,
+              "runtime": 5914,
+              "virtualMachine": 6654
+            },
+            "memoryPeakWorkingSetBytes": {
+              "api": 23707648,
+              "collector": 22704128,
+              "node": 5845770240,
+              "runtime": 552931328
+            },
+            "samples": 2,
+            "sufficient": false,
+            "windowMs": 5802
+          },
+          "role": "warm-up",
+          "scenarioId": "warmup",
+          "startEpochMs": 1789741517734
+        },
+        {
+          "concurrency": 1,
+          "endEpochMs": 1789741626932,
+          "load": {
+            "concurrency": 1,
+            "dispatched": 60,
+            "durationSeconds": 180,
+            "httpStatuses": {
+              "200": 60
+            },
+            "latencyOfSuccesses": {
+              "maxMs": 2078,
+              "minMs": 1556,
+              "p50Ms": 1696,
+              "p95Ms": 1928,
+              "p99Ms": 2078
+            },
+            "outcomes": {
+              "http-error": 0,
+              "identity-refused": 0,
+              "invalid-response": 0,
+              "success": 60,
+              "timeout": 0,
+              "transport-error": 0
+            },
+            "outputTokensPerSecondMilli": 9865,
+            "requestCeiling": 60,
+            "stopReason": "request-ceiling",
+            "successful": 60,
+            "successfulRequestsPerSecondMilli": 580,
+            "tokens": {
+              "inputTotal": 2100,
+              "outputTotal": 1020
+            },
+            "unsuccessful": 0,
+            "windowMs": 103387
+          },
+          "resources": {
+            "coveredMs": 99114,
+            "cpuMillicores": {
+              "api": 6,
+              "collector": 1,
+              "node": 6430,
+              "nodeOutsideRelease": 469,
+              "runtime": 5954,
+              "virtualMachine": 6672
+            },
+            "memoryPeakWorkingSetBytes": {
+              "api": 23982080,
+              "collector": 22790144,
+              "node": 5838995456,
+              "runtime": 554143744
+            },
+            "samples": 31,
+            "sufficient": true,
+            "windowMs": 103387
+          },
+          "role": "baseline",
+          "scenarioId": "c1",
+          "startEpochMs": 1789741523545
+        },
+        {
+          "concurrency": 2,
+          "endEpochMs": 1789741729738,
+          "load": {
+            "concurrency": 2,
+            "dispatched": 60,
+            "durationSeconds": 180,
+            "httpStatuses": {
+              "200": 60
+            },
+            "latencyOfSuccesses": {
+              "maxMs": 4331,
+              "minMs": 1687,
+              "p50Ms": 3298,
+              "p95Ms": 4012,
+              "p99Ms": 4331
+            },
+            "outcomes": {
+              "http-error": 0,
+              "identity-refused": 0,
+              "invalid-response": 0,
+              "success": 60,
+              "timeout": 0,
+              "transport-error": 0
+            },
+            "outputTokensPerSecondMilli": 9921,
+            "requestCeiling": 60,
+            "stopReason": "request-ceiling",
+            "successful": 60,
+            "successfulRequestsPerSecondMilli": 583,
+            "tokens": {
+              "inputTotal": 2100,
+              "outputTotal": 1020
+            },
+            "unsuccessful": 0,
+            "windowMs": 102805
+          },
+          "resources": {
+            "coveredMs": 99144,
+            "cpuMillicores": {
+              "api": 9,
+              "collector": 1,
+              "node": 6491,
+              "nodeOutsideRelease": 488,
+              "runtime": 5993,
+              "virtualMachine": 6751
+            },
+            "memoryPeakWorkingSetBytes": {
+              "api": 24023040,
+              "collector": 22798336,
+              "node": 5849583616,
+              "runtime": 554065920
+            },
+            "samples": 30,
+            "sufficient": true,
+            "windowMs": 102805
+          },
+          "role": "higher-load",
+          "scenarioId": "c2",
+          "startEpochMs": 1789741626933
+        },
+        {
+          "concurrency": 4,
+          "endEpochMs": 1789741829188,
+          "load": {
+            "concurrency": 4,
+            "dispatched": 60,
+            "durationSeconds": 180,
+            "httpStatuses": {
+              "200": 60
+            },
+            "latencyOfSuccesses": {
+              "maxMs": 7202,
+              "minMs": 1823,
+              "p50Ms": 6557,
+              "p95Ms": 6854,
+              "p99Ms": 7202
+            },
+            "outcomes": {
+              "http-error": 0,
+              "identity-refused": 0,
+              "invalid-response": 0,
+              "success": 60,
+              "timeout": 0,
+              "transport-error": 0
+            },
+            "outputTokensPerSecondMilli": 10256,
+            "requestCeiling": 60,
+            "stopReason": "request-ceiling",
+            "successful": 60,
+            "successfulRequestsPerSecondMilli": 603,
+            "tokens": {
+              "inputTotal": 2100,
+              "outputTotal": 1020
+            },
+            "unsuccessful": 0,
+            "windowMs": 99449
+          },
+          "resources": {
+            "coveredMs": 99189,
+            "cpuMillicores": {
+              "api": 8,
+              "collector": 1,
+              "node": 6453,
+              "nodeOutsideRelease": 466,
+              "runtime": 5978,
+              "virtualMachine": 6703
+            },
+            "memoryPeakWorkingSetBytes": {
+              "api": 24416256,
+              "collector": 22716416,
+              "node": 5852610560,
+              "runtime": 554078208
+            },
+            "samples": 32,
+            "sufficient": true,
+            "windowMs": 99449
+          },
+          "role": "higher-load",
+          "scenarioId": "c4",
+          "startEpochMs": 1789741729739
+        }
+      ],
+      "rawFile": "run-1-raw.jsonl",
+      "rawSha256": "6c25bc109c26a1da522a760da92cc71a04742bfed0bc1cb63217095f7423dcb9",
+      "reconciliation": [
+        {
+          "absentBeforeReadAsZero": true,
+          "after": 183,
+          "agrees": true,
+          "before": 0,
+          "checkId": "api-requests-equal-dispatched",
+          "comparedWith": "dispatched",
+          "expected": 183,
+          "increase": 183
+        },
+        {
+          "absentBeforeReadAsZero": true,
+          "after": 3111,
+          "agrees": true,
+          "before": 0,
+          "checkId": "api-output-tokens-equal-recorded",
+          "comparedWith": "output-tokens",
+          "expected": 3111,
+          "increase": 3111
+        },
+        {
+          "absentBeforeReadAsZero": false,
+          "after": 3111,
+          "agrees": true,
+          "before": 0,
+          "checkId": "runtime-output-tokens-equal-recorded",
+          "comparedWith": "output-tokens",
+          "expected": 3111,
+          "increase": 3111
+        }
+      ],
+      "repetition": 1,
+      "runId": "load-20260918T142517Z",
+      "served": {
+        "adapterKind": "real",
+        "modelId": "qwen3-1-7b-q8-0",
+        "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+        "readinessStatus": "ready",
+        "runtimeName": "llama.cpp llama-server",
+        "runtimeVersion": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      },
+      "startedAtEpochMs": 1789741517734,
+      "usable": true
+    },
+    {
+      "accounting": {
+        "dispatched": 183,
+        "outcomes": {
+          "http-error": 0,
+          "identity-refused": 0,
+          "invalid-response": 0,
+          "success": 183,
+          "timeout": 0,
+          "transport-error": 0
+        }
+      },
+      "end": {
+        "reason": null,
+        "state": "completed"
+      },
+      "exitCode": 0,
+      "generatorHost": {
+        "architecture": "AMD64",
+        "logicalCpus": 20,
+        "operatingSystem": "Windows",
+        "pythonVersion": "3.12.12",
+        "release": "11",
+        "totalMemoryBytes": 16836890624
+      },
+      "phases": [
+        {
+          "concurrency": 1,
+          "endEpochMs": 1789741929662,
+          "load": {
+            "concurrency": 1,
+            "dispatched": 3,
+            "durationSeconds": null,
+            "httpStatuses": {
+              "200": 3
+            },
+            "latencyOfSuccesses": {
+              "maxMs": 3365,
+              "minMs": 2194,
+              "p50Ms": 2598,
+              "p95Ms": 3365,
+              "p99Ms": 3365
+            },
+            "outcomes": {
+              "http-error": 0,
+              "identity-refused": 0,
+              "invalid-response": 0,
+              "success": 3,
+              "timeout": 0,
+              "transport-error": 0
+            },
+            "outputTokensPerSecondMilli": 6245,
+            "requestCeiling": 3,
+            "stopReason": "request-ceiling",
+            "successful": 3,
+            "successfulRequestsPerSecondMilli": 367,
+            "tokens": {
+              "inputTotal": 105,
+              "outputTotal": 51
+            },
+            "unsuccessful": 0,
+            "windowMs": 8166
+          },
+          "resources": {
+            "coveredMs": 3477,
+            "cpuMillicores": {
+              "api": 5,
+              "collector": 1,
+              "node": 6425,
+              "nodeOutsideRelease": 445,
+              "runtime": 5974,
+              "virtualMachine": 6682
+            },
+            "memoryPeakWorkingSetBytes": {
+              "api": 24121344,
+              "collector": 22712320,
+              "node": 5862993920,
+              "runtime": 554074112
+            },
+            "samples": 2,
+            "sufficient": false,
+            "windowMs": 8166
+          },
+          "role": "warm-up",
+          "scenarioId": "warmup",
+          "startEpochMs": 1789741921496
+        },
+        {
+          "concurrency": 1,
+          "endEpochMs": 1789742049416,
+          "load": {
+            "concurrency": 1,
+            "dispatched": 60,
+            "durationSeconds": 180,
+            "httpStatuses": {
+              "200": 60
+            },
+            "latencyOfSuccesses": {
+              "maxMs": 3170,
+              "minMs": 1631,
+              "p50Ms": 1979,
+              "p95Ms": 2319,
+              "p99Ms": 3170
+            },
+            "outcomes": {
+              "http-error": 0,
+              "identity-refused": 0,
+              "invalid-response": 0,
+              "success": 60,
+              "timeout": 0,
+              "transport-error": 0
+            },
+            "outputTokensPerSecondMilli": 8517,
+            "requestCeiling": 60,
+            "stopReason": "request-ceiling",
+            "successful": 60,
+            "successfulRequestsPerSecondMilli": 501,
+            "tokens": {
+              "inputTotal": 2100,
+              "outputTotal": 1020
+            },
+            "unsuccessful": 0,
+            "windowMs": 119753
+          },
+          "resources": {
+            "coveredMs": 117973,
+            "cpuMillicores": {
+              "api": 7,
+              "collector": 2,
+              "node": 6520,
+              "nodeOutsideRelease": 558,
+              "runtime": 5953,
+              "virtualMachine": 6779
+            },
+            "memoryPeakWorkingSetBytes": {
+              "api": 24256512,
+              "collector": 22732800,
+              "node": 5870530560,
+              "runtime": 554209280
+            },
+            "samples": 36,
+            "sufficient": true,
+            "windowMs": 119753
+          },
+          "role": "baseline",
+          "scenarioId": "c1",
+          "startEpochMs": 1789741929663
+        },
+        {
+          "concurrency": 2,
+          "endEpochMs": 1789742154304,
+          "load": {
+            "concurrency": 2,
+            "dispatched": 60,
+            "durationSeconds": 180,
+            "httpStatuses": {
+              "200": 60
+            },
+            "latencyOfSuccesses": {
+              "maxMs": 3931,
+              "minMs": 1773,
+              "p50Ms": 3425,
+              "p95Ms": 3828,
+              "p99Ms": 3931
+            },
+            "outcomes": {
+              "http-error": 0,
+              "identity-refused": 0,
+              "invalid-response": 0,
+              "success": 60,
+              "timeout": 0,
+              "transport-error": 0
+            },
+            "outputTokensPerSecondMilli": 9724,
+            "requestCeiling": 60,
+            "stopReason": "request-ceiling",
+            "successful": 60,
+            "successfulRequestsPerSecondMilli": 572,
+            "tokens": {
+              "inputTotal": 2100,
+              "outputTotal": 1020
+            },
+            "unsuccessful": 0,
+            "windowMs": 104888
+          },
+          "resources": {
+            "coveredMs": 101781,
+            "cpuMillicores": {
+              "api": 9,
+              "collector": 2,
+              "node": 6544,
+              "nodeOutsideRelease": 546,
+              "runtime": 5987,
+              "virtualMachine": 6862
+            },
+            "memoryPeakWorkingSetBytes": {
+              "api": 24440832,
+              "collector": 22736896,
+              "node": 5860241408,
+              "runtime": 554090496
+            },
+            "samples": 32,
+            "sufficient": true,
+            "windowMs": 104888
+          },
+          "role": "higher-load",
+          "scenarioId": "c2",
+          "startEpochMs": 1789742049416
+        },
+        {
+          "concurrency": 4,
+          "endEpochMs": 1789742262657,
+          "load": {
+            "concurrency": 4,
+            "dispatched": 60,
+            "durationSeconds": 180,
+            "httpStatuses": {
+              "200": 60
+            },
+            "latencyOfSuccesses": {
+              "maxMs": 10379,
+              "minMs": 1703,
+              "p50Ms": 6983,
+              "p95Ms": 7580,
+              "p99Ms": 10379
+            },
+            "outcomes": {
+              "http-error": 0,
+              "identity-refused": 0,
+              "invalid-response": 0,
+              "success": 60,
+              "timeout": 0,
+              "transport-error": 0
+            },
+            "outputTokensPerSecondMilli": 9413,
+            "requestCeiling": 60,
+            "stopReason": "request-ceiling",
+            "successful": 60,
+            "successfulRequestsPerSecondMilli": 553,
+            "tokens": {
+              "inputTotal": 2100,
+              "outputTotal": 1020
+            },
+            "unsuccessful": 0,
+            "windowMs": 108352
+          },
+          "resources": {
+            "coveredMs": 102493,
+            "cpuMillicores": {
+              "api": 9,
+              "collector": 1,
+              "node": 6551,
+              "nodeOutsideRelease": 549,
+              "runtime": 5992,
+              "virtualMachine": 6822
+            },
+            "memoryPeakWorkingSetBytes": {
+              "api": 24350720,
+              "collector": 22757376,
+              "node": 5854085120,
+              "runtime": 554217472
+            },
+            "samples": 32,
+            "sufficient": true,
+            "windowMs": 108352
+          },
+          "role": "higher-load",
+          "scenarioId": "c4",
+          "startEpochMs": 1789742154305
+        }
+      ],
+      "rawFile": "run-2-raw.jsonl",
+      "rawSha256": "0d2c06292b3694f2492a462f9e31a4e43a7c121f41c554f9ca3fefa89b9cdb2b",
+      "reconciliation": [
+        {
+          "absentBeforeReadAsZero": false,
+          "after": 366,
+          "agrees": true,
+          "before": 183,
+          "checkId": "api-requests-equal-dispatched",
+          "comparedWith": "dispatched",
+          "expected": 183,
+          "increase": 183
+        },
+        {
+          "absentBeforeReadAsZero": false,
+          "after": 6222,
+          "agrees": true,
+          "before": 3111,
+          "checkId": "api-output-tokens-equal-recorded",
+          "comparedWith": "output-tokens",
+          "expected": 3111,
+          "increase": 3111
+        },
+        {
+          "absentBeforeReadAsZero": false,
+          "after": 6222,
+          "agrees": true,
+          "before": 3111,
+          "checkId": "runtime-output-tokens-equal-recorded",
+          "comparedWith": "output-tokens",
+          "expected": 3111,
+          "increase": 3111
+        }
+      ],
+      "repetition": 2,
+      "runId": "load-20260918T143201Z",
+      "served": {
+        "adapterKind": "real",
+        "modelId": "qwen3-1-7b-q8-0",
+        "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+        "readinessStatus": "ready",
+        "runtimeName": "llama.cpp llama-server",
+        "runtimeVersion": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+      },
+      "startedAtEpochMs": 1789741921496,
+      "usable": true
+    }
+  ],
+  "saturationJudged": false,
+  "schedule": {
+    "idleBaseline": {
+      "endEpochMs": 1789741516538,
+      "startEpochMs": 1789741456453
+    },
+    "runs": [
+      {
+        "exitCode": 0,
+        "exitedEpochMs": 1789741829434,
+        "launchedEpochMs": 1789741516714,
+        "rawFile": "run-1-raw.jsonl",
+        "repetition": 1
+      },
+      {
+        "exitCode": 0,
+        "exitedEpochMs": 1789742262934,
+        "launchedEpochMs": 1789741919801,
+        "rawFile": "run-2-raw.jsonl",
+        "repetition": 2
+      }
+    ],
+    "settledEpochMs": 1789742353164
+  },
+  "schemaVersion": "inferops.io/v1alpha1",
+  "telemetry": {
+    "collectorVersion": "3.5.0",
+    "dashboardCaptures": 8,
+    "rangeStepSeconds": 15,
+    "scrapeIntervalSeconds": 30,
+    "seriesAnswered": [
+      "api-request-duration-buckets",
+      "api-requests-by-outcome",
+      "api-requests-in-flight",
+      "api-tokens-by-direction",
+      "runtime-decode-calls",
+      "runtime-prompt-tokens",
+      "runtime-requests-deferred",
+      "runtime-requests-processing",
+      "runtime-tokens-predicted"
+    ]
+  },
+  "usable": true
+}

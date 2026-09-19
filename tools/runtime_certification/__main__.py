@@ -162,8 +162,14 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("STOPPED C2 certification: ordered cleanup requested", file=sys.stderr)
         return 130
-    except Exception:
-        print("FAILED C2 certification: unexpected local failure", file=sys.stderr)
+    except Exception as error:
+        # Name what was not expected. A bare "unexpected failure" is a run
+        # somebody has to repeat before anyone can say why it stopped.
+        print(
+            "FAILED C2 certification: unexpected local failure "
+            f"({type(error).__name__}: {error})",
+            file=sys.stderr,
+        )
         return EXIT_FAILED
     return EXIT_OK
 

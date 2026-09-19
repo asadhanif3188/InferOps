@@ -16,7 +16,7 @@ which is asked of a Prometheus and shows nothing when nothing is running. This
 page reads committed files, says the same thing on every machine, and does not
 change when a cluster does.
 
-**Certified: 41 of 58 claims.** The remaining 17 are the rows worth
+**Certified: 42 of 58 claims.** The remaining 16 are the rows worth
 reading, and they are listed in full under [what V1 does not
 claim](#what-v1-does-not-claim) rather than summarised away. Every number on
 this page is counted from the register at render time; there is no field
@@ -29,8 +29,8 @@ between a promise, a decision, and a measured absence.
 
 | Status | Claims | May be published as a capability | What it means |
 |---|---|---|---|
-| `certified` | 41 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
-| `planned` | 8 | no | V1 intends it and nothing has proven it. It may be published only as an intention, and it may cite no evidence record. |
+| `certified` | 42 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
+| `planned` | 7 | no | V1 intends it and nothing has proven it. It may be published only as an intention, and it may cite no evidence record. |
 | `deferred` | 1 | no | Out of V1 scope by an accepted decision. It may not be published as a capability at all, and it may cite no evidence record. |
 | `not-claimed` | 8 | no | A reader would reasonably expect it and V1 states that it does not have it. It may cite the record that measured the absence, because an absence somebody measured is worth more than one nobody mentions. |
 
@@ -44,7 +44,7 @@ whether the claim may be published. The meanings are in
 |---|---|
 | `C0` | 21 |
 | `C1` | 3 |
-| `C2` | 17 |
+| `C2` | 18 |
 
 ### What the evidence behind them is
 
@@ -54,11 +54,11 @@ below can support no statement about real runtime behaviour at all.
 
 | Evidence label | Claims | Ceiling | May support real runtime behaviour | What it is |
 |---|---|---|---|---|
-| `documented-unexecuted` | 13 | `none` | no | A statement in a document. Nothing ran. |
+| `documented-unexecuted` | 12 | `none` | no | A statement in a document. Nothing ran. |
 | `local-static` | 21 | `C0` | no | A deterministic check over files in this repository. No network, no cluster, no model, no clock, no randomness. |
 | `mock` | 3 | `C1` | no | A labelled mock provider that loads no model. |
 | `estimated` | 1 | `none` | no | A calculation rather than a measurement. |
-| `local-real-cpu` | 19 | `C2` | yes | The real component, on a contributor's own machine, on CPU, with versions and commands recorded. |
+| `local-real-cpu` | 20 | `C2` | yes | The real component, on a contributor's own machine, on CPU, with versions and commands recorded. |
 | `production-experience` | 1 | `none` | no | Operating the thing in an organization's production. Part of the published evidence vocabulary and unreachable from this repository. |
 
 ### Which provider the real results came from
@@ -70,7 +70,7 @@ it.
 
 | Provider | Claims naming it |
 |---|---|
-| `docker-desktop` | 14 |
+| `docker-desktop` | 15 |
 | `kind` | 1 |
 
 A result on one provider certifies that provider. It does not certify
@@ -230,7 +230,7 @@ holding one certified row and one measured absence is not one status.
 
 ## What V1 does not claim
 
-17 claims, derived from the register rather than listed here: a
+16 claims, derived from the register rather than listed here: a
 claim that stops being certified joins this table without anybody adding it.
 That is deliberate. A page that can only be complete about its successes is
 an advertisement.
@@ -239,7 +239,6 @@ an advertisement.
 |---|---|---|---|
 | A workload described by a `WorkloadContract` document is served by the platform that document configures. | `planned` | Every real run so far deployed the runtime from a feasibility manifest or from the Helm chart, not from a generated `WorkloadContract`. The mock layers show the API maps the call; they cannot show a document drove the deployment. | none, and a `planned` claim may cite none |
 | Deployment values are derived only from a document that has passed validation. | `planned` | Deployment rendering does not exist. The chart's values are written by an operator, not derived from a document. | none, and a `planned` claim may cite none |
-| A reviewer starting from a clean clone reaches mock tests, model acquisition, local real inference, a Kubernetes deployment, telemetry, load, a failure experiment, and a scoped cleanup, with every manual step and the elapsed time recorded. | `planned` | No clean-clone run of the whole journey has been executed or recorded. The pieces have each been run, at different times, on the same host, by the author. The workflow that would run them in one sitting exists, and its two test modules drive it only against stubs: they establish its order, consent, ledger, and cleanup boundary, and nothing about whether the journey completes. | none, and a `planned` claim may cite none |
 | The mock serving path declares its own kind and refuses a model identity that is not mock-labelled, so a mock result cannot be mistaken for a real one. | `planned` | The behaviour is implemented and exercised by the adapter and mock-integration layers. The claim and test matrix has not promoted it, and no evidence record binds it. | none, and a `planned` claim may cite none |
 | A model that is not ready produces a canonical error rather than an unhandled failure or a fabricated answer. | `planned` | The unready-model experiment measured the real condition and found that no caller ever received `model-not-ready`: all eight completions came back `capability-unavailable` with condition `runtime-unreachable`. That is a measured fact about the deployed shape, and it is a reason this claim stays planned rather than a reason to promote it. | none, and a `planned` claim may cite none |
 | A runtime that cannot be reached produces a canonical error rather than an unhandled failure. | `planned` | The mock layers show the API maps the condition to the right error. They cannot show the condition occurs, or that the runtime produces it in the way the mock's author imagined. | none, and a `planned` claim may cite none |
@@ -287,7 +286,7 @@ an advertisement.
 - The capability grouping is a reading. Which claims belong under *model
   integrity* rather than *real serving* is a judgement made in
   `tools/proof_dashboard/core.py`, and no check decides it.
-- **7 certified claims appear on this page as a number only.** They
+- **8 certified claims appear on this page as a number only.** They
   belong to no capability group, and a certified claim is not repeated in the
   table of what V1 does not claim, so they are counted in every total above
   and shown in no row. Every claim V1 does **not** certify is shown as a row

@@ -848,3 +848,41 @@ def test_no_script_assigns_a_name_lib_declares_readonly() -> None:
         assert not collisions, (
             f"{name} assigns {collisions}, which lib.sh makes readonly"
         )
+
+
+RESIDUE_REPORTING_WORKFLOWS = tuple(
+    sorted(
+        path.name
+        for path in SCRIPT_DIR.glob("*.sh")
+        if "survived the uninstall" in path.read_text(encoding="utf-8")
+    )
+)
+
+
+def test_the_residue_reporting_workflows_were_found() -> None:
+    # An empty parametrization would pass every case below vacuously.
+    assert "helm-lifecycle.sh" in RESIDUE_REPORTING_WORKFLOWS
+    assert len(RESIDUE_REPORTING_WORKFLOWS) >= 8
+
+
+@pytest.mark.parametrize("script", RESIDUE_REPORTING_WORKFLOWS)
+def test_every_residue_check_waits_for_the_garbage_collector(script: str) -> None:
+    """No release workflow may decide residue on one question asked once.
+
+    `helm uninstall --wait` waits for the objects Helm deleted itself, and a
+    Deployment's pods are not among them: the garbage collector removes them on
+    the controller manager's schedule. Seven release workflows already asked
+    inside a bounded retry; helm-lifecycle.sh still asked once, and the first
+    clean-clone certification run reported three terminating pods as residue
+    there. This asks it of every workflow that reports residue, so the next one
+    cannot be the exception.
+    """
+    text = (SCRIPT_DIR / script).read_text(encoding="utf-8")
+    report = text.index("survived the uninstall")
+    deadline = text.rfind("residue_deadline=$((SECONDS +", 0, report)
+    assert deadline != -1, f"{script} decides residue without a bounded retry"
+    # The first mention is usually the retry's own "could not ask" refusal, so
+    # the loop is read to its end rather than to that mention.
+    loop = text[deadline : text.index("\ndone", report)]
+    assert "while :; do" in loop, f"{script} sets a deadline and never retries"
+    assert "sleep " in loop, f"{script} retries without pausing"

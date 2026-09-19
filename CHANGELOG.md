@@ -23,9 +23,9 @@ once versioned releases begin.
   finish, elapsed milliseconds, exit code, and outcome, and every manual action an
   operator records with `note`. See [the workflow's page](docs/environment/clean-clone.md).
 
-  **It has not been run.** Nothing here is evidence that the journey completes, and
-  `a-reviewer-can-reproduce-v1-from-a-clean-clone` stays `planned`. The run, and the
-  record of its manual steps and elapsed time, are the next change's.
+  **It had not been run.** Nothing here was evidence that the journey completes, and
+  `a-reviewer-can-reproduce-v1-from-a-clean-clone` stayed `planned`. The run, and the
+  record of its manual steps and elapsed time, are the next change's -- see below.
 
   **Mostly an orchestrator.** Most steps run a workflow that already exists and
   already guards itself, and hand it its own consent flag. Some carry logic of their
@@ -90,6 +90,45 @@ once versioned releases begin.
   existing workflow, that the default-lane step runs the default-checks lane (it runs
   two of that lane's eleven gates), and that `V1-S4-006-PR1` published a negative
   interval (its first attempt produced two and was never committed).
+
+- **The clean-clone workflow was run to completion, from a fresh clone, against a
+  real cluster.** [The executed record](docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md)
+  is one complete certification run on `docker-desktop`, after two attempts, at two
+  earlier revisions, stopped on defects of the repository rather than of the host.
+  `a-reviewer-can-reproduce-v1-from-a-clean-clone` moves from `planned` to
+  `certified` at `C2`, with the limitation that the run was made by the change's own
+  author and no second engineer has repeated it.
+
+  **Three defects, found by running the workflow rather than reading it.**
+  [`tests/architecture/test_target_verification.py`](tests/architecture/test_target_verification.py)'s
+  `run_target` helper copied the operator's whole environment into the shell it
+  sources `lib.sh` in; the workflow exports `INFEROPS_PROVIDER` for every step, so
+  the no-selection refusal under test became a missing-context refusal instead, and
+  the default-lane suite failed on its own guard. The helper now drops every
+  `INFEROPS_` variable it inherits.
+  [`tools/runtime_certification/core.py`](tools/runtime_certification/core.py)'s
+  `certify()` let a spent readiness budget reach the command as an unclassified
+  exception with no stage, no reason, and no diagnostics record, because the
+  runtime package's own error is unwrapped when the teardown after it succeeds and
+  only the composition's error was caught; it now fails at the `compose` stage and
+  names the reason.
+  [`scripts/environment/helm-lifecycle.sh`](scripts/environment/helm-lifecycle.sh)
+  decided residue on one question asked the instant `helm uninstall --wait`
+  returned, reporting three terminating pods as residue twice in a row -- the same
+  trap `V1-S3-011-PR2` already fixed in seven other release workflows. It now asks
+  inside the uninstall's own budget, like the rest.
+
+  **One more, in a test rather than the workflow.** A default-lane test called the
+  Kubernetes certification command with its consent flag and let its refusal write
+  a diagnostics record into the checkout's own evidence directory, where the run
+  later found it sitting beside a real one. The test now redirects the evidence
+  directory to its own temporary path.
+
+  **What a clean clone reaches that no consent flag names.** The package index,
+  the base image registries, and the Terraform provider registry are all fetched
+  outside `--confirm-downloads`, which names only the model and the runtime image.
+  [The workflow's page](docs/environment/clean-clone.md#what-else-reaches-the-network)
+  now lists them; no consent flag changed.
 
 - **One page for "what has this project actually proven?"**
   [A generated V1 proof dashboard](docs/proof/dashboard.md), the generator behind it

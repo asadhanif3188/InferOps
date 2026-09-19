@@ -282,10 +282,14 @@ inferops::target_helm history "${INFEROPS_RELEASE_NAME}" \
 
 inferops::section "Uninstalling"
 
+# One budget for the uninstall and for the residue question after it, so that
+# the second is not an invented number.
+readonly UNINSTALL_BUDGET_SECONDS=600
+
 inferops::target_helm uninstall "${INFEROPS_RELEASE_NAME}" \
   --namespace "${INFEROPS_RELEASE_NAMESPACE}" \
   --wait \
-  --timeout 10m
+  --timeout "${UNINSTALL_BUDGET_SECONDS}s"
 
 # --- what is left -----------------------------------------------------------
 
@@ -300,11 +304,27 @@ report_residue() {
 # Everything Helm installs carries the release's instance label, so this is the
 # question "did uninstall remove the release" asked of the cluster rather than
 # of Helm's own bookkeeping.
-if ! remaining="$(inferops::release_objects \
-  deployments,replicasets,services,configmaps,serviceaccounts,pods,pvc \
-  -l "${INFEROPS_RELEASE_SELECTOR}")"; then
-  inferops::fail "could not ask what survived the uninstall. ${UNANSWERED}"
-fi
+#
+# Asked repeatedly inside the uninstall budget rather than once, for the reason
+# kubernetes-certification.sh and helm-upgrade-rollback.sh already state beside
+# their own residue checks: `helm uninstall --wait` waits for the objects Helm
+# deleted itself, and a Deployment's pods are not among them -- the garbage
+# collector removes them afterwards, on the controller manager's schedule. This
+# script was the one release workflow still asking once, and the first
+# clean-clone certification run is where that showed: three terminating pods
+# reported as residue, gone moments later. Nothing is waived -- a pod still
+# present at the deadline is residue by any reading.
+residue_deadline=$((SECONDS + UNINSTALL_BUDGET_SECONDS))
+while :; do
+  if ! remaining="$(inferops::release_objects \
+    deployments,replicasets,services,configmaps,serviceaccounts,pods,pvc \
+    -l "${INFEROPS_RELEASE_SELECTOR}")"; then
+    inferops::fail "could not ask what survived the uninstall. ${UNANSWERED}"
+  fi
+  [ -n "${remaining}" ] || break
+  [ "${SECONDS}" -lt "${residue_deadline}" ] || break
+  sleep 2
+done
 if [ -n "${remaining}" ]; then
   report_residue "objects labelled '${INFEROPS_RELEASE_SELECTOR}' survived the uninstall:"
   printf '%s\n' "${remaining}"
