@@ -1,0 +1,80 @@
+{
+  "contractVersion": "v1alpha1",
+  "kind": "clean-clone-ledger",
+  "checklistRef": "docs/environment/clean-clone.v1alpha1.json",
+  "mode": "certification",
+  "provider": "docker-desktop",
+  "clusterName": "docker-desktop",
+  "certifiedProvider": "docker-desktop",
+  "repositoryRevision": "ca2040c7bf878dc507c0fb6e62718c18350a9d7f",
+  "startedAt": "2026-09-18T09:57:16.782Z",
+  "authorizations": [
+    "artifact-download",
+    "cleanup",
+    "real-kubernetes",
+    "real-runtime"
+  ],
+  "attempts": [
+    {
+      "stepId": "clean-checkout",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T09:57:16.782Z",
+      "finishedAt": "2026-09-18T09:57:17.095Z",
+      "elapsedMs": 313,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "host-prerequisites",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T09:57:18.151Z",
+      "finishedAt": "2026-09-18T09:57:20.509Z",
+      "elapsedMs": 2358,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "toolchain-sync",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T09:57:20.712Z",
+      "finishedAt": "2026-09-18T09:57:34.070Z",
+      "elapsedMs": 13358,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "default-lane-checks",
+      "attempt": 1,
+      "outcome": "failed",
+      "exitCode": 1,
+      "startedAt": "2026-09-18T09:57:34.352Z",
+      "finishedAt": "2026-09-18T10:10:51.483Z",
+      "elapsedMs": 797131,
+      "evidenceLabel": "mock",
+      "reason": null
+    }
+  ],
+  "manualActions": [
+    {
+      "at": "2026-09-18T09:57:41.729Z",
+      "stepId": "provider-verification",
+      "description": "Before the run: removed a previous run's inferops-release namespace (model cache claim only, no release) with terraform-prerequisites.sh destroy --confirm from another checkout; provider-verification refuses a cluster that holds it"
+    },
+    {
+      "at": "2026-09-18T09:57:42.499Z",
+      "stepId": "provider-verification",
+      "description": "Before the run: placed kubectl v1.34.3 first on PATH, its SHA-256 checked against the published dl.k8s.io checksum; the only client the engine ships is v1.36.1, two minors from the server's v1.34.3"
+    },
+    {
+      "at": "2026-09-18T09:57:43.230Z",
+      "stepId": "host-prerequisites",
+      "description": "Before the run: set INFEROPS_DISK_VOLUME to the drive holding the engine's relocated storage; the default probe measures the system drive, which the engine does not use on this host"
+    }
+  ]
+}

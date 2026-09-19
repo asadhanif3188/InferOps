@@ -411,12 +411,12 @@
       "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone",
       "area": "scaffolding",
       "statement": "A reviewer starting from a clean clone reaches mock tests, model acquisition, local real inference, a Kubernetes deployment, telemetry, load, a failure experiment, and a scoped cleanup, with every manual step and the elapsed time recorded.",
-      "status": "planned",
-      "certificationLevel": null,
-      "evidenceLabel": "documented-unexecuted",
+      "status": "certified",
+      "certificationLevel": "C2",
+      "evidenceLabel": "local-real-cpu",
       "assertsRealBehaviour": true,
-      "provider": "not-applicable",
-      "environment": "capable-host",
+      "provider": "docker-desktop",
+      "environment": "local-kubernetes",
       "strategyClaimIds": [],
       "implementationRefs": [
         "docs/developer-quick-start.md",
@@ -433,10 +433,20 @@
       "ciGateIds": [
         "default-lane-tests"
       ],
-      "evidenceRefs": [],
-      "versionsRecordedIn": null,
-      "limitation": "No clean-clone run of the whole journey has been executed or recorded. The pieces have each been run, at different times, on the same host, by the author. The workflow that would run them in one sitting exists, and its two test modules drive it only against stubs: they establish its order, consent, ledger, and cleanup boundary, and nothing about whether the journey completes.",
-      "doesNotEstablish": "Anything. It is an intention and cites no record.",
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+        "docs/proof/environment/v1-s5-001-pr2-attempt-1-ledger.v1alpha1.json",
+        "docs/proof/environment/v1-s5-001-pr2-attempt-2-ledger.v1alpha1.json",
+        "docs/proof/environment/v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json",
+        "docs/proof/environment/v1-s5-001-pr2-c2-smoke.json",
+        "docs/proof/environment/v1-s5-001-pr2-k8s-real-inference.json",
+        "docs/proof/environment/v1-s5-001-pr2-telemetry-verification.json",
+        "docs/proof/environment/v1-s5-001-pr2-performance-record.v1alpha1.json",
+        "docs/proof/environment/v1-s5-001-pr2-recovery-record.v1alpha1.json"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+      "limitation": "One complete run, on docker-desktop, on one Windows host, made by the author of the change that ran it -- after two attempts, at two earlier revisions, that stopped on defects this change fixed. One execution is not a distribution and does not establish that the journey completes reliably or on another host. No second engineer has repeated it; the story asks for that confirmation where available, and it is not available here.",
+      "doesNotEstablish": "Anything about kind, another host, another operating system, more than one replica, or any performance, availability, or recovery figure being reproducible. That a second engineer can follow it.",
       "readmeRefs": [
         "docs/developer-quick-start.md",
         "docs/prerequisites.md",

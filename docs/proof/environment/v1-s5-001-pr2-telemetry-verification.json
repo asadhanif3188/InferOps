@@ -1,0 +1,243 @@
+{
+  "collector": {
+    "product": "prometheus",
+    "revision": "8be3a9560fbdd18a94dedec4b747c35178177202",
+    "version": "3.5.0"
+  },
+  "environment": {
+    "clusterName": "docker-desktop",
+    "namespace": "inferops-release",
+    "provider": "docker-desktop",
+    "serverVersion": "v1.34.3"
+  },
+  "outcome": "verified",
+  "queries": {
+    "asked": 21,
+    "evaluatedBy": "prometheus",
+    "notAsked": 2,
+    "parsed": 21,
+    "results": [
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "build-identity-per-replica",
+        "resultType": "vector",
+        "sampleCount": 1
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "request-throughput-by-workload-model-and-outcome",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "error-rate-by-workload-and-code",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "request-latency-p95-by-workload-and-model",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "in-flight-requests-by-replica",
+        "resultType": "vector",
+        "sampleCount": 1
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "throughput-joined-to-build-identity",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "tokens-by-direction-from-the-api",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "tokens-by-direction-from-the-runtime",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "api-and-runtime-in-flight-side-by-side",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "scrape-target-health-by-job",
+        "resultType": "vector",
+        "sampleCount": 1
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "platform-api-scrape-job-absent",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "serving-runtime-scrape-job-absent",
+        "resultType": "vector",
+        "sampleCount": 1
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "identity-absent-on-a-target-that-answered",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "model-readiness-absent",
+        "resultType": "vector",
+        "sampleCount": 1
+      },
+      {
+        "answerability": "not-answerable-nothing-emits",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "model-readiness-by-workload",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "not-answerable-nothing-emits",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "model-load-duration-p95",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "not-answerable-nothing-emits",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "queue-wait-p95",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "runtime-deferred-requests",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "api-process-cpu-by-replica",
+        "resultType": "vector",
+        "sampleCount": 1
+      },
+      {
+        "answerability": "not-answerable-nothing-emits",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "api-process-memory-by-replica",
+        "resultType": "vector",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "answerable-once-collected",
+        "asked": true,
+        "error": "",
+        "parsed": true,
+        "queryId": "readiness-check-failures-by-component",
+        "resultType": "vector",
+        "sampleCount": 1
+      },
+      {
+        "answerability": "no-source",
+        "asked": false,
+        "error": "",
+        "parsed": false,
+        "queryId": "container-and-pod-resource-use",
+        "sampleCount": 0
+      },
+      {
+        "answerability": "no-source",
+        "asked": false,
+        "error": "",
+        "parsed": false,
+        "queryId": "pod-phase-restarts-and-container-readiness",
+        "sampleCount": 0
+      }
+    ],
+    "total": 23,
+    "withSamples": 7
+  },
+  "scrape": {
+    "jobs": [
+      {
+        "discoveredTargets": 1,
+        "job": "inferops-inferops-llm-platform-api",
+        "targetsUp": 1
+      },
+      {
+        "discoveredTargets": 1,
+        "job": "inferops-inferops-llm-serving-runtime",
+        "targetsUp": 1
+      }
+    ]
+  }
+}

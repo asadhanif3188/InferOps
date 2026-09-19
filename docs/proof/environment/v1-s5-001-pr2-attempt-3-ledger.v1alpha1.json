@@ -1,0 +1,310 @@
+{
+  "contractVersion": "v1alpha1",
+  "kind": "clean-clone-ledger",
+  "checklistRef": "docs/environment/clean-clone.v1alpha1.json",
+  "mode": "certification",
+  "provider": "docker-desktop",
+  "clusterName": "docker-desktop",
+  "certifiedProvider": "docker-desktop",
+  "repositoryRevision": "1cb7d861a33df12c6568bd7630f57dc30397bfa5",
+  "startedAt": "2026-09-18T13:24:34.487Z",
+  "authorizations": [
+    "artifact-download",
+    "cleanup",
+    "real-kubernetes",
+    "real-runtime"
+  ],
+  "attempts": [
+    {
+      "stepId": "clean-checkout",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:24:34.487Z",
+      "finishedAt": "2026-09-18T13:24:35.126Z",
+      "elapsedMs": 639,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "host-prerequisites",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:24:37.317Z",
+      "finishedAt": "2026-09-18T13:24:42.195Z",
+      "elapsedMs": 4878,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "toolchain-sync",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:24:42.847Z",
+      "finishedAt": "2026-09-18T13:25:01.893Z",
+      "elapsedMs": 19046,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "default-lane-checks",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:25:02.605Z",
+      "finishedAt": "2026-09-18T13:44:26.720Z",
+      "elapsedMs": 1164115,
+      "evidenceLabel": "mock",
+      "reason": null
+    },
+    {
+      "stepId": "workload-scaffold",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:44:27.037Z",
+      "finishedAt": "2026-09-18T13:44:31.151Z",
+      "elapsedMs": 4114,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "model-acquisition",
+      "attempt": 1,
+      "outcome": "failed",
+      "exitCode": 5,
+      "startedAt": "2026-09-18T13:44:31.521Z",
+      "finishedAt": "2026-09-18T13:49:51.927Z",
+      "elapsedMs": 320406,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "clean-checkout",
+      "attempt": 2,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:52:55.327Z",
+      "finishedAt": "2026-09-18T13:52:55.830Z",
+      "elapsedMs": 503,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "host-prerequisites",
+      "attempt": 2,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:52:56.177Z",
+      "finishedAt": "2026-09-18T13:53:00.554Z",
+      "elapsedMs": 4377,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "model-acquisition",
+      "attempt": 2,
+      "outcome": "failed",
+      "exitCode": 5,
+      "startedAt": "2026-09-18T13:53:01.042Z",
+      "finishedAt": "2026-09-18T13:53:53.756Z",
+      "elapsedMs": 52714,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "clean-checkout",
+      "attempt": 3,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:54:40.924Z",
+      "finishedAt": "2026-09-18T13:54:41.457Z",
+      "elapsedMs": 533,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "host-prerequisites",
+      "attempt": 3,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:54:41.951Z",
+      "finishedAt": "2026-09-18T13:54:45.346Z",
+      "elapsedMs": 3395,
+      "evidenceLabel": "local-static",
+      "reason": null
+    },
+    {
+      "stepId": "model-acquisition",
+      "attempt": 3,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T13:54:45.764Z",
+      "finishedAt": "2026-09-18T14:07:34.572Z",
+      "elapsedMs": 768808,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "runtime-image",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:07:34.897Z",
+      "finishedAt": "2026-09-18T14:07:38.451Z",
+      "elapsedMs": 3554,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "local-real-inference",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:07:39.280Z",
+      "finishedAt": "2026-09-18T14:10:59.147Z",
+      "elapsedMs": 199867,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "provider-verification",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:10:59.412Z",
+      "finishedAt": "2026-09-18T14:11:09.945Z",
+      "elapsedMs": 10533,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "release-images",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:11:10.309Z",
+      "finishedAt": "2026-09-18T14:17:44.861Z",
+      "elapsedMs": 394552,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "terraform-prerequisites",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:17:45.304Z",
+      "finishedAt": "2026-09-18T14:18:38.858Z",
+      "elapsedMs": 53554,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "helm-deployment",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:18:39.306Z",
+      "finishedAt": "2026-09-18T14:20:49.127Z",
+      "elapsedMs": 129821,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "kubernetes-inference",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:20:49.473Z",
+      "finishedAt": "2026-09-18T14:22:02.054Z",
+      "elapsedMs": 72581,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "telemetry-verification",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:22:02.372Z",
+      "finishedAt": "2026-09-18T14:23:13.935Z",
+      "elapsedMs": 71563,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "load",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:23:14.246Z",
+      "finishedAt": "2026-09-18T14:39:30.985Z",
+      "elapsedMs": 976739,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "failure",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:39:31.249Z",
+      "finishedAt": "2026-09-18T14:54:35.391Z",
+      "elapsedMs": 904142,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "cleanup",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:54:35.660Z",
+      "finishedAt": "2026-09-18T14:55:00.128Z",
+      "elapsedMs": 24468,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    },
+    {
+      "stepId": "cluster-survived",
+      "attempt": 1,
+      "outcome": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-09-18T14:55:00.362Z",
+      "finishedAt": "2026-09-18T14:55:06.780Z",
+      "elapsedMs": 6418,
+      "evidenceLabel": "local-real-cpu",
+      "reason": null
+    }
+  ],
+  "manualActions": [
+    {
+      "at": "2026-09-18T13:24:45.955Z",
+      "stepId": "provider-verification",
+      "description": "Before the run: removed a previous run's inferops-release namespace (model cache claim only, no release) with terraform-prerequisites.sh destroy --confirm from another checkout; provider-verification refuses a cluster that holds it"
+    },
+    {
+      "at": "2026-09-18T13:24:47.183Z",
+      "stepId": "provider-verification",
+      "description": "Before the run: placed kubectl v1.34.3 first on PATH, its SHA-256 checked against the published dl.k8s.io checksum; the only client the engine ships is v1.36.1, two minors from the server's v1.34.3"
+    },
+    {
+      "at": "2026-09-18T13:24:48.572Z",
+      "stepId": "host-prerequisites",
+      "description": "Before the run: set INFEROPS_DISK_VOLUME to the drive holding the engine's relocated storage; the default probe measures the system drive, which the engine does not use on this host"
+    },
+    {
+      "at": "2026-09-18T13:24:49.958Z",
+      "stepId": "clean-checkout",
+      "description": "Before the run: cloned the branch at this revision into a new directory; two earlier certification attempts, at two earlier revisions, stopped on defects this revision fixes"
+    },
+    {
+      "at": "2026-09-18T13:25:04.026Z",
+      "stepId": "provider-verification",
+      "description": "Correction to the first note: the namespace that was absent when this run began was removed last by the previous attempt's own clean-clone.sh cleanup --confirm, run by hand in that attempt's checkout; the destroy the first note names preceded the first attempt"
+    }
+  ]
+}

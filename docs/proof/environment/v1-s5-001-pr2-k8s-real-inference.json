@@ -1,0 +1,104 @@
+{
+  "certificationId": "inferops-c2-kubernetes-real-inference",
+  "certificationLevel": "C2",
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "identity": {
+    "adapterKind": "real",
+    "modelIdentifier": "qwen3-1-7b-q8-0",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "runtimeName": "llama.cpp llama-server",
+    "runtimeVersion": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "tokenUsageDeclared": true
+  },
+  "inference": {
+    "completionCharacters": 123,
+    "completionTokens": 23,
+    "correlationIdEchoed": false,
+    "elapsedMs": 2500,
+    "generatedTextRetained": false,
+    "promptTokens": 20,
+    "requestIdEchoed": false,
+    "status": 200,
+    "totalTokens": 43
+  },
+  "kubernetes": {
+    "cluster": {
+      "context": "docker-desktop",
+      "name": "docker-desktop",
+      "nodeImageDigest": "sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48",
+      "provider": "docker-desktop",
+      "serverVersion": "v1.34.3"
+    },
+    "configuration": {
+      "deploymentEnvironment": "dev",
+      "modelIdentifier": "qwen3-1-7b-q8-0",
+      "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "serviceVersion": ""
+    },
+    "modelCache": {
+      "artifactHashCompared": true,
+      "claimName": "inferops-model-cache",
+      "initContainers": [
+        "verify-model"
+      ],
+      "mountReadOnly": true,
+      "volumeReadOnly": true
+    },
+    "release": {
+      "chart": "inferops-llm-0.3.0",
+      "name": "inferops",
+      "namespace": "inferops-release",
+      "profile": "real",
+      "revision": 1,
+      "status": "deployed",
+      "testPassed": true
+    },
+    "timings": {
+      "apiReadyMs": 6033,
+      "installMs": 7245,
+      "prerequisitesMs": 14237,
+      "releaseTestMs": 4040,
+      "runtimeReadyMs": 10222
+    },
+    "tooling": {
+      "helm": "v3.19.0+g3d8990f",
+      "kubectl": "v1.34.3",
+      "terraform": "1.15.8"
+    },
+    "workloads": [
+      {
+        "component": "platform-api",
+        "images": [
+          "localhost/inferops-api@sha256:7755a501391c88954522109e45155db20ba86992aab7eb0dce61de3445affb4b"
+        ],
+        "name": "inferops-inferops-llm",
+        "replicasDesired": 1,
+        "replicasReady": 1
+      },
+      {
+        "component": "serving-runtime",
+        "images": [
+          "docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+          "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+        ],
+        "name": "inferops-inferops-llm-runtime",
+        "replicasDesired": 1,
+        "replicasReady": 1
+      }
+    ]
+  },
+  "outcome": "certified",
+  "provenance": {
+    "apiServiceName": "inferops-inferops-llm",
+    "chartRef": "charts/inferops-llm",
+    "modelFile": "Qwen3-1.7B-Q8_0.gguf",
+    "modelHashComparedInCluster": "true",
+    "modelRepository": "Qwen/Qwen3-1.7B-GGUF",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "modelSha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    "procedureRef": "docs/serving/kubernetes-real-inference-certification.md",
+    "runtimeImage": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "runtimeServiceName": "inferops-inferops-llm-runtime"
+  }
+}
