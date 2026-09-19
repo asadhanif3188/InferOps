@@ -39,9 +39,14 @@ observation and no figure is a capacity, an SLO, or a benchmark.
 
 The full picture is [the V1 proof dashboard](docs/proof/dashboard.md): 58 claims,
 42 certified, 7 planned, 1 deferred, and 8 that V1 states it does not have, each
-with its level, evidence class, provider, limitation, and record. It is generated
-from [the claim and evidence register](docs/testing/claim-evidence-matrix.md) and a
-test refuses a page that disagrees with the register.
+with its level, evidence class, provider, limitation, and record. It opens with
+one row per capability and a five-minute reading order, and every row above is
+there under its capability with the claim that cites its record. It is generated
+from [the claim and evidence register](docs/testing/claim-evidence-matrix.md), and a
+test refuses a page that disagrees with the register or a count in this paragraph
+that disagrees with either. The Grafana screenshots in the dashboard record are
+operations evidence, what a running release showed; the proof dashboard is the
+index of what has and has not been proven.
 
 > [!IMPORTANT]
 > **What V1 is not.** Every real result above is one provider, one Windows host,
@@ -394,7 +399,7 @@ intention reads as a capability:
 | Worked cost example | [docs/cost/worked-example.md](docs/cost/worked-example.md) | Every figure synthetic and recomputed by the suite; confidence `none` and no figure for what anything costs |
 | Threat model and security baseline | [docs/security/README.md](docs/security/README.md) | Baseline accepted and machine-checked; deployed workloads carry the rendered pod-security settings and nothing here establishes that a running system is defended, and twelve risks are carried rather than reduced |
 | Deferred security risks | [docs/security/deferred-risks.md](docs/security/deferred-risks.md) | Twelve risks and six accepted exceptions; ten of the twelve block production use |
-| V1 proof dashboard | [docs/proof/dashboard.md](docs/proof/dashboard.md) | One generated page over the claim and evidence matrix: the certified, planned, deferred, and not-claimed counts, eleven capability groups with each claim's certification level, evidence class, provider, environment, record link, and limitation, and every claim V1 does not certify listed in full. It is produced by `python -m tools.proof_dashboard` and a test regenerates it, so it cannot state a status the register does not. It answers what has been proven; Grafana answers what is happening now |
+| V1 proof dashboard | [docs/proof/dashboard.md](docs/proof/dashboard.md) | One generated page over the claim and evidence matrix: the certified, planned, deferred, and not-claimed counts, a one-row-per-capability overview, fourteen capability groups that between them show every claim with its certification level, evidence class, provider, environment, record link, and limitation, and every claim V1 does not certify listed in full. It is produced by `python -m tools.proof_dashboard` and a test regenerates it, so it cannot state a status the register does not. It answers what has been proven; Grafana answers what is happening now |
 | Evidence records and templates | [docs/proof/README.md](docs/proof/README.md) | Four templates published, two of which have produced records, and no Sprint 3 record declares one; the full record index is in [docs/proof/README.md](docs/proof/README.md) |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published, which is a gap the baseline records |

@@ -10,6 +10,41 @@ once versioned releases begin.
 
 ### Changed
 
+- **The proof dashboard is reconciled with the clean-clone run and is now the
+  reviewer's index of V1.** [The page](docs/proof/dashboard.md) opens with a
+  five-step reading order and one row per capability -- its certified, planned,
+  deferred, and not-claimed counts, the strongest level its certified rows reached,
+  and the provider its rows name -- each linking to its section. The clean-clone
+  journey, which [`V1-S5-001-PR2`](docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md)
+  certified at `C2` and which had been on the page only as one of eight certified
+  claims counted and shown in no row, is a capability group with its ten records.
+  Two more groups are new: the contracts, scaffolding, and mock quick start, whose
+  strongest level is `C1`; and release and production use, which holds two
+  `not-claimed` rows and nothing else. Every one of the 58 claims is now shown under
+  exactly one of fourteen groups, `planned` rows beside the certified rows of their
+  capability, and the page says so in a sentence that changes if it stops being
+  true. The Grafana screenshots and the real-Prometheus record are labelled
+  operations evidence and stated not to be a proof state, and freshness expiry,
+  fleet comparison, continuous verification, and promotion gates are listed as not
+  built, not planned for V1, and not claims.
+
+  **The README's route into the page is now checked rather than trusted.**
+  [The dashboard suite](tests/testing/test_proof_dashboard.py) requires the link to
+  the dashboard in *What V1 proves* and in *Five minutes, in order*, holds the status
+  counts the README quotes and the number of capability groups it names to the
+  register, and requires every record the strongest-evidence table links to exist, to
+  be cited by a certified claim, and to be linked on the dashboard. It also
+  recomputes every overview row from its group's own register rows and drives every
+  link the page makes to itself back to a heading the page carries, which the
+  document link suite does not do because it skips fragments.
+
+  **What did not change.** The claim and evidence register is untouched: no status,
+  level, label, provider, or record moved, and the one row that differs from the
+  Sprint 4 dashboard's register is the clean-clone claim the earlier change
+  certified. The generator still holds no claim state and applies the same eleven
+  rules before rendering. No product behaviour changed. See
+  [the validation record](docs/proof/testing/v1-s5-002-pr2-validation.md).
+
 - **The README is now the five-minute reviewer path, and its first screen says what
   V1 is.** It opens with the reference-architecture positioning, the real LLM-serving
   capability, and one table of the strongest executed evidence -- local and Kubernetes

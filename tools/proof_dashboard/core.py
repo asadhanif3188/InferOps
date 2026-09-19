@@ -44,10 +44,12 @@ __all__ = [
     "level_counts",
     "link_from_dashboard",
     "load_record",
+    "named_providers",
     "provider_counts",
     "selection_findings",
     "status_counts",
     "statuses_by_id",
+    "strongest_level",
     "uncertified_claims",
 ]
 
@@ -99,10 +101,19 @@ class Finding:
     detail: str
 
 
-#: The capability groups, in the order the page shows them. The first ten are the
-#: ones a reviewer of this project asks about by name; the eleventh is how the
-#: other ten are governed, and it is here because a proof page that does not say
-#: who checks it is asking to be taken on trust.
+#: The capability groups, in the order the page shows them. The ten a reviewer of
+#: this project asks about by name come first, with the clean-clone journey placed
+#: after the two serving groups it repeats. Then the safe path, because a reviewer
+#: who ran the mock quick start should be able to find what it did and did not
+#: prove; then the two absences a reader expects most -- a release and a production
+#: platform -- as a group of their own, so neither can be missed in a long
+#: table; and last how the rest are governed, because a proof page that does not
+#: say who checks it is asking to be taken on trust.
+#:
+#: Every claim the register holds is named by exactly one group. That is checked,
+#: not assumed: a claim added to the register and named by no group is still counted
+#: in every total and is still shown in the table of what V1 does not claim if it is
+#: uncertified, and the page says how many certified claims it shows no row for.
 CAPABILITIES: Final[tuple[Capability, ...]] = (
     Capability(
         capability_id="real-serving",
@@ -113,6 +124,9 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
             "the-selected-runtime-serves-a-real-completion-in-a-cluster",
             "the-inference-api-serves-five-routes-with-explicit-adapter-selection",
             "a-mock-result-can-never-certify-real-runtime-behaviour",
+            "local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes",
+            "a-model-that-is-not-ready-is-a-canonical-error",
+            "an-unreachable-runtime-is-a-canonical-error",
         ),
     ),
     Capability(
@@ -125,6 +139,12 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
             "a-local-cluster-is-created-and-removed-without-residue",
             "kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed",
         ),
+    ),
+    Capability(
+        capability_id="clean-clone-reproduction",
+        name="Clean-clone reproduction",
+        question="Can a reviewer walk the whole V1 journey from a fresh clone?",
+        claim_ids=("a-reviewer-can-reproduce-v1-from-a-clean-clone",),
     ),
     Capability(
         capability_id="model-integrity",
@@ -165,6 +185,7 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
             "six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link",
             "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded",
             "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label",
+            "no-prompt-response-or-secret-reaches-a-log-or-a-metric",
             "an-alert-reaches-somebody",
         ),
     ),
@@ -198,6 +219,7 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
             "a-workload-manifest-that-omits-a-required-security-control-is-refused",
             "the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published",
             "the-rendered-network-policy-is-enforced-by-the-cluster",
+            "no-credential-or-model-artifact-enters-public-history",
             "a-deployed-inferops-workload-is-defended",
         ),
     ),
@@ -208,10 +230,35 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
         claim_ids=("multi-replica-serving-is-certified",),
     ),
     Capability(
-        capability_id="delivery-and-evidence",
-        name="Tests, continuous integration, and evidence",
-        question="Who checks the rows above, and where does the proof live?",
+        capability_id="contracts-and-quick-start",
+        name="Contracts, scaffolding, and the safe quick start",
+        question="What does the mock path prove, and what does it never prove?",
         claim_ids=(
+            "the-workload-contract-and-its-rejection-matrix-are-published",
+            "an-invalid-workload-document-is-refused-with-a-published-reason",
+            "the-workload-domain-parses-a-contract-document-into-typed-objects",
+            "a-workload-scaffold-is-generated-without-overwriting-anything",
+            "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout",
+            "the-mock-serving-path-identifies-itself-as-a-mock",
+            "deployment-values-derive-only-from-a-validated-document",
+            "the-platform-serves-a-workload-the-contract-describes",
+        ),
+    ),
+    Capability(
+        capability_id="release-and-production",
+        name="Release and production use",
+        question="Is there a release, and can somebody else run this in production?",
+        claim_ids=(
+            "a-v1-release-has-been-published",
+            "inferops-is-a-portable-production-platform",
+        ),
+    ),
+    Capability(
+        capability_id="delivery-and-evidence",
+        name="Ownership, tests, continuous integration, and evidence",
+        question="Who owns each resource, who checks the rows above, and where does the proof live?",
+        claim_ids=(
+            "no-resource-in-the-architecture-has-two-owners",
             "eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend",
             "the-default-lane-cannot-execute-a-real-model",
             "every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary",
@@ -402,6 +449,39 @@ def provider_counts(record: Mapping[str, Any]) -> dict[str, int]:
         if row["provider"] and row["provider"] != "not-applicable"
     ]
     return {provider: providers.count(provider) for provider in sorted(set(providers))}
+
+
+def strongest_level(rows: Sequence[Mapping[str, Any]]) -> str | None:
+    """The highest certification level any certified row in ``rows`` reached.
+
+    Only certified rows count, for the reason ``level_counts`` gives: a level beside
+    a claim that is not certified is not a level anybody reached. ``None`` when no
+    row is certified, so a group of absences shows no level rather than a low one.
+    """
+    reached = [
+        str(row["certificationLevel"])
+        for row in rows
+        if row["status"] == "certified" and row["certificationLevel"]
+    ]
+    if not reached:
+        return None
+    return max(reached, key=lambda level: _LEVEL_RANK.get(level, -1))
+
+
+def named_providers(rows: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Every provider the rows name, sorted, with ``not-applicable`` left out.
+
+    Counted over all of a group's rows and not only its certified ones: a
+    ``not-claimed`` row that names the provider it was measured on is part of where
+    the group's evidence came from.
+    """
+    return sorted(
+        {
+            str(row["provider"])
+            for row in rows
+            if row["provider"] and row["provider"] != "not-applicable"
+        }
+    )
 
 
 def grouped_claims(

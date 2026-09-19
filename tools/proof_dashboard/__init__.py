@@ -27,9 +27,11 @@ from .core import (
     label_counts,
     level_counts,
     load_record,
+    named_providers,
     provider_counts,
     selection_findings,
     status_counts,
+    strongest_level,
     uncertified_claims,
 )
 from .render import render_dashboard
@@ -48,9 +50,11 @@ __all__ = [
     "label_counts",
     "level_counts",
     "load_record",
+    "named_providers",
     "provider_counts",
     "render_dashboard",
     "selection_findings",
     "status_counts",
+    "strongest_level",
     "uncertified_claims",
 ]
