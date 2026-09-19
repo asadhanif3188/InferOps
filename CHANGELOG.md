@@ -8,6 +8,38 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Changed
+
+- **The README is now the five-minute reviewer path, and its first screen says what
+  V1 is.** It opens with the reference-architecture positioning, the real LLM-serving
+  capability, and one table of the strongest executed evidence -- local and Kubernetes
+  real inference, the clean-clone journey, the dashboard against a real Prometheus, the
+  load matrix and its degradation point, the pod-loss and unready-model experiments,
+  the estimated-only cost baseline, and the alert replay -- each with its evidence
+  label, its figures quoted from the record, and a link to it. It then gives a
+  five-step reading order, an ASCII architecture diagram with the three decisions
+  that shape it, prerequisites per path, the mock quick start with the commands and
+  results [the developer quick start](docs/developer-quick-start.md) recorded, the
+  authorization-gated real local path with the figures
+  [the clean-clone run](docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md)
+  carries, the Kubernetes path as the one clean-clone command that record executed,
+  a results table stating for each area what was and was not established, the
+  security boundary, the limitations, and a roadmap that says only what the claim
+  register already says. Mock, local real, estimated, and synthetic evidence are
+  labelled in every row, and the boxed statement of what V1 is not sits on the first
+  screen rather than at the end.
+
+  **What did not change.** The public entry-point table is kept whole, because the
+  claim and evidence register governs every link in it and a test refuses one that
+  neither list accounts for; its clean-clone row is updated from "implemented, not
+  executed" to the one complete run, and its pod-loss row now says 40 of the 41
+  requests dispatched in the outage were refused, which is what
+  [the record](docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md) counts.
+  No product behaviour changed and no certification level moved: every figure on the
+  page is quoted from a record made earlier, and the page says that where it and a
+  record disagree, the record is right. The reviewer checklist and its result are in
+  [the validation record](docs/proof/quickstart/v1-s5-002-pr1-validation.md).
+
 ### Added
 
 - **One workflow for the V1 journey from a clean clone, and a ledger of it.**
