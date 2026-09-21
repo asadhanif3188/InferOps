@@ -5,7 +5,7 @@
 | Status | **Accepted in part** |
 | Date proposed | 2026-09-11 |
 | Date accepted | 2026-09-11, for every decision except the Docker Desktop half of D5 |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | ADR 0001 D2, D5, and D6, in part; amends ADR 0004 D3 |
 | Superseded by | None |
 
@@ -387,4 +387,4 @@ correctly identified or refused: **nothing**. That needs a cluster.
 | R5 | The `kind` path will be largely unexecuted in V1 | Accepted | The reference host has no `kind` CLI. Implemented and tested `kind` checks will be reported as such, and unexecuted runs as not run |
 | R6 | A Docker Desktop cluster provisioned differently from the one observed may appear | Mitigated by design | Its node shape fails D5's second check and it is refused until observed and recorded |
 | R7 | The security baseline — threat `T-13`, the control `refuse-to-act-on-a-cluster-this-project-did-not-create` in the baseline and the control matrix, and exception `EX-02` — is worded against the superseded design | Open, and now due | The guard has since changed: both providers are covered and the Docker Desktop check binds a port, so the condition this row set for restating them is met |
-| R8 | No public maintainer roster exists | Open | This record has no named decision owner |
+| R8 | No public maintainer roster exists | **Resolved 2026-09-21** by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | The `repository-maintainer` role owns this record, assigned retrospectively |

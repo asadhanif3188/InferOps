@@ -5,7 +5,7 @@
 | Status | **Accepted in part** |
 | Date proposed | 2026-08-25 |
 | Date accepted | 2026-08-25, for D1 through D5 only |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | None |
 | Superseded by | [ADR 0012](ADR-0012-continuous-integration-service.md), in part, for D6 |
 

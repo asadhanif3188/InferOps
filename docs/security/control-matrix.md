@@ -252,10 +252,19 @@ Seven evidence owners are declared in
 uses five of them: contracts, environment, serving, platform, and security. A test
 refuses a control naming an owner the strategy does not declare.
 
-These are **roles, not people**. No public maintainer roster or `CODEOWNERS` file
-exists — a governance gap recorded in [CONTRIBUTING](../../CONTRIBUTING.md) — so an
-owner here identifies which area a control's evidence belongs to, not who signs it
-off. That is `D13` in the decision record, and it is explicitly not decided.
+These are **roles, not people**, and they are not sign-off authorities. An owner
+here identifies which area a control's evidence belongs to.
+
+Who signs off a control and its status was `D13` in the decision record and was
+undecided until 2026-09-21. It is decided now:
+[ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
+puts the `claim-evidence-sign-off` authority with the `repository-maintainer` role,
+so whoever merges the change that moves a control's status is accountable for that
+status being derived correctly. No roster of people is published, and under that
+record it will not be. None of this makes a control act: a status is still derived
+from the control's own verification and never asserted, nine controls still have no
+verification, and sign-off here is internal — no outside party has reviewed
+anything in this repository.
 
 ## The rules, and whether each is really enforced
 

@@ -5,7 +5,7 @@
 | Status | **Accepted** |
 | Date proposed | 2026-08-27 |
 | Date accepted | 2026-08-27 |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | ADR 0001 D3 and ADR 0001 D4 |
 | Superseded by | None |
 

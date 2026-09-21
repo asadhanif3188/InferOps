@@ -5,8 +5,9 @@
 | Status | **Accepted in part** |
 | Date proposed | 2026-08-26 |
 | Date accepted | 2026-08-26, for D1 through D12 only |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | None |
+| Amended by | [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md), 2026-09-21: D13 is decided |
 | Superseded by | None |
 
 > [!IMPORTANT]
@@ -34,9 +35,14 @@
 > posture in any sentence that is not denying it. Four of the fifteen rules are
 > enforced by **review alone** and are marked as such.
 >
-> D13 and D14 are **not decided**: nobody signs off a control, and where a
-> pod-security property would be enforced once a rendering path exists is left to
-> ADR 0004's open ownership question rather than answered in passing here.
+> D13 was **not decided** and is decided now: `claim-evidence-sign-off` in
+> [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) puts
+> accountability for a control's status with the `repository-maintainer` role. That
+> names who is answerable for the derivation being right. It does not make any
+> control act, and none of the nine controls with no verification acquires one.
+> D14 stays **not decided**: where a pod-security property would be enforced once a
+> rendering path exists is left to ADR 0004's open ownership question rather than
+> answered in passing here.
 
 ## Decision status
 
@@ -54,7 +60,7 @@
 | D10 | A deferred risk is a register entry with a stated reason, not an omission | **Accepted** | Every deferred risk declares why, what would have to be true, and what is not claimed; a test requires all three |
 | D11 | An exception names a compensating control and its residual risk | **Accepted** | A test over every recorded exception |
 | D12 | The vocabulary of a security posture is reserved and may appear only in a denial | **Accepted** | A sentence-level test over these documents and over the committed data |
-| D13 | Who signs off a control and its evidence | **Not decided** | Nothing. There is no public maintainer roster to name |
+| D13 | Who signs off a control and its evidence | **Decided 2026-09-21**, by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | The `claim-evidence-sign-off` authority, committed in [`decision-authority.v1alpha1.json`](../../governance/decision-authority.v1alpha1.json) and checked by `tests/architecture/test_decision_authority.py` |
 | D14 | Whether a rendering path or an admission policy enforces a pod-security property | **Not decided, and not this record's to decide** | ADR 0004 leaves the equivalent ownership question open; this record does not fill it in |
 
 ## Context
@@ -354,16 +360,40 @@ document. A claim made in a word nobody listed, in a file that is not Markdown, 
 a slide survives it untouched, and `the-vocabulary-check-reads-markdown-only` records
 that as a limitation rather than leaving it implied.
 
-## D13 — Who signs off a control: not decided
+## D13 — Who signs off a control: decided on 2026-09-21
 
-No public maintainer roster or `CODEOWNERS` file exists, which is a governance gap
-already recorded in [CONTRIBUTING](../../../CONTRIBUTING.md) and
-[the repository governance document](../../governance/repository.md). The seven
-evidence owners this baseline assigns are the ones
-[the test strategy](../../testing/test-strategy.md) declares, and they are **roles**.
-An owner here identifies which area a control's evidence belongs to, not who signs it
-off. Naming a person is blocked on the same gap that blocks naming a reviewer, and
-inventing one would be worse than the gap.
+This record originally left `D13` undecided, and gave one reason: no public
+maintainer roster or `CODEOWNERS` file exists, so there was nobody to name.
+[ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) rejects that
+reason. The blocker was never a list of people; it was a decision about which role is
+accountable, and the repository already confers the only ability such a role needs.
+
+The answer is the `claim-evidence-sign-off` authority, held by the
+`repository-maintainer` role: **whoever merges the change that sets or moves a
+control's status is accountable for that status being derived correctly.** It is
+committed in
+[`decision-authority.v1alpha1.json`](../../governance/decision-authority.v1alpha1.json),
+explained in [the decision-authority document](../../governance/decision-authority.md),
+and a test refuses an unassigned owner anywhere in the decision set.
+
+Three things that answer does **not** change, and they are why deciding `D13` was
+cheap:
+
+- **A control's status is still derived, never asserted.** `D2` decides that, this
+  record's suite recomputes every status from the committed derivation table, and an
+  owner has no ability to set one by hand. Sign-off is accountability for the
+  derivation being right, not permission to overrule it.
+- **Nothing here is defended any better than it was.** Nine controls still have no
+  verification, the four review-only rules are still review-only, and no control in
+  this baseline has ever acted inside a serving system.
+- **Nobody outside this repository has reviewed anything.** Sign-off under ADR 0015
+  is internal by construction, and no assessment by an outside party has ever been
+  performed.
+
+The seven evidence owners this baseline assigns remain what they were: the ones
+[the test strategy](../../testing/test-strategy.md) declares, and **roles** that say
+which area a control's evidence belongs to. They were never sign-off authorities and
+ADR 0015 does not promote them into ones.
 
 ## D14 — Where a pod-security property is enforced: not decided here
 

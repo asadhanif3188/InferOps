@@ -5,7 +5,7 @@
 | Status | **Accepted in part** |
 | Date proposed | 2026-08-25 |
 | Date accepted | 2026-08-25, for D1 through D6 only |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | None |
 | Superseded by | None |
 
@@ -483,7 +483,7 @@ and the day an implementation exists this suite will not be sufficient.
 | R5 | No collector exists for the metrics these components will expose | **Closed** (D7, amended 2026-09-09) | An owner was chosen, a collector was rendered, a release installed it, and a real Prometheus scraped both InferOps jobs with the accepted correlation queries evaluated against what it held. `telemetry-collector` is `implemented`. A claim that the platform is *observable* stays unsupported: the series live in an `emptyDir` and go with the pod, no durable backend, dashboard server or alert routing path exists — a dashboard definition does, and nothing has imported it — and this is one run on `docker-desktop` with one replica of each tier |
 | R6 | Every service is ClusterIP, because the accepted cluster ships no ingress or load balancer | Open | External access is a port-forward. The contracts InferOps most needs to exercise remain unexercised |
 | R7 | The release's network policy is **not** enforced by the network plugin the observed clusters run | **Open, and now measured** | An executed experiment established that `kindnetd` does not apply one. The objects are created and inert. A policy that is not enforced is a comment, and this is a worse position than untested rather than a better one (`DR-04`, `EX-05`) |
-| R8 | No public maintainer roster exists | Open | This record has no named decision owner and cannot be formally approved by one |
+| R8 | No public maintainer roster exists | **Resolved 2026-09-21** by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | The `repository-maintainer` role owns this record, assigned retrospectively. No roster of people is published, and under ADR 0015 D7 that is a decision rather than a pending item |
 | R9 | The trust boundary map names five boundaries and three of them have no control at all | Open, and stated | The map could be read as coverage. It is labelled as a map in the record, the diagram, and the table |
 
 Open questions carried forward: whether a GitOps controller should replace the

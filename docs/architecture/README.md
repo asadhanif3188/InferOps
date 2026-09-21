@@ -1,7 +1,10 @@
 # Architecture and decision records
 
-Status: entry point established; seven decisions accepted in part, one accepted with a
-recorded exception, two accepted, and one accepted and later amended.
+Status: entry point established. Fifteen records: nine accepted in part, four
+accepted, one accepted with a recorded exception, and one accepted and later
+amended. Every one of them names an accountable decision owner, and none is
+unassigned. (This sentence described eleven records until 2026-09-21; it was not
+machine-checked and had not been updated since ADR 0011.)
 
 Accepted architecture decisions are indexed here with their status, date, decision
 owner, alternatives, consequences, compatibility impact, and supporting evidence.
@@ -33,6 +36,8 @@ still unbuilt: nothing turns a validated document into release values.
 | [Boundary review checklist](boundary-review-checklist.md) | The questions a reviewer applies to all of the above |
 | [Workload domain model](../domain/workload-domain-model.md) | The first component built under these boundaries, and the dependency rule it is held to |
 | [Security baseline](../security/README.md) | The threats these boundaries face, the controls that exist, and the risks V1 carries |
+| [Decision ownership and sign-off authority](../governance/decision-authority.md) | Who owns an accepted decision, who may amend one, who signs off a claim, and who approves a release |
+| [The V1 proof dashboard](../proof/dashboard.md) | What has been proven and what has not, as one generated page derived from the claim register |
 
 ## Decision records
 
@@ -52,6 +57,7 @@ still unbuilt: nothing turns a validated document into release values.
 | [0012](decisions/ADR-0012-continuous-integration-service.md) | Continuous-integration service for the default lane | Accepted in part | 2026-09-12 | [Change validation](../proof/testing/v1-s4-001-pr1-validation.md), and [the amendment's](../proof/testing/v1-s4-001-pr2-validation.md); one committed workflow runs the `default-checks` lane and a gate matrix is compared to it in both directions. Nine of its eleven gates have passed on the service and the two infrastructure gates added by the D2 amendment have not run there. D7 publishes the rules for a cluster-lane workflow and commits none; ADR 0005 D6's capable-runner half stays open |
 | [0013](decisions/ADR-0013-bounded-local-performance-observations.md) | Bounded local performance observations may be published; portable capacity may not | Accepted | 2026-09-14 | [Change validation](../proof/serving/v1-s4-004-pr1-validation.md); amends ADR 0004 D6 and the third project-boundary rule. The boundary flags and sentence are machine-checked in the records `tools.llm_load` and `tools.performance_scenarios` read and write; whether a figure is read as portable is review-only; the `capacity` lane and `sustained-throughput-and-capacity-under-load` stay deferred |
 | [0014](decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md) | The V1 cost calculation reaches the estimated basis, from bounded measured use | Accepted in part | 2026-09-15 | [Change validation](../proof/cost/v1-s4-005-pr1-validation.md); amends ADR 0007 D1, D2, D3, and D9 and clarifies D13. The basis, the price-source refusals, the evidence a measured class must name, the arithmetic, and the record shape are machine-checked on synthetic fixtures; D3's rules for taking usage from samples are enforced by `tools/cost_baseline` for the inputs it writes, [the V1 cost baseline](../proof/cost/v1-s4-005-pr2-cost-baseline.md), and review only for a hand-typed input. No cost figure is published |
+| [0015](decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | V1 decision ownership and sign-off authority rest with the repository maintainer role | Accepted | 2026-09-21 | [Change validation](../proof/architecture/v1-s5-003-pr1-validation.md); the register is machine-checked in both directions against the records on disk, every record's own metadata row is compared to it, and no decision record or governance document may still say this authority is unassigned. It amends ADR 0008 D13 and the `Decision owner` field of every earlier record. It decides accountability only: no claim, level, or evidence class moves, and fourteen of the fifteen owners are assigned retrospectively |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -76,9 +82,10 @@ passing; 0004 has since assigned the collector, the dashboard
 definition and the alert definition, and left the store, a dashboard server and
 alert routing open. In 0007, eleven decisions are accepted and two —
 which provider rate cards a comparison would use, and which component computes a cost
-record — are not. In 0008, twelve decisions are accepted and two — who signs off a
-control, and whether a renderer or an admission policy enforces a pod-security
-property — are not. In 0010, all nine decisions are accepted: `D3` was narrowed and
+record — are not. In 0008, thirteen decisions are accepted and one — whether a
+renderer or an admission policy enforces a pod-security property — is not; `D13`,
+who signs off a control, was the other and was decided on 2026-09-21 by
+[0015](decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md). In 0010, all nine decisions are accepted: `D3` was narrowed and
 `D9` accepted on 2026-09-01, designating `inference-api-surface.v1alpha1.json` as the
 canonical tested snapshot — explicitly not OpenAPI, not JSON Schema, and not an
 artifact in `contracts/`.
@@ -146,8 +153,12 @@ C0 to C2, and evidence retention that separates an expiring lane artifact from a
 committed certifying record. Its central rule — a mock may never certify real runtime
 behaviour — was already accepted in words; what this record adds is a mechanism, in
 committed data and a marker expression that a test compares against it in both
-directions. It configures **no** continuous integration: there is no workflow file in
-this repository, and a lane may claim automation only by naming one that exists.
+directions. It configured **no** continuous integration when it was accepted, and
+`D6` — which service runs the lanes, and what labels a capable runner — was left
+explicitly unmade. [0012](decisions/ADR-0012-continuous-integration-service.md) has
+since made the first half and committed a workflow file; the capable-runner half
+stays open. The rule 0005 added is unchanged and is the reason the distinction is
+worth keeping: a lane may claim automation only by naming a workflow that exists.
 
 0008 decides what V1 protects and from whom: the architecture's five trust boundaries
 adopted verbatim plus a sixth for publication, six pod-security properties and a
@@ -167,11 +178,17 @@ its thirty-eight controls are enforced by something and nine are not; twelve ris
 carried rather than reduced, ten of them blocking production use; six exceptions are
 recorded with a compensating control each; and the pod-security properties hold over
 five YAML files and two committed renders, read as files — a release has since been
-installed from those renders and no check here reads a pod that resulted. No secret
-scanner has been run and recorded. An image scanner and a dependency auditor have each
-been run once by hand and neither runs continuously, because no continuous-integration
-service is selected. No assessment by an outside party has ever been performed. Four
-of its fifteen rules are enforced by review alone.
+installed from those renders and no check here reads a pod that resulted. A secret
+scanner, an image scanner and a dependency auditor have each been run by hand and
+recorded, and all three are now gates in the committed default-lane workflow
+[0012](decisions/ADR-0012-continuous-integration-service.md) selected; what each
+recorded finding establishes is still only what was true on the day it was produced.
+No assessment by an outside party has ever been performed. Four of its fifteen rules
+are enforced by review alone. `D13` — who signs off a control and its evidence — was
+undecided here and was decided on 2026-09-21 by
+[0015](decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md); naming
+who is accountable makes no control act, and nine of its controls still have no
+verification.
 
 0007 decides how a V1 cost figure is produced and what it may be called: three bases
 of which only an allocation is reachable, allocation by reserved capacity rather than
@@ -230,6 +247,16 @@ Each record states its status, the date it was proposed, the date it was accepte
 it was, its decision owner, the alternatives that were compared, the consequences of
 the choice, its compatibility impact, its security considerations, and the evidence
 supporting it.
+
+Since [0015](decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md), the
+`Decision owner` field has a controlled form and is machine-checked: it names a role
+declared in
+[`decision-authority.v1alpha1.json`](../governance/decision-authority.v1alpha1.json),
+and `tests/architecture/test_decision_authority.py` refuses a record with no entry in
+that register, an entry with no record, an owner that is not a declared role, a
+placeholder, or a metadata row that disagrees with the data. That check exists because
+the field drifted in the least visible way available to it: fourteen records carried
+the identical placeholder for fourteen records' worth of time and nothing read it.
 
 A record is `Proposed` until reproducible evidence exists for the claims it makes.
 A record whose selection depends on runtime behaviour cannot be marked `Accepted`

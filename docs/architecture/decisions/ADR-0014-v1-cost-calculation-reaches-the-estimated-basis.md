@@ -5,7 +5,7 @@
 | Status | **Accepted in part** |
 | Date proposed | 2026-09-15 |
 | Date accepted | 2026-09-15, for D1, D2, D4, D5, and D6; D3 is accepted as a rule, half of it enforced, and D7 as a scope rule |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | None |
 | Amends | [ADR 0007](ADR-0007-inference-cost-method.md) D1, D2, D3, and D9, clarifies the scope of its D13, and amends the committed method data that carries them |
 | Superseded by | None |

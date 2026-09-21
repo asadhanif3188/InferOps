@@ -867,6 +867,14 @@
       "protects": "The alert definitions as an owned artifact: the inventory row the ADR 0004 D7 amendment of 2026-09-17 created is a repository artifact that survives every teardown, its handoff says that implemented means a checked definition and not a firing alert, and telemetry-backend still carries the receiver and the routing tree. And that the rendered rule files are files the pinned collector loads, by running that collector's own promtool over both of them.",
       "claims": [],
       "note": "The promtool check runs the binary out of the image the chart pins, against the committed renders, and establishes that the files load and that every expression parses in the engine that would evaluate them. It is not an evaluation and not a firing alert: nothing here starts a collector, installs a release, or reaches a cluster. It skips, loudly, where the image is not present locally -- including on a continuous-integration runner, because no workflow here pulls it."
+    },
+    {
+      "module": "tests/architecture/test_decision_authority.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "No V1 architectural decision is left without an accountable owner, and no document still says one is: every record under docs/architecture/decisions/ has exactly one entry in the committed decision-authority register and every entry names a record that exists, every owner is a declared role and none is a placeholder, every retrospective assignment says so in the record's own metadata row, each of the four authorities declares what it does not establish, and the retired vocabulary of the governance gap survives nowhere in the decision set or the governance documents except inside a code span quoting it.",
+      "claims": [],
+      "note": "It defends no published claim, and deliberately: decision ownership is accountability, and this project publishes no capability claim that rests on it. Exercising any of the four authorities changes no status, no certification level and no evidence class, so a row in the claim register would be asserting the opposite of what ADR 0015 decided."
     }
   ],
   "coverageGaps": [

@@ -211,7 +211,13 @@ Seven evidence owners are declared in the strategy data: contracts, architecture
 environment, serving, platform, security, and documentation. Each owns at least one
 claim, and a test refuses an owner who owns none.
 
-These are **roles, not people**. No public maintainer roster or `CODEOWNERS` file
-exists — a known governance gap recorded in [CONTRIBUTING](../../CONTRIBUTING.md) —
-so an owner here identifies which area a claim's evidence belongs to, not who signs
-it off. Naming a person is blocked on the same gap that blocks naming a reviewer.
+These are **roles, not people**, and they are not sign-off authorities: an owner
+here identifies which area a claim's evidence belongs to.
+
+Who signs off a claim against its evidence is a separate question, and since
+2026-09-21 it has an answer. The `claim-evidence-sign-off` authority in
+[ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
+sits with the `repository-maintainer` role. No roster of people is published, and
+under that record that is a decision rather than a gap. Sign-off is internal and
+changes nothing about strength: a certification level is reached by a record, and
+merging a change that moves a row does not move the evidence class underneath it.

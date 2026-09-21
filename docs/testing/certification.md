@@ -117,8 +117,11 @@ the retention periods, and what happens to a superseded record are in
 
 - It does not grant a level to anything. Levels are reached by records, and
   [the claim/test matrix](claim-test-matrix.md) says which claims currently hold one.
-- It does not define a process for disputing a level. There is no maintainer roster
-  to arbitrate one, which is a known governance gap recorded in
-  [CONTRIBUTING](../../CONTRIBUTING.md).
+- It does not define a process for disputing a level. Since
+  [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
+  there is an authority that would arbitrate one — the `repository-maintainer` role,
+  which holds `claim-evidence-sign-off` — but no procedure for raising a dispute, no
+  second holder of the role to escalate to, and no outside party involved at any
+  point. Naming who decides is not the same as defining how a disagreement is heard.
 - It does not describe integration certification for other projects. V1 has no second
   project and publishes no capability descriptor.

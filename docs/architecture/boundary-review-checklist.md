@@ -2,8 +2,13 @@
 
 Status: **accepted review convention**, in
 [ADR 0004](decisions/ADR-0004-component-and-ownership-boundaries.md), effective for
-changes merged after it. It is the human half of the architecture boundary; the
-mechanical half is `tests/architecture/test_resource_ownership.py`.
+changes merged after it. It is the human half of the architecture boundary. The
+mechanical half is five suites, not the one this line used to name:
+`tests/architecture/test_resource_ownership.py` for the inventory and the document
+beside it, `test_terraform_prerequisites.py` and `test_helm_chart.py` for each tool
+against its half of the ownership split, `test_local_cluster_provider_contract.py`
+for the provider boundary, and `test_decision_authority.py` for decision ownership
+and sign-off authority.
 
 Use it when a change touches components, ownership, deployment, telemetry, trust
 boundaries, or scope. A change that touches none of those does not need it.
@@ -38,6 +43,9 @@ for in writing rather than pass over.
       a caller without namespacing it?
 - [ ] **B3.** Is the set of places that know which adapter is live still exactly one?
 - [ ] **B4.** Does anything other than deployment rendering write chart values?
+      Deployment rendering is still unbuilt, so the honest answer today is that a
+      values file is written by hand; what this question is for is catching a
+      *second* writer appearing before the first one is built.
 - [ ] **B5.** Does the API reach the serving runtime over the cluster network, rather
       than in-process or over a shared volume?
 
@@ -57,6 +65,12 @@ for in writing rather than pass over.
 - [ ] **C4.** Is every new component, resource, or capability marked as implemented,
       planned, or deferred, with evidence cited only where it is implemented?
 - [ ] **C5.** Does anything in a cluster write into `docs/proof/`?
+- [ ] **C6.** If this change adds or moves a published claim, does the claim and
+      evidence register carry the row, and does the generated proof dashboard agree
+      with the register?
+- [ ] **C7.** If this change adds a behaviour under failure, upgrade, or load, is it
+      represented in the architecture's own flows rather than only in `tools/` and a
+      proof record?
 
 ## D. Scope
 
@@ -85,12 +99,35 @@ for in writing rather than pass over.
       identifier, generated local state, a model artifact, or unpublished planning
       material?
 
+## F. Decisions and ownership
+
+- [ ] **F1.** If this change adds a decision record, does it have an entry in
+      [`decision-authority.v1alpha1.json`](../governance/decision-authority.v1alpha1.json)
+      naming a declared role, and does its own `Decision owner` row say the same?
+- [ ] **F2.** If this change alters an accepted decision, does it use the repository's
+      amendment or supersession mechanism rather than rewriting the historical text?
+- [ ] **F3.** Does anything in this change describe an internal approval as an
+      external review, or let a sign-off raise a certification level or an evidence
+      class?
+
 ## What this checklist cannot do
 
-It cannot tell whether a diagram is still accurate after code lands under it. It no
-longer has to guess about the tools: Terraform and Helm both exist, and
-`tests/architecture/test_terraform_prerequisites.py` and
-`tests/architecture/test_helm_chart.py` compare each to the ownership inventory in
-both directions — but a suite reads files, and a file is not a cluster. The
-reconciliation of the implemented architecture against these records is now due
-rather than pending, and the diagram gap stays open by construction.
+It cannot tell whether a diagram is still accurate after code lands under it. That
+limit is the reason this section used to end by saying the reconciliation of the
+implemented architecture against these records was **due**. It was carried out on
+2026-09-21, and it found what a checklist with no mechanical half for prose was
+always going to let through: five statements in the system architecture that were
+true when written and had since become false, a diagram box contradicting the
+machine-checked inventory beside it, three committed artifacts acting with no
+ownership row, two whole capability classes — failure and recovery, and the
+claim-to-dashboard path — drawn nowhere, and fourteen decision records with no owner.
+
+None of that was caught by a test, because none of it is the kind of thing these
+tests read. The inventory suites compare data to data and data to a first table
+column; a paragraph beside the table can drift freely, and
+[the ownership document](resource-ownership.md) says so in its own words. Four
+questions were added here (**C6**, **C7**, **F1** through **F3**) to make the classes
+that drifted reviewable, and one register — decision ownership — moved from prose to
+a machine-checked file. **The diagram gap itself stays open by construction**: no
+test reads an ASCII box, and a reviewer answering **C7** is the only thing standing
+between a built capability and a diagram that does not mention it.

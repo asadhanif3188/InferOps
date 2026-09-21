@@ -103,6 +103,15 @@ decisions, capability descriptors — would need a contract that does not exist.
 contracts index records each of them as unpublished, and each will be added when the
 capability behind it exists rather than in advance.
 
+One clarification, added 2026-09-21 because a reader can take the line above further
+than it goes: a **cost record shape** does exist here, committed and machine-checked
+under [ADR 0014](decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md),
+and a repository tool computes one. What does not exist is a cost record crossing the
+boundary as a **contract**: nothing in `contracts/` describes one, no consumer reads
+one, and no cost figure is published. The same distinction applies to the dashboard
+and alert definitions — a committed artifact this project owns is not a published
+contract with somebody on the other side of it.
+
 ## What this document does not do
 
 - It does not name, schedule, or commit to any other project. "A gateway" and

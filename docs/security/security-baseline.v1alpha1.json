@@ -1809,7 +1809,7 @@
     {
       "questionId": "who-owns-security-verification",
       "question": "Which person, rather than which role, signs off a security control and its evidence?",
-      "whyNotAnswered": "There is no public maintainer roster or CODEOWNERS file. The seven evidence owners in the test strategy are roles, and this baseline uses them as roles. Naming a person is blocked on the same governance gap that blocks naming a reviewer."
+      "whyNotAnswered": "It is not answered because it is the wrong question, and ADR 0015 decided so on 2026-09-21. The accountable unit is a role: claim-evidence-sign-off sits with repository-maintainer, so whoever merges the change that moves a control's status is accountable for that status being derived correctly. No roster of people is published and none will be. The seven evidence owners in the test strategy stay what they were -- roles naming which area a result belongs to, and never sign-off authorities. What remains genuinely open is smaller and is recorded with ADR 0015 rather than here: the role has one holder, so author and signer are the same person, and no outside party has reviewed anything in this repository."
     },
     {
       "questionId": "where-does-admission-control-live",

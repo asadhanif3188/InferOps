@@ -27,7 +27,8 @@ artifacts are added to the corresponding indexes.
 | Runtime host for serving | Model and serving runtime selected in [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md); no accelerator and no recommended hardware tier selected | Accepted in part; a real model has served completions on CPU, on one Windows host, locally and through a Helm release on `docker-desktop` |
 | V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; unexecuted |
 | Security reporting | Public reports prohibited; private intake channel not yet published | Accepted prohibition; channel blocked |
-| Maintainers | Review required, but no public roster or `CODEOWNERS` file exists | Accepted requirement; roster pending |
+| Maintainers | Review required; the accountable unit is the `repository-maintainer` role, and no roster of people is published | [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) accepted; the role is the published unit, and a test refuses an unassigned decision owner |
+| Decision ownership and sign-off | Decision ownership, ADR acceptance and amendment, claim/evidence sign-off, and V1 release approval, all held by the `repository-maintainer` role | [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) accepted; committed in [`decision-authority.v1alpha1.json`](decision-authority.v1alpha1.json) and machine-checked |
 
 Accepted repository governance does not accept a technical design or prove a
 runtime. A proposal must remain labelled `Proposed` until its owner, alternatives,
@@ -51,11 +52,19 @@ not inaccessible sources.
 
 ## Ownership and changes
 
-Maintainers own repository policy and release approval. Contract owners and
-architecture decision owners will be named in their public artifacts when those
-areas are established. Consequential contract or architecture changes require an
-accepted decision record, compatibility analysis, appropriate fixtures/tests, and a
-changelog entry.
+Maintainers own repository policy and release approval. Since
+[ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md),
+architecture decision owners **are** named in their public artifacts: every record
+under [`docs/architecture/decisions/`](../architecture/decisions/) names the
+`repository-maintainer` role in its own metadata, and
+[the decision-authority register](decision-authority.md) separates decision
+ownership, acceptance and amendment, claim/evidence sign-off, and release approval.
+Fourteen of the fifteen owners were assigned retrospectively, which the register
+records in a field rather than leaving a reader to infer that fourteen records were
+re-reviewed in one change. A contract owner is not covered by that record and is
+still to be named when `contracts/` needs one. Consequential contract or architecture
+changes require an accepted decision record, compatibility analysis, appropriate
+fixtures/tests, and a changelog entry.
 
 Issue labels and branch protection are not claimed as configured until their remote
 state is verified. This PR documents conventions only and performs no remote
