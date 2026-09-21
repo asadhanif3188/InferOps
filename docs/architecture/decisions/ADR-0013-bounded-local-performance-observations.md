@@ -5,7 +5,7 @@
 | Status | **Accepted** |
 | Date proposed | 2026-09-14 |
 | Date accepted | 2026-09-14 |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | None |
 | Amends | [ADR 0004](ADR-0004-component-and-ownership-boundaries.md) D6, the third boundary rule in [the project boundaries](../project-boundaries.md), and the context of [ADR 0005](ADR-0005-test-ci-and-certification-strategy.md) that relies on it |
 | Superseded by | None |

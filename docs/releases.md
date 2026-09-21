@@ -29,7 +29,12 @@ No versioned release currently exists.
    supported. Mock or synthetic runs remain separately labelled.
 6. Review licenses, compatibility, upgrade/rollback notes, known limitations, and
    security findings.
-7. Obtain maintainer approval for the exact candidate commit.
+7. Obtain approval for the exact candidate commit from the `repository-maintainer`
+   role, which holds `v1-release-approval` under
+   [ADR 0015](architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md).
+   That approval is internal and covers architecture and governance only; it is not
+   an assessment by an outside party and does not make the release number mean more
+   than the first paragraph of this document says it means.
 8. Create an annotated `v1.0.0` tag only after all required gates pass, then publish
    release notes and immutable artifacts/checksums that actually exist.
 9. Verify published artifacts and links; document any release failure or rollback.

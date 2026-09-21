@@ -442,8 +442,12 @@ compare against and the exclusion list cannot quietly grow.
   experiment. They are not capacity, service-level objectives, availability
   figures, error budgets, recovery-time objectives, benchmarks, or costs.
 - The statuses here are the repository's own. No outside party has reviewed a
-  claim against its evidence, and no maintainer roster exists to arbitrate a
-  dispute — the same governance gap that stops an owner being named as a person.
+  claim against its evidence. Since 2026-09-21 an internal authority is named —
+  `claim-evidence-sign-off` sits with the `repository-maintainer` role under
+  [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) —
+  and that is accountability, not validation: the role has one holder, so author and
+  signer are the same person, and merging a change that sets a status leaves the
+  evidence underneath it exactly as strong as it was.
 - The `claim-evidence` template under docs/proof/templates/ has still produced
   no record. This matrix binds claims to evidence in a table, which is a weaker
   form than the one-claim-per-record document that template exists to enforce,

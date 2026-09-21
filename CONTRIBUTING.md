@@ -61,10 +61,15 @@ public-information safety, test evidence, security implications, and compatibili
 Exceptions for urgent security fixes must be documented in the pull request and
 reviewed after the fact.
 
-No public maintainer roster or `CODEOWNERS` file is published yet, so a review is
+No public roster of people is published, and since
+[ADR 0015](docs/architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
+that is a decision rather than a pending gap: the accountable unit is the
+`repository-maintainer` role, held by anyone able to merge into `main`. A review is
 requested by opening the pull request itself rather than by addressing a named
-reviewer. Publishing that roster is a known governance gap and must be resolved
-before external maintainers are added.
+reviewer, and [the decision-authority record](docs/governance/decision-authority.md)
+says who may accept a decision, sign off a claim, and approve a release. While that
+role has one holder, author and approver are the same person; that is recorded as an
+open risk there rather than described as a process it is not.
 
 Squash merge is preferred for a single cohesive change. A maintained commit series
 may use a merge commit when preserving independently meaningful commits helps review.

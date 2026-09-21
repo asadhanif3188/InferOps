@@ -5,7 +5,7 @@
 | Status | **Accepted in part** |
 | Date proposed | 2026-08-26 |
 | Date accepted | 2026-08-26, for D1 through D11 only |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | None |
 | Superseded by | None |
 | Amended by | [ADR 0014](ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md), 2026-09-15: D1, D2, D3, and D9; D13 clarified |

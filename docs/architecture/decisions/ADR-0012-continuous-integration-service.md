@@ -6,7 +6,7 @@
 | Date proposed | 2026-09-12 |
 | Date accepted | 2026-09-12, for D1 through D5 only |
 | Date amended | 2026-09-13, by `V1-S4-001-PR2`: D2 narrowed to what reaches a cluster, and D7 added |
-| Decision owner | Unassigned; no public maintainer roster exists yet |
+| Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | [ADR 0005](ADR-0005-test-ci-and-certification-strategy.md) D6, in part |
 | Superseded by | None |
 

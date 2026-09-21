@@ -1,0 +1,195 @@
+{
+  "$id": "https://inferops.io/governance/decision-authority.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "InferOps V1 decision ownership and sign-off authority",
+  "description": "Who is accountable for each accepted V1 architectural decision, who may accept or amend one, who signs off that a published claim matches its evidence, and who approves a V1 release. It is committed as data so that an unassigned owner is a test failure rather than a sentence nobody re-reads. It records accountability and nothing else: no entry here raises a certification level, changes an evidence class, or turns a documented, mock, synthetic, or estimated result into a real-runtime one.",
+  "decisionRef": "docs/architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md",
+  "documentRef": "docs/governance/decision-authority.md",
+  "governanceRef": "docs/governance/repository.md",
+  "decisionIndexRef": "docs/architecture/README.md",
+  "roles": [
+    {
+      "roleId": "repository-maintainer",
+      "name": "The repository maintainer role",
+      "heldBy": "Anyone able to merge a pull request into `main` in this repository.",
+      "conferredBy": "Write access to this repository, which the repository's own settings decide and no document here can grant.",
+      "publicRoster": false,
+      "holderCountToday": 1,
+      "whyNotAPerson": "A person named in a record goes stale the day they stop merging, and a record that names a person who no longer acts is worse than one that names the role that still does. The role is the long-lived unit; who holds it is repository state, not published prose."
+    }
+  ],
+  "authorities": [
+    {
+      "authorityId": "adr-decision-ownership",
+      "name": "Decision ownership",
+      "question": "Who is accountable for an accepted architectural decision continuing to describe the system?",
+      "heldBy": "repository-maintainer",
+      "exercisedBy": "Carrying the record: amending it when the implementation moves, or superseding it when the decision no longer holds.",
+      "doesNotEstablish": [
+        "that the owner independently re-derived the evidence the record cites",
+        "that the record's claims were reviewed by anyone outside this repository",
+        "that anything the record describes was observed running"
+      ]
+    },
+    {
+      "authorityId": "adr-acceptance-and-amendment",
+      "name": "Acceptance and amendment authority",
+      "question": "Who may accept, amend, or supersede a V1 architectural decision?",
+      "heldBy": "repository-maintainer",
+      "exercisedBy": "Approving and merging the pull request that carries the record or the amendment. The merge is the act; there is no separate approval artifact.",
+      "doesNotEstablish": [
+        "that the accepted decision is supported by evidence it does not cite",
+        "that a status may be raised without the evidence the status requires",
+        "that acceptance substitutes for the per-decision table a partial record has to carry"
+      ]
+    },
+    {
+      "authorityId": "claim-evidence-sign-off",
+      "name": "Claim and evidence sign-off",
+      "question": "Who signs that a published claim's status matches the evidence the register binds to it?",
+      "heldBy": "repository-maintainer",
+      "exercisedBy": "Merging the change that sets or moves a claim's status in the claim and evidence register, having read the record the row cites.",
+      "doesNotEstablish": [
+        "that the claim was reviewed by an outside party",
+        "that the evidence behind the claim changed class because it was signed",
+        "that a certification level moved; a level is reached by a record, never by an approval"
+      ]
+    },
+    {
+      "authorityId": "v1-release-approval",
+      "name": "Release approval",
+      "question": "Who approves a V1 release candidate, as far as architecture and governance are concerned?",
+      "heldBy": "repository-maintainer",
+      "exercisedBy": "Approving the exact candidate commit named in the release checklist, after the gates that checklist requires have passed.",
+      "doesNotEstablish": [
+        "that the released state was assessed by anyone outside this repository",
+        "that a version number is evidence of runtime, performance, or production fitness",
+        "that a gate which did not run may be reported as passed"
+      ]
+    }
+  ],
+  "ownershipBases": {
+    "assigned-retrospectively": "The record was accepted before this ownership model existed. The role takes accountability for the record going forward. Nobody re-read the historical evidence as part of the assignment, and the assignment is not a review of it.",
+    "assigned-at-acceptance": "The record was accepted under this ownership model, and the owner was named when it was accepted."
+  },
+  "decisionOwners": [
+    {
+      "decisionId": "ADR-0001",
+      "path": "docs/architecture/decisions/ADR-0001-local-development-environment.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0002",
+      "path": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0003",
+      "path": "docs/architecture/decisions/ADR-0003-workload-contract-schema-tooling.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0004",
+      "path": "docs/architecture/decisions/ADR-0004-component-and-ownership-boundaries.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0005",
+      "path": "docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0006",
+      "path": "docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0007",
+      "path": "docs/architecture/decisions/ADR-0007-inference-cost-method.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0008",
+      "path": "docs/architecture/decisions/ADR-0008-v1-security-baseline.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0009",
+      "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0010",
+      "path": "docs/architecture/decisions/ADR-0010-inference-api-compatibility-surface.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0011",
+      "path": "docs/architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0012",
+      "path": "docs/architecture/decisions/ADR-0012-continuous-integration-service.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0013",
+      "path": "docs/architecture/decisions/ADR-0013-bounded-local-performance-observations.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0014",
+      "path": "docs/architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-retrospectively"
+    },
+    {
+      "decisionId": "ADR-0015",
+      "path": "docs/architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md",
+      "owner": "repository-maintainer",
+      "assignedOn": "2026-09-21",
+      "basis": "assigned-at-acceptance"
+    }
+  ],
+  "transferRules": [
+    "The role is the owner; a change of holder transfers nothing, because no record names a holder. A new maintainer acquires every decision this file assigns to the role on the day they can merge, and loses it on the day they cannot.",
+    "While the role has one holder, a record is accepted by that holder and the merge is the whole act. This is stated rather than implied, because a single-holder approval is the weakest form of the four authorities and a reader is entitled to know which one they are looking at.",
+    "When the role has more than one holder, the maintainer who accepts or amends a record must not be its author. The review requirement in CONTRIBUTING already implies a second reader; this makes it explicit for a decision record, which is the class of change least likely to fail a test when it is wrong.",
+    "A future split of the four authorities across different roles is an amendment to this file and the record behind it, not a new convention adopted in passing. Nothing here reserves the authorities to one role permanently; it records that today they are held by one because there is one."
+  ],
+  "limits": [
+    "Sign-off under this model is internal. No outside party has reviewed a decision, a claim, or a release candidate in this repository, and merging a change is not an external review.",
+    "Assigning an owner to a record accepted before this model existed does not mean the owner re-derived that record's evidence. Every such entry carries the `assigned-retrospectively` basis for exactly that reason.",
+    "No authority here changes what a result may be used to claim. Certification levels are reached by records, evidence classes are set by the layer that produced the result, and an approval moves neither.",
+    "No public roster names who holds the maintainer role. That is deliberate under this model rather than pending: the role is the published unit. A reader who needs to know who merged a change reads the commit history, which is the only place this repository answers that.",
+    "This file records authority over decisions, claims, and releases. It confers no authority over anything in a running system, because nothing in this repository administers one."
+  ]
+}

@@ -8,7 +8,132 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Added
+
+- **Every V1 architectural decision now has an accountable owner, and no document
+  says otherwise.** Fourteen records carried the identical metadata row
+  `Decision owner: Unassigned; no public maintainer roster exists yet`, six more
+  documents named the same gap pointing at each other, and
+  [ADR 0008](docs/architecture/decisions/ADR-0008-v1-security-baseline.md) `D13` --
+  who signs off a control and its evidence -- was undecided with "there is no public
+  maintainer roster to name" as its whole support.
+  [ADR 0015](docs/architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
+  rejects that reason: the blocker was never a list of people, it was a decision
+  about which role is accountable, and the repository already confers the only
+  ability such a role needs. The owner is the `repository-maintainer` role -- anyone
+  able to merge into `main` -- and no person is named, which that record makes a
+  decision rather than a pending item.
+
+  **Four kinds of authority are named separately**, because they are separable even
+  though one role holds all four today: decision ownership, ADR acceptance and
+  amendment, claim/evidence sign-off, and V1 release approval. Each declares the
+  question it answers, how it is exercised, and what exercising it does **not**
+  establish. `D13` is answered by the third of them, `D14` is untouched and stays
+  undecided, and the three ADR risk rows that recorded the gap -- `ADR 0001 R7`,
+  `ADR 0004 R8`, `ADR 0011 R8` -- are resolved with what resolved them named.
+
+  **Fourteen of the fifteen owners are assigned retrospectively, and the register
+  says so in a field.** A change that gives fourteen records an owner on one day
+  looks, in a diff, exactly like a change that reviewed fourteen records on one day.
+  Nobody re-read those records' historical evidence.
+  [`decision-authority.v1alpha1.json`](docs/governance/decision-authority.v1alpha1.json)
+  carries a required `basis` on every entry, and
+  [the new suite](tests/architecture/test_decision_authority.py) fails if the
+  register and the record disagree about it in either direction.
+
+  **It is machine-checked, and what it cannot check is stated.** 181 checks hold
+  every record to exactly one entry and every entry to a record that exists, refuse a
+  placeholder owner, compare each record's own `Decision owner` row to the register,
+  require each authority to declare its limits, and refuse the retired vocabulary in
+  any decision record or any of fifteen governance documents -- allowing it only
+  inside a code span, and only in the two records that retire the sentence and cannot
+  say what changed without quoting it. Whether the model is a good one, whether the
+  holder is a suitable owner,
+  and whether accountability was ever exercised are review questions and no test
+  pretends to answer them. See
+  [the validation record](docs/proof/architecture/v1-s5-003-pr1-validation.md).
+
+  **Nothing this project claims changed.** No row of the claim register moved, no
+  certification level moved, no evidence class moved, the generated proof dashboard
+  is byte-identical, and no control became enforced. The default lane was run six times
+  across this branch and two of those runs failed on one unrelated loopback-socket
+  check under `tests/serving/`, in a module this change does not touch. Both
+  failures were runs that overlapped a second pytest process on the same host;
+  every run without one passed, including a final isolated run. All six are
+  published in
+  [the validation record](docs/proof/architecture/v1-s5-003-pr1-validation.md)
+  rather than the best of them. Sign-off here is internal: the
+  role has one holder, so author and approver are the same person, and no outside
+  party has reviewed a decision, a claim, or a release candidate in this repository.
+
+- **The architecture records describe the system that was actually built.**
+  [The system architecture](docs/architecture/system-architecture.md) gains two
+  sections for capability classes that existed and were drawn nowhere. **6. Failure
+  and recovery flow** draws three shapes provoked against a real release -- a serving
+  pod lost under load, a model that never becomes ready, and an upgrade that has to
+  roll back -- and says plainly that all the recovering is Kubernetes's, that the API
+  survives the runtime because of the deployment split, and that none of it is an
+  availability figure, a recovery-time objective, or an error budget. **7. Proof and
+  claim-evidence flow** draws the derived stage that section 5 stopped short of:
+  register, generator, generated page, and the test that regenerates and compares it.
+
+  Three artifacts that had been acting with no ownership row now have one -- the
+  committed continuous-integration workflow, the claim and evidence register, and the
+  generated proof dashboard page -- along with the model seed image, the second image
+  this project builds locally. The dashboard needed a row of its own rather than
+  sitting inside `evidence-records`, whose rule is that a record is never regenerated
+  by rerunning the thing it describes; the page is regenerated on every change, and
+  one row could not carry both rules.
+
+  [The boundary review checklist](docs/architecture/boundary-review-checklist.md)
+  gains five questions (`C6`, `C7`, `F1`, `F2`, `F3`), names all five suites that
+  form its mechanical half instead of one, and retires the sentence saying this
+  reconciliation was due. **The diagram gap stays open by construction**: no test
+  reads an ASCII box.
+
 ### Changed
+
+- **Nine published statements were true when written and had become false, and are
+  corrected in place with the correction stated.** The architecture's argument for
+  ASCII diagrams rested partly on there being "no continuous-integration lane to run
+  one in"; one has existed since 2026-09-12. Its telemetry diagram said the dashboard
+  definition was "never imported" and that "nothing has loaded" the alert
+  definitions, while the machine-checked inventory beside it recorded a throwaway
+  Grafana importing one and the pinned collector's `promtool` loading the other. Its
+  request flow said "every request in the one executed trial was single and
+  sequential", which stopped being true when the performance scenarios drove it at
+  concurrency 1, 2, and 4. It said components had served a request through this
+  architecture "once"; several hundred have been served since across declared load,
+  failure, and clean-clone experiments. The architecture index counted eleven records
+  when there were fourteen, said there was no workflow file four rows below its own
+  row for the decision that committed one, and said no secret scanner had been run
+  while all three scanners are gates in that workflow. The test inventory said twice
+  that no continuous-integration service is configured.
+
+  **None of the qualifiers attached to those sentences changed.** Every result is
+  still one provider, one Windows host, CPU, one replica of each tier, with the
+  multi-replica profile refused at the capacity gate. More executions do not widen a
+  claim: they are the same one setup, measured more times, and the corrected
+  sentences say so.
+
+- **Governance documentation agrees with the resolved authority model.**
+  [CONTRIBUTING](CONTRIBUTING.md), [repository governance](docs/governance/repository.md),
+  [the control matrix](docs/security/control-matrix.md),
+  [the claim/test matrix](docs/testing/claim-test-matrix.md),
+  [the certification document](docs/testing/certification.md),
+  [the claim and evidence matrix](docs/testing/claim-evidence-matrix.md) and its
+  register, and [the release process](docs/releases.md) stop describing the absent
+  roster as a pending gap. The "roles, not people" sections stay, because evidence
+  areas really are roles and were never sign-off authorities. The release checklist's
+  approval step now has somebody to satisfy it; the certification document still
+  records that naming who decides is not the same as defining how a disagreement is
+  heard, because no dispute procedure exists.
+
+- **The project boundaries note one thing a reader could take too far.** A cost
+  record *shape* exists here, committed and machine-checked under ADR 0014, while no
+  cost *contract* crosses the boundary: nothing in `contracts/` describes one and no
+  cost figure is published. The same distinction applies to the dashboard and alert
+  definitions.
 
 - **The proof dashboard is reconciled with the clean-clone run and is now the
   reviewer's index of V1.** [The page](docs/proof/dashboard.md) opens with a

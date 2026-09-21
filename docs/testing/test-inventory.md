@@ -45,15 +45,23 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are thirty-three, and they are listed in their own section rather than
+empty list. There are thirty-four, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
 
 Every module belongs to exactly one layer, and the layer decides the lane. The
 grouping below is the "CI test grouping" this story owes, and the honest form of
-it: **no continuous-integration service is configured**, every lane is run by
-hand, and a lane may claim automation only by naming a workflow file that exists.
+it. **This paragraph said "no continuous-integration service is configured" until
+2026-09-21**, which stopped being true when
+[ADR 0012](../architecture/decisions/ADR-0012-continuous-integration-service.md)
+selected one and committed
+[`.github/workflows/checks.yml`](../../.github/workflows/checks.yml). What is true
+now: the `default-checks` lane is run by that workflow, as eleven gates mapped to it
+in both directions by [the gate matrix](ci-gate-matrix.md); every other lane is still
+run by hand, no job has ever reached a cluster, and the rule that produced this
+sentence is unchanged -- a lane may claim automation only by naming a workflow file
+that exists.
 
 | Lane | Layers inventoried in it | Marker expression to run it | Needs |
 |---|---|---|---|
@@ -103,7 +111,7 @@ read a WorkloadContract.
 
 ### `architecture-inventory` — [`tests/architecture/`](../../tests/architecture/)
 
-Twenty-one modules. The committed ownership inventory against the documents describing
+Twenty-two modules. The committed ownership inventory against the documents describing
 it; the local cluster provider contract against its document, the ownership
 inventory, the guard functions in `lib.sh`, and the Terraform module; every module under `src/inferops/` read for the imports the dependency rule
 forbids; the cluster and release lifecycle scripts read for the safety rules
@@ -215,14 +223,14 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Thirty-three suites protect something no row of the claim matrix names. (This sentence
+Thirty-four suites protect something no row of the claim matrix names. (This sentence
 said twenty-four while the table below held twenty-five rows; `V1-S4-003-PR1` added
 the twenty-sixth row and corrected it. `V1-S4-004-PR1` added the twenty-seventh and
 first left this sentence at twenty-six; its review corrected it. `V1-S4-004-PR2` added
 the twenty-eighth, and `V1-S4-006-PR1` the twenty-ninth. It drifted again: by
 `V1-S5-001-PR1` the table held thirty-one rows while this sentence said thirty. That
-change added the thirty-second and thirty-third and corrected it. The machine-checked
-count is the one in the opening section.) Each carries its
+change added the thirty-second and thirty-third and corrected it. `V1-S5-003-PR1` added the
+thirty-fourth. The machine-checked count is the one in the opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -230,6 +238,7 @@ matrix is complete needs to see them together.
 |---|---|
 | [`tests/architecture/test_cluster_lifecycle_safety.py`](../../tests/architecture/test_cluster_lifecycle_safety.py) | How the local cluster lifecycle scripts are written: scoped deletions, no ambient kubeconfig, no engine-wide prune, and thresholds that match the tier they enforce. The claim that a cluster is created and removed without residue belongs to the cluster-smoke layer, which runs the scripts instead of reading them |
 | [`tests/architecture/test_domain_dependency_boundary.py`](../../tests/architecture/test_domain_dependency_boundary.py) | The dependency rule. An architecture decision rather than a product claim — and the reason the `unit` layer is possible at all |
+| [`tests/architecture/test_decision_authority.py`](../../tests/architecture/test_decision_authority.py) | That no V1 architectural decision is left without an accountable owner, and that no document still says one is. Deliberately no claim: exercising any of the four authorities ADR 0015 declares changes no status, no certification level and no evidence class, so a row in the claim register would assert the opposite of what that record decided |
 | [`tests/adapters/test_llama_server_pins.py`](../../tests/adapters/test_llama_server_pins.py) | That a constant copied out of an accepted decision still matches its source. The claim about the artifact's hash is certified by a manual procedure, not by this module |
 | [`tests/api/test_api_lifecycle.py`](../../tests/api/test_api_lifecycle.py) | The order of start, drain, and stop. ADR 0010 chose a graceful drain over a remote-stop endpoint and the matrix has no row for it |
 | [`tests/api/test_local_real_composition.py`](../../tests/api/test_local_real_composition.py) | Real-only local wiring, readiness order, reverse cleanup, authorization refusal, and the tooling HTTP carrier through controlled seams; no real-runtime claim can rest on generated transport responses |
@@ -305,6 +314,10 @@ committed Markdown file, so the claim is defended by a module rather than by a h
 - **It is not a coverage percentage.** No line or branch coverage is measured,
   reported, or required anywhere in this repository, and this file does not
   introduce one.
-- **It configures no continuous integration.** The lane table above is a grouping
-  and a set of commands. There is no workflow file, and the strategy suite refuses
-  to let any lane claim otherwise.
+- **It does not configure continuous integration.** The lane table above is a
+  grouping and a set of commands. One workflow file exists, committed by
+  [ADR 0012](../architecture/decisions/ADR-0012-continuous-integration-service.md)
+  and running the `default-checks` lane; this inventory does not define it, and the
+  strategy suite still refuses to let any lane claim automation by naming a workflow
+  that does not exist. (This bullet said "there is no workflow file" until
+  2026-09-21.)
