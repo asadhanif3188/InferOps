@@ -760,7 +760,10 @@ def test_operations_evidence_is_labelled_and_kept_apart() -> None:
     """Grafana screenshots are what a release showed, not what a claim reached."""
     closing = PAGE.split("## What this page is not\n", 1)[1].split("\n## ", 1)[0]
     assert "**operations evidence**" in closing
-    assert "they are not a proof state" in " ".join(closing.split())
+    assert "neither is a proof state" in " ".join(closing.split())
+    # The page says the record is linked from the telemetry rows, so it must be.
+    telemetry = _section("Telemetry, dashboard, and alerts")
+    assert "](telemetry/v1-s4-002-pr2-dashboard-validation.md)" in telemetry
     for target in (
         "telemetry/v1-s4-002-pr2-screenshots/",
         "telemetry/v1-s4-002-pr2-dashboard-validation.md",
@@ -789,6 +792,65 @@ def test_later_assurance_features_are_listed_as_absent_and_not_as_planned() -> N
         assert feature in later, feature
     assert "`planned`" not in later
     assert "`certified`" not in later
+
+
+def test_the_fixed_prose_never_claims_a_single_provider() -> None:
+    """The first draft of this section did, two headings under a table naming two.
+
+    An independent review of this change found the page saying "One provider, one
+    host, one column" while its own overview listed `docker-desktop` and `kind`.
+    The check is scoped to the page's own fixed prose: a register row saying "One
+    provider, `docker-desktop`" is that result's true scope and must stay.
+    """
+    assert len(provider_counts(RECORD)) > 1, "the premise of this check has changed"
+    later = PAGE.split("## What a later version of this page might do", 1)[1]
+    flat = " ".join(later.split())
+    assert "one provider, one host" not in flat.lower()
+    assert "Every row names at most one provider" in flat
+    assert "no claim with more than one" in flat
+
+
+#: What the hosting service makes of each heading the page links, written out by
+#: hand from its published rule rather than produced by `anchor`. Without this the
+#: fragment check below compares `anchor` with itself, which an independent review
+#: of this change pointed out: a wrong slug rule would be wrong on both sides.
+HOSTED_SLUGS = {
+    "Five minutes, in order": "five-minutes-in-order",
+    "The capabilities at a glance": "the-capabilities-at-a-glance",
+    "Where V1 stands": "where-v1-stands",
+    "The capabilities": "the-capabilities",
+    "What V1 does not claim": "what-v1-does-not-claim",
+    "What this page is not": "what-this-page-is-not",
+    "Real serving": "real-serving",
+    "Kubernetes deployment": "kubernetes-deployment",
+    "Clean-clone reproduction": "clean-clone-reproduction",
+    "Model integrity": "model-integrity",
+    "Pod recovery": "pod-recovery",
+    "Rollback and release recovery": "rollback-and-release-recovery",
+    "Telemetry, dashboard, and alerts": "telemetry-dashboard-and-alerts",
+    "Performance evidence": "performance-evidence",
+    "Cost method": "cost-method",
+    "Security boundary": "security-boundary",
+    "Multi-replica serving": "multi-replica-serving",
+    "Contracts, scaffolding, and the safe quick start": (
+        "contracts-scaffolding-and-the-safe-quick-start"
+    ),
+    "Release and production use": "release-and-production-use",
+    "Ownership, tests, continuous integration, and evidence": (
+        "ownership-tests-continuous-integration-and-evidence"
+    ),
+}
+
+
+def test_the_slug_rule_agrees_with_slugs_written_out_by_hand() -> None:
+    for heading, slug in HOSTED_SLUGS.items():
+        assert anchor(heading) == slug, heading
+        assert f"# {heading}\n" in PAGE, heading
+    linked = set(re.findall(r"\]\(#([^)]+)\)", PAGE))
+    assert linked <= set(HOSTED_SLUGS.values()), sorted(
+        linked - set(HOSTED_SLUGS.values())
+    )
+    assert {capability.name for capability in CAPABILITIES} <= set(HOSTED_SLUGS)
 
 
 # --------------------------------------------- the README's route into the page
@@ -863,7 +925,13 @@ def _strongest_evidence_records() -> list[str]:
 
 
 def test_the_readme_strongest_evidence_table_links_records() -> None:
-    assert len(_strongest_evidence_records()) >= 8, _strongest_evidence_records()
+    """Pinned, not bounded. The first draft asked for "at least eight".
+
+    Nine rows, nine records. A row added to or taken out of the README's first
+    table has to change this number on purpose, which is the only way the
+    validation record's "nine" and the table can be kept in step.
+    """
+    assert len(_strongest_evidence_records()) == 9, _strongest_evidence_records()
 
 
 @pytest.mark.parametrize("record_path", _strongest_evidence_records())

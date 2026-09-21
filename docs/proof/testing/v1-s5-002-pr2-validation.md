@@ -107,7 +107,7 @@ the register had certified.
 | Certified claims in no group, shown as a number only | 7 | 0 |
 | Distinct evidence records linked | 41 | 61, every record the register cites |
 | Rules applied before the page renders | 11 | 11 |
-| Page size | 303 lines | 420 lines |
+| Page size | 303 lines | 422 lines |
 
 Between those two columns the clean-clone change made the number-only count 8; this
 change makes it 0.
@@ -179,25 +179,73 @@ of its own still holds.
 
 Run from the repository root, in Git Bash.
 
-| Command | Result |
-|---|---|
-| `python -m tools.proof_dashboard` | `OK       58 claims satisfy 11 dashboard rules` |
-| `python -m tools.proof_dashboard --json` | `[]`, exit 0 |
-| `python -m tools.proof_dashboard --check` | `OK       dashboard.md is what the register produces` |
-| `python -m pytest tests/testing/test_proof_dashboard.py -q` | `168 passed` |
-| `python -m pytest tests/testing/test_document_links.py -q` | `204 passed` |
-| `python -m pytest tests/testing tests/security -q` | `4743 passed` |
-| `uv run --locked ruff format --check .` | `462 files already formatted` |
-| `uv run --locked ruff check .` | `All checks passed!` |
-| `uv run --locked python -m mypy` | `Success: no issues found in 259 source files` |
-| `uv run --locked python -m pytest -q` | `11900 passed, 30 skipped, 14 deselected in 682.86s`, on the tree as first committed |
-| `git diff --check main...HEAD` | no output, exit 0 |
-| `git ls-files -z '*.md' \| xargs -0 grep -n '[[:blank:]]$'` | no match |
-| `git ls-files -z '*.md' \| xargs -0 grep -n "$(printf '\t')"` | no match |
+Both columns are real runs: the tree as first committed, and the tree after the
+independent review's corrections. Where they differ, the difference is the
+corrections and nothing else.
 
-The dashboard suite no longer skips anything. Its seven skips were the certified
-claims no group named, which the per-record link check passed over by name; every
-claim is now in a group, so every certified claim's records are resolved.
+| Command | First commit | After the review fixes |
+|---|---|---|
+| `python -m tools.proof_dashboard` | `OK       58 claims satisfy 11 dashboard rules` | same |
+| `python -m tools.proof_dashboard --json` | `[]`, exit 0 | same |
+| `python -m tools.proof_dashboard --check` | `OK       dashboard.md is what the register produces` | same |
+| `python -m pytest tests/testing/test_proof_dashboard.py -q` | `168 passed` | `170 passed` |
+| `python -m pytest tests/testing/test_document_links.py -q` | `204 passed` | `204 passed` |
+| `python -m pytest tests/testing tests/security -q` | `4743 passed` | `4745 passed` |
+| `uv run --locked ruff format --check .` | `462 files already formatted` | same |
+| `uv run --locked ruff check .` | `All checks passed!` | same |
+| `uv run --locked python -m mypy` | `Success: no issues found in 259 source files` | same |
+| `uv run --locked python -m pytest -q` | `11900 passed, 30 skipped, 14 deselected in 682.86s` | `11902 passed, 30 skipped, 14 deselected in 1183.48s` |
+| `git diff --check main...HEAD` | no output, exit 0 | no output, exit 0 |
+| `git ls-files -z '*.md' \| xargs -0 grep -n '[[:blank:]]$'` | no match | no match |
+| `git ls-files -z '*.md' \| xargs -0 grep -n "$(printf '\t')"` | no match | no match |
+
+The two tests the second column adds are the provider check and the slug table,
+both of which the review's findings produced.
+
+The dashboard suite no longer skips anything. On `main` it skipped eight times,
+once for each certified claim no group named, which the per-record link check
+passed over by name; every claim is now in a group, so every certified claim's
+records are resolved.
+
+## What an independent review found after the first commit
+
+The register was confirmed untouched, every figure in the table of what the page
+holds was recomputed and matched, and every command above reproduced its result.
+Five things did not survive, and the first is the kind of defect this page exists
+to prevent.
+
+- **The page said "One provider, one host, one column."** It said so in its new
+  last section, two headings under its own overview, which names `docker-desktop`
+  and `kind` for the Kubernetes deployment group. The register holds 15 claims
+  naming the first and 1 naming the second. The sentence now says what is
+  structurally true -- a row names at most one provider, and no claim was run on
+  two -- and a test refuses the phrase while the register names more than one.
+- **This record said the suite's seven skips were gone. There were eight.** Seven
+  is the Sprint 4 figure; the clean-clone change made it eight on `main`, which
+  the reviewer measured in a separate checkout (`117 passed, 8 skipped`) and which
+  the changelog entry in the same commit had right. Corrected above.
+- **The README table's record count was bounded, not pinned.** The test asked for
+  at least eight records while this record said nine. It now asks for nine.
+- **The fragment check compared the slug rule with itself.** Both the links and the
+  headings were slugged by `anchor`, so a wrong rule would have been wrong on both
+  sides. Twenty headings now have their slugs written out by hand from the hosting
+  service's published rule, `anchor` is held to them, and every fragment the page
+  links must be one of them. It is still not checked against a rendered page.
+- **The screenshots were said to be linked from the telemetry rows.** The rows link
+  the dashboard record, and the record links the screenshots. The page now says
+  that, and a test requires the record's link in the telemetry section.
+
+One more thing went wrong in the fixing, and it belongs here because it is the
+same mistake in the other direction. The first attempt at the provider check
+searched the **whole page** for the phrase "one provider" and failed immediately:
+a register row's own limitation reads "One provider, `docker-desktop`; one Windows
+host; ...", which is that result's true scope and exactly what the page is for. A
+check that would have forced that sentence out of a record's limitation would have
+been a worse defect than the one it was written for. The check is now scoped to the
+page's own fixed prose, where the overclaim was.
+
+The corrections cost two tests and no register change. Both columns of the command
+table above are real runs, and the second is this tree.
 
 ## Reviewer checklist
 
@@ -263,7 +311,7 @@ Parent story `V1-S5-002`, as far as this change can speak to it:
   which are judgements in `tools/proof_dashboard/core.py`. The suite checks that
   every claim is somewhere and nowhere twice; it does not check that a claim is
   under the heading a reader would look for it.
-- **The page is longer.** 420 lines where it was 303, and the clean-clone row links
+- **The page is longer.** 422 lines where it was 303, and the clean-clone row links
   ten records in one cell. The overview is what keeps it a five-minute page, and a
   reader who skips the overview has a longer read than before.
 - **The README checks are narrow.** They hold one sentence of counts, one phrase

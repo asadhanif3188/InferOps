@@ -355,8 +355,9 @@ an advertisement.
   and the record of
   [the dashboard asked of a real Prometheus](telemetry/v1-s4-002-pr2-dashboard-validation.md)
   are **operations evidence**: what a running release showed on one day, on
-  one host. They support the telemetry rows above and are linked from them;
-  they are not a proof state, and no panel in them is a certification.
+  one host. The record is linked from the telemetry rows above and the
+  screenshots are linked from the record; neither is a proof state, and no
+  panel in them is a certification.
 - **It is not a second source of truth.** Every status, level, label,
   provider, environment, record, and limitation above is read from
   [the register](../testing/claim-evidence-matrix.md) when the page is
@@ -408,9 +409,10 @@ an oversight.
 - **Freshness and expiry.** Nothing here ages a result. A record from
   2026-08 and one from 2026-09 are shown alike, and no row says when it would
   stop being believed.
-- **Fleet and environment comparison.** One provider, one host, one column.
-  A page that compared the same claim across providers, hosts, or clusters
-  would need results from more than one of each, and V1 has none.
+- **Fleet and environment comparison.** Every row names at most one
+  provider, and no claim here was run on two. A page that compared the same
+  claim across providers, hosts, or clusters would need that claim's result
+  from more than one of each, and V1 has no claim with more than one.
 - **Continuous verification.** No schedule re-runs a record and no lane
   reports that a certified claim still holds; every real result is a run
   somebody made by hand and wrote down.
