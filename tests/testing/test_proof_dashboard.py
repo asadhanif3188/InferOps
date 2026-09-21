@@ -11,9 +11,14 @@ page; that every statement, status, level, evidence label, provider, environment
 record, and limitation printed for a claim is the register's own value; that every
 claim the register does not certify appears in the page's own list of what V1 does
 not claim, so an absence cannot be dropped by leaving it out of a list; that every
-record the page links resolves from the page's own directory; and that every rule
+record the page links resolves from the page's own directory; that every rule
 the generator applies has been watched refusing a register, or a capability
-selection, corrupted to break it.
+selection, corrupted to break it; that the overview a reviewer reads first
+recomputes from each group's own rows and links only headings the page carries;
+and that the README's route into the page -- its link beside the strongest
+evidence, the counts it quotes, the number of groups it names, and the records its
+strongest-evidence table links -- agrees with the register rather than with the
+day the README was written.
 
 What it does not establish is that any statement on the page is true. It checks
 derivation. Whether a record says what the row citing it says it says is a reading,
@@ -24,6 +29,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -41,19 +47,23 @@ from tools.proof_dashboard import (
     label_counts,
     level_counts,
     load_record,
+    named_providers,
     provider_counts,
     render_dashboard,
     selection_findings,
     status_counts,
+    strongest_level,
     uncertified_claims,
 )
 from tools.proof_dashboard.core import link_from_dashboard
+from tools.proof_dashboard.render import anchor
 
 pytestmark = pytest.mark.docs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RECORD_PATH = REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha1.json"
 DASHBOARD_PATH = REPO_ROOT / "docs" / "proof" / "dashboard.md"
+README_PATH = REPO_ROOT / "README.md"
 
 RECORD: dict[str, Any] = json.loads(RECORD_PATH.read_text(encoding="utf-8"))
 CLAIMS: list[dict[str, Any]] = RECORD["claims"]
@@ -266,12 +276,61 @@ def test_the_page_states_how_many_certified_claims_it_shows_no_row_for() -> None
         for row in CLAIMS
         if row["status"] == "certified" and row["claimId"] not in grouped
     ]
-    assert (
-        f"**{len(unshown)} certified claims appear on this page as a number only.**"
-        in PAGE
-    )
+    if unshown:
+        assert (
+            f"**{len(unshown)} certified claims appear on this page as a number only.**"
+            in PAGE
+        )
+    else:
+        assert f"**Every one of the {len(CLAIMS)} claims is shown as a row.**" in PAGE
+        assert "appear on this page as a number only" not in PAGE
     for row in unshown:
         assert row["statement"].replace("|", r"\|") not in PAGE, row["claimId"]
+
+
+def test_every_claim_in_the_register_is_named_by_one_capability_group() -> None:
+    """True today, and the sentence on the page that says so depends on it.
+
+    This is a check on the grouping rather than a rule of the generator. A claim
+    added to the register and named by no group would not corrupt the page -- it
+    would be counted, and listed under what V1 does not claim if uncertified -- but
+    a reviewer would be reading a page that shows fewer rows than it counts, and
+    the release page is meant not to.
+    """
+    grouped = [
+        claim_id for capability in CAPABILITIES for claim_id in capability.claim_ids
+    ]
+    ungrouped = sorted(set(BY_ID) - set(grouped))
+    assert not ungrouped, {
+        "in the register and in no capability group": ungrouped,
+        "add each to a group in": "tools/proof_dashboard/core.py",
+    }
+
+
+def test_a_certified_claim_in_no_group_is_counted_aloud(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The other form of that sentence, rendered by taking a group away.
+
+    The page has two things it can say here and only one of them is on the
+    committed page, so the other is rendered from a selection with the clean-clone
+    group removed: the claim stays in every total, leaves every capability table,
+    and the page must say one certified claim is a number only.
+    """
+    from tools.proof_dashboard import render as render_module
+
+    without = [
+        (capability, rows)
+        for capability, rows in grouped_claims(RECORD)
+        if capability.capability_id != "clean-clone-reproduction"
+    ]
+    monkeypatch.setattr(render_module, "grouped_claims", lambda record: without)
+    page = render_module.render_dashboard(RECORD)
+    assert "**1 certified claims appear on this page as a number only.**" in page
+    assert "is shown as a row.**" not in page
+    assert "### Clean-clone reproduction\n" not in page
+    certified = sum(1 for row in CLAIMS if row["status"] == "certified")
+    assert f"**Certified: {certified} of {len(CLAIMS)} claims.**" in page
 
 
 def test_the_not_claimed_section_counts_what_the_register_holds() -> None:
@@ -579,6 +638,330 @@ def test_a_promoted_claim_changes_the_page_it_would_render() -> None:
     row["evidenceRefs"] = ["docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md"]
     assert check_view(record) == []
     assert render_dashboard(record) != PAGE
+
+
+# ------------------------------------------------ the overview a reviewer reads first
+
+
+def _overview_rows() -> dict[str, list[str]]:
+    """The at-a-glance table, as cells, keyed by the capability name it links."""
+    section = PAGE.split("## The capabilities at a glance\n", 1)[1].split("\n## ", 1)[0]
+    rows: dict[str, list[str]] = {}
+    for line in section.splitlines():
+        if not line.startswith("| ["):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split(" | ")]
+        name = cells[0].split("](", 1)[0].lstrip("[")
+        rows[name] = cells
+    return rows
+
+
+def test_the_overview_has_one_row_for_every_capability_group() -> None:
+    rows = _overview_rows()
+    assert list(rows) == [capability.name for capability in CAPABILITIES]
+    assert f"{len(CAPABILITIES)} capability groups, each linking" in PAGE
+
+
+@pytest.mark.parametrize(
+    "capability", CAPABILITIES, ids=lambda capability: capability.capability_id
+)
+def test_every_overview_row_recomputes_from_the_groups_own_rows(
+    capability: Any,
+) -> None:
+    """Four counts, a level, and a provider, none of them typed in.
+
+    The overview is the table a reviewer with five minutes reads and the rest of
+    the page is the table behind it, so a disagreement between the two is the
+    exact drift this page exists to refuse.
+    """
+    shown = [BY_ID[claim_id] for claim_id in capability.claim_ids]
+    cells = _overview_rows()[capability.name]
+    for position, status in enumerate(
+        ("certified", "planned", "deferred", "not-claimed"), start=1
+    ):
+        assert cells[position] == str(
+            sum(1 for row in shown if row["status"] == status)
+        ), (capability.capability_id, status)
+
+    certified_levels = [
+        row["certificationLevel"] for row in shown if row["status"] == "certified"
+    ]
+    level = strongest_level(shown)
+    if certified_levels:
+        assert level == max(certified_levels, key=["C0", "C1", "C2"].index)
+        assert cells[5] == f"`{level}`"
+    else:
+        assert level is None
+        assert cells[5] == "—"
+
+    providers = sorted(
+        {row["provider"] for row in shown if row["provider"] != "not-applicable"}
+    )
+    assert named_providers(shown) == providers
+    assert cells[6] == (
+        ", ".join(f"`{provider}`" for provider in providers)
+        if providers
+        else "none named"
+    )
+
+
+def test_the_overview_counts_add_up_to_the_registers_totals() -> None:
+    """Every claim is in one group, so the columns sum to the status table."""
+    rows = _overview_rows().values()
+    for position, status in enumerate(
+        ("certified", "planned", "deferred", "not-claimed"), start=1
+    ):
+        assert sum(int(cells[position]) for cells in rows) == sum(
+            1 for row in CLAIMS if row["status"] == status
+        ), status
+
+
+def test_no_group_without_a_certified_row_shows_a_level() -> None:
+    """The promotion an overview makes by accident: a level beside an absence."""
+    rows = _overview_rows()
+    for capability in CAPABILITIES:
+        shown = [BY_ID[claim_id] for claim_id in capability.claim_ids]
+        if not any(row["status"] == "certified" for row in shown):
+            assert rows[capability.name][5] == "—", capability.capability_id
+    assert rows["Multi-replica serving"][1] == "0"
+    assert rows["Release and production use"][1] == "0"
+
+
+def test_every_link_the_page_makes_to_itself_lands_on_a_heading() -> None:
+    """The overview and the route are navigation, and navigation can break.
+
+    The document link suite skips fragments, so nothing else in the repository
+    would notice a capability renamed out from under its own overview row.
+    """
+    headings = {
+        anchor(line.lstrip("#").strip())
+        for line in PAGE.splitlines()
+        if line.startswith("#")
+    }
+    fragments = set(re.findall(r"\]\(#([^)]+)\)", PAGE))
+    assert fragments >= {anchor(capability.name) for capability in CAPABILITIES}
+    assert not fragments - headings, sorted(fragments - headings)
+
+
+def test_the_page_opens_with_a_route_a_reviewer_can_follow() -> None:
+    route = PAGE.split("## Five minutes, in order\n", 1)[1].split("\n## ", 1)[0]
+    for fragment in (
+        "#the-capabilities-at-a-glance",
+        "#the-capabilities",
+        "#what-v1-does-not-claim",
+        "#where-v1-stands",
+        "#what-this-page-is-not",
+    ):
+        assert f"]({fragment})" in " ".join(route.split()), fragment
+    assert PAGE.index("## Five minutes, in order") < PAGE.index("## Where V1 stands")
+
+
+def test_operations_evidence_is_labelled_and_kept_apart() -> None:
+    """Grafana screenshots are what a release showed, not what a claim reached."""
+    closing = PAGE.split("## What this page is not\n", 1)[1].split("\n## ", 1)[0]
+    assert "**operations evidence**" in closing
+    assert "neither is a proof state" in " ".join(closing.split())
+    # The page says the record is linked from the telemetry rows, so it must be.
+    telemetry = _section("Telemetry, dashboard, and alerts")
+    assert "](telemetry/v1-s4-002-pr2-dashboard-validation.md)" in telemetry
+    for target in (
+        "telemetry/v1-s4-002-pr2-screenshots/",
+        "telemetry/v1-s4-002-pr2-dashboard-validation.md",
+    ):
+        assert f"]({target})" in closing, target
+        assert (DASHBOARD_PATH.parent / target).exists(), target
+
+
+def test_later_assurance_features_are_listed_as_absent_and_not_as_planned() -> None:
+    """Freshness, fleet comparison, continuous verification, promotion gates.
+
+    They are named so that their absence reads as a decision. They must not read
+    as a roadmap: the register is the only place a `planned` state comes from.
+    """
+    later = PAGE.split(
+        "## What a later version of this page might do, and V1 does not\n", 1
+    )[1]
+    flat = " ".join(later.split())
+    assert "None is built, none is planned for V1, none is a claim" in flat
+    for feature in (
+        "**Freshness and expiry.**",
+        "**Fleet and environment comparison.**",
+        "**Continuous verification.**",
+        "**Promotion gates.**",
+    ):
+        assert feature in later, feature
+    assert "`planned`" not in later
+    assert "`certified`" not in later
+
+
+def test_the_fixed_prose_never_claims_a_single_provider() -> None:
+    """The first draft of this section did, two headings under a table naming two.
+
+    An independent review of this change found the page saying "One provider, one
+    host, one column" while its own overview listed `docker-desktop` and `kind`.
+    The check is scoped to the page's own fixed prose: a register row saying "One
+    provider, `docker-desktop`" is that result's true scope and must stay.
+    """
+    assert len(provider_counts(RECORD)) > 1, "the premise of this check has changed"
+    later = PAGE.split("## What a later version of this page might do", 1)[1]
+    flat = " ".join(later.split())
+    assert "one provider, one host" not in flat.lower()
+    assert "Every row names at most one provider" in flat
+    assert "no claim with more than one" in flat
+
+
+#: What the hosting service makes of each heading the page links, written out by
+#: hand from its published rule rather than produced by `anchor`. Without this the
+#: fragment check below compares `anchor` with itself, which an independent review
+#: of this change pointed out: a wrong slug rule would be wrong on both sides.
+HOSTED_SLUGS = {
+    "Five minutes, in order": "five-minutes-in-order",
+    "The capabilities at a glance": "the-capabilities-at-a-glance",
+    "Where V1 stands": "where-v1-stands",
+    "The capabilities": "the-capabilities",
+    "What V1 does not claim": "what-v1-does-not-claim",
+    "What this page is not": "what-this-page-is-not",
+    "Real serving": "real-serving",
+    "Kubernetes deployment": "kubernetes-deployment",
+    "Clean-clone reproduction": "clean-clone-reproduction",
+    "Model integrity": "model-integrity",
+    "Pod recovery": "pod-recovery",
+    "Rollback and release recovery": "rollback-and-release-recovery",
+    "Telemetry, dashboard, and alerts": "telemetry-dashboard-and-alerts",
+    "Performance evidence": "performance-evidence",
+    "Cost method": "cost-method",
+    "Security boundary": "security-boundary",
+    "Multi-replica serving": "multi-replica-serving",
+    "Contracts, scaffolding, and the safe quick start": (
+        "contracts-scaffolding-and-the-safe-quick-start"
+    ),
+    "Release and production use": "release-and-production-use",
+    "Ownership, tests, continuous integration, and evidence": (
+        "ownership-tests-continuous-integration-and-evidence"
+    ),
+}
+
+
+def test_the_slug_rule_agrees_with_slugs_written_out_by_hand() -> None:
+    for heading, slug in HOSTED_SLUGS.items():
+        assert anchor(heading) == slug, heading
+        assert f"# {heading}\n" in PAGE, heading
+    linked = set(re.findall(r"\]\(#([^)]+)\)", PAGE))
+    assert linked <= set(HOSTED_SLUGS.values()), sorted(
+        linked - set(HOSTED_SLUGS.values())
+    )
+    assert {capability.name for capability in CAPABILITIES} <= set(HOSTED_SLUGS)
+
+
+# --------------------------------------------- the README's route into the page
+
+README = README_PATH.read_text(encoding="utf-8")
+README_FLAT = " ".join(README.split())
+
+NUMBER_WORDS = {
+    11: "eleven",
+    12: "twelve",
+    13: "thirteen",
+    14: "fourteen",
+    15: "fifteen",
+    16: "sixteen",
+    17: "seventeen",
+    18: "eighteen",
+}
+
+
+def _readme_section(heading: str) -> str:
+    return README.split(f"## {heading}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_the_readme_links_the_page_beside_its_strongest_evidence() -> None:
+    """The acceptance criterion, as a check: a direct path, where the proof is."""
+    assert "](docs/proof/dashboard.md)" in _readme_section("What V1 proves")
+    assert "](docs/proof/dashboard.md)" in _readme_section("Five minutes, in order")
+    assert (REPO_ROOT / "docs" / "proof" / "dashboard.md").exists()
+
+
+def test_the_counts_the_readme_quotes_are_the_registers() -> None:
+    """The one sentence in the README that restates the page's totals.
+
+    Digits in prose are what drifts in this repository. The register moved from 41
+    certified to 42 when the clean-clone run was certified, and nothing but a
+    reader would have noticed the README still saying 41.
+    """
+    counts = status_counts(RECORD)
+    sentence = (
+        f"{len(CLAIMS)} claims, {counts['certified']} certified, "
+        f"{counts['planned']} planned, {counts['deferred']} deferred, and "
+        f"{counts['not-claimed']} that V1 states it does not have"
+    )
+    assert sentence in README_FLAT, sentence
+
+
+def test_the_readme_names_the_number_of_capability_groups_the_page_has() -> None:
+    written = NUMBER_WORDS[len(CAPABILITIES)]
+    assert f"{written} capability groups" in README_FLAT, written
+    others = [
+        word
+        for word in NUMBER_WORDS.values()
+        if word != written and f"{word} capability groups" in README_FLAT
+    ]
+    assert not others, others
+
+
+def _strongest_evidence_records() -> list[str]:
+    """Every repository record the README's strongest-evidence table links."""
+    table = [
+        line
+        for line in _readme_section("What V1 proves").splitlines()
+        if line.startswith("| ") and "](docs/proof/" in line
+    ]
+    return sorted(
+        {
+            target
+            for line in table
+            for target in re.findall(r"\]\((docs/proof/[^)#]+)", line)
+        }
+    )
+
+
+def test_the_readme_strongest_evidence_table_links_records() -> None:
+    """Pinned, not bounded. The first draft asked for "at least eight".
+
+    Nine rows, nine records. A row added to or taken out of the README's first
+    table has to change this number on purpose, which is the only way the
+    validation record's "nine" and the table can be kept in step.
+    """
+    assert len(_strongest_evidence_records()) == 9, _strongest_evidence_records()
+
+
+@pytest.mark.parametrize("record_path", _strongest_evidence_records())
+def test_every_record_the_readme_leads_with_is_cited_by_a_certified_claim(
+    record_path: str,
+) -> None:
+    """A row on the README's first screen resolves to a claim on the page.
+
+    The README's table is written by hand, which is the point of checking it: a
+    record linked there that no certified claim cites would be a capability shown
+    to a reviewer with no claim state behind it, in the one place the generator
+    cannot reach.
+    """
+    assert (REPO_ROOT / record_path).exists(), record_path
+    citing = [
+        row["claimId"]
+        for row in CLAIMS
+        if row["status"] == "certified" and record_path in row["evidenceRefs"]
+    ]
+    assert citing, {
+        "linked from the README and cited by no certified claim": record_path
+    }
+    relative = link_from_dashboard(record_path)
+    assert f"]({relative})" in PAGE, record_path
+
+
+def test_the_readme_does_not_lead_with_a_template_or_an_uncommitted_record() -> None:
+    for record_path in _strongest_evidence_records():
+        assert not record_path.startswith(f"{RECORD['templateRoot']}/"), record_path
+        assert record_path.startswith(f"{RECORD['evidenceRoot']}/"), record_path
 
 
 # ------------------------------------------------- the command line agrees with it

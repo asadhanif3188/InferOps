@@ -22,6 +22,52 @@ claim](#what-v1-does-not-claim) rather than summarised away. Every number on
 this page is counted from the register at render time; there is no field
 anywhere in this tool that a count could be typed into.
 
+## Five minutes, in order
+
+1. **Read the overview.** [The capabilities at a
+   glance](#the-capabilities-at-a-glance) is one row per capability: how many
+   of its claims are certified, planned, deferred, or not claimed, the
+   strongest level reached, and the provider the real results came from.
+2. **Open the capability you came for.** Each row of the overview links to
+   its section under [the capabilities](#the-capabilities), where every claim
+   is shown with its status, level, evidence class, provider and environment,
+   record, and the limitation that travels with it.
+3. **Follow a record.** Every certified row links the committed record under
+   `docs/proof/` that supports it. The record carries the commands, the
+   versions, the host, and what it does not establish; the row is a summary
+   of it and never more than it.
+4. **Read what is absent.** [What V1 does not claim](#what-v1-does-not-claim)
+   lists every claim that is not certified, derived from the register.
+5. **Read the boundary.** [Where V1 stands](#where-v1-stands) says what each
+   status, level, and evidence label may and may not be read as, and
+   [what this page is not](#what-this-page-is-not) says what the page itself
+   cannot tell you.
+
+## The capabilities at a glance
+
+14 capability groups, each linking to its own section below.
+Every count is the group's own rows, and *strongest level* is the highest
+level any of its certified rows reached; a group with no certified row shows
+none. A provider is named only where a row names one, and a result on one
+provider certifies that provider alone.
+
+| Capability | Certified | Planned | Deferred | Not claimed | Strongest level | Provider named |
+|---|---|---|---|---|---|---|
+| [Real serving](#real-serving) | 5 | 2 | 0 | 0 | `C2` | `docker-desktop` |
+| [Kubernetes deployment](#kubernetes-deployment) | 4 | 0 | 0 | 0 | `C2` | `docker-desktop`, `kind` |
+| [Clean-clone reproduction](#clean-clone-reproduction) | 1 | 0 | 0 | 0 | `C2` | `docker-desktop` |
+| [Model integrity](#model-integrity) | 4 | 0 | 0 | 0 | `C2` | `docker-desktop` |
+| [Pod recovery](#pod-recovery) | 2 | 0 | 0 | 0 | `C2` | `docker-desktop` |
+| [Rollback and release recovery](#rollback-and-release-recovery) | 1 | 0 | 0 | 0 | `C2` | `docker-desktop` |
+| [Telemetry, dashboard, and alerts](#telemetry-dashboard-and-alerts) | 6 | 1 | 0 | 1 | `C2` | `docker-desktop` |
+| [Performance evidence](#performance-evidence) | 3 | 0 | 1 | 0 | `C2` | `docker-desktop` |
+| [Cost method](#cost-method) | 2 | 0 | 0 | 1 | `C0` | none named |
+| [Security boundary](#security-boundary) | 3 | 1 | 0 | 2 | `C0` | `docker-desktop` |
+| [Multi-replica serving](#multi-replica-serving) | 0 | 0 | 0 | 1 | — | `docker-desktop` |
+| [Contracts, scaffolding, and the safe quick start](#contracts-scaffolding-and-the-safe-quick-start) | 5 | 3 | 0 | 0 | `C1` | none named |
+| [Release and production use](#release-and-production-use) | 0 | 0 | 0 | 2 | — | none named |
+| [Ownership, tests, continuous integration, and evidence](#ownership-tests-continuous-integration-and-evidence) | 6 | 0 | 0 | 1 | `C0` | none named |
+
 ## Where V1 stands
 
 Four states, and the difference between the last three is the difference
@@ -92,7 +138,7 @@ holding one certified row and one measured absence is not one status.
 
 *Has a real model ever answered a request through this API?*
 
-**Tally:** 4 `certified`.
+**Tally:** 5 `certified`, 2 `planned`.
 
 | Claim | Status | Level | Evidence class | Provider and environment | Record | Limitation |
 |---|---|---|---|---|---|---|
@@ -100,6 +146,9 @@ holding one certified row and one measured absence is not one status.
 | A Helm release installed into the operator's Kubernetes cluster loads the pinned model from a Terraform-owned claim and serves a real completion through the release's own Service. | `certified` | `C2` | `local-real-cpu` | `docker-desktop`, `local-kubernetes` | [`environment/v1-s3-011-pr1-docker-desktop-paved-road.md`](environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [`serving/v1-s0-003-pr2-runtime-feasibility.md`](serving/v1-s0-003-pr2-runtime-feasibility.md) | One provider, `docker-desktop`; one Windows host; one Docker Desktop installation; CPU; one replica of each tier; one moment on 2026-09-12. Docker Desktop chooses its own Kubernetes version and node image and InferOps pins neither. Three inference requests were sent and their timings were deliberately not recorded. |
 | The InferOps inference API implements five ASGI routes and selects the mock or the real serving adapter explicitly, never by falling back. | `certified` | `C1` | `mock` | `repository-only`, no provider | [`serving/v1-s1-005-pr1-validation.md`](serving/v1-s1-005-pr1-validation.md), [`serving/v1-s1-005-pr2-validation.md`](serving/v1-s1-005-pr2-validation.md) | The published surface is five endpoints served in part. The distribution carries no server dependency; the repository's loopback-only HTTP carrier is tooling rather than a product. |
 | A mock, a simulation, or an estimate certifies at most `C1` however faithful it is, and the ceiling is enforced in the strategy data rather than asked for in review. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`testing/v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md) | The ceiling is enforced over the committed strategy data. It stops a layer certifying above its class; it cannot tell an honestly planned layer from one nobody will write. |
+| The local runtime troubleshooting guide's symptoms, commands, and quoted figures are checked against the repository and the evidence records they come from, and every diagnostic in it was executed on one host. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`serving/v1-s2-008-pr1-validation.md`](serving/v1-s2-008-pr1-validation.md) | The authorization-gated recoveries are described rather than run, and the check establishes that a command and a figure match the repository rather than that following the guide fixes anything. |
+| A model that is not ready produces a canonical error rather than an unhandled failure or a fabricated answer. | `planned` | — | `documented-unexecuted` | `capable-host`, no provider | none, and a `planned` claim may cite none | The unready-model experiment measured the real condition and found that no caller ever received `model-not-ready`: all eight completions came back `capability-unavailable` with condition `runtime-unreachable`. That is a measured fact about the deployed shape, and it is a reason this claim stays planned rather than a reason to promote it. |
+| A runtime that cannot be reached produces a canonical error rather than an unhandled failure. | `planned` | — | `documented-unexecuted` | `capable-host`, no provider | none, and a `planned` claim may cite none | The mock layers show the API maps the condition to the right error. They cannot show the condition occurs, or that the runtime produces it in the way the mock's author imagined. |
 
 ### Kubernetes deployment
 
@@ -113,6 +162,16 @@ holding one certified row and one measured absence is not one status.
 | `helm uninstall` removes every object the release owns and leaves the operator's cluster, its node, its storage class, and the Terraform-owned prerequisites intact. | `certified` | `C2` | `local-real-cpu` | `docker-desktop`, `local-kubernetes` | [`environment/v1-s3-011-pr2-scoped-cleanup.md`](environment/v1-s3-011-pr2-scoped-cleanup.md) | One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. |
 | The optional `kind` helper creates a local development cluster, runs a workload inside it, and removes it leaving no residue the verifier can find. | `certified` | `C2` | `local-real-cpu` | `kind`, `local-kubernetes` | [`environment/v1-s0-002-pr2-cluster-smoke.md`](environment/v1-s0-002-pr2-cluster-smoke.md) | One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. |
 | A symptom-oriented Kubernetes troubleshooting guide covering cluster, scheduling, memory, storage, model load, probe, Service, telemetry, Helm, and Terraform faults, with four separated cleanup radii, is published and machine-checked against the repository. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`environment/v1-s3-009-pr1-validation.md`](environment/v1-s3-009-pr1-validation.md), [`environment/v1-s3-011-pr1-docker-desktop-paved-road.md`](environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [`environment/v1-s3-011-pr2-scoped-cleanup.md`](environment/v1-s3-011-pr2-scoped-cleanup.md) | Every command is checked against the repository, which is a property of strings rather than of a cluster. The record that machine-checks the guide contacted no cluster, and states that when it was written the release half had never been run by anybody; `V1-S3-011` ran that half afterwards, on one Windows host, on `docker-desktop`, and those two records are cited beside it. |
+
+### Clean-clone reproduction
+
+*Can a reviewer walk the whole V1 journey from a fresh clone?*
+
+**Tally:** 1 `certified`.
+
+| Claim | Status | Level | Evidence class | Provider and environment | Record | Limitation |
+|---|---|---|---|---|---|---|
+| A reviewer starting from a clean clone reaches mock tests, model acquisition, local real inference, a Kubernetes deployment, telemetry, load, a failure experiment, and a scoped cleanup, with every manual step and the elapsed time recorded. | `certified` | `C2` | `local-real-cpu` | `docker-desktop`, `local-kubernetes` | [`environment/v1-s5-001-pr2-clean-clone-run.md`](environment/v1-s5-001-pr2-clean-clone-run.md), [`environment/v1-s5-001-pr2-attempt-1-ledger.v1alpha1.json`](environment/v1-s5-001-pr2-attempt-1-ledger.v1alpha1.json), [`environment/v1-s5-001-pr2-attempt-2-ledger.v1alpha1.json`](environment/v1-s5-001-pr2-attempt-2-ledger.v1alpha1.json), [`environment/v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json`](environment/v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json), [`environment/v1-s5-001-pr2-attempt-2-c2-smoke.json`](environment/v1-s5-001-pr2-attempt-2-c2-smoke.json), [`environment/v1-s5-001-pr2-c2-smoke.json`](environment/v1-s5-001-pr2-c2-smoke.json), [`environment/v1-s5-001-pr2-k8s-real-inference.json`](environment/v1-s5-001-pr2-k8s-real-inference.json), [`environment/v1-s5-001-pr2-telemetry-verification.json`](environment/v1-s5-001-pr2-telemetry-verification.json), [`environment/v1-s5-001-pr2-performance-record.v1alpha1.json`](environment/v1-s5-001-pr2-performance-record.v1alpha1.json), [`environment/v1-s5-001-pr2-recovery-record.v1alpha1.json`](environment/v1-s5-001-pr2-recovery-record.v1alpha1.json) | One complete run, on docker-desktop, on one Windows host, made by the author of the change that ran it -- after two attempts, at two earlier revisions, that stopped on defects this change fixed. One execution is not a distribution and does not establish that the journey completes reliably or on another host. No second engineer has repeated it; the story asks for that confirmation where available, and it is not available here. |
 
 ### Model integrity
 
@@ -152,7 +211,7 @@ holding one certified row and one measured absence is not one status.
 
 *What can be seen while it runs, and what reaches a person?*
 
-**Tally:** 6 `certified`, 1 `not-claimed`.
+**Tally:** 6 `certified`, 1 `planned`, 1 `not-claimed`.
 
 | Claim | Status | Level | Evidence class | Provider and environment | Record | Limitation |
 |---|---|---|---|---|---|---|
@@ -162,6 +221,7 @@ holding one certified row and one measured absence is not one status.
 | Six alerts are published, each with an owner, a severity, the condition, what a caller is experiencing, an evidence query repeated verbatim from an accepted correlation query, an operator action, a runbook link, a declared threshold basis, and what it will be quiet for; five conditions are deferred — three because nothing emits the signal, one because no chart here installs the exporter that would, and one because no error budget is decided anywhere in this project — and eight more are refused by a named rule. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`telemetry/v1-s4-008-pr1-alert-validation.md`](telemetry/v1-s4-008-pr1-alert-validation.md), [`telemetry/v1-s4-008-pr1-validation.md`](telemetry/v1-s4-008-pr1-validation.md) | The scenario fixtures are synthetic — every number in them was written by hand — and the evaluator is not Prometheus. The pinned collector's own `promtool` loads both rendered rule files, which is a smaller thing than evaluating them. No threshold is a figure this project measured. |
 | Five of the six alerts were replayed over the telemetry captured by three real `docker-desktop` experiments; one fired, over one capture, and every silence carries the reason it was silent. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`telemetry/v1-s4-008-pr1-alert-validation.md`](telemetry/v1-s4-008-pr1-alert-validation.md), [`serving/v1-s4-007-pr1-unready-model-recovery.md`](serving/v1-s4-007-pr1-unready-model-recovery.md) | The captures are real, from `docker-desktop`, and they step at 15 seconds; the replay over them is this repository's own evaluator, which its record classifies `local-static` — so this row is a `C0` claim about a replay, not a `C2` claim about a runtime. The 60-second step belongs to the synthetic fixtures rather than to these captures. One alert missed the same run by one evaluation, and that is recorded rather than tuned away. |
 | A prompt, a response, a provider error body, and a secret have no permitted placement in the committed telemetry catalog at all, and a tenant identifier, a correlation identifier, and any unbounded or measured value are excluded from metric labels. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`telemetry/v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md), [`telemetry/v1-s1-008-pr1-validation.md`](telemetry/v1-s1-008-pr1-validation.md) | Content capture is disabled at the API's metric-declaration and structured-record sinks and has no policy that could enable it. The first record cited predates every one of those sinks — when it was written nothing in this repository emitted a metric, a log record, or a span, and it checks the committed catalog alone; the second is where the sinks arrive. The check is over committed data and the sinks that read it. |
+| In a real run, no prompt, response, or secret reaches a log or a metric. | `planned` | — | `documented-unexecuted` | `capable-host`, no provider | none, and a `planned` claim may cite none | The mock-integration suite checks that forbidden content reaches neither sink. The claim requires `C2` and a real layer, and no record binds it. |
 | An operator is notified when an InferOps alert fires. | `not-claimed` | — | `documented-unexecuted` | `local-kubernetes`, no provider | none recorded | The gap is published in the alerts document rather than left to be discovered. |
 
 ### Performance evidence
@@ -193,7 +253,7 @@ holding one certified row and one measured absence is not one status.
 
 *What is enforced, and what is only rendered?*
 
-**Tally:** 3 `certified`, 2 `not-claimed`.
+**Tally:** 3 `certified`, 1 `planned`, 2 `not-claimed`.
 
 | Claim | Status | Level | Evidence class | Provider and environment | Record | Limitation |
 |---|---|---|---|---|---|---|
@@ -201,6 +261,7 @@ holding one certified row and one measured absence is not one status.
 | A committed manifest dropping a required workload security control is refused citing the rules it drops and no others, checked in both directions against nine fixtures that each drop one control. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`security/v1-s3-004-pr1-validation.md`](security/v1-s3-004-pr1-validation.md), [`environment/v1-s3-011-pr1-docker-desktop-paved-road.md`](environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | The validator reads YAML. It holds no credential, contacts no cluster, and stops nothing being applied; no admission control applies any of its rules to a pod. When the first record cited was written no release had been installed and none could be, because no API image was published; `V1-S3-011` installed one from those renders afterwards, which is the second record cited, and no check in either reads a pod that resulted. |
 | An image scanner and a dependency auditor were each run once by hand against the pinned runtime image and the committed lockfile at the committed severity threshold, and two CycloneDX bills of materials were published. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`security/v1-s2-006-pr1-validation.md`](security/v1-s2-006-pr1-validation.md) | One host, one day on 2026-09-03, against one vulnerability database version. A rerun tomorrow can find something today's run did not, so a green result dates rather than proves. The dependency scan covers Python distributions only. No provenance is verified and `DR-08` still carries that gap. The record describes itself as local real evidence in the older vocabulary; the strategy assigns the `security-scan` layer the `local-static` class with a `C0` ceiling, and this row follows the strategy, because reading a pinned image is not running one. |
 | The NetworkPolicy objects the chart renders restrict traffic in the clusters this project runs on. | `not-claimed` | — | `local-real-cpu` | `docker-desktop`, `local-kubernetes` | [`security/v1-s3-004-pr1-network-policy-enforcement.md`](security/v1-s3-004-pr1-network-policy-enforcement.md) | One host, one day, on Docker Desktop's Kubernetes rather than the cluster ADR 0001 accepted, and the record says substituting a cluster is a substitution rather than an equivalence. |
+| No credential and no model artifact enters this repository's public history. | `planned` | — | `documented-unexecuted` | `repository-only`, no provider | none, and a `planned` claim may cite none | A secret scanner has run once by hand from its published container image, over 134 commits, and found no leaks; the gate that installs the pinned release archive has since passed on the service, but that run is observed rather than recorded. The claim stays planned on the strength of one run. It is a recorded coverage gap in the test inventory: no pytest module scans history for a credential, and the suite that reads the scanner configuration checks only that it is committed, parses, and exempts things that exist. |
 | A deployed InferOps workload is authenticated, authorized, isolated, and defended. | `not-claimed` | — | `documented-unexecuted` | `local-kubernetes`, no provider | none recorded | The rendered pod-security settings are carried by workloads a release deployed. That is a property of the manifests, and no check reads a pod that resulted. |
 
 ### Multi-replica serving
@@ -213,14 +274,43 @@ holding one certified row and one measured absence is not one status.
 |---|---|---|---|---|---|---|
 | Two real serving replicas are certified to serve real inference in a cluster. | `not-claimed` | — | `local-real-cpu` | `docker-desktop`, `local-kubernetes` | [`environment/v1-s3-011-pr1-docker-desktop-paved-road.md`](environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | The refusal is the evidence. It is recorded in the paved-road record and it is not a weaker form of a certification. |
 
-### Tests, continuous integration, and evidence
+### Contracts, scaffolding, and the safe quick start
 
-*Who checks the rows above, and where does the proof live?*
+*What does the mock path prove, and what does it never prove?*
 
-**Tally:** 5 `certified`, 1 `not-claimed`.
+**Tally:** 5 `certified`, 3 `planned`.
 
 | Claim | Status | Level | Evidence class | Provider and environment | Record | Limitation |
 |---|---|---|---|---|---|---|
+| InferOps publishes a `WorkloadContract` `v1alpha1` schema with valid and invalid fixtures, versioning and compatibility rules, and a canonical rejection matrix. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`contracts/v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`contracts/v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) | The schema and its fixtures are files. No runtime component consumes the contract, so publishing it establishes nothing about what a deployment does with one. |
+| Every document the validator refuses is refused with a canonical error code, a stable rule identifier, and a field location that the contract document publishes. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`contracts/v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) | A refusal is a property of the validator reading a file. The controls behind it in the default lane are fixtures compared against a committed record of which rule each must produce. |
+| A contract document is parsed into typed domain objects with explicit contract-version handling, and seven semantic validation rules are applied to what parsing produced. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`domain/v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md), [`domain/v1-s1-001-pr2-validation.md`](domain/v1-s1-001-pr2-validation.md) | Parsing, version handling, and the semantic rules are implemented and tested; what the domain model describes and nothing builds is the rendering of a deployment from what they produce. The record that carries the immutable versions is the first of the two cited: the second records no environment table of its own, and its results section disagrees with its own evidence block on how many tests ran. |
+| The scaffolding command renders a workload project for the mock and synchronous profiles and refuses to overwrite a file that already exists. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`scaffolding/v1-s1-006-pr2-validation.md`](scaffolding/v1-s1-006-pr2-validation.md), [`scaffolding/v1-s1-006-independent-walkthrough.md`](scaffolding/v1-s1-006-independent-walkthrough.md) | The walkthrough was executed on one Windows host by an independent Codex reviewer rather than a human second engineer, and the record says so. The synchronous profile was generated and validated, never deployed. The change-validation record cited beside it states that it certifies no claim in the test matrix and moves no layer; what supports this row is the executed walkthrough, not that record. |
+| The published developer quick start was followed on a clean checkout and its mock workflow completed, and the authorization-gated real-runtime smoke it points at has been executed and recorded separately. | `certified` | `C1` | `mock` | `repository-only`, no provider | [`quickstart/v1-s1-009-pr1-validation.md`](quickstart/v1-s1-009-pr1-validation.md), [`scaffolding/v1-s1-006-independent-walkthrough.md`](scaffolding/v1-s1-006-independent-walkthrough.md), [`serving/v1-s1-real-runtime-closure.md`](serving/v1-s1-real-runtime-closure.md) | One Windows host, one executor, mock adapter throughout. The API was driven in process through ASGI and no network socket was opened. In the quick start's own record the real-runtime lane is seven skips, because the runtime settings were absent, and a skipped session is not a smoke run; the execution is the third record cited, which is a separate authorized run on a capable host. |
+| The mock serving path declares its own kind and refuses a model identity that is not mock-labelled, so a mock result cannot be mistaken for a real one. | `planned` | — | `documented-unexecuted` | `repository-only`, no provider | none, and a `planned` claim may cite none | The behaviour is implemented and exercised by the adapter and mock-integration layers. The claim and test matrix has not promoted it, and no evidence record binds it. |
+| Deployment values are derived only from a document that has passed validation. | `planned` | — | `documented-unexecuted` | `repository-only`, no provider | none, and a `planned` claim may cite none | Deployment rendering does not exist. The chart's values are written by an operator, not derived from a document. |
+| A workload described by a `WorkloadContract` document is served by the platform that document configures. | `planned` | — | `documented-unexecuted` | `capable-host`, no provider | none, and a `planned` claim may cite none | Every real run so far deployed the runtime from a feasibility manifest or from the Helm chart, not from a generated `WorkloadContract`. The mock layers show the API maps the call; they cannot show a document drove the deployment. |
+
+### Release and production use
+
+*Is there a release, and can somebody else run this in production?*
+
+**Tally:** 2 `not-claimed`.
+
+| Claim | Status | Level | Evidence class | Provider and environment | Record | Limitation |
+|---|---|---|---|---|---|---|
+| InferOps has published a versioned V1 release. | `not-claimed` | — | `documented-unexecuted` | `repository-only`, no provider | none recorded | Semantic versioning is an intention that begins when versioned releases begin. |
+| InferOps is a production-ready, portable inference platform someone can deploy for someone else. | `not-claimed` | — | `production-experience` | `repository-only`, no provider | none recorded | The certification levels define `C3` and `C4` so the ceiling is visible rather than implied. V1 claims nothing above `C2`, and `C4` is not reachable at all because there is no second project. |
+
+### Ownership, tests, continuous integration, and evidence
+
+*Who owns each resource, who checks the rows above, and where does the proof live?*
+
+**Tally:** 6 `certified`, 1 `not-claimed`.
+
+| Claim | Status | Level | Evidence class | Provider and environment | Record | Limitation |
+|---|---|---|---|---|---|---|
+| Every resource in the committed ownership inventory has exactly one owner, and since the chart and the Terraform configuration exist the inventory is compared with them in both directions. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`architecture/v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md), [`architecture/v1-s3-002-pr2-validation.md`](architecture/v1-s3-002-pr2-validation.md), [`architecture/v1-s3-010-pr1-validation.md`](architecture/v1-s3-010-pr1-validation.md) | When the first record cited was written there was no Terraform configuration and no Helm chart, so nothing compared the inventory to an implementation and its own dump counted nineteen planned rows against eight implemented. The committed inventory holds thirty-five resources today, thirty implemented, three deferred and two planned, and each implemented row cites the run that moved it. Deployment rendering is still not built. |
 | Eleven gates are committed as one workflow and as a matrix that maps each to the claims it defends or to a recorded reason it defends none, compared with the workflow in both directions; nine of them have passed on the selected service. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`testing/v1-s4-001-pr1-validation.md`](testing/v1-s4-001-pr1-validation.md), [`testing/v1-s4-001-pr2-validation.md`](testing/v1-s4-001-pr2-validation.md) | The first record cited committed nine gates and no job had then executed on the service; its one hosted run failed three jobs. The second is where the count reaches eleven and where the nine are read back from the service's public API on 2026-09-13. No log or artifact from those runs is promoted into a record and the logs expire, the two infrastructure gates have never run there, and two gates are not deterministic because a vulnerability database moves daily. |
 | The default test lane downloads no model and reaches no cluster, because every marker belonging to a layer that needs one is deselected by the committed default marker expression and a test compares that expression with the strategy in both directions. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`testing/v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md), [`testing/v1-s4-001-pr2-validation.md`](testing/v1-s4-001-pr2-validation.md) | The marker expression is what the first record cited establishes, and when it was written no continuous-integration lane existed at all. Helm and Terraform arrived with the second: they run in the lane only as subcommands that read files, and a check refuses anything else it can recognise. The lane is cheap and reproducible rather than hermetic — five gates consume the network — and three lanes still run entirely by hand. |
 | Evidence that certifies a claim is committed under `docs/proof/`, carries classification, provenance, environment, method, results, limitations, and authorisation, and is produced by a reviewed change rather than by a job. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`telemetry/v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md) | The cited record is from the day the four templates were published, when they had produced nothing. Two have produced records since — one experiment record and five raw-result records, counted by a suite from the declarations those records carry — and `environment` and `claim-evidence` still have none. This matrix does not change that: binding claims in a table is not the one-claim-per-record form the fourth template exists to enforce. |
@@ -260,6 +350,14 @@ an advertisement.
   nothing of a cluster. The operations view is
   [the inference operations dashboard](../telemetry/inference-operations-dashboard.md);
   the two answer different questions and neither substitutes for the other.
+- **Operations evidence is kept apart from it.** The Grafana screenshots in
+  [`telemetry/v1-s4-002-pr2-screenshots/`](telemetry/v1-s4-002-pr2-screenshots/)
+  and the record of
+  [the dashboard asked of a real Prometheus](telemetry/v1-s4-002-pr2-dashboard-validation.md)
+  are **operations evidence**: what a running release showed on one day, on
+  one host. The record is linked from the telemetry rows above and the
+  screenshots are linked from the record; neither is a proof state, and no
+  panel in them is a certification.
 - **It is not a second source of truth.** Every status, level, label,
   provider, environment, record, and limitation above is read from
   [the register](../testing/claim-evidence-matrix.md) when the page is
@@ -286,13 +384,13 @@ an advertisement.
 - The capability grouping is a reading. Which claims belong under *model
   integrity* rather than *real serving* is a judgement made in
   `tools/proof_dashboard/core.py`, and no check decides it.
-- **8 certified claims appear on this page as a number only.** They
-  belong to no capability group, and a certified claim is not repeated in the
-  table of what V1 does not claim, so they are counted in every total above
-  and shown in no row. Every claim V1 does **not** certify is shown as a row
-  whether a group names it or not. A reader who wants all of them in one
-  table wants [the register](../testing/claim-evidence-matrix.md), which this
-  page is a view of rather than a replacement for.
+- **Every one of the 58 claims is shown as a row.** Each
+  is named by exactly one capability group, so nothing on this page is
+  counted in a total and absent from every table. That is a property of the
+  grouping today, not a rule: a claim added to the register and named by no
+  group would still be counted in every total, would still appear under what
+  V1 does not claim if it were uncertified, and this sentence would change to
+  say how many certified claims had no row.
 - The bounded performance, recovery, and cost figures quoted in these rows
   are observations of declared local experiments under
   [ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
@@ -300,3 +398,25 @@ an advertisement.
   [ADR 0014](../architecture/decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md).
   They are not capacity, service-level objectives, availability figures,
   error budgets, recovery-time objectives, benchmarks, or costs.
+
+## What a later version of this page might do, and V1 does not
+
+These are features of an assurance dashboard in an organisation that runs
+many environments. None is built, none is planned for V1, none is a claim,
+and this list exists so that their absence is read as a decision rather than
+an oversight.
+
+- **Freshness and expiry.** Nothing here ages a result. A record from
+  2026-08 and one from 2026-09 are shown alike, and no row says when it would
+  stop being believed.
+- **Fleet and environment comparison.** Every row names at most one
+  provider, and no claim here was run on two. A page that compared the same
+  claim across providers, hosts, or clusters would need that claim's result
+  from more than one of each, and V1 has no claim with more than one.
+- **Continuous verification.** No schedule re-runs a record and no lane
+  reports that a certified claim still holds; every real result is a run
+  somebody made by hand and wrote down.
+- **Promotion gates.** No check reads this page to decide whether a change,
+  a release, or an environment may advance. The gates that exist are in
+  [the continuous-integration gate matrix](../testing/ci-gate-matrix.md) and
+  none of them consumes a proof state.

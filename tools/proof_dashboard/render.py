@@ -25,13 +25,15 @@ from .core import (
     labels_by_id,
     level_counts,
     link_from_dashboard,
+    named_providers,
     provider_counts,
     status_counts,
     statuses_by_id,
+    strongest_level,
     uncertified_claims,
 )
 
-__all__ = ["render_dashboard"]
+__all__ = ["anchor", "render_dashboard"]
 
 #: Printed where a register field is null. A status with no certification level
 #: has not reached one, and an em dash says that without inventing a value.
@@ -41,6 +43,22 @@ ABSENT: Final = "—"
 def _cell(text: str) -> str:
     """One table cell. A pipe inside a value would end the cell early."""
     return text.replace("|", r"\|")
+
+
+def anchor(heading: str) -> str:
+    """The fragment a Markdown renderer gives a heading, so the page can link itself.
+
+    Lower case, punctuation dropped, spaces to hyphens: the rule GitHub applies,
+    and the one every heading on this page is simple enough to satisfy. A heading
+    this cannot slug is a heading the overview cannot link, and the suite drives
+    every overview link back to a heading on the page.
+    """
+    kept = "".join(
+        character
+        for character in heading.lower()
+        if character.isalnum() or character in " -"
+    )
+    return kept.replace(" ", "-")
 
 
 def _table(header: Sequence[str], rows: Iterable[Sequence[str]]) -> list[str]:
@@ -112,6 +130,27 @@ def _heading(record: Mapping[str, Any]) -> list[str]:
         "claim](#what-v1-does-not-claim) rather than summarised away. Every number on",
         "this page is counted from the register at render time; there is no field",
         "anywhere in this tool that a count could be typed into.",
+        "",
+        "## Five minutes, in order",
+        "",
+        "1. **Read the overview.** [The capabilities at a",
+        "   glance](#the-capabilities-at-a-glance) is one row per capability: how many",
+        "   of its claims are certified, planned, deferred, or not claimed, the",
+        "   strongest level reached, and the provider the real results came from.",
+        "2. **Open the capability you came for.** Each row of the overview links to",
+        "   its section under [the capabilities](#the-capabilities), where every claim",
+        "   is shown with its status, level, evidence class, provider and environment,",
+        "   record, and the limitation that travels with it.",
+        "3. **Follow a record.** Every certified row links the committed record under",
+        "   `docs/proof/` that supports it. The record carries the commands, the",
+        "   versions, the host, and what it does not establish; the row is a summary",
+        "   of it and never more than it.",
+        "4. **Read what is absent.** [What V1 does not claim](#what-v1-does-not-claim)",
+        "   lists every claim that is not certified, derived from the register.",
+        "5. **Read the boundary.** [Where V1 stands](#where-v1-stands) says what each",
+        "   status, level, and evidence label may and may not be read as, and",
+        "   [what this page is not](#what-this-page-is-not) says what the page itself",
+        "   cannot tell you.",
         "",
     ]
 
@@ -275,6 +314,64 @@ def _capability_section(
     return lines
 
 
+def _overview(record: Mapping[str, Any]) -> list[str]:
+    """One row per capability group, every value counted from the group's rows.
+
+    This is the table a reviewer with five minutes reads, and so it is the table
+    most tempted to carry a colour. It carries counts instead: a group is four
+    numbers, not one status, and the strongest level shown is reached only by the
+    group's certified rows.
+    """
+    grouped = grouped_claims(record)
+    lines = [
+        "## The capabilities at a glance",
+        "",
+        f"{len(grouped)} capability groups, each linking to its own section below.",
+        "Every count is the group's own rows, and *strongest level* is the highest",
+        "level any of its certified rows reached; a group with no certified row shows",
+        "none. A provider is named only where a row names one, and a result on one",
+        "provider certifies that provider alone.",
+        "",
+    ]
+    rows: list[tuple[str, ...]] = []
+    for capability, shown in grouped:
+        tally = {
+            status: sum(1 for row in shown if row["status"] == status)
+            for status in ("certified", "planned", "deferred", "not-claimed")
+        }
+        level = strongest_level(shown)
+        providers = named_providers(shown)
+        rows.append(
+            (
+                f"[{capability.name}](#{anchor(capability.name)})",
+                str(tally["certified"]),
+                str(tally["planned"]),
+                str(tally["deferred"]),
+                str(tally["not-claimed"]),
+                f"`{level}`" if level else ABSENT,
+                ", ".join(f"`{provider}`" for provider in providers)
+                if providers
+                else "none named",
+            )
+        )
+    lines.extend(
+        _table(
+            (
+                "Capability",
+                "Certified",
+                "Planned",
+                "Deferred",
+                "Not claimed",
+                "Strongest level",
+                "Provider named",
+            ),
+            rows,
+        )
+    )
+    lines.append("")
+    return lines
+
+
 def _capabilities(record: Mapping[str, Any]) -> list[str]:
     lines = [
         "## The capabilities",
@@ -334,6 +431,26 @@ def _closing(record: Mapping[str, Any]) -> list[str]:
         for row in record["claims"]
         if row["status"] == "certified" and row["claimId"] not in grouped
     )
+    if unshown:
+        shown_note = [
+            f"- **{unshown} certified claims appear on this page as a number only.** They",
+            "  belong to no capability group, and a certified claim is not repeated in the",
+            "  table of what V1 does not claim, so they are counted in every total above",
+            "  and shown in no row. Every claim V1 does **not** certify is shown as a row",
+            "  whether a group names it or not. A reader who wants all of them in one",
+            "  table wants [the register](../testing/claim-evidence-matrix.md), which this",
+            "  page is a view of rather than a replacement for.",
+        ]
+    else:
+        shown_note = [
+            f"- **Every one of the {len(record['claims'])} claims is shown as a row.** Each",
+            "  is named by exactly one capability group, so nothing on this page is",
+            "  counted in a total and absent from every table. That is a property of the",
+            "  grouping today, not a rule: a claim added to the register and named by no",
+            "  group would still be counted in every total, would still appear under what",
+            "  V1 does not claim if it were uncertified, and this sentence would change to",
+            "  say how many certified claims had no row.",
+        ]
     return [
         "## What this page is not",
         "",
@@ -341,6 +458,14 @@ def _closing(record: Mapping[str, Any]) -> list[str]:
         "  nothing of a cluster. The operations view is",
         "  [the inference operations dashboard](../telemetry/inference-operations-dashboard.md);",
         "  the two answer different questions and neither substitutes for the other.",
+        "- **Operations evidence is kept apart from it.** The Grafana screenshots in",
+        "  [`telemetry/v1-s4-002-pr2-screenshots/`](telemetry/v1-s4-002-pr2-screenshots/)",
+        "  and the record of",
+        "  [the dashboard asked of a real Prometheus](telemetry/v1-s4-002-pr2-dashboard-validation.md)",
+        "  are **operations evidence**: what a running release showed on one day, on",
+        "  one host. The record is linked from the telemetry rows above and the",
+        "  screenshots are linked from the record; neither is a proof state, and no",
+        "  panel in them is a certification.",
         "- **It is not a second source of truth.** Every status, level, label,",
         "  provider, environment, record, and limitation above is read from",
         "  [the register](../testing/claim-evidence-matrix.md) when the page is",
@@ -367,13 +492,7 @@ def _closing(record: Mapping[str, Any]) -> list[str]:
         "- The capability grouping is a reading. Which claims belong under *model",
         "  integrity* rather than *real serving* is a judgement made in",
         "  `tools/proof_dashboard/core.py`, and no check decides it.",
-        f"- **{unshown} certified claims appear on this page as a number only.** They",
-        "  belong to no capability group, and a certified claim is not repeated in the",
-        "  table of what V1 does not claim, so they are counted in every total above",
-        "  and shown in no row. Every claim V1 does **not** certify is shown as a row",
-        "  whether a group names it or not. A reader who wants all of them in one",
-        "  table wants [the register](../testing/claim-evidence-matrix.md), which this",
-        "  page is a view of rather than a replacement for.",
+        *shown_note,
         "- The bounded performance, recovery, and cost figures quoted in these rows",
         "  are observations of declared local experiments under",
         "  [ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md)",
@@ -382,6 +501,28 @@ def _closing(record: Mapping[str, Any]) -> list[str]:
         "  They are not capacity, service-level objectives, availability figures,",
         "  error budgets, recovery-time objectives, benchmarks, or costs.",
         "",
+        "## What a later version of this page might do, and V1 does not",
+        "",
+        "These are features of an assurance dashboard in an organisation that runs",
+        "many environments. None is built, none is planned for V1, none is a claim,",
+        "and this list exists so that their absence is read as a decision rather than",
+        "an oversight.",
+        "",
+        "- **Freshness and expiry.** Nothing here ages a result. A record from",
+        "  2026-08 and one from 2026-09 are shown alike, and no row says when it would",
+        "  stop being believed.",
+        "- **Fleet and environment comparison.** Every row names at most one",
+        "  provider, and no claim here was run on two. A page that compared the same",
+        "  claim across providers, hosts, or clusters would need that claim's result",
+        "  from more than one of each, and V1 has no claim with more than one.",
+        "- **Continuous verification.** No schedule re-runs a record and no lane",
+        "  reports that a certified claim still holds; every real result is a run",
+        "  somebody made by hand and wrote down.",
+        "- **Promotion gates.** No check reads this page to decide whether a change,",
+        "  a release, or an environment may advance. The gates that exist are in",
+        "  [the continuous-integration gate matrix](../testing/ci-gate-matrix.md) and",
+        "  none of them consumes a proof state.",
+        "",
     ]
 
 
@@ -389,6 +530,7 @@ def render_dashboard(record: Mapping[str, Any]) -> str:
     """The whole page. The caller is expected to have applied the rules first."""
     lines: list[str] = []
     lines.extend(_heading(record))
+    lines.extend(_overview(record))
     lines.extend(_where_v1_stands(record))
     lines.extend(_capabilities(record))
     lines.extend(_not_claimed(record))
