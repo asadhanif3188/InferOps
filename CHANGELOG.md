@@ -55,7 +55,14 @@ once versioned releases begin.
 
   **Nothing this project claims changed.** No row of the claim register moved, no
   certification level moved, no evidence class moved, the generated proof dashboard
-  is byte-identical, and no control became enforced. Sign-off here is internal: the
+  is byte-identical, and no control became enforced. The default lane was run six times
+  across this branch and two of those runs failed on one unrelated loopback-socket
+  check under `tests/serving/`, in a module this change does not touch. Both
+  failures were runs that overlapped a second pytest process on the same host;
+  every run without one passed, including a final isolated run. All six are
+  published in
+  [the validation record](docs/proof/architecture/v1-s5-003-pr1-validation.md)
+  rather than the best of them. Sign-off here is internal: the
   role has one holder, so author and approver are the same person, and no outside
   party has reviewed a decision, a claim, or a release candidate in this repository.
 

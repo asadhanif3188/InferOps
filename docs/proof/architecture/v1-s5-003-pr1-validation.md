@@ -185,11 +185,46 @@ committed lockfile.
 | Command | Result |
 |---|---|
 | `uv run --locked ruff check .` | All checks passed! |
-| `uv run --locked ruff format --check .` | 465 files already formatted |
+| `uv run --locked ruff format --check .` | 466 files already formatted |
 | `uv run --locked python -m mypy` | Success: no issues found in 260 source files |
-| `uv run --locked python -m pytest -q` | see the run below |
+| `uv run --locked python -m pytest -q` | see the six runs below |
 | `uv run --locked python -m pytest tests/architecture -q` | 2663 passed, 3 skipped — before the new suite was added |
+| `uv run --locked python -m pytest tests/architecture/test_decision_authority.py -q` | 181 passed |
 | `uv run --locked python -m tools.proof_dashboard --check` | OK  dashboard.md is what the register produces |
+
+### The default lane, run six times
+
+All six are published, rather than the best of them, because two of them failed.
+
+| # | When | Another pytest running? | Result |
+|---:|---|---|---|
+| 1 | Before any change on this branch, as a baseline | no | 12 134 passed, 30 skipped, 14 deselected |
+| 2 | After the first commit | no | 12 137 passed, 30 skipped, 14 deselected |
+| 3 | After the review fixes | no | 12 146 passed, 30 skipped, 14 deselected |
+| 4 | Against the exact committed tree | **yes** — run 3 was still finishing | **1 failed**, 12 145 passed |
+| 5 | Confirming run | **yes** — a `tests/testing tests/security` run overlapped it | **1 failed**, 12 145 passed |
+| 6 | Isolated, with nothing else running | no | 12 146 passed, 30 skipped, 14 deselected |
+
+Both failures were the same test,
+`tests/serving/test_performance_scenarios.py::test_the_collector_is_asked_by_get_without_parameters_and_by_post_with_them`,
+and both happened in the two runs that overlapped a second pytest process on this
+host. Every run without a competing process passed, including run 6, which was
+executed alone specifically to settle it.
+
+**The cause is the harness this validation was run through, not the repository and
+not this change.** That test binds a real `ThreadingHTTPServer` on an ephemeral
+loopback port and makes two HTTP requests against it; two full suites competing for
+loopback sockets on one Windows host is a condition it was never written to survive.
+The module is not touched by this branch — the only files this branch changes under
+that subject are two ADR documents' metadata rows — and it passed three times in
+isolation immediately after the first failure.
+
+Two things this record deliberately does **not** say. It does not call the test
+*flaky*: a test that fails under a condition that can be named and reproduced is not
+random, and the first draft of this section called it a flake before the isolated run
+had been done. And it does not propose a fix — the test belongs to the suite that
+owns it, diagnosing loopback contention is not an architecture reconciliation's
+work, and no change is made to it here.
 
 `ruff format --check` and `mypy` each failed once first, on the new test module
 only: one file needed reformatting, and `OWNER_ROW.search(...).group(...)` was
