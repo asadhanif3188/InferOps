@@ -125,9 +125,9 @@ claim-to-dashboard path — drawn nowhere, and fourteen decision records with no
 None of that was caught by a test, because none of it is the kind of thing these
 tests read. The inventory suites compare data to data and data to a first table
 column; a paragraph beside the table can drift freely, and
-[the ownership document](resource-ownership.md) says so in its own words. Four
-questions were added here (**C6**, **C7**, **F1** through **F3**) to make the classes
-that drifted reviewable, and one register — decision ownership — moved from prose to
-a machine-checked file. **The diagram gap itself stays open by construction**: no
+[the ownership document](resource-ownership.md) says so in its own words. Five
+questions were added here — **C6**, **C7**, **F1**, **F2** and **F3** — to make the
+classes that drifted reviewable, and one register, decision ownership, moved from
+prose to a machine-checked file. **The diagram gap itself stays open by construction**: no
 test reads an ASCII box, and a reviewer answering **C7** is the only thing standing
 between a built capability and a diagram that does not mention it.

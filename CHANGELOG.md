@@ -12,7 +12,7 @@ once versioned releases begin.
 
 - **Every V1 architectural decision now has an accountable owner, and no document
   says otherwise.** Fourteen records carried the identical metadata row
-  `Decision owner: Unassigned; no public maintainer roster exists yet`, four more
+  `Decision owner: Unassigned; no public maintainer roster exists yet`, six more
   documents named the same gap pointing at each other, and
   [ADR 0008](docs/architecture/decisions/ADR-0008-v1-security-baseline.md) `D13` --
   who signs off a control and its evidence -- was undecided with "there is no public
@@ -41,13 +41,14 @@ once versioned releases begin.
   [the new suite](tests/architecture/test_decision_authority.py) fails if the
   register and the record disagree about it in either direction.
 
-  **It is machine-checked, and what it cannot check is stated.** 172 checks hold
+  **It is machine-checked, and what it cannot check is stated.** 181 checks hold
   every record to exactly one entry and every entry to a record that exists, refuse a
   placeholder owner, compare each record's own `Decision owner` row to the register,
   require each authority to declare its limits, and refuse the retired vocabulary in
-  the prose of any decision record or of nine governance documents -- allowing it
-  only inside a code span, because the two records that retire the sentence have to
-  quote it. Whether the model is a good one, whether the holder is a suitable owner,
+  any decision record or any of fifteen governance documents -- allowing it only
+  inside a code span, and only in the two records that retire the sentence and cannot
+  say what changed without quoting it. Whether the model is a good one, whether the
+  holder is a suitable owner,
   and whether accountability was ever exercised are review questions and no test
   pretends to answer them. See
   [the validation record](docs/proof/architecture/v1-s5-003-pr1-validation.md).
@@ -78,7 +79,7 @@ once versioned releases begin.
   one row could not carry both rules.
 
   [The boundary review checklist](docs/architecture/boundary-review-checklist.md)
-  gains four questions (`C6`, `C7`, `F1` through `F3`), names all five suites that
+  gains five questions (`C6`, `C7`, `F1`, `F2`, `F3`), names all five suites that
   form its mechanical half instead of one, and retires the sentence saying this
   reconciliation was due. **The diagram gap stays open by construction**: no test
   reads an ASCII box.

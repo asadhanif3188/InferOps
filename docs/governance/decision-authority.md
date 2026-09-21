@@ -9,7 +9,7 @@ directions.
 
 Until this record, every architecture decision in this repository carried the same
 metadata row — `Decision owner: Unassigned; no public maintainer roster exists yet` —
-and four different documents pointed at that sentence as a known gap. The gap was
+and six other documents pointed at that sentence as a known gap. The gap was
 real, and the reason given for it was wrong. What was missing was never a roster of
 people. It was a decision about **which role** is accountable, and nobody had made it.
 

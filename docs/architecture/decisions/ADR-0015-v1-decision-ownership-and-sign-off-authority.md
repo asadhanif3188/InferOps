@@ -18,7 +18,7 @@
 > It is worth being exact about what changes, because a governance record is the
 > easiest kind to read as more than it is. Before this record, fourteen decisions
 > carried `Decision owner: Unassigned; no public maintainer roster exists yet`, and
-> four documents pointed at that sentence as a known gap. After it, fifteen decisions
+> six documents pointed at that sentence as a known gap. After it, fifteen decisions
 > name an owner, and **not one line of evidence has changed**. No claim moves, no
 > certification level moves, no evidence class moves, and nothing observed runs any
 > differently.
@@ -58,12 +58,18 @@ written down as unenforced. It applied that habit to controls, to claims, to
 certification levels, and to cost bases. It did not apply it to itself.
 
 Fourteen decision records carried the identical sentence
-`Unassigned; no public maintainer roster exists yet`. Four more documents — the
-contribution guide, the repository governance record, the certification document, and
-two claim matrices — named the same gap, each pointing at the others. ADR 0008 left
-`D13`, *who signs off a control and its evidence*, explicitly undecided, with
-"Nothing. There is no public maintainer roster to name" in the column that elsewhere
-holds a test.
+`Unassigned; no public maintainer roster exists yet`. Six more documents named the
+same gap, each pointing at the others: the contribution guide, the repository
+governance record, the certification document, the security control matrix, and both
+claim matrices. ADR 0008 left `D13`, *who signs off a control and its evidence*,
+explicitly undecided, with "Nothing. There is no public maintainer roster to name" in
+the column that elsewhere holds a test.
+
+(The first draft of this record said **four**, and enumerated four of the six. The
+independent review before this change landed counted the diff instead and found the
+security control matrix and the certification document among them. A record about a
+field nobody counted, getting its own count wrong, is worth leaving visible rather
+than quietly fixing.)
 
 Read together, those sentences make one argument, and the argument does not hold.
 
@@ -184,7 +190,7 @@ no external maintainers, that is the whole of what a roster would have told them
 minus a name that would need updating.
 
 Every document that previously described the absent roster as a **pending** gap is
-corrected in this change: it is a decision now, with a reason, and the four documents
+corrected in this change: it is a decision now, with a reason, and the six documents
 that pointed at each other point here instead.
 
 ## D8 — What happens when there are two

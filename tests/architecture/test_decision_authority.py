@@ -84,17 +84,40 @@ RETIRED_PHRASES = (
     "roster pending",
 )
 
-#: An inline code span, which is how the two records that retire the vocabulary
-#: quote it. Quoting the retired wording is the only way to say what changed, so
-#: the check reads prose with the code spans removed rather than exempting the
-#: documents wholesale -- an exemption would also excuse a fresh assertion made
-#: in the same file.
+#: An inline code span. Stripping these is what lets a document quote the retired
+#: wording without asserting it -- but only in the two files below, because a code
+#: span is typesetting and not a quotation mark, and any document could reintroduce
+#: the unassigned-owner claim inside backticks. The independent review of the change
+#: that added this file raised exactly that: the first version stripped spans
+#: everywhere, which would have let a future assertion through anywhere at all.
 INLINE_CODE = re.compile(r"`[^`\n]*`")
+
+#: The only two documents permitted to contain the retired wording at all. Both
+#: exist to retire it and cannot say what changed without reproducing it. Everywhere
+#: else the phrase is refused outright, code span or not.
+QUOTING_DOCUMENTS = frozenset(
+    {
+        "docs/architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md",
+        "docs/governance/decision-authority.md",
+    }
+)
 
 
 def prose_only(text: str) -> str:
     """The document with every inline code span removed, lowercased."""
     return INLINE_CODE.sub(" ", text).lower()
+
+
+def searchable(relative_path: str, text: str) -> str:
+    """The text a retired phrase is looked for in, for one document.
+
+    In a document that retires the vocabulary, inline code spans are removed, so
+    a quotation passes and a bare assertion in the same file still fails. In every
+    other document nothing is removed, so backticks buy nothing.
+    """
+    if relative_path in QUOTING_DOCUMENTS:
+        return prose_only(text)
+    return text.lower()
 
 
 #: Placeholder owners. An entry carrying one of these is the state this register
@@ -115,6 +138,12 @@ GOVERNED_DOCUMENTS = (
     "docs/testing/claim-test-matrix.md",
     "docs/testing/claim-evidence-matrix.md",
     "docs/security/control-matrix.md",
+    "docs/architecture/boundary-review-checklist.md",
+    "docs/architecture/system-architecture.md",
+    "docs/architecture/resource-ownership.md",
+    "docs/architecture/project-boundaries.md",
+    "docs/testing/test-inventory.md",
+    "README.md",
 )
 
 
@@ -389,11 +418,14 @@ def test_no_decision_record_still_describes_its_owner_as_unassigned(
     retire, or a reader cannot tell what changed. Both put it in an inline code
     span, and this check reads prose with the spans removed.
     """
-    text = prose_only(DECISION_FILES[decision_id].read_text(encoding="utf-8"))
+    path = DECISION_FILES[decision_id]
+    relative = path.relative_to(REPO_ROOT).as_posix()
+    text = searchable(relative, path.read_text(encoding="utf-8"))
     for phrase in RETIRED_PHRASES:
         assert phrase not in text, {
             "decision": decision_id,
-            "retired phrase still asserted in prose": phrase,
+            "retired phrase still asserted": phrase,
+            "quoting it is allowed only in": sorted(QUOTING_DOCUMENTS),
         }
 
 
@@ -401,11 +433,12 @@ def test_no_decision_record_still_describes_its_owner_as_unassigned(
 def test_no_governance_document_still_describes_the_authority_as_unassigned(
     document: str,
 ) -> None:
-    text = prose_only((REPO_ROOT / document).read_text(encoding="utf-8"))
+    text = searchable(document, (REPO_ROOT / document).read_text(encoding="utf-8"))
     for phrase in RETIRED_PHRASES:
         assert phrase not in text, {
             "document": document,
-            "retired phrase still asserted in prose": phrase,
+            "retired phrase still asserted": phrase,
+            "quoting it is allowed only in": sorted(QUOTING_DOCUMENTS),
         }
 
 
@@ -510,6 +543,40 @@ def test_the_document_counts_the_decisions_the_register_holds() -> None:
         "assigned retrospectively": retrospective,
         "expected phrase": f"{words[retrospective].capitalize()} of the {words[total]}",
     }
+
+
+@pytest.mark.parametrize("document", sorted(QUOTING_DOCUMENTS), ids=lambda row: row)
+def test_a_document_allowed_to_quote_the_retired_wording_actually_quotes_it(
+    document: str,
+) -> None:
+    """The exemption list is two entries and must stay earned.
+
+    A path that stops quoting the retired sentence does not need the exemption,
+    and leaving it on the list would quietly weaken the check for that file. A
+    path added to the list without quoting anything would weaken it outright.
+    """
+    text = (REPO_ROOT / document).read_text(encoding="utf-8")
+    raw = text.lower()
+    assert any(phrase in raw for phrase in RETIRED_PHRASES), {
+        "document": document,
+        "why this failed": (
+            "it is on the quoting list but contains none of the retired phrases; "
+            "remove it from QUOTING_DOCUMENTS rather than leaving the exemption on"
+        ),
+    }
+    stripped = prose_only(text)
+    assert not any(phrase in stripped for phrase in RETIRED_PHRASES), {
+        "document": document,
+        "why this failed": (
+            "it asserts a retired phrase outside a code span; quoting is allowed, "
+            "asserting is not, even here"
+        ),
+    }
+
+
+def test_every_quoting_document_is_a_file_that_exists() -> None:
+    for document in QUOTING_DOCUMENTS:
+        assert (REPO_ROOT / document).is_file(), document
 
 
 def test_the_register_reads_as_data_it_did_not_execute() -> None:

@@ -133,7 +133,7 @@ a role, and nobody had made it.** ADR 0015 makes it.
 | Kinds of authority named | 0 | 4, separately |
 | ADR 0008 `D13` | Not decided | Decided, 2026-09-21 |
 | ADR risk rows recording the gap | 3 open (`ADR 0001 R7`, `ADR 0004 R8`, `ADR 0011 R8`) | 3 resolved, with what resolved them named |
-| Machine-checked | Nothing read the field | 172 checks in one suite |
+| Machine-checked | Nothing read the field | 181 checks in one suite |
 
 **The owner is a role, `repository-maintainer`: anyone able to merge into `main`.**
 No person is named and none will be; ADR 0015 `D7` makes that a decision rather than
@@ -198,7 +198,7 @@ nothing else was touched.
 
 ### What the new suite establishes
 
-`tests/architecture/test_decision_authority.py`, 172 checks, `architecture` marker,
+`tests/architecture/test_decision_authority.py`, 181 checks, `architecture` marker,
 `default-checks` lane:
 
 - every record under `docs/architecture/decisions/` has exactly one register entry,
@@ -212,11 +212,14 @@ nothing else was touched.
   four required authority identifiers are present;
 - ADR 0008's `D13` row no longer says "not decided", and the committed open question
   behind it names ADR 0015 and the authority that answers it;
-- no decision record and none of nine governance documents still asserts the retired
-  vocabulary in prose. Quoting it inside a code span is allowed — ADR 0015 and the
-  governance document both have to reproduce the sentence they retire — so the check
-  reads prose with inline code spans removed rather than exempting those two files,
-  which would also have excused a fresh assertion made in them.
+- no decision record and none of fifteen governance documents still asserts the
+  retired vocabulary. Two files may quote it — ADR 0015 and the governance document,
+  which cannot say what changed without reproducing the sentence they retire — and
+  only inside an inline code span, so a bare assertion in those two still fails.
+  Everywhere else the phrase is refused outright, backticks included; a code span is
+  typesetting, not a quotation mark. Both halves were mutation-tested: a
+  backtick-wrapped assertion appended to `docs/releases.md` failed the check, and a
+  bare one appended to the governance document failed two.
 
 ### What it does not establish
 
@@ -242,6 +245,65 @@ questions added to
 | `bash -n` and `shellcheck` over `scripts/` | No shell script changed |
 | A secret, image, or dependency scan | No dependency, image, or lockfile changed |
 | Commit, push, tag, release, or publication | Not authorized by this change |
+
+## What the independent review found
+
+An independent review read the first commit on this branch against the repository
+before anything was pushed. It recounted every number the change introduces —
+against `.github/workflows/checks.yml`, a `--collect-only` run, the fifteen ADR
+status fields, the file tree, the underlying proof records, and the diff itself.
+
+Most of them held. **Two did not, and both were mine.**
+
+| What the first draft said | What was true | Where |
+|---|---|---|
+| "Four more documents" named the governance gap, enumerating four of them | **Six.** The enumeration omitted the security control matrix, and the certification document's sentence was split across lines in a way that a line-based grep missed | ADR 0015 ×3, the governance document, the changelog |
+| "Four questions were added here (`C6`, `C7`, `F1` through `F3`)" | **Five.** `F1` through `F3` is three, plus `C6` and `C7` | The boundary review checklist, the changelog |
+
+Both are corrected, and the first is corrected **in the record that got it wrong**:
+ADR 0015 now says what its first draft claimed and what the count actually was. A
+record whose whole subject is an uncounted field, getting its own count wrong, is
+worth leaving visible.
+
+It also points at a limit that survives this change. The decision owners are counted
+from data now, and a test recomputes them. **Every count in the prose around them is
+still counted by hand**, including the two above, and nothing recomputes those. That
+is the same class of gap this reconciliation found nine instances of, still open, one
+layer out.
+
+The review also raised a structural weakness in the new suite, and it was right.
+
+**The code-span exemption was too broad.** The first version stripped every inline
+code span from every document before looking for the retired vocabulary, so that
+ADR 0015 and the governance document could quote the sentence they retire. But a
+code span is typesetting, not a quotation mark: any document could have reintroduced
+the unassigned-owner claim inside backticks and the suite would have passed it. The
+exemption is now restricted to those two files by path; everywhere else the phrase is
+refused outright, backticks included, and a **bare** assertion inside those two still
+fails. A further check requires each exempted file to actually contain a quotation,
+so the list cannot go stale or grow unearned.
+
+**The governed-document set was too narrow.** It held nine documents and missed the
+boundary review checklist, which this change fills with new prose about the same
+model. It now holds fifteen, including the architecture documents and the README.
+
+Both were then mutation-tested rather than assumed:
+
+| Probe | Result |
+|---|---|
+| A backtick-wrapped assertion appended to `docs/releases.md` | 1 failed — the exemption no longer travels outside the two files |
+| A bare assertion appended to `docs/governance/decision-authority.md` | 2 failed — quoting is allowed there, asserting is not |
+
+Both probes were reverted and the suite returns to 181 passed. The suite grew from
+172 checks to 181 across this review.
+
+**What the review did not find**, having looked: any invented organizational
+structure in ADR 0015, any document describing an internal merge as an external
+review, any authority able to raise a certification level or evidence class, any
+residue of the retired wording outside a historical quote, any disagreement between
+the ownership inventory and the document beside it, and any private path, name,
+email, or planning identifier in the diff. The failure and recovery figures in
+section 6 were checked word for word against the three records they come from.
 
 ## Limitations
 
