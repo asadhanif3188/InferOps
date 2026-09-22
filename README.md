@@ -37,8 +37,8 @@ observation and no figure is a capacity, an SLO, or a benchmark.
 | Cost of the measured use | estimated, confidence `none` | The published method applied to processor and memory use taken from the load run's samples, priced at a synthetic rate card; the arithmetic is checkable and no cost figure is published | [Cost baseline](docs/proof/cost/v1-s4-005-pr2-cost-baseline.md) |
 | Alerts over recorded telemetry | local static and synthetic | Five of the six alerts replayed over the telemetry three real experiments recorded: one fires, over one capture, and every silence has a recorded reason; nothing routes or delivers an alert to anybody | [Alert validation](docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md) |
 
-The full picture is [the V1 proof dashboard](docs/proof/dashboard.md): 58 claims,
-42 certified, 7 planned, 1 deferred, and 8 that V1 states it does not have, each
+The full picture is [the V1 proof dashboard](docs/proof/dashboard.md): 59 claims,
+43 certified, 7 planned, 1 deferred, and 8 that V1 states it does not have, each
 with its level, evidence class, provider, limitation, and record. It opens with
 one row per capability and a five-minute reading order, and every row above is
 there under its capability with the claim that cites its record. It is generated
@@ -89,7 +89,7 @@ index of what has and has not been proven.
        v                                                        v
   +--------------------+   +------------------+   +-------------------------+
   | contract           |-->| platform domain  |   | proof register          |
-  | validation         |   | typed objects,   |   | 58 claims, each bound   |
+  | validation         |   | typed objects,   |   | 59 claims, each bound   |
   | schema and cross-  |   | model/runtime    |   | to a record, a label,   |
   | field rules, each  |   | selection, policy|   | and a limitation;       |
   | refusal canonical  |   +--------+---------+   | a dashboard is rendered |
@@ -362,6 +362,7 @@ intention reads as a capability:
 | Local development cluster | [docs/environment/local-cluster.md](docs/environment/local-cluster.md) | An optional `kind` helper since ADR 0011. Executed and evidenced on one Windows host |
 | Clean-clone reproduction | [docs/environment/clean-clone.md](docs/environment/clean-clone.md) | Implemented and executed once. One workflow walks the V1 journey from a clean clone -- host prerequisites, two gates of the default-checks lane, scaffolding, model acquisition, local real inference, provider verification against a cluster the operator already has, Terraform, Helm, real Kubernetes inference, telemetry, load, a failure experiment, and scoped cleanup -- and records every step's outcome, exit code, and elapsed time in a ledger, with every manual action the operator records there. A certification run needs every forward-path consent on every invocation; only a preparation run may record a real step as not run, and it can never read as complete. Cleanup removes only what the run created and then checks the cluster survived. [One complete certification run exists](docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md), on `docker-desktop`, by the change's own author, after two attempts that stopped on defects the run found; no second engineer has repeated it |
 | Kubernetes troubleshooting and cleanup | [docs/environment/kubernetes-troubleshooting.md](docs/environment/kubernetes-troubleshooting.md) | Symptom-oriented diagnosis for cluster, scheduling, OOM, storage, model load, probes, Service, telemetry, Helm, and Terraform, and four separated cleanup radii. Both halves are now executed and evidenced on one Windows host, on the `docker-desktop` provider: the release installs, serves, upgrades, fails, rolls back, and uninstalls without residue. Every command is machine-checked against the repository |
+| The V1 operator runbook | [docs/environment/operator-runbook.md](docs/environment/operator-runbook.md) | What to do when something breaks: deploying a release that stays up, verifying it, telemetry, load, one section per alert, and eight incident procedures -- pod loss, an unready model, latency and errors, resource pressure and out-of-memory, a telemetry gap, a bad release, model and cache faults, and a cost anomaly -- each saying how it is detected, what a caller sees, whether anything recovers it without a person, what a person does, how to confirm it, and where it stops. Three rest on executed experiments on `docker-desktop`; five are described and were never provoked. No installed release evaluates the alerts, and nothing pages anybody. Every command is machine-checked against the repository |
 | Serving runtime and model feasibility | [docs/serving/feasibility-workflow.md](docs/serving/feasibility-workflow.md) | Procedure executed once; one runtime and model revision selected |
 | Model acquisition | [docs/serving/model-acquisition.md](docs/serving/model-acquisition.md) | Revision-pinned, resumable, hash-verifying workspace cache workflow; executed against the real 1.71 GiB artifact, which downloaded and verified against its published SHA-256. Resumption after interruption is proved synthetically only |
 | Local LLM runtime profile | [docs/serving/local-runtime-profile.md](docs/serving/local-runtime-profile.md) | Digest-pinned process, external model mount, CPU resources, generation defaults, timeouts, and health semantics validated offline |

@@ -138,6 +138,7 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
             "a-helm-release-installs-and-uninstalls-without-residue",
             "a-local-cluster-is-created-and-removed-without-residue",
             "kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed",
+            "a-v1-operator-runbook-covers-every-incident-class-and-every-alert-links-into-it",
         ),
     ),
     Capability(

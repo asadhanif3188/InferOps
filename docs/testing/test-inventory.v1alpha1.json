@@ -869,6 +869,14 @@
       "note": "No published claim is certified by this repository-only suite. It reads the guide, the environment scripts, the chart's committed render, the values file, the Terraform variables, the model source record and two proof records, and it contacts nothing. The chart has since been installed, upgraded, broken on purpose, rolled back and uninstalled on the docker-desktop provider, so the guide's commands have been executed -- but this suite still reads rather than runs, and most individual symptoms the guide describes remain derived rather than provoked. A passing result establishes that the guide has not drifted from the repository, never that following it repairs a fault."
     },
     {
+      "module": "tests/architecture/test_operator_runbook.py",
+      "layer": "architecture-inventory",
+      "marker": "architecture",
+      "protects": "The published V1 operator runbook against the repository it tells an operator to act on: every incident the story requires has a section answering detection, user impact, automatic recovery, human action, validation and escalation in that order, and states automatic or human recovery the way the runbook record does; every alert in the alert record points at its own section, headed with its name, opening with a read-only command and linking every incident it routes to, and the alert document and both rendered rule files point at the same place; every tool command names a real module and subcommand, every script and subcommand exists, every script that selects a target is given the provider, every kubectl and helm sample names the target kubeconfig, context and namespace, every fenced block carries a safety label its commands do not contradict, and nothing carries a credential, a force flag or a namespace deletion; the target, object names, ports, containers and defaults are the ones lib.sh, the committed render and the values files own; every quoted figure is read back from its record by JSON pointer or text; every link and fragment resolves; and the statements the page may not drop stay stated.",
+      "claims": [],
+      "note": "No test-strategy claim covers it. It reads the runbook, its record, the alert record and document, the rendered rule files, lib.sh, the environment scripts, the chart's committed render, the values files and the proof records it quotes, and it contacts nothing. A passing result establishes that the page has not drifted from the repository, never that following it repairs a fault."
+    },
+    {
       "module": "tests/architecture/test_inference_alert_rules.py",
       "layer": "architecture-inventory",
       "marker": "architecture",

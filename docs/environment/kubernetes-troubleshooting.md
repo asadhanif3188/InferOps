@@ -49,6 +49,11 @@ scope. This is the page that scope was waiting for. When the fault is a model
 that will not load or a container the engine killed, read both: the Kubernetes
 layer usually only tells you *which pod* the host-local page is about.
 
+What to *do* about an incident once it is recognised -- the procedure, whether
+anything recovers it without a person, and the section each alert links to -- is in
+[the operator runbook](operator-runbook.md). This page stays the reference for
+reading a symptom.
+
 ## Before anything else
 
 Five rules. Each one is the difference between a diagnosis and a second

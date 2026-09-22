@@ -111,7 +111,7 @@
       "evidenceQueryRef": "error-rate-by-workload-and-code",
       "evidenceQuery": "sum by (inferops_workload_id, inferops_error_code) (rate(inferops_inference_errors_total[5m]))",
       "evidenceQueryIsFor": "Every canonical code, not only the one that fired. The pod-loss run produced an internal-error this alert does not count, and this is where it would be seen.",
-      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#service-network-and-the-policy-that-is-not-enforced",
+      "runbookRef": "docs/environment/operator-runbook.md#inferopsinferencecallersrefused",
       "emptyMeans": "No API process is publishing this counter. That is either a release serving with no refusals since its processes started -- the counter is created on its first event, so it is genuinely absent rather than zero -- or an API nothing is scraping, which InferOpsPlatformApiScrapeJobAbsent separates.",
       "whatItCannotSee": "Two things, both measured rather than supposed. A caller who never reached the API: every series it reads is emitted by the API, so a release whose API is gone is silent here and visible only to the collection alert. And the first burst on a release: the API creates a labelled counter series on its first event, so the series appears already carrying what it has counted, and a rate over it reads no increase. V1-S4-006-PR1's entire outage arrived that way -- forty refusals inside 32 s, a series born at 40 and never incremented again -- and the replay of this alert over that capture is silent for exactly that reason, not because the window was too long.",
       "evidenceRefs": [
@@ -155,7 +155,7 @@
       "evidenceQueryRef": "request-throughput-by-workload-model-and-outcome",
       "evidenceQuery": "sum by (inferops_workload_id, inferops_model_id, inferops_outcome) (rate(inferops_inference_requests_total[5m]))",
       "evidenceQueryIsFor": "The outcome split. It says how much is arriving and how much of it is failing, which is what decides whether this is a fault or an absence of traffic.",
-      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#reading-the-apis-and-the-runtimes-logs",
+      "runbookRef": "docs/environment/operator-runbook.md#inferopsinferenceservingnothing",
       "emptyMeans": "No traffic, or no API publishing the counter. An idle release cannot fire this and is not meant to: nobody is being refused.",
       "whatItCannotSee": "A release that has never served. The success counter series does not exist until the first success, so a rate over it is empty rather than zero, and an install whose model never became ready has no success series to read as zero. That is not a hypothesis: the V1-S4-007-PR1 run recorded the success series first appearing after the correction, and the model-never-becomes-ready scenario reproduces it and expects this alert to stay silent.",
       "evidenceRefs": [
@@ -198,7 +198,7 @@
       "evidenceQueryRef": "readiness-check-failures-by-component",
       "evidenceQuery": "sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m]))",
       "evidenceQueryIsFor": "The same rate the condition compares, grouped the same way, so the component label that named the fault is the one an operator reads.",
-      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#probes",
+      "runbookRef": "docs/environment/operator-runbook.md#inferopsreadinessrefusalssustained",
       "emptyMeans": "No API process is publishing this counter, or none of its readiness checks has ever failed. The counter is created on its first refusal.",
       "whatItCannotSee": "Which of the several things the adapter checks said no. The counter names the component and not the reason, and the reason is in the log rather than in a metric.",
       "evidenceRefs": [
@@ -241,7 +241,7 @@
       "evidenceQueryRef": "request-latency-p95-by-workload-and-model",
       "evidenceQuery": "histogram_quantile(0.95, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_request_duration_seconds_bucket[5m])))",
       "evidenceQueryIsFor": "The same quantile the condition compares, split by model as well, which is the split the condition deliberately does not make.",
-      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory",
+      "runbookRef": "docs/environment/operator-runbook.md#inferopsinferencelatencypasthalftherequestbudget",
       "emptyMeans": "No completion was observed in the window. A quantile over an empty distribution is NaN, which is not greater than anything, so an idle release is silent here rather than reading zero.",
       "whatItCannotSee": "Where the time went. The queue-duration histogram is the signal that would separate waiting from working and nothing emits it, so this says a request was slow and never which part of it was.",
       "evidenceRefs": [
@@ -282,7 +282,7 @@
       "evidenceQueryRef": "runtime-deferred-requests",
       "evidenceQuery": "sum by (inferops_workload_id, inferops_model_id) (inferops:inference_requests_deferred:runtime)",
       "evidenceQueryIsFor": "The deferral count itself, per workload and model. It is a count of requests and never a wait.",
-      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory",
+      "runbookRef": "docs/environment/operator-runbook.md#inferopsruntimedefersrequests",
       "emptyMeans": "No serving-runtime target is publishing llamacpp:requests_deferred, which the collection alert and the scrape panels separate from a runtime that is deferring nothing.",
       "whatItCannotSee": "How long anything waited. The queue-duration histogram is the adapter's measurement and the adapter is not instrumented, so this is a count of deferrals and never a wait.",
       "evidenceRefs": [
@@ -323,7 +323,7 @@
       "evidenceQueryRef": "scrape-target-health-by-job",
       "evidenceQuery": "inferops:scrape_targets_up:sum / inferops:scrape_targets:count",
       "evidenceQueryIsFor": "Which tier is answering a scrape and which is not. It says the collector reached a process and nothing about whether that process can serve.",
-      "runbookRef": "docs/environment/kubernetes-troubleshooting.md#telemetry-scrape",
+      "runbookRef": "docs/environment/operator-runbook.md#inferopsplatformapiscrapejobabsent",
       "emptyMeans": "The job matched at least one target, or no collector is evaluating this release's recording rules at all. The second case is the blind spot below.",
       "whatItCannotSee": "A collector that is itself gone. absent() is evaluated by the collector, so a collector that is not running evaluates nothing and tells nobody, and no rule in this file can close that. Nor does it say anything about whether a discovered target can serve: a target that answers a scrape has been observed both while its pod was deleted and while its model was still loading.",
       "evidenceRefs": [

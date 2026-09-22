@@ -2,7 +2,7 @@
 
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha1.json`](claim-evidence-matrix.v1alpha1.json).
-It holds 58 claims: 42 certified, 7 planned,
+It holds 59 claims: 43 certified, 7 planned,
 1 deferred, and 8 not claimed. The last group is the point of
 the document. A register that listed only what worked would be an advertisement.
 
@@ -260,6 +260,7 @@ that publishing a capacity figure would mean deleting a deferral in public.
 
 | Claim | Status | Level | Evidence label | Where it ran | Record | Automated coverage |
 |---|---|---|---|---|---|---|
+| `a-v1-operator-runbook-covers-every-incident-class-and-every-alert-links-into-it` | certified | C0 | `local-static` | repository-only | [v1-s5-005-pr1-validation.md](../proof/environment/v1-s5-005-pr1-validation.md) | 1 module(s) |
 | `an-unready-model-was-held-unready-and-recovered-by-an-operator` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md) | 1 module(s) |
 | `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load` | certified | C2 | `local-real-cpu` | local-kubernetes, `docker-desktop` | [v1-s4-006-pr1-inference-pod-recovery.md](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md) | 1 module(s) |
 

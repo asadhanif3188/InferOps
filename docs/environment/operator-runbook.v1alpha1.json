@@ -1,0 +1,347 @@
+{
+  "$id": "https://inferops.io/environment/operator-runbook.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "InferOps V1 operator runbook, v1alpha1",
+  "description": "The incidents a V1 operator is given a procedure for, as data. Each one records how it is detected, what a caller experiences, whether anything recovers it without a person, what a person has to do, how the recovery is confirmed, and where the procedure stops being reliable, with the evidence label of what stands behind it. Each alert in the alert record is routed to one section of the runbook, and each figure the runbook quotes is read back from the record it came from. Nothing here has been run as a drill by an operator following the page.",
+  "documentRef": "docs/environment/operator-runbook.md",
+  "alertRecordRef": "docs/telemetry/inference-alerts.v1alpha1.json",
+  "troubleshootingRef": "docs/environment/kubernetes-troubleshooting.md",
+  "providerContractRef": "docs/environment/local-cluster-provider-contract.md",
+  "evidenceRef": "docs/proof/environment/v1-s5-005-pr1-validation.md",
+  "target": {
+    "provider": "docker-desktop",
+    "context": "docker-desktop",
+    "kubeconfig": ".kube/inferops-target.config",
+    "namespace": "inferops-release",
+    "release": "inferops",
+    "note": "The reference provider. On kind the context is kind- followed by the cluster name and nothing else changes. Every value is compared against scripts/environment/lib.sh."
+  },
+  "recoveryKinds": [
+    {
+      "kindId": "automatic",
+      "meaning": "A controller already running in the cluster restores service with nobody acting. It does not mean anybody is told."
+    },
+    {
+      "kindId": "partial",
+      "meaning": "A controller restarts or replaces something, and that is not the same as restoring what was lost."
+    },
+    {
+      "kindId": "none",
+      "meaning": "Nothing recovers it. A person has to act."
+    }
+  ],
+  "incidents": [
+    {
+      "incidentId": "pod-loss",
+      "section": "pod-loss",
+      "title": "Pod loss",
+      "owner": "serving",
+      "alerts": ["inference-callers-refused"],
+      "deferredAlerts": ["container-restart-spike"],
+      "automaticRecovery": "automatic",
+      "recoveredBy": "The Deployment controller",
+      "humanActionRequired": false,
+      "evidenceLabel": "local-real-cpu",
+      "observed": true,
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/serving/inference-pod-recovery.md"
+      ]
+    },
+    {
+      "incidentId": "unready-model",
+      "section": "unready-model",
+      "title": "Unready model",
+      "owner": "serving",
+      "alerts": ["readiness-refusals-sustained", "inference-callers-refused"],
+      "deferredAlerts": ["model-not-ready", "abnormal-model-load-duration"],
+      "automaticRecovery": "none",
+      "recoveredBy": null,
+      "humanActionRequired": true,
+      "evidenceLabel": "local-real-cpu",
+      "observed": true,
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+        "docs/serving/unready-model-recovery.md"
+      ]
+    },
+    {
+      "incidentId": "latency-and-errors",
+      "section": "latency-and-errors",
+      "title": "Latency and errors",
+      "owner": "serving",
+      "alerts": [
+        "inference-latency-past-half-the-request-budget",
+        "inference-serving-nothing"
+      ],
+      "deferredAlerts": ["error-share-above-a-budget"],
+      "automaticRecovery": "none",
+      "recoveredBy": null,
+      "humanActionRequired": true,
+      "evidenceLabel": "synthetic",
+      "observed": false,
+      "evidenceRefs": [
+        "docs/telemetry/inference-alerts.md",
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ]
+    },
+    {
+      "incidentId": "resource-pressure-and-out-of-memory",
+      "section": "resource-pressure-and-out-of-memory",
+      "title": "Resource pressure and out-of-memory",
+      "owner": "serving",
+      "alerts": [
+        "runtime-defers-requests",
+        "inference-latency-past-half-the-request-budget"
+      ],
+      "deferredAlerts": ["api-process-resource-exhaustion", "container-restart-spike"],
+      "automaticRecovery": "partial",
+      "recoveredBy": "The kubelet restarts a killed container. Never provoked here",
+      "humanActionRequired": true,
+      "evidenceLabel": "described",
+      "observed": false,
+      "evidenceRefs": [
+        "docs/proof/serving/v1-s4-004-pr2-performance-findings.md",
+        "docs/environment/kubernetes-troubleshooting.md"
+      ]
+    },
+    {
+      "incidentId": "telemetry-gap",
+      "section": "telemetry-gap",
+      "title": "Telemetry gap",
+      "owner": "platform",
+      "alerts": ["platform-api-scrape-job-absent"],
+      "deferredAlerts": [],
+      "automaticRecovery": "partial",
+      "recoveredBy": "The Deployment controller replaces a lost collector pod; the series it held are gone",
+      "humanActionRequired": true,
+      "evidenceLabel": "described",
+      "observed": false,
+      "evidenceRefs": [
+        "docs/telemetry/inference-alerts.md",
+        "docs/proof/telemetry/v1-s4-002-pr2-dashboard-validation.md"
+      ]
+    },
+    {
+      "incidentId": "bad-release",
+      "section": "bad-release",
+      "title": "Bad release",
+      "owner": "serving",
+      "alerts": [],
+      "noAlertBecause": "In the recorded shape the failing candidate never becomes ready, the rollout keeps the serving pod, and every signal an alert reads stays healthy. An alert routes here only when a fault reaches the running pod, which nobody has injected.",
+      "deferredAlerts": [],
+      "automaticRecovery": "none",
+      "recoveredBy": null,
+      "humanActionRequired": true,
+      "evidenceLabel": "local-real-cpu",
+      "observed": true,
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md",
+        "docs/environment/helm-upgrade-rollback.md"
+      ]
+    },
+    {
+      "incidentId": "model-and-cache-faults",
+      "section": "model-and-cache-faults",
+      "title": "Model and cache faults",
+      "owner": "serving",
+      "alerts": ["readiness-refusals-sustained"],
+      "deferredAlerts": [],
+      "automaticRecovery": "none",
+      "recoveredBy": null,
+      "humanActionRequired": true,
+      "evidenceLabel": "described",
+      "observed": false,
+      "evidenceRefs": [
+        "docs/environment/model-cache-storage.md",
+        "docs/proof/environment/v1-s3-011-pr2-upgrade-rollback.md"
+      ]
+    },
+    {
+      "incidentId": "cost-anomaly",
+      "section": "cost-anomaly",
+      "title": "Cost anomaly",
+      "owner": null,
+      "alerts": [],
+      "deferredAlerts": [],
+      "automaticRecovery": "none",
+      "recoveredBy": null,
+      "humanActionRequired": true,
+      "evidenceLabel": "local-static",
+      "observed": false,
+      "evidenceRefs": [
+        "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
+        "docs/cost/cost-method.md"
+      ],
+      "noAlertBecause": "No platform component computes or emits a cost record, so there is no series an alert could read."
+    }
+  ],
+  "requiredIncidents": [
+    "pod-loss",
+    "unready-model",
+    "latency-and-errors",
+    "resource-pressure-and-out-of-memory",
+    "telemetry-gap",
+    "bad-release",
+    "cost-anomaly"
+  ],
+  "incidentQuestions": [
+    "Detection",
+    "User impact",
+    "Automatic recovery",
+    "Human action",
+    "Validation",
+    "Escalation and limits"
+  ],
+  "alertRoutes": [
+    {
+      "alertId": "inference-callers-refused",
+      "section": "inferopsinferencecallersrefused",
+      "routesTo": ["pod-loss", "unready-model", "model-and-cache-faults", "resource-pressure-and-out-of-memory", "bad-release"]
+    },
+    {
+      "alertId": "inference-serving-nothing",
+      "section": "inferopsinferenceservingnothing",
+      "routesTo": ["latency-and-errors"]
+    },
+    {
+      "alertId": "readiness-refusals-sustained",
+      "section": "inferopsreadinessrefusalssustained",
+      "routesTo": ["unready-model", "model-and-cache-faults", "bad-release"]
+    },
+    {
+      "alertId": "inference-latency-past-half-the-request-budget",
+      "section": "inferopsinferencelatencypasthalftherequestbudget",
+      "routesTo": ["latency-and-errors", "resource-pressure-and-out-of-memory"]
+    },
+    {
+      "alertId": "runtime-defers-requests",
+      "section": "inferopsruntimedefersrequests",
+      "routesTo": ["resource-pressure-and-out-of-memory"]
+    },
+    {
+      "alertId": "platform-api-scrape-job-absent",
+      "section": "inferopsplatformapiscrapejobabsent",
+      "routesTo": ["telemetry-gap"]
+    }
+  ],
+  "figures": [
+    {
+      "figureId": "pod-loss-caller-visible-outage",
+      "text": "31,960 ms",
+      "file": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointer": "/timings/callerVisibleOutageMs"
+    },
+    {
+      "figureId": "pod-loss-refusals-during-the-outage",
+      "text": "40 of them",
+      "file": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointer": "/callerImpact/windows/2/errorCodes/capability-unavailable"
+    },
+    {
+      "figureId": "pod-loss-replacement-ready",
+      "text": "33,665 ms",
+      "file": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointer": "/timings/deletionToReplacementReadyMs"
+    },
+    {
+      "figureId": "pod-loss-model-reload",
+      "text": "32,304 ms",
+      "file": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointer": "/timings/modelReloadObservedToReadyMs"
+    },
+    {
+      "figureId": "unready-model-window-held",
+      "text": "179,755 ms",
+      "file": "docs/proof/serving/v1-s4-007-pr1-unready-model-record.v1alpha1.json",
+      "pointer": "/timings/unreadyWindowHeldMs"
+    },
+    {
+      "figureId": "unready-model-upgrade-to-first-served-completion",
+      "text": "36,687 ms",
+      "file": "docs/proof/serving/v1-s4-007-pr1-unready-model-record.v1alpha1.json",
+      "pointer": "/timings/upgradeToFirstServedCompletionMs"
+    },
+    {
+      "figureId": "slowest-client-measured-p95",
+      "text": "8,614 ms",
+      "file": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointer": "/levels/2/p95MsRange/1"
+    },
+    {
+      "figureId": "slowest-measured-model-load",
+      "text": "358,735 ms",
+      "file": "docs/proof/serving/v1-s2-005-baseline-raw-results-first-attempt.md",
+      "pointer": null
+    },
+    {
+      "figureId": "fastest-measured-model-load",
+      "text": "133,515 ms",
+      "file": "docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md",
+      "pointer": null
+    },
+    {
+      "figureId": "runtime-cpu-share-of-limit",
+      "text": "99.1–99.9%",
+      "file": "docs/proof/serving/v1-s4-004-pr2-performance-findings.md",
+      "pointer": null
+    }
+  ],
+  "drills": [
+    {
+      "command": "uv run --locked python -m tools.inference_alerts",
+      "what": "The alert record, and so every runbook link it carries, satisfies the alert policy"
+    },
+    {
+      "command": "uv run --locked python -m tools.telemetry_collection charts/inferops-llm/ci/rendered",
+      "what": "The committed scrape configuration agrees with the telemetry catalog"
+    },
+    {
+      "command": "uv run --locked python -m tools.model_acquisition check",
+      "what": "The offline model prerequisites and the workspace cache state"
+    },
+    {
+      "command": "uv run --locked python -m tools.llm_load check",
+      "what": "The load profile validates without sending anything"
+    },
+    {
+      "command": "uv run --locked python -m tools.llm_load rehearse",
+      "what": "The whole load tool against an in-process stub, labelled synthetic"
+    },
+    {
+      "command": "scripts/environment/performance-scenarios.sh check",
+      "what": "The performance matrix descriptor validates without contacting anything"
+    },
+    {
+      "command": "uv run --locked python -m tools.cost_baseline verify --record-dir docs/proof/serving --record-prefix v1-s4-004-pr1- --dir docs/proof/cost --prefix v1-s4-005-pr2-",
+      "what": "The committed cost baseline regenerates byte for byte"
+    },
+    {
+      "command": "uv run --locked python -m tools.cost_calculation verify --input tests/cost/fixtures/cost-calculation/estimate-closes.input.json --result tests/cost/fixtures/cost-calculation/estimate-closes.result.json",
+      "what": "A committed cost calculation regenerates byte for byte"
+    },
+    {
+      "command": "uv run --locked python -m pytest tests/cost -q",
+      "what": "The cost suite"
+    }
+  ],
+  "notDrilled": [
+    "Every command that contacts a cluster. No cluster run was authorised for this change, and the container engine was not running on the host when it was validated.",
+    "Every mutating and destructive command on the page.",
+    "scripts/environment/preflight.sh, which needs a running engine to answer.",
+    "Following any incident procedure from the page end to end."
+  ],
+  "gaps": [
+    "No installed release evaluates the six alerts: the release's collector loads the recording rules and not the alert rule files, and nothing routes an alert to anybody.",
+    "No restart, memory, or model-readiness alert exists, and no partial-error alert, because the signals are not emitted or no error budget is decided.",
+    "A disruption shorter than an alert window is invisible by design, and the recorded pod loss was one.",
+    "No automated rollback, and no script that installs a release and leaves it running.",
+    "Resource pressure, out-of-memory, a telemetry gap, and a cost anomaly have never been provoked. Their procedures are described."
+  ],
+  "limitations": [
+    "Every executed result behind the runbook is one provider's, docker-desktop, on one Windows host, CPU only, with one replica of each tier.",
+    "A workflow having executed a command is not an operator having followed the procedure. Nobody other than the author has followed the page.",
+    "No figure quoted is an availability figure, a service-level objective, an error budget, or a recovery-time objective."
+  ]
+}
