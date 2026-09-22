@@ -808,9 +808,9 @@
       "module": "tests/testing/test_published_methods.py",
       "layer": "documentation",
       "marker": "docs",
-      "protects": "The published V1 security and observability methods against the records they summarise: every implemented item resolves to a defined test or an existing workflow gate and a committed record and rests only on certified claims, every gap names what carries it and rests on no certified claim, every control, register entry, exception, catalog metric, and alert appears on the side its own record puts it, each document names exactly the identifiers its record holds, and the statements V1-S5-004-PR1 corrected stay corrected.",
+      "protects": "The published V1 security, observability, and cost and capacity methods against the records they summarise: every implemented item resolves to a defined test or an existing workflow gate and a committed record and rests only on certified claims, every gap names what carries it and rests on no certified claim, every control, register entry, exception, catalog metric, alert, cost rule, basis, cost limitation, and open cost question appears on the side its own record puts it, each document names exactly the identifiers its record holds, every figure the cost and capacity method quotes reads back from the committed file and pointer it names, and the statements V1-S5-004-PR1 and V1-S5-004-PR2 corrected stay corrected.",
       "claims": [],
-      "note": "Deliberately no claim. A method restates statuses the security baseline, the telemetry catalog, and the claim register own, and a row certifying it would certify a summary rather than a property. The suite checks that a named test exists, not that it is a strong one."
+      "note": "Deliberately no claim. A method restates statuses the security baseline, the telemetry catalog, the cost method, and the claim register own, and a row certifying it would certify a summary rather than a property. The suite checks that a named test exists, not that it is a strong one."
     },
     {
       "module": "tests/architecture/test_kubernetes_certification.py",

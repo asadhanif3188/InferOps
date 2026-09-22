@@ -171,8 +171,10 @@ still stated, because it does not depend on use.
 
 ## Limits
 
-- **Every figure is synthetic.** It demonstrates the arithmetic and says nothing about a
-  price.
+- **Every price is synthetic**, so every amount demonstrates the arithmetic and says
+  nothing about a price. The use is synthetic in both fixtures and measured in the two
+  baseline records. (Until 2026-09-22 this line called every figure synthetic, which
+  stopped being true when `V1-S4-005-PR2` committed records of measured use.)
 - **Hand-typed usage** is as good as whoever typed it. Usage taken from samples is as
   good as the samples, which were read every few seconds on one host.
 - **A working set counts file-backed pages** the kernel charges to a pod, and a cgroup
