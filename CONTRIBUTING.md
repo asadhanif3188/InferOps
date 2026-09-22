@@ -873,10 +873,12 @@ check here reads one back, no admission control constrains one, and the network
 policy the release creates was measured not to be enforced by the plugin the
 observed clusters run. A secret scanner, an image scanner, and a dependency auditor
 have each been run once, by hand, against the committed history, the pinned runtime
-image, and the committed dependency lockfile. None of them runs continuously: the
-default-lane workflow ADR 0012 commits carries all three as gates, and no job in it
-has executed on the service. No assessment by an outside party has ever been
-performed.
+image, and the committed dependency lockfile. The default-lane workflow ADR 0012
+commits also carries all three as gates, and each has passed on the service on every
+push to `main` since 2026-09-13 — [the run list](docs/proof/security/v1-s5-004-pr1-hosted-runs.v1alpha1.json) records what the service
+reported. None runs on a schedule and no hosted result is promoted into a record.
+(Until 2026-09-22 this paragraph said no job in that workflow had run on the service.)
+No assessment by an outside party has ever been performed.
 
 A change that adds a control names the verification for it or declares that it has
 none — there is no third option, and the derivation is what makes that true rather

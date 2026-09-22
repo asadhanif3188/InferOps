@@ -237,10 +237,13 @@ that a future change which gives either of them a placement fails here as well a
 there. A control that lives in one suite is a control one refactor away from
 disappearing.
 
-What none of it establishes is stated in `DR-12`: no logger, formatter, or sink
-exists, no log line has ever been inspected, and the property that would matter —
-that a real record carries only permitted fields — has no test because it has no
-subject.
+What none of it establishes is stated in `DR-12`. Since `V1-S1-008-PR1` a logger, a
+formatter, and a redacting sink exist, and the API's own suites read the records it
+writes and find no prompt, completion, or adapter message in them — against the
+committed mock only. No record written against a real runtime is read for content, and
+nothing keeps a record once it is written. (Amended 2026-09-22: this paragraph said no
+logger, formatter, or sink existed and that no log line had been inspected. The decision
+is unchanged; only the statement of fact is.)
 
 ## D7 — Pin the digest, pin the revision, verify the hash
 
@@ -477,8 +480,9 @@ from unstated to registered, each with what may not be claimed while it stands.
 has since run, and no control in this baseline observed it. The most consequential
 controls in the register are the ones with no
 verification at all — no caller is identified, no request is authorised, no traffic
-is policed, and nothing is logged, so a failure of any control here would leave no
-trace to find it by. `DR-12` is written last in the register and is arguably first in
+is policed, and nothing that is logged is kept, so a failure of any control here would
+leave no trace to find it by. (Amended 2026-09-22 from "nothing is logged": records are
+written, and none is kept.) `DR-12` is written last in the register and is arguably first in
 importance: a control whose failure is invisible cannot be shown to have held.
 
 **What publishing this costs.** A threat model is a map of where to push. This one is
@@ -493,10 +497,13 @@ to report it, which is why the missing reporting channel appears in the register
 system. A secret scanner, an image scanner, and a dependency auditor have each been
 run once, by hand, against the committed history, the pinned runtime image, and the
 committed dependency lockfile — after this record was accepted, and recorded
-separately from it. None of the three runs continuously: the default-lane workflow
+separately from it. The default-lane workflow
 [ADR 0012](ADR-0012-continuous-integration-service.md) commits carries all three as
-gates and no job in it has executed on the service, so each recorded finding is
-current only as of the day it was produced. No assessment by an outside party has
+gates, and each has passed on the service on every push to `main` since 2026-09-13;
+none runs on a schedule and no hosted result is promoted into a record, so each
+finding is current only as of the run that produced it. (Amended 2026-09-22: this
+paragraph said no job in that workflow had run on the service. The decision is
+unchanged; only the statement of fact is.) No assessment by an outside party has
 ever been performed. Every runtime observation behind `B1` and `B4` comes from one
 Windows host, on CPU, under one cluster provider. Multi-replica operation was refused
 at a capacity gate and is not certified, and `kind` has not been re-certified since

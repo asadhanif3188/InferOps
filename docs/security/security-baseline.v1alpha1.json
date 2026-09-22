@@ -320,7 +320,7 @@
         "no-secret-or-content-has-a-telemetry-placement",
         "content-capture-is-disabled-and-has-no-enabling-path"
       ],
-      "residualRisk": "The catalog is checked; no logger exists to check. The property that matters - that a real record carries only permitted fields - has no test because it has no subject.",
+      "residualRisk": "The catalog is checked, and since V1-S1-008-PR1 the API's suites read the records it writes and find no prompt, completion, or adapter message in them. Every record read that way comes from the committed mock; no record written against a real runtime is read for content, and nothing keeps a record. This field said until 2026-09-22 that no logger existed to check.",
       "deferredRiskRef": "DR-12"
     },
     {
@@ -812,7 +812,7 @@
       "v1Status": "enforced-over-documents",
       "owner": "security",
       "evidenceRef": "docs/proof/telemetry/v1-s0-007-pr1-validation.md",
-      "whatItDoesNotVerify": "That a log line carries only permitted fields. No logger, formatter, or sink exists, and no log line has ever been inspected."
+      "whatItDoesNotVerify": "That a log line carries only permitted fields. This control reads the catalog. The API's own suites read the records it writes, against the committed mock only, and no record written against a real runtime is read. This field said until 2026-09-22 that no logger, formatter, or sink existed."
     },
     {
       "controlId": "content-capture-is-disabled-and-has-no-enabling-path",
@@ -1551,8 +1551,8 @@
       "threats": [
         "T-02"
       ],
-      "whyDeferred": "Narrowed by V1-S2-006-PR1. There is still no continuous-integration lane - ADR 0005 D6 leaves that undecided - so nothing makes a scan recur without a contributor choosing to run one; a scan run once by hand ages into a claim that outlives its result if it is cited as durable. `scripts/security/scan-runtime-image.sh` closes the part of this that a contributor running it can close: it scans the pinned digest with a recorded scanner version and a committed severity policy, on the machine that runs it. Verifying a build signature or attestation needs a publisher that emits one, and the selected runtime does not publish one today.",
-      "whatWouldHaveToBeTrue": "A publisher that emits a signature or a build attestation and a component that verifies it before the image runs, and a continuous-integration service - which ADR 0005 D6 leaves undecided - to make a scan recur without a contributor remembering to run it.",
+      "whyDeferred": "Narrowed by V1-S2-006-PR1 and again by ADR 0012. This field said until 2026-09-22 that no continuous-integration lane existed; ADR 0012 selected one on 2026-09-12, and the image scan is its dependency-and-image-scan gate, which has passed on the selected service on every push to main since 2026-09-13 through the same script and severity policy a contributor runs by hand. It runs on a change and not on a schedule, so a vulnerability published between changes is not read until the next one, and no hosted result is promoted into a record. Verifying a build signature or attestation needs a publisher that emits one, and the selected runtime does not publish one today.",
+      "whatWouldHaveToBeTrue": "A publisher that emits a signature or a build attestation and a component that verifies it before the image runs, and a scan that runs on a schedule as well as on a change, with its result promoted into a record.",
       "notClaimed": "No provenance, attestation, or build-identity property is claimed. No vulnerability count, severity distribution, or scan score is published as a durable posture: a recorded finding is dated to the run that produced it, and no document may cite it as still current without rerunning the scan.",
       "blocksProductionUse": true
     },
@@ -1582,27 +1582,27 @@
     },
     {
       "riskId": "DR-11",
-      "statement": "No run of a secret scanner over this history is recorded.",
+      "statement": "No recurring run of a secret scanner is recorded.",
       "boundaryId": "B6",
       "threats": [
         "T-14",
         "T-15"
       ],
-      "whyDeferred": "The scanner is not installed on the host this work was done on, and there is no lane to run it in. A configuration file is committed and a configuration file is not a result.",
-      "whatWouldHaveToBeTrue": "An executed run with a recorded scanner version and its output, which would move the security-scan layer of the test strategy from `planned` to `implemented`.",
-      "notClaimed": "The claim `no-credential-or-model-artifact-enters-public-history` stays `planned` and may not be cited.",
+      "whyDeferred": "Narrowed by V1-S4-001-PR1 rather than closed. One run is recorded, by hand, from the scanner's published container image, over 134 commits, clean, and it is the run that found the committed configuration had never parsed. The scan is also the secret-scan gate of the default-lane workflow and has passed on the selected service on every push to main since 2026-09-13; none of those runs is promoted into a record and a job log expires. This field said until 2026-09-22 that the scanner was not installed and that there was no lane to run it in, which stopped being true before the register document was narrowed and was not carried into this data.",
+      "whatWouldHaveToBeTrue": "A run that recurs and is recorded: a hosted scan whose result is promoted into a record, redacted, before the lane's retention window closes.",
+      "notClaimed": "The claim `no-credential-or-model-artifact-enters-public-history` stays `planned` and may not be cited; one recorded run on one host is not a property of the history going forward.",
       "blocksProductionUse": false
     },
     {
       "riskId": "DR-12",
-      "statement": "Nothing is logged, so nothing can be reconstructed.",
+      "statement": "Records are written and nothing keeps them, so nothing can be reconstructed.",
       "boundaryId": "B5",
       "threats": [
         "T-06",
         "T-20"
       ],
-      "whyDeferred": "No logger, formatter, or sink exists, and the telemetry catalog specifies a record for a component that has not been written.",
-      "whatWouldHaveToBeTrue": "A logger that emits the specified record, a store with a stated retention window, and a test that a real record carries only permitted fields.",
+      "whyDeferred": "Narrowed by V1-S1-008-PR1 rather than closed. A logger, a formatter, and a redacting sink exist: the API writes the record the telemetry catalog specifies, a suite reads records the API wrote and asserts that no prompt, completion, or adapter message appears in one, and a field the catalog does not publish is refused rather than written. Records the API wrote with the real adapter against the real runtime are quoted in three committed files from two runs. What is missing is everything after the process: no log store, shipper, retention window, or access rule is selected, the serving-runtime adapter writes nothing, and no suite reads a real-runtime record for content. This field said until 2026-09-22 that no logger, formatter, or sink existed.",
+      "whatWouldHaveToBeTrue": "A store with a stated retention window and an access rule naming who may read it, records produced by the serving-runtime adapter as well as the API, and a check that reads records produced against a real runtime for content.",
       "notClaimed": "No auditability, traceability, or incident-reconstruction property is claimed, and no control here may be described as observed.",
       "blocksProductionUse": true
     }
@@ -1631,8 +1631,8 @@
       "statement": "The secret-scan configuration allowlists two directories wholesale by path, because the fixtures in them are deliberately credential-shaped.",
       "acceptedIn": ".github/secret-scanning-allowlist.md",
       "compensatingControl": "no-credential-or-artifact-in-public-history",
-      "residualRisk": "A real credential committed under either allowlisted path would not be flagged by a run of the scanner - if one were ever run, which it has not been.",
-      "revisitedWhen": "A scanner run is recorded, at which point the allowlist should narrow from two directories to the specific fixture values it exists for.",
+      "residualRisk": "A real credential committed under either allowlisted path would not be flagged by a run of the scanner, including the secret-scan gate that runs on every change.",
+      "revisitedWhen": "A scanner run is recorded, at which point the allowlist should narrow from two directories to the specific fixture values it exists for. V1-S4-001-PR1 recorded one and the allowlist was not narrowed, so the revisit is open.",
       "deferredRiskRef": "DR-11"
     },
     {
@@ -1824,7 +1824,7 @@
     },
     {
       "limitationId": "no-scanner-run",
-      "statement": "No scanner runs continuously. A secret scanner (gitleaks), an image scanner, and a dependency auditor (Trivy) have each been run once, by hand, on the machine that ran them; all three are gates in the committed default-lane workflow and no job in it has executed on the selected service, so a recorded finding is current only as of the day it was produced."
+      "statement": "No scanner runs on a schedule. A secret scanner (gitleaks), an image scanner, and a dependency auditor (Trivy) have each been run once by hand, with the run recorded; all three are also gates in the committed default-lane workflow and have passed on the selected service on every push to main since 2026-09-13, and no hosted result is promoted into a record, so a finding is current only as of the run that produced it."
     },
     {
       "limitationId": "no-assessment",

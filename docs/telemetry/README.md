@@ -11,7 +11,11 @@ backend, dashboard server, or alert routing path is selected. The dashboard exis
 a checked definition, validated once on `docker-desktop` in a throwaway Grafana, with
 [a thirty-second operator guide](inference-operations-dashboard-operator-guide.md).
 Six alerts exist the same way: a checked definition and two rendered rule files that
-nothing has loaded and nothing routes.
+the pinned collector's own `promtool` loads, which no Prometheus in a cluster has loaded
+and nothing routes. (Until 2026-09-22 this sentence said nothing had loaded the rule
+files; a test has run that `promtool` over both since `V1-S4-008-PR1`.) How the whole
+of it is approached, with what is implemented kept apart from what is not, is
+[the V1 observability method](observability-method.md).
 
 This directory answers a question that is easy to answer by accumulation: which
 signals a system should emit. The failure mode is not emitting too few — it is
@@ -40,6 +44,8 @@ and never a key. None of those is a convention anybody has to remember.
 | [Correlated telemetry queries](telemetry-correlation-queries.md) | What an operator can ask of the release's own collector, and what a durable store would add: twenty-three questions, the vocabulary a query may use, the identity join, ten deliberately wrong queries and the rule that refuses each, and the six questions with no answer |
 | [`telemetry-correlation-queries.v1alpha1.json`](telemetry-correlation-queries.v1alpha1.json) | The authoritative form of that document, checked against the catalog and the collection record and evaluated against fixtures by [`tests/telemetry/`](../../tests/telemetry/) |
 | [`telemetry-catalog.v1alpha1.json`](telemetry-catalog.v1alpha1.json) | The authoritative form of both, validated by [`tests/telemetry/`](../../tests/telemetry/) |
+| [The V1 observability method](observability-method.md) | How V1 approaches attributes, logs, metrics, collection, the dashboard, alerts, and retention, with what is implemented and the test, gate, and record behind it kept apart from what is not |
+| [`observability-method.v1alpha1.json`](observability-method.v1alpha1.json) | The authoritative form of the method, checked against the catalog, the alert record, the claim register, and the workflow by [`tests/testing/test_published_methods.py`](../../tests/testing/test_published_methods.py) |
 | [Evidence records and templates](../proof/README.md) | The four templates a record is written from, and the sections every record carries |
 
 ## The short version

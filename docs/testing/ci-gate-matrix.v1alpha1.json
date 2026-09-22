@@ -462,8 +462,8 @@
     },
     {
       "item": "Reconciling the security records' statement that no job has executed on the service",
-      "where": "not scheduled",
-      "note": "SECURITY.md, the security README, the threat model, DR-11, ADR 0008, and the security baseline data still say no job has executed on the selected service. That was true when written and is not now. They carry their own suites and residual-risk wording, so they are named here rather than edited inside a CI change."
+      "where": "V1-S5-004-PR1",
+      "note": "SECURITY.md, the security README, the threat model, DR-11, ADR 0008, and the security baseline data said no job had executed on the selected service, and so did CONTRIBUTING and the claim and test matrix, which this list had not named. That was true when written and stopped being true on 2026-09-13. V1-S5-004-PR1 corrected each in place, with the date, and added DR-08 and the control matrix, which said no continuous-integration lane existed at all. It left this matrix's own statements about the two infrastructure gates alone; see that change's validation record."
     }
   ],
   "limitations": [
