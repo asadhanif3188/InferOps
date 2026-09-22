@@ -283,7 +283,7 @@ hand in `V1-S2-006`; this gate does not regenerate or replace them.
 | A Trivy misconfiguration gate over the renders or the Terraform configuration | Not adopted, on a measurement. At `HIGH` and `CRITICAL`, Trivy v0.74.0 refuses both committed renders on one finding — `KSV-0109` reads the environment name `INFEROPS_MAX_OUTPUT_TOKENS` as a stored secret — refuses one of the nine insecure workload-policy fixtures, and has no check for any `kubernetes_*` Terraform resource: a privileged, host-network pod declared in Terraform scanned clean. The accepted workload policy is the rendered-manifest policy here, and the prerequisite suite's forbidden-provider, forbidden-resource, and secret-material rules are the Terraform ones |
 | `bash -n` and `shellcheck` over `scripts/` | Not scheduled. Those scripts belong to the cluster and host lanes, and adding their gate to this lane without their lane would suggest the lane covers them |
 | Certification of the claims the scanning gates touch | After a run on the service is promoted into a record. The gates have passed there; nothing has been promoted |
-| Correcting the security records that still say no job has executed on the service | Not scheduled. `SECURITY.md`, the security README, the threat model, DR-11, ADR 0008, and the security baseline data carry their own suites and residual-risk wording |
+| Correcting the security records that said no job had executed on the service | Done in `V1-S5-004-PR1`, each in place with the date. This matrix's own statements about the two infrastructure gates were left alone there and are still to correct: [the run list](../proof/security/v1-s5-004-pr1-hosted-runs.v1alpha1.json) shows both passing on eighteen pushes to `main` |
 
 ## Limitations
 

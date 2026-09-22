@@ -316,9 +316,9 @@ Writing the method meant reading every document it summarises against the reposi
 and five kinds of statement had stopped being true. Each is corrected in place with the date,
 and the record lists them:
 
-- **Six places said no job in the default-lane workflow had run on the selected
-  service**: the security index, the threat model, SECURITY.md, ADR 0008, one register
-  entry, and a baseline limitation. The three scan gates passed there on all nineteen
+- **Eight places said no job in the default-lane workflow had run on the selected
+  service**: the security index, the threat model, SECURITY.md, CONTRIBUTING, the claim
+  and test matrix, ADR 0008, one register entry, and a baseline limitation. The three scan gates passed there on all nineteen
   pushes to `main` from 2026-09-13 to 2026-09-21.
 - **One register entry and the control matrix said no continuous-integration lane
   existed**, and that ADR 0005 D6 left the service undecided. ADR 0012 selected one on
@@ -328,8 +328,8 @@ and the record lists them:
   had been narrowed twice. The data is the authoritative form, so it was the stale half.
   One threat's residual risk, one control's `whatItDoesNotVerify`, and two paragraphs of
   ADR 0008 said the same about the logger.
-- **One register entry, the redaction rules, and the API instrumentation document said
-  no record had been produced against a real runtime.** Three committed files,
+- **One register entry, ADR 0006, the redaction rules, and the API instrumentation
+  document said no record had been produced against a real runtime.** Three committed files,
   from two runs, quote records the API wrote with the real adapter.
 - **One register row carried a title its own heading had replaced**, and another
   entry's title said no scan was recorded two paragraphs above the sentence recording

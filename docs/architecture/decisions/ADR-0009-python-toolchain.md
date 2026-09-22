@@ -471,7 +471,9 @@ nothing about the same check running anywhere else.
 - **A published distribution.** Nothing is uploaded to an index, and the
   classifier refuses an upload that tried.
 - **A dependency vulnerability scanner, or an update cadence.** `DR-08` is
-  untouched; no scanner is configured and no cadence is set.
+  untouched by this record; it configures no scanner and sets no cadence. (Amended
+  2026-09-22: this line read as though no scanner existed anywhere. `V1-S2-006-PR1`
+  added one and ADR 0012 runs it as a gate on every change; no cadence is set.)
 - **Whether `tools/contract_validation` eventually moves into the distribution.**
   It stays outside it here. Moving it would change a path that this repository's
   documentation and ADR 0003 both name, and that is a change with its own diff.

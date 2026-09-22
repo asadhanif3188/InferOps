@@ -704,7 +704,7 @@
     },
     {
       "correctionId": "real-runtime-records-exist",
-      "statement": "The redaction rules and the API instrumentation document said no record had been produced against a real runtime. Three committed files, from two runs, quote records the API wrote with the real adapter. What stays true is narrower: no suite reads one for content."
+      "statement": "ADR 0006, the redaction rules, and the API instrumentation document said no record had been produced against a real runtime. Three committed files, from two runs, quote records the API wrote with the real adapter. What stays true is narrower: no suite reads one for content."
     }
   ],
   "limitations": [

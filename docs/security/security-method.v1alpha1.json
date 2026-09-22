@@ -956,7 +956,7 @@
   "corrections": [
     {
       "correctionId": "scanners-have-run-on-the-selected-service",
-      "statement": "The security README, the threat model, SECURITY.md, ADR 0008, DR-11, and the baseline's no-scanner-run limitation said no job in the default-lane workflow had executed on the selected service. The three scan gates passed there on all nineteen pushes to main from 2026-09-13 to 2026-09-21, as docs/proof/security/v1-s5-004-pr1-hosted-runs.v1alpha1.json lists. Corrected in place, with the date the sentence stopped being true."
+      "statement": "The security README, the threat model, SECURITY.md, CONTRIBUTING, the claim and test matrix, ADR 0008, DR-11, and the baseline's no-scanner-run limitation said no job in the default-lane workflow had executed on the selected service. The three scan gates passed there on all nineteen pushes to main from 2026-09-13 to 2026-09-21, as docs/proof/security/v1-s5-004-pr1-hosted-runs.v1alpha1.json lists. Corrected in place, with the date the sentence stopped being true."
     },
     {
       "correctionId": "a-ci-lane-exists",
@@ -972,7 +972,7 @@
     },
     {
       "correctionId": "real-runtime-records-exist",
-      "statement": "DR-12, the redaction rules, and the API instrumentation document said no record had been produced against a real runtime. Three committed files, from two runs, quote records the API wrote with the real adapter. What stays true is narrower: no suite reads one for content."
+      "statement": "DR-12, ADR 0006, the redaction rules, and the API instrumentation document said no record had been produced against a real runtime. Three committed files, from two runs, quote records the API wrote with the real adapter. What stays true is narrower: no suite reads one for content."
     }
   ],
   "limitations": [

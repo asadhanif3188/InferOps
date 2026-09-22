@@ -134,9 +134,18 @@ RETIRED_PHRASES = (
     "no logger, formatter, or sink exists",
     "no log line has ever been inspected",
     "no logger exists to check",
+    "none of them runs continuously",
+    "no job in the committed workflow has executed",
+    "security records that still say no job has executed",
+    "no scanner is configured and no cadence is set",
 )
 GOVERNED_DOCUMENTS = (
     "SECURITY.md",
+    "CONTRIBUTING.md",
+    "docs/architecture/decisions/ADR-0006-telemetry-and-evidence-catalog.md",
+    "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+    "docs/testing/claim-test-matrix.md",
+    "docs/testing/ci-gate-matrix.md",
     "docs/security/README.md",
     "docs/security/threat-model.md",
     "docs/security/control-matrix.md",

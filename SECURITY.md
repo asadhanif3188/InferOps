@@ -59,8 +59,8 @@ A secret scanner, an image scanner, and a dependency auditor have each been run
 once, by hand, against the committed history, the pinned runtime image, and the
 committed dependency lockfile, and those runs are recorded. All three are also gates
 in the default-lane workflow, and each passed on the selected service on all nineteen
-pushes to `main` from 2026-09-13 to 2026-09-21; those hosted results are read from the
-service and not promoted into a record. The workflow runs on a change and not on a
+pushes to `main` from 2026-09-13 to 2026-09-21, as [the run list](docs/proof/security/v1-s5-004-pr1-hosted-runs.v1alpha1.json) records;
+those hosted results are read from the service and not promoted into a record. The workflow runs on a change and not on a
 schedule, so each finding is current only as of the run that produced it. (Until
 2026-09-22 this paragraph said no job in that workflow had run on the service, which
 stopped being true on 2026-09-13.) No assessment by an outside party has ever been

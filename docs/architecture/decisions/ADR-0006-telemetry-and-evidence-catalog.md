@@ -343,7 +343,10 @@ labelling them as tested would have been the more comfortable and less true opti
 there was no runtime. A redacting sink, a field allowlist in code, and a test that
 inspects a real record now exist for the API and are enforced where a signal is
 created. They cover one emitter: the serving-runtime adapter is not instrumented, and
-no record has been produced against a real runtime.
+no record written against a real runtime is read for content — records the API wrote
+with the real adapter are quoted in three committed files from two runs, and no test
+reads one. (Amended 2026-09-22: this sentence said no record had been produced against
+a real runtime. The decision is unchanged; only the statement of fact is.)
 
 ## Evidence
 

@@ -6,7 +6,7 @@ authoritative record beside it; a suite,
 [`tests/testing/test_published_methods.py`](../../../tests/testing/test_published_methods.py),
 that holds both records to the security baseline, the telemetry catalog, the alert
 record, the claim and evidence register, and the committed workflow; and in-place
-corrections to eleven documents that had said things which stopped being true. This
+corrections to sixteen documents that had said things which stopped being true. This
 record is what was run, what it found, and what none of it supports.
 
 **Evidence class.** Everything this change asserts about the repository is
@@ -84,16 +84,18 @@ column, and a paragraph beside the table drifts freely.
 
 | Where | What it said | What is true | Since |
 |---|---|---|---|
-| `SECURITY.md`; the security README banner; the threat model banner; `ADR-0008` "What must not be inferred"; `DR-11`; the baseline limitation `no-scanner-run` | No job in the default-lane workflow had executed on the selected service | The three scan gates passed there on all nineteen pushes to `main` from `f212090` to `4f3532a` | 2026-09-13 |
+| `SECURITY.md`; `CONTRIBUTING.md`; the security README banner; the threat model banner; the claim and test matrix; `ADR-0008` "What must not be inferred"; `DR-11`; the baseline limitation `no-scanner-run` | No job in the default-lane workflow had executed on the selected service | The three scan gates passed there on all nineteen pushes to `main` from `f212090` to `4f3532a` | 2026-09-13 |
 | The threat model's T-15 abuse case | "nothing makes the run recur" | The `secret-scan` gate recurs on every change | 2026-09-13 |
 | `DR-08`, register document and data; the control matrix's host-scan paragraph | No continuous-integration lane existed and ADR 0005 D6 left the service undecided | ADR 0012 selected one and committed the workflow | 2026-09-12 |
 | The control matrix, the paragraph after the documents table | The secret-scan control does not verify a scanner has run "because none has" | One run is recorded by hand, and the gate runs on every change | `V1-S4-001-PR1` |
 | `EX-03`, document and data | A scanner run would miss the allowlisted paths "if one were ever run, which it has not been" | The same | `V1-S4-001-PR1` |
 | `DR-11` and `DR-12` in the baseline data | The scanner was not installed and there was no lane; no logger, formatter, or sink existed | The register document had been narrowed by `V1-S4-001-PR1` and `V1-S1-008-PR1` and the data had not. The data is the authoritative form, so it was the stale half, and the suite that compares the two reads only identifiers | `V1-S1-008-PR1`, `V1-S4-001-PR1` |
-| `DR-12` in the register document; the redaction rules; the API instrumentation document | No record had been produced against a real runtime | Three committed files from two runs quote records the API wrote with the real adapter: the first attempt of the V1-S2-005 local baseline, and V1-S4-007-PR1's diagnostics and record. No suite reads one for content, which is the part that stays true | 2026-09-03 |
+| `DR-12` in the register document; `ADR-0006`'s amendment; the redaction rules; the API instrumentation document | No record had been produced against a real runtime | Three committed files from two runs quote records the API wrote with the real adapter: the first attempt of the V1-S2-005 local baseline, and V1-S4-007-PR1's diagnostics and record. No suite reads one for content, which is the part that stays true | 2026-09-03 |
 | The register table's `DR-12` row, and the baseline's `DR-12` statement | "Nothing is logged, so nothing can be reconstructed" | The entry's own heading already said records are written and nothing keeps them | `V1-S1-008-PR1` |
 | `DR-11`'s title, in the table, the heading, and the data | "No run of a secret scanner over this history is recorded" | One run is recorded, two paragraphs below the title | `V1-S4-001-PR1` |
 | `ADR-0008` D6 and its "What it does not change" paragraph; the baseline's `T-06` residual risk and the `whatItDoesNotVerify` of `no-secret-or-content-has-a-telemetry-placement` | No logger, formatter, or sink existed, no log line had been inspected, "nothing is logged" | The API writes records and its suites read them back; what stays true is that they read only the mock's, and that nothing keeps a record | `V1-S1-008-PR1` |
+| `ADR-0009`, "What it does not decide" | "no scanner is configured and no cadence is set" | That record configured no scanner; `V1-S2-006-PR1` added one and ADR 0012 runs it as a gate. No cadence is set, which stays true | `V1-S2-006-PR1` |
+| The CI gate matrix's "What is not here" row for this correction | "Not scheduled" | Done here. Its data was updated in the first commit and its document was not, which made the two disagree | this change |
 | The telemetry index's status paragraph | The two rendered rule files were something "nothing has loaded" | The pinned collector's own `promtool` loads both, and a test has run it since `V1-S4-008` | 2026-09-17 |
 
 Every one is corrected **in place with the date the sentence was replaced**, so a reader
@@ -110,8 +112,8 @@ was retired or narrowed in what it defers: `DR-11` still blocks nothing and stil
 `no-credential-or-model-artifact-enters-public-history` planned, and `DR-12` still
 blocks production use.
 
-**The retired sentences are now refused.** The suite searches fifteen governed
-documents for nine retired phrases and fails on any of them. That guard found the row
+**The retired sentences are now refused.** The suite searches twenty governed
+documents for thirteen retired phrases and fails on any of them. That guard found the row
 above the telemetry index's: the first draft of this change corrected `DR-12` and missed
 the same stale sentence in two places in ADR 0008 and two fields of the baseline data,
 and the guard's first run over the finished draft failed on them. Evidence records and the
@@ -182,9 +184,9 @@ committed.
 
 | Command | Result |
 |---|---|
-| `uv run --locked python -m pytest tests/testing/test_published_methods.py -q` | 276 passed |
-| `uv run --locked python -m pytest tests/security tests/telemetry tests/testing -q` | 6269 passed |
-| `uv run --locked python -m pytest -q` | 12434 passed, 33 skipped, 14 deselected, in 21 min 52 s. The skips are the existing ones that need a pinned image, a tool, or a host capability absent here, including both `promtool` checks: the pinned collector image is not pulled on this host, so this change did not re-establish that the rule files load, and the methods quote that fact from the V1-S4-008 record |
+| `uv run --locked python -m pytest tests/testing/test_published_methods.py -q` | 281 passed (276 at the first commit, before the review widened the guard) |
+| `uv run --locked python -m pytest tests/security tests/telemetry tests/testing -q` | 6274 passed (6269 at the first commit) |
+| `uv run --locked python -m pytest -q` | 12439 passed, 33 skipped, 14 deselected, in 19 min 56 s (12434 at the first commit). The skips are the existing ones that need a pinned image, a tool, or a host capability absent here, including both `promtool` checks: the pinned collector image is not pulled on this host, so this change did not re-establish that the rule files load, and the methods quote that fact from the V1-S4-008 record |
 | `uv run --locked ruff format --check .` | 470 files already formatted, after `ruff format` reformatted the new suite once |
 | `uv run --locked ruff check .` | All checks passed |
 | `uv run --locked python -m mypy` | Success: no issues found in 261 source files |
@@ -209,6 +211,40 @@ prompts, host paths, host names, credentials, and tenant identifiers. Nothing wa
 
 The parent story, `V1-S5-004`, is **not complete**: its cost and capacity method is
 `V1-S5-004-PR2`.
+
+## Part 7 — what the independent review found
+
+An independent review read the first commit (`489b485`) against the repository before
+anything was pushed. It recounted every figure the change introduces — the item counts,
+the 141 references, the 38, 12, 6, 16, and 6 coverage totals, the nineteen runs and their
+per-job counts, the inventory counts, and the three files from two runs — and every one
+held. It confirmed that no path under `src/`, `charts/`, `infra/`, `deploy/`, `scripts/`,
+`tools/`, or `.github/` changed and that nothing from the cost method was pulled forward.
+
+It found three things the first commit got wrong, and all three were the exact failure
+this change exists to remove:
+
+- **`CONTRIBUTING.md` still said no job in the workflow had run on the service**, word for
+  word the sentence the first commit corrected in six other places.
+- **ADR 0006 still said no record had been produced against a real runtime** — the
+  decision the observability method is published under.
+- **The CI gate matrix's document and data disagreed because of the first commit.** Its
+  data marked the security correction done; its document still said "Not scheduled".
+
+It also noted that the corrected sentences did not link the run list they rest on.
+
+Sweeping the repository for the same phrasings after that found two more the review had
+not listed: the claim and test matrix, which said the same thing as `CONTRIBUTING.md`, and
+ADR 0009, which said "no scanner is configured" in the present tense. So the first
+commit's "eleven documents" was sixteen, its "six places" for the scan statement was
+eight, and its real-runtime correction missed one document of four. All five are corrected
+in place with the date. The guard now searches twenty documents for thirteen phrases,
+covering each of them, and `SECURITY.md`, `CONTRIBUTING.md`, the claim and test matrix,
+and the CI gate matrix now link the run list.
+
+The lesson is the one the guard exists for, applied to the guard itself: the first
+commit listed the documents it had already corrected as the ones to protect, so it could
+not catch a document nobody had read.
 
 ## What none of this supports
 

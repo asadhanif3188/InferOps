@@ -268,14 +268,14 @@ publishes no figure derived from any of them. A dashboard screenshot is a public
 
 ## What publishing this corrected
 
-Two statements in this directory had stopped being true, and both are corrected in
+Two statements about telemetry had stopped being true, and both are corrected in
 place:
 
 - **The telemetry index said the two rendered rule files were something nothing had
   loaded.** The pinned collector's `promtool` loads both, and a test runs it. What
   stays true is that no Prometheus in a cluster has loaded them and nothing routes them.
-- **The redaction rules and the API instrumentation document said no record had been
-  produced against a real runtime.** Three committed files, from two runs, quote records
+- **ADR 0006, the redaction rules, and the API instrumentation document said no record
+  had been produced against a real runtime.** Three committed files, from two runs, quote records
   the API wrote with the real adapter. What stays true is narrower, and it is the part that
   matters: no suite reads one for content.
 
