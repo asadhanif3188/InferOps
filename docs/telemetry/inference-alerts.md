@@ -70,12 +70,12 @@ is refusing and the second says which codes, which outcomes, or which tier.
 
 | Alert | Severity | Fires when | Runbook |
 |---|---|---|---|
-| `InferOpsInferenceCallersRefused` | critical | The platform has been refusing completions with `capability-unavailable` for five minutes | [Service, network, and the policy that is not enforced](../environment/kubernetes-troubleshooting.md#service-network-and-the-policy-that-is-not-enforced) |
-| `InferOpsInferenceServingNothing` | critical | Completions have been arriving for five minutes and none has succeeded | [reading the logs](../environment/kubernetes-troubleshooting.md#reading-the-apis-and-the-runtimes-logs) |
-| `InferOpsReadinessRefusalsSustained` | critical | More than half a component's readiness probes have been refused for five minutes | [probes](../environment/kubernetes-troubleshooting.md#probes) |
-| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | warning | The 95th percentile of completion time has been past half the configured request timeout for ten minutes | [scheduling, resources, and out-of-memory](../environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory) |
-| `InferOpsRuntimeDefersRequests` | warning | The runtime has been holding requests it has no parallel slot for for ten minutes | [scheduling, resources, and out-of-memory](../environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory) |
-| `InferOpsPlatformApiScrapeJobAbsent` | warning | The collector's `platform-api` job has matched no target for ten minutes | [telemetry scrape](../environment/kubernetes-troubleshooting.md#telemetry-scrape) |
+| `InferOpsInferenceCallersRefused` | critical | The platform has been refusing completions with `capability-unavailable` for five minutes | [callers refused](../environment/operator-runbook.md#inferopsinferencecallersrefused) |
+| `InferOpsInferenceServingNothing` | critical | Completions have been arriving for five minutes and none has succeeded | [serving nothing](../environment/operator-runbook.md#inferopsinferenceservingnothing) |
+| `InferOpsReadinessRefusalsSustained` | critical | More than half a component's readiness probes have been refused for five minutes | [readiness refusals](../environment/operator-runbook.md#inferopsreadinessrefusalssustained) |
+| `InferOpsInferenceLatencyPastHalfTheRequestBudget` | warning | The 95th percentile of completion time has been past half the configured request timeout for ten minutes | [latency past half the budget](../environment/operator-runbook.md#inferopsinferencelatencypasthalftherequestbudget) |
+| `InferOpsRuntimeDefersRequests` | warning | The runtime has been holding requests it has no parallel slot for for ten minutes | [runtime defers requests](../environment/operator-runbook.md#inferopsruntimedefersrequests) |
+| `InferOpsPlatformApiScrapeJobAbsent` | warning | The collector's `platform-api` job has matched no target for ten minutes | [scrape job absent](../environment/operator-runbook.md#inferopsplatformapiscrapejobabsent) |
 
 Five of them are about the workload. The sixth is about the collection and says so in
 its own signal field, because it is the one that decides whether the other five mean

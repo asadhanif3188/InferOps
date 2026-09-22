@@ -16,7 +16,7 @@ which is asked of a Prometheus and shows nothing when nothing is running. This
 page reads committed files, says the same thing on every machine, and does not
 change when a cluster does.
 
-**Certified: 42 of 58 claims.** The remaining 16 are the rows worth
+**Certified: 43 of 59 claims.** The remaining 16 are the rows worth
 reading, and they are listed in full under [what V1 does not
 claim](#what-v1-does-not-claim) rather than summarised away. Every number on
 this page is counted from the register at render time; there is no field
@@ -54,7 +54,7 @@ provider certifies that provider alone.
 | Capability | Certified | Planned | Deferred | Not claimed | Strongest level | Provider named |
 |---|---|---|---|---|---|---|
 | [Real serving](#real-serving) | 5 | 2 | 0 | 0 | `C2` | `docker-desktop` |
-| [Kubernetes deployment](#kubernetes-deployment) | 4 | 0 | 0 | 0 | `C2` | `docker-desktop`, `kind` |
+| [Kubernetes deployment](#kubernetes-deployment) | 5 | 0 | 0 | 0 | `C2` | `docker-desktop`, `kind` |
 | [Clean-clone reproduction](#clean-clone-reproduction) | 1 | 0 | 0 | 0 | `C2` | `docker-desktop` |
 | [Model integrity](#model-integrity) | 4 | 0 | 0 | 0 | `C2` | `docker-desktop` |
 | [Pod recovery](#pod-recovery) | 2 | 0 | 0 | 0 | `C2` | `docker-desktop` |
@@ -75,7 +75,7 @@ between a promise, a decision, and a measured absence.
 
 | Status | Claims | May be published as a capability | What it means |
 |---|---|---|---|
-| `certified` | 42 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
+| `certified` | 43 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
 | `planned` | 7 | no | V1 intends it and nothing has proven it. It may be published only as an intention, and it may cite no evidence record. |
 | `deferred` | 1 | no | Out of V1 scope by an accepted decision. It may not be published as a capability at all, and it may cite no evidence record. |
 | `not-claimed` | 8 | no | A reader would reasonably expect it and V1 states that it does not have it. It may cite the record that measured the absence, because an absence somebody measured is worth more than one nobody mentions. |
@@ -88,7 +88,7 @@ whether the claim may be published. The meanings are in
 
 | Certification level | Certified claims |
 |---|---|
-| `C0` | 21 |
+| `C0` | 22 |
 | `C1` | 3 |
 | `C2` | 18 |
 
@@ -101,7 +101,7 @@ below can support no statement about real runtime behaviour at all.
 | Evidence label | Claims | Ceiling | May support real runtime behaviour | What it is |
 |---|---|---|---|---|
 | `documented-unexecuted` | 12 | `none` | no | A statement in a document. Nothing ran. |
-| `local-static` | 21 | `C0` | no | A deterministic check over files in this repository. No network, no cluster, no model, no clock, no randomness. |
+| `local-static` | 22 | `C0` | no | A deterministic check over files in this repository. No network, no cluster, no model, no clock, no randomness. |
 | `mock` | 3 | `C1` | no | A labelled mock provider that loads no model. |
 | `estimated` | 1 | `none` | no | A calculation rather than a measurement. |
 | `local-real-cpu` | 20 | `C2` | yes | The real component, on a contributor's own machine, on CPU, with versions and commands recorded. |
@@ -154,7 +154,7 @@ holding one certified row and one measured absence is not one status.
 
 *Does a release install, serve, and leave without residue?*
 
-**Tally:** 4 `certified`.
+**Tally:** 5 `certified`.
 
 | Claim | Status | Level | Evidence class | Provider and environment | Record | Limitation |
 |---|---|---|---|---|---|---|
@@ -162,6 +162,7 @@ holding one certified row and one measured absence is not one status.
 | `helm uninstall` removes every object the release owns and leaves the operator's cluster, its node, its storage class, and the Terraform-owned prerequisites intact. | `certified` | `C2` | `local-real-cpu` | `docker-desktop`, `local-kubernetes` | [`environment/v1-s3-011-pr2-scoped-cleanup.md`](environment/v1-s3-011-pr2-scoped-cleanup.md) | One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. |
 | The optional `kind` helper creates a local development cluster, runs a workload inside it, and removes it leaving no residue the verifier can find. | `certified` | `C2` | `local-real-cpu` | `kind`, `local-kubernetes` | [`environment/v1-s0-002-pr2-cluster-smoke.md`](environment/v1-s0-002-pr2-cluster-smoke.md) | One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. |
 | A symptom-oriented Kubernetes troubleshooting guide covering cluster, scheduling, memory, storage, model load, probe, Service, telemetry, Helm, and Terraform faults, with four separated cleanup radii, is published and machine-checked against the repository. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`environment/v1-s3-009-pr1-validation.md`](environment/v1-s3-009-pr1-validation.md), [`environment/v1-s3-011-pr1-docker-desktop-paved-road.md`](environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [`environment/v1-s3-011-pr2-scoped-cleanup.md`](environment/v1-s3-011-pr2-scoped-cleanup.md) | Every command is checked against the repository, which is a property of strings rather than of a cluster. The record that machine-checks the guide contacted no cluster, and states that when it was written the release half had never been run by anybody; `V1-S3-011` ran that half afterwards, on one Windows host, on `docker-desktop`, and those two records are cited beside it. |
+| A V1 operator runbook gives pod loss, an unready model, latency and errors, resource pressure and out-of-memory, a telemetry gap, a bad release, model and cache faults, and a cost anomaly each a procedure answering detection, user impact, automatic recovery, human action, validation, and escalation; states for each whether anything recovers it without a person; routes every one of the six alerts to its own section; and is machine-checked against the repository. | `certified` | `C0` | `local-static` | `repository-only`, no provider | [`environment/v1-s5-005-pr1-validation.md`](environment/v1-s5-005-pr1-validation.md) | Every check reads files. The offline commands on the page were executed; no command that contacts a cluster was, and no procedure was followed as a drill. Three procedures rest on executed local-real experiments on docker-desktop, one Windows host and one replica; the other five are described and were never provoked. |
 
 ### Clean-clone reproduction
 
@@ -384,7 +385,7 @@ an advertisement.
 - The capability grouping is a reading. Which claims belong under *model
   integrity* rather than *real serving* is a judgement made in
   `tools/proof_dashboard/core.py`, and no check decides it.
-- **Every one of the 58 claims is shown as a row.** Each
+- **Every one of the 59 claims is shown as a row.** Each
   is named by exactly one capability group, so nothing on this page is
   counted in a total and absent from every table. That is a property of the
   grouping today, not a rule: a claim added to the register and named by no

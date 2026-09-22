@@ -10,6 +10,35 @@ once versioned releases begin.
 
 ### Added
 
+- **A V1 operator runbook is published, and every alert now links to a section of
+  it.** [The runbook](docs/environment/operator-runbook.md) covers deploying a release
+  that stays up, verifying it, telemetry, load, one triage section per alert, and eight
+  incident procedures: pod loss, an unready model, latency and errors, resource
+  pressure and out-of-memory, a telemetry gap, a bad release, model and cache faults,
+  and a cost anomaly. Each one answers the same six questions: detection, user impact,
+  automatic recovery, human action, validation, and escalation. Each one states
+  whether anything recovers it without a person. Only pod loss does, through the
+  Deployment controller. Three procedures rest on executed experiments on
+  `docker-desktop`. Five are described and were never provoked, and the page says
+  which. Its record, [`operator-runbook.v1alpha1.json`](docs/environment/operator-runbook.v1alpha1.json),
+  carries the incidents, the alert routes, the quoted figures with the JSON pointer
+  each is read back from, and the offline drills. All nine drills were executed for
+  [the validation record](docs/proof/environment/v1-s5-005-pr1-validation.md). No
+  cluster was contacted.
+
+  The six alerts' `runbookRef` values moved from four sections of the troubleshooting
+  guide, two of them shared, to one section each in the runbook. The alert record,
+  the alert document, and both rendered rule files carry the new links. Nothing else
+  in the rule files changed. [`tests/architecture/test_operator_runbook.py`](tests/architecture/test_operator_runbook.py)
+  holds the page to the repository, and the register gains
+  `a-v1-operator-runbook-covers-every-incident-class-and-every-alert-links-into-it`,
+  certified `C0`, `local-static`.
+
+  **The runbook states three things no page stated before.** No installed release
+  evaluates the alerts: the release's collector loads the recording rules and not the
+  alert rule files. No script leaves a release running. And the recorded bad release
+  fires no alert, because with one replica the old pod keeps serving.
+
 - **The V1 cost and capacity method is published, and no estimate in it can be read as
   a bill.** [The method](docs/cost/cost-capacity-method.md) walks eleven topics: actual
   billing against estimated cost against allocated cost, the formula and its units, the

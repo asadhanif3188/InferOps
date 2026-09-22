@@ -1244,6 +1244,42 @@
       "notClaimedReason": null
     },
     {
+      "claimId": "a-v1-operator-runbook-covers-every-incident-class-and-every-alert-links-into-it",
+      "area": "reliability",
+      "statement": "A V1 operator runbook gives pod loss, an unready model, latency and errors, resource pressure and out-of-memory, a telemetry gap, a bad release, model and cache faults, and a cost anomaly each a procedure answering detection, user impact, automatic recovery, human action, validation, and escalation; states for each whether anything recovers it without a person; routes every one of the six alerts to its own section; and is machine-checked against the repository.",
+      "status": "certified",
+      "certificationLevel": "C0",
+      "evidenceLabel": "local-static",
+      "assertsRealBehaviour": false,
+      "provider": "not-applicable",
+      "environment": "repository-only",
+      "strategyClaimIds": [],
+      "implementationRefs": [
+        "docs/environment/operator-runbook.md",
+        "docs/environment/operator-runbook.v1alpha1.json",
+        "docs/telemetry/inference-alerts.v1alpha1.json",
+        "deploy/prometheus"
+      ],
+      "automatedTestRefs": [
+        "tests/architecture/test_operator_runbook.py"
+      ],
+      "recordedCoverageGaps": [],
+      "ciGateIds": [
+        "default-lane-tests",
+        "documentation"
+      ],
+      "evidenceRefs": [
+        "docs/proof/environment/v1-s5-005-pr1-validation.md"
+      ],
+      "versionsRecordedIn": "docs/proof/environment/v1-s5-005-pr1-validation.md",
+      "limitation": "Every check reads files. The offline commands on the page were executed; no command that contacts a cluster was, and no procedure was followed as a drill. Three procedures rest on executed local-real experiments on docker-desktop, one Windows host and one replica; the other five are described and were never provoked.",
+      "doesNotEstablish": "That an operator following it recovers, that any alert is evaluated in an installed release, or that anybody is told when one would fire.",
+      "readmeRefs": [
+        "docs/environment/operator-runbook.md"
+      ],
+      "notClaimedReason": null
+    },
+    {
       "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
       "area": "reliability",
       "statement": "One serving pod deleted by name mid-load produced a 31,960 ms caller-visible outage in which 40 of 41 dispatched requests were refused with `capability-unavailable`, the replacement reported itself Ready 33,665 ms after the delete, and no person intervened.",

@@ -27,7 +27,7 @@ groups:
       blind_spot: |-
         Two things, both measured rather than supposed. A caller who never reached the API: every series it reads is emitted by the API, so a release whose API is gone is silent here and visible only to the collection alert. And the first burst on a release: the API creates a labelled counter series on its first event, so the series appears already carrying what it has counted, and a rate over it reads no increase. V1-S4-006-PR1's entire outage arrived that way -- forty refusals inside 32 s, a series born at 40 and never incremented again -- and the replay of this alert over that capture is silent for exactly that reason, not because the window was too long.
       evidence_query: sum by (inferops_workload_id, inferops_error_code) (rate(inferops_inference_errors_total[5m]))
-      runbook: docs/environment/kubernetes-troubleshooting.md#service-network-and-the-policy-that-is-not-enforced
+      runbook: docs/environment/operator-runbook.md#inferopsinferencecallersrefused
       evidence: docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md, docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md
       not_routed: |-
         Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
@@ -49,7 +49,7 @@ groups:
       blind_spot: |-
         A release that has never served. The success counter series does not exist until the first success, so a rate over it is empty rather than zero, and an install whose model never became ready has no success series to read as zero. That is not a hypothesis: the V1-S4-007-PR1 run recorded the success series first appearing after the correction, and the model-never-becomes-ready scenario reproduces it and expects this alert to stay silent.
       evidence_query: sum by (inferops_workload_id, inferops_model_id, inferops_outcome) (rate(inferops_inference_requests_total[5m]))
-      runbook: docs/environment/kubernetes-troubleshooting.md#reading-the-apis-and-the-runtimes-logs
+      runbook: docs/environment/operator-runbook.md#inferopsinferenceservingnothing
       evidence: docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md, docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md
       not_routed: |-
         Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
@@ -71,7 +71,7 @@ groups:
       blind_spot: |-
         Which of the several things the adapter checks said no. The counter names the component and not the reason, and the reason is in the log rather than in a metric.
       evidence_query: sum by (inferops_workload_id, inferops_component) (rate(inferops_readiness_check_failures_total[5m]))
-      runbook: docs/environment/kubernetes-troubleshooting.md#probes
+      runbook: docs/environment/operator-runbook.md#inferopsreadinessrefusalssustained
       evidence: docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md, docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md
       not_routed: |-
         Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
@@ -93,7 +93,7 @@ groups:
       blind_spot: |-
         Where the time went. The queue-duration histogram is the signal that would separate waiting from working and nothing emits it, so this says a request was slow and never which part of it was.
       evidence_query: histogram_quantile(0.95, sum by (inferops_workload_id, inferops_model_id, le) (rate(inferops_inference_request_duration_seconds_bucket[5m])))
-      runbook: docs/environment/kubernetes-troubleshooting.md#scheduling-resources-and-out-of-memory
+      runbook: docs/environment/operator-runbook.md#inferopsinferencelatencypasthalftherequestbudget
       evidence: docs/proof/serving/v1-s4-004-pr2-performance-findings.md
       not_routed: |-
         Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
@@ -115,7 +115,7 @@ groups:
       blind_spot: |-
         A collector that is itself gone. absent() is evaluated by the collector, so a collector that is not running evaluates nothing and tells nobody, and no rule in this file can close that. Nor does it say anything about whether a discovered target can serve: a target that answers a scrape has been observed both while its pod was deleted and while its model was still loading.
       evidence_query: inferops:scrape_targets_up:sum / inferops:scrape_targets:count
-      runbook: docs/environment/kubernetes-troubleshooting.md#telemetry-scrape
+      runbook: docs/environment/operator-runbook.md#inferopsplatformapiscrapejobabsent
       evidence: docs/proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md
       not_routed: |-
         Nothing routes these alerts. No receiver, routing tree, Alertmanager, or on-call rotation is selected; ADR 0004 D7 leaves alert routing with telemetry-backend, deferred. A rule file is a file.
