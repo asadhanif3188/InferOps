@@ -557,6 +557,7 @@
     {"figureId": "run-1-reserved-core-hours", "quoted": "0.100453", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/reserved/cpuCoreHours", "transform": "text"},
     {"figureId": "run-1-share-of-node", "quoted": "0.454390", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/derived/shareOfNodeCapacity", "transform": "text"},
     {"figureId": "run-2-share-of-node", "quoted": "0.452395", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-2.result.json", "pointer": "/records/0/derived/shareOfNodeCapacity", "transform": "text"},
+    {"figureId": "run-1-share-recomputed-from-rounded-figures", "quoted": "0.454402", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/cost/amount", "divisorPointer": "/capacity/amount", "transform": "quotient-at-six-places"},
     {"figureId": "run-1-node-capacity-amount", "quoted": "0.048270", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/capacity/amount", "transform": "text"},
     {"figureId": "run-1-unallocated-amount", "quoted": "0.026336", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/unallocated/amount", "transform": "text"},
     {"figureId": "core-hour-rate", "quoted": "0.040000", "sourceRef": "docs/cost/cost-method.v1alpha1.json", "pointer": "/priceSources/0/rates/0/ratePerHour", "transform": "text"},

@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import json
 import re
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -669,10 +669,18 @@ def test_every_cost_limitation_and_open_question_is_carried_as_a_gap() -> None:
 
 
 def _pointer(document_value: Any, pointer: str) -> Any:
+    """Resolve an RFC 6901 JSON pointer, including its `~1` and `~0` escapes."""
+    assert pointer.startswith("/"), f"{pointer!r} is not a JSON pointer"
     value = document_value
-    for token in pointer.lstrip("/").split("/"):
+    for raw in pointer[1:].split("/"):
+        token = raw.replace("~1", "/").replace("~0", "~")
         value = value[int(token)] if isinstance(value, list) else value[token]
     return value
+
+
+def test_the_pointer_helper_unescapes_as_rfc_6901_says() -> None:
+    sample = {"a/b": {"m~n": [10, 20]}}
+    assert _pointer(sample, "/a~1b/m~0n/1") == 20
 
 
 FIGURES = method(COST_METHOD)["figures"]
@@ -683,9 +691,21 @@ def test_every_figure_reads_back_from_the_file_it_names(figure: dict[str, Any]) 
     """A figure is quoted from a committed result or findings file, never typed."""
     source = figure["sourceRef"]
     assert source.startswith((PROOF_ROOT, "docs/cost/")), source
-    value = _pointer(_load(REPO_ROOT / source), figure["pointer"])
+    record = _load(REPO_ROOT / source)
+    value = _pointer(record, figure["pointer"])
     assert value is not None, f"{figure['figureId']} points at a null"
-    written = FIGURE_TRANSFORMS[figure["transform"]](value)
+    if "divisorPointer" in figure:
+        # A quotient of two published figures, quoted to show that dividing rounded
+        # figures by hand does not reproduce the figure the tool divides exactly.
+        assert figure["transform"] == "quotient-at-six-places"
+        divisor = _pointer(record, figure["divisorPointer"])
+        written = str(
+            (Decimal(value) / Decimal(divisor)).quantize(
+                Decimal("0.000001"), rounding=ROUND_HALF_EVEN
+            )
+        )
+    else:
+        written = FIGURE_TRANSFORMS[figure["transform"]](value)
     assert written == figure["quoted"], (
         f"{figure['figureId']} quotes {figure['quoted']!r}; {source}{figure['pointer']} "
         f"gives {written!r}"

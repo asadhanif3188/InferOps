@@ -203,6 +203,11 @@ every workload, because a cost that survives the workload is not the workload's.
 | Share of the node | `derived.shareOfNodeCapacity` | 0.454390 | 0.452395 |
 | Confidence | `cost.confidence` | `none` | `none` |
 
+Dividing two published figures by hand does not reproduce a third: 0.021934 over
+0.048270 gives 0.454402, not 0.454390. Every figure is divided from the exact values and
+rounded once, at the end, so each six-place figure is correct on its own and none is
+derived from another's rounding.
+
 Every one of those is read back by the suite from
 [the run 1 result](../proof/cost/v1-s4-005-pr2-baseline-run-1.result.json) and
 [the run 2 result](../proof/cost/v1-s4-005-pr2-baseline-run-2.result.json).

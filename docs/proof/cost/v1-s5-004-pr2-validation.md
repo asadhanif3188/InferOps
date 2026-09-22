@@ -71,9 +71,12 @@ limitations, and both open questions appear. The two review-only rules,
 sit on the not-implemented side, which is the only honest place for a rule nothing
 tests.
 
-**Figures are read, not typed.** The record declares 21 figures, each with the committed
+**Figures are read, not typed.** The record declares 22 figures, each with the committed
 file and JSON pointer it came from and how the source's own convention is spelled in
-prose (as written, a grouped integer, thousandths, or per-mille as a percentage). The
+prose (as written, a grouped integer, thousandths, or per-mille as a percentage). One,
+added after the independent review, is a quotient the suite recomputes from two
+pointers, quoted to show why dividing two rounded figures by hand does not reproduce a
+third. (The first commit declared 21.) The
 suite reads every one back, requires every one to appear in the document, and refuses any
 six-place figure in the document that the record does not declare.
 
@@ -167,6 +170,41 @@ Nothing was found.
 
 With this change the parent story, `V1-S5-004`, has both of its PRs. Whether a reader
 finds any of it clear is a review question no test answers.
+
+## Part 6 — what the independent review found
+
+An independent review read the first commit (`eaf0bdb`) against the repository before
+anything was pushed, and re-derived its numbers from the source records rather than the
+new prose. It recounted the twelve and seventeen items, the 90 evidence references and
+their split, the seven distinct records, the 21 figures and nine gaps, the nineteen rules,
+three bases, fourteen limitations, and two open questions, and the twenty-six governed
+documents; it re-ran all three suite commands and got 430, 6917, and 12592 passed with the
+same skips; and it checked each approximate phrase in the method against its source —
+"about five times" (5.4), under 0.05 per cent of a window, up to about two seconds a read
+(1,874 ms), 165 MiB, twelve other pods, and the direction of the 7.4 per cent memory
+error. Every one held. It confirmed that no path under `src/`, `charts/`, `infra/`,
+`deploy/`, `scripts/`, `tools/`, `contracts/`, or `.github/`, no ADR, and no cost-method
+data changed, that no cost figure was added, that its own sweep found no other stale
+cost statement, and that the diff carries no private information.
+
+It found nothing wrong, and two things worth fixing, both done in the second commit:
+
+- **A hand check of the published figures does not close.** 0.021934 over 0.048270 is
+  0.454402, while the record's share is 0.454390, because the tool divides exact values
+  and rounds each figure once. The method now says so beside the table, and quotes the
+  hand quotient as a declared figure the suite recomputes from its two pointers, so the
+  explanation cannot drift from the files.
+- **The pointer helper was not a JSON pointer.** It did not unescape `~1` and `~0`, so a
+  key containing `/` or `~` would have been misread. It now follows RFC 6901, and a test
+  holds that.
+
+After the fixes, from Git Bash with every change staged:
+
+| Command | Result |
+|---|---|
+| `uv run --locked python -m pytest tests/testing/test_published_methods.py -q` | 432 passed: one more figure, and the pointer test |
+| `uv run --locked python -m pytest tests/cost tests/testing tests/security tests/telemetry -q` | 6919 passed |
+| `uv run --locked ruff format --check .` and `ruff check .` | 472 files already formatted; all checks passed. `mypy`: no issues in 261 source files. The eighteen mutations are still all refused |
 
 ## What none of this supports
 

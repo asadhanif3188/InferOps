@@ -27,7 +27,7 @@ once versioned releases begin.
   allows -- the two rules enforced by review alone, including that no cost figure is
   published, cannot sit on the implemented side -- and every basis on the side its
   reachability allows; it requires all nineteen rules, three bases, fourteen
-  limitations, and both open questions to appear, and it reads each of the 21 figures
+  limitations, and both open questions to appear, and it reads each of the 22 figures
   the method quotes back out of the committed result or findings file and pointer it
   names, refusing any six-place figure in the prose that no file backs. No dashboard or
   query hook is added: nothing emits a cost record, and the method links the deferral
