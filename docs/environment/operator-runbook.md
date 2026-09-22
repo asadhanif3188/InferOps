@@ -76,8 +76,8 @@ own cluster.
 3. **Diagnose before you change anything.** Every fenced block on this page opens
    with a label. `# read-only` changes nothing in the cluster or the release,
    though it may write a local file under `.artifacts/` or `.cache/`. `# mutating`
-   changes the release or the node's images and can be reversed. `# destructive` removes something, and each one is a
-   separate decision.
+   changes the release or the node's images and can be reversed. `# destructive`
+   removes something, and each one is a separate decision.
 4. **Never paste a prompt, a completion, a runtime response body, or a request log
    line into an issue.** [The redaction rules](../telemetry/redaction.md) apply to
    an incident report too. Object states, reasons, exit codes, revisions, counts, and
@@ -339,7 +339,9 @@ while an experiment is measuring, and do not run the test suite during one.
 ## When an alert fires
 
 Each section below is the target of one alert's `runbook` annotation. The first
-command in each is read-only. "Fires" means the alert's condition holds, whether or
+command in each is read-only. Every command reads `.kube/inferops-target.config`. If
+that file is missing or older than the cluster, write a fresh one first, as
+[the target](#the-target) shows. "Fires" means the alert's condition holds, whether or
 not any Prometheus is evaluating it (see the status note at the top). Every alert
 here reads a five-minute range and holds for five or ten minutes. **A disruption shorter than that fires nothing.** When the
 recorded pod loss was replayed through the alerts, none of them fired: the outage

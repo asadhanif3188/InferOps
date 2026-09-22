@@ -133,6 +133,32 @@ section referred to "the latency alert" instead of naming it. Separately, the fi
 draft sent the reader to the collector's alerts page. That was found by reading the
 chart before the suite existed, and the suite now holds it.
 
+## What the independent review found
+
+A review of the first commit, independent of its author, checked the runbook's
+statements against the chart, the values files, `lib.sh`, the scripts, the API
+surface record, and the proof records. It re-ran the runbook suite, the inventory
+suite, the dashboard check, and the alert policy. It found **no factual error, no
+overclaim, no mislabelled command, and no private information.** It confirmed that
+`terraform-prerequisites.sh plan` does not change the cluster, that both workflows
+the runbook says refuse while `inferops` is installed really do, and that the
+collector's `rule_files` hold the recording rules only. It raised two findings, and
+both are fixed in the second commit.
+
+- **Medium: a check that would have passed a wrong pairing.** The first form of the
+  container check read every `-c` value against a single allow-list of four
+  container names. So `logs deployment/inferops-inferops-llm -c verify-model` would
+  have passed, even though the API has no such container. The page was correct. The
+  check could not have noticed if it stopped being correct. It now reads each
+  container against the rendered pod template of the Deployment named in the same
+  command.
+- **Low: a dead end for a reader arriving from an alert.** Every alert section's
+  commands read `.kube/inferops-target.config`. That file exists only after a
+  workflow has verified the target, and the alert sections did not say how to write
+  it. They now point to the read-only command under [the target](../../environment/operator-runbook.md#the-target).
+
+Neither finding changed a count, a figure, or a claim in this record.
+
 ## What this record does not establish
 
 - That following the runbook recovers anything. The suite checks strings.

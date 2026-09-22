@@ -870,13 +870,33 @@ def test_every_object_a_command_addresses_is_one_the_chart_renders() -> None:
         r"app\.kubernetes\.io/component=(?P<value>[a-z-]+)", FENCED
     ):
         assert match.group("value") in components, match.group(0)
-    for match in re.finditer(r" -c (?P<container>[a-z-]+)", FENCED):
-        assert match.group("container") in {
-            "api",
-            "runtime",
-            "collector",
-            "verify-model",
+
+
+def test_every_container_a_command_names_belongs_to_the_deployment_it_names() -> None:
+    """A container name is only meaningful beside the workload that has it.
+
+    Independent review found the first form of this check read every ``-c`` value
+    against one allow-list of all four names, so ``logs deployment/inferops-inferops-llm
+    -c verify-model`` -- an init container the API does not have -- would have
+    passed. Each one is now read against the rendered pod template of the
+    Deployment named in the same command.
+    """
+    paired = 0
+    for command in COMMANDS:
+        container = re.search(r" -c (?P<name>[a-z-]+)", command)
+        if container is None:
+            continue
+        deployment = re.search(r"deployment/(?P<name>[a-z0-9-]+)", command)
+        assert deployment is not None, command
+        spec = _rendered("Deployment", deployment.group("name"))["spec"]["template"][
+            "spec"
+        ]
+        names = {c["name"] for c in spec["containers"]} | {
+            c["name"] for c in spec.get("initContainers", [])
         }
+        assert container.group("name") in names, command
+        paired += 1
+    assert paired >= 5
 
 
 def test_the_defaults_the_page_quotes_are_the_values_file_s() -> None:
