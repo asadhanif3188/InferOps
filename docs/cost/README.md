@@ -27,6 +27,8 @@ can produce today lands on `none`.
 | [The cost calculation](cost-calculation.md) | `tools/cost_calculation`: the estimated basis applied to one declared input, what it refuses, what is still typed by hand, and two synthetic fixtures |
 | [The V1 cost baseline](../proof/cost/v1-s4-005-pr2-cost-baseline.md) | `tools/cost_baseline`: use taken from the `V1-S4-004` samples, two estimated records at synthetic prices, and how far to trust them |
 | [`cost-method.v1alpha1.json`](cost-method.v1alpha1.json) | The authoritative form of both, validated by [`tests/cost/`](../../tests/cost/) |
+| [The V1 cost and capacity method](cost-capacity-method.md) | How V1 turns measured use into an estimate and how far that estimate, and the load behind it, says anything about capacity: billing against estimate against allocation, the formula, the price basis, inputs and window, idle and shared cost, outputs and the record shape, the link to the measured run, confidence, exclusions, dashboard hooks, and the capacity questions V1 defers, with what is implemented kept apart from what is not |
+| [`cost-capacity-method.v1alpha1.json`](cost-capacity-method.v1alpha1.json) | The authoritative form of that method, checked against the cost method, the claim register, the workflow, and the committed results its figures are read from by [`tests/testing/test_published_methods.py`](../../tests/testing/test_published_methods.py) |
 | [The telemetry catalog](../telemetry/telemetry-catalog.md) | Where every usage input would come from, and which ones have no source |
 
 ## The short version

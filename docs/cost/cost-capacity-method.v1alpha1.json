@@ -1,0 +1,619 @@
+{
+  "$id": "https://inferops.io/cost/cost-capacity-method.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "The V1 cost and capacity method",
+  "description": "How V1 turns measured use into an estimated cost and how far that cost, and the load it was measured under, can be read as a statement about capacity: topic by topic, what is calculated and checked, with the test, gate, and record behind it, and, kept apart, what is specified and not calculated, not enforced by a test, or not known. It adds no rule, basis, price, or figure, and moves no claim. Every rule, basis, limitation, and open question is the cost method's, every figure is read from a committed result or findings file, and every certification level is read from the claim and evidence register.",
+  "documentRef": "docs/cost/cost-capacity-method.md",
+  "costMethodRef": "docs/cost/cost-method.v1alpha1.json",
+  "baselineReportRef": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
+  "findingsRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+  "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "claimRegisterRef": "docs/testing/claim-evidence-matrix.v1alpha1.json",
+  "workflowRef": ".github/workflows/checks.yml",
+  "validationRef": "docs/proof/cost/v1-s5-004-pr2-validation.md",
+  "evidenceKinds": [
+    {
+      "kindId": "test",
+      "meaning": "A test function in this repository, named as path::function. The suite fails if the function is not defined in the file."
+    },
+    {
+      "kindId": "ci-gate",
+      "meaning": "A job in the committed default-lane workflow, named by its job identifier. The suite fails if the workflow has no such job."
+    },
+    {
+      "kindId": "record",
+      "meaning": "A committed evidence record under docs/proof/."
+    },
+    {
+      "kindId": "code",
+      "meaning": "Source a figure is calculated or checked in: a module of a repository tool."
+    },
+    {
+      "kindId": "configuration",
+      "meaning": "A committed data file a figure is calculated from: the cost method's own record."
+    }
+  ],
+  "topics": [
+    {
+      "topicId": "billing-estimate-and-allocation",
+      "heading": "1. Actual billing, estimated cost, and allocated cost",
+      "implemented": [
+        {
+          "itemId": "an-estimate-cannot-carry-the-vocabulary-of-a-bill",
+          "statement": "Every amount carries exactly one basis. V1 calculates the estimated basis only and refuses the other two before writing anything, amounts on different bases are never summed, and an amount whose basis is not actual may carry neither an invoice reference nor the words of one.",
+          "basisIds": ["estimated"],
+          "ruleIds": [
+            "no-estimate-is-a-bill",
+            "an-estimate-and-an-allocation-are-never-summed",
+            "v1-calculates-the-estimated-basis-only",
+            "a-calculation-refuses-a-basis-v1-does-not-reach"
+          ],
+          "claimIds": ["a-cost-figure-cannot-be-presented-as-a-bill"],
+          "evidence": [
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_only_an_actual_basis_may_reference_an_invoice"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_every_total_is_computed_within_one_basis"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_the_only_basis_v1_can_reach_is_an_estimate"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_basis_v1_does_not_reach_is_refused"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_the_report_prices_no_reservation_beside_the_estimate"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s0-008-pr1-validation.md"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr1-validation.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-bill-has-ever-been-read",
+          "statement": "The actual basis needs an invoice or a billing export. This project has no provider account and has never been billed, so no amount here has been compared against what anybody was charged.",
+          "basisIds": ["actual"],
+          "ruleIds": [],
+          "limitationIds": ["no-invoice-has-ever-been-read"],
+          "claimIds": ["what-running-an-inference-workload-costs-on-a-provider"],
+          "gapIds": [],
+          "notClaimed": "No amount here is what anybody was charged, and none is a provider's figure for running the workload."
+        },
+        {
+          "itemId": "an-allocation-is-specified-and-not-calculated",
+          "statement": "The allocated basis prices what a workload reserved. It is specified and the worked example demonstrates it, and a V1 calculation does not produce it, so that an allocation and an estimate of one window never sit side by side.",
+          "basisIds": ["allocated"],
+          "ruleIds": [],
+          "limitationIds": [
+            "allocation-overcharges-idleness",
+            "the-example-is-not-a-measurement"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No allocated amount is calculated in V1, and a reservation is never priced beside an estimate."
+        }
+      ]
+    },
+    {
+      "topicId": "formula-units-and-precision",
+      "heading": "2. Formula, units, and precision",
+      "implemented": [
+        {
+          "itemId": "the-estimate-is-exact-and-rounded-once",
+          "statement": "The estimated amount is processor seconds times the core-hour rate plus memory byte-seconds over 2^30 times the gibibyte-hour rate plus device seconds times the device-hour rate, all over 3,600. Quantities convert exactly (millicores, binary memory, whole devices), arithmetic is exact, money is a decimal string, and rounding is half-even once at six places.",
+          "basisIds": [],
+          "ruleIds": ["money-is-decimal-never-binary-float"],
+          "claimIds": ["a-cost-figure-cannot-be-presented-as-a-bill"],
+          "evidence": [
+            {"kind": "code", "ref": "tools/cost_calculation/core.py"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_every_amount_recomputes_independently_in_decimal"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_rounding_is_half_even_once_at_six_places"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_kubernetes_quantity_converts_exactly"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_memory_is_binary_and_a_decimal_suffix_is_not_read_as_binary"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_every_amount_and_rate_is_a_decimal_string"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr1-validation.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-device-term-has-been-priced-from-use",
+          "statement": "The formula's accelerator term exists and is tested on a synthetic fixture. No accelerator has been used, no accelerator metric exists, and every measured record reserves no device, so the term has never been applied to measured use.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [],
+          "claimIds": [],
+          "gapIds": ["no-accelerator-was-used"],
+          "notClaimed": "No accelerator line has been calculated from measured use, and nothing here says what a device would cost."
+        }
+      ]
+    },
+    {
+      "topicId": "price-basis",
+      "heading": "3. Price source, version, and date",
+      "implemented": [
+        {
+          "itemId": "a-price-is-committed-versioned-dated-and-self-identifying",
+          "statement": "Every price is read from a rate card committed in the cost method, named by identifier, version, and effective date, written in decimal, and never fetched while computing. A synthetic card says it is synthetic in its own contents and names in its own scope what may use it.",
+          "basisIds": [],
+          "ruleIds": [
+            "no-price-is-fetched-at-runtime",
+            "a-synthetic-rate-card-declares-its-class-in-its-own-contents",
+            "a-price-source-is-refused-unless-committed-versioned-dated-and-decimal"
+          ],
+          "claimIds": ["a-cost-figure-cannot-be-presented-as-a-bill"],
+          "evidence": [
+            {"kind": "configuration", "ref": "docs/cost/cost-method.v1alpha1.json"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_every_price_source_is_committed_rather_than_fetched"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_a_synthetic_price_source_identifies_itself"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_the_only_published_price_source_is_synthetic"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_an_invalid_price_source_is_refused"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_price_source_not_committed_in_the_method_is_refused"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_the_synthetic_card_names_the_baseline_in_its_own_scope"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr1-validation.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "the-only-price-is-invented",
+          "statement": "The only committed rate card is synthetic. No provider list price, negotiated price, or amortised-hardware price is committed, a contributor's own machine has no honest hourly price, and no exchange rate exists.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [
+            "the-only-rate-card-is-synthetic",
+            "no-local-host-rate-is-honest",
+            "no-currency-conversion"
+          ],
+          "questionIds": ["which-provider-price-sources"],
+          "claimIds": [],
+          "gapIds": ["no-real-rate-card"],
+          "notClaimed": "No price here is a provider's, a contract's, or a machine's, and no amount priced from it says what anything costs."
+        }
+      ]
+    },
+    {
+      "topicId": "inputs-and-measurement-window",
+      "heading": "4. Workload and resource inputs, and the measurement window",
+      "implemented": [
+        {
+          "itemId": "use-is-taken-from-committed-samples-by-tool",
+          "statement": "Processor seconds, memory byte-seconds, requests, and tokens are taken by tools/cost_baseline from the committed samples and raw records of the V1-S4-004 run under ADR 0014 D3: the window opens and closes on the samples that bound a run, the processor figure is each pod's counter increase between them, memory is integrated trapezoidally inside them, and every request must lie inside the window. The tool refuses a performance record that does not regenerate from its inputs, is not local real evidence, or failed one of its own checks, and every input names that record by path and digest.",
+          "basisIds": [],
+          "ruleIds": [
+            "measured-use-names-its-evidence-class",
+            "every-required-input-names-a-source-or-records-that-none-exists"
+          ],
+          "claimIds": ["the-cost-method-was-applied-to-use-taken-from-a-measured-run"],
+          "evidence": [
+            {"kind": "code", "ref": "tools/cost_baseline/core.py"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_usage_recomputes_from_the_jsonl_lines_by_integer_sums"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_traffic_recomputes_from_the_raw_lines"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_the_window_is_bounded_by_samples_on_both_sides"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_processor_seconds_are_the_increase_between_the_bounding_samples"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_memory_is_integrated_trapezoidally_and_never_extrapolated"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_a_record_that_does_not_regenerate_is_refused"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_measured_class_must_name_matching_committed_evidence"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_every_input_names_a_declared_signal_or_no_source_at_all"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr2-validation.md"}
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "a-window-is-half-open-utc-and-bounded",
+          "statement": "A window is half-open, in UTC, and between one minute and one day long, and a calculation refuses an input that declares a change of reservation inside it rather than averaging across it.",
+          "basisIds": [],
+          "ruleIds": [],
+          "claimIds": ["a-cost-figure-cannot-be-presented-as-a-bill"],
+          "evidence": [
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_window_outside_the_method_rules_is_refused"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_window_of_exactly_one_minute_and_one_day_is_accepted"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_declared_shape_change_is_refused_rather_than_averaged"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr1-validation.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-use-is-read-from-a-running-system",
+          "statement": "No metrics server exists and no collector keeps a durable utilisation series, so use reaches a calculation only from a committed bounded experiment's files. A hand-typed input is as good as its typist, and node capacity and the reservation are declarations, not readings.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [
+            "no-utilisation-source",
+            "measured-use-is-typed-in-by-hand",
+            "capacity-is-declared-not-read"
+          ],
+          "claimIds": [],
+          "gapIds": ["no-utilisation-series"],
+          "notClaimed": "No usage value is read from telemetry or from a running cluster, and no check ties a hand-typed value to the samples it names."
+        },
+        {
+          "itemId": "an-undeclared-shape-change-is-caught-by-review-alone",
+          "statement": "A change of resource request or replica count inside a window must split it. The calculation refuses a change the input declares; a change the input does not declare is caught by review alone, because nothing reads the reservation during a window.",
+          "basisIds": [],
+          "ruleIds": ["a-window-in-which-the-shape-changed-is-split"],
+          "limitationIds": [],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No check detects a change of reservation the input does not declare."
+        }
+      ]
+    },
+    {
+      "topicId": "allocation-idle-and-shared-cost",
+      "heading": "5. Allocation, idle, and shared cost",
+      "implemented": [
+        {
+          "itemId": "what-no-workload-used-is-its-own-line",
+          "statement": "A workload is priced for what it was measured using. Capacity no workload in the calculation was measured using, including idle capacity, reservations left unused, the platform, the control plane, and the release's own collector, is reported as its own line and never spread, and the workload lines and that line close against the node exactly. A prerequisite such as the model cache is attributed outside every workload.",
+          "basisIds": [],
+          "ruleIds": [
+            "unreserved-capacity-is-reported-not-spread",
+            "the-model-cache-is-a-prerequisite-cost"
+          ],
+          "claimIds": ["a-cost-figure-cannot-be-presented-as-a-bill"],
+          "evidence": [
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_the_workload_lines_and_the_residual_close_against_the_node"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_a_prerequisite_line_is_attributed_outside_every_workload"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_the_workload_lines_and_the_unallocated_line_close_against_the_node"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_the_unallocated_use_closes_and_prices_to_the_unallocated_line"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_the_collector_is_measured_and_left_on_the_unallocated_line"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s0-008-pr1-validation.md"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "an-idle-reservation-is-not-charged-to-its-owner",
+          "statement": "Under observed-utilisation-share a workload that reserves capacity and leaves it idle is not charged for it; the reservation sits on the unallocated line and is carried, unpriced, on the workload's record. Leaving the collector there too is a choice rather than a measurement of whose it is.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": ["an-estimate-leaves-reserved-idle-capacity-unattributed"],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No workload line includes the capacity its workload reserved and did not use, and no line is a charge for a reservation."
+        }
+      ]
+    },
+    {
+      "topicId": "outputs-and-record-mapping",
+      "heading": "6. Outputs, and how they map to a cost record",
+      "implemented": [
+        {
+          "itemId": "every-output-carries-its-denominator-and-its-shape",
+          "statement": "The hourly figure, the cost per thousand requests, the cost per million tokens, and the share of the node are each divided from the exact amount; a unit cost carries its denominator and is null below 100 requests or 10,000 tokens; a missing input is null with a reason and so is everything depending on it; and every calculated record validates against the published record shape, which no committed record may fill with a tenant identifier.",
+          "basisIds": [],
+          "ruleIds": [
+            "a-unit-cost-carries-its-denominator",
+            "an-unavailable-input-is-null-with-a-reason",
+            "a-calculated-record-validates-against-the-published-shape",
+            "a-committed-record-carries-no-tenant-identifier"
+          ],
+          "claimIds": ["a-cost-figure-cannot-be-presented-as-a-bill"],
+          "evidence": [
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_every_unit_cost_carries_its_denominator_or_is_null"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_a_null_output_carries_a_reason_and_a_reason_carries_a_null"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_no_committed_record_carries_a_tenant_identifier"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_every_calculated_record_validates_against_the_published_shape"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_unit_cost_is_divided_from_the_exact_amount_not_the_rounded_one"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_the_token_unit_cost_is_null_below_the_minimum_and_says_so"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr1-validation.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "the-record-shape-is-not-a-contract",
+          "statement": "The record shape is part of the method. No schema for a cost record is published under contracts/, because nothing in a running system produces or consumes one.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [],
+          "claimIds": [],
+          "gapIds": ["no-cost-record-contract"],
+          "notClaimed": "No cost record contract is published, and no consumer of one exists."
+        },
+        {
+          "itemId": "the-minimums-are-declared-and-a-unit-cost-is-a-throughput",
+          "statement": "The minimum denominators are round numbers chosen to be obviously too small to publish from, not the result of an analysis, and a cost per thousand requests is an amount divided by a window of traffic, so it inherits every bound on that traffic.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [
+            "minimum-samples-are-arbitrary",
+            "a-unit-cost-is-a-throughput-figure"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No unit cost here is a price per request or per token, and no minimum is a derived sample size."
+        }
+      ]
+    },
+    {
+      "topicId": "performance-linkage",
+      "heading": "7. Cost against the measured load and resource profile",
+      "implemented": [
+        {
+          "itemId": "the-baseline-divides-by-the-measured-run",
+          "statement": "Each baseline record covers one run's whole load span, warm-up included, and divides by that run's own requests and tokens. The workload's average processor use over the window agrees with the performance record's own phase figures, and the findings bind that load to one single-slot runtime serving one fixed prompt at its six-core limit.",
+          "basisIds": [],
+          "ruleIds": [],
+          "claimIds": [
+            "the-cost-method-was-applied-to-use-taken-from-a-measured-run",
+            "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+          ],
+          "evidence": [
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_the_window_average_agrees_with_the_records_own_phase_figures"},
+            {"kind": "test", "ref": "tests/cost/test_cost_baseline.py::test_the_warm_up_is_inside_the_window_and_its_requests_are_counted"},
+            {"kind": "test", "ref": "tests/serving/test_performance_findings.py::test_the_committed_findings_regenerate_from_the_committed_record"},
+            {"kind": "test", "ref": "tests/serving/test_performance_findings.py::test_the_resource_table_matches_the_findings"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/serving/v1-s4-004-pr2-performance-findings.md"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md"}
+          ],
+          "evidenceLabel": "local-real-cpu"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-cost-figure-is-published",
+          "statement": "ADR 0007 D11 publishes the method and synthetic examples and no figure for what running an inference workload costs. The baseline's amounts are consistent with it only because every price is invented and confidence is derived as none, and that reading is the baseline record's own. No test enforces the rule.",
+          "basisIds": [],
+          "ruleIds": ["no-cost-figure-is-published-from-v1"],
+          "limitationIds": [],
+          "claimIds": ["what-running-an-inference-workload-costs-on-a-provider"],
+          "gapIds": [],
+          "notClaimed": "No amount in this repository is a published cost figure, and nothing stops one being written except review."
+        }
+      ]
+    },
+    {
+      "topicId": "confidence-and-uncertainty",
+      "heading": "8. Confidence and uncertainty",
+      "implemented": [
+        {
+          "itemId": "confidence-is-derived-from-the-records-own-facts",
+          "statement": "A record's confidence is the lowest ceiling among the rules that hold for its own facts, recomputed by the suite. Synthetic usage never counts as measured, and a synthetic card caps every record at none whatever its use.",
+          "basisIds": [],
+          "ruleIds": ["confidence-is-derived-not-asserted"],
+          "claimIds": ["a-cost-figure-cannot-be-presented-as-a-bill"],
+          "evidence": [
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_declared_confidence_equals_derived_confidence"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_a_synthetic_rate_card_caps_every_example_record_at_no_confidence"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_confidence_on_the_estimated_basis_is_derived_from_its_facts"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_synthetic_usage_never_counts_as_measured_utilisation"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr1-validation.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-record-rises-above-none",
+          "statement": "Every record this project can produce has confidence none, because the only card is synthetic. The ceiling rises only by acquiring a real card, and then an estimate still stops at medium.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [],
+          "claimIds": [],
+          "gapIds": ["no-real-rate-card"],
+          "notClaimed": "No record carries confidence above none, and none is raised by editing a field."
+        },
+        {
+          "itemId": "uncertainty-is-listed-not-bounded",
+          "statement": "The sources of uncertainty in the measured use are listed with their size and direction: window edges with no load in flight, host and node clocks, sample read time, the kernel's working-set accounting, and background on the node. Two repetitions on one host are all there is, and no interval is computed from them.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [],
+          "claimIds": [],
+          "gapIds": ["no-uncertainty-interval"],
+          "notClaimed": "No confidence interval, variance, or error bound is claimed for any amount or any use."
+        }
+      ]
+    },
+    {
+      "topicId": "excluded-costs",
+      "heading": "9. Excluded costs",
+      "implemented": [
+        {
+          "itemId": "an-absent-input-is-null-and-every-gap-has-a-limitation",
+          "statement": "What an amount does not include is stated rather than filled: an unavailable input is null with a declared reason and never a zero, a measured zero is priced as a measurement, and every gap in the method's telemetry mapping carries a limitation.",
+          "basisIds": [],
+          "ruleIds": [],
+          "claimIds": ["a-cost-figure-cannot-be-presented-as-a-bill"],
+          "evidence": [
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_the_incomplete_fixture_is_null_with_a_reason_and_never_zero"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_missing_input_must_be_null_with_a_declared_reason"},
+            {"kind": "test", "ref": "tests/cost/test_cost_calculation.py::test_a_measured_zero_is_a_measurement_and_is_priced_as_one"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_the_method_declares_a_limitation_for_every_gap_it_has"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "storage-network-and-the-host-are-not-priced",
+          "statement": "The model cache claim, the node's disk and images, the virtual machine's overhead, network, the port-forward and the load generator's host, and the time before and between runs are in no amount and on no line.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": ["no-egress-or-network-cost"],
+          "claimIds": [],
+          "gapIds": ["unpriced-resources"],
+          "notClaimed": "No amount here is a total cost of running anything, and none includes storage, network, or the host outside the node."
+        }
+      ]
+    },
+    {
+      "topicId": "dashboard-and-query-hooks",
+      "heading": "10. Dashboard and query hooks",
+      "implemented": [
+        {
+          "itemId": "the-absent-cost-signal-is-declared-absent-everywhere",
+          "statement": "The catalog defers the cost record attribute and the cost record counter and says why; the dashboard and the correlation queries each name the counter as having no panel and no query and say why; and the method's deferred attribute is the one the catalog defers.",
+          "basisIds": [],
+          "ruleIds": [],
+          "claimIds": ["the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"],
+          "evidence": [
+            {"kind": "test", "ref": "tests/telemetry/test_telemetry_catalog.py::test_a_metric_that_is_not_emitted_says_why"},
+            {"kind": "test", "ref": "tests/telemetry/test_inference_dashboard.py::test_every_catalog_metric_is_panelled_or_says_why_not"},
+            {"kind": "test", "ref": "tests/telemetry/test_telemetry_correlation.py::test_every_metric_with_no_query_says_why_it_has_none"},
+            {"kind": "test", "ref": "tests/cost/test_cost_method.py::test_the_deferred_cost_attribute_is_the_one_this_method_names"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/telemetry/v1-s0-007-pr1-validation.md"}
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-cost-series-panel-query-or-alert",
+          "statement": "Nothing emits a cost record: a repository tool writes files by hand, and which platform component would compute and emit one is not selected. A panel or query over cost would read a series nothing produces, which describes an absent capability as a quiet one.",
+          "basisIds": [],
+          "ruleIds": [],
+          "signals": ["inferops_cost_records_total"],
+          "limitationIds": ["only-a-repository-tool-computes"],
+          "questionIds": ["who-computes-a-cost-record"],
+          "claimIds": [],
+          "gapIds": ["no-cost-producer"],
+          "notClaimed": "No dashboard panel, query, or alert over cost exists, and no cost series is emitted."
+        }
+      ]
+    },
+    {
+      "topicId": "capacity-limitations",
+      "heading": "11. Capacity: what the evidence supports, and what is deferred",
+      "implemented": [
+        {
+          "itemId": "one-bounded-run-and-its-degradation-point",
+          "statement": "One single-replica release on one host was driven twice at concurrency 1, 2, and 4. Completed requests stayed flat while median latency rose, so the observed degradation point for that setup is concurrency 2, and the record refuses to be read as a benchmark, a capacity figure, or a judgement of saturation.",
+          "basisIds": [],
+          "ruleIds": [],
+          "claimIds": ["a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"],
+          "evidence": [
+            {"kind": "code", "ref": "tools/performance_findings/core.py"},
+            {"kind": "test", "ref": "tests/serving/test_performance_findings.py::test_a_record_claiming_a_benchmark_capacity_or_saturation_is_refused"},
+            {"kind": "test", "ref": "tests/serving/test_performance_findings.py::test_the_runtime_never_read_more_than_one_request_processing"},
+            {"kind": "test", "ref": "tests/serving/test_performance_findings.py::test_the_report_refuses_the_readings_adr_0013_forbids"},
+            {"kind": "ci-gate", "ref": "default-lane-tests"},
+            {"kind": "record", "ref": "docs/proof/serving/v1-s4-004-pr2-performance-findings.md"},
+            {"kind": "record", "ref": "docs/proof/serving/v1-s4-004-pr1-validation.md"}
+          ],
+          "evidenceLabel": "local-real-cpu"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-portable-capacity-figure",
+          "statement": "A stated throughput and capacity under load is deferred out of V1, and the capacity layer declares no test paths. How many requests a release sustains, how that scales with hardware, replicas, prompt mix, or output length, and what a unit of capacity costs on a provider are not questions V1 answers.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [],
+          "claimIds": ["sustained-throughput-and-capacity-under-load"],
+          "gapIds": ["no-capacity-experiment"],
+          "notClaimed": "No capacity figure, sizing rule, or scaling curve is claimed for InferOps, the chart, the model, or the runtime."
+        },
+        {
+          "itemId": "which-limit-bound-the-rate-is-not-established",
+          "statement": "The runtime served one request at a time and used nearly all of its processor limit at every level. Which of the two bound the completed rate is not established, because throttling counters were not sampled and no run varied the slot count.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [],
+          "claimIds": [],
+          "gapIds": ["no-bottleneck-attribution"],
+          "notClaimed": "The single slot is not claimed as the bottleneck, and the processor limit is not either."
+        },
+        {
+          "itemId": "a-second-replica-was-refused-at-the-capacity-gate",
+          "statement": "The multi-replica workflow was run on the reference host and refused at its capacity gate before installing anything, about 165 MiB short of the memory it required. The gate was not weakened.",
+          "basisIds": [],
+          "ruleIds": [],
+          "limitationIds": [],
+          "claimIds": ["multi-replica-serving-is-certified"],
+          "gapIds": [],
+          "notClaimed": "No figure for two serving replicas exists, and no cost or capacity statement here covers more than one."
+        }
+      ]
+    }
+  ],
+  "figures": [
+    {"figureId": "run-1-amount", "quoted": "0.021934", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/cost/amount", "transform": "text"},
+    {"figureId": "run-2-amount", "quoted": "0.021775", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-2.result.json", "pointer": "/records/0/cost/amount", "transform": "text"},
+    {"figureId": "run-1-amount-per-hour", "quoted": "0.240182", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/derived/amountPerHour", "transform": "text"},
+    {"figureId": "run-2-amount-per-hour", "quoted": "0.239127", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-2.result.json", "pointer": "/records/0/derived/amountPerHour", "transform": "text"},
+    {"figureId": "run-1-cost-per-thousand-requests", "quoted": "0.119855", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/derived/costPerThousandRequests", "transform": "text"},
+    {"figureId": "run-2-cost-per-thousand-requests", "quoted": "0.118988", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-2.result.json", "pointer": "/records/0/derived/costPerThousandRequests", "transform": "text"},
+    {"figureId": "run-1-requests", "quoted": "183", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/derived/costPerThousandRequestsDenominator", "transform": "integer"},
+    {"figureId": "run-1-tokens", "quoted": "9,516", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/derived/costPerMillionTokensDenominator", "transform": "integer"},
+    {"figureId": "run-1-window-hours", "quoted": "0.091321", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/window/hours", "transform": "text"},
+    {"figureId": "run-1-cpu-seconds", "quoted": "1952.124170", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/usage/cpuSeconds", "transform": "text"},
+    {"figureId": "run-1-reserved-core-hours", "quoted": "0.100453", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/reserved/cpuCoreHours", "transform": "text"},
+    {"figureId": "run-1-share-of-node", "quoted": "0.454390", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/derived/shareOfNodeCapacity", "transform": "text"},
+    {"figureId": "run-2-share-of-node", "quoted": "0.452395", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-2.result.json", "pointer": "/records/0/derived/shareOfNodeCapacity", "transform": "text"},
+    {"figureId": "run-1-share-recomputed-from-rounded-figures", "quoted": "0.454402", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/records/0/cost/amount", "divisorPointer": "/capacity/amount", "transform": "quotient-at-six-places"},
+    {"figureId": "run-1-node-capacity-amount", "quoted": "0.048270", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/capacity/amount", "transform": "text"},
+    {"figureId": "run-1-unallocated-amount", "quoted": "0.026336", "sourceRef": "docs/proof/cost/v1-s4-005-pr2-baseline-run-1.result.json", "pointer": "/unallocated/amount", "transform": "text"},
+    {"figureId": "core-hour-rate", "quoted": "0.040000", "sourceRef": "docs/cost/cost-method.v1alpha1.json", "pointer": "/priceSources/0/rates/0/ratePerHour", "transform": "text"},
+    {"figureId": "gibibyte-hour-rate", "quoted": "0.005000", "sourceRef": "docs/cost/cost-method.v1alpha1.json", "pointer": "/priceSources/0/rates/1/ratePerHour", "transform": "text"},
+    {"figureId": "slowest-completed-rate", "quoted": "0.554", "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json", "pointer": "/acrossMeasuredPhases/successfulRequestsPerSecondMilliRange/0", "transform": "milli"},
+    {"figureId": "fastest-completed-rate", "quoted": "0.575", "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json", "pointer": "/acrossMeasuredPhases/successfulRequestsPerSecondMilliRange/1", "transform": "milli"},
+    {"figureId": "lowest-runtime-share-of-its-processor-limit", "quoted": "99.1%", "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json", "pointer": "/phases/0/runtimeCpu/ofLimitMilli", "transform": "permille-as-percent"},
+    {"figureId": "highest-runtime-share-of-its-processor-limit", "quoted": "99.9%", "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json", "pointer": "/phases/1/runtimeCpu/ofLimitMilli", "transform": "permille-as-percent"}
+  ],
+  "gaps": [
+    {
+      "gapId": "no-real-rate-card",
+      "statement": "No provider list price, negotiated price, or amortised-hardware price is committed. The synthetic card is the only one, and it caps every record at none."
+    },
+    {
+      "gapId": "no-accelerator-was-used",
+      "statement": "No accelerator has been reserved or used, and no accelerator metric exists, so the device term has only been applied to a synthetic fixture."
+    },
+    {
+      "gapId": "no-utilisation-series",
+      "statement": "No metrics server, kube-state-metrics, or cAdvisor scrape is installed and no durable store keeps a utilisation series, so no usage input is read from a running system."
+    },
+    {
+      "gapId": "no-cost-record-contract",
+      "statement": "The record shape is published as part of the method and no cost record schema is published under contracts/."
+    },
+    {
+      "gapId": "no-uncertainty-interval",
+      "statement": "Two repetitions on one host are the only measured use. The uncertainty sources are listed with their size and direction and no interval is computed."
+    },
+    {
+      "gapId": "unpriced-resources",
+      "statement": "Storage, network, the host outside the node, the virtual machine's overhead, and the time outside each window are not priced."
+    },
+    {
+      "gapId": "no-cost-producer",
+      "statement": "No platform component computes, emits, stores, or reads a cost record, so no cost series, panel, query, or alert exists. Which component would is an open question of the cost method."
+    },
+    {
+      "gapId": "no-capacity-experiment",
+      "statement": "No sustained-load, multi-replica, other-host, accelerator, or open-arrival experiment has been run, and the capacity layer declares no test paths."
+    },
+    {
+      "gapId": "no-bottleneck-attribution",
+      "statement": "Throttling counters were not sampled and no run varied the slot count, so which limit bound the single-replica run's completed rate is not established."
+    }
+  ],
+  "corrections": [
+    {
+      "correctionId": "every-price-is-synthetic-not-every-figure",
+      "statement": "The cost calculation document's limits called every figure synthetic. Since V1-S4-005-PR2 two committed records carry use measured on a real host and taken from its samples by tool; what is synthetic is every price, and so every amount priced from it."
+    }
+  ],
+  "limitations": [
+    "This method adds no rule, basis, price, or figure, and moves no claim. Every rule, basis, limitation, and open question it shows is the cost method's, every figure is read from a committed file, and every certification level is read from the claim and evidence register.",
+    "An evidence reference resolving establishes that the named test, gate, file, or record exists. It does not judge whether the test is a strong one.",
+    "The measured use behind every figure comes from one host, one single-replica release, one fixed prompt, and two runs, and every price behind every amount is invented."
+  ]
+}

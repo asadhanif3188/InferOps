@@ -10,6 +10,36 @@ once versioned releases begin.
 
 ### Added
 
+- **The V1 cost and capacity method is published, and no estimate in it can be read as
+  a bill.** [The method](docs/cost/cost-capacity-method.md) walks eleven topics: actual
+  billing against estimated cost against allocated cost, the formula and its units, the
+  price source with its version and date, the inputs and measurement window, allocation
+  and idle and shared cost, the outputs and how they map to a cost record, the link to
+  the measured load and resource profile, confidence and uncertainty, excluded costs,
+  dashboard and query hooks, and capacity, with the questions V1 defers. It opens by
+  keeping the three kinds of number in a cost record apart by evidence class: the use is
+  `local-real-cpu`, every rate is `synthetic`, every amount is `estimated`, and no
+  invoice exists. It adds no rule, basis, price, or figure, and moves no claim.
+
+  **The line between implemented and not is derived.**
+  [`tests/testing/test_published_methods.py`](tests/testing/test_published_methods.py)
+  now also reads the cost method and puts every cost rule on the side its enforcement
+  allows -- the two rules enforced by review alone, including that no cost figure is
+  published, cannot sit on the implemented side -- and every basis on the side its
+  reachability allows; it requires all nineteen rules, three bases, fourteen
+  limitations, and both open questions to appear, and it reads each of the 22 figures
+  the method quotes back out of the committed result or findings file and pointer it
+  names, refusing any six-place figure in the prose that no file backs. No dashboard or
+  query hook is added: nothing emits a cost record, and the method links the deferral
+  each telemetry record already states instead.
+
+  **Writing it found one statement that had stopped being true.** The cost calculation
+  document's limits called every figure synthetic, which stopped being true when the
+  `V1-S4-005-PR2` baseline committed records of measured use; every price is synthetic.
+  It is corrected in place with the date and joins the suite's retired sentences.
+  [The validation record](docs/proof/cost/v1-s5-004-pr2-validation.md) lists what was
+  run, what the guard caught in the first draft, and what stays open.
+
 - **The V1 security and observability methods are published, and each keeps what is
   implemented apart from what is not.** [The security method](docs/security/security-method.md)
   walks ten topics -- assets and trust boundaries, the model and image supply chain,
