@@ -1,12 +1,13 @@
-"""Deterministic checks over the published V1 security and observability methods.
+"""Deterministic checks over the published V1 security, observability, and cost methods.
 
 Every check here reads files from this repository and nothing else. No network,
 no cluster, no model, no clock, no randomness.
 
-Two method records are published, one beside the security baseline and one beside
-the telemetry catalog. Each walks a fixed list of topics, and every topic keeps two
-lists apart: what is implemented, and what is not. This suite exists so that the
-separation is a property of the data rather than of the prose around it.
+Three method records are published: one beside the security baseline, one beside
+the telemetry catalog, and one beside the cost method. Each walks a fixed list of
+topics, and every topic keeps two lists apart: what is implemented, and what is
+not. This suite exists so that the separation is a property of the data rather
+than of the prose around it.
 
 What it establishes is narrow and worth stating, because the gap is the point:
 
@@ -14,14 +15,19 @@ What it establishes is narrow and worth stating, because the gap is the point:
   committed record, every one of which resolves -- a test function that is
   defined, a workflow job that exists, a file that is committed;
 * an implemented item is never resting on an uncertified claim, a control the
-  baseline does not call implemented, or a metric the catalog says nothing emits;
+  baseline does not call implemented, a metric the catalog says nothing emits, a
+  cost rule enforced by review alone, or a basis V1 cannot reach;
 * a not-implemented item is never resting on a certified claim or an implemented
   control, names something that carries it, and says what is not claimed in a
   sentence that denies;
 * nothing is left out -- every control, register entry, exception, catalog metric,
-  and alert appears, on the side its own record puts it;
+  alert, cost rule, basis, cost limitation, and open cost question appears, on the
+  side its own record puts it;
 * each document says, section by section, the identifiers its record holds, and
-  holds no identifier its record lacks.
+  holds no identifier its record lacks;
+* every figure the cost and capacity method quotes reads back out of the committed
+  file and pointer it names, and the document quotes no six-place figure it does
+  not declare.
 
 It establishes **nothing about whether a named test is a strong one**, whether a
 control works, or whether anything is defended or observed in operation. The
@@ -33,6 +39,7 @@ from __future__ import annotations
 
 import json
 import re
+from decimal import Decimal
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -46,11 +53,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 SECURITY_METHOD = "docs/security/security-method.v1alpha1.json"
 OBSERVABILITY_METHOD = "docs/telemetry/observability-method.v1alpha1.json"
-METHODS = (SECURITY_METHOD, OBSERVABILITY_METHOD)
+COST_METHOD = "docs/cost/cost-capacity-method.v1alpha1.json"
+METHODS = (SECURITY_METHOD, OBSERVABILITY_METHOD, COST_METHOD)
 
 BASELINE_PATH = REPO_ROOT / "docs" / "security" / "security-baseline.v1alpha1.json"
 CATALOG_PATH = REPO_ROOT / "docs" / "telemetry" / "telemetry-catalog.v1alpha1.json"
 ALERTS_PATH = REPO_ROOT / "docs" / "telemetry" / "inference-alerts.v1alpha1.json"
+COST_RULES_PATH = REPO_ROOT / "docs" / "cost" / "cost-method.v1alpha1.json"
 REGISTER_PATH = REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha1.json"
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "checks.yml"
 PROOF_ROOT = "docs/proof/"
@@ -58,13 +67,14 @@ PROOF_ROOT = "docs/proof/"
 EXPECTED_ID = {
     SECURITY_METHOD: "https://inferops.io/security/security-method.v1alpha1.json",
     OBSERVABILITY_METHOD: "https://inferops.io/telemetry/observability-method.v1alpha1.json",
+    COST_METHOD: "https://inferops.io/cost/cost-capacity-method.v1alpha1.json",
 }
 EXPECTED_CONTRACT_VERSION = "inferops.io/v1alpha1"
 
 #: The topics each method must cover, in order. These are the subjects the V1
-#: security and observability methods are published to answer; a record that
-#: dropped one would still pass every other check here, so the list is fixed in
-#: the suite rather than read from the record it constrains.
+#: security, observability, and cost methods are published to answer; a record
+#: that dropped one would still pass every other check here, so the list is fixed
+#: in the suite rather than read from the record it constrains.
 REQUIRED_TOPICS = {
     SECURITY_METHOD: (
         "assets-and-trust-boundaries",
@@ -89,6 +99,19 @@ REQUIRED_TOPICS = {
         "deferred-observability-risks",
         "production-design-versus-certification",
     ),
+    COST_METHOD: (
+        "billing-estimate-and-allocation",
+        "formula-units-and-precision",
+        "price-basis",
+        "inputs-and-measurement-window",
+        "allocation-idle-and-shared-cost",
+        "outputs-and-record-mapping",
+        "performance-linkage",
+        "confidence-and-uncertainty",
+        "excluded-costs",
+        "dashboard-and-query-hooks",
+        "capacity-limitations",
+    ),
 }
 
 EVIDENCE_KINDS = ("test", "ci-gate", "record", "code", "configuration")
@@ -101,7 +124,21 @@ ANCHOR_FIELDS = (
     "gapIds",
     "signals",
     "exceptionIds",
+    "ruleIds",
+    "basisIds",
+    "limitationIds",
+    "questionIds",
 )
+
+#: How a quoted figure is written from the value its pointer reaches. Each is the
+#: one way the source record's own convention is spelled in prose.
+FIGURE_TRANSFORMS = {
+    "text": lambda value: str(value),
+    "integer": lambda value: f"{value:,}",
+    "milli": lambda value: f"{Decimal(value) / 1000:.3f}",
+    "permille-as-percent": lambda value: f"{Decimal(value) / 10:.1f}%",
+}
+SIX_PLACE_FIGURE = re.compile(r"(?<![\d.])\d+\.\d{6}(?![\d])")
 
 #: Evidence labels an implemented item may never rest on: a statement nothing
 #: ran, and a class this repository cannot reach.
@@ -138,6 +175,7 @@ RETIRED_PHRASES = (
     "no job in the committed workflow has executed",
     "security records that still say no job has executed",
     "no scanner is configured and no cadence is set",
+    "every figure is synthetic",
 )
 GOVERNED_DOCUMENTS = (
     "SECURITY.md",
@@ -160,6 +198,12 @@ GOVERNED_DOCUMENTS = (
     "docs/telemetry/observability-method.md",
     "docs/telemetry/observability-method.v1alpha1.json",
     "docs/testing/ci-gate-matrix.v1alpha1.json",
+    "docs/cost/README.md",
+    "docs/cost/cost-method.md",
+    "docs/cost/cost-method.v1alpha1.json",
+    "docs/cost/cost-calculation.md",
+    "docs/cost/cost-capacity-method.md",
+    "docs/cost/cost-capacity-method.v1alpha1.json",
 )
 
 
@@ -186,6 +230,7 @@ BASELINE = _load(BASELINE_PATH)
 CATALOG = _load(CATALOG_PATH)
 ALERTS = _load(ALERTS_PATH)
 REGISTER = _load(REGISTER_PATH)
+COST_RULES = _load(COST_RULES_PATH)
 WORKFLOW_JOBS = frozenset(
     yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))["jobs"]
 )
@@ -202,6 +247,12 @@ METRICS = {row["name"]: row for row in CATALOG["metrics"]}
 ALERT_IDS = frozenset(row["alertId"] for row in ALERTS["alerts"])
 CLAIMS = {row["claimId"]: row for row in REGISTER["claims"]}
 LABELS = {row["labelId"]: row for row in REGISTER["evidenceLabels"]}
+RULES = {row["ruleId"]: row for row in COST_RULES["prohibitions"]}
+BASES = {row["basisId"]: row for row in COST_RULES["bases"]}
+COST_LIMITATION_IDS = frozenset(
+    row["limitationId"] for row in COST_RULES["limitations"]
+)
+COST_QUESTION_IDS = frozenset(row["questionId"] for row in COST_RULES["openQuestions"])
 
 
 def topics(relative: str) -> list[dict[str, Any]]:
@@ -271,6 +322,10 @@ def topic_identifiers(topic: dict[str, Any]) -> dict[str, set[str]]:
         "exceptionIds": set(),
         "signals": set(),
         "alertIds": set(),
+        "ruleIds": set(),
+        "basisIds": set(),
+        "limitationIds": set(),
+        "questionIds": set(),
     }
     for side in ("implemented", "notImplemented"):
         for item in topic[side]:
@@ -431,7 +486,7 @@ def test_a_gap_never_rests_on_a_certified_claim(row: tuple) -> None:
 def test_a_gap_names_only_register_entries_and_gaps_that_exist(row: tuple) -> None:
     relative, _, _, item = row
     declared_gaps = {gap["gapId"] for gap in method(relative)["gaps"]}
-    for risk in item["registerRefs"]:
+    for risk in item.get("registerRefs", []):
         assert risk in RISK_IDS, (
             f"{item['itemId']} names {risk}, which the baseline lacks"
         )
@@ -511,7 +566,7 @@ def test_no_signal_sits_on_the_side_its_emission_denies() -> None:
     for side, item in (
         (side, item)
         for relative, side, _, item in all_items()
-        if relative == OBSERVABILITY_METHOD
+        if relative in (OBSERVABILITY_METHOD, COST_METHOD)
     ):
         for name in item.get("signals", []):
             assert name in METRICS, f"{name} is not a metric the catalog declares"
@@ -539,6 +594,134 @@ def test_every_alert_appears_as_implemented_and_nothing_else_does() -> None:
         for alert in item.get("alertIds", [])
     }
     assert named == ALERT_IDS
+
+
+# --------------------------------------------------------------------------
+# The cost and capacity method against the cost method and its evidence
+# --------------------------------------------------------------------------
+
+
+def _cost_items() -> list[tuple[str, str, dict[str, Any]]]:
+    return [
+        (side, topic_id, item)
+        for relative, side, topic_id, item in all_items()
+        if relative == COST_METHOD
+    ]
+
+
+def test_no_cost_rule_sits_on_the_side_its_enforcement_denies() -> None:
+    """A rule the cost method says a test enforces may be implemented; a rule it
+    says review alone enforces may not, whatever the prose around it says."""
+    for side, topic_id, item in _cost_items():
+        for rule_id in item.get("ruleIds", []):
+            assert rule_id in RULES, f"{rule_id} is not a rule the cost method declares"
+            tested = RULES[rule_id]["enforcement"] == "test"
+            assert tested == (side == "implemented"), (
+                f"{topic_id}/{item['itemId']} lists {rule_id} as {side}; the cost method "
+                f"enforces it by {RULES[rule_id]['enforcement']}"
+            )
+
+
+def test_every_cost_rule_appears_in_the_method() -> None:
+    named = {rule for _, _, item in _cost_items() for rule in item.get("ruleIds", [])}
+    assert set(RULES) - named == set(), "cost rules the method leaves out"
+
+
+def test_no_basis_sits_on_the_side_its_reachability_denies() -> None:
+    for side, topic_id, item in _cost_items():
+        for basis_id in item.get("basisIds", []):
+            assert basis_id in BASES, (
+                f"{basis_id} is not a basis the cost method declares"
+            )
+            assert BASES[basis_id]["v1Reachable"] == (side == "implemented"), (
+                f"{topic_id}/{item['itemId']} lists basis {basis_id} as {side}"
+            )
+
+
+def test_every_basis_appears_in_the_billing_topic() -> None:
+    topic = next(
+        t
+        for t in topics(COST_METHOD)
+        if t["topicId"] == "billing-estimate-and-allocation"
+    )
+    named = {
+        basis
+        for side in ("implemented", "notImplemented")
+        for item in topic[side]
+        for basis in item.get("basisIds", [])
+    }
+    assert named == set(BASES)
+
+
+def test_every_cost_limitation_and_open_question_is_carried_as_a_gap() -> None:
+    """A limitation or an open question is a statement of what is not done, so it
+    may only carry a not-implemented item, and none may be left out."""
+    carried: dict[str, set[str]] = {"limitationIds": set(), "questionIds": set()}
+    for side, topic_id, item in _cost_items():
+        for field, found in carried.items():
+            values = item.get(field, [])
+            assert not values or side == "notImplemented", (
+                f"{topic_id}/{item['itemId']} is implemented and names {field} {values}"
+            )
+            found.update(values)
+    assert carried["limitationIds"] == COST_LIMITATION_IDS
+    assert carried["questionIds"] == COST_QUESTION_IDS
+
+
+def _pointer(document_value: Any, pointer: str) -> Any:
+    value = document_value
+    for token in pointer.lstrip("/").split("/"):
+        value = value[int(token)] if isinstance(value, list) else value[token]
+    return value
+
+
+FIGURES = method(COST_METHOD)["figures"]
+
+
+@pytest.mark.parametrize("figure", FIGURES, ids=lambda figure: figure["figureId"])
+def test_every_figure_reads_back_from_the_file_it_names(figure: dict[str, Any]) -> None:
+    """A figure is quoted from a committed result or findings file, never typed."""
+    source = figure["sourceRef"]
+    assert source.startswith((PROOF_ROOT, "docs/cost/")), source
+    value = _pointer(_load(REPO_ROOT / source), figure["pointer"])
+    assert value is not None, f"{figure['figureId']} points at a null"
+    written = FIGURE_TRANSFORMS[figure["transform"]](value)
+    assert written == figure["quoted"], (
+        f"{figure['figureId']} quotes {figure['quoted']!r}; {source}{figure['pointer']} "
+        f"gives {written!r}"
+    )
+
+
+def test_figure_identifiers_are_unique() -> None:
+    ids = [figure["figureId"] for figure in FIGURES]
+    assert len(ids) == len(set(ids))
+
+
+def test_the_document_quotes_every_declared_figure() -> None:
+    body = document(COST_METHOD)
+    for figure in FIGURES:
+        assert figure["quoted"] in body, f"the document omits {figure['quoted']}"
+
+
+def test_the_document_quotes_no_six_place_figure_the_record_lacks() -> None:
+    """The other direction: a six-place amount in the prose that no file backs is a
+    number somebody typed."""
+    declared = {figure["quoted"] for figure in FIGURES}
+    stray = set(SIX_PLACE_FIGURE.findall(document(COST_METHOD))) - declared
+    assert not stray, f"figures quoted without a source: {sorted(stray)}"
+
+
+def test_the_capacity_topic_carries_the_deferred_capacity_claim() -> None:
+    """The portable capacity claim is deferred in the register. The method has to say
+    so where a reader looks for capacity, rather than leave the question unasked."""
+    topic = next(
+        t for t in topics(COST_METHOD) if t["topicId"] == "capacity-limitations"
+    )
+    carried = {claim for item in topic["notImplemented"] for claim in item["claimIds"]}
+    assert "sustained-throughput-and-capacity-under-load" in carried
+    assert (
+        CLAIMS["sustained-throughput-and-capacity-under-load"]["status"] == "deferred"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -581,6 +764,9 @@ def test_no_section_names_an_identifier_its_topic_lacks(relative: str) -> None:
         "claimIds": set(CLAIMS),
         "signals": set(METRICS),
         "alertIds": set(ALERT_IDS),
+        "ruleIds": set(RULES),
+        "limitationIds": set(COST_LIMITATION_IDS),
+        "questionIds": set(COST_QUESTION_IDS),
     }
     for topic in topics(relative):
         text = section(relative, topic["heading"])
