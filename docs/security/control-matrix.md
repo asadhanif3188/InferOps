@@ -77,8 +77,11 @@ remembered.
 
 The seventh row is the one to read carefully, and its own `whatItDoesNotVerify`
 field says so: it verifies that a secret-scan configuration is committed and that its
-allowlist resolves. It does **not** verify that a scanner has ever been run, because
-none has. A configuration file is not a result.
+allowlist resolves. It does **not** verify that a scanner has run. One has — once by
+hand, recorded in [the V1-S4-001-PR1 record](../proof/testing/v1-s4-001-pr1-validation.md),
+and on every change since as the `secret-scan` gate — and neither of those is what this
+control reads. A configuration file is not a result. (This paragraph said until
+2026-09-22 that no scanner had been run.)
 
 ## What is enforced over the manifests
 
@@ -162,10 +165,14 @@ defend against the contributor who owns it.
 The last two are scanners, not cluster guards, and what they establish is narrower
 than it may read. Each runs Trivy once, on the machine of whoever invokes it, and
 refuses to report success when a finding at or above the committed blocking
-severity turns up with no recorded exception. Neither runs on a schedule or in a
-continuous-integration lane — [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
-D6 leaves the question of which service would run one undecided — so a result is
-current only as of the day a contributor produced it. [The severity policy
+severity turns up with no recorded exception. Both also run as the
+`dependency-and-image-scan` gate of the default-lane workflow that
+[ADR 0012](../architecture/decisions/ADR-0012-continuous-integration-service.md)
+committed, through the same scripts, and have passed on the selected service on every
+push to `main` since 2026-09-13. Neither runs on a schedule and no hosted result is
+promoted into a record, so a result is current only as of the run that produced it.
+(This paragraph said until 2026-09-22 that neither ran in a continuous-integration lane
+and that ADR 0005 D6 left the service undecided; ADR 0012 decided it on 2026-09-12.) [The severity policy
 below](#the-vulnerability-scan-severity-policy) states the threshold and how an
 exception would be recorded against a specific finding.
 

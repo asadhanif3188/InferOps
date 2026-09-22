@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are thirty-four, and they are listed in their own section rather than
+empty list. There are thirty-five, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -157,7 +157,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Thirty-three modules. Committed machine-readable data checked against the documents
+Thirty-four modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -194,7 +194,9 @@ drifted once more: by `V1-S4-003-PR1` twenty-five modules existed while the sent
 said nineteen. That change added the twenty-sixth and corrected the count.
 `V1-S4-004-PR1` added the twenty-seventh, `V1-S4-004-PR2` the twenty-eighth,
 `V1-S4-005-PR1` the twenty-ninth, `V1-S4-005-PR2` the thirtieth,
-`V1-S4-009-PR1` the thirty-second, and `V1-S4-009-PR2` the thirty-third.
+`V1-S4-009-PR1` the thirty-second, `V1-S4-009-PR2` the thirty-third, and
+`V1-S5-004-PR1` the thirty-fourth, which holds the two published V1 methods to the
+records they summarise.
 
 That sentence is itself a correction. `V1-S4-009-PR1` added a module and wrote
 "thirty-first", and an independent review of `V1-S4-009-PR2` found thirty-two
@@ -230,7 +232,7 @@ first left this sentence at twenty-six; its review corrected it. `V1-S4-004-PR2`
 the twenty-eighth, and `V1-S4-006-PR1` the twenty-ninth. It drifted again: by
 `V1-S5-001-PR1` the table held thirty-one rows while this sentence said thirty. That
 change added the thirty-second and thirty-third and corrected it. `V1-S5-003-PR1` added the
-thirty-fourth. The machine-checked count is the one in the opening section.) Each carries its
+thirty-fourth, and `V1-S5-004-PR1` the thirty-fifth. The machine-checked count is the one in the opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -255,6 +257,7 @@ matrix is complete needs to see them together.
 | [`tests/serving/test_inference_api_surface.py`](../../tests/serving/test_inference_api_surface.py) | The committed API compatibility surface against its document |
 | [`tests/serving/test_inference_api_implementation_agreement.py`](../../tests/serving/test_inference_api_implementation_agreement.py) | Every constant in the API package that repeats a row of that record |
 | [`tests/testing/test_toolchain.py`](../../tests/testing/test_toolchain.py) | The accepted toolchain decision against the configuration implementing it, including the rule that keeps the pytest configuration out of `pyproject.toml` |
+| [`tests/testing/test_published_methods.py`](../../tests/testing/test_published_methods.py) | The published V1 security and observability methods against the records they summarise: every implemented item resolves to a defined test or an existing gate and a committed record and rests only on certified claims, every gap names what carries it and rests on no certified one, every control, register entry, exception, metric, and alert appears on the side its own record puts it, and the corrected statements stay corrected. Deliberately no claim: a method restates statuses other records own, and a row in the claim register would certify a summary rather than a property |
 | [`tests/architecture/test_kubernetes_certification.py`](../../tests/architecture/test_kubernetes_certification.py) | The Kubernetes real-inference certification read as committed data and text: the descriptor against the chart and the accepted budgets, the collected cluster facts against the descriptor, the refusal of mock identity and of a forward that is not loopback, and the safety properties of the operating script. The claim that the selected runtime serves a real completion in a cluster belongs to the real-runtime layer, which runs the workflow instead of reading it |
 | [`tests/architecture/test_kubernetes_multi_replica_certification.py`](../../tests/architecture/test_kubernetes_multi_replica_certification.py) | The multi-replica Kubernetes certification read as committed data and text: the descriptor against the chart, the accepted budgets, and the single-replica descriptor it may not disagree with; the capacity gate that refuses before anything is installed; the per-pod readiness and per-replica correlation refusals that stop a multi-replica claim being made on a controller's summary count or on requests nobody recorded; the serving-tier refusals that stop the same claim being made about model servers on a counter snapshot that is missing a replica, a counter that fell across a restart, a replica that decoded nothing, or runtimes reporting less work than the driver was told about; the safety properties of the operating script, its request driver, and its per-pod counter forward; and the counter reader run against the runtime's own recorded exposition body rather than against an assumption about its shape. The claim that requests reach two replicas in a cluster belongs to the real-runtime layer, which runs the workflow instead of reading it |
 | [`tests/architecture/test_helm_upgrade_rollback.py`](../../tests/architecture/test_helm_upgrade_rollback.py) | The Helm upgrade and rollback experiment read as committed data and text: the descriptor against the chart, the model source record, and the Kubernetes certification it may not disagree with; the refusals that stop a rollback being claimed on Helm's own bookkeeping, a deadline being read as a detection of health, a candidate that never scheduled being read as a detected fault, and a mock answering after the rollback; and the safety properties of the operating script. The claim that a release upgrades and rolls back safely belongs to the real-runtime layer, which runs the workflow instead of reading it -- and which cannot, because no InferOps API image exists |

@@ -160,7 +160,12 @@ nothing, so the rule about an upstream error body is a rule about code that has 
 been written. The adapter is the component closest to a runtime's own words, which
 makes it the one where that rule will matter most.
 
-**No record has been produced against a real runtime.** Every record inspected so far
-came from a deployment serving the committed mock, whose responses are a fixture. A
-real runtime's error text is the input the pass-through rule exists for, and it has
-not been through this code.
+**No record produced against a real runtime is read for content.** Every record a
+suite inspects comes from a deployment serving the committed mock, whose responses are
+a fixture. Records the API wrote with the real adapter do exist — three committed files
+from two runs quote them, the first attempt of
+[the local serving baseline](../proof/serving/v1-s2-005-baseline-raw-results-first-attempt.md)
+and [the unready-model run](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md) —
+and no test reads one. A real runtime's error text is the input the pass-through rule
+exists for, and no check has read what this code wrote beside one. (This paragraph said
+until 2026-09-22 that no record had been produced against a real runtime.)

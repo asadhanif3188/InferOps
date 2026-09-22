@@ -327,7 +327,9 @@ and capacity signals exist to operate the platform.
 publishing a performance figure, and a series existing is not a figure that may be
 quoted. A dashboard screenshot is a publication.
 
-**Every record inspected so far came from a mock.** The suites drive a deployment
-serving the committed mock adapter, whose responses are a fixture. A real runtime's
-error text is the input the pass-through rule exists for, and it has not been
-through this code.
+**Every record a suite inspects comes from a mock.** The suites drive a deployment
+serving the committed mock adapter, whose responses are a fixture. Records this API
+wrote with the real adapter exist in three committed files from two runs, and no
+suite reads one; a real runtime's error text is the input the pass-through rule exists
+for, and no check has read what this code wrote beside one. (This paragraph said until
+2026-09-22 that no real runtime's error text had been through this code.)

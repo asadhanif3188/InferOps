@@ -13,9 +13,12 @@ decisions are accepted; two are explicitly not made.
 > not to be enforced by the plugin the observed clusters run. A secret scanner, an
 > image scanner, and a dependency auditor have each been run once, by hand, against
 > the committed history, the pinned runtime image, and the committed dependency
-> lockfile. None of the three runs continuously: the default-lane workflow carries
-> all three as gates and no job in it has executed on the selected service. No
-> assessment by an outside party has ever been performed.
+> lockfile. All three are also gates in the default-lane workflow and have passed
+> on the selected service on every push to `main` since 2026-09-13; those results
+> are read from the service rather than promoted into a record, and the workflow
+> runs on a change rather than on a schedule. (This paragraph said until 2026-09-22
+> that no job in the workflow had run on the service.) No assessment by an outside
+> party has ever been performed.
 >
 > What is enforced is enforced over committed files, over five YAML manifests and
 > two committed chart renders, and by four shell functions. Every one of those
@@ -33,6 +36,8 @@ decisions are accepted; two are explicitly not made.
 | [Deferred risks and exceptions](deferred-risks.md) | What V1 does not defend, why, what would have to be true, and what may not be claimed while each gap stands |
 | [Workload policy](workload-policy.md) | Which rules a rendered Kubernetes manifest is held to, which fixtures establish that they refuse, and the distance between a checked manifest and a constrained workload |
 | [`security-baseline.v1alpha1.json`](security-baseline.v1alpha1.json) | The authoritative form of all of it, validated by [`tests/security/`](../../tests/security/) |
+| [The V1 security method](security-method.md) | How V1 approaches each security topic, with what is implemented and the test, gate, and record behind it kept apart from what is not and the register entry that carries it |
+| [`security-method.v1alpha1.json`](security-method.v1alpha1.json) | The authoritative form of the method, checked against the baseline, the claim register, and the workflow by [`tests/testing/test_published_methods.py`](../../tests/testing/test_published_methods.py) |
 
 Reporting a problem is [SECURITY.md](../../SECURITY.md), and it currently publishes
 no private channel — which is a gap in its own right, recorded as such.

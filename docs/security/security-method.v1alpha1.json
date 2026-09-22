@@ -1,0 +1,983 @@
+{
+  "$id": "https://inferops.io/security/security-method.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "The V1 security method",
+  "description": "How V1 secures inference, topic by topic: what is implemented and the test, gate, and record behind it, and, kept apart, what is not implemented and the register entry or unmet claim that carries it. It restates no control's status: every status is derived by the security baseline, and every certification level is read from the claim and evidence register.",
+  "documentRef": "docs/security/security-method.md",
+  "baselineRef": "docs/security/security-baseline.v1alpha1.json",
+  "claimRegisterRef": "docs/testing/claim-evidence-matrix.v1alpha1.json",
+  "workflowRef": ".github/workflows/checks.yml",
+  "validationRef": "docs/proof/security/v1-s5-004-pr1-validation.md",
+  "evidenceKinds": [
+    {
+      "kindId": "test",
+      "meaning": "A test function in this repository, named as path::function. The suite fails if the function is not defined in the file."
+    },
+    {
+      "kindId": "ci-gate",
+      "meaning": "A job in the committed default-lane workflow, named by its job identifier. The suite fails if the workflow has no such job."
+    },
+    {
+      "kindId": "record",
+      "meaning": "A committed evidence record under docs/proof/."
+    },
+    {
+      "kindId": "code",
+      "meaning": "Source a control is implemented in: a module, a tool, or a script."
+    },
+    {
+      "kindId": "configuration",
+      "meaning": "A committed configuration file a control reads or renders: a chart, a manifest, a scanner configuration, or the workflow."
+    }
+  ],
+  "topics": [
+    {
+      "topicId": "assets-and-trust-boundaries",
+      "heading": "1. Assets and trust boundaries",
+      "implemented": [
+        {
+          "itemId": "the-baseline-derives-every-control-status",
+          "statement": "Eleven assets, six actors, six trust boundaries and twenty-two threats are committed as data, and every control's status is derived from the verification it names rather than asserted.",
+          "controlIds": [
+            "derive-a-control-status-from-its-verification",
+            "no-security-claim-without-a-named-verification"
+          ],
+          "claimIds": [
+            "a-security-control-cannot-claim-enforcement-it-does-not-have"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_declared_control_status_equals_derived_control_status"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_every_threat_names_a_control_or_a_deferred_risk"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_a_mapped_boundary_matches_the_architecture_verbatim"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "default-lane-tests"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "the-publication-boundary-refuses-host-state-and-private-paths",
+          "statement": "At B6, the boundary a commit crosses, a committed file may not be generated host state, carry a personal filesystem path, or put a tenant identifier into an evidence record.",
+          "controlIds": [
+            "ignore-and-refuse-generated-host-state",
+            "no-personal-filesystem-path-in-a-committed-file",
+            "no-tenant-identifier-in-a-committed-record"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_no_committed_file_is_generated_host_state"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_no_committed_file_carries_a_personal_filesystem_path"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_a_tenant_identifier_stays_out_of_metrics_and_evidence"
+            },
+            {
+              "kind": "configuration",
+              "ref": ".gitignore"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "the-caller-boundary-has-no-control",
+          "statement": "B5, the caller boundary, enforces nothing: no authentication, no authorisation, no rate limit, and no tenant isolation.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-01",
+            "DR-02",
+            "DR-03"
+          ],
+          "claimIds": [
+            "a-deployed-inferops-workload-is-defended"
+          ],
+          "gapIds": [],
+          "notClaimed": "No property is claimed at the caller boundary, and no document may describe V1 as access-controlled there."
+        },
+        {
+          "itemId": "private-material-is-kept-out-by-review",
+          "statement": "Whether a diff carries unpublished strategy, and whether a promoted record was redacted against the raw output it came from, is decided by a reviewer and read by nothing.",
+          "controlIds": [
+            "review-the-public-diff-for-private-material",
+            "redact-before-promoting-raw-output"
+          ],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No test reads a diff for private material or a promoted record against its raw output, so neither is called implemented."
+        }
+      ]
+    },
+    {
+      "topicId": "model-and-image-supply-chain",
+      "heading": "2. Model and image supply chain",
+      "implemented": [
+        {
+          "itemId": "the-model-is-pinned-and-hash-verified-before-use",
+          "statement": "The model artifact is pinned by revision and per-file SHA-256, and the acquisition job and the chart's integrity init container compare the hash before any consumer reads the bytes. The expected hash is committed here rather than fetched beside the file.",
+          "controlIds": [
+            "pin-model-revision",
+            "verify-artifact-hash-before-use"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_the_model_acquisition_job_pins_a_revision_and_verifies_a_hash"
+            },
+            {
+              "kind": "configuration",
+              "ref": "deploy/serving/feasibility/weights.yaml"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_helm_chart.py::test_the_integrity_check_runs_before_the_runtime_and_on_every_start"
+            },
+            {
+              "kind": "configuration",
+              "ref": "charts/inferops-llm/templates/runtime-deployment.yaml"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/environment/v1-s3-008-pr1-validation.md"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "every-image-is-pinned-by-digest",
+          "statement": "Every image a committed manifest or render names is pinned by digest, never by a tag somebody can move.",
+          "controlIds": [
+            "pin-image-by-digest"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_every_manifest_image_is_pinned_by_digest"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_helm_chart.py::test_every_rendered_image_is_pinned_by_digest"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "default-lane-tests"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "the-image-and-the-lockfile-are-scanned-and-described",
+          "statement": "The pinned runtime image and the committed lockfile are scanned for known vulnerabilities against one committed blocking severity, and a CycloneDX bill of materials is generated for each.",
+          "controlIds": [
+            "scan-the-pinned-runtime-image-for-known-vulnerabilities",
+            "scan-python-dependencies-for-known-vulnerabilities"
+          ],
+          "claimIds": [
+            "the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "scripts/security/lib.sh"
+            },
+            {
+              "kind": "code",
+              "ref": "scripts/security/generate-sbom.sh"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_the_image_scan_reads_the_digest_the_manifests_already_pin"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "dependency-and-image-scan"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "software-bill-of-materials"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s2-006-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-provenance-is-verified",
+          "statement": "No signature or build attestation is verified before the runtime image runs. The publisher emits none.",
+          "controlIds": [
+            "verify-artifact-provenance"
+          ],
+          "registerRefs": [
+            "DR-08"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No provenance, attestation, or build-identity property is claimed; a digest pin says what ran and not who built it."
+        },
+        {
+          "itemId": "the-transport-is-not-authenticated",
+          "statement": "The transport that delivers the model reported certificate validation as disabled; the committed hash is the whole integrity argument.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-06"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No supply-chain integrity property beyond the hash comparison is claimed."
+        },
+        {
+          "itemId": "no-check-is-shown-to-resolve-from-the-lockfile",
+          "statement": "A hash-bearing lockfile is committed, and nothing records that a given check resolved from it; the non-Python tools are pinned in prose.",
+          "controlIds": [
+            "pin-every-dependency-with-a-committed-lockfile"
+          ],
+          "registerRefs": [
+            "DR-07"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No reproducibility property is claimed for the tool chain that runs the checks."
+        },
+        {
+          "itemId": "artifact-availability-is-not-defended",
+          "statement": "If a publisher stops serving the pinned revision, the reproduction path for every serving record stops working.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-09"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No availability or reproducibility-over-time property is claimed for an external artifact."
+        }
+      ]
+    },
+    {
+      "topicId": "secrets",
+      "heading": "3. Secrets",
+      "implemented": [
+        {
+          "itemId": "a-contract-refuses-a-secret-value-and-never-echoes-one",
+          "statement": "A workload contract carries a locator for a secret and never its value; a credential-shaped locator is refused, and a refusal names the field and the rule and never the value it read.",
+          "controlIds": [
+            "refuse-a-secret-value-in-a-contract",
+            "never-echo-a-document-value-in-a-refusal"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/contracts/test_workload_contract_validation.py::test_a_credential_shaped_locator_is_caught"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/contracts/test_workload_contract_validation.py::test_no_finding_quotes_a_value_from_the_document"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/contracts/v1-s0-004-pr2-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "a-render-carries-no-secret-value",
+          "statement": "The workload policy refuses a committed render that carries a secret value.",
+          "controlIds": [
+            "no-secret-value-in-a-rendered-manifest"
+          ],
+          "claimIds": [
+            "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_workload_policy.py::test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records"
+            },
+            {
+              "kind": "code",
+              "ref": "tools/workload_policy/__init__.py"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "expected-failures"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s3-004-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "the-history-is-scanned-for-credentials",
+          "statement": "A secret-scan configuration is committed and its allowlist resolves, and the scanner reads the whole history as a gate in the default-lane workflow.",
+          "controlIds": [
+            "no-credential-or-artifact-in-public-history"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_the_secret_scan_configuration_is_committed_and_its_allowlist_resolves"
+            },
+            {
+              "kind": "configuration",
+              "ref": ".gitleaks.toml"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "secret-scan"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/testing/v1-s4-001-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-secret-lifecycle-exists",
+          "statement": "Nothing resolves a secret reference, so there is no secret manager, rotation policy, or expiry check.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-10"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No secret-management property is claimed beyond the shape of a locator."
+        },
+        {
+          "itemId": "no-scan-of-the-history-is-promoted",
+          "statement": "One scan of the history is recorded, by hand. The gate's runs on the selected service are observed and not promoted into a record, so the claim about public history stays planned.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-11"
+          ],
+          "claimIds": [
+            "no-credential-or-model-artifact-enters-public-history"
+          ],
+          "gapIds": [],
+          "notClaimed": "The claim that no credential or model artifact enters public history is not certified and may not be cited."
+        }
+      ]
+    },
+    {
+      "topicId": "api-and-network-exposure",
+      "heading": "4. API and network exposure",
+      "implemented": [
+        {
+          "itemId": "no-manifest-publishes-a-service",
+          "statement": "Both Services are ClusterIP, no Ingress is declared, and no node port is pinned, so reaching the API takes a deliberate port-forward from a machine that already holds the cluster credential.",
+          "controlIds": [
+            "least-exposure-no-manifest-publishes-a-service"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_no_manifest_exposes_a_service_outside_the_cluster"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "the-release-renders-a-default-deny",
+          "statement": "The chart renders a default-deny of both directions over every pod the release installs, and the workload policy refuses a render that is not denied in both.",
+          "controlIds": [
+            "network-policy-in-the-release-namespace"
+          ],
+          "claimIds": [
+            "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_workload_policy.py::test_every_committed_render_satisfies_the_workload_policy"
+            },
+            {
+              "kind": "configuration",
+              "ref": "charts/inferops-llm/templates/networkpolicy.yaml"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "helm-chart"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s3-004-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-caller-is-identified-or-limited",
+          "statement": "No caller is authenticated, no request is authorised, nothing limits what one caller consumes, and a tenant is a request rather than an assertion checked against anything.",
+          "controlIds": [
+            "authenticate-and-authorise-a-caller",
+            "limit-what-one-caller-may-consume",
+            "a-tenant-is-a-request-not-an-assertion"
+          ],
+          "registerRefs": [
+            "DR-01",
+            "DR-02",
+            "DR-03"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No access control, rate limit, isolation, or multi-tenancy property is claimed at the API."
+        },
+        {
+          "itemId": "the-rendered-policy-is-not-enforced",
+          "statement": "The accepted local cluster's network plugin was measured not to apply the rendered policy: pod-to-pod traffic, DNS, and a direct CoreDNS query all continued under a default-deny.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-04"
+          ],
+          "claimIds": [
+            "the-rendered-network-policy-is-enforced-by-the-cluster"
+          ],
+          "gapIds": [],
+          "notClaimed": "No network isolation property is claimed, and the rendered policy may not be described as a control while the plugin ignores it."
+        },
+        {
+          "itemId": "the-metrics-endpoint-is-a-fingerprint",
+          "statement": "The metrics route sits behind the same absent boundary as every other route and publishes the deployment's build, model revision, and runtime image digest.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-01"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No control over who reads the metrics endpoint is claimed."
+        }
+      ]
+    },
+    {
+      "topicId": "container-and-kubernetes-controls",
+      "heading": "5. Container and Kubernetes controls",
+      "implemented": [
+        {
+          "itemId": "every-pod-and-container-carries-the-security-context",
+          "statement": "Every pod specification and container in a committed manifest or render runs as non-root with the runtime-default seccomp profile, mounts no service account token, forbids privilege escalation, has a read-only root filesystem, and drops every capability.",
+          "controlIds": [
+            "run-as-non-root",
+            "seccomp-runtime-default",
+            "do-not-mount-a-service-account-token",
+            "forbid-privilege-escalation",
+            "read-only-root-filesystem",
+            "drop-all-capabilities"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_every_pod_spec_carries_every_required_pod_security_field"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_every_container_carries_every_required_container_security_field"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "a-render-that-drops-a-control-is-refused",
+          "statement": "The workload policy refuses a committed render that drops a dedicated service account or an explicit resource envelope, and nine committed insecure fixtures each prove one rule fires.",
+          "controlIds": [
+            "use-a-dedicated-service-account-per-workload",
+            "declare-explicit-resource-requests-and-limits",
+            "refuse-a-workload-manifest-that-omits-a-required-control"
+          ],
+          "claimIds": [
+            "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_workload_policy.py::test_the_fixtures_between_them_exercise_every_rule"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_workload_policy.py::test_an_insecure_fixture_is_refused_by_exactly_the_rules_it_records"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "expected-failures"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "helm-chart"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s3-004-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "a-platform-action-reaches-only-the-selected-cluster",
+          "statement": "The environment scripts refuse to act on a cluster the operator did not select and verify, and scope every kubectl call to the project kubeconfig.",
+          "controlIds": [
+            "refuse-to-act-on-a-cluster-this-project-did-not-create",
+            "scope-every-kubectl-call-to-the-project-kubeconfig"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "scripts/environment/lib.sh"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_cluster_lifecycle_safety.py::test_a_mutating_kubectl_call_goes_through_the_wrapper"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md"
+            }
+          ],
+          "evidenceLabel": "local-real-cpu"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "nothing-constrains-a-running-pod",
+          "statement": "Every pod-security assertion reads a file. Nothing reads a pod this platform deployed, and no admission control constrains one.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-05"
+          ],
+          "claimIds": [
+            "a-deployed-inferops-workload-is-defended"
+          ],
+          "gapIds": [],
+          "notClaimed": "No workload this platform deployed may be described as constrained."
+        }
+      ]
+    },
+    {
+      "topicId": "scan-and-policy-gates",
+      "heading": "6. Scan and policy gates",
+      "implemented": [
+        {
+          "itemId": "three-scanners-are-gates-on-every-change",
+          "statement": "The dependency and image scan, the bill of materials, and the secret scan are gates in the default-lane workflow and run on every pull request and every push to main, through the same committed scripts and severity policy a contributor runs by hand.",
+          "controlIds": [
+            "scan-the-pinned-runtime-image-for-known-vulnerabilities",
+            "scan-python-dependencies-for-known-vulnerabilities",
+            "no-credential-or-artifact-in-public-history"
+          ],
+          "claimIds": [
+            "the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published"
+          ],
+          "evidence": [
+            {
+              "kind": "ci-gate",
+              "ref": "dependency-and-image-scan"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "software-bill-of-materials"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "secret-scan"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/testing/test_ci_gate_matrix.py::test_the_matrix_and_the_workflow_declare_the_same_jobs"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/testing/v1-s4-001-pr2-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "invalid-contracts-and-insecure-manifests-are-refused-on-every-change",
+          "statement": "The expected-failure controls run the committed invalid contracts and insecure manifests through the validators on every change and require each one to be refused.",
+          "controlIds": [
+            "refuse-a-workload-manifest-that-omits-a-required-control"
+          ],
+          "claimIds": [
+            "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+          ],
+          "evidence": [
+            {
+              "kind": "ci-gate",
+              "ref": "expected-failures"
+            },
+            {
+              "kind": "code",
+              "ref": "tools/ci_gates/__init__.py"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_workload_policy.py::test_the_fixtures_between_them_exercise_every_rule"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/testing/v1-s4-001-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-scan-is-scheduled-or-promoted",
+          "statement": "The workflow runs on a change and not on a schedule, so a vulnerability database that moves between changes is not read, and no hosted scan result has been promoted into a record.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-08",
+            "DR-11"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No vulnerability count, severity distribution, or scan score is published as a durable posture, and a green run is not cited as current past the day it ran."
+        }
+      ]
+    },
+    {
+      "topicId": "exceptions",
+      "heading": "7. Accepted exceptions",
+      "implemented": [
+        {
+          "itemId": "every-exception-names-a-compensating-control",
+          "statement": "Six weaknesses are accepted rather than fixed, and each names where it was accepted, a compensating control the baseline declares, the residual risk, and when to revisit it.",
+          "controlIds": [],
+          "claimIds": [
+            "a-security-control-cannot-claim-enforcement-it-does-not-have"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_every_exception_names_a_compensating_control_and_a_residual_risk"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_the_exceptions_are_published_where_a_reader_will_find_them"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "the-exceptions-leave-residual-risk",
+          "statement": "An accepted exception is a weakness that stands. The compensating control narrows it and does not close it.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-04",
+            "DR-05",
+            "DR-06",
+            "DR-11"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "exceptionIds": [
+            "EX-01",
+            "EX-02",
+            "EX-03",
+            "EX-04",
+            "EX-05",
+            "EX-06"
+          ],
+          "notClaimed": "No exception is described as closed, and none is cited as a control in its own right."
+        }
+      ]
+    },
+    {
+      "topicId": "prompt-and-response-handling",
+      "heading": "8. Prompt and response handling",
+      "implemented": [
+        {
+          "itemId": "content-has-nowhere-it-may-be-written",
+          "statement": "A prompt, a completion, a provider error body, a secret value, an authorization header, and a value read out of a submitted document have empty placement lists in the telemetry catalog, and content capture is off with no switch that turns it on.",
+          "controlIds": [
+            "no-secret-or-content-has-a-telemetry-placement",
+            "content-capture-is-disabled-and-has-no-enabling-path"
+          ],
+          "claimIds": [
+            "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_a_forbidden_field_is_allowed_nowhere"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_content_capture_is_disabled_and_has_no_policy_to_enable_it"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s0-007-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "the-api-writes-no-content-into-a-record-or-a-response",
+          "statement": "The API builds every log record through an allowlist that has no name for content, and the suites drive it and read what it wrote: no record or series repeats the prompt or the completion, no record repeats an adapter's message, and no refusal carries the prompt or an adapter's message back to the caller.",
+          "controlIds": [],
+          "claimIds": [
+            "the-api-emits-catalog-metrics-and-structured-request-records"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/inferops/api/observability.py"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_observability.py::test_no_record_or_series_repeats_the_prompt"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_observability.py::test_no_record_repeats_the_completion_the_caller_received"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_observability.py::test_no_record_repeats_an_adapter_message"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_error_contract.py::test_an_adapters_message_never_reaches_a_caller"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_end_to_end_mock.py::test_no_failure_response_carries_the_prompt_that_produced_it"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "mock"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-real-runtime-record-is-read-for-content",
+          "statement": "Every record a suite reads for content comes from a deployment serving the committed mock. Records written against the real runtime are quoted in three committed files from two runs, and no test reads one for content.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-12"
+          ],
+          "claimIds": [
+            "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+          ],
+          "gapIds": [],
+          "notClaimed": "The claim that no prompt, response, or secret reaches a log or a metric is not certified and may not be cited."
+        },
+        {
+          "itemId": "an-upstream-error-body-is-kept-out-by-review",
+          "statement": "That no upstream error body is logged verbatim anywhere, including by the serving-runtime adapter, is a review rule. The half the API enforces is tested; the whole rule is not.",
+          "controlIds": [
+            "do-not-pass-through-a-provider-error-body"
+          ],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No test reaches the adapter's handling of a runtime's error text, so the rule is not called implemented."
+        },
+        {
+          "itemId": "no-audit-trail-exists",
+          "statement": "What the platform did is specified for a platform API that does not exist, and records go to a stream nothing keeps.",
+          "controlIds": [
+            "record-what-the-platform-did"
+          ],
+          "registerRefs": [
+            "DR-12"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No auditability, traceability, or incident-reconstruction property is claimed."
+        }
+      ]
+    },
+    {
+      "topicId": "deferred-risks",
+      "heading": "9. Deferred risks",
+      "implemented": [
+        {
+          "itemId": "every-deferred-risk-states-what-is-not-claimed",
+          "statement": "Every register entry names its boundary, why V1 defers it, what would have to be true, whether it blocks production use, and what may not be claimed while it stands, in a sentence that denies.",
+          "controlIds": [],
+          "claimIds": [
+            "a-security-control-cannot-claim-enforcement-it-does-not-have"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_every_deferred_risk_states_what_is_not_claimed"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_every_deferred_risk_is_reached_by_a_threat"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "twelve-risks-are-carried",
+          "statement": "Twelve risks are carried rather than reduced, and ten of them block production use.",
+          "controlIds": [],
+          "registerRefs": [
+            "DR-01",
+            "DR-02",
+            "DR-03",
+            "DR-04",
+            "DR-05",
+            "DR-06",
+            "DR-07",
+            "DR-08",
+            "DR-09",
+            "DR-10",
+            "DR-11",
+            "DR-12"
+          ],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No register entry is described as reduced, and no entry leaves the register except with the control that reduces it."
+        }
+      ]
+    },
+    {
+      "topicId": "production-design-versus-certification",
+      "heading": "10. Production-oriented design is not production certification",
+      "implemented": [
+        {
+          "itemId": "a-posture-word-needs-a-denial",
+          "statement": "Twelve posture terms may appear in a committed Markdown document only inside a sentence that denies them, and the scan reads every Markdown file in the repository.",
+          "controlIds": [
+            "no-security-claim-without-a-named-verification"
+          ],
+          "claimIds": [
+            "a-security-control-cannot-claim-enforcement-it-does-not-have"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_a_reserved_term_appears_only_where_it_is_denied"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_security_baseline.py::test_the_vocabulary_check_reaches_the_documents_a_reader_meets_first"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "nothing-is-certified-for-production",
+          "statement": "The controls are shaped the way a production deployment would need them, and none has been exercised by one. No outside party has assessed anything, and the production-experience evidence class is unreachable from this repository.",
+          "controlIds": [],
+          "registerRefs": [],
+          "claimIds": [
+            "a-deployed-inferops-workload-is-defended"
+          ],
+          "gapIds": [],
+          "notClaimed": "No production-readiness, compliance, or assessment property is claimed, and no control is described as observed in operation."
+        }
+      ]
+    }
+  ],
+  "gaps": [],
+  "corrections": [
+    {
+      "correctionId": "scanners-have-run-on-the-selected-service",
+      "statement": "The security README, the threat model, SECURITY.md, ADR 0008, DR-11, and the baseline's no-scanner-run limitation said no job in the default-lane workflow had executed on the selected service. The three scan gates passed there on all nineteen pushes to main from 2026-09-13 to 2026-09-21, as docs/proof/security/v1-s5-004-pr1-hosted-runs.v1alpha1.json lists. Corrected in place, with the date the sentence stopped being true."
+    },
+    {
+      "correctionId": "a-ci-lane-exists",
+      "statement": "DR-08 and the control matrix said there was no continuous-integration lane and that ADR 0005 D6 left the service undecided. ADR 0012 selected one on 2026-09-12. Corrected in place."
+    },
+    {
+      "correctionId": "the-baseline-data-lagged-its-document",
+      "statement": "The baseline data for DR-11 and DR-12 still carried their original text: that the scanner was not installed and that no logger existed. The register document had been narrowed by V1-S4-001-PR1 and V1-S1-008-PR1 and the data had not. The data is the authoritative form, so it was the stale half. The residual risk of T-06, the whatItDoesNotVerify of no-secret-or-content-has-a-telemetry-placement, and two paragraphs of ADR 0008 said the same about the logger, and are corrected with it."
+    },
+    {
+      "correctionId": "two-register-titles-contradicted-their-entries",
+      "statement": "The register table still titled DR-12 'Nothing is logged' after its heading and body had been narrowed, and DR-11 was titled as though no scan had been recorded two paragraphs above the sentence recording one. Both titles now say what the entry does."
+    },
+    {
+      "correctionId": "real-runtime-records-exist",
+      "statement": "DR-12, the redaction rules, and the API instrumentation document said no record had been produced against a real runtime. Three committed files, from two runs, quote records the API wrote with the real adapter. What stays true is narrower: no suite reads one for content."
+    }
+  ],
+  "limitations": [
+    "This method adds no control, moves no control status, and moves no claim. Every status it shows is derived by the security baseline and every certification level is read from the claim and evidence register.",
+    "An evidence reference resolving establishes that the named test, gate, file, or record exists. It does not judge whether the test is a strong one.",
+    "A gate's runs on the selected service are observed through its public API and are not promoted into a record, so no item here rests on a hosted run."
+  ]
+}

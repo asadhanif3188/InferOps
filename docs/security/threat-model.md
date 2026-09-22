@@ -14,10 +14,13 @@ below have no control at all.
 > and the network policy the release creates was measured not to be enforced by the
 > plugin the observed clusters run. A secret scanner, an image scanner, and a
 > dependency auditor have each been run once, by hand, against the committed
-> history, the pinned runtime image, and the committed dependency lockfile. None of
-> the three runs continuously: the default-lane workflow carries all three as gates
-> and no job in it has executed on the selected service. No assessment by an outside
-> party has ever been performed, and a document review is not one.
+> history, the pinned runtime image, and the committed dependency lockfile. All three
+> are also gates in the default-lane workflow and have passed on the selected service
+> on every push to `main` since 2026-09-13, read from the service rather than
+> promoted into a record; the workflow runs on a change and not on a schedule. (Until
+> 2026-09-22 this banner said no job in the workflow had run on the service.) No
+> assessment by an outside party has ever been performed, and a document review is
+> not one.
 >
 > What is really enforced is enforced over committed files, over five YAML
 > manifests, over the chart's two committed renders, and by four shell functions.
@@ -257,9 +260,13 @@ extension, and the secret-scan configuration parses and exempts only things that
 exist. The fifth thing a reader will assume is tested is not: **no test here runs the
 scanner**, and `DR-11` carries that. A configuration file is not a result —
 `V1-S4-001-PR1` proved the point by running the scanner for the first time and finding
-that this configuration had never parsed at all. One clean run is now recorded, the
-security-scan layer of [the test strategy](../testing/test-strategy.md) is
-`implemented`, and nothing makes the run recur.
+that this configuration had never parsed at all. One clean run is now recorded, and
+the security-scan layer of [the test strategy](../testing/test-strategy.md) is
+`implemented`. The scan now also recurs on every change, as the `secret-scan` gate of
+the default-lane workflow, and has passed there on every push to `main` since
+2026-09-13; those runs are read from the service and none is promoted into a record,
+so the claim about public history stays `planned`. (This paragraph said until
+2026-09-22 that nothing makes the run recur.)
 
 ## What this model does not do
 

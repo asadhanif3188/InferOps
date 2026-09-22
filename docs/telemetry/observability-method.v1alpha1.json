@@ -1,0 +1,715 @@
+{
+  "$id": "https://inferops.io/telemetry/observability-method.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "The V1 observability method",
+  "description": "How V1 observes inference, topic by topic: what is emitted, collected, panelled, and alerted on, and the test, gate, and record behind each, and, kept apart, what is specified and not emitted, what is not kept, and what nobody is told. It restates no signal's emission status: that is the telemetry catalog's, and every certification level is read from the claim and evidence register.",
+  "documentRef": "docs/telemetry/observability-method.md",
+  "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
+  "alertRecordRef": "docs/telemetry/inference-alerts.v1alpha1.json",
+  "baselineRef": "docs/security/security-baseline.v1alpha1.json",
+  "claimRegisterRef": "docs/testing/claim-evidence-matrix.v1alpha1.json",
+  "workflowRef": ".github/workflows/checks.yml",
+  "validationRef": "docs/proof/security/v1-s5-004-pr1-validation.md",
+  "evidenceKinds": [
+    {
+      "kindId": "test",
+      "meaning": "A test function in this repository, named as path::function. The suite fails if the function is not defined in the file."
+    },
+    {
+      "kindId": "ci-gate",
+      "meaning": "A job in the committed default-lane workflow, named by its job identifier. The suite fails if the workflow has no such job."
+    },
+    {
+      "kindId": "record",
+      "meaning": "A committed evidence record under docs/proof/."
+    },
+    {
+      "kindId": "code",
+      "meaning": "Source a signal is produced or checked in: a module or a tool."
+    },
+    {
+      "kindId": "configuration",
+      "meaning": "A committed configuration file a signal is collected, panelled, or alerted through: the chart, the Grafana JSON, or a rendered rule file."
+    }
+  ],
+  "topics": [
+    {
+      "topicId": "resource-and-ai-attributes",
+      "heading": "1. Resource and AI attributes",
+      "implemented": [
+        {
+          "itemId": "identity-reaches-metrics-through-one-series",
+          "statement": "The build, capability, release, model revision, runtime image digest, and adapter kind are identity-only attributes. They reach metrics through one identity series per process and never as an operational label, so a result pins immutable versions without multiplying every series by the release history.",
+          "signals": [
+            "inferops_build_info"
+          ],
+          "alertIds": [],
+          "claimIds": [
+            "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_identity_attributes_appear_only_on_an_identity_metric"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_an_identity_metric_emits_one_series_per_process"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "default-lane-tests"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s0-007-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "a-mock-scrape-says-it-is-a-mock",
+          "statement": "The adapter kind is derived from the adapter selection rather than configured beside it, and a mock deployment's metrics body says in the exposition that it describes a fixture replay.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "the-api-emits-catalog-metrics-and-structured-request-records"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/inferops/api/metrics.py"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_health_models_and_metrics.py::test_the_metrics_body_says_the_deployment_behind_it_is_a_mock"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_adapter_selection.py::test_a_real_selection_with_a_mock_labelled_identity_refuses"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "mock"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "the-ai-attributes-follow-no-published-convention",
+          "statement": "The model, runtime, token-direction, and finish-reason attributes are this project's own names. No mapping to the OpenTelemetry generative-AI semantic conventions is recorded, and no attribute is emitted under one of those names.",
+          "signals": [],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [
+            "no-generative-ai-convention-mapping"
+          ],
+          "notClaimed": "No conformance with any published semantic convention is claimed for the AI attributes."
+        }
+      ]
+    },
+    {
+      "topicId": "logs-and-redaction",
+      "heading": "2. Logs, correlation, and redaction",
+      "implemented": [
+        {
+          "itemId": "a-record-is-built-through-an-allowlist",
+          "statement": "The API writes one JSON object per line through an allowlist of the attribute names the catalog publishes. There is no free-form message field, a field outside the allowlist is refused and named without its value, and six fields have no name at all: a prompt, a completion, a provider error body, a secret value, an authorization header, and a value read out of a submitted document.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label",
+            "the-api-emits-catalog-metrics-and-structured-request-records"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/inferops/api/observability.py"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_a_forbidden_field_is_allowed_nowhere"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_observability.py::test_a_record_has_no_free_form_message_field"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_observability.py::test_a_record_the_catalog_forbids_still_raises_when_the_sink_is_fine"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_observability.py::test_no_record_or_series_repeats_the_prompt"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "mock"
+        },
+        {
+          "itemId": "a-correlation-identifier-is-assigned-at-the-edge",
+          "statement": "The correlation identifier is assigned by the first InferOps component to see a request, before anything can fail, echoed on every response including a refusal, and carried by every record; it is a log field and never a metric label.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_a_log_record_carries_a_correlation_identifier_from_the_start"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_no_metric_label_is_a_request_scoped_identifier"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_inference.py::test_the_response_headers_and_body_carry_the_same_identifiers"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "nothing-produces-a-span",
+          "statement": "No tracer, propagator, or exporter is selected. The trace context headers are neither read nor written, and the trace and span identifiers are specified fields nothing populates.",
+          "signals": [],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [
+            "no-span-is-produced"
+          ],
+          "notClaimed": "No distributed-tracing property is claimed."
+        },
+        {
+          "itemId": "content-exclusion-is-uncertified-past-the-mock",
+          "statement": "Every record a suite reads for content comes from the mock. Records written against the real runtime are quoted in three committed files from two runs, and no test reads one; the serving-runtime adapter, which is closest to a runtime's own error text, emits nothing.",
+          "signals": [],
+          "registerRefs": [
+            "DR-12"
+          ],
+          "claimIds": [
+            "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+          ],
+          "gapIds": [],
+          "notClaimed": "The claim that no prompt, response, or secret reaches a log or a metric is not certified and may not be cited."
+        }
+      ]
+    },
+    {
+      "topicId": "metrics-and-cardinality",
+      "heading": "3. Metrics and cardinality",
+      "implemented": [
+        {
+          "itemId": "eight-metrics-are-emitted-by-the-api",
+          "statement": "The API emits eight of the thirteen active metrics, each naming the question it answers and the most series it can produce.",
+          "signals": [
+            "inferops_build_info",
+            "inferops_inference_requests_total",
+            "inferops_inference_errors_total",
+            "inferops_inference_request_duration_seconds",
+            "inferops_inference_requests_in_flight",
+            "inferops_inference_tokens_total",
+            "inferops_readiness_check_failures_total",
+            "inferops_process_cpu_seconds_total"
+          ],
+          "alertIds": [],
+          "claimIds": [
+            "the-api-emits-catalog-metrics-and-structured-request-records"
+          ],
+          "evidence": [
+            {
+              "kind": "code",
+              "ref": "src/inferops/api/metrics.py"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_the_catalog_says_exactly_what_emits_and_what_does_not"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/api/test_api_observability.py::test_the_exposition_carries_no_duration_or_workload_version_label"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s1-008-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "mock"
+        },
+        {
+          "itemId": "the-series-budget-is-arithmetic",
+          "statement": "Placement is the intersection of what a field's sensitivity and cardinality classes permit, no operational label is unbounded or request-scoped, and the declared series total is recomputed from labels and buckets against a ceiling of 2,000 per metric and 10,000 overall.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_every_placement_is_allowed_by_both_classes"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_no_operational_metric_label_is_unbounded"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_the_active_catalog_stays_inside_the_total_budget"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_kubernetes_telemetry_collection.py::test_instance_is_the_only_unbounded_label_and_says_what_it_costs"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s0-007-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "five-active-metrics-have-no-emitter",
+          "statement": "Four active metrics belong to emitters that are not instrumented, the serving-runtime adapter and the contract validator, and one is assigned to the API with no source it may read.",
+          "signals": [
+            "inferops_inference_queue_duration_seconds",
+            "inferops_model_load_duration_seconds",
+            "inferops_model_ready",
+            "inferops_workload_document_rejections_total",
+            "inferops_process_resident_memory_bytes"
+          ],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No queue wait, model load time, model readiness, document rejection rate, or process memory is observed by this platform."
+        },
+        {
+          "itemId": "three-metrics-are-deferred-out-of-v1",
+          "statement": "Time to first token, retries, and cost records are defined and deferred: V1 has no streaming path, no retry path, and no component that emits a cost record.",
+          "signals": [
+            "inferops_inference_time_to_first_token_seconds",
+            "inferops_inference_retries_total",
+            "inferops_cost_records_total"
+          ],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [],
+          "notClaimed": "No time to first token, retry count, or cost is observed, and a cost figure is not something this telemetry produces."
+        },
+        {
+          "itemId": "no-store-has-held-the-budget",
+          "statement": "The series budget is arithmetic over declared bounds. No store has been tested against it, and nothing counted what the ephemeral collector held.",
+          "signals": [],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [
+            "no-durable-store"
+          ],
+          "notClaimed": "No measured series count or store capacity is claimed."
+        }
+      ]
+    },
+    {
+      "topicId": "collection",
+      "heading": "4. Collection",
+      "implemented": [
+        {
+          "itemId": "a-release-scoped-collector-scrapes-both-jobs",
+          "statement": "The chart owns a release-scoped Prometheus that discovers and scrapes the API and the serving runtime, drops every label the catalog bars, and attaches none the API already emits; it has scraped both jobs on the docker-desktop reference provider.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider"
+          ],
+          "evidence": [
+            {
+              "kind": "configuration",
+              "ref": "charts/inferops-llm/templates/telemetry-scrape-config.yaml"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_kubernetes_telemetry_collection.py::test_every_job_drops_every_label_the_catalog_bars"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_kubernetes_telemetry_collection.py::test_the_api_job_attaches_no_label_the_api_already_emits"
+            },
+            {
+              "kind": "ci-gate",
+              "ref": "helm-chart"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md"
+            }
+          ],
+          "evidenceLabel": "local-real-cpu"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "the-runtime-and-the-cluster-have-signals-with-no-source",
+          "statement": "The runtime exposes no cumulative request counter, and no metrics server, kube-state-metrics, or cAdvisor scrape is installed, so container, node, restart, and pod-phase figures have no source.",
+          "signals": [],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [
+            "no-cluster-resource-source"
+          ],
+          "notClaimed": "No container, node, restart, or pod-phase figure is observed through this telemetry."
+        }
+      ]
+    },
+    {
+      "topicId": "dashboard-semantics",
+      "heading": "5. Dashboard semantics",
+      "implemented": [
+        {
+          "itemId": "every-panel-says-which-of-four-states-it-is-in",
+          "statement": "Every panel is in one of four states that look different: zero, missing, not emitted, or not answerable. A zero is filled only from a count that proves a reading happened and never over a rate, and a panel reading scrape reachability says scrape and not ready.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered"
+          ],
+          "evidence": [
+            {
+              "kind": "configuration",
+              "ref": "deploy/grafana/inferops-inference-operations.json"
+            },
+            {
+              "kind": "code",
+              "ref": "tools/inference_dashboard/__init__.py"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_dashboard.py::test_the_four_states_are_declared"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_dashboard.py::test_no_zero_filled_expression_takes_a_rate"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_dashboard.py::test_a_count_is_missing_rather_than_zero_when_nothing_was_read"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_dashboard.py::test_model_readiness_says_not_emitted_rather_than_ready"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s4-002-pr2-dashboard-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-real-cpu"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-server-runs-the-dashboard",
+          "statement": "The definition was imported once into a throwaway Grafana against one single-replica release. Which Grafana runs it, who owns that server, and where it is exposed stay undecided.",
+          "signals": [],
+          "registerRefs": [],
+          "claimIds": [],
+          "gapIds": [
+            "no-dashboard-server"
+          ],
+          "notClaimed": "No dashboard is claimed to be running, and a dashboard screenshot is not a published figure."
+        }
+      ]
+    },
+    {
+      "topicId": "alerts",
+      "heading": "6. Alerts",
+      "implemented": [
+        {
+          "itemId": "six-alerts-carry-an-owner-and-an-action",
+          "statement": "Six alerts each carry an owner, a severity, a caller impact, an accepted evidence query, an operator action, a runbook section, a threshold basis, and what the alert cannot see; none of the thresholds is a figure this project measured. Each is driven across eight committed scenarios, five are replayed over three real captures, and the pinned collector's promtool loads both rendered rule files.",
+          "signals": [],
+          "alertIds": [
+            "inference-callers-refused",
+            "inference-serving-nothing",
+            "readiness-refusals-sustained",
+            "inference-latency-past-half-the-request-budget",
+            "runtime-defers-requests",
+            "platform-api-scrape-job-absent"
+          ],
+          "claimIds": [
+            "six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link",
+            "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded"
+          ],
+          "evidence": [
+            {
+              "kind": "configuration",
+              "ref": "deploy/prometheus/inferops-inference-alerts.real.yaml"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_alerts.py::test_every_alert_names_an_owner_a_severity_and_a_runbook_section"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_alerts.py::test_no_threshold_is_a_figure_this_project_measured"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_alerts.py::test_every_alert_does_what_the_record_says_over_every_scenario"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_inference_alert_rules.py::test_the_pinned_collector_loads_the_rule_file_this_repository_renders"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "nothing-routes-an-alert",
+          "statement": "No receiver, routing tree, Alertmanager, or on-call rotation exists. No Prometheus in a cluster has loaded these rules, and no alert has told anybody anything.",
+          "signals": [],
+          "registerRefs": [],
+          "claimIds": [
+            "an-alert-reaches-somebody"
+          ],
+          "gapIds": [
+            "no-alert-routing"
+          ],
+          "notClaimed": "No alert is claimed to reach a person, and a silent alert is not evidence of health."
+        }
+      ]
+    },
+    {
+      "topicId": "retention-assumptions",
+      "heading": "7. Retention assumptions",
+      "implemented": [
+        {
+          "itemId": "the-collector-keeps-two-hours-in-the-pod",
+          "statement": "The collector's series live in an emptyDir bounded to two hours and 512 MB, so a restart or an uninstall loses them; it answers questions about the release running now.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider"
+          ],
+          "evidence": [
+            {
+              "kind": "configuration",
+              "ref": "charts/inferops-llm/values.yaml"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/architecture/test_telemetry_collector.py::test_the_collectors_storage_is_ephemeral_and_bounded"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md"
+            }
+          ],
+          "evidenceLabel": "local-real-cpu"
+        },
+        {
+          "itemId": "lane-output-expires-and-a-record-does-not",
+          "statement": "A lane's raw output expires, after 30 days for the default lane's uploaded scan and bill-of-materials artifacts, and nothing may cite it; a record that certifies a claim is committed under docs/proof/ and kept for as long as the claim stands.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "the-published-strategy-and-its-data-cannot-drift-apart"
+          ],
+          "evidence": [
+            {
+              "kind": "configuration",
+              "ref": ".github/workflows/checks.yml"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/testing/test_test_strategy.py::test_evidence_retention_is_defined"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/testing/test_test_strategy.py::test_a_claim_cites_evidence_exactly_when_it_is_certified"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/testing/v1-s0-006-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "no-log-store-or-retention-window-is-selected",
+          "statement": "Records go to the stream the composition point supplies and no further. No log store, shipper, retention window, or access rule is selected, so the retention the catalog requires before content of any kind is written is unstated.",
+          "signals": [],
+          "registerRefs": [
+            "DR-12"
+          ],
+          "claimIds": [],
+          "gapIds": [
+            "no-durable-store"
+          ],
+          "notClaimed": "No retention period, deletion guarantee, or access control is claimed for any log or metric."
+        }
+      ]
+    },
+    {
+      "topicId": "deferred-observability-risks",
+      "heading": "8. Deferred observability risks",
+      "implemented": [
+        {
+          "itemId": "every-deferral-says-why",
+          "statement": "Every metric that is not emitted, every deferred alert condition, and every question with no answer states why in the data, and a test refuses one that does not.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_a_metric_that_is_not_emitted_says_why"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_alerts.py::test_every_deferred_condition_says_what_would_be_needed_and_what_not_to_use"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_correlation.py::test_every_metric_with_no_query_says_why_it_has_none"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s0-007-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "the-observability-gaps",
+          "statement": "No durable store, no dashboard server, no alert routing, no span, no cluster resource source, and no convention mapping for the AI attributes.",
+          "signals": [],
+          "registerRefs": [
+            "DR-12"
+          ],
+          "claimIds": [
+            "an-alert-reaches-somebody"
+          ],
+          "gapIds": [
+            "no-durable-store",
+            "no-dashboard-server",
+            "no-alert-routing",
+            "no-span-is-produced",
+            "no-cluster-resource-source",
+            "no-generative-ai-convention-mapping"
+          ],
+          "notClaimed": "No incident-reconstruction, paging, or long-term trend property is claimed."
+        }
+      ]
+    },
+    {
+      "topicId": "production-design-versus-certification",
+      "heading": "9. Production-oriented design is not production certification",
+      "implemented": [
+        {
+          "itemId": "no-figure-is-published-from-a-signal",
+          "statement": "Latency, throughput, and capacity signals exist to operate the platform. The alert thresholds are declared values or zero rather than measurements, and the catalog forbids publishing a figure derived from a signal.",
+          "signals": [],
+          "alertIds": [],
+          "claimIds": [
+            "six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link"
+          ],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_inference_alerts.py::test_no_threshold_is_a_figure_this_project_measured"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/telemetry/test_telemetry_catalog.py::test_no_metric_borrows_the_credibility_of_the_runtime"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        }
+      ],
+      "notImplemented": [
+        {
+          "itemId": "nothing-has-been-operated",
+          "statement": "The signals, panels, and alerts are shaped the way an operated platform would use them. Every real observation comes from one Windows host, on CPU, on one provider, with one replica serving; nothing has been operated in anyone's production, and the production-experience evidence class is unreachable from this repository.",
+          "signals": [],
+          "registerRefs": [],
+          "claimIds": [
+            "an-alert-reaches-somebody"
+          ],
+          "gapIds": [],
+          "notClaimed": "No availability, service-level objective, error budget, or operational-history property is claimed."
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "gapId": "no-durable-store",
+      "statement": "No log store, metric store, shipper, retention window, or access rule is selected. `telemetry-backend` is deferred in the ownership inventory."
+    },
+    {
+      "gapId": "no-dashboard-server",
+      "statement": "No Grafana server is owned, run, or exposed. The dashboard is a repository artifact."
+    },
+    {
+      "gapId": "no-alert-routing",
+      "statement": "No receiver, routing tree, Alertmanager, or on-call rotation exists. Routing stays with the deferred `telemetry-backend` row."
+    },
+    {
+      "gapId": "no-span-is-produced",
+      "statement": "No tracer, propagator, exporter, or SDK is selected, so no component produces a span."
+    },
+    {
+      "gapId": "no-cluster-resource-source",
+      "statement": "No metrics server, kube-state-metrics, or cAdvisor scrape is installed, and the process's own memory has no source this distribution may read."
+    },
+    {
+      "gapId": "no-generative-ai-convention-mapping",
+      "statement": "The AI attributes are named in this project's own namespace, and no mapping to the OpenTelemetry generative-AI semantic conventions is recorded. Recording one is a catalog decision under ADR 0006 and is not taken here."
+    }
+  ],
+  "corrections": [
+    {
+      "correctionId": "the-rule-files-have-been-loaded",
+      "statement": "The telemetry index said the two rendered rule files were something nothing had loaded. The pinned collector's promtool loads both, and a test runs it. What stays true is that no Prometheus in a cluster has loaded them and nothing routes them."
+    },
+    {
+      "correctionId": "real-runtime-records-exist",
+      "statement": "The redaction rules and the API instrumentation document said no record had been produced against a real runtime. Three committed files, from two runs, quote records the API wrote with the real adapter. What stays true is narrower: no suite reads one for content."
+    }
+  ],
+  "limitations": [
+    "This method adds no signal, panel, or alert, moves no emission status, and moves no claim. Every emission status it shows is the telemetry catalog's and every certification level is read from the claim and evidence register.",
+    "An evidence reference resolving establishes that the named test, gate, file, or record exists. It does not judge whether the test is a strong one.",
+    "The promtool test runs the binary out of the image the chart pins and skips where that image is not present locally, including on a continuous-integration runner."
+  ]
+}

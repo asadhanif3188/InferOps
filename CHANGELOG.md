@@ -10,6 +10,46 @@ once versioned releases begin.
 
 ### Added
 
+- **The V1 security and observability methods are published, and each keeps what is
+  implemented apart from what is not.** [The security method](docs/security/security-method.md)
+  walks ten topics -- assets and trust boundaries, the model and image supply chain,
+  secrets, API and network exposure, container and Kubernetes controls, scan and
+  policy gates, accepted exceptions, prompt and response handling, deferred risks, and
+  the distance between production-oriented design and production certification.
+  [The observability method](docs/telemetry/observability-method.md) walks nine:
+  resource and AI attributes, logs and redaction, metrics and cardinality, collection,
+  dashboard semantics, alerts, retention assumptions, deferred gaps, and the same
+  distance. Every topic has two tables. An implemented row names a test or a gate and a
+  committed record; a row that is not implemented names the register entry, uncertified
+  claim, unemitted metric, or recorded gap that carries it, and what may not be claimed.
+
+  **The line between the two tables is not drawn by the author.**
+  [`tests/testing/test_published_methods.py`](tests/testing/test_published_methods.py)
+  reads the security baseline, the telemetry catalog, the alert record, the claim
+  register, and the workflow, and puts every control on the side its own derived status
+  allows and every metric on the side its emission field allows; it refuses an
+  implemented row resting on an uncertified claim and a gap resting on a certified one,
+  resolves every test function, gate, and record named, requires every control, register
+  entry, exception, metric, and alert to appear, and holds each document's sections to
+  exactly the identifiers its record holds. Neither method adds a control, a signal, or a
+  claim, and no status or certification level moved.
+
+  **Writing them found five kinds of statement that had stopped being true**, and each
+  is corrected in place with the date. Six places said no job in the default-lane
+  workflow had run on the selected service; the three scan gates passed there on all
+  nineteen pushes to `main` from 2026-09-13 to 2026-09-21, and
+  [the run list](docs/proof/security/v1-s5-004-pr1-hosted-runs.v1alpha1.json) records
+  the conclusion the service reported for every job of each. `DR-08` and the control
+  matrix said no continuous-integration lane existed. The baseline data for `DR-11` and
+  `DR-12` still said the scanner was not installed and no logger existed, two narrowings
+  after its own document. `DR-12`, the redaction rules, and the API instrumentation
+  document said no record had been produced against a real runtime, while three
+  committed files from two runs quote one. And two register titles contradicted their
+  own entries. [The validation record](docs/proof/security/v1-s5-004-pr1-validation.md)
+  lists each, what was run, and what this change leaves open -- among it the CI gate
+  matrix's own statement that its two infrastructure gates have never run on the
+  service, which the same run list shows passing eighteen times.
+
 - **Every V1 architectural decision now has an accountable owner, and no document
   says otherwise.** Fourteen records carried the identical metadata row
   `Decision owner: Unassigned; no public maintainer roster exists yet`, six more

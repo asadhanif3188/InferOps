@@ -805,6 +805,14 @@
       "note": "No published claim covers the toolchain. ADR 0009 is a repository decision rather than a product claim, and the matrix has no row for it; the suite exists because the marker expression's location is load-bearing for the claim that the default lane cannot execute a real model, and moving it would otherwise be a silent refactor."
     },
     {
+      "module": "tests/testing/test_published_methods.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The published V1 security and observability methods against the records they summarise: every implemented item resolves to a defined test or an existing workflow gate and a committed record and rests only on certified claims, every gap names what carries it and rests on no certified claim, every control, register entry, exception, catalog metric, and alert appears on the side its own record puts it, each document names exactly the identifiers its record holds, and the statements V1-S5-004-PR1 corrected stay corrected.",
+      "claims": [],
+      "note": "Deliberately no claim. A method restates statuses the security baseline, the telemetry catalog, and the claim register own, and a row certifying it would certify a summary rather than a property. The suite checks that a named test exists, not that it is a strong one."
+    },
+    {
       "module": "tests/architecture/test_kubernetes_certification.py",
       "layer": "architecture-inventory",
       "marker": "architecture",

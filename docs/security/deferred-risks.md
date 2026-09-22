@@ -46,8 +46,8 @@ publish. No test can enforce that, and the rule is marked `review` in
 | DR-08 | No provenance statement is verified, and no scan is continuous | B1 | yes |
 | DR-09 | Artifact availability is not defended | B1 | no |
 | DR-10 | No secret manager, rotation policy, or expiry check exists | B3 | yes |
-| DR-11 | No run of a secret scanner over this history is recorded | B6 | no |
-| DR-12 | Nothing is logged, so nothing can be reconstructed | B5 | yes |
+| DR-11 | No recurring run of a secret scanner is recorded | B6 | no |
+| DR-12 | Records are written and nothing keeps them, so nothing can be reconstructed | B5 | yes |
 
 ### DR-01 — No caller is authenticated and no request is authorised
 
@@ -227,17 +227,22 @@ policy and a recorded run — see
 no `CRITICAL` or `HIGH` finding as of that run. What remains is the half a
 contributor running a script by hand cannot close.
 
-**Why deferred.** There is still no continuous-integration lane — ADR 0005 D6 leaves
-that undecided — so nothing makes the scan recur without a contributor choosing to
-run it again, and a scan run once by hand ages into a claim that outlives its result
-if it is cited as durable rather than dated. Verifying a build signature or
-attestation needs a publisher that emits one, and the selected runtime does not
-publish one today.
+Narrowed again by [ADR 0012](../architecture/decisions/ADR-0012-continuous-integration-service.md),
+and not retired. This paragraph said until 2026-09-22 that no continuous-integration
+lane existed and that ADR 0005 D6 left the service undecided; ADR 0012 selected one on
+2026-09-12, and the scan is its `dependency-and-image-scan` gate.
+
+**Why deferred.** The scan now recurs on every change: it has passed on the selected
+service on every push to `main` since 2026-09-13, through the same script and severity
+policy a contributor runs by hand. It does not recur on a schedule, so a vulnerability
+published between changes is not read until the next one, and no hosted result is
+promoted into a record — a scan result still ages into a claim that outlives it if it
+is cited as durable rather than dated. Verifying a build signature or attestation
+needs a publisher that emits one, and the selected runtime does not publish one today.
 
 **What would have to be true.** A publisher that emits a signature or a build
-attestation and a component that verifies it before the image runs, and a
-continuous-integration service — which ADR 0005 D6 leaves undecided — to make a scan
-recur without a contributor remembering to run it.
+attestation and a component that verifies it before the image runs, and a scan that
+runs on a schedule as well as on a change, with its result promoted into a record.
 
 **Not claimed.** No provenance, attestation, or build-identity property is claimed. A
 digest pin establishes *what* ran; it says nothing about who built it or how. No
@@ -272,7 +277,7 @@ accountable for what is behind it.
 locator. The platform can report a workload as correctly configured while its
 credential is shared, permanent, or absent.
 
-### DR-11 — No run of a secret scanner over this history is recorded
+### DR-11 — No recurring run of a secret scanner is recorded
 
 **Why deferred.** Narrowed by `V1-S4-001-PR1` rather than closed. One run is now
 recorded — by hand, from the scanner's published container image, over 134 commits,
@@ -281,10 +286,14 @@ every earlier statement that a scanner was *configured* described a file the too
 refused. The security-scan layer of
 [the test strategy](../testing/test-strategy.md) is `implemented` from that run.
 
-**What would have to be true.** A run that recurs. The secret scan is a gate in the
-committed default-lane workflow and no job in it has executed on the selected
-service, so nothing makes the scan happen again; a finding is current only as of the
-day it was produced.
+**What would have to be true.** A run that recurs and is recorded. The scan now
+recurs: it is the `secret-scan` gate of the committed default-lane workflow and has
+passed on the selected service on every push to `main` since 2026-09-13. None of those
+runs is promoted into a record and a job log expires, so the recorded run is still the
+one made by hand, and a finding is current only as of the run that produced it. (This
+paragraph said until 2026-09-22 that no job in the workflow had run on the service,
+and this entry's title said no run was recorded at all, two paragraphs after the
+sentence recording one.)
 
 **Not claimed.** The claim `no-credential-or-model-artifact-enters-public-history`
 stays `planned` and may not be cited: one run on one host is not a property of the
@@ -298,15 +307,20 @@ formatter, and a redacting sink now exist: the InferOps API writes the record
 [the telemetry catalog](../telemetry/telemetry-catalog.md) specifies, a suite
 inspects real records and asserts that no prompt, completion, or adapter message
 appears in one, and a field the catalog does not publish is refused rather than
-written. What is still missing is everything after the process: no log store,
-shipper, retention window, or access rule is selected, so a record survives only as
-long as whatever is reading the stream, and no record has ever been produced against
-a real runtime.
+written. Records the API wrote with the real adapter against the real runtime
+exist: three committed files from two runs quote them — the first attempt of
+[the local serving baseline](../proof/serving/v1-s2-005-baseline-raw-results-first-attempt.md)
+and [the unready-model run](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md),
+whose diagnostics and record each carry an excerpt. (This paragraph said until
+2026-09-22 that no record had ever been produced against a real runtime.) What is
+still missing is everything after the process, and one check: no log store, shipper,
+retention window, or access rule is selected, so a record survives only as long as
+whatever is reading the stream, and no suite reads a real-runtime record for content.
 
 **What would have to be true.** A store with a stated retention window and an access
 rule naming who may read it, records produced by the serving-runtime adapter as well
-as the API, and at least one record produced against a real runtime rather than the
-committed mock.
+as the API, and a check that reads records produced against a real runtime for
+content rather than only those the committed mock produces.
 
 **Not claimed.** No auditability, traceability, or incident-reconstruction property
 is claimed. A record that is written and not kept reconstructs nothing, and no
@@ -369,13 +383,18 @@ Accepted in
 [the secret-scanning allowlist](../../.github/secret-scanning-allowlist.md).
 
 **Residual risk.** A real credential committed under either allowlisted path would
-not be flagged by a run of the scanner — if one were ever run, which it has not been.
-The allowlist exists because the fixtures in those directories are deliberately
-credential-shaped, which is the right shape for a fixture and the wrong shape for a
-directory-wide exemption.
+not be flagged by a run of the scanner — including the `secret-scan` gate that now runs
+on every change. The allowlist exists because the fixtures in those directories are
+deliberately credential-shaped, which is the right shape for a fixture and the wrong
+shape for a directory-wide exemption. (This paragraph said until 2026-09-22 that no
+scanner had ever been run.)
 
 **Revisit when** a scanner run is recorded, at which point the allowlist should narrow
 from two directories to the specific fixture values it exists for.
+
+That condition was met by `V1-S4-001-PR1`, which recorded the first run, and the
+allowlist was not narrowed. It still covers two directories wholesale. That is recorded
+here as an open revisit rather than done inside a change that publishes methods.
 
 ### EX-04 — The pod-security properties are properties of apparatus
 
