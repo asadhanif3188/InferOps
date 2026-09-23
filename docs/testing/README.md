@@ -28,6 +28,7 @@ page, generated from the matrix's data rather than written beside it.
 | [Test and CI strategy](test-strategy.md) | Eleven test layers, four lanes, markers, prerequisites, timeouts, artifacts, failure diagnostics, and evidence retention |
 | [InferOps Evidence Levels (C0–C4)](evidence-levels.md) | The authoritative current definition: Static, Substituted Execution, Runtime, Representative, and Operational Evidence, what each can and cannot establish, why a level belongs to an evidence record rather than to a claim, and the mapping from the superseded meanings |
 | [The claim and evidence data model, `v1alpha2`](evidence-record-model.md) | The versioned shape those definitions need: a level on each evidence record, several records per claim, substitution separated from workload origin, and the reader that carries the `v1alpha1` register into it without reclassifying anything |
+| [Evidence-level classification rules](evidence-level-rules.md) | The forty-one rules that decide whether a record may carry its level, which of the schema, the validator, or review enforces each, and the declaration of claim-material components that makes `C1` and `C2` checkable |
 | [Certification levels](certification.md) | What each evidence class may support, why a mock stops at C1, and what a real record must contain. Its level *names* are superseded by [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md); its ceilings are unchanged and still enforced |
 | [Claim and test matrix](claim-test-matrix.md) | Every public claim, with its layers, environment, required level, and evidence owner |
 | [Claim and evidence matrix](claim-evidence-matrix.md) | Every claim V1 intends to publish, with its implementation, tests, gates, executed record, evidence label, limitation, and status — including the ones that are planned, deferred, and not claimed |
@@ -59,7 +60,9 @@ specification defines; it does not yet enforce. The committed strategy data stil
 carries the superseded level names, and no record has been reclassified. The shape
 that can hold a record at one of those levels is published as
 [`v1alpha2`](evidence-record-model.md) and holds no committed data; the register
-every consumer reads is still `v1alpha1`.
+every consumer reads is still `v1alpha1`. The rules that decide whether a `v1alpha2`
+record may carry its level are [executable and published](evidence-level-rules.md),
+and govern no committed evidence until that register moves.
 
 Evidence that certifies a claim is committed under [`docs/proof/`](../proof/) and
 kept for as long as the claim stands. A lane's raw output expires and may never be

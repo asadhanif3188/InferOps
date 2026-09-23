@@ -35,6 +35,16 @@ to. The day this test fails is `V1-S5-012-PR1`, which replaces the ceiling mecha
 The wrong prediction was corrected on 2026-09-23, after an independent review of
 `V1-S5-011-PR2` observed that a published tripwire had been announced and had not
 tripped.
+
+The corrected prediction was wrong too, and for a reason worth keeping.
+`V1-S5-012-PR1` did replace the mechanism -- it published the classification rules in
+`tools/evidence_model/rules.py` -- and deliberately left this data where it is: the only
+register the `synthetic` ceiling governs is the committed `v1alpha1` one, whose rows
+carry no substitution metadata for the replacement to read, so lifting the ceiling
+first would have removed the guard from exactly the data the replacement cannot see.
+The day this test fails is `V1-S5-012-PR2`, which migrates the register and the
+strategy data's terminology together. Corrected 2026-09-23, in the change that did not
+fire it.
 """
 
 from __future__ import annotations
@@ -403,8 +413,11 @@ def test_the_enforcing_data_still_carries_the_superseded_names() -> None:
     The specification tells a reader that enforcement has not moved. When the
     enforcing strategy data moves, this test fails, and the page that made the claim
     has to be corrected in the same change rather than a later one. That is
-    `V1-S5-012-PR1`, which replaces the ceiling mechanism -- not `V1-S5-011-PR2`,
-    which versioned the evidence-record model and left this data alone.
+    `V1-S5-012-PR2`, which migrates the register this data governs. Neither
+    `V1-S5-011-PR2`, which versioned the evidence-record model, nor `V1-S5-012-PR1`,
+    which published the rules that replace the ceiling for `v1alpha2` records, moved
+    this data; each was once predicted to, and the module docstring says why neither
+    should have.
     """
     strategy = json.loads(read(STRATEGY_DATA))
     published = {
@@ -429,8 +442,8 @@ def test_the_enforcing_data_still_carries_the_superseded_names() -> None:
         "ceiling": synthetic["maxCertification"],
         "why": (
             "the synthetic ceiling is the rule the specification records as still "
-            "enforced and too broad; when V1-S5-012-PR1 replaces it, the specification "
-            "and this module have to say so"
+            "enforced and too broad; when V1-S5-012-PR2 moves it with the register, "
+            "the specification and this module have to say so"
         ),
     }
 

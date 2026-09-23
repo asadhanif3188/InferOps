@@ -84,6 +84,7 @@ What moved, and what deliberately did not:
 | Claim status | `claim.status` | `claim.status`, unchanged and still separate |
 | What ran | not represented | `execution.executedComponents[]` |
 | What was replaced | implied by the evidence label | `execution.substitutions[]`, each with `claimMaterial` |
+| What the claim depends on | not represented | `claim.claimMaterialComponents[]`, optional, added by `V1-S5-012-PR1`; required by the validator of a claim holding a record at `C1` or above |
 | Workload origin | folded into the `synthetic` label | `workload.source`, with `representativeness` beside it |
 | Environment, provider, hardware | three claim fields | `environment`, on the record |
 | Versions and digests | a path to a record that names them | `versions[]` *and* `versionsRecordedIn` |
@@ -141,8 +142,19 @@ a claim, whether the components named as having executed are *really* the ones t
 claim needs, whether a workload is *really* representative of intended use, and whether
 a criterion was *really* registered before the run. A validator reads all four as flags
 and names.
-The shape makes them impossible to leave out. It cannot make them true. Turning the
-remaining rules into executable checks over committed data is `V1-S5-012-PR1`.
+The shape makes them impossible to leave out. It cannot make them true.
+
+**The rules the schema cannot express now exist as checks.** `V1-S5-012-PR1` added a
+validator, in [`tools/evidence_model/rules.py`](../../tools/evidence_model/rules.py),
+for the rules that compare two fields of a record, a record with its claim, or a claim
+with its register, and published [the rule catalogue](evidence-level-rules.md) saying
+which of the schema, the validator, or review enforces each of forty-one rules. The
+first of the four judgements above moved as a result: a claim now declares its
+claim-material components once, in the optional `claimMaterialComponents` field, and
+every record is held to that declaration rather than to its own `claimMaterial` flags.
+Whether the declaration is right is still a judgement; the other three are unchanged.
+No committed register declares `v1alpha2`, so none of this governs committed evidence
+until `V1-S5-012-PR2` migrates the register.
 
 The first draft of this schema made four of those sentences optional at every level, so
 a record could be classified `C2` while naming no component that ran, no workload, no
@@ -236,10 +248,17 @@ The ceilings are **not** re-encoded as rules in `v1alpha2`. They come across as
   the defect forward and make it look freshly decided.
 
 Replacing the mechanism — a validator that reads a record and applies the rules above
-— is `V1-S5-012-PR1`. Until it exists, the old ceilings stay in force on the old data,
-which is a stricter rule than intended rather than a missing one. After the register
-moves they stop applying to it, which is the ordering constraint above and not a second
-opinion about it.
+— was `V1-S5-012-PR1`, and it exists: [the rule catalogue](evidence-level-rules.md)
+describes it. The old ceilings stay in force on the old data, which is a stricter rule
+than intended rather than a missing one. After the register moves, the two guards that
+read `claim.certificationLevel` stop applying to it, which is the ordering constraint
+above and not a second opinion about it.
+
+One qualification to "applies to nothing", added with the validator: `legacyCeiling`
+is still never applied to an `evidenceLevel`, but the rule
+`a-legacy-classification-stays-under-its-legacy-ceiling` applies it to a carried
+`legacyClassification` — the old rule to the old value, so that a record the migration
+leaves `legacy-unmigrated` is still held to the rule it was made under.
 
 ### `production-experience` and `C4`
 
@@ -280,5 +299,6 @@ that later gained access to a production system would need both statements back.
 | The register this model will eventually hold | [Claim and evidence matrix](claim-evidence-matrix.md) |
 | The compatibility conventions this version follows | [The workload contract](../contracts/workload-contract.md) |
 | Evidence classes, their ceilings, and what a real record must contain | [Certification levels and evidence classes](certification.md) |
+| Which classification rules are checked, and by what | [Evidence-level classification rules](evidence-level-rules.md) |
 | Where records live and what sections each carries | [Evidence records](../proof/README.md) |
 | The suite behind this page | [`tests/testing/test_evidence_record_model.py`](../../tests/testing/test_evidence_record_model.py) |

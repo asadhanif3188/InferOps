@@ -176,10 +176,13 @@ committed strategy data still carries the superseded names.
 `V1-S5-011-PR2` published
 [the versioned evidence-record model](../testing/evidence-record-model.md) on
 2026-09-23 — the shape a level attaches to a record in — and deliberately migrated no
-data and moved no ceiling. Replacing the ceiling mechanism is `V1-S5-012-PR1`, and
-reading each existing record against the new definitions is `V1-S5-012-PR2`. (This
-paragraph said migration was `V1-S5-011-PR2`'s job until 2026-09-23; an independent
-review of that change found it had described the wrong boundary.)
+data and moved no ceiling. `V1-S5-012-PR1` then published
+[the classification rules](../testing/evidence-level-rules.md) that replace the ceiling
+mechanism for `v1alpha2` records, and left the committed ceilings running on the
+committed `v1alpha1` data they govern; reading each existing record against the new
+definitions, and moving those ceilings with it, is `V1-S5-012-PR2`. (This paragraph
+said migration was `V1-S5-011-PR2`'s job until 2026-09-23; an independent review of
+that change found it had described the wrong boundary.)
 
 0008 decides what V1 protects and from whom: the architecture's five trust boundaries
 adopted verbatim plus a sixth for publication, six pod-security properties and a

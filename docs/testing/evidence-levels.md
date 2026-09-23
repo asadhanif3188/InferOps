@@ -381,7 +381,19 @@ stronger; it changes what the evidence is about.
   applies a `C1` ceiling to the `synthetic` evidence class — the specific rule the
   `C3` section above says is too broad. Those rules are left in force on purpose: a
   data contract published as `v1alpha1` is not re-pointed at new semantics in the
-  change that writes the semantics down.
+  change that writes the semantics down, and the committed register those rules
+  govern has no substitution metadata a replacement could read.
+
+  **The rules are executable, over data nobody has committed yet.**
+  [The evidence-level rule catalogue](evidence-level-rules.md) lists forty-one
+  classification rules, which of the schema, the validator in
+  [`tools/evidence_model`](../../tools/evidence_model/), or review enforces each, and
+  the six judgements left to review. Every enforced rule is watched refusing a
+  document built to break it. They run over any `v1alpha2` document, and no committed
+  register is one: over committed data they run only through the in-memory read of
+  the `v1alpha1` register, which they pass. They become the enforcement of committed
+  evidence when `V1-S5-012-PR2` migrates the register, which is also when the
+  `synthetic` ceiling above moves.
 
   **A versioned evidence-record model now exists, and it holds no committed data.**
   [`claim-evidence-matrix.v1alpha2.schema.json`](claim-evidence-matrix.v1alpha2.schema.json)
@@ -391,8 +403,9 @@ stronger; it changes what the evidence is about.
   out of `v1alpha1`. `V1-S5-011-PR2` published the schema and changed no register:
   [the claim and evidence matrix](claim-evidence-matrix.md) is still `v1alpha1`,
   still stores one level per claim, and is still what every consumer reads. Reading
-  each record against the definitions above is `V1-S5-012-PR2`, and validators for
-  the requirements the schema cannot check are `V1-S5-012-PR1`.
+  each record against the definitions above is `V1-S5-012-PR2`. Validators for the
+  requirements the schema cannot check were added by `V1-S5-012-PR1`, and are
+  described in the paragraph above.
 - **It defines no dispute procedure.** Since
   [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
   an authority exists that would arbitrate a classification — the
@@ -410,6 +423,7 @@ stronger; it changes what the evidence is about.
 |---|---|
 | The decision that established this model | [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md) |
 | The data model that can hold a record at one of these levels | [The claim and evidence data model, `v1alpha2`](evidence-record-model.md) |
+| Which of these requirements a machine checks, and which it cannot | [Evidence-level classification rules](evidence-level-rules.md) |
 | The decision that established the previous one | [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md) |
 | Evidence classes, their ceilings, and what a real record must contain | [Certification levels and evidence classes](certification.md) |
 | Every claim, its status, its evidence, and its limitation | [Claim and evidence matrix](claim-evidence-matrix.md) |

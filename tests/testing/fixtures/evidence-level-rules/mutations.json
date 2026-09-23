@@ -1,0 +1,683 @@
+{
+  "description": "Each entry corrupts the illustrative register in register.json to break one classification rule, and says where the refusal must land and why it must happen. Operations are a subset of RFC 6902: add, remove, replace, copy. Every rule the catalogue marks as enforced by the schema or the validator has at least one entry here; a rule marked for review has none, because no mutation can make a judgement fail.",
+  "mutations": [
+    {
+      "mutationId": "a-claim-that-carries-a-level",
+      "rule": "an-evidence-level-belongs-to-an-evidence-record",
+      "reason": "The one-level-per-claim shape the version exists to remove, reintroduced by adding a field to the claim.",
+      "operations": [
+        {
+          "op": "add",
+          "path": "/claims/0/evidenceLevel",
+          "value": "C2"
+        }
+      ],
+      "refusedAt": "$.claims[0]"
+    },
+    {
+      "mutationId": "a-c2-record-with-no-environment",
+      "rule": "a-classified-record-states-what-ran-where-and-how",
+      "reason": "A runtime record that does not say where it ran; two C2 records in different environments are not interchangeable.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/0/evidenceRecords/2/environment"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2]"
+    },
+    {
+      "mutationId": "a-c2-record-with-no-limitations",
+      "rule": "a-classified-record-states-its-limitations-and-what-it-does-not-establish",
+      "reason": "An important executed record that states no limitation is read at full strength by everyone who cites it.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/limitations",
+          "value": []
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].limitations"
+    },
+    {
+      "mutationId": "a-c2-record-that-does-not-say-what-it-does-not-establish",
+      "rule": "a-classified-record-states-its-limitations-and-what-it-does-not-establish",
+      "reason": "A record that never says what it does not establish leaves the boundary for the reader to guess.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/0/evidenceRecords/2/doesNotEstablish"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2]"
+    },
+    {
+      "mutationId": "a-legacy-record-given-a-level",
+      "rule": "an-unmigrated-record-carries-no-level",
+      "reason": "Copying the superseded value into evidenceLevel is the rename the migration must not be.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/3/evidenceRecords/0/evidenceLevel",
+          "value": "C2"
+        }
+      ],
+      "refusedAt": "$.claims[3].evidenceRecords[0].evidenceLevel"
+    },
+    {
+      "mutationId": "a-c0-record-that-executed-the-behaviour",
+      "rule": "a-c0-record-did-not-execute-the-target-behaviour",
+      "reason": "Static evidence is defined by not executing the target behaviour.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/0/execution/targetBehaviourExecuted",
+          "value": true
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[0].execution.targetBehaviourExecuted"
+    },
+    {
+      "mutationId": "a-c2-record-naming-nothing-that-ran",
+      "rule": "an-executing-record-names-what-executed",
+      "reason": "A record classified as runtime evidence that names no component that executed.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/execution/executedComponents",
+          "value": []
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].execution.executedComponents"
+    },
+    {
+      "mutationId": "a-c1-record-with-no-substitution",
+      "rule": "a-c1-record-names-a-claim-material-substitution",
+      "reason": "C1 is decided by a claim-material substitution; a record with none is not C1, whatever else it is.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/1/execution/substitutions",
+          "value": []
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[1].execution.substitutions"
+    },
+    {
+      "mutationId": "a-mock-backed-record-honestly-flagged-and-marked-c2",
+      "rule": "a-real-record-substitutes-nothing-claim-material",
+      "reason": "The runtime was mocked and the record says so, and still claims C2. A mock cannot establish the behaviour of what it replaced.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/0/evidenceRecords/2/execution/executedComponents/2"
+        },
+        {
+          "op": "add",
+          "path": "/claims/0/evidenceRecords/2/execution/substitutions/-",
+          "value": {
+            "componentId": "inference-runtime",
+            "role": "inference-runtime",
+            "substituteKind": "mock",
+            "claimMaterial": true,
+            "rationale": "The runtime was replaced by the committed mock."
+          }
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].execution.substitutions"
+    },
+    {
+      "mutationId": "a-c3-record-without-representativeness",
+      "rule": "a-c3-record-declares-representativeness-and-criteria-before-the-run",
+      "reason": "Representative evidence that never says what it represents is runtime evidence with a larger number on it.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/1/evidenceRecords/0/workload/representativeness"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].workload"
+    },
+    {
+      "mutationId": "a-c3-record-without-acceptance-criteria",
+      "rule": "a-c3-record-declares-representativeness-and-criteria-before-the-run",
+      "reason": "Without criteria registered before the run, a C3 result is a description of what happened.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/1/evidenceRecords/0/acceptanceCriteria"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0]"
+    },
+    {
+      "mutationId": "a-c3-record-with-a-criterion-written-afterwards",
+      "rule": "a-c3-record-declares-representativeness-and-criteria-before-the-run",
+      "reason": "A criterion written after the run can be fitted to the result.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/1/evidenceRecords/0/acceptanceCriteria/0/declaredBefore",
+          "value": false
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].acceptanceCriteria[0].declaredBefore"
+    },
+    {
+      "mutationId": "a-cloud-experiment-marked-c4",
+      "rule": "a-c4-record-names-a-production-context-and-an-observation-period",
+      "reason": "Running in public cloud is not production operation. The environment says cloud-kubernetes and the level says C4.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/2/evidenceRecords/0/environment/environmentId",
+          "value": "cloud-kubernetes"
+        }
+      ],
+      "refusedAt": "$.claims[2].evidenceRecords[0].environment.environmentId"
+    },
+    {
+      "mutationId": "a-c4-record-without-a-production-context",
+      "rule": "a-c4-record-names-a-production-context-and-an-observation-period",
+      "reason": "C4 without an organization, a depending workload, and an observation period is a long-running deployment nobody depended on.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/2/evidenceRecords/0/productionContext"
+        }
+      ],
+      "refusedAt": "$.claims[2].evidenceRecords[0]"
+    },
+    {
+      "mutationId": "a-planned-claim-citing-a-record",
+      "rule": "a-planned-or-deferred-claim-cites-no-record",
+      "reason": "A claim nothing has proven cites no record; a planned claim that cites one is an optimism.",
+      "operations": [
+        {
+          "op": "copy",
+          "from": "/claims/0/evidenceRecords/0",
+          "path": "/claims/4/evidenceRecords/-"
+        }
+      ],
+      "refusedAt": "$.claims[4].evidenceRecords"
+    },
+    {
+      "mutationId": "a-component-that-both-ran-and-was-replaced",
+      "rule": "a-component-either-executed-or-was-substituted",
+      "reason": "A component cannot have executed and been replaced in the same run; one of the two lists is wrong.",
+      "operations": [
+        {
+          "op": "add",
+          "path": "/claims/0/evidenceRecords/2/execution/executedComponents/-",
+          "value": {
+            "componentId": "metrics-collector",
+            "role": "collector"
+          }
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].execution.substitutions[0]"
+    },
+    {
+      "mutationId": "a-c0-record-that-ran-the-runtime",
+      "rule": "a-c0-record-ran-only-inspection",
+      "reason": "A static record that names the inference runtime as executed has executed the target behaviour.",
+      "operations": [
+        {
+          "op": "add",
+          "path": "/claims/0/evidenceRecords/0/execution/executedComponents/-",
+          "value": {
+            "componentId": "inference-runtime",
+            "role": "inference-runtime"
+          }
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[0].execution.executedComponents[1]"
+    },
+    {
+      "mutationId": "a-c0-record-that-issued-a-workload",
+      "rule": "a-c0-record-ran-only-inspection",
+      "reason": "Issuing requests executes the behaviour static evidence is defined by not executing.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/0/workload/source",
+          "value": "synthetic"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[0].workload.source"
+    },
+    {
+      "mutationId": "a-c2-record-that-ran-in-the-repository",
+      "rule": "an-executing-record-ran-outside-the-repository",
+      "reason": "A record that says the behaviour ran and that it ran nowhere but the repository contradicts itself.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/environment/environmentId",
+          "value": "repository-only"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].environment.environmentId"
+    },
+    {
+      "mutationId": "a-result-answering-a-criterion-nobody-declared",
+      "rule": "a-result-answers-a-criterion-the-record-declares",
+      "reason": "A result bound to a criterion the record does not declare is measured against nothing a reader can see.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/1/evidenceRecords/0/results/0/criterionId",
+          "value": "an-undeclared-criterion"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].results[0].criterionId"
+    },
+    {
+      "mutationId": "an-observation-period-that-ends-before-it-starts",
+      "rule": "an-observation-period-ends-after-it-starts",
+      "reason": "A window that ends before it starts has no duration, and every rate read over it is undefined.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/1/evidenceRecords/0/measurement/observationPeriod/end",
+          "value": "2026-09-23T08:55:00Z"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].measurement.observationPeriod"
+    },
+    {
+      "mutationId": "an-observation-period-whose-duration-disagrees",
+      "rule": "an-observation-period-ends-after-it-starts",
+      "reason": "A duration stated twice and disagreeing with itself leaves the reader to pick one.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/1/evidenceRecords/0/measurement/observationPeriod/durationSeconds",
+          "value": 3600
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].measurement.observationPeriod.durationSeconds"
+    },
+    {
+      "mutationId": "a-production-window-with-no-offset",
+      "rule": "an-observation-period-ends-after-it-starts",
+      "reason": "A timestamp with no UTC offset does not name an instant, so the length of the window is not defined.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/2/evidenceRecords/0/productionContext/observationPeriod/start",
+          "value": "2026-01-01T00:00:00"
+        }
+      ],
+      "refusedAt": "$.claims[2].evidenceRecords[0].productionContext.observationPeriod"
+    },
+    {
+      "mutationId": "a-limitation-that-says-none",
+      "rule": "a-limitation-says-something",
+      "reason": "A limitation slot filled with 'None.' passes a non-empty check and states no limit.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/limitations",
+          "value": [
+            "None."
+          ]
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].limitations[0]"
+    },
+    {
+      "mutationId": "a-boundary-that-says-not-applicable",
+      "rule": "a-limitation-says-something",
+      "reason": "Every executed record establishes less than somebody will want it to; 'N/A' denies that.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/doesNotEstablish",
+          "value": [
+            "N/A"
+          ]
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].doesNotEstablish[0]"
+    },
+    {
+      "mutationId": "a-c3-record-with-no-workload-shape",
+      "rule": "a-c3-record-declares-its-workload-shape",
+      "reason": "A representative workload with no stated concurrency, size, arrival, count, or duration cannot be compared with intended use.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/1/evidenceRecords/0/workload/shape"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].workload"
+    },
+    {
+      "mutationId": "a-c3-record-with-no-declared-conditions",
+      "rule": "a-c3-record-declares-the-conditions-it-represents",
+      "reason": "C3 requires the representative infrastructure to be declared, not only the workload.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/1/evidenceRecords/0/environment/note"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].environment"
+    },
+    {
+      "mutationId": "a-c3-criterion-never-evaluated",
+      "rule": "a-c3-record-measures-every-criterion-it-declares",
+      "reason": "A declared criterion left not-evaluated is how a failed criterion goes missing.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/1/evidenceRecords/0/acceptanceCriteria/1/outcome",
+          "value": "not-evaluated"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].acceptanceCriteria[1].outcome"
+    },
+    {
+      "mutationId": "a-c3-criterion-whose-result-was-dropped",
+      "rule": "a-c3-record-measures-every-criterion-it-declares",
+      "reason": "The criterion that was not met keeps its outcome and loses the measurement behind it.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/1/evidenceRecords/0/results/1"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].acceptanceCriteria[1]"
+    },
+    {
+      "mutationId": "a-c4-record-under-synthetic-load",
+      "rule": "a-c4-record-observed-production-traffic",
+      "reason": "Generated load against a production-shaped deployment is an experiment, not operation.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/2/evidenceRecords/0/workload/source",
+          "value": "synthetic"
+        }
+      ],
+      "refusedAt": "$.claims[2].evidenceRecords[0].workload.source"
+    },
+    {
+      "mutationId": "a-c4-record-with-no-measurement",
+      "rule": "a-c4-record-states-how-production-was-observed",
+      "reason": "Production results with no stated telemetry or observation cannot be traced to anything.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/2/evidenceRecords/0/measurement"
+        }
+      ],
+      "refusedAt": "$.claims[2].evidenceRecords[0]"
+    },
+    {
+      "mutationId": "a-record-filed-under-the-wrong-claim",
+      "rule": "a-record-names-the-claim-that-holds-it",
+      "reason": "A record lifted out of its claim still says what it is evidence for; here the two disagree.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/claimId",
+          "value": "an-illustrative-planned-claim"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].claimId"
+    },
+    {
+      "mutationId": "two-records-sharing-an-identifier-in-one-claim",
+      "rule": "a-record-identifier-is-unique",
+      "reason": "A citation by recordId has to resolve to one record.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/1/recordId",
+          "value": "static-check-over-the-committed-manifest"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[1].recordId"
+    },
+    {
+      "mutationId": "two-records-sharing-an-identifier-across-claims",
+      "rule": "a-record-identifier-is-unique",
+      "reason": "The same identifier on records under two claims makes a citation ambiguous across the register.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/2/evidenceRecords/0/recordId",
+          "value": "c3-representative-concurrency-experiment"
+        }
+      ],
+      "refusedAt": "$.claims[2].evidenceRecords[0].recordId"
+    },
+    {
+      "mutationId": "an-executed-claim-that-declares-nothing-material",
+      "rule": "an-executed-claim-declares-its-claim-material-components",
+      "reason": "Without the declaration, whether a record is C1 or C2 is whatever its author wrote.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/0/claimMaterialComponents"
+        }
+      ],
+      "refusedAt": "$.claims[0]"
+    },
+    {
+      "mutationId": "a-mock-backed-record-flagged-immaterial-and-marked-c2",
+      "rule": "a-substituted-claim-material-component-is-flagged-material",
+      "reason": "The runtime was mocked, the record calls the mock immaterial, and the schema accepts it at C2. The declaration on the claim refuses it.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/0/evidenceRecords/2/execution/executedComponents/2"
+        },
+        {
+          "op": "add",
+          "path": "/claims/0/evidenceRecords/2/execution/substitutions/-",
+          "value": {
+            "componentId": "inference-runtime",
+            "role": "inference-runtime",
+            "substituteKind": "mock",
+            "claimMaterial": false,
+            "rationale": "The mock is faithful to the contract."
+          }
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].execution.substitutions[1]"
+    },
+    {
+      "mutationId": "a-real-path-classified-c1-because-its-prompts-were-synthetic",
+      "rule": "a-claim-material-substitution-replaces-a-declared-component",
+      "reason": "The real API, adapter, runtime, and model all executed; the only 'substitution' is the generated prompt set. Input origin decides nothing, so it cannot be the substitution that makes the record C1.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/1/execution/executedComponents",
+          "value": [
+            {
+              "componentId": "inference-api",
+              "role": "api"
+            },
+            {
+              "componentId": "provider-adapter",
+              "role": "adapter"
+            },
+            {
+              "componentId": "inference-runtime",
+              "role": "inference-runtime"
+            },
+            {
+              "componentId": "pinned-model",
+              "role": "model"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/1/execution/substitutions",
+          "value": [
+            {
+              "componentId": "prompt-set",
+              "role": "other",
+              "substituteKind": "fixture",
+              "claimMaterial": true,
+              "rationale": "The prompts were generated rather than captured, so the input is a substitute."
+            }
+          ]
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[1].execution.substitutions[0]"
+    },
+    {
+      "mutationId": "a-c2-record-that-never-ran-the-model",
+      "rule": "a-real-record-executed-every-claim-material-component",
+      "reason": "Real is relative to the claim. A completion claim whose record never names the model as executed has no C2 evidence.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/0/evidenceRecords/2/execution/executedComponents/3"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].execution.executedComponents"
+    },
+    {
+      "mutationId": "a-certified-claim-on-an-unclassified-legacy-record",
+      "rule": "a-certified-claim-rests-on-classified-evidence",
+      "reason": "A certified claim whose only record carries no level, current or legacy, is an unsupported claim published as a capability.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/3/evidenceRecords/0/legacyClassification/certificationLevel",
+          "value": null
+        }
+      ],
+      "refusedAt": "$.claims[3].evidenceRecords"
+    },
+    {
+      "mutationId": "a-real-behaviour-claim-left-with-only-substituted-evidence",
+      "rule": "a-real-behaviour-claim-rests-on-real-evidence",
+      "reason": "Remove the runtime record and the claim rests on static and substituted evidence, which cannot establish what was substituted.",
+      "operations": [
+        {
+          "op": "remove",
+          "path": "/claims/0/evidenceRecords/2"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords"
+    },
+    {
+      "mutationId": "a-real-behaviour-claim-on-a-legacy-static-label",
+      "rule": "a-real-behaviour-claim-rests-on-real-evidence",
+      "reason": "The legacy half of the same rule: a carried local-static classification may not support a real-behaviour claim.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/3/evidenceRecords/0/legacyClassification/evidenceLabel",
+          "value": "local-static"
+        },
+        {
+          "op": "replace",
+          "path": "/claims/3/evidenceRecords/0/legacyClassification/certificationLevel",
+          "value": "C0"
+        }
+      ],
+      "refusedAt": "$.claims[3].evidenceRecords"
+    },
+    {
+      "mutationId": "two-claims-sharing-an-identifier",
+      "rule": "a-claim-identifier-is-unique",
+      "reason": "A register row is found by claimId; two rows with one identifier make every reference to it ambiguous.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/4/claimId",
+          "value": "an-illustrative-legacy-row"
+        }
+      ],
+      "refusedAt": "$.claims[4].claimId"
+    },
+    {
+      "mutationId": "a-template-cited-as-evidence",
+      "rule": "a-template-is-not-evidence",
+      "reason": "A template is the shape of a record. Citing it as evidence cites an empty form.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/evidenceRefs/0",
+          "value": "docs/proof/templates/TEMPLATE-claim-evidence.md"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].evidenceRefs[0]"
+    },
+    {
+      "mutationId": "a-template-cited-as-a-procedure",
+      "rule": "a-template-is-not-evidence",
+      "reason": "A procedure that points at a template points at instructions for writing a record, not at how this one was produced.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/1/evidenceRecords/0/procedure/workflowRef",
+          "value": "docs/proof/templates/TEMPLATE-claim-evidence.md"
+        }
+      ],
+      "refusedAt": "$.claims[1].evidenceRecords[0].procedure.workflowRef"
+    },
+    {
+      "mutationId": "evidence-cited-from-outside-the-evidence-root",
+      "rule": "evidence-is-cited-from-the-evidence-root",
+      "reason": "Source code is not an evidence record; a record lives where the register says records live.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/evidenceRefs/0",
+          "value": "src/inferops/__init__.py"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].evidenceRefs[0]"
+    },
+    {
+      "mutationId": "a-cited-record-that-does-not-exist",
+      "rule": "a-cited-record-exists",
+      "reason": "A citation to a file that is not there is a claim with no evidence behind it.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/evidenceRefs/0",
+          "value": "docs/proof/illustrative/a-record-nobody-wrote.md"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].evidenceRefs[0]",
+      "withRepository": true
+    },
+    {
+      "mutationId": "a-carried-mock-classification-above-its-ceiling",
+      "rule": "a-legacy-classification-stays-under-its-legacy-ceiling",
+      "reason": "The v1alpha1 ceiling rule, still binding the v1alpha1 value: a mock-labelled row may not have been certified at C2.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/3/evidenceRecords/0/legacyClassification/evidenceLabel",
+          "value": "mock"
+        }
+      ],
+      "refusedAt": "$.claims[3].evidenceRecords[0].legacyClassification.certificationLevel"
+    },
+    {
+      "mutationId": "a-carried-label-the-register-does-not-define",
+      "rule": "a-legacy-classification-stays-under-its-legacy-ceiling",
+      "reason": "A carried label nobody defined has no ceiling to be checked against.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/3/evidenceRecords/0/legacyClassification/evidenceLabel",
+          "value": "an-undefined-class"
+        }
+      ],
+      "refusedAt": "$.claims[3].evidenceRecords[0].legacyClassification.evidenceLabel"
+    }
+  ]
+}

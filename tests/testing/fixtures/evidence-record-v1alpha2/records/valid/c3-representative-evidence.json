@@ -48,7 +48,8 @@
   "environment": {
     "environmentId": "local-kubernetes",
     "provider": "kind",
-    "hardwareClass": "cpu"
+    "hardwareClass": "cpu",
+    "note": "A single-node CPU cluster standing in for the declared deployment shape; the assumptions above say where that stops holding."
   },
   "versions": [
     {

@@ -10,6 +10,45 @@ once versioned releases begin.
 
 ### Added
 
+- **The evidence-level classification rules, executable, and each watched failing.**
+  [`tools/evidence_model/rules.py`](tools/evidence_model/rules.py) enforces the rules
+  the `v1alpha2` schema cannot express — the ones that compare two fields of a record,
+  a record with its claim, or a claim with its register — and
+  [the rule catalogue](docs/testing/evidence-level-rules.md) lists all forty-one,
+  saying for each whether the schema, the validator, or review enforces it. A test
+  reads that column against the code, so a rule published as enforced that nothing
+  enforces fails the suite.
+
+  **Materiality is declared once per claim.** The schema let each substitution say
+  whether it was material, so a record could mock the runtime, flag the mock
+  immaterial, and pass at `C2`. A claim now declares `claimMaterialComponents` — an
+  optional, additive `v1alpha2` field — and every record is held to it: a declared
+  component that was substituted must be flagged material, a `C2` record must have
+  executed every declared component, and a material substitution must replace a
+  declared component. The last is what refuses a real path classified `C1` because
+  its prompts were generated. Whether the declaration is right is one of six
+  judgements the catalogue leaves to review and says why.
+
+  **Forty-eight committed mutations**, each corrupting an illustrative register to
+  break one rule and stating why it must fail, and every rule marked `schema` or
+  `validator` has at least one. Changing a workload's origin changes no verdict below
+  `C4`. The committed `v1alpha1` register, read into the new shape in memory, passes
+  every rule with every cited file present, and the replacement repeats two of the
+  `v1alpha1` suite's negative controls.
+
+  **Nothing is reclassified, and the `synthetic → C1` ceiling did not move.**
+  [`test-strategy.v1alpha1.json`](docs/testing/test-strategy.v1alpha1.json) governs
+  only the committed `v1alpha1` register, whose rows carry no substitution metadata
+  for the new rules to read; lifting its ceiling first would remove the guard from
+  exactly that data. It moves with the register in `V1-S5-012-PR2`. Four files had
+  predicted it would move here, the second wrong prediction of that moment; each is
+  corrected, and [ADR 0016](docs/architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
+  and [the `V1-S5-011-PR1` record](docs/proof/testing/v1-s5-011-pr1-validation.md)
+  gain dated notes rather than edits. [The validation record](docs/proof/testing/v1-s5-012-pr1-validation.md)
+  lists what ran, what the checks caught — including that the `V1-S5-011-PR2` record
+  shapes cite a template as their evidence, now measured by a test rather than
+  rewritten — and what none of it establishes.
+
 - **A versioned claim and evidence data model that can hold what the evidence-level
   specification describes.**
   [`docs/testing/claim-evidence-matrix.v1alpha2.schema.json`](docs/testing/claim-evidence-matrix.v1alpha2.schema.json)

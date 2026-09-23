@@ -72,6 +72,42 @@ and [the model document](../../testing/evidence-record-model.md) that explains i
   and a test holds the answer in place.
 - **`Q1` and `Q3`** are untouched and remain open.
 
+## What `V1-S5-012-PR1` settled, on 2026-09-23
+
+A second dated note, on the same terms as the first: the accepted text is unchanged.
+
+`V1-S5-012-PR1` made the rules executable. [The rule catalogue](../../testing/evidence-level-rules.md)
+lists forty-one classification rules and says, for each, whether the `v1alpha2` schema,
+the validator in [`tools/evidence_model/rules.py`](../../../tools/evidence_model/rules.py),
+or review enforces it; every rule marked for the schema or the validator is watched
+refusing a document built to break it. It added one optional field to the `v1alpha2`
+claim, `claimMaterialComponents`, so that materiality is declared once per claim
+rather than asserted per record by the record's author.
+
+- **`R1`.** Half closed. The four rows this record's validation listed as enforced by
+  *nothing* — `C1` requires a claim-material substitution, `C3` requires declared
+  representativeness and criteria, `C4` requires production operation and an
+  observation period, a synthetic workload is not forced to `C1` — are now enforced
+  over any `v1alpha2` document. No committed register is one, so over committed
+  evidence they are still applied by review, and the risk stays open on that half until
+  `V1-S5-012-PR2` migrates the register.
+- **`D3`.** Enforced for classified records: no validator rule below `C4` reads the
+  workload's origin, a test asserts it, and a run whose only "substitution" is its
+  generated prompt set is refused at `C1`. The committed `synthetic → C1` ceiling in
+  `test-strategy.v1alpha1.json` is **still in place**, which is not what `D3` above
+  says. `D3` says it stays "until `V1-S5-012-PR1` replaces the mechanism". The
+  mechanism is replaced; the ceiling was left where it is, because the only register
+  it governs is the committed `v1alpha1` one, whose rows carry no substitution
+  metadata for the replacement to read. Lifting it before that register moves would
+  remove the guard from the data the replacement cannot see — the failure `D3` itself
+  warns about. It moves with the register in `V1-S5-012-PR2`.
+- **`Q1`.** Answered: in data, as a flag, and by review. The schema requires every
+  `C3` criterion to carry `declaredBefore: true`, the validator requires a measured
+  result for every criterion including the ones not met, and whether a criterion
+  flagged as declared first really was is the review rule
+  `a-criterion-flagged-declared-before-was-registered-before`. A timestamp comparison
+  was considered and rejected: the record's author writes both timestamps.
+
 ## Decision status
 
 | ID | Decision | Status | What supports it |

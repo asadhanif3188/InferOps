@@ -153,7 +153,7 @@
         "maySupportRealBehaviour": { "type": "boolean" },
         "reachedInV1": { "type": "boolean" },
         "legacyCeiling": {
-          "description": "The ceiling this class carried in v1alpha1, retained so the previous rule stays auditable. It is NOT applied by this schema: a ceiling is a rule about a test layer, the layer rules still live in docs/testing/test-strategy.v1alpha1.json and are still enforced there, and the synthetic ceiling in particular is the rule ADR 0016 D3 records as too broad. Replacing the mechanism is V1-S5-012-PR1.",
+          "description": "The ceiling this class carried in v1alpha1, retained so the previous rule stays auditable. It is NOT applied by this schema and never to an evidenceLevel: a ceiling is a rule about a test layer, the layer rules still live in docs/testing/test-strategy.v1alpha1.json and are still enforced there, and the synthetic ceiling in particular is the rule ADR 0016 D3 records as too broad. Its replacement for classified records is the substitution rule set in tools/evidence_model/rules.py (V1-S5-012-PR1). That module applies this value to one thing only: a carried legacyClassification, so that the old rule keeps binding the old data it was written for.",
           "anyOf": [{ "$ref": "#/$defs/evidenceLevelId" }, { "const": "none" }]
         }
       }
@@ -725,6 +725,13 @@
         "recordedCoverageGaps": { "type": "array", "items": { "type": "string" } },
         "ciGateIds": {
           "type": "array",
+          "items": { "$ref": "#/$defs/kebabIdentifier" }
+        },
+        "claimMaterialComponents": {
+          "description": "The components material to evaluating this claim, declared once for every record that supports it. Added by V1-S5-012-PR1 as an optional, non-breaking field: substitution[].claimMaterial is the record author's own answer to the question that decides C1, and a record that mocks the runtime can mark the mock immaterial and pass the schema at C2. The validator in tools/evidence_model/rules.py holds every record to this declaration instead, and requires it of any claim holding a record at C1 or above. Whether the declaration names the right components is a reviewer's judgement.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
           "items": { "$ref": "#/$defs/kebabIdentifier" }
         },
         "evidenceRecords": {
