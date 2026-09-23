@@ -8,6 +8,59 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Changed
+
+- **The claim and evidence register is migrated to `v1alpha2`, claim by claim.**
+  [`claim-evidence-matrix.v1alpha2.json`](docs/testing/claim-evidence-matrix.v1alpha2.json)
+  is now the register every consumer reads: 59 claims, 54 evidence records, each record
+  carrying its own level, what executed, what was substituted, where its workload came
+  from, where it ran, how to repeat it, what it pinned, and what it does not establish.
+  Every record was written from a reading of the files its claim cites, against eight
+  questions and ten fixed principles, and every command and identifier a record quotes
+  is checked verbatim against those files. The superseded `v1alpha1` register is kept
+  unchanged as the starting point, and each claim carries its old level as history.
+
+  **What the reading found.** 43 records kept the level their claim carried. 8 moved,
+  each justified by what it executed: 5 to a lower-numbered level — weaker runs that a
+  claim-level `C2` had hidden, such as a load tool's stub rehearsal and a static record
+  of a dashboard definition — and 3 to a higher one, where the claim's own subject ran:
+  the domain parser, the scaffolding command, and the quick start's real-runtime smoke.
+  The three are named in a test so that a fourth has to be added on purpose. Two
+  not-claimed records got their first level; none was left unmigrated; none is `C3` or
+  `C4`. **One claim moved from `certified` to `not-claimed`**: its statement says every
+  certifying record carries an authorisation section, and 20 of the 52 records the
+  certified claims cited say nothing about authorisation. Eleven claims' limitation or
+  boundary sentences were corrected, and no statement changed.
+  [The migration report](docs/proof/testing/v1-s5-012-pr2-migration-report.md) lists
+  every level that moved and why, the judgement calls that could have gone the other
+  way, and what the audit found and did not fix.
+
+- **Every consumer reads the migrated register.** The proof dashboard shows each claim's
+  records with their own levels, environments, providers, and substitutions, runs the
+  register's evidence-level rules again before it renders, says the levels are
+  project-defined, and derives a table of every claim whose levels moved. The
+  published-methods and clean-clone suites read evidence classes from the carried
+  classification.
+
+- **The strategy data carries the current level names, and `synthetic` no longer covers
+  generated input.** The class names a simulated environment, which is a substitution
+  and keeps its `C1` ceiling; a workload's origin sets none. No layer or gate used the
+  class. [The certification document](docs/testing/certification.md) no longer publishes
+  the superseded level table, so no surface is left awaiting migration.
+
+- **The four proof templates** collect claims, the evidence level and why, what executed
+  and was substituted, the workload, the environment and provider, acceptance criteria
+  and whether they were registered first, the observation period, and what a record
+  does not establish, under the section headings every existing record already carries.
+
+### Fixed
+
+- The README's entry-point row for the claim register said "58 claims: 42 certified"
+  beside a paragraph saying 59 and 43; a test now holds every such phrase in the README
+  to the current counts.
+- The test inventory's no-claim section said thirty-four suites while its table held
+  thirty-nine rows.
+
 ### Added
 
 - **The evidence-level classification rules, executable, and each watched failing.**

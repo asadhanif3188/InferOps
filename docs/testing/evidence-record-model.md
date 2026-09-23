@@ -1,10 +1,12 @@
 # The claim and evidence data model, `v1alpha2`
 
-Status: **published schema, no committed register yet.** The schema is
+Status: **published schema, and the shape of the committed register.** The schema is
 [`claim-evidence-matrix.v1alpha2.schema.json`](claim-evidence-matrix.v1alpha2.schema.json).
-The register this repository actually reads is still
-[`claim-evidence-matrix.v1alpha1.json`](claim-evidence-matrix.v1alpha1.json), and
-migrating it is `V1-S5-012-PR2`.
+Since `V1-S5-012-PR2` the register this repository reads is
+[`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json); the
+`v1alpha1` register it was migrated from is kept unchanged, and
+[the migration report](../proof/testing/v1-s5-012-pr2-migration-report.md) says how
+every record in it was read.
 
 > [!IMPORTANT]
 > This document describes **shape**. What the levels mean is in
@@ -153,8 +155,8 @@ first of the four judgements above moved as a result: a claim now declares its
 claim-material components once, in the optional `claimMaterialComponents` field, and
 every record is held to that declaration rather than to its own `claimMaterial` flags.
 Whether the declaration is right is still a judgement; the other three are unchanged.
-No committed register declares `v1alpha2`, so none of this governs committed evidence
-until `V1-S5-012-PR2` migrates the register.
+Since `V1-S5-012-PR2` the committed register declares `v1alpha2`, so all of this
+governs committed evidence, and the register's suite holds every record to it.
 
 The first draft of this schema made four of those sentences optional at every level, so
 a record could be classified `C2` while naming no component that ran, no workload, no
@@ -171,13 +173,14 @@ assuming it.
 
 ## The compatibility path
 
-There are two versions and one register. The register is `v1alpha1`, every consumer
-still reads it, and it changes in `V1-S5-012-PR2` and not before.
+There are two versions and one register. Since `V1-S5-012-PR2` the register is
+`v1alpha2` and every consumer reads it. The `v1alpha1` file is kept unchanged as the
+point the migration started from, and nothing reads it as current.
 
-What exists now is a **reader**, [`tools/evidence_model`](../../tools/evidence_model/),
-which produces a `v1alpha2` document from the committed register in memory. It writes
-nothing. Its job is to make the migration reviewable as a transformation before it is
-performed as an edit.
+Before the migration there was a **reader**, [`tools/evidence_model`](../../tools/evidence_model/),
+which produces a `v1alpha2` document from the `v1alpha1` register in memory. It writes
+nothing. Its job was to make the migration reviewable as a transformation before it
+was performed as an edit, and it still does that for anybody comparing the two.
 
 It is deliberately dull, and the three rules it follows are the interesting part:
 
@@ -203,16 +206,22 @@ record it produces, and `legacy-unmigrated` is what says so. That is the differe
 between a record whose environment is unknown and a record whose environment is
 `repository-only` because somebody guessed.
 
-**Is the reader temporary?** Yes. It exists for the migration and for the review of
-it. Once `V1-S5-012-PR2` has read each record against the current definitions and
-written a `v1alpha2` register, the two versions do not run side by side: there is one
+**Is the reader temporary?** Yes. It existed for the migration and for the review of
+it. `V1-S5-012-PR2` has read each record against the current definitions and written the
+`v1alpha2` register, and the two versions do not run side by side: there is one
 register, and the reader's only remaining job is the audit trail — showing what the
-migration started from. The repository does not commit to supporting both versions,
-because nothing outside this repository consumes either.
+migration started from, which [the migration suite](../../tests/testing/test_evidence_migration.py)
+compares with where it ended. The migrated register was not produced by the reader:
+every record in it was written from a reading of the files it cites. The repository
+does not commit to supporting both versions, because nothing outside this repository
+consumes either.
 
 **Where the legacy values are auditable.** `legacyClassification` on a record or on a
 claim holds the `v1alpha1` `certificationLevel`, `evidenceLabel`, `provider`, and
-`environment`, unchanged, with a note saying they have not been re-examined.
+`environment`, unchanged, with a note saying what they are. In the reader's output the
+note says the value has not been re-examined; in the migrated register every claim
+carries its classification with a note saying it is history, and its records carry
+the level the reading reached.
 `tools/evidence_model` also publishes `LEGACY_FIELD_DESTINATIONS`, which names where
 every field of a `v1alpha1` claim row lands, and a test walks the committed register's
 own keys against it. "Nothing is lost" is checked rather than asserted.
@@ -221,20 +230,22 @@ own keys against it. "Nothing is lost" is checked rather than asserted.
 
 `v1alpha1` gives every evidence label a `ceiling` — the strongest level a result of
 that class may certify — and it lives in
-[the register itself](claim-evidence-matrix.v1alpha1.json), as `evidenceLabels[].ceiling`.
-It is enforced in two places, and a third rule of the same shape lives elsewhere:
+[the superseded register](claim-evidence-matrix.v1alpha1.json), as `evidenceLabels[].ceiling`.
+Until `V1-S5-012-PR2` it was enforced in two places, and a third rule of the same shape
+lives elsewhere:
 
 | Where | What is enforced | What reads it |
 |---|---|---|
 | `claim-evidence-matrix.v1alpha1.json`, `evidenceLabels[].ceiling` | a claim's level may not exceed its label's ceiling | [`tests/testing/test_claim_evidence_matrix.py`](../../tests/testing/test_claim_evidence_matrix.py), and the dashboard rule `a-level-may-not-exceed-its-labels-ceiling` in [`tools/proof_dashboard`](../../tools/proof_dashboard/) |
 | `test-strategy.v1alpha1.json`, `evidenceClasses[].maxCertification` | a test *layer* may not certify above its class | [`tests/testing/test_test_strategy.py`](../../tests/testing/test_test_strategy.py) |
 
-None of the three moves in this change. The two bound to the register are worth
-naming precisely, because **they stop applying the moment the register is migrated**:
+The two bound to the register **stopped applying when the register was migrated**:
 they read `claim.certificationLevel` and `evidenceLabels[].ceiling`, and `v1alpha2` has
-neither. `V1-S5-012-PR2` therefore cannot migrate the register and leave the guard
-running — its replacement has to exist first, which is `V1-S5-012-PR1`. The layer rule
-in the strategy data is untouched by any of that and keeps working either way.
+neither. `V1-S5-012-PR2` retired both, and could, because their replacement already
+existed — the validator `V1-S5-012-PR1` published, which the register's suite and the
+dashboard now run over every record. The layer rule in the strategy data is untouched
+by any of that and keeps working: its `synthetic` class was narrowed to a simulated
+environment, and no layer used it.
 
 The ceilings are **not** re-encoded as rules in `v1alpha2`. They come across as
 `legacyCeiling`, which the schema stores and applies to nothing. Two reasons:
@@ -249,10 +260,8 @@ The ceilings are **not** re-encoded as rules in `v1alpha2`. They come across as
 
 Replacing the mechanism — a validator that reads a record and applies the rules above
 — was `V1-S5-012-PR1`, and it exists: [the rule catalogue](evidence-level-rules.md)
-describes it. The old ceilings stay in force on the old data, which is a stricter rule
-than intended rather than a missing one. After the register moves, the two guards that
-read `claim.certificationLevel` stop applying to it, which is the ordering constraint
-above and not a second opinion about it.
+describes it. The old ceilings stayed in force on the old data until the register
+moved, which was a stricter rule than intended rather than a missing one.
 
 One qualification to "applies to nothing", added with the validator: `legacyCeiling`
 is still never applied to an `evidenceLevel`, but the rule
@@ -272,23 +281,24 @@ reason, and at different layers. Collapsing them would lose the difference betwe
 source this project has no access to and a strength it has not reached — and a project
 that later gained access to a production system would need both statements back.
 
-## What this change does not do
+## What `V1-S5-011-PR2` did not do, and what `V1-S5-012-PR2` then did
 
-- **It migrates no data.** [`claim-evidence-matrix.v1alpha1.json`](claim-evidence-matrix.v1alpha1.json)
-  is byte-for-byte unchanged, and so is every record under [`docs/proof/`](../proof/).
-- **It reclassifies nothing.** No claim gains or loses a level, and no record is
-  re-read against the current definitions. That is `V1-S5-012-PR2`, and it is a
-  reading of evidence rather than a mapping of strings.
-- **It enforces nothing over committed data.** The schema constrains documents that
-  declare `v1alpha2`, and no committed document does.
-- **It changes no consumer's behaviour.** [The proof dashboard](../proof/dashboard.md)
-  and [the register document](claim-evidence-matrix.md) still read `v1alpha1` and
-  still print what it holds. The dashboard gained one rule: it refuses to render a
-  register whose `contractVersion` it does not understand, so that the migration
-  cannot be read with the wrong assumptions rather than refused.
-- **It publishes no new claim.** The suite behind this page defends none, for the
-  reason [the test inventory](test-inventory.md) records: it establishes that a shape
-  exists and is consistent, never that any evidence is classified correctly under it.
+The change that published this schema migrated no data, reclassified nothing,
+enforced nothing over committed data, and changed no consumer's behaviour beyond
+teaching the proof dashboard to refuse a register version it did not understand. That
+was deliberate: a shape is published before evidence is read into it, so that the
+reading cannot bend the shape.
+
+`V1-S5-012-PR2` did the reading. It wrote
+[`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json) from the
+files every `v1alpha1` row cited, moved every consumer onto it, retired the two
+register-bound ceiling guards, and left the `v1alpha1` register and every record under
+[`docs/proof/`](../proof/) unchanged. It changed no claim's statement or citations,
+moved one claim's status on a measurement, and published
+[a report](../proof/testing/v1-s5-012-pr2-migration-report.md) of every level that did
+not simply carry across. The suite behind this page still publishes no claim, for the
+reason [the test inventory](test-inventory.md) records: it establishes that a shape
+exists and is consistent, never that any evidence is classified correctly under it.
 
 ## Related documents
 
@@ -296,7 +306,8 @@ that later gained access to a production system would need both statements back.
 |---|---|
 | What the levels mean | [InferOps Evidence Levels (C0–C4)](evidence-levels.md) |
 | The decision that made a level a record's property | [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md) |
-| The register this model will eventually hold | [Claim and evidence matrix](claim-evidence-matrix.md) |
+| The register this model holds | [Claim and evidence matrix](claim-evidence-matrix.md) |
+| How every record was read into it | [The V1 evidence migration, claim by claim](../proof/testing/v1-s5-012-pr2-migration-report.md) |
 | The compatibility conventions this version follows | [The workload contract](../contracts/workload-contract.md) |
 | Evidence classes, their ceilings, and what a real record must contain | [Certification levels and evidence classes](certification.md) |
 | Which classification rules are checked, and by what | [Evidence-level classification rules](evidence-level-rules.md) |

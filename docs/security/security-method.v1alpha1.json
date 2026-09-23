@@ -5,7 +5,7 @@
   "description": "How V1 secures inference, topic by topic: what is implemented and the test, gate, and record behind it, and, kept apart, what is not implemented and the register entry or unmet claim that carries it. It restates no control's status: every status is derived by the security baseline, and every certification level is read from the claim and evidence register.",
   "documentRef": "docs/security/security-method.md",
   "baselineRef": "docs/security/security-baseline.v1alpha1.json",
-  "claimRegisterRef": "docs/testing/claim-evidence-matrix.v1alpha1.json",
+  "claimRegisterRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
   "workflowRef": ".github/workflows/checks.yml",
   "validationRef": "docs/proof/security/v1-s5-004-pr1-validation.md",
   "evidenceKinds": [

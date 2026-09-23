@@ -13,11 +13,13 @@ authoritative current definition of what `C0` through `C4` mean in this reposito
 > weight of the record behind it.
 
 > [!NOTE]
-> This document **defines**. It does not yet **enforce**, and it reclassifies nothing.
-> The committed `v1alpha1` strategy data still carries the superseded level names and
-> the ceiling rules built on them, every existing record keeps the level it was given,
-> and no claim moves in the change that publishes this page. What is enforced today,
-> and what is not, is set out in [what this document does not do](#what-this-document-does-not-do).
+> This document **defines**, and by itself it reclassifies nothing: a level is reached
+> by a record, never by the page that names it. Since `V1-S5-012-PR2` the definitions
+> are enforced over the committed register. That change read every existing record
+> against them, one claim at a time, and every level that moved is justified by what
+> actually executed in [the migration report](../proof/testing/v1-s5-012-pr2-migration-report.md).
+> What is enforced, and what is left to review, is set out in
+> [what this document does not do](#what-this-document-does-not-do).
 
 ## Why levels exist
 
@@ -334,8 +336,12 @@ D4 and published in [the certification document](certification.md):
 The first three map conceptually because they were already describing how a result
 was obtained. *Conceptually* is doing work in that sentence: it means the old and new
 definitions are about the same dimension, not that any particular record has been
-re-examined against the new wording. That examination is a separate, claim-by-claim
-piece of work.
+re-examined against the new wording. That examination was separate, claim-by-claim
+work: `V1-S5-012-PR2` read
+every record the register cited and wrote the result into
+[the `v1alpha2` register](claim-evidence-matrix.v1alpha2.json), and
+[its report](../proof/testing/v1-s5-012-pr2-migration-report.md) lists every level
+that did not simply carry across.
 
 **Why `C3` Failure has no direct mapping.** Failure is an experiment *purpose*. A
 failure experiment produces `C1` evidence when the failure is induced through a
@@ -354,9 +360,11 @@ stronger; it changes what the evidence is about.
 
 - **The evidence classes and their ceilings.** `documented-unexecuted`,
   `local-static`, `mock`, `synthetic`, `estimated`, `local-real-cpu`,
-  `cloud-real-cpu`, and `cloud-real-gpu` keep their meanings and their committed
-  ceilings in [the certification document](certification.md), which stays the
-  document a test layer is assigned from.
+  `cloud-real-cpu`, and `cloud-real-gpu` keep their committed ceilings in
+  [the certification document](certification.md), which stays the document a test
+  layer is assigned from. One meaning narrowed in `V1-S5-012-PR2`: `synthetic` names a
+  simulated environment and no longer covers generated input, because a workload's
+  origin is not a substitution. No layer or gate used the class, so no ceiling moved.
 - **What a real-runtime record must contain.** The digest-not-tag rule, the model
   revision and per-file hash, the environment, the exact commands, the actual
   results, the limitations, and the failure diagnostics are unchanged and remain in
@@ -364,48 +372,34 @@ stronger; it changes what the evidence is about.
 - **The rule that a mock cannot certify real behaviour.** It is restated here as the
   `C1` classification rule and is argued at length in
   [the mock and real serving boundary](../serving/mock-and-real-boundary.md).
-- **Any record's level.** Nothing is reclassified by this document.
+- **Any record's level, by this document.** Nothing is reclassified by the page
+  that defines the levels; the migration that re-read the records is a separate
+  change with its own report.
 
 ## What this document does not do
 
 - **It grants no level to anything.** Levels are reached by records.
   [The claim and evidence register](claim-evidence-matrix.md) and
   [the proof dashboard](../proof/dashboard.md) say which claims currently hold one.
-- **It reclassifies nothing.** Every existing record keeps the level it was given
-  under the previous definitions. Reviewing each one against the definitions above is
-  deliberately separate work, so that a terminology change cannot promote a claim.
-  **No claim may be upgraded by a documentation change.**
-- **It is not yet machine-enforced.** What is enforced today is the previous model:
-  the committed [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json) still
-  carries the legacy level names, still ranks `C3` and `C4` above `C2`, and still
-  applies a `C1` ceiling to the `synthetic` evidence class — the specific rule the
-  `C3` section above says is too broad. Those rules are left in force on purpose: a
-  data contract published as `v1alpha1` is not re-pointed at new semantics in the
-  change that writes the semantics down, and the committed register those rules
-  govern has no substitution metadata a replacement could read.
-
-  **The rules are executable, over data nobody has committed yet.**
-  [The evidence-level rule catalogue](evidence-level-rules.md) lists forty-three
-  classification rules, which of the schema, the validator in
-  [`tools/evidence_model`](../../tools/evidence_model/), or review enforces each, and
-  the six judgements left to review. Every enforced rule is watched refusing a
-  document built to break it. They run over any `v1alpha2` document, and no committed
-  register is one: over committed data they run only through the in-memory read of
-  the `v1alpha1` register, which they pass. They become the enforcement of committed
-  evidence when `V1-S5-012-PR2` migrates the register, which is also when the
-  `synthetic` ceiling above moves.
-
-  **A versioned evidence-record model now exists, and it holds no committed data.**
-  [`claim-evidence-matrix.v1alpha2.schema.json`](claim-evidence-matrix.v1alpha2.schema.json)
-  is the shape the definitions above describe — a level on each record, several
-  records per claim, substitution separated from workload origin — and
-  [the model document](evidence-record-model.md) explains the version and the path
-  out of `v1alpha1`. `V1-S5-011-PR2` published the schema and changed no register:
-  [the claim and evidence matrix](claim-evidence-matrix.md) is still `v1alpha1`,
-  still stores one level per claim, and is still what every consumer reads. Reading
-  each record against the definitions above is `V1-S5-012-PR2`. Validators for the
-  requirements the schema cannot check were added by `V1-S5-012-PR1`, and are
-  described in the paragraph above.
+- **It reclassifies nothing.** A level is reached by a record, and this page grants
+  none. Re-reading the records against it was `V1-S5-012-PR2`, which moved no claim
+  by terminology: every record's level in
+  [the migrated register](claim-evidence-matrix.v1alpha2.json) is justified by what
+  actually executed, and the three that sit above the level their claim used to
+  carry are named in a test. **No claim may be upgraded by a documentation change.**
+- **It enforces through the register, not by itself.** Since `V1-S5-012-PR2` the
+  committed register is `v1alpha2`: [the evidence-level rule catalogue](evidence-level-rules.md)
+  lists forty-three rules, and the schema and the validator in
+  [`tools/evidence_model`](../../tools/evidence_model/) apply the thirty-seven that a
+  machine can to every committed record, with every cited file required to exist.
+  The proof dashboard runs the same rules again before it renders. The committed
+  [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json) carries the current
+  level names, and its `synthetic` class no longer covers generated input, so the
+  rule `C1` above calls too broad is gone from the data as well. Six rules are
+  judgements — whether a claim declared the right components material, whether a
+  workload represents intended use, whether a criterion was really registered first,
+  whether a production context is genuine, whether a limitation is the right one,
+  and whether evidence is relevant to its claim — and review applies those.
 - **It defines no dispute procedure.** Since
   [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
   an authority exists that would arbitrate a classification — the
@@ -422,7 +416,8 @@ stronger; it changes what the evidence is about.
 | Topic | Document |
 |---|---|
 | The decision that established this model | [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md) |
-| The data model that can hold a record at one of these levels | [The claim and evidence data model, `v1alpha2`](evidence-record-model.md) |
+| The data model that holds every record at one of these levels | [The claim and evidence data model, `v1alpha2`](evidence-record-model.md) |
+| How each existing record was read against these definitions | [The V1 evidence migration, claim by claim](../proof/testing/v1-s5-012-pr2-migration-report.md) |
 | Which of these requirements a machine checks, and which it cannot | [Evidence-level classification rules](evidence-level-rules.md) |
 | The decision that established the previous one | [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md) |
 | Evidence classes, their ceilings, and what a real record must contain | [Certification levels and evidence classes](certification.md) |

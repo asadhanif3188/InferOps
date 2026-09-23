@@ -1,9 +1,9 @@
 """What the dashboard is allowed to show, and the rules that decide it.
 
 A dashboard is the easiest place in a repository to overstate a result. It
-summarises, and a summary is where a status loses its provider, a level loses its
-evidence class, and an absence turns green because nothing was written in the
-cell. So this module owns no claim state of its own. It owns two things: which
+summarises, and a summary is where a status loses its provider, a level loses the
+record that reached it, and an absence turns green because nothing was written in
+the cell. So this module owns no claim state of its own. It owns two things: which
 claims belong to which capability group, and the rules that are applied to the
 register before a page is rendered at all.
 
@@ -14,23 +14,28 @@ promote anything -- there is no field here to promote it with.
 
 The rules are the other half. They are re-applied at render time rather than
 trusted to the register's own suite, because the page is a separate artefact and a
-register corrupted between the two would otherwise be published. A finding renders
-nothing.
+register corrupted between the two would otherwise be published. The evidence rules
+are not restated here: the page runs the same schema and validator the register's
+suite runs, from ``tools.evidence_model``, so there is one implementation of what a
+record at each level must carry and the page cannot hold a looser one. A finding
+renders nothing.
 """
 
 from __future__ import annotations
 
-import json
 import posixpath
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
+
+from tools.evidence_model import REGISTER_PATH, check_register, load_register
 
 __all__ = [
     "CAPABILITIES",
     "DASHBOARD_DIR",
     "DASHBOARD_PATH",
+    "LEVEL_ORDER",
     "RECORD_PATH",
     "RULES",
     "SUPPORTED_CONTRACT_VERSIONS",
@@ -38,45 +43,52 @@ __all__ = [
     "Finding",
     "Rule",
     "check_view",
+    "claim_levels",
     "claims_by_id",
+    "environment_counts",
+    "evidence_records",
     "grouped_claims",
-    "label_counts",
-    "labels_by_id",
+    "legacy_level",
     "level_counts",
+    "levels_by_id",
     "link_from_dashboard",
     "load_record",
     "named_providers",
     "provider_counts",
+    "reclassified_claims",
+    "record_providers",
     "selection_findings",
     "status_counts",
     "statuses_by_id",
     "strongest_level",
     "uncertified_claims",
+    "unmigrated_records",
+    "unrecorded_provider_records",
 ]
 
 REPO_ROOT: Final = Path(__file__).resolve().parents[2]
 
 #: The authoritative claim state. Nothing in this package writes to it.
-RECORD_PATH: Final = (
-    REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha1.json"
-)
+RECORD_PATH: Final = REGISTER_PATH
 
 #: The generated page, and the directory every link on it is resolved from.
 DASHBOARD_PATH: Final = REPO_ROOT / "docs" / "proof" / "dashboard.md"
 DASHBOARD_DIR: Final = "docs/proof"
 
-#: The certification ladder, so a level can be compared with a label's ceiling.
-#: ``none`` is a ceiling rather than a level: a label carrying it certifies nothing.
-_LEVEL_RANK: Final[dict[str, int]] = {"none": -1, "C0": 0, "C1": 1, "C2": 2}
+#: The five levels in the order the specification numbers them. The order is
+#: closeness to the intended operating context, not strength -- the specification
+#: says in as many words that C0-C4 is not a maturity score. It puts columns in a
+#: readable order and names the level nearest production that a group's records
+#: reached, and nothing on the page calls a higher one better.
+LEVEL_ORDER: Final[tuple[str, ...]] = ("C0", "C1", "C2", "C3", "C4")
 
-#: The register versions this module knows how to read. Everything below assumes
-#: the ``v1alpha1`` shape -- one certification level and one evidence label per
-#: claim -- and ``v1alpha2`` moves both onto evidence records, where a claim may
-#: have several. A reader that carried on regardless would print the strongest
-#: value it could still find and show nothing at all for the records it could not
-#: reach, which is the quiet failure a version string exists to prevent. So the
-#: version is checked, and an unknown one renders no page.
-SUPPORTED_CONTRACT_VERSIONS: Final[frozenset[str]] = frozenset({"inferops.io/v1alpha1"})
+#: The register versions this module knows how to read. Since ``V1-S5-012-PR2``
+#: that is ``v1alpha2`` alone: a level is a property of an evidence record and a
+#: claim may hold several. A ``v1alpha1`` register -- one level and one label per
+#: claim -- is refused rather than read, because this renderer would find no
+#: records in it and print every claim as unevidenced, which is a quieter failure
+#: than a refusal and a worse one.
+SUPPORTED_CONTRACT_VERSIONS: Final[frozenset[str]] = frozenset({"inferops.io/v1alpha2"})
 
 
 @dataclass(frozen=True)
@@ -288,9 +300,21 @@ RULES: Final[tuple[Rule, ...]] = (
         rule_id="a-register-declares-a-version-the-page-can-read",
         statement=(
             "The register declares a contract version this renderer implements. "
-            "Every value below is read out of the v1alpha1 shape, and a register "
-            "that moved its levels onto evidence records would be summarised "
-            "against fields that no longer mean what they used to."
+            "Every value below is read out of the v1alpha2 shape, where a level "
+            "belongs to an evidence record; a register in another shape would be "
+            "summarised against fields that are not there."
+        ),
+    ),
+    Rule(
+        rule_id="the-register-passes-the-evidence-level-rules",
+        statement=(
+            "The register passes the v1alpha2 schema and every validator rule in "
+            "tools/evidence_model, applied again at render time with every cited "
+            "file required to exist. That is what stops the page showing a record "
+            "at a level its execution does not support, a mock behind a claim about "
+            "real behaviour, a certified claim with no classified evidence, a "
+            "planned claim citing a record, or a citation that is a template or "
+            "does not exist."
         ),
     ),
     Rule(
@@ -316,48 +340,12 @@ RULES: Final[tuple[Rule, ...]] = (
         ),
     ),
     Rule(
-        rule_id="a-certified-claim-cites-a-record-that-exists",
-        statement=(
-            "Every certified claim cites at least one committed record under the "
-            "register's evidence root, each of which exists and is not a template."
-        ),
-    ),
-    Rule(
-        rule_id="a-planned-or-deferred-claim-cites-no-record",
-        statement=(
-            "A planned or deferred claim cites no evidence record. A claim nothing "
-            "has proven that points at a record reads as proven."
-        ),
-    ),
-    Rule(
-        rule_id="an-evidence-label-is-one-the-register-defines",
-        statement=(
-            "Every evidence label shown is one the register's own evidence "
-            "vocabulary defines. A label the register does not define carries no "
-            "ceiling, so nothing could hold a level against it."
-        ),
-    ),
-    Rule(
-        rule_id="a-level-may-not-exceed-its-labels-ceiling",
-        statement=(
-            "A certification level never exceeds the ceiling its evidence label "
-            "carries, so a mock result cannot be shown at C2."
-        ),
-    ),
-    Rule(
-        rule_id="a-real-behaviour-capability-rests-on-real-evidence",
-        statement=(
-            "A certified claim asserting real runtime behaviour rests on an "
-            "evidence label whose class may support one. Mock, synthetic, and "
-            "estimated evidence may not appear behind a real-runtime capability."
-        ),
-    ),
-    Rule(
         rule_id="a-real-cluster-result-names-its-provider",
         statement=(
-            "A certified claim whose environment is a local Kubernetes cluster "
-            "names the provider it ran on, so the page cannot generalise one "
-            "provider's result to another."
+            "An evidence record that ran on a Kubernetes cluster names the provider "
+            "it ran on, or says in so many words that its source does not name one, "
+            "so the page cannot generalise one provider's result to another or leave "
+            "a reader to assume which."
         ),
     ),
     Rule(
@@ -378,11 +366,22 @@ RULES: Final[tuple[Rule, ...]] = (
     ),
 )
 
+#: Where a record ran is a cluster, for the provider rule.
+_CLUSTER_ENVIRONMENTS: Final = frozenset({"local-kubernetes", "cloud-kubernetes"})
+
+#: What a cluster record says when its source file never names the provider. It is
+#: an honest absence rather than a provider, so it is shown and counted apart from
+#: the providers and never folded into one of them.
+UNRECORDED_PROVIDER: Final = "unrecorded"
+
+#: Provider values that name no provider: nothing was contacted, or the record
+#: does not say which.
+_NO_PROVIDER: Final = frozenset({"", "not-applicable", UNRECORDED_PROVIDER})
+
 
 def load_record(path: Path = RECORD_PATH) -> dict[str, Any]:
     """The register, as committed. This package never writes it."""
-    loaded: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-    return loaded
+    return load_register(path)
 
 
 def claims_by_id(record: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
@@ -393,8 +392,8 @@ def statuses_by_id(record: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     return {row["statusId"]: row for row in record["claimStatuses"]}
 
 
-def labels_by_id(record: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
-    return {row["labelId"]: row for row in record["evidenceLabels"]}
+def levels_by_id(record: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    return {row["levelId"]: row for row in record["evidenceLevels"]}
 
 
 def link_from_dashboard(target: str) -> str:
@@ -405,6 +404,59 @@ def link_from_dashboard(target: str) -> str:
     paths. Rewriting them here is what keeps the generated page's links live.
     """
     return posixpath.relpath(target, DASHBOARD_DIR)
+
+
+def evidence_records(row: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Every evidence record a claim holds, in the register's own order."""
+    return list(row.get("evidenceRecords") or [])
+
+
+def claim_levels(row: Mapping[str, Any]) -> list[str]:
+    """The distinct levels a claim's records reached, in specification order.
+
+    A record left ``legacy-unmigrated`` carries no level and contributes none: its
+    superseded classification is history, and printing it here as a level would be
+    the promotion the migration exists to prevent.
+    """
+    reached = {
+        str(held["evidenceLevel"])
+        for held in evidence_records(row)
+        if held.get("evidenceLevel")
+    }
+    return [level for level in LEVEL_ORDER if level in reached]
+
+
+def legacy_level(row: Mapping[str, Any]) -> str | None:
+    """The superseded ``v1alpha1`` level the claim carried, if any. History only."""
+    carried = row.get("legacyClassification") or {}
+    level = carried.get("certificationLevel")
+    return str(level) if level else None
+
+
+def record_providers(row: Mapping[str, Any]) -> list[str]:
+    """Every provider a claim's records name, sorted.
+
+    ``not-applicable`` and ``unrecorded`` are left out: neither is a provider, and
+    counting either as one would make the page name a provider nobody named.
+    """
+    return sorted(
+        {
+            str((held.get("environment") or {}).get("provider"))
+            for held in evidence_records(row)
+            if (held.get("environment") or {}).get("provider") not in _NO_PROVIDER
+            and (held.get("environment") or {}).get("provider") is not None
+        }
+    )
+
+
+def unrecorded_provider_records(record: Mapping[str, Any]) -> list[str]:
+    """Every record that ran on a cluster its source file does not name."""
+    return [
+        str(held["recordId"])
+        for row in record["claims"]
+        for held in evidence_records(row)
+        if (held.get("environment") or {}).get("provider") == UNRECORDED_PROVIDER
+    ]
 
 
 def _ordered_statuses(record: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -427,81 +479,130 @@ def status_counts(record: Mapping[str, Any]) -> dict[str, int]:
     }
 
 
-def level_counts(record: Mapping[str, Any]) -> dict[str, int]:
-    """How many certified claims sit at each certification level, weakest first.
+def level_counts(record: Mapping[str, Any]) -> dict[str, tuple[int, int]]:
+    """For each of the five levels: records at it, and certified claims holding one.
 
-    Only certified claims are counted. A level beside a claim that is not
-    certified is not a level anybody reached.
+    All five are returned, including the ones nothing reached, so that a zero is
+    printed rather than a row left out. The second number counts only certified
+    claims, because a level beside a claim that is not published as a capability is
+    not a level the capability reached; the first counts every record, because a
+    measured absence is still a record at a level.
     """
-    levels = [
-        row["certificationLevel"]
-        for row in record["claims"]
-        if row["status"] == "certified" and row["certificationLevel"]
-    ]
-    return {
-        level: levels.count(level)
-        for level in sorted(set(levels), key=lambda name: _LEVEL_RANK.get(name, 99))
-    }
-
-
-def label_counts(record: Mapping[str, Any]) -> dict[str, int]:
-    """How many claims rest on each evidence label, in the register's own order."""
     claims = record["claims"]
-    counted = {
-        label["labelId"]: sum(
-            1 for row in claims if row["evidenceLabel"] == label["labelId"]
+    return {
+        level: (
+            sum(
+                1
+                for row in claims
+                for held in evidence_records(row)
+                if held.get("evidenceLevel") == level
+            ),
+            sum(
+                1
+                for row in claims
+                if row["status"] == "certified" and level in claim_levels(row)
+            ),
         )
-        for label in record["evidenceLabels"]
+        for level in LEVEL_ORDER
     }
-    return {label: count for label, count in counted.items() if count}
 
 
-def provider_counts(record: Mapping[str, Any]) -> dict[str, int]:
-    """How many claims name each provider, among the claims that name one.
+def unmigrated_records(record: Mapping[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """Every record still ``legacy-unmigrated``, with the claim that holds it."""
+    return [
+        (str(row["claimId"]), held)
+        for row in record["claims"]
+        for held in evidence_records(row)
+        if held.get("migrationState") == "legacy-unmigrated"
+    ]
 
-    The claims that do not name a provider are not some other provider's results;
-    they are results no provider produced, and counting them here would make the
+
+def environment_counts(record: Mapping[str, Any]) -> dict[tuple[str, str, str], int]:
+    """How many records ran in each environment, provider, and hardware class."""
+    counted: dict[tuple[str, str, str], int] = {}
+    for row in record["claims"]:
+        for held in evidence_records(row):
+            environment = held.get("environment")
+            if not environment:
+                continue
+            key = (
+                str(environment["environmentId"]),
+                str(environment["provider"]),
+                str(environment["hardwareClass"]),
+            )
+            counted[key] = counted.get(key, 0) + 1
+    return dict(sorted(counted.items()))
+
+
+def provider_counts(record: Mapping[str, Any]) -> dict[str, tuple[int, int]]:
+    """For each provider named: records naming it, and claims holding such a record.
+
+    The records that name no provider are not some other provider's results; they
+    are results no provider produced, and counting them here would make the
     reference provider look like a minority of the evidence rather than all of it.
     """
-    providers = [
-        row["provider"]
-        for row in record["claims"]
-        if row["provider"] and row["provider"] != "not-applicable"
-    ]
-    return {provider: providers.count(provider) for provider in sorted(set(providers))}
+    claims = record["claims"]
+    providers = sorted({name for row in claims for name in record_providers(row)})
+    return {
+        provider: (
+            sum(
+                1
+                for row in claims
+                for held in evidence_records(row)
+                if (held.get("environment") or {}).get("provider") == provider
+            ),
+            sum(1 for row in claims if provider in record_providers(row)),
+        )
+        for provider in providers
+    }
 
 
 def strongest_level(rows: Sequence[Mapping[str, Any]]) -> str | None:
-    """The highest certification level any certified row in ``rows`` reached.
+    """The last level, in specification order, any certified row's records reached.
 
-    Only certified rows count, for the reason ``level_counts`` gives: a level beside
-    a claim that is not certified is not a level anybody reached. ``None`` when no
-    row is certified, so a group of absences shows no level rather than a low one.
+    Only certified rows count, for the reason ``level_counts`` gives. ``None`` when
+    no certified row holds a classified record, so a group of absences shows no
+    level rather than a low one. The result is the level nearest the intended
+    operating context that any record in the group reached; it says nothing about
+    which record is better evidence for which claim.
     """
-    reached = [
-        str(row["certificationLevel"])
+    reached = {
+        level
         for row in rows
-        if row["status"] == "certified" and row["certificationLevel"]
-    ]
-    if not reached:
-        return None
-    return max(reached, key=lambda level: _LEVEL_RANK.get(level, -1))
+        if row["status"] == "certified"
+        for level in claim_levels(row)
+    }
+    ordered = [level for level in LEVEL_ORDER if level in reached]
+    return ordered[-1] if ordered else None
 
 
 def named_providers(rows: Sequence[Mapping[str, Any]]) -> list[str]:
-    """Every provider the rows name, sorted, with ``not-applicable`` left out.
+    """Every provider the rows' records name, sorted, ``not-applicable`` left out.
 
     Counted over all of a group's rows and not only its certified ones: a
-    ``not-claimed`` row that names the provider it was measured on is part of where
-    the group's evidence came from.
+    ``not-claimed`` row whose record names the provider it was measured on is part
+    of where the group's evidence came from.
     """
-    return sorted(
-        {
-            str(row["provider"])
-            for row in rows
-            if row["provider"] and row["provider"] != "not-applicable"
-        }
-    )
+    return sorted({provider for row in rows for provider in record_providers(row)})
+
+
+def reclassified_claims(
+    record: Mapping[str, Any],
+) -> list[tuple[dict[str, Any], str | None, list[str]]]:
+    """Every claim whose records' levels differ from the level it carried before.
+
+    Derived from the register alone: the claim's carried ``v1alpha1``
+    classification against the levels its migrated records hold. A claim whose
+    records all sit at the level it used to carry is not listed, and neither is a
+    claim that carried no level and holds no classified record.
+    """
+    changed: list[tuple[dict[str, Any], str | None, list[str]]] = []
+    for row in record["claims"]:
+        before = legacy_level(row)
+        after = claim_levels(row)
+        if after and after != ([before] if before else []):
+            changed.append((dict(row), before, after))
+    return changed
 
 
 def grouped_claims(
@@ -528,70 +629,43 @@ def uncertified_claims(record: Mapping[str, Any]) -> list[dict[str, Any]]:
     return [row for row in record["claims"] if row["status"] != "certified"]
 
 
-def _evidence_findings(
-    record: Mapping[str, Any], row: Mapping[str, Any]
-) -> list[Finding]:
-    """The citation rules, applied to one row."""
-    evidence_root = str(record["evidenceRoot"])
-    template_root = str(record["templateRoot"])
-    claim_id = str(row["claimId"])
-    findings: list[Finding] = []
-
-    if row["status"] == "certified":
-        if not row["evidenceRefs"]:
-            findings.append(
-                Finding(
-                    "a-certified-claim-cites-a-record-that-exists",
-                    claim_id,
-                    "certified and cites no record",
-                )
-            )
-        for reference in row["evidenceRefs"]:
-            if str(reference).startswith(f"{template_root}/"):
-                findings.append(
-                    Finding(
-                        "a-certified-claim-cites-a-record-that-exists",
-                        claim_id,
-                        f"cites {reference}, which is a template rather than a record",
-                    )
-                )
-            elif not str(reference).startswith(f"{evidence_root}/"):
-                findings.append(
-                    Finding(
-                        "a-certified-claim-cites-a-record-that-exists",
-                        claim_id,
-                        f"cites {reference}, which is outside {evidence_root}/",
-                    )
-                )
-            elif not (REPO_ROOT / str(reference)).exists():
-                findings.append(
-                    Finding(
-                        "a-certified-claim-cites-a-record-that-exists",
-                        claim_id,
-                        f"cites {reference}, which does not exist",
-                    )
-                )
-    elif row["status"] in ("planned", "deferred") and row["evidenceRefs"]:
-        findings.append(
-            Finding(
-                "a-planned-or-deferred-claim-cites-no-record",
-                claim_id,
-                f"{row['status']} and cites {', '.join(row['evidenceRefs'])}",
-            )
+def _evidence_rule_findings(record: Mapping[str, Any]) -> list[Finding]:
+    """The register's own evidence rules, run again by the page that summarises it."""
+    return [
+        Finding(
+            "the-register-passes-the-evidence-level-rules",
+            refusal.path,
+            f"{refusal.rule}: {refusal.message}",
         )
+        for refusal in check_register(record, repo_root=REPO_ROOT)
+    ]
+
+
+def _provider_findings(record: Mapping[str, Any]) -> list[Finding]:
+    """A cluster result that names no provider could be read as any provider's."""
+    findings: list[Finding] = []
+    for row in record["claims"]:
+        for held in evidence_records(row):
+            environment = held.get("environment") or {}
+            if environment.get("environmentId") not in _CLUSTER_ENVIRONMENTS:
+                continue
+            if environment.get("provider") in (None, "", "not-applicable"):
+                findings.append(
+                    Finding(
+                        "a-real-cluster-result-names-its-provider",
+                        str(held.get("recordId", row["claimId"])),
+                        f"ran on {environment['environmentId']} and names no provider",
+                    )
+                )
     return findings
 
 
-def _row_findings(
-    record: Mapping[str, Any],
-    row: Mapping[str, Any],
-    statuses: Mapping[str, Mapping[str, Any]],
-    labels: Mapping[str, Mapping[str, Any]],
+def _status_findings(
+    row: Mapping[str, Any], statuses: Mapping[str, Mapping[str, Any]]
 ) -> list[Finding]:
-    """Every rule that reads one register row, applied to it."""
+    """A status the register does not define, or may not publish, is not shown."""
     claim_id = str(row["claimId"])
     status = str(row["status"])
-
     if status not in statuses:
         return [
             Finding(
@@ -600,67 +674,15 @@ def _row_findings(
                 f"carries status {status}, which the register does not define",
             )
         ]
-
-    findings = _evidence_findings(record, row)
-
-    label = labels.get(str(row["evidenceLabel"]))
-    if label is None:
-        findings.append(
-            Finding(
-                "an-evidence-label-is-one-the-register-defines",
-                claim_id,
-                f"carries label {row['evidenceLabel']}, which the register "
-                "does not define",
-            )
-        )
-        return findings
-
-    level = row["certificationLevel"]
-    if level is not None and _LEVEL_RANK.get(str(level), 99) > _LEVEL_RANK.get(
-        str(label["ceiling"]), -1
-    ):
-        findings.append(
-            Finding(
-                "a-level-may-not-exceed-its-labels-ceiling",
-                claim_id,
-                f"{level} exceeds the {label['ceiling']} ceiling "
-                f"{row['evidenceLabel']} carries",
-            )
-        )
-
-    if status != "certified":
-        return findings
-
-    if not statuses[status]["mayBePublishedAsACapability"]:
-        findings.append(
+    if status == "certified" and not statuses[status]["mayBePublishedAsACapability"]:
+        return [
             Finding(
                 "a-displayed-status-is-one-the-register-defines",
                 claim_id,
                 f"status {status} may not be published as a capability",
             )
-        )
-
-    if row["assertsRealBehaviour"] and not label["maySupportRealBehaviour"]:
-        findings.append(
-            Finding(
-                "a-real-behaviour-capability-rests-on-real-evidence",
-                claim_id,
-                f"asserts real behaviour on {row['evidenceLabel']} evidence",
-            )
-        )
-
-    if row["environment"] == "local-kubernetes" and (
-        not row["provider"] or row["provider"] == "not-applicable"
-    ):
-        findings.append(
-            Finding(
-                "a-real-cluster-result-names-its-provider",
-                claim_id,
-                "ran on a local Kubernetes cluster and names no provider",
-            )
-        )
-
-    return findings
+        ]
+    return []
 
 
 def selection_findings(
@@ -715,26 +737,38 @@ def selection_findings(
 _CELL_FIELDS: Final[tuple[tuple[str, str, tuple[str, ...]], ...]] = (
     ("claims", "claimId", ("statement", "limitation", "notClaimedReason")),
     ("claimStatuses", "statusId", ("meaning",)),
-    ("evidenceLabels", "labelId", ("meaning",)),
+    ("evidenceLevels", "levelId", ("name",)),
 )
+
+
+def _cell_values(record: Mapping[str, Any]) -> Iterator[tuple[str, str, Any]]:
+    """Every value the page prints into a cell, with what it belongs to."""
+    for collection, identifier, fields in _CELL_FIELDS:
+        for row in record[collection]:
+            for field in fields:
+                yield str(row[identifier]), field, row.get(field)
+    for row in record["claims"]:
+        for held in evidence_records(row):
+            subject = str(held.get("recordId", row["claimId"]))
+            environment = held.get("environment") or {}
+            for field in ("environmentId", "provider", "hardwareClass"):
+                yield subject, f"environment.{field}", environment.get(field)
+            execution = held.get("execution") or {}
+            for substitution in execution.get("substitutions") or []:
+                yield subject, "substitutions", substitution.get("componentId")
 
 
 def _cell_findings(record: Mapping[str, Any]) -> list[Finding]:
     """A line break inside a cell value would take the rest of it out of the table."""
-    findings: list[Finding] = []
-    for collection, identifier, fields in _CELL_FIELDS:
-        for row in record[collection]:
-            for field in fields:
-                value = row.get(field)
-                if isinstance(value, str) and ("\n" in value or "\r" in value):
-                    findings.append(
-                        Finding(
-                            "a-cell-value-fits-in-one-table-row",
-                            str(row[identifier]),
-                            f"its {field} carries a line break",
-                        )
-                    )
-    return findings
+    return [
+        Finding(
+            "a-cell-value-fits-in-one-table-row",
+            subject,
+            f"its {field} carries a line break",
+        )
+        for subject, field, value in _cell_values(record)
+        if isinstance(value, str) and ("\n" in value or "\r" in value)
+    ]
 
 
 def _version_findings(record: Mapping[str, Any]) -> list[Finding]:
@@ -768,10 +802,10 @@ def check_view(
         return version
 
     statuses = statuses_by_id(record)
-    labels = labels_by_id(record)
-
     findings = selection_findings(record, capabilities)
+    findings.extend(_evidence_rule_findings(record))
+    findings.extend(_provider_findings(record))
     findings.extend(_cell_findings(record))
     for row in record["claims"]:
-        findings.extend(_row_findings(record, row, statuses, labels))
+        findings.extend(_status_findings(row, statuses))
     return findings

@@ -27,8 +27,14 @@ silently restate every existing classification in a vocabulary it was not made i
 counterpart at all. There are no `C3` or `C4` values in the register today, so that
 particular error is currently unreachable; the reader refuses to depend on that,
 because the value it would mistranslate is exactly the value somebody would add
-first. Re-examining each record against the current definitions is `V1-S5-012-PR2`,
-and it is a reading of evidence rather than a mapping of strings.
+first.
+
+**The migrated register** is `docs/testing/claim-evidence-matrix.v1alpha2.json`, and
+since `V1-S5-012-PR2` it is the one every consumer reads. It was not produced by this
+reader. Each of its records was written from a reading of the evidence files the
+claim cites, and the reader's job is now the audit trail: it shows what the migration
+started from, and a test compares the two so that no claim's statement, status, or
+boundary changed on the way across.
 """
 
 from __future__ import annotations
@@ -46,9 +52,11 @@ __all__ = [
     "LEGACY_CONTRACT_VERSION",
     "LEGACY_FIELD_DESTINATIONS",
     "LEGACY_REGISTER_PATH",
+    "REGISTER_PATH",
     "SCHEMA_PATH",
     "Refusal",
     "load_legacy_register",
+    "load_register",
     "load_schema",
     "read_legacy_as_v1alpha2",
     "refusals",
@@ -64,9 +72,15 @@ SCHEMA_PATH: Final = (
     REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha2.schema.json"
 )
 
-#: The committed register. This module reads it and never writes it.
+#: The superseded register, kept as the migration's starting point. Nothing reads it
+#: as current, and this module never writes it.
 LEGACY_REGISTER_PATH: Final = (
     REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha1.json"
+)
+
+#: The authoritative claim and evidence register since `V1-S5-012-PR2`.
+REGISTER_PATH: Final = (
+    REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha2.json"
 )
 
 CONTRACT_VERSION: Final = "inferops.io/v1alpha2"
@@ -125,8 +139,8 @@ LEGACY_FIELD_DESTINATIONS: Final[dict[str, tuple[str, ...]]] = {
 #: the new model cannot be mistaken for one somebody assigned under the new model.
 _CARRIED_NOTE: Final = (
     "Carried verbatim from the v1alpha1 register under the superseded level "
-    "meanings. It has not been re-examined against the current definitions; that "
-    "is V1-S5-012-PR2."
+    "meanings, as the reader produces it. This reading is not re-examined against "
+    "the current definitions; the migrated register is where that was done."
 )
 
 
@@ -146,7 +160,13 @@ def load_schema(path: Path = SCHEMA_PATH) -> dict[str, Any]:
 
 
 def load_legacy_register(path: Path = LEGACY_REGISTER_PATH) -> dict[str, Any]:
-    """The committed `v1alpha1` register, as committed. Never written here."""
+    """The superseded `v1alpha1` register, as committed. Never written here."""
+    loaded: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return loaded
+
+
+def load_register(path: Path = REGISTER_PATH) -> dict[str, Any]:
+    """The authoritative `v1alpha2` register, as committed. Never written here."""
     loaded: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return loaded
 

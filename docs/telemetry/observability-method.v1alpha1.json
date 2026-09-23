@@ -7,7 +7,7 @@
   "catalogRef": "docs/telemetry/telemetry-catalog.v1alpha1.json",
   "alertRecordRef": "docs/telemetry/inference-alerts.v1alpha1.json",
   "baselineRef": "docs/security/security-baseline.v1alpha1.json",
-  "claimRegisterRef": "docs/testing/claim-evidence-matrix.v1alpha1.json",
+  "claimRegisterRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
   "workflowRef": ".github/workflows/checks.yml",
   "validationRef": "docs/proof/security/v1-s5-004-pr1-validation.md",
   "evidenceKinds": [

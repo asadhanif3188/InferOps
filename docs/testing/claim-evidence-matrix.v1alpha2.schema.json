@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://inferops.io/testing/claim-evidence-matrix.v1alpha2.schema.json",
   "title": "Claim and evidence register v1alpha2",
-  "description": "The versioned claim and evidence data model. It differs from v1alpha1 in one structural way that everything else follows from: an evidence level is a property of an evidence record, not of a claim, and one claim may carry several records at several levels. A claim keeps its identity, its statement, its status, and the boundary it is published with; a record carries what executed, what was substituted, where the workload came from, where it ran, what versions were pinned, how it was measured, what was accepted, what happened, and what it does not establish. The level names are defined in docs/testing/evidence-levels.md and are not restated here; this schema constrains shape. No committed register declares this version yet: migrating docs/testing/claim-evidence-matrix.v1alpha1.json is V1-S5-012-PR2.",
+  "description": "The versioned claim and evidence data model. It differs from v1alpha1 in one structural way that everything else follows from: an evidence level is a property of an evidence record, not of a claim, and one claim may carry several records at several levels. A claim keeps its identity, its statement, its status, and the boundary it is published with; a record carries what executed, what was substituted, where the workload came from, where it ran, what versions were pinned, how it was measured, what was accepted, what happened, and what it does not establish. The level names are defined in docs/testing/evidence-levels.md and are not restated here; this schema constrains shape. Since V1-S5-012-PR2 the committed register, docs/testing/claim-evidence-matrix.v1alpha2.json, declares this version; docs/testing/claim-evidence-matrix.v1alpha1.json is kept unchanged as the register it was migrated from.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -442,7 +442,7 @@
       }
     },
     "legacyClassification": {
-      "description": "A v1alpha1 classification, carried verbatim and never reinterpreted. certificationLevel is the value the row held under the superseded meanings ADR 0005 D4 published; it is not an evidence level under ADR 0016, and nothing in this schema converts one into the other. Reading each record against the current definitions is V1-S5-012-PR2.",
+      "description": "A v1alpha1 classification, carried verbatim and never reinterpreted. certificationLevel is the value the row held under the superseded meanings ADR 0005 D4 published; it is not an evidence level under ADR 0016, and nothing in this schema converts one into the other. V1-S5-012-PR2 read each record against the current definitions and wrote the result as evidenceLevel on the record; a value carried here is history.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -752,7 +752,7 @@
           "anyOf": [{ "$ref": "#/$defs/sentence" }, { "type": "null" }]
         },
         "legacyClassification": {
-          "description": "Present only on an unmigrated claim that named no record at all, where the v1alpha1 row's label would otherwise be lost. A claim whose records carry their own legacyClassification does not repeat it here.",
+          "description": "The v1alpha1 classification of the claim, carried as history. The compatibility reader writes it here only for a claim that named no record, where the row's label would otherwise be lost, and on the record otherwise; the migrated register carries it here on every claim, because v1alpha1 gave the level to the claim, and never on a migrated record.",
           "$ref": "#/$defs/legacyClassification"
         }
       },

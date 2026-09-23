@@ -1331,7 +1331,7 @@
     {
       "templateId": "claim-evidence",
       "path": "docs/proof/templates/TEMPLATE-claim-evidence.md",
-      "purpose": "Binds one public claim to the evidence for it, the certification level that evidence can support, and the limitations that travel with it.",
+      "purpose": "Binds one public claim to the evidence records for it, the evidence level each reached and what executed and was substituted to reach it, and the limitations that travel with it.",
       "v1Status": "published",
       "recordsProduced": 0
     }
@@ -1341,7 +1341,7 @@
     {
       "sectionId": "classification",
       "heading": "Classification and certification",
-      "why": "The weakest label the record actually supports, and the ceiling that label carries. A record without it is read at whatever strength the reader wants."
+      "why": "The evidence level the record supports and how it was reached -- what executed, what was substituted, and where the workload came from -- beside the class of the layer that produced it. A record without it is read at whatever strength the reader wants."
     },
     {
       "sectionId": "provenance",

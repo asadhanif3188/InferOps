@@ -8,10 +8,10 @@ validator, the reader that turns a committed `v1alpha1` register into a
 `v1alpha2` document without inventing anything it does not contain, and -- in
 `rules` -- the classification rules the schema cannot express.
 
-Nothing here writes to a committed register. Migrating
-`docs/testing/claim-evidence-matrix.v1alpha1.json` and the consumers that read it
-is `V1-S5-012-PR2`; this package exists so that the migration can be reviewed as a
-transformation rather than performed as an edit.
+Nothing here writes to a committed register. Since `V1-S5-012-PR2` the register
+every consumer reads is `docs/testing/claim-evidence-matrix.v1alpha2.json`, loaded by
+`load_register`; `docs/testing/claim-evidence-matrix.v1alpha1.json` is the superseded
+register the migration started from, and the reader keeps it inspectable.
 """
 
 from __future__ import annotations
@@ -21,9 +21,11 @@ from .core import (
     LEGACY_CONTRACT_VERSION,
     LEGACY_FIELD_DESTINATIONS,
     LEGACY_REGISTER_PATH,
+    REGISTER_PATH,
     SCHEMA_PATH,
     Refusal,
     load_legacy_register,
+    load_register,
     load_schema,
     read_legacy_as_v1alpha2,
     refusals,
@@ -45,6 +47,7 @@ __all__ = [
     "LEGACY_CONTRACT_VERSION",
     "LEGACY_FIELD_DESTINATIONS",
     "LEGACY_REGISTER_PATH",
+    "REGISTER_PATH",
     "RULES",
     "SCHEMA_PATH",
     "Refusal",
@@ -53,6 +56,7 @@ __all__ = [
     "check_record",
     "check_register",
     "load_legacy_register",
+    "load_register",
     "load_schema",
     "read_legacy_as_v1alpha2",
     "refusals",

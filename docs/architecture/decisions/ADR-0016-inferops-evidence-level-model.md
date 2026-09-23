@@ -108,6 +108,41 @@ rather than asserted per record by the record's author.
   `a-criterion-flagged-declared-before-was-registered-before`. A timestamp comparison
   was considered and rejected: the record's author writes both timestamps.
 
+## What `V1-S5-012-PR2` settled, on 2026-09-23
+
+A third dated note, on the same terms: the accepted text is unchanged, and several of
+its present-tense sentences — "the new rules are not yet enforced", "two vocabularies
+coexist until `V1-S5-012-PR2` finishes" — describe the day it was accepted.
+
+`V1-S5-012-PR2` read every record the `v1alpha1` register cited against `D1`, one claim
+at a time, and wrote the result as
+[the `v1alpha2` register](../../testing/claim-evidence-matrix.v1alpha2.json), which every
+consumer now reads. [The migration report](../../proof/testing/v1-s5-012-pr2-migration-report.md)
+says what each record turned out to be.
+
+- **`D2` and `R4`.** Closed. The register stores a level on each of 54 evidence records,
+  and nine claims hold more than one — the weaker runs a claim-level `C2` used to hide
+  are visible beside the real ones.
+- **`D3` and `R1`.** Enforced over committed evidence. Every record passes the schema
+  and the validator with every cited file present, and the dashboard runs the same
+  rules before it renders. The committed strategy data carries the current level names,
+  and its `synthetic` class names a simulated environment only, so the `synthetic → C1`
+  rule over generated input is gone from the data. No layer or gate used the class.
+- **`D8`.** Held, and checked. No record was upgraded by terminology: 43 kept the level
+  their claim carried, 8 moved with a justification from what they executed — three to
+  a higher-numbered level, each named in a test so that a fourth has to be added on
+  purpose — and no record is `C3` or `C4`. One claim moved from `certified` to
+  `not-claimed`, because the audit measured its statement untrue of the committed
+  records; its statement was kept.
+- **`R3`.** The conceptual mapping for `C0`–`C2` held for 43 records and was not used
+  for the other 8. That is the reason it was published as conceptual.
+- **Consequence on vocabularies.** The certification document no longer states the
+  superseded meanings and left the list of surfaces awaiting migration, which is empty.
+  The superseded meanings are stated only where they are mapped — the specification,
+  this record, ADR 0005, and the architecture index — and in dated records.
+- **`Q3`** is untouched and remains open: field names, file paths, and tool names still
+  say `certification`.
+
 ## Decision status
 
 | ID | Decision | Status | What supports it |

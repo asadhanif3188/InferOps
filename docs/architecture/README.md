@@ -170,8 +170,8 @@ Execution, Runtime, Representative, Operational — and attaches to an evidence 
 rather than to a claim. `C3` Failure and `C4` Composed are superseded as level
 meanings, because failure names what an experiment was for and composition names what
 the path was, and neither is a strength. 0005's text stands as accepted, its ceiling
-mechanism is untouched and still enforced, and **no record is reclassified**: the
-committed strategy data still carries the superseded names.
+mechanism is untouched and still enforced, and **0016 reclassified no record**: when
+it was accepted the committed strategy data still carried the superseded names.
 
 `V1-S5-011-PR2` published
 [the versioned evidence-record model](../testing/evidence-record-model.md) on
@@ -182,7 +182,13 @@ mechanism for `v1alpha2` records, and left the committed ceilings running on the
 committed `v1alpha1` data they govern; reading each existing record against the new
 definitions, and moving those ceilings with it, is `V1-S5-012-PR2`. (This paragraph
 said migration was `V1-S5-011-PR2`'s job until 2026-09-23; an independent review of
-that change found it had described the wrong boundary.)
+that change found it had described the wrong boundary.) `V1-S5-012-PR2` did that
+reading: the register every consumer reads is now `v1alpha2`, every record in it
+carries a level justified by what it executed, the strategy data carries the current
+level names and its `synthetic` class no longer covers generated input, and one claim
+moved from certified to not-claimed because the audit measured its statement untrue.
+[The migration report](../proof/testing/v1-s5-012-pr2-migration-report.md) says what
+moved and why.
 
 0008 decides what V1 protects and from whom: the architecture's five trust boundaries
 adopted verbatim plus a sixth for publication, six pod-security properties and a

@@ -45,6 +45,13 @@ first would have removed the guard from exactly the data the replacement cannot 
 The day this test fails is `V1-S5-012-PR2`, which migrates the register and the
 strategy data's terminology together. Corrected 2026-09-23, in the change that did not
 fire it.
+
+It fired in `V1-S5-012-PR2`, on the third prediction, and the change corrected the
+specification in the same commit, which is what it was for. The test that replaced it
+holds the opposite: the strategy data carries the current names, and the `synthetic`
+class no longer covers generated input. The certification document left the list of
+surfaces awaiting migration at the same time, so that list is now empty and a test
+keeps it that way.
 """
 
 from __future__ import annotations
@@ -98,10 +105,12 @@ WITHOUT_A_MAPPING = ("C3", "C4")
 #: publishing the definition and its mapping is their job.
 MAPPING_DOCUMENTS = frozenset({SPECIFICATION, DECISION})
 
-#: Documents that still carry a superseded meaning and are waiting for `V1-S5-012-PR2`
-#: to migrate them. Each one must carry a supersession notice and send a reader to the
-#: authoritative definition, and the set may shrink as the migration lands.
-AWAITING_MIGRATION = frozenset({CERTIFICATION})
+#: Documents that still carried a superseded meaning and were waiting for
+#: `V1-S5-012-PR2` to migrate them. The certification document was the only one, and
+#: that change migrated it: it no longer publishes the superseded level table. The set
+#: is empty and a test holds it empty; a document that needs the old meanings now
+#: cites the mapping in the specification rather than restating it.
+AWAITING_MIGRATION: frozenset[str] = frozenset()
 
 #: Where dated records live. A record here was written under whichever vocabulary was
 #: current when it ran, and it is kept readable rather than edited.
@@ -122,11 +131,13 @@ MAY_STATE_A_SUPERSEDED_MEANING = (
 #: invites a reader to assume an outside body reviewed something, and none has.
 NOT_AN_EXTERNAL_STANDARD = ("project-defined", "ISO", "NIST", "industry certification")
 
-#: Statements `V1-S5-011-PR1` must not be readable as having made. A definition change
-#: that promotes a claim is the one failure this whole area exists to prevent.
+#: Statements the specification must keep making about itself. A definition change
+#: that promotes a claim is the one failure this whole area exists to prevent, and
+#: since the migration the page says both that it grants no level and that every
+#: level the migration moved was justified by what ran.
 RECLASSIFIES_NOTHING = (
     "reclassifies nothing",
-    "keeps the level it was given",
+    "justified by what actually executed",
 )
 
 
@@ -318,39 +329,25 @@ def test_every_registered_document_still_states_a_superseded_meaning(
     )
 
 
-@pytest.mark.parametrize("relative", sorted(AWAITING_MIGRATION))
-def test_every_surface_awaiting_migration_points_at_the_authoritative_definition(
-    relative: str,
-) -> None:
-    """The pending list shrinks as the migration lands, and never rots in place."""
-    assert "evidence-levels.md" in read(relative), (
-        f"{relative} does not send a reader to the authoritative definition"
-    )
+def test_no_surface_is_awaiting_migration_any_more() -> None:
+    """The pending list closed in `V1-S5-012-PR2`, and it stays closed.
 
-
-@pytest.mark.parametrize("relative", sorted(AWAITING_MIGRATION))
-def test_every_surface_awaiting_migration_opens_with_the_supersession_notice(
-    relative: str,
-) -> None:
-    """The notice has to be where a reader arrives, not merely somewhere in the file.
-
-    Without this, the banner at the top of the certification document could be
-    deleted and the suite would still pass on an unrelated later mention of the word
-    `superseded` -- which is exactly the failure the banner exists to prevent, since
-    a reader who skims the level table and leaves never reaches the later mention.
+    The certification document was the one surface registered as still carrying
+    the superseded level meanings. It now opens by sending a reader to the
+    specification and publishes no superseded pairing, so it is neither awaiting
+    migration nor allowed to state an old meaning.
     """
-    opening = read(relative)[:NOTICE_WINDOW]
-
-    assert "superseded" in opening.lower(), {
-        "document": relative,
-        "why": (
-            "no supersession notice in the opening of the document; a reader who "
-            "stops at the level table would take the superseded meanings as current"
-        ),
-    }
-    assert "evidence-levels.md" in opening, (
-        f"{relative} does not point at the authoritative definition where a reader lands"
+    assert not AWAITING_MIGRATION
+    certification = read(CERTIFICATION)
+    assert not carries_a_superseded_meaning(certification), (
+        f"{CERTIFICATION} states a superseded meaning again"
     )
+    assert CERTIFICATION not in MAY_STATE_A_SUPERSEDED_MEANING
+    opening = certification[:NOTICE_WINDOW]
+    assert "evidence-levels.md" in opening, (
+        f"{CERTIFICATION} does not send a reader to the definition where they land"
+    )
+    assert "does not define what a level means" in opening
 
 
 @pytest.mark.parametrize(
@@ -384,7 +381,7 @@ def test_the_specification_denies_being_an_external_standard(phrase: str) -> Non
 
 @pytest.mark.parametrize("phrase", RECLASSIFIES_NOTHING)
 def test_the_specification_states_that_it_reclassifies_nothing(phrase: str) -> None:
-    assert phrase in read(SPECIFICATION), (
+    assert phrase in " ".join(read(SPECIFICATION).split()), (
         f"{SPECIFICATION} does not state {phrase!r}; a definition change that could be "
         "read as promoting a claim is the failure this model exists to prevent"
     )
@@ -407,53 +404,48 @@ def test_the_prior_decision_is_amended_rather_than_rewritten() -> None:
     )
 
 
-def test_the_enforcing_data_still_carries_the_superseded_names() -> None:
-    """A tripwire, and it is meant to fire.
+def test_the_enforcing_data_carries_the_current_names() -> None:
+    """What the tripwire that stood here became when it fired.
 
-    The specification tells a reader that enforcement has not moved. When the
-    enforcing strategy data moves, this test fails, and the page that made the claim
-    has to be corrected in the same change rather than a later one. That is
-    `V1-S5-012-PR2`, which migrates the register this data governs. Neither
-    `V1-S5-011-PR2`, which versioned the evidence-record model, nor `V1-S5-012-PR1`,
-    which published the rules that replace the ceiling for `v1alpha2` records, moved
-    this data; each was once predicted to, and the module docstring says why neither
-    should have.
+    `V1-S5-012-PR2` moved the strategy data: its level names are the current ones,
+    and its `synthetic` class names a simulated environment -- a substitution, which
+    keeps its `C1` ceiling -- and no longer generated input, which ADR 0016 D3 says
+    sets no ceiling. The identifiers, ranks, ceilings, and scope flags are unchanged,
+    so no layer's verdict moved.
     """
     strategy = json.loads(read(STRATEGY_DATA))
     published = {
         level["levelId"]: level["name"] for level in strategy["certificationLevels"]
     }
 
-    assert published == dict(SUPERSEDED), {
-        "published": published,
-        "why": (
-            "the enforcing data no longer matches the superseded names, so the "
-            "specification's statement that enforcement is unchanged has stopped "
-            "being true; correct docs/testing/evidence-levels.md and this module"
-        ),
-    }
+    assert published == dict(LEVELS), published
+    for level in strategy["certificationLevels"]:
+        assert "evidence-levels.md" in level["meaning"], level["levelId"]
+    assert {
+        level["levelId"]: level["v1Scope"] for level in strategy["certificationLevels"]
+    } == {"C0": True, "C1": True, "C2": True, "C3": False, "C4": False}
 
     synthetic = next(
         entry
         for entry in strategy["evidenceClasses"]
         if entry["classId"] == "synthetic"
     )
-    assert synthetic["maxCertification"] == "C1", {
-        "ceiling": synthetic["maxCertification"],
-        "why": (
-            "the synthetic ceiling is the rule the specification records as still "
-            "enforced and too broad; when V1-S5-012-PR2 moves it with the register, "
-            "the specification and this module have to say so"
-        ),
-    }
+    assert synthetic["maxCertification"] == "C1"
+    assert "Generated input is not this class" in synthetic["meaning"]
+    assert "generated inputs or" not in synthetic["meaning"]
 
 
-def test_the_specification_records_that_it_is_not_yet_enforced() -> None:
+def test_the_specification_records_what_is_enforced_since_the_migration() -> None:
+    """The page used to say it was not yet enforced, and a test held it to that.
+
+    Since `V1-S5-012-PR2` that sentence is false, and the page says what is enforced,
+    over which register, and what is left to review.
+    """
     specification = read(SPECIFICATION)
 
-    assert "not yet machine-enforced" in specification.lower(), (
-        f"{SPECIFICATION} does not record that these rules are not yet enforced"
+    assert "not yet machine-enforced" not in specification.lower(), (
+        f"{SPECIFICATION} still says the rules are not enforced"
     )
-    assert "test-strategy.v1alpha1.json" in specification, (
-        f"{SPECIFICATION} does not name the data that still enforces the superseded rules"
-    )
+    assert "claim-evidence-matrix.v1alpha2.json" in specification
+    assert "test-strategy.v1alpha1.json" in specification
+    assert "v1-s5-012-pr2-migration-report.md" in specification

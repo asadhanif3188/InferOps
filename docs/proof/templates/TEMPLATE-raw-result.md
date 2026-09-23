@@ -27,9 +27,21 @@ Date produced: `<YYYY-MM-DD>`
 
 ## Classification and certification
 
-Evidence class: `<mock | synthetic | estimated | local-real-cpu | cloud-real-cpu | cloud-real-gpu>`
+The heading is kept because every record carries it. What goes under it is an
+evidence level under [InferOps Evidence Levels](../../testing/evidence-levels.md),
+which are project-defined and not an ISO, NIST, regulatory, or industry
+certification standard.
 
-Ceiling this class carries: `<C0 | C1 | C2 | none>`.
+Evidence level of the run these results came from: `<C0 | C1 | C2 | C3>`, because
+`<what executed and what was substituted>`.
+
+Substitutions in that run: `<component — replaced by — claim-material yes or no>`, or
+`none`. Workload: `<none | synthetic | captured | operator-issued>`; its origin decides
+no level.
+
+Evidence class of the layer that produced it: `<mock | synthetic | estimated |
+local-real-cpu | cloud-real-cpu | cloud-real-gpu>`, whose ceiling caps what that layer
+may reach.
 
 Claim boundary: `<what these results are, and what they are not. A result set
 produced against a mock is a mock result set however real its shape.>`

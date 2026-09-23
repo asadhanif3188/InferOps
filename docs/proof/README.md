@@ -8,28 +8,36 @@ A record here is produced by a reviewed change, never by a job. That rule comes 
 [the telemetry and evidence flow](../architecture/system-architecture.md): a record a
 pipeline can regenerate is a record that can be regenerated to say something else.
 
-What a record may be used to claim is decided elsewhere — by the evidence class of
-the layer that produced it, and the certification ceiling that class carries, in
-[the certification document](../testing/certification.md). A record does not get to
-nominate its own strength.
+What a record may be used to claim is decided elsewhere. Its **evidence level** is
+held in [the claim and evidence register](../testing/claim-evidence-matrix.md), on an
+evidence record there, reached by reading what the record executed and what it
+substituted, and checked by [the evidence-level rules](../testing/evidence-level-rules.md).
+A record does not get to nominate its own strength. The evidence class of the layer
+that produced a result caps what that test layer may reach, in
+[the certification document](../testing/certification.md).
 
 What `C0` to `C4` mean is in
 [the evidence-level specification](../testing/evidence-levels.md), which has been the
 authoritative definition since
 [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md) on
-2026-09-23. Every record indexed below was classified under the meanings that record
-supersedes, and none has been re-examined against the new ones; that is
-`V1-S5-012-PR2`.
+2026-09-23. The levels are project-defined, not an external certification standard.
+Every record indexed below was written under the meanings ADR 0016 supersedes, and is
+kept exactly as it was written. `V1-S5-012-PR2` read each one against the current
+meanings and wrote the result into the register rather than into the record;
+[the migration report](testing/v1-s5-012-pr2-migration-report.md) says, claim by
+claim, what each record turned out to be.
 
 ## Start here
 
 [The V1 proof dashboard](dashboard.md) is the shortest way into everything below.
 It is one generated page: what is certified, what is planned, what is deferred, and
-what this project states it does **not** have, each with its certification level,
-evidence class, provider, environment, limitation, and a link into the record that
-supports it. It is produced by `python -m tools.proof_dashboard` from
-[the claim and evidence register](../testing/claim-evidence-matrix.v1alpha1.json)
-and compared with it by a test, so it cannot drift from the register or say more
+what this project states it does **not** have, each with every evidence record behind
+it — its level, the environment and provider it ran on, anything it substituted, and a
+link into the record — and the limitation that travels with the claim. It is produced
+by `python -m tools.proof_dashboard` from
+[the claim and evidence register](../testing/claim-evidence-matrix.v1alpha2.json),
+which it checks against the register's own evidence rules before rendering, and it is
+compared with the register by a test, so it cannot drift from the register or say more
 than it does. It opens with a five-minute reading order and one row per capability
 group, and every claim the register holds is shown under exactly one group.
 
@@ -47,7 +55,7 @@ happening now*, of a running release, and the two are not substitutes.
 | Contracts | [`v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) |
 | Domain | [`v1-s1-001-pr1-validation.md`](domain/v1-s1-001-pr1-validation.md), [`v1-s1-001-pr2-validation.md`](domain/v1-s1-001-pr2-validation.md) |
 | Architecture | [`v1-s0-005-pr1-validation.md`](architecture/v1-s0-005-pr1-validation.md), [`v1-s3-002-pr1-validation.md`](architecture/v1-s3-002-pr1-validation.md), [`v1-s3-002-pr2-validation.md`](architecture/v1-s3-002-pr2-validation.md), [`v1-s3-003-pr1-validation.md`](architecture/v1-s3-003-pr1-validation.md), the [provider realignment validation](architecture/v1-s3-010-pr1-validation.md), and the [architecture and ADR reconciliation](architecture/v1-s5-003-pr1-validation.md) that closed the decision-ownership gap |
-| Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md), [`v1-s1-007-pr1-validation.md`](testing/v1-s1-007-pr1-validation.md), [the continuous-integration gate validation](testing/v1-s4-001-pr1-validation.md), [the claim-evidence register's validation](testing/v1-s4-009-pr1-validation.md), [the proof dashboard's validation](testing/v1-s4-009-pr2-validation.md), [its reconciliation for the V1 reviewer path](testing/v1-s5-002-pr2-validation.md), [the evidence-level model's validation](testing/v1-s5-011-pr1-validation.md), [the versioned evidence-record model's validation](testing/v1-s5-011-pr2-validation.md), and [the evidence-level classification rules' validation](testing/v1-s5-012-pr1-validation.md) |
+| Testing | [`v1-s0-006-pr1-validation.md`](testing/v1-s0-006-pr1-validation.md), [`v1-s1-007-pr1-validation.md`](testing/v1-s1-007-pr1-validation.md), [the continuous-integration gate validation](testing/v1-s4-001-pr1-validation.md), [the claim-evidence register's validation](testing/v1-s4-009-pr1-validation.md), [the proof dashboard's validation](testing/v1-s4-009-pr2-validation.md), [its reconciliation for the V1 reviewer path](testing/v1-s5-002-pr2-validation.md), [the evidence-level model's validation](testing/v1-s5-011-pr1-validation.md), [the versioned evidence-record model's validation](testing/v1-s5-011-pr2-validation.md), [the evidence-level classification rules' validation](testing/v1-s5-012-pr1-validation.md), [the V1 evidence migration, claim by claim](testing/v1-s5-012-pr2-migration-report.md) with [its machine-readable audit](testing/v1-s5-012-pr2-migration.v1alpha1.json), and [the migration's validation](testing/v1-s5-012-pr2-validation.md) |
 | Telemetry | [`v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md), [`v1-s1-008-pr1-validation.md`](telemetry/v1-s1-008-pr1-validation.md), [`v1-s3-007-pr1-validation.md`](telemetry/v1-s3-007-pr1-validation.md), [`v1-s3-007-pr2-validation.md`](telemetry/v1-s3-007-pr2-validation.md), the [query evaluation record](telemetry/v1-s3-007-pr2-query-evaluation.md), [what telemetry saw while a serving pod was replaced](telemetry/v1-s3-011-pr2-telemetry-during-recovery.md), [`v1-s4-002-pr1-validation.md`](telemetry/v1-s4-002-pr1-validation.md), [the dashboard asked of a real Prometheus and rendered by a real Grafana](telemetry/v1-s4-002-pr2-dashboard-validation.md), and [the V1 alert set validated against its scenarios](telemetry/v1-s4-008-pr1-alert-validation.md) with [`v1-s4-008-pr1-validation.md`](telemetry/v1-s4-008-pr1-validation.md) |
 | Cost | [`v1-s0-008-pr1-validation.md`](cost/v1-s0-008-pr1-validation.md), the [cost calculation validation](cost/v1-s4-005-pr1-validation.md), [the V1 cost baseline](cost/v1-s4-005-pr2-cost-baseline.md) with [its validation](cost/v1-s4-005-pr2-validation.md), and the [cost and capacity method validation](cost/v1-s5-004-pr2-validation.md) |
 | Security | [`v1-s0-009-pr1-validation.md`](security/v1-s0-009-pr1-validation.md), [`v1-s2-006-pr1-validation.md`](security/v1-s2-006-pr1-validation.md), [`v1-s3-004-pr1-validation.md`](security/v1-s3-004-pr1-validation.md), the [executed network-policy enforcement result](security/v1-s3-004-pr1-network-policy-enforcement.md), and the [security and observability methods validation](security/v1-s5-004-pr1-validation.md) with the [default-lane runs on `main`](security/v1-s5-004-pr1-hosted-runs.v1alpha1.json) it read from the selected service |
@@ -65,7 +73,7 @@ copy; never edit a template to hold a result.
 | `experiment` | [Registering what will be measured](templates/TEMPLATE-experiment.md), how, and what result would count as a failure — **before** the run |
 | `environment` | [Recording the host](templates/TEMPLATE-environment.md), the immutable component versions, and the digests a result depends on |
 | `raw-result` | [Describing a machine-readable result set](templates/TEMPLATE-raw-result.md), its schema, its hash, and what was removed before it was committed |
-| `claim-evidence` | [Binding one public claim](templates/TEMPLATE-claim-evidence.md) to its evidence, the level that evidence can support, and the limitations that travel with it |
+| `claim-evidence` | [Binding one public claim](templates/TEMPLATE-claim-evidence.md) to its evidence records, the level each reached and why, and the limitations that travel with it |
 
 A fifth, domain-specific one lives beside the records it produces:
 [the runtime and model feasibility record](serving/TEMPLATE-runtime-feasibility.md),
@@ -81,7 +89,7 @@ believed.
 
 | Section | Why it is required |
 |---|---|
-| `classification` | The weakest label the record actually supports, and the ceiling that label carries. A record without it is read at whatever strength the reader wants |
+| `classification` | The evidence level the record supports and how it was reached — what executed, what was substituted, and where the workload came from — beside the class of the layer that produced it. A record without it is read at whatever strength the reader wants |
 | `provenance` | The immutable versions: repository revision, image digests, model revision, tool versions. A result whose inputs are named by a moving tag is not reproducible |
 | `environment` | The host, operating system, resources, and cluster. Every record here that carries a `local-real` class is true of exactly one machine, and says so in this section |
 | `method` | The exact commands, in the order they were run, including the ones that failed. A method that cannot be re-executed describes a result rather than evidencing one |
@@ -122,8 +130,9 @@ the one-claim-per-record form the fourth template exists to enforce.
 [The claim and evidence matrix](../testing/claim-evidence-matrix.md) binds every
 claim in this project to the records here, in a table, checked by a suite. A table
 is a weaker form than a record: it carries one limitation per claim rather than the
-seven sections a record carries, and its classification is asserted by the row
-rather than derived by the run. The register is where a reader starts; it is not
+seven sections a record carries. Since `V1-S5-012-PR2` each row's evidence records
+carry their own levels, derived by reading what each run executed, but a register
+entry is still a summary of a record and not a record. The register is where a reader starts; it is not
 what the fourth template is for.
 
 One more thing these counts do not say. Every record they count is from Sprint 2 or

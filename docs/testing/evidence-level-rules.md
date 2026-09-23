@@ -1,12 +1,14 @@
 # Evidence-level classification rules
 
-Status: **enforced over `v1alpha2` documents; no committed register is one yet.** The
-rules below run in [`tools/evidence_model/rules.py`](../../tools/evidence_model/rules.py)
-and in [the `v1alpha2` schema](claim-evidence-matrix.v1alpha2.schema.json), and
+Status: **enforced over the committed register.** The rules below run in
+[`tools/evidence_model/rules.py`](../../tools/evidence_model/rules.py) and in
+[the `v1alpha2` schema](claim-evidence-matrix.v1alpha2.schema.json), and
 [their suite](../../tests/testing/test_evidence_level_rules.py) watches each enforced
-rule refuse a document built to break it. The register every consumer reads is still
-[`claim-evidence-matrix.v1alpha1.json`](claim-evidence-matrix.v1alpha1.json), still
-guarded by its own `v1alpha1` rules, and migrating it is `V1-S5-012-PR2`.
+rule refuse a document built to break it. Since `V1-S5-012-PR2` the register every
+consumer reads is [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json),
+and every one of its records passes every rule, with every cited file required to
+exist, in [the register's own suite](../../tests/testing/test_claim_evidence_matrix.py)
+and again in [the proof dashboard](../proof/dashboard.md) before it renders.
 
 > [!IMPORTANT]
 > This page says what is **checked**. What the levels **mean** is in
@@ -65,10 +67,12 @@ found that the first draft described the mock-at-`C2` case as closed. What chang
 in the open, where one reviewer reads it — rather than once per record, by the person
 who wants that record to pass.
 
-The field is **optional in the schema and additive**. No committed document declares
-`v1alpha2`, the compatibility reader does not produce it, and a `legacy-unmigrated`
-record carries no level for it to govern. `V1-S5-012-PR2` writes it for each claim it
-migrates, which is the same reading of each claim that decides its records' levels.
+The field is **optional in the schema and additive**. The compatibility reader does
+not produce it, and a `legacy-unmigrated` record carries no level for it to govern.
+`V1-S5-012-PR2` wrote it for every claim holding a record at `C1` or above, in the same
+reading of each claim that decided its records' levels, and
+[the migration report](../proof/testing/v1-s5-012-pr2-migration-report.md) lists the
+declarations a second reader could reasonably have made differently.
 
 ## The rules
 
@@ -171,34 +175,36 @@ the record is classified `C1` with the prompt set listed as the claim-material
 substitution. The schema accepts it. The claim's declaration refuses it, because a
 prompt set is input and not a component the claim depends on.
 
-## The ceilings, and what did not move
+## The ceilings, and what moved
 
-**The layer ceiling in the strategy data is untouched.**
-[`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json) still gives the `synthetic`
-evidence class a `C1` ceiling and still carries the superseded level names. That data
-is a `v1alpha1` contract, it constrains what a test *layer* may certify, and the only
-register it governs is the committed `v1alpha1` register — whose rows have no
-substitution metadata for the replacement to read. Lifting the ceiling now would loosen
-the guard over exactly the data the replacement cannot yet see. It moves with the
-register, in `V1-S5-012-PR2`, which is also the change that migrates the strategy
-data's terminology.
+**The layer ceiling in the strategy data no longer covers generated input.**
+[`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json) carries the current level
+names since `V1-S5-012-PR2`, and its `synthetic` evidence class names a simulated
+environment only — a substitution, which keeps its `C1` ceiling — and says in so many
+words that generated input is not the class. The rule [ADR 0016 D3](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
+records as too broad is gone from the data. No layer and no gate used the class, so no
+layer's ceiling moved: what moved is the rule, before anything relied on it. It moved
+with the register, as this page said it would, because the register is the data the
+replacement below could not read until it had substitution metadata.
 
-**The register ceiling now has a replacement.** The two `v1alpha1` guards that read
+**The register ceiling is replaced.** The two `v1alpha1` guards that read
 `claim.certificationLevel` — the register suite's ceiling test and the proof
-dashboard's `a-level-may-not-exceed-its-labels-ceiling` — stop applying the moment the
-register is migrated, because `v1alpha2` has no such field. What replaces them:
+dashboard's `a-level-may-not-exceed-its-labels-ceiling` — stopped applying when the
+register moved, because `v1alpha2` has no such field, and both are gone. What replaces
+them:
 
 - for a **classified** record, the substitution rules above, which do not look at an
-  evidence class at all;
+  evidence class at all — and every record in the committed register is classified;
 - for a **carried** classification, `a-legacy-classification-stays-under-its-legacy-ceiling`,
-  which applies the old ceiling to the old value and to nothing else. A record that
-  `V1-S5-012-PR2` leaves `legacy-unmigrated` is therefore still held to the rule it was
-  made under.
+  which applies the old ceiling to the old value and to nothing else. The migration
+  left no record `legacy-unmigrated`, so today it governs each claim's carried history
+  only.
 
-The suite runs every rule over the committed register, read into the new shape in
-memory, with every cited file required to exist, and requires zero refusals. It also
-repeats two of the `v1alpha1` suite's negative controls — a mock certified at `C2`, and
-a real-behaviour claim resting on a static label — against the replacement.
+The suite runs every rule over the committed register with every cited file required
+to exist, and over the superseded register read into the new shape in memory, and
+requires zero refusals from both. It also repeats two of the `v1alpha1` suite's
+negative controls — a mock certified at `C2`, and a real-behaviour claim resting on a
+static label — against the replacement.
 
 ## Where the heuristics stop
 
@@ -225,16 +231,13 @@ a real-behaviour claim resting on a static label — against the replacement.
 
 ## What this does not do
 
-- **It classifies nothing.** No committed record carries a current evidence level, and
-  none is given one here. Every rule has run over the illustrative register, the
-  published shapes, and the committed register *read* into the new shape — never over
-  a committed `v1alpha2` register, because there is none.
-- **It changes no public claim.** No claim's status, statement, evidence, or limitation
-  moves, and [the claim and evidence matrix](claim-evidence-matrix.md) and
-  [the proof dashboard](../proof/dashboard.md) render exactly what they did.
-- **It does not retire a `v1alpha1` guard.** Every rule that protects the committed
-  register today still runs; the replacement exists alongside it until the register
-  moves.
+- **It classifies nothing.** The rules check a level; they do not choose one. Every
+  level in the committed register was chosen by reading the record it belongs to, in
+  `V1-S5-012-PR2`, and [the migration report](../proof/testing/v1-s5-012-pr2-migration-report.md)
+  says how each was read and which readings could have gone the other way.
+- **It changes no public claim.** A rule refusing a record would fail the build; it
+  would not move a claim's status. The one status the migration moved, it moved by
+  measurement, and the report says so.
 - **It does not make the review rules true.** See above; that is the reason there are
   six.
 
@@ -245,6 +248,7 @@ a real-behaviour claim resting on a static label — against the replacement.
 | What the levels mean | [InferOps Evidence Levels (C0–C4)](evidence-levels.md) |
 | The shape a record takes, and the path out of `v1alpha1` | [The claim and evidence data model, `v1alpha2`](evidence-record-model.md) |
 | The decision that made a level a record's property | [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md) |
-| The register these rules will govern | [Claim and evidence matrix](claim-evidence-matrix.md) |
+| The register these rules govern | [Claim and evidence matrix](claim-evidence-matrix.md) |
+| How every committed record was read against the levels | [The V1 evidence migration, claim by claim](../proof/testing/v1-s5-012-pr2-migration-report.md) |
 | The suite that watches each rule fail | [`tests/testing/test_evidence_level_rules.py`](../../tests/testing/test_evidence_level_rules.py) |
 | The validation record for this change | [`v1-s5-012-pr1-validation.md`](../proof/testing/v1-s5-012-pr1-validation.md) |

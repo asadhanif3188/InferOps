@@ -7,18 +7,20 @@ What this suite establishes is that the page cannot say anything the claim and
 evidence register does not: that the committed page is byte for byte what the
 register produces today, so an edit made to it by hand is a failing build; that
 every count on it recomputes from the register rather than being read off the
-page; that every statement, status, level, evidence label, provider, environment,
-record, and limitation printed for a claim is the register's own value; that every
-claim the register does not certify appears in the page's own list of what V1 does
-not claim, so an absence cannot be dropped by leaving it out of a list; that every
-record the page links resolves from the page's own directory; that every rule
-the generator applies has been watched refusing a register, or a capability
-selection, corrupted to break it; that the overview a reviewer reads first
-recomputes from each group's own rows and links only headings the page carries;
-and that the README's route into the page -- its link beside the strongest
-evidence, the counts it quotes, the number of groups it names, and the records its
-strongest-evidence table links -- agrees with the register rather than with the
-day the README was written.
+page; that every statement, status, evidence record, level, environment, provider,
+substitution, file, and limitation printed for a claim is the register's own value;
+that every claim the register does not certify appears in the page's own list of
+what V1 does not claim, so an absence cannot be dropped by leaving it out of a list;
+that every record the page links resolves from the page's own directory; that every
+rule the generator applies has been watched refusing a register, or a capability
+selection, corrupted to break it -- including the register's own evidence-level
+rules, which the page runs again rather than restating; that the overview a
+reviewer reads first recomputes from each group's own records and links only
+headings the page carries; that the page says the levels are project-defined and
+keeps a claim's status apart from a record's level; and that the README's route
+into the page -- its link beside the strongest evidence, the counts it quotes, the
+number of groups it names, and the records its strongest-evidence table links --
+agrees with the register rather than with the day the README was written.
 
 What it does not establish is that any statement on the page is true. It checks
 derivation. Whether a record says what the row citing it says it says is a reading,
@@ -39,22 +41,30 @@ import pytest
 
 from tools.proof_dashboard import (
     CAPABILITIES,
+    LEVEL_ORDER,
     RULES,
     SUPPORTED_CONTRACT_VERSIONS,
     Capability,
     check_view,
+    claim_levels,
     claims_by_id,
+    environment_counts,
+    evidence_records,
     grouped_claims,
-    label_counts,
+    legacy_level,
     level_counts,
     load_record,
     named_providers,
     provider_counts,
+    reclassified_claims,
+    record_providers,
     render_dashboard,
     selection_findings,
     status_counts,
     strongest_level,
     uncertified_claims,
+    unmigrated_records,
+    unrecorded_provider_records,
 )
 from tools.proof_dashboard.core import link_from_dashboard
 from tools.proof_dashboard.render import anchor
@@ -62,7 +72,7 @@ from tools.proof_dashboard.render import anchor
 pytestmark = pytest.mark.docs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-RECORD_PATH = REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha1.json"
+RECORD_PATH = REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha2.json"
 DASHBOARD_PATH = REPO_ROOT / "docs" / "proof" / "dashboard.md"
 README_PATH = REPO_ROOT / "README.md"
 
@@ -89,6 +99,20 @@ def _row(record: dict[str, Any], claim_id: str) -> dict[str, Any]:
 
 def _rule_ids(findings: list[Any]) -> set[str]:
     return {finding.rule_id for finding in findings}
+
+
+def _details(findings: list[Any], rule_id: str) -> str:
+    return " ".join(
+        finding.detail for finding in findings if finding.rule_id == rule_id
+    )
+
+
+def _references(row: dict[str, Any]) -> list[str]:
+    return [
+        str(reference)
+        for held in evidence_records(row)
+        for reference in held["evidenceRefs"]
+    ]
 
 
 # ------------------------------------------------- the page is what is generated
@@ -126,12 +150,33 @@ def test_the_page_distinguishes_itself_from_the_operations_dashboard() -> None:
     assert "../telemetry/inference-operations-dashboard.md" in PAGE
 
 
+def test_the_page_says_the_levels_are_project_defined_where_a_reader_arrives() -> None:
+    """The acceptance criterion that no page presents C0-C4 as an outside standard.
+
+    Placed before the first table, because a reader who stops at the overview has
+    already read a level.
+    """
+    before = PAGE.split("## The capabilities at a glance", 1)[0]
+    opening = " ".join(line.removeprefix(">") for line in before.splitlines())
+    opening = " ".join(opening.split())
+    assert "**project-defined, and not an ISO, NIST, regulatory, or industry" in opening
+    assert "](../testing/evidence-levels.md)" in opening
+    assert "**A claim's status and an evidence level are different things.**" in opening
+
+
 # ------------------------------------------------------------- counts, recomputed
 
 
 def test_the_headline_count_is_the_register_count() -> None:
     certified = sum(1 for row in CLAIMS if row["status"] == "certified")
     assert f"**Certified: {certified} of {len(CLAIMS)} claims.**" in PAGE
+
+
+def test_the_record_count_the_opening_quotes_is_the_registers() -> None:
+    total = sum(len(evidence_records(row)) for row in CLAIMS)
+    assert f"one evidence record — {total} of them sit behind these claims" in " ".join(
+        PAGE.split()
+    )
 
 
 @pytest.mark.parametrize(
@@ -150,42 +195,136 @@ def test_the_status_table_carries_every_status_the_register_defines() -> None:
     }
 
 
-def test_only_a_certified_claim_is_counted_at_a_certification_level() -> None:
-    levels = level_counts(RECORD)
-    for level, count in levels.items():
-        assert count == sum(
-            1
-            for row in CLAIMS
-            if row["status"] == "certified" and row["certificationLevel"] == level
-        )
-        assert f"| `{level}` | {count} |" in PAGE
-    uncertified_levels = {
-        row["certificationLevel"]
+@pytest.mark.parametrize("level", LEVEL_ORDER)
+def test_every_level_count_recomputes_from_the_records(level: str) -> None:
+    """Records at a level, and certified claims holding one, counted separately.
+
+    All five levels are printed, including the ones nothing reached, so a zero is
+    a number on the page rather than a row nobody wrote.
+    """
+    records = sum(
+        1
         for row in CLAIMS
-        if row["status"] != "certified" and row["certificationLevel"]
-    }
-    assert not uncertified_levels, uncertified_levels
+        for held in evidence_records(row)
+        if held.get("evidenceLevel") == level
+    )
+    certified = sum(
+        1
+        for row in CLAIMS
+        if row["status"] == "certified"
+        and any(held.get("evidenceLevel") == level for held in evidence_records(row))
+    )
+    assert level_counts(RECORD)[level] == (records, certified)
+    name = next(
+        row["name"] for row in RECORD["evidenceLevels"] if row["levelId"] == level
+    )
+    assert f"| `{level}` | {records} | {certified} | [{name}](" in PAGE
 
 
-def test_every_evidence_label_count_recomputes_from_the_register() -> None:
-    for label, count in label_counts(RECORD).items():
-        assert count == sum(1 for row in CLAIMS if row["evidenceLabel"] == label)
-        assert f"| `{label}` | {count} |" in PAGE
+def test_no_record_in_the_register_is_at_c3_or_c4() -> None:
+    """True today, and the page's sentence saying so depends on it."""
+    assert level_counts(RECORD)["C3"] == (0, 0)
+    assert level_counts(RECORD)["C4"] == (0, 0)
+    assert "Nothing in this" in PAGE and "repository is `C3` or `C4`" in PAGE
 
 
-def test_the_provider_count_excludes_the_claims_that_name_no_provider() -> None:
-    """Folding them in would shrink the reference provider's share of the evidence."""
+def test_the_page_says_a_level_is_not_a_maturity_score() -> None:
+    assert "**`C0` to `C4` is not a maturity score.**" in PAGE
+
+
+def test_the_unmigrated_record_sentence_is_derived() -> None:
+    unmigrated = unmigrated_records(RECORD)
+    if unmigrated:
+        assert f"{len(unmigrated)} records are left `legacy-unmigrated`" in PAGE
+    else:
+        assert (
+            "Every record carries a level: none was left `legacy-unmigrated`." in PAGE
+        )
+
+
+def test_every_environment_count_recomputes_from_the_records() -> None:
+    counted = environment_counts(RECORD)
+    assert sum(counted.values()) == sum(len(evidence_records(row)) for row in CLAIMS)
+    for (environment, provider, hardware), count in counted.items():
+        assert f"| `{environment}` | `{provider}` | `{hardware}` | {count} |" in PAGE, (
+            environment,
+            provider,
+            hardware,
+        )
+
+
+def test_the_provider_count_excludes_the_records_that_name_no_provider() -> None:
+    """Folding them in would shrink the reference provider's share of the evidence.
+
+    ``unrecorded`` is the other value that is not a provider: a record whose source
+    never named one. It is counted in a sentence of its own, never as a provider.
+    """
     counts = provider_counts(RECORD)
     assert "not-applicable" not in counts
-    for provider, count in counts.items():
-        assert count == sum(1 for row in CLAIMS if row["provider"] == provider)
-        assert f"| `{provider}` | {count} |" in PAGE
+    assert "unrecorded" not in counts
+    for provider, (records, claims) in counts.items():
+        assert records == sum(
+            1
+            for row in CLAIMS
+            for held in evidence_records(row)
+            if held["environment"]["provider"] == provider
+        )
+        assert claims == sum(1 for row in CLAIMS if provider in record_providers(row))
+        assert f"| `{provider}` | {records} | {claims} |" in PAGE
+    unrecorded = unrecorded_provider_records(RECORD)
+    if unrecorded:
+        assert (
+            f"{len(unrecorded)} records ran on a Kubernetes cluster whose source"
+            in PAGE
+        )
 
 
 def test_the_page_refuses_to_generalise_one_provider_to_another() -> None:
     assert "A result on one provider certifies that provider." in PAGE
     assert "It does not certify" in PAGE
     assert "another provider, a cloud cluster, a GPU, another host" in PAGE
+
+
+# ------------------------------------------------ what the migration changed
+
+
+def test_the_migration_table_lists_every_claim_whose_levels_moved() -> None:
+    """Derived: the carried superseded level against the levels the records hold."""
+    section = PAGE.split("### What the migration changed\n", 1)[1].split("\n## ", 1)[0]
+    changed = reclassified_claims(RECORD)
+    expected = [
+        row
+        for row in CLAIMS
+        if claim_levels(row)
+        and claim_levels(row) != ([legacy_level(row)] if legacy_level(row) else [])
+    ]
+    assert [row["claimId"] for row, _, _ in changed] == [
+        row["claimId"] for row in expected
+    ]
+    for row, before, after in changed:
+        line = next(
+            line
+            for line in section.splitlines()
+            if line.startswith("| " + row["statement"].replace("|", r"\|"))
+        )
+        assert (f"`{before}`" if before else "none") in line, row["claimId"]
+        assert ", ".join(f"`{level}`" for level in after) in line, row["claimId"]
+    flat = " ".join(section.split())
+    assert f"{len(changed)} claims now hold records at a level other than" in flat
+    assert "](testing/v1-s5-012-pr2-migration-report.md)" in section
+
+
+def test_the_migration_table_does_not_claim_that_no_status_moved() -> None:
+    """The first draft said "No claim's status changed" as fixed prose.
+
+    It was false -- the migration demoted one claim -- and the page could not have
+    known either way, because a claim carries its superseded level and not its
+    superseded status. The page now says what it cannot show.
+    """
+    section = PAGE.split("### What the migration changed\n", 1)[1].split("\n## ", 1)[0]
+    flat = " ".join(section.split())
+    assert "status changed" not in flat.lower()
+    assert "This table cannot show a status that moved" in flat
 
 
 # --------------------------------------------- the rows are the register's values
@@ -208,15 +347,25 @@ def test_every_capability_group_shows_the_registers_own_values(capability: Any) 
     section = _section(capability.name)
     for claim_id in capability.claim_ids:
         row = BY_ID[claim_id]
-        assert row["statement"].replace("|", r"\|") in section, claim_id
-        assert row["limitation"].replace("|", r"\|") in section, claim_id
-        assert f"`{row['evidenceLabel']}`" in section, claim_id
-        assert f"`{row['status']}`" in section, claim_id
-        if row["certificationLevel"]:
-            assert f"`{row['certificationLevel']}`" in section, claim_id
-        for reference in row["evidenceRefs"]:
-            relative = link_from_dashboard(reference)
-            assert f"[`{relative}`]({relative})" in section, reference
+        line = next(
+            line
+            for line in section.splitlines()
+            if line.startswith("| " + row["statement"].replace("|", r"\|") + " |")
+        )
+        assert row["limitation"].replace("|", r"\|") in line, claim_id
+        assert f"| `{row['status']}` |" in line, claim_id
+        for held in evidence_records(row):
+            if held.get("evidenceLevel"):
+                assert f"`{held['evidenceLevel']}` · `" in line, held["recordId"]
+            environment = held["environment"]
+            assert f"`{environment['environmentId']}`" in line, held["recordId"]
+            if environment["provider"] not in ("not-applicable", "unrecorded"):
+                assert f"on `{environment['provider']}`" in line, held["recordId"]
+            for substitution in held["execution"]["substitutions"]:
+                assert f"`{substitution['componentId']}` (" in line, held["recordId"]
+            for reference in held["evidenceRefs"]:
+                relative = link_from_dashboard(reference)
+                assert f"[`{relative}`]({relative})" in line, reference
 
 
 @pytest.mark.parametrize(
@@ -364,8 +513,8 @@ def test_every_certified_claim_the_page_shows_links_a_record_that_resolves(
         claim_id for capability in CAPABILITIES for claim_id in capability.claim_ids
     }:
         pytest.skip("shown in the register rather than on the page")
-    assert row["evidenceRefs"], row["claimId"]
-    for reference in row["evidenceRefs"]:
+    assert claim_levels(row), row["claimId"]
+    for reference in _references(row):
         relative = link_from_dashboard(reference)
         assert f"[`{relative}`]({relative})" in PAGE, reference
         assert (DASHBOARD_PATH.parent / relative).exists(), reference
@@ -374,7 +523,7 @@ def test_every_certified_claim_the_page_shows_links_a_record_that_resolves(
 def test_no_link_on_the_page_escapes_the_repository() -> None:
     for capability in CAPABILITIES:
         for claim_id in capability.claim_ids:
-            for reference in BY_ID[claim_id]["evidenceRefs"]:
+            for reference in _references(BY_ID[claim_id]):
                 assert not link_from_dashboard(reference).startswith("../.."), reference
 
 
@@ -420,7 +569,9 @@ def test_the_multi_replica_capability_is_shown_as_not_claimed() -> None:
     """The one group whose only row is an absence, and it stays an absence.
 
     It is here because this is the exact promotion a dashboard makes by accident:
-    a capability heading with nothing under it reads as a capability.
+    a capability heading with nothing under it reads as a capability. Since the
+    migration its record is classified -- `C0`, because nothing ran -- and the
+    overview still shows no level for the group, because no row in it is certified.
     """
     assert BY_ID["multi-replica-serving-is-certified"]["status"] == "not-claimed"
     assert "### Multi-replica serving\n" in PAGE
@@ -441,15 +592,15 @@ def test_every_rule_is_stated_and_watched() -> None:
 
 
 def test_the_rule_refusing_a_register_declares_a_version_the_page_can_read() -> None:
-    """A register in the next shape is refused rather than summarised badly.
+    """A register in the old shape is refused rather than summarised badly.
 
-    ``v1alpha2`` moves the level and the evidence class onto evidence records. A
-    renderer that read one without noticing would print an empty level column and
-    a page that looked merely incomplete. The version is what makes that a refusal
-    instead, and this drives it over both ways a register can fail to declare one.
+    ``v1alpha1`` stored one level and one label per claim and no records. A
+    renderer that read one without noticing would print every claim with no
+    evidence at all. The version is what makes that a refusal instead, and this
+    drives it over both ways a register can fail to declare one.
     """
     moved = copy.deepcopy(RECORD)
-    moved["contractVersion"] = "inferops.io/v1alpha2"
+    moved["contractVersion"] = "inferops.io/v1alpha1"
     assert _rule_ids(check_view(moved)) == {
         "a-register-declares-a-version-the-page-can-read"
     }
@@ -463,6 +614,120 @@ def test_the_rule_refusing_a_register_declares_a_version_the_page_can_read() -> 
 
 def test_the_committed_register_declares_a_version_this_page_reads() -> None:
     assert RECORD["contractVersion"] in SUPPORTED_CONTRACT_VERSIONS
+
+
+def _mocked_real_serving_record() -> dict[str, Any]:
+    """The serving claim's loopback record, with the runtime replaced by the mock."""
+    record = _corrupt()
+    held = _row(
+        record, "the-selected-model-serves-a-real-completion-through-the-inferops-api"
+    )["evidenceRecords"][0]
+    held["execution"]["executedComponents"] = [
+        component
+        for component in held["execution"]["executedComponents"]
+        if component["componentId"] != "llama-cpp-server"
+    ]
+    held["execution"]["substitutions"] = [
+        {
+            "componentId": "llama-cpp-server",
+            "role": "inference-runtime",
+            "substituteKind": "mock",
+            "claimMaterial": False,
+            "rationale": "Flagged immaterial so that the record passes the schema at C2.",
+        }
+    ]
+    return record
+
+
+@pytest.mark.parametrize(
+    ("what", "corrupt", "evidence_rule"),
+    [
+        (
+            "a mock behind a real-serving claim, flagged immaterial",
+            lambda record: _mocked_real_serving_record(),
+            "a-substituted-claim-material-component-is-flagged-material",
+        ),
+        (
+            "a template cited as a record",
+            lambda record: (
+                _row(record, "a-helm-release-installs-and-uninstalls-without-residue")[
+                    "evidenceRecords"
+                ][0].update(
+                    evidenceRefs=["docs/proof/templates/TEMPLATE-claim-evidence.md"]
+                )
+                or record
+            ),
+            "a-template-is-not-evidence",
+        ),
+        (
+            "a record that does not exist",
+            lambda record: (
+                _row(record, "a-helm-release-installs-and-uninstalls-without-residue")[
+                    "evidenceRecords"
+                ][0].update(evidenceRefs=["docs/proof/serving/a-run-nobody-made.md"])
+                or record
+            ),
+            "a-cited-record-exists",
+        ),
+        (
+            "a path outside the evidence root",
+            lambda record: (
+                _row(record, "a-helm-release-installs-and-uninstalls-without-residue")[
+                    "evidenceRecords"
+                ][0].update(evidenceRefs=["docs/testing/claim-evidence-matrix.md"])
+                or record
+            ),
+            "evidence-is-cited-from-the-evidence-root",
+        ),
+        (
+            "a C2 record that names no environment outside the repository",
+            lambda record: (
+                _row(record, "a-helm-release-installs-and-uninstalls-without-residue")[
+                    "evidenceRecords"
+                ][0]["environment"].update(environmentId="repository-only")
+                or record
+            ),
+            "an-executing-record-ran-outside-the-repository",
+        ),
+    ],
+)
+def test_the_rule_refusing_the_register_passes_the_evidence_level_rules(
+    what: str, corrupt: Any, evidence_rule: str
+) -> None:
+    """The page runs the register's own rules again, and names which one refused.
+
+    These are the failures the v1alpha1 page guarded with its own ceiling, label,
+    citation, and real-behaviour rules. They are one rule here because the page
+    delegates to the same validator the register's suite runs, so there is one
+    implementation of what a record at each level must carry.
+    """
+    record = corrupt(_corrupt())
+    findings = check_view(record)
+    assert "the-register-passes-the-evidence-level-rules" in _rule_ids(findings), what
+    assert evidence_rule in _details(
+        findings, "the-register-passes-the-evidence-level-rules"
+    ), (what, _details(findings, "the-register-passes-the-evidence-level-rules"))
+
+
+def test_a_planned_claim_holding_a_record_is_refused_through_the_evidence_rules() -> (
+    None
+):
+    record = _corrupt()
+    held = copy.deepcopy(
+        _row(record, "a-helm-release-installs-and-uninstalls-without-residue")[
+            "evidenceRecords"
+        ][0]
+    )
+    held["claimId"] = "sustained-throughput-and-capacity-under-load"
+    held["recordId"] = "sustained-throughput-and-capacity-under-load-c2"
+    _row(record, "sustained-throughput-and-capacity-under-load")["evidenceRecords"] = [
+        held
+    ]
+    findings = check_view(record)
+    assert "the-register-passes-the-evidence-level-rules" in _rule_ids(findings)
+    assert "maxItems" in _details(
+        findings, "the-register-passes-the-evidence-level-rules"
+    )
 
 
 def test_the_rule_refusing_a_capability_names_only_claims_the_register_holds() -> None:
@@ -501,89 +766,20 @@ def test_the_rule_refusing_no_claim_is_shown_under_two_capabilities() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("what", "citation"),
-    [
-        (
-            "a template rather than a record",
-            ["docs/proof/templates/TEMPLATE-claim-evidence.md"],
-        ),
-        ("nothing at all", []),
-        ("a path outside the evidence root", ["docs/testing/claim-evidence-matrix.md"]),
-        ("a record that does not exist", ["docs/proof/serving/a-run-nobody-made.md"]),
-    ],
-)
-def test_the_rule_refusing_a_certified_claim_cites_a_record_that_exists(
-    what: str, citation: list[str]
-) -> None:
-    """All four ways a citation fails, not the two that are easiest to write.
-
-    A rule with four branches and two controls is two-thirds of a rule. The last
-    two are the ones that would catch a typo'd path and a record somebody deleted
-    — the failures a reader of the page could not possibly notice.
-    """
-    record = _corrupt()
-    _row(record, "a-helm-release-installs-and-uninstalls-without-residue")[
-        "evidenceRefs"
-    ] = citation
-    assert "a-certified-claim-cites-a-record-that-exists" in _rule_ids(
-        check_view(record)
-    ), what
-
-
-def test_the_rule_refusing_a_planned_or_deferred_claim_cites_no_record() -> None:
-    record = _corrupt()
-    _row(record, "sustained-throughput-and-capacity-under-load")["evidenceRefs"] = [
-        "docs/proof/serving/v1-s4-004-pr1-validation.md"
-    ]
-    assert "a-planned-or-deferred-claim-cites-no-record" in _rule_ids(
-        check_view(record)
-    )
-
-
-def test_the_rule_refusing_an_evidence_label_is_one_the_register_defines() -> None:
-    """A label the register does not define carries no ceiling to be held to.
-
-    It had been reported under the ceiling rule's name, which made one rule look
-    like it was watching two different failures. An independent review of this
-    change found it.
-    """
-    record = _corrupt()
-    _row(record, "multi-replica-serving-is-certified")["evidenceLabel"] = "field-proven"
-    assert "an-evidence-label-is-one-the-register-defines" in _rule_ids(
-        check_view(record)
-    )
-
-
-def test_the_rule_refusing_a_level_may_not_exceed_its_labels_ceiling() -> None:
-    record = _corrupt()
-    row = _row(
-        record, "the-inference-api-serves-five-routes-with-explicit-adapter-selection"
-    )
-    assert row["evidenceLabel"] == "mock"
-    row["certificationLevel"] = "C2"
-    assert "a-level-may-not-exceed-its-labels-ceiling" in _rule_ids(check_view(record))
-
-
-def test_the_rule_refusing_a_real_behaviour_capability_rests_on_real_evidence() -> None:
-    """The rule that stops a mock appearing behind a serving sentence."""
-    record = _corrupt()
-    row = _row(
-        record, "the-selected-model-serves-a-real-completion-through-the-inferops-api"
-    )
-    row["evidenceLabel"] = "mock"
-    row["certificationLevel"] = "C1"
-    assert "a-real-behaviour-capability-rests-on-real-evidence" in _rule_ids(
-        check_view(record)
-    )
-
-
 def test_the_rule_refusing_a_real_cluster_result_names_its_provider() -> None:
     record = _corrupt()
     _row(record, "the-selected-runtime-serves-a-real-completion-in-a-cluster")[
-        "provider"
-    ] = "not-applicable"
+        "evidenceRecords"
+    ][0]["environment"]["provider"] = "not-applicable"
     assert "a-real-cluster-result-names-its-provider" in _rule_ids(check_view(record))
+
+
+def test_a_cluster_record_that_says_its_provider_is_unrecorded_is_admitted() -> None:
+    """The honest absence is not the refused one. It is shown, and counted apart."""
+    assert unrecorded_provider_records(RECORD), "the premise of this check changed"
+    assert "a-real-cluster-result-names-its-provider" not in _rule_ids(
+        check_view(RECORD)
+    )
 
 
 def test_the_rule_refusing_a_cell_value_fits_in_one_table_row() -> None:
@@ -599,11 +795,15 @@ def test_the_rule_refusing_a_cell_value_fits_in_one_table_row() -> None:
     )
     assert "a-cell-value-fits-in-one-table-row" in _rule_ids(check_view(record))
 
-    meanings = _corrupt()
-    meanings["evidenceLabels"][0]["meaning"] = (
-        "A statement in a document.\nNothing ran."
-    )
-    assert "a-cell-value-fits-in-one-table-row" in _rule_ids(check_view(meanings))
+    names = _corrupt()
+    names["evidenceLevels"][0]["name"] = "Static\nEvidence"
+    assert "a-cell-value-fits-in-one-table-row" in _rule_ids(check_view(names))
+
+    provider = _corrupt()
+    _row(provider, "a-helm-release-installs-and-uninstalls-without-residue")[
+        "evidenceRecords"
+    ][0]["environment"]["provider"] = "docker-\ndesktop"
+    assert "a-cell-value-fits-in-one-table-row" in _rule_ids(check_view(provider))
 
 
 def test_the_rule_refusing_a_displayed_status_is_one_the_register_defines() -> None:
@@ -635,7 +835,7 @@ def test_a_refused_register_renders_no_page(monkeypatch, capsys) -> None:
 
     record = _corrupt()
     _row(record, "sustained-throughput-and-capacity-under-load")["status"] = "certified"
-    assert "a-certified-claim-cites-a-record-that-exists" in _rule_ids(
+    assert "the-register-passes-the-evidence-level-rules" in _rule_ids(
         check_view(record)
     )
 
@@ -655,13 +855,17 @@ def test_a_promoted_claim_changes_the_page_it_would_render() -> None:
     had been written by hand would not notice. This one does.
     """
     record = _corrupt()
+    source = _row(
+        record,
+        "six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link",
+    )["evidenceRecords"][0]
+    held = copy.deepcopy(source)
+    held["claimId"] = "an-alert-reaches-somebody"
+    held["recordId"] = "an-alert-reaches-somebody-c0"
     row = _row(record, "an-alert-reaches-somebody")
     row["status"] = "certified"
-    row["certificationLevel"] = "C0"
-    row["evidenceLabel"] = "local-static"
-    row["assertsRealBehaviour"] = False
-    row["environment"] = "repository-only"
-    row["evidenceRefs"] = ["docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md"]
+    row["notClaimedReason"] = None
+    row["evidenceRecords"] = [held]
     assert check_view(record) == []
     assert render_dashboard(record) != PAGE
 
@@ -710,18 +914,27 @@ def test_every_overview_row_recomputes_from_the_groups_own_rows(
         ), (capability.capability_id, status)
 
     certified_levels = [
-        row["certificationLevel"] for row in shown if row["status"] == "certified"
+        held["evidenceLevel"]
+        for row in shown
+        if row["status"] == "certified"
+        for held in evidence_records(row)
+        if held.get("evidenceLevel")
     ]
     level = strongest_level(shown)
     if certified_levels:
-        assert level == max(certified_levels, key=["C0", "C1", "C2"].index)
+        assert level == max(certified_levels, key=list(LEVEL_ORDER).index)
         assert cells[5] == f"`{level}`"
     else:
         assert level is None
         assert cells[5] == "—"
 
     providers = sorted(
-        {row["provider"] for row in shown if row["provider"] != "not-applicable"}
+        {
+            held["environment"]["provider"]
+            for row in shown
+            for held in evidence_records(row)
+            if held["environment"]["provider"] not in ("not-applicable", "unrecorded")
+        }
     )
     assert named_providers(shown) == providers
     assert cells[6] == (
@@ -829,6 +1042,9 @@ def test_the_fixed_prose_never_claims_a_single_provider() -> None:
     provider, `docker-desktop`" is that result's true scope and must stay.
     """
     assert len(provider_counts(RECORD)) > 1, "the premise of this check has changed"
+    assert not any(len(record_providers(row)) > 1 for row in CLAIMS), (
+        "a claim now holds records from two providers; the page's sentence changes"
+    )
     later = PAGE.split("## What a later version of this page might do", 1)[1]
     flat = " ".join(later.split())
     assert "one provider, one host" not in flat.lower()
@@ -912,7 +1128,9 @@ def test_the_counts_the_readme_quotes_are_the_registers() -> None:
 
     Digits in prose are what drifts in this repository. The register moved from 41
     certified to 42 when the clean-clone run was certified, and nothing but a
-    reader would have noticed the README still saying 41.
+    reader would have noticed the README still saying 41. It moved from 43 back to
+    42 in the evidence migration, when a claim the audit found untrue as stated was
+    moved to not-claimed.
     """
     counts = status_counts(RECORD)
     sentence = (
@@ -975,7 +1193,7 @@ def test_every_record_the_readme_leads_with_is_cited_by_a_certified_claim(
     citing = [
         row["claimId"]
         for row in CLAIMS
-        if row["status"] == "certified" and record_path in row["evidenceRefs"]
+        if row["status"] == "certified" and record_path in _references(row)
     ]
     assert citing, {
         "linked from the README and cited by no certified claim": record_path

@@ -152,6 +152,7 @@ passing result may be used to certify are settled in
 [the test and CI strategy](docs/testing/test-strategy.md) and
 [ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
 Read them before adding a test, and read
+[the evidence-level specification](docs/testing/evidence-levels.md) and
 [the certification levels](docs/testing/certification.md) before citing one as
 evidence.
 
@@ -1229,6 +1230,21 @@ one a layer is assigned from. Evidence that certifies a published
 claim is committed under `docs/proof/` and kept for as long as the claim stands; a
 lane's raw output expires and may never be cited as the evidence for a published
 claim.
+
+A label says what a result ran against; an **evidence level** says how one record was
+obtained, and they are different questions. The levels, `C0` Static to `C4`
+Operational, are defined only in
+[the evidence-level specification](docs/testing/evidence-levels.md) — project-defined,
+and not an ISO, NIST, regulatory, or industry certification standard. Since
+`V1-S5-012-PR2` every evidence record in
+[the claim and evidence register](docs/testing/claim-evidence-matrix.md) carries its
+own level, and a record added there has to say what executed, what was substituted,
+where its workload came from, where it ran, how to repeat it, what it pinned, and what
+it does not establish; a validator refuses a record whose level its execution does
+not support. Two rules catch most mistakes: a record that replaced a component its
+claim declares material is `C1` however faithful the substitute, and a generated
+workload is a workload source, never a substitution, so it cannot put a record at
+`C1` on its own. A level is never raised by rewording a document.
 
 ## Conduct and security
 
