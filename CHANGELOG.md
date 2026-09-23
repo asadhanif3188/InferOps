@@ -34,8 +34,10 @@ once versioned releases begin.
   model is evidence about all four.
 
   **No claim, level, evidence class, or committed record moves.** `contracts/`,
-  `src/`, `charts/`, `deploy/`, and `tools/` are unchanged, and no file under
-  `docs/proof/` is edited. [ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
+  `src/`, `charts/`, `deploy/`, and `tools/` are unchanged, and no dated evidence
+  record is edited — the evidence index gains a row and a paragraph, and that is the
+  only file under `docs/proof/` this change touches besides the new record.
+  [ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
   D4 keeps its accepted text and gains a dated note: a decision record is evidence
   about when a decision was made, and editing it to be currently correct destroys the
   only thing it is good for.

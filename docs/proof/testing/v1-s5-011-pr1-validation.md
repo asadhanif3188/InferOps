@@ -18,9 +18,16 @@ change decides what five identifiers mean.
 
 **Nothing is reclassified, and nothing product-facing changes.** `contracts/`, `src/`,
 `charts/`, `deploy/`, `infra/`, `scripts/`, and `tools/` are byte-for-byte unchanged.
-No claim status, certification level, evidence class, or committed record moves. No
-file under [`docs/proof/`](../) is edited except this new record. The claim register,
-the proof dashboard, and the CI gate matrix are untouched.
+No claim status, certification level, evidence class, or committed record moves. The
+claim register, the proof dashboard, and the CI gate matrix are untouched.
+
+**No dated evidence record is edited.** Two files under [`docs/proof/`](../) change
+and neither is a record: this one, which is new, and
+[the evidence index](../README.md), which gains a row for it and a paragraph saying
+that every record it indexes was classified under the superseded meanings and that
+none has been re-examined. An earlier draft of this record and of the changelog said
+"no file under `docs/proof/` is edited", which was false of the index; the
+independent review before this change landed caught it.
 
 ## What the change is
 
@@ -55,7 +62,9 @@ This is the part most easily overstated, so it is stated as a table.
 | Statement | Enforced by | Today |
 |---|---|---|
 | One document binds `C0`–`C4` to the current names | `test_only_the_specification_defines_the_current_levels` | yes |
-| A superseded pairing appears only where it is declared superseded | `test_a_superseded_meaning_appears_only_where_it_is_declared_superseded` and its companion | yes |
+| A current document states a superseded pairing only if registered | `test_a_current_document_states_a_superseded_meaning_only_if_registered` | yes |
+| Any document stating a superseded pairing declares it superseded | `test_every_document_stating_a_superseded_meaning_declares_it_superseded` | yes |
+| The surfaces awaiting migration carry the notice where a reader lands | `test_every_surface_awaiting_migration_opens_with_the_supersession_notice` | yes |
 | The mapping and the project-defined disclaimer are published | `test_the_mapping_documents_publish_every_superseded_meaning`, `test_the_specification_denies_being_an_external_standard` | yes |
 | ADR 0005 D4's accepted text is annotated, not rewritten | `test_the_prior_decision_is_amended_rather_than_rewritten` | yes |
 | The new ADR has a valid owner and sign-off authority | `tests/architecture/test_decision_authority.py`, over the register | yes |
@@ -112,16 +121,24 @@ POSIX shell, with every file committed so that `git ls-files` sees them.
 | `uv run --locked ruff format --check .` | `479 files already formatted` |
 | `uv run --locked python -m mypy` | `Success: no issues found in 263 source files` |
 | `uv run --locked python -m pytest tests/testing/test_evidence_levels.py -q` | `38 passed` |
-| `uv run --locked python -m pytest tests/testing tests/architecture -q` | recorded below |
-| `uv run --locked python -m pytest -q` | recorded below |
+| `uv run --locked python -m pytest tests/testing tests/architecture -q` | `7350 passed, 6 skipped` |
+| `uv run --locked python -m pytest -q` | `12923 passed, 33 skipped, 14 deselected` |
 | `git diff --check main...HEAD` | no output |
 | `git ls-files -z '*.md' \| xargs -0 grep -n '[[:blank:]]$'` | no match |
 | `git ls-files -z '*.md' \| xargs -0 grep -n "$(printf '\t')"` | no match |
 
-The full-suite and subset counts are recorded in the pull request that carries this
-change, from a run with every file committed. A run with an untracked file produces a
-different count, because both the link suite and this change's suite collect from
-`git ls-files`.
+Both counts are from runs with every file committed. A run with an untracked file
+produces a different count, because the link suite and this change's suite both
+collect from `git ls-files`.
+
+**One earlier full-suite run reported a failure and it was an artifact of how it was
+run, not of this change.** Two `pytest` processes were running at once, and
+`tests/serving/test_performance_scenarios.py::test_the_collector_is_asked_by_get_without_parameters_and_by_post_with_them`
+failed in one of them. That test reads nothing this change touches, it passes on its
+own, and the run recorded above — executed alone, on the committed tree — passes it
+along with everything else. It is recorded here rather than dropped, because a
+failure seen once and not explained is the kind of thing a later reader deserves to
+find already answered.
 
 **No cluster, model, or runtime command was run.** The `cluster`, `realruntime`,
 `failure`, and `load` markers stay deselected by

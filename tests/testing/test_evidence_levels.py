@@ -12,6 +12,13 @@ told they are superseded, and that the specification's own statements about what
 *not* yet enforced are still true of the enforcing data. They establish nothing about
 any run, any claim, or any record.
 
+One gap is known and deliberately open. These checks recognise two vocabularies --
+the current names and the superseded ones -- so a document that invented a *third*
+set of meanings for `C0` to `C4` would be caught by neither scan. Catching that needs
+a rule about what a level table may say rather than a list of what it may not, and
+nothing here attempts one. It is review's job, and this comment is where a reader
+finds out that it is.
+
 The last of those is the one worth understanding. The specification says, in as many
 words, that the committed strategy data still carries the superseded level names and
 still applies a `C1` ceiling to the `synthetic` evidence class. That is an honest
@@ -104,6 +111,19 @@ RECLASSIFIES_NOTHING = (
 )
 
 
+#: What may sit between an identifier and its name in prose. A document that means
+#: "C1 means Mock" writes it as `C1 Mock`, `C1: Mock`, `C1 (Mock)`, or `C1 -- Mock`,
+#: and a scan that only knows the first of those is a scan that can be walked around
+#: without trying. The independent review of this change found it that way.
+EN_DASH = chr(0x2013)
+EM_DASH = chr(0x2014)
+SEPARATOR = rf"(?:\s|\s*[:(\-{EN_DASH}{EM_DASH}]\s*)+"
+
+#: How much of a document counts as "where a reader lands". A supersession notice
+#: further down than this is a notice the reader who skims has already missed.
+NOTICE_WINDOW = 2000
+
+
 def binding(identifier: str, name: str) -> str:
     """A table row binding an identifier to a name, which is how this repository
     publishes a definition: an inline code span in the first cell, the name in the
@@ -147,9 +167,9 @@ def carries_a_superseded_meaning(text: str) -> list[str]:
     found = []
     for identifier, name in SUPERSEDED:
         pairing = (
-            rf"^\|\s*`{identifier}`\s*\|\s*{re.escape(name)}\s*\|"
-            rf"|\b{identifier}\s+{re.escape(name)}\b"
-            rf"|`{identifier}`\s+{re.escape(name)}\b"
+            rf"^\|\s*`?{identifier}`?\s*\|\s*{re.escape(name)}\s*\|"
+            rf"|`?{identifier}`?{SEPARATOR}{re.escape(name)}\b"
+            rf"|\b{re.escape(name)}{SEPARATOR}\(?`?{identifier}`?\)?"
         )
         if re.search(pairing, text, flags=re.MULTILINE):
             found.append(f"{identifier} {name}")
@@ -286,6 +306,31 @@ def test_every_surface_awaiting_migration_points_at_the_authoritative_definition
     """The pending list shrinks as the migration lands, and never rots in place."""
     assert "evidence-levels.md" in read(relative), (
         f"{relative} does not send a reader to the authoritative definition"
+    )
+
+
+@pytest.mark.parametrize("relative", sorted(AWAITING_MIGRATION))
+def test_every_surface_awaiting_migration_opens_with_the_supersession_notice(
+    relative: str,
+) -> None:
+    """The notice has to be where a reader arrives, not merely somewhere in the file.
+
+    Without this, the banner at the top of the certification document could be
+    deleted and the suite would still pass on an unrelated later mention of the word
+    `superseded` -- which is exactly the failure the banner exists to prevent, since
+    a reader who skims the level table and leaves never reaches the later mention.
+    """
+    opening = read(relative)[:NOTICE_WINDOW]
+
+    assert "superseded" in opening.lower(), {
+        "document": relative,
+        "why": (
+            "no supersession notice in the opening of the document; a reader who "
+            "stops at the level table would take the superseded meanings as current"
+        ),
+    }
+    assert "evidence-levels.md" in opening, (
+        f"{relative} does not point at the authoritative definition where a reader lands"
     )
 
 
