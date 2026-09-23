@@ -8,6 +8,73 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Added
+
+- **A versioned claim and evidence data model that can hold what the evidence-level
+  specification describes.**
+  [`docs/testing/claim-evidence-matrix.v1alpha2.schema.json`](docs/testing/claim-evidence-matrix.v1alpha2.schema.json)
+  puts the evidence level on an **evidence record** and lets one claim hold several,
+  which is the shape [ADR 0016](docs/architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
+  D2 described and `v1alpha1` cannot represent.
+  [The model document](docs/testing/evidence-record-model.md) explains the version,
+  the old and new shapes, and the path between them.
+
+  **`v1alpha2`, and the version string is an argument rather than a habit.** The
+  change removes a required field from the claim object and makes every currently
+  valid document invalid, which is *breaking* by
+  [this repository's own compatibility rules](docs/contracts/workload-contract.md) —
+  rules that decline the usual alpha convention on the grounds that a contract
+  redefinable under a stable identifier is not enforced. `v2alpha1` would have said
+  a stable `v1` existed and is being left behind; none ever did.
+
+  **It is not a rename.** `claim.certificationLevel` does not become
+  `claim.evidenceLevel`: the claim object has no level property at all and refuses
+  unknown ones. A record now carries what executed, what was substituted and whether
+  each substitution was material to the claim, where the workload came from and
+  whether it was declared representative, the environment, the versions, the
+  commands, the measurement method and observation period, the acceptance criteria
+  and whether each was registered before the run, the results, the limitations, and
+  what it does not establish. `execution.substitutions[]` and `workload.source` are
+  different objects, so generated input imposes no ceiling — a committed fixture
+  validates a synthetic workload at `C2`, and the same run classified `C1` on the
+  strength of its input is refused.
+
+  **Those fields are required, not encouraged.** A record carrying a level must name
+  at least one component that executed, say where its input came from, carry an
+  immutable identifier or the record that names one, and cite at least one artifact a
+  reader can open; `C4` must document what the observation window did not cover. The
+  first draft of the schema left all five optional, so a record could be classified
+  `C2` while naming nothing that ran — which is what the level is *defined* as. Two
+  independent reviews caught it before this landed, and thirty committed fixtures now
+  include one built to break each rule.
+
+  **Nothing is migrated and nothing is reclassified.**
+  [`claim-evidence-matrix.v1alpha1.json`](docs/testing/claim-evidence-matrix.v1alpha1.json)
+  is unchanged, every consumer still reads it, and no file under `docs/proof/` is
+  edited. [`tools/evidence_model`](tools/evidence_model/) reads the committed
+  register into the new shape **in memory** so the migration can be reviewed as a
+  transformation before it is performed as an edit: every record it produces is
+  `legacy-unmigrated`, carries no evidence level, and keeps its superseded
+  classification verbatim. Copying `certificationLevel` into `evidenceLevel` would
+  restate the register's forty-three classifications in a vocabulary they were not made
+  in. The claim-by-claim reading is `V1-S5-012-PR2`, and validators for the rules a
+  schema cannot check are `V1-S5-012-PR1` — which has to land first, because the two
+  ceiling guards that read `claim.certificationLevel` stop applying the moment the
+  register moves.
+
+  **One consumer changed.** [The proof dashboard](docs/proof/dashboard.md) gained a
+  rule — it refuses to render from a register whose `contractVersion` it does not
+  implement — so that the migration cannot be read with the wrong assumptions
+  instead of being refused. The committed page is unchanged. `ADR 0016` gains a dated
+  note saying where its `D2`, `R4`, and `Q2` now point — `Q2` is answered, as that
+  record said this change might — and
+  [the `V1-S5-011-PR1` record](docs/proof/testing/v1-s5-011-pr1-validation.md) gains
+  one saying that the tripwire it predicted this change would fire belongs to
+  `V1-S5-012-PR1` instead. Neither record's accepted text is edited.
+  [The validation record](docs/proof/testing/v1-s5-011-pr2-validation.md) lists what
+  ran, what the checks caught, and the four judgements the schema turns into flags
+  without being able to make them true.
+
 ### Changed
 
 - **`C0` to `C4` mean something different, and nothing has been reclassified.**

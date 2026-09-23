@@ -1,0 +1,113 @@
+{
+  "claimId": "an-illustrative-measured-absence",
+  "area": "serving-api",
+  "statement": "A property a reader would expect and V1 states it does not have.",
+  "status": "not-claimed",
+  "assertsRealBehaviour": true,
+  "strategyClaimIds": [],
+  "implementationRefs": [
+    "src/inferops"
+  ],
+  "automatedTestRefs": [
+    "tests/testing/test_evidence_record_model.py"
+  ],
+  "recordedCoverageGaps": [],
+  "ciGateIds": [
+    "default-lane-tests"
+  ],
+  "evidenceRecords": [
+    {
+      "recordId": "the-run-that-measured-the-absence",
+      "claimId": "an-illustrative-measured-absence",
+      "migrationState": "migrated",
+      "evidenceLevel": "C2",
+      "summary": "A generated request traversed the real API, the real adapter, the real inference runtime, and the pinned model. The input was synthetic and no component material to the claim was substituted, so the record is C2 and not C1.",
+      "execution": {
+        "targetBehaviourExecuted": true,
+        "executedComponents": [
+          {
+            "componentId": "inference-api",
+            "role": "api"
+          },
+          {
+            "componentId": "provider-adapter",
+            "role": "adapter"
+          },
+          {
+            "componentId": "inference-runtime",
+            "role": "inference-runtime"
+          },
+          {
+            "componentId": "pinned-model",
+            "role": "model"
+          }
+        ],
+        "substitutions": [
+          {
+            "componentId": "metrics-collector",
+            "role": "collector",
+            "substituteKind": "stub",
+            "claimMaterial": false,
+            "rationale": "Telemetry was captured in-process rather than scraped. Nothing about the completion depends on it, and it is recorded so a reviewer decides that rather than assuming it."
+          }
+        ]
+      },
+      "workload": {
+        "source": "synthetic",
+        "description": "One generated prompt of a fixed length, issued once.",
+        "shape": {
+          "concurrency": 1,
+          "requestCount": 1
+        }
+      },
+      "environment": {
+        "environmentId": "local-container",
+        "provider": "not-applicable",
+        "hardwareClass": "cpu"
+      },
+      "versions": [
+        {
+          "component": "runtime-image",
+          "kind": "image-digest",
+          "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "component": "model",
+          "kind": "model-revision",
+          "value": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "procedure": {
+        "commands": [
+          "python -m tools.runtime_certification"
+        ],
+        "scriptRefs": [
+          "scripts/certify-runtime.sh"
+        ]
+      },
+      "measurement": {
+        "method": "One request issued and its response body, status, and wall-clock duration recorded."
+      },
+      "results": [
+        {
+          "resultId": "completion-returned",
+          "statement": "The pinned model returned a non-empty completion through the real path.",
+          "value": true
+        }
+      ],
+      "evidenceRefs": [
+        "docs/proof/templates/TEMPLATE-claim-evidence.md"
+      ],
+      "limitations": [
+        "One request on one contributor's CPU. Nothing about capacity, latency under load, or an accelerator follows."
+      ],
+      "doesNotEstablish": [
+        "Representative capacity, a sustained latency target, or behaviour under a production workload distribution."
+      ]
+    }
+  ],
+  "limitation": "An illustrative boundary. The fixture is a shape, not a result.",
+  "doesNotEstablish": "Anything at all about InferOps. It is a fixture.",
+  "readmeRefs": [],
+  "notClaimedReason": "The record cited measured the absence. An absence somebody measured is worth more than one nobody mentions."
+}

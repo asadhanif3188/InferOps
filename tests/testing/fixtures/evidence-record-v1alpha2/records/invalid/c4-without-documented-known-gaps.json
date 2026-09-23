@@ -1,0 +1,76 @@
+{
+  "recordId": "c4-without-documented-known-gaps",
+  "claimId": "an-illustrative-service-meets-its-targets-in-production",
+  "migrationState": "migrated",
+  "evidenceLevel": "C4",
+  "summary": "Operational evidence claimed for a window whose gaps are undocumented. A month in which the failure a claim is about never happened is the gap.",
+  "execution": {
+    "targetBehaviourExecuted": true,
+    "executedComponents": [
+      {
+        "componentId": "inference-api",
+        "role": "api"
+      },
+      {
+        "componentId": "inference-runtime",
+        "role": "inference-runtime"
+      },
+      {
+        "componentId": "pinned-model",
+        "role": "model"
+      }
+    ],
+    "substitutions": []
+  },
+  "workload": {
+    "source": "production-traffic",
+    "description": "Whatever the depending workload sent during the window."
+  },
+  "environment": {
+    "environmentId": "organizational-production",
+    "provider": "an-operating-organization",
+    "hardwareClass": "gpu"
+  },
+  "versions": [
+    {
+      "component": "release",
+      "kind": "chart-version",
+      "value": "1.0.0"
+    }
+  ],
+  "procedure": {
+    "workflowRef": "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  },
+  "measurement": {
+    "method": "Production telemetry aggregated over the observation window.",
+    "observationPeriod": {
+      "start": "2026-01-01T00:00:00Z",
+      "end": "2026-02-01T00:00:00Z"
+    }
+  },
+  "productionContext": {
+    "organization": "An organization operating the platform for its own users.",
+    "dependingWorkload": "A product feature whose users depended on the service during the window.",
+    "observationPeriod": {
+      "start": "2026-01-01T00:00:00Z",
+      "end": "2026-02-01T00:00:00Z"
+    }
+  },
+  "results": [
+    {
+      "resultId": "availability",
+      "statement": "Observed availability over the window.",
+      "value": 99.9,
+      "unit": "percent"
+    }
+  ],
+  "evidenceRefs": [
+    "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  ],
+  "limitations": [
+    "One organization, one window, one workload. A month of operation in which a failure never happened says nothing about that failure."
+  ],
+  "doesNotEstablish": [
+    "Future performance, or behaviour under failure modes that did not occur during the window."
+  ]
+}

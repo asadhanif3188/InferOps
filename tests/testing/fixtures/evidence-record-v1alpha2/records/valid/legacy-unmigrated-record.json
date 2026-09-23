@@ -1,0 +1,20 @@
+{
+  "recordId": "an-illustrative-legacy-row-legacy",
+  "claimId": "an-illustrative-legacy-row",
+  "migrationState": "legacy-unmigrated",
+  "evidenceLevel": null,
+  "summary": "Evidence carried from the v1alpha1 register. The execution context, workload source, versions, procedure, measurement, acceptance criteria, and results this model asks of a record are not present in the v1alpha1 row and are not reconstructed here.",
+  "evidenceRefs": [
+    "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  ],
+  "versionsRecordedIn": "docs/proof/templates/TEMPLATE-claim-evidence.md",
+  "legacyClassification": {
+    "sourceVersion": "inferops.io/v1alpha1",
+    "certificationLevel": "C2",
+    "evidenceLabel": "local-real-cpu",
+    "provider": "not-applicable",
+    "environment": "local-container",
+    "vocabularyRef": "docs/architecture/decisions/ADR-0016-inferops-evidence-level-model.md",
+    "note": "Carried verbatim from the v1alpha1 register under the superseded level meanings. It has not been re-examined against the current definitions; that is V1-S5-012-PR2."
+  }
+}

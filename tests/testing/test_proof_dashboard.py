@@ -40,6 +40,7 @@ import pytest
 from tools.proof_dashboard import (
     CAPABILITIES,
     RULES,
+    SUPPORTED_CONTRACT_VERSIONS,
     Capability,
     check_view,
     claims_by_id,
@@ -437,6 +438,31 @@ def test_every_rule_is_stated_and_watched() -> None:
     missing = sorted(name for name in controls if name not in globals())
     assert not missing, {"rules with no control in this suite": missing}
     assert len(controls) == len(RULES)
+
+
+def test_the_rule_refusing_a_register_declares_a_version_the_page_can_read() -> None:
+    """A register in the next shape is refused rather than summarised badly.
+
+    ``v1alpha2`` moves the level and the evidence class onto evidence records. A
+    renderer that read one without noticing would print an empty level column and
+    a page that looked merely incomplete. The version is what makes that a refusal
+    instead, and this drives it over both ways a register can fail to declare one.
+    """
+    moved = copy.deepcopy(RECORD)
+    moved["contractVersion"] = "inferops.io/v1alpha2"
+    assert _rule_ids(check_view(moved)) == {
+        "a-register-declares-a-version-the-page-can-read"
+    }
+
+    undeclared = copy.deepcopy(RECORD)
+    del undeclared["contractVersion"]
+    assert "a-register-declares-a-version-the-page-can-read" in _rule_ids(
+        check_view(undeclared)
+    )
+
+
+def test_the_committed_register_declares_a_version_this_page_reads() -> None:
+    assert RECORD["contractVersion"] in SUPPORTED_CONTRACT_VERSIONS
 
 
 def test_the_rule_refusing_a_capability_names_only_claims_the_register_holds() -> None:

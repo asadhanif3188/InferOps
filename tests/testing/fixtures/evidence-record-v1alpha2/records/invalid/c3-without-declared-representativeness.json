@@ -1,0 +1,102 @@
+{
+  "recordId": "c3-without-declared-representativeness",
+  "claimId": "an-illustrative-latency-budget-is-met-under-representative-load",
+  "migrationState": "migrated",
+  "evidenceLevel": "C3",
+  "summary": "C3 claimed for a run whose workload was never declared representative of anything, which is the whole content of the level.",
+  "execution": {
+    "targetBehaviourExecuted": true,
+    "executedComponents": [
+      {
+        "componentId": "inference-api",
+        "role": "api"
+      },
+      {
+        "componentId": "inference-runtime",
+        "role": "inference-runtime"
+      },
+      {
+        "componentId": "pinned-model",
+        "role": "model"
+      },
+      {
+        "componentId": "load-generator",
+        "role": "load-generator"
+      }
+    ],
+    "substitutions": []
+  },
+  "workload": {
+    "source": "synthetic",
+    "description": "Generated prompts drawn from a declared length distribution at a declared arrival rate.",
+    "shape": {
+      "concurrency": 8,
+      "requestCount": 2400,
+      "promptSizeDistribution": "Two hundred to eight hundred tokens, uniform.",
+      "arrivalPattern": "Poisson at eight requests per second.",
+      "durationSeconds": 300
+    }
+  },
+  "environment": {
+    "environmentId": "local-kubernetes",
+    "provider": "kind",
+    "hardwareClass": "cpu"
+  },
+  "versions": [
+    {
+      "component": "chart",
+      "kind": "chart-version",
+      "value": "0.1.0"
+    }
+  ],
+  "procedure": {
+    "workflowRef": "deploy/serving/experiments/performance-scenarios.v1.json"
+  },
+  "measurement": {
+    "method": "Per-request latency recorded at the caller and summarised over the whole window; errors counted separately from timeouts.",
+    "observationPeriod": {
+      "start": "2026-09-23T09:00:00Z",
+      "end": "2026-09-23T09:05:00Z",
+      "durationSeconds": 300
+    }
+  },
+  "acceptanceCriteria": [
+    {
+      "criterionId": "p95-latency-budget",
+      "statement": "The p95 end-to-end latency stays under the declared budget for the whole window.",
+      "declaredBefore": true,
+      "outcome": "met"
+    },
+    {
+      "criterionId": "error-rate-budget",
+      "statement": "The error rate stays under the declared budget for the whole window.",
+      "declaredBefore": true,
+      "outcome": "not-met"
+    }
+  ],
+  "results": [
+    {
+      "resultId": "p95-latency",
+      "statement": "Observed p95 latency over the window.",
+      "value": 1.82,
+      "unit": "seconds",
+      "criterionId": "p95-latency-budget"
+    },
+    {
+      "resultId": "error-rate",
+      "statement": "Observed error rate over the window, above the declared budget.",
+      "value": 0.7,
+      "unit": "percent",
+      "criterionId": "error-rate-budget"
+    }
+  ],
+  "evidenceRefs": [
+    "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  ],
+  "limitations": [
+    "One workload distribution, one node shape, one five-minute window. A criterion was not met and the record keeps it rather than dropping it."
+  ],
+  "doesNotEstablish": [
+    "Behaviour outside the tested distribution, infrastructure, or duration, and nothing about production operation."
+  ]
+}

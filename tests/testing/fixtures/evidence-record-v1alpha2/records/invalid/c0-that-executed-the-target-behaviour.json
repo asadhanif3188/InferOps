@@ -1,0 +1,55 @@
+{
+  "recordId": "c0-that-executed-the-target-behaviour",
+  "claimId": "an-illustrative-schema-is-published",
+  "migrationState": "migrated",
+  "evidenceLevel": "C0",
+  "summary": "C0 claimed for a record that executed the behaviour the claim is about.",
+  "execution": {
+    "targetBehaviourExecuted": true,
+    "executedComponents": [
+      {
+        "componentId": "contract-validator",
+        "role": "validator",
+        "note": "Reads committed files. No network, no cluster, no model, no clock."
+      }
+    ],
+    "substitutions": []
+  },
+  "workload": {
+    "source": "none",
+    "description": "No request was issued. The check reads files."
+  },
+  "environment": {
+    "environmentId": "repository-only",
+    "provider": "not-applicable",
+    "hardwareClass": "not-applicable"
+  },
+  "versions": [
+    {
+      "component": "repository",
+      "kind": "commit",
+      "value": "0000000000000000000000000000000000000000"
+    }
+  ],
+  "procedure": {
+    "commands": [
+      "python -m pytest tests/contracts -q"
+    ]
+  },
+  "results": [
+    {
+      "resultId": "every-fixture-classified",
+      "statement": "Every valid fixture validated and every invalid fixture was refused by the rule the matrix names.",
+      "value": true
+    }
+  ],
+  "evidenceRefs": [
+    "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  ],
+  "limitations": [
+    "The schema and its fixtures are files. Nothing consumed the contract at run time."
+  ],
+  "doesNotEstablish": [
+    "That any workload was ever deployed from a contract document."
+  ]
+}

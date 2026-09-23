@@ -1,0 +1,87 @@
+{
+  "$comment": "Every invalid fixture, and what the schema has to refuse it for. A negative fixture without a declared refusal is a file that could start passing for a reason nobody intended, so the suite asserts both directions: every fixture here is refused at the path named, and every fixture on disk is named here.",
+  "records": {
+    "c0-that-executed-the-target-behaviour": {
+      "jsonPath": "$.execution.targetBehaviourExecuted",
+      "reason": "C0 is evidence obtained without executing the target behaviour. A record that executed it is not static evidence."
+    },
+    "c1-forced-by-a-synthetic-workload": {
+      "jsonPath": "$.execution.substitutions",
+      "reason": "Synthetic input does not make a record C1. C1 requires a claim-material substitution, and this record names none."
+    },
+    "c2-naming-no-component-that-executed": {
+      "jsonPath": "$.execution.executedComponents",
+      "reason": "A record that executed the target behaviour names at least one component that ran. Otherwise the level asserts an execution the record cannot describe."
+    },
+    "c2-with-a-claim-material-substitution": {
+      "jsonPath": "$.execution.substitutions",
+      "reason": "Real is relative to the claim. A claim-material substitution puts the record at C1 however much of the rest of the path was real."
+    },
+    "c3-with-criteria-declared-after-the-run": {
+      "jsonPath": "$.acceptanceCriteria",
+      "reason": "C3 requires criteria registered before the run. A criterion written afterwards cannot fail."
+    },
+    "c3-without-declared-representativeness": {
+      "jsonPath": "$.workload",
+      "reason": "C3 requires declared representativeness with its assumptions written down. Without it the record is a C2 run under an undeclared workload."
+    },
+    "c4-from-a-public-cloud-experiment": {
+      "jsonPath": "$",
+      "reason": "C4 requires an organization, a workload that depended on the system, and a stated observation period. A cloud experiment is C2, or C3 where it meets the representativeness requirements."
+    },
+    "c4-without-documented-known-gaps": {
+      "jsonPath": "$.productionContext",
+      "reason": "C4 requires documented conditions and known gaps. A production window with nothing said about what it did not cover reads as covering everything."
+    },
+    "legacy-record-enriched-with-a-level": {
+      "jsonPath": "$.evidenceLevel",
+      "reason": "An unmigrated record carries no evidence level. Copying the superseded certificationLevel into evidenceLevel is the reclassification V1-S5-012-PR2 exists to do properly."
+    },
+    "legacy-record-without-its-carried-classification": {
+      "jsonPath": "$",
+      "reason": "An unmigrated record keeps its v1alpha1 classification verbatim. Dropping it destroys the audit trail the migration is reviewed against."
+    },
+    "migrated-record-citing-no-evidence": {
+      "jsonPath": "$.evidenceRefs",
+      "reason": "A migrated record cites at least one committed artifact. A result nobody can open is a summary, not evidence."
+    },
+    "migrated-record-that-never-says-where-its-input-came-from": {
+      "jsonPath": "$",
+      "reason": "Every migrated record states where its input came from, including when the answer is that nothing was issued. Leaving it out is how a synthetic workload passes for a captured one."
+    },
+    "migrated-record-with-no-repeatable-identifier": {
+      "jsonPath": "$",
+      "reason": "A migrated record carries either its immutable identifiers or the record that names them. Without one it cannot be repeated, whatever its level."
+    },
+    "migrated-record-without-limitations": {
+      "jsonPath": "$.limitations",
+      "reason": "A migrated record states its limitations. A record with none is a result nobody bounded."
+    },
+    "record-still-carrying-a-certification-level": {
+      "jsonPath": "$",
+      "reason": "certificationLevel is not a v1alpha2 field. A legacy value belongs under legacyClassification, where it is marked as carried rather than current."
+    }
+  },
+  "claims": {
+    "certified-claim-with-no-record": {
+      "jsonPath": "$.evidenceRecords",
+      "reason": "A certified claim rests on at least one record. Certified and citing nothing is the failure the register exists to refuse."
+    },
+    "claim-carrying-a-certification-level": {
+      "jsonPath": "$",
+      "reason": "certificationLevel is not a v1alpha2 field at any depth. The legacy value has one place: legacyClassification."
+    },
+    "claim-carrying-an-evidence-level": {
+      "jsonPath": "$",
+      "reason": "A level belongs to a record. A claim carrying one is the v1alpha1 shape under a new field name, and it cannot express three records at three levels."
+    },
+    "not-claimed-claim-without-a-reason": {
+      "jsonPath": "$.notClaimedReason",
+      "reason": "not-claimed states why. A blank reason turns the status into somewhere to put a claim nobody wants to discuss."
+    },
+    "planned-claim-citing-a-record": {
+      "jsonPath": "$.evidenceRecords",
+      "reason": "A claim nothing has proven cites no record. One that points at a record reads as proven."
+    }
+  }
+}

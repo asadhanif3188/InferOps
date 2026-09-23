@@ -38,6 +38,40 @@
 > migration, and holds the mapping table and the disclaimer in place. It checks that
 > the repository says one thing. It cannot check that the thing is true of any run.
 
+## What `V1-S5-011-PR2` settled, on 2026-09-23
+
+A dated note. The accepted text above and below is unchanged: a decision record is
+evidence about when a decision was made, and editing it to be currently correct
+destroys the only thing it is good for. What follows is what happened afterwards, and
+where three rows of the tables in this record now point.
+
+`V1-S5-011-PR2` published
+[`claim-evidence-matrix.v1alpha2.schema.json`](../../testing/claim-evidence-matrix.v1alpha2.schema.json)
+and [the model document](../../testing/evidence-record-model.md) that explains it. It
+**published a shape and migrated no data.**
+
+- **`D2`.** Its status row says the register stores one level per claim *until
+  `V1-S5-011-PR2`*. That pointer resolves to the **schema**, not to the register. The
+  shape that can hold several records per claim now exists; the committed register is
+  still `v1alpha1` and still stores one level per claim, and migrating the rows is
+  `V1-S5-012-PR2`. Two tests fail on the day that happens, so the pages describing the
+  unmigrated state are corrected in the same change.
+- **`D3`.** Unchanged and still not enforced over committed data. The `v1alpha2` schema
+  separates `execution.substitutions[].claimMaterial` from `workload.source`, so the
+  new shape cannot express the rule `D3` rejects; the committed `synthetic → C1`
+  ceiling is untouched and still enforces the old one. `V1-S5-012-PR1` replaces it.
+- **`R4`.** Half closed. The data model now supports several records per claim; the
+  register still does not. The risk stays open on that half.
+- **`Q2`.** Answered, as this record said `V1-S5-011-PR2` might: the
+  `production-experience` evidence **class** survives alongside the `C4` **level**, and
+  neither absorbs the other. A class says where a result came from; a level says how it
+  was obtained. Both are unreachable here, for the same underlying reason, at different
+  layers — and collapsing them would lose the difference between a source this project
+  has no access to and a strength it has not reached.
+  [The model document](../../testing/evidence-record-model.md) carries the reasoning
+  and a test holds the answer in place.
+- **`Q1` and `Q3`** are untouched and remain open.
+
 ## Decision status
 
 | ID | Decision | Status | What supports it |

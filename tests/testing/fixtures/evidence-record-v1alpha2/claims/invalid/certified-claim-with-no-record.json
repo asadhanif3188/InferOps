@@ -1,0 +1,23 @@
+{
+  "claimId": "a-certified-claim-resting-on-nothing",
+  "area": "serving-api",
+  "statement": "An illustrative statement. This fixture exercises the shape of the model and certifies nothing about InferOps.",
+  "status": "certified",
+  "assertsRealBehaviour": true,
+  "strategyClaimIds": [],
+  "implementationRefs": [
+    "src/inferops"
+  ],
+  "automatedTestRefs": [
+    "tests/testing/test_evidence_record_model.py"
+  ],
+  "recordedCoverageGaps": [],
+  "ciGateIds": [
+    "default-lane-tests"
+  ],
+  "evidenceRecords": [],
+  "limitation": "An illustrative boundary. The fixture is a shape, not a result.",
+  "doesNotEstablish": "Anything at all about InferOps. It is a fixture.",
+  "readmeRefs": [],
+  "notClaimedReason": null
+}
