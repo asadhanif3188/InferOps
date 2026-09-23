@@ -774,10 +774,18 @@
       "note": "Deliberately no claim: it establishes that a shape exists and is internally consistent, never that any evidence is classified correctly under it. Two of its tests are tripwires that fail when V1-S5-012-PR2 migrates the register, so the documents describing the unmigrated state are corrected in the same change. It reads committed files only."
     },
     {
+      "module": "tests/testing/test_evidence_level_rules.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The evidence-level classification rules in `tools/evidence_model/rules.py` and `docs/testing/evidence-level-rules.md`: that every rule marked as enforced by the v1alpha2 schema or the validator is refused by that rule, at the declared place, in a committed mutation of an illustrative register; that the catalogue document publishes every rule the code defines and names truthfully which of schema, validator, or review enforces it; that a claim's declared claim-material components, not a record's own flags, decide C1 and C2; that a workload's origin changes no verdict below C4; and that the committed v1alpha1 register, read into the new shape in memory, passes every rule with every cited file present.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that the rules refuse the documents they were written to refuse, never that any committed record is classified correctly under them. No committed register declares v1alpha2 yet; V1-S5-012-PR2 migrates it. It reads committed files and writes only to a pytest temporary directory."
+    },
+    {
       "module": "tests/testing/test_evidence_levels.py",
       "layer": "documentation",
       "marker": "docs",
-      "protects": "The InferOps evidence-level model against the documents that publish it: that `docs/testing/evidence-levels.md` is the only document binding `C0` to `C4` to their current names, that a superseded meaning survives only in a mapping document or on a surface registered as awaiting migration and carrying a supersession notice, that the legacy mapping and the project-defined disclaimer are published, that ADR 0005 D4's accepted text is annotated rather than rewritten, and that the enforcing strategy data still carries the superseded names the specification says it carries - a tripwire that fails when that data moves, which is V1-S5-012-PR1 and not V1-S5-011-PR2.",
+      "protects": "The InferOps evidence-level model against the documents that publish it: that `docs/testing/evidence-levels.md` is the only document binding `C0` to `C4` to their current names, that a superseded meaning survives only in a mapping document or on a surface registered as awaiting migration and carrying a supersession notice, that the legacy mapping and the project-defined disclaimer are published, that ADR 0005 D4's accepted text is annotated rather than rewritten, and that the enforcing strategy data still carries the superseded names the specification says it carries - a tripwire that fails when that data moves, which is V1-S5-012-PR2: neither V1-S5-011-PR2 nor V1-S5-012-PR1 moved it, and each was once predicted to.",
       "claims": [],
       "note": "Deliberately no claim: it establishes that the repository states one definition of the evidence levels, never that the definition is a good one or that any record is classified correctly under it. It reads committed documents and the strategy data only."
     },

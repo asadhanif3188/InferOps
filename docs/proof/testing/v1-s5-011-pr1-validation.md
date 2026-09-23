@@ -99,6 +99,16 @@ than a later one.
 > published and unfulfilled; [that change's record](v1-s5-011-pr2-validation.md) carries
 > the correction, and the module's own docstrings now name `V1-S5-012-PR1`.
 
+> [!NOTE]
+> **A second dated correction, 2026-09-23.** The note above was wrong as well.
+> `V1-S5-012-PR1` replaced the ceiling mechanism for `v1alpha2` records — it published
+> [the classification rules](../../testing/evidence-level-rules.md) — and deliberately
+> left `test-strategy.v1alpha1.json` alone, because the only register that data governs
+> is the committed `v1alpha1` one, whose rows have no substitution metadata the
+> replacement could read. The tripwire did not fire. The change that fires it is
+> `V1-S5-012-PR2`, which migrates the register and the strategy data together.
+> [That change's record](v1-s5-012-pr1-validation.md) explains the decision.
+
 ## What the checks caught
 
 **The first draft of the suite bound the wrong table cell.** The pattern matched an

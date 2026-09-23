@@ -568,7 +568,9 @@ def test_the_evidence_class_ceiling_is_carried_as_history_and_not_as_a_rule() ->
 
     Carrying it into the new version as a live constraint would move the defect
     rather than leave it where the replacement can find it. It comes across as
-    `legacyCeiling`, and `V1-S5-012-PR1` owns what replaces it.
+    `legacyCeiling`. `V1-S5-012-PR1` published what replaces it for classified
+    records, and applies `legacyCeiling` only to carried legacy values; that is held
+    by `tests/testing/test_evidence_level_rules.py`, not here.
     """
     legacy = {row["labelId"]: row for row in load_legacy_register()["evidenceLabels"]}
     classes = {
