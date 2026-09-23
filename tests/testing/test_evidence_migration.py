@@ -106,11 +106,18 @@ def records(row: dict[str, Any]) -> list[dict[str, Any]]:
     return list(row.get("evidenceRecords") or [])
 
 
-def outcome(legacy_level: str | None, record: dict[str, Any]) -> str:
-    """What the two registers say happened to one record."""
+def outcome(legacy_row: dict[str, Any], record: dict[str, Any]) -> str:
+    """What the two registers say happened to one record.
+
+    A record is one the migration added when it cites nothing its claim's v1alpha1
+    row cited. The first draft recognised it by an identifier suffix, and an
+    independent review pointed out that a later added record named differently
+    would have been counted as carried across.
+    """
+    legacy_level = legacy_row["certificationLevel"]
     if record["migrationState"] != "migrated":
         return "left-legacy-unmigrated"
-    if record["recordId"].endswith("-measured-absence"):
+    if not set(record["evidenceRefs"]) & set(legacy_row["evidenceRefs"]):
         return "added-by-the-migration"
     if legacy_level is None:
         return "classified-from-no-legacy-level"
@@ -121,9 +128,7 @@ def outcome(legacy_level: str | None, record: dict[str, Any]) -> str:
 
 def all_outcomes() -> dict[str, str]:
     return {
-        record["recordId"]: outcome(
-            LEGACY_BY_ID[row["claimId"]]["certificationLevel"], record
-        )
+        record["recordId"]: outcome(LEGACY_BY_ID[row["claimId"]], record)
         for row in REGISTER["claims"]
         for record in records(row)
     }
@@ -213,8 +218,7 @@ def test_every_legacy_citation_is_carried_by_a_record_and_none_is_invented(
     cited = {
         reference
         for record in records(REGISTER_BY_ID[claim_id])
-        if outcome(LEGACY_BY_ID[claim_id]["certificationLevel"], record)
-        != "added-by-the-migration"
+        if outcome(LEGACY_BY_ID[claim_id], record) != "added-by-the-migration"
         for reference in record["evidenceRefs"]
     }
     assert cited == before, (claim_id, sorted(cited ^ before))

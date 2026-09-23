@@ -54,7 +54,50 @@ report repeated them.
 
 ## Commands and results
 
-`<results of the full suite, filled in from a run on the committed tree>`
+All from Git Bash on one Windows 11 Enterprise workstation, Python 3.12.12, uv
+0.9.16, on the tree committed as the first commit of this change.
+
+| Command | Result |
+|---|---|
+| `uv run --locked python -m pytest -q` | **14253 passed, 33 skipped, 14 deselected**, in 790.95 s; no failure |
+| `uv run --locked python -m pytest tests/testing tests/security tests/telemetry tests/architecture/test_decision_authority.py -q` | 8047 passed, before the commit, with every new file staged so the Markdown scans could see it |
+| `uv run --locked ruff check .` | All checks passed |
+| `uv run --locked ruff format --check .` | 491 files already formatted |
+| `uv run --locked python -m mypy` | no issues found in 269 source files |
+| `uv run --locked python -m tools.proof_dashboard --check` | the committed page is what the register produces |
+| `git diff --cached --check` | no whitespace errors |
+
+The migrated register passes its schema and every evidence-level rule with every cited
+file present, in the register's suite, the rules suite, and the dashboard's own rule.
+The superseded `v1alpha1` register is byte-for-byte unchanged.
+
+The staged diff was searched for local paths, private repository names, and personal
+identifiers; the only matches were public-record wording and the migration suite's own
+guard against them.
+
+## What the second review changed
+
+An independent review of the first commit, which read the cited records behind the
+three upward reclassifications, the two not-claimed records, and five retained ones,
+and recomputed every published count, found no defect in the register's data or its
+counts. It found two things in the change around them, both fixed in the second
+commit:
+
+- **ADR 0016's own decision-status table contradicted the dated note this change added
+  above it.** The note said `D2`, `D3`, `R1`, and `R4` were settled; the table still
+  said `D3` was "not yet enforced", `D2` waited on a change that had published only a
+  schema, and both risks were open. The first draft corrected every other page
+  describing the unmigrated state and missed the table in the record it was annotating.
+  The cells now say what changed and point at the notes.
+- **The migration suite recognised the record the migration added by an identifier
+  suffix.** A later added record named differently would have been counted as carried
+  across. It is now recognised structurally: a record that cites nothing its claim's
+  `v1alpha1` row cited was added by the migration.
+
+After both fixes, `uv run --locked python -m pytest tests/testing tests/security
+tests/telemetry tests/architecture -q` reported **10757 passed, 6 skipped**, in 552.35 s.
+The fixes touch one decision record, this record, and one test module; the full suite
+above was not repeated on the second commit.
 
 ## Checks not run, and why
 
