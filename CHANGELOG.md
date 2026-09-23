@@ -8,6 +8,54 @@ once versioned releases begin.
 
 ## [Unreleased]
 
+### Changed
+
+- **`C0` to `C4` mean something different, and nothing has been reclassified.**
+  [The InferOps Evidence Levels](docs/testing/evidence-levels.md) are now Static,
+  Substituted Execution, Runtime, Representative, and Operational Evidence, accepted
+  by [ADR 0016](docs/architecture/decisions/ADR-0016-inferops-evidence-level-model.md).
+  One axis: **how was this evidence obtained.** The superseded meanings were Schema,
+  Mock, Real controlled, Failure, and Composed; the first three map conceptually and
+  the last two do not map at all, because failure names what an experiment was for and
+  composition names what the path was, and neither is a strength. Both survive as
+  evidence-record metadata. The page states, where it cannot be missed, that the
+  levels are project-defined and are not an ISO, NIST, regulatory, or industry
+  certification.
+
+  **The old ladder was safe only because its top two rungs were unreachable.** `C3`
+  and `C4` were out of V1 scope and a test refuses an active claim requiring either,
+  which is why a mocked failure experiment was never actually recorded as outranking a
+  real completion. The specification also separates three things the certification
+  document ran together: a level belongs to an **evidence record**, an evidence class
+  belongs to a **test layer**, and a claim's **status** is a publishing decision. One
+  claim may be supported by several records at different levels. And `C1` is decided
+  by whether a component *material to the claim* was substituted — not by where the
+  input came from, so a generated request through the real API, adapter, runtime, and
+  model is evidence about all four.
+
+  **No claim, level, evidence class, or committed record moves.** `contracts/`,
+  `src/`, `charts/`, `deploy/`, and `tools/` are unchanged, and no file under
+  `docs/proof/` is edited. [ADR 0005](docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
+  D4 keeps its accepted text and gains a dated note: a decision record is evidence
+  about when a decision was made, and editing it to be currently correct destroys the
+  only thing it is good for.
+
+  **What is enforced is narrow, and the page says so.** The committed
+  `test-strategy.v1alpha1.json` still carries the superseded names and still applies a
+  `C1` ceiling to the `synthetic` class — the rule the new `C3` section argues is too
+  broad — because a `v1alpha1` contract is not re-pointed at new semantics in the
+  change that writes them down, and because removing a guard before its replacement
+  exists is the failure ADR 0005 was written to prevent.
+  [`tests/testing/test_evidence_levels.py`](tests/testing/test_evidence_levels.py)
+  checks only that the repository says one thing: one document binds the identifiers
+  to the current names, a superseded pairing appears only in a document that also
+  says `superseded` and names ADR 0016, and the mapping and the disclaimer are
+  published. One of its tests is a tripwire that fails when the data model is
+  versioned, so the page describing the old state is corrected in the same change.
+  [The validation record](docs/proof/testing/v1-s5-011-pr1-validation.md) lists what
+  ran, what the first draft of the suite got wrong, and the four requirements that
+  have no validator yet.
+
 ### Added
 
 - **A V1 operator runbook is published, and every alert now links to a section of

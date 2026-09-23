@@ -1,6 +1,6 @@
 # Architecture and decision records
 
-Status: entry point established. Fifteen records: nine accepted in part, four
+Status: entry point established. Sixteen records: nine accepted in part, five
 accepted, one accepted with a recorded exception, and one accepted and later
 amended. Every one of them names an accountable decision owner, and none is
 unassigned. (This sentence described eleven records until 2026-09-21; it was not
@@ -47,7 +47,7 @@ still unbuilt: nothing turns a validated document into release values.
 | [0002](decisions/ADR-0002-model-and-serving-runtime.md) | Model and serving runtime | Accepted, with one recorded exception | 2026-08-24 | [Runtime feasibility record](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) |
 | [0003](decisions/ADR-0003-workload-contract-schema-tooling.md) | Workload contract schema tooling | Accepted | 2026-08-24 | Schema and fixture validation output recorded in the record itself |
 | [0004](decisions/ADR-0004-component-and-ownership-boundaries.md) | Component architecture and resource ownership boundaries | Accepted in part | 2026-08-25 | [Change validation](../proof/architecture/v1-s0-005-pr1-validation.md); the ownership inventory is checked, the component design is not |
-| [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, nine of its eleven test layers exist, and two do not — failure-and-resilience is planned and capacity-and-load is deferred; D6 is superseded in part by ADR 0012 |
+| [0005](decisions/ADR-0005-test-ci-and-certification-strategy.md) | Test, CI, and certification strategy | Accepted in part | 2026-08-25 | [Change validation](../proof/testing/v1-s0-006-pr1-validation.md); the strategy is machine-checked, nine of its eleven test layers exist, and two do not — failure-and-resilience is planned and capacity-and-load is deferred; D6 is superseded in part by ADR 0012, and D4's level meanings are amended by ADR 0016 |
 | [0006](decisions/ADR-0006-telemetry-and-evidence-catalog.md) | Telemetry and evidence catalog | Accepted in part | 2026-08-25 | [Original change validation](../proof/telemetry/v1-s0-007-pr1-validation.md) plus [API instrumentation validation](../proof/telemetry/v1-s1-008-pr1-validation.md); the catalog and API emission declarations are machine-checked; a release-scoped collector now exists and has scraped both InferOps jobs, while spans and any durable store remain absent |
 | [0007](decisions/ADR-0007-inference-cost-method.md) | Inference cost-calculation method | Accepted in part; amended 2026-09-15 | 2026-08-26; amended 2026-09-15 | [Change validation](../proof/cost/v1-s0-008-pr1-validation.md); the method and its worked example are machine-checked. D1, D2, D3, and D9 are amended and D13 clarified by 0014, and no platform component computes a cost record |
 | [0008](decisions/ADR-0008-v1-security-baseline.md) | V1 threat model and security baseline | Accepted in part | 2026-08-26 | [Change validation](../proof/security/v1-s0-009-pr1-validation.md); the baseline is machine-checked, and nothing in this repository defends a running system |
@@ -57,7 +57,8 @@ still unbuilt: nothing turns a validated document into release values.
 | [0012](decisions/ADR-0012-continuous-integration-service.md) | Continuous-integration service for the default lane | Accepted in part | 2026-09-12 | [Change validation](../proof/testing/v1-s4-001-pr1-validation.md), and [the amendment's](../proof/testing/v1-s4-001-pr2-validation.md); one committed workflow runs the `default-checks` lane and a gate matrix is compared to it in both directions. Nine of its eleven gates have passed on the service and the two infrastructure gates added by the D2 amendment have not run there. D7 publishes the rules for a cluster-lane workflow and commits none; ADR 0005 D6's capable-runner half stays open |
 | [0013](decisions/ADR-0013-bounded-local-performance-observations.md) | Bounded local performance observations may be published; portable capacity may not | Accepted | 2026-09-14 | [Change validation](../proof/serving/v1-s4-004-pr1-validation.md); amends ADR 0004 D6 and the third project-boundary rule. The boundary flags and sentence are machine-checked in the records `tools.llm_load` and `tools.performance_scenarios` read and write; whether a figure is read as portable is review-only; the `capacity` lane and `sustained-throughput-and-capacity-under-load` stay deferred |
 | [0014](decisions/ADR-0014-v1-cost-calculation-reaches-the-estimated-basis.md) | The V1 cost calculation reaches the estimated basis, from bounded measured use | Accepted in part | 2026-09-15 | [Change validation](../proof/cost/v1-s4-005-pr1-validation.md); amends ADR 0007 D1, D2, D3, and D9 and clarifies D13. The basis, the price-source refusals, the evidence a measured class must name, the arithmetic, and the record shape are machine-checked on synthetic fixtures; D3's rules for taking usage from samples are enforced by `tools/cost_baseline` for the inputs it writes, [the V1 cost baseline](../proof/cost/v1-s4-005-pr2-cost-baseline.md), and review only for a hand-typed input. No cost figure is published |
-| [0015](decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | V1 decision ownership and sign-off authority rest with the repository maintainer role | Accepted | 2026-09-21 | [Change validation](../proof/architecture/v1-s5-003-pr1-validation.md); the register is machine-checked in both directions against the records on disk, every record's own metadata row is compared to it, and no decision record or governance document may still say this authority is unassigned. It amends ADR 0008 D13 and the `Decision owner` field of every earlier record. It decides accountability only: no claim, level, or evidence class moves, and fourteen of the fifteen owners are assigned retrospectively |
+| [0015](decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) | V1 decision ownership and sign-off authority rest with the repository maintainer role | Accepted | 2026-09-21 | [Change validation](../proof/architecture/v1-s5-003-pr1-validation.md); the register is machine-checked in both directions against the records on disk, every record's own metadata row is compared to it, and no decision record or governance document may still say this authority is unassigned. It amends ADR 0008 D13 and the `Decision owner` field of every earlier record. It decides accountability only: no claim, level, or evidence class moves, and fourteen of the fifteen owners it assigned are assigned retrospectively |
+| [0016](decisions/ADR-0016-inferops-evidence-level-model.md) | InferOps Evidence Levels describe how evidence was obtained, and attach to an evidence record | Accepted | 2026-09-23 | [Change validation](../proof/testing/v1-s5-011-pr1-validation.md); it amends ADR 0005 D4's level **meanings** and leaves its ceiling mechanism, layers, and lanes untouched. `C3` Failure and `C4` Composed are superseded as level meanings; failure and composition become evidence-record metadata. The definition is machine-checked only for consistency -- one current definition, the mapping table, the project-defined disclaimer, and no superseded meaning presented as current outside the surfaces registered as awaiting migration. **Nothing is reclassified and nothing is enforced yet:** the committed `v1alpha1` strategy data still carries the superseded names and the `synthetic` ceiling, which V1-S5-011-PR2 and V1-S5-012 change |
 
 Read a partial status from the record's own per-decision table, never from this
 row. In 0001, the container runtime, Kubernetes distribution, isolation, cleanup,
@@ -159,6 +160,19 @@ explicitly unmade. [0012](decisions/ADR-0012-continuous-integration-service.md) 
 since made the first half and committed a workflow file; the capable-runner half
 stays open. The rule 0005 added is unchanged and is the reason the distinction is
 worth keeping: a lane may claim automation only by naming a workflow that exists.
+
+What `C0` to `C4` **mean** is no longer 0005's answer. On 2026-09-23,
+[0016](decisions/ADR-0016-inferops-evidence-level-model.md) amended `D4`'s level
+meanings and made
+[the evidence-level specification](../testing/evidence-levels.md) the authoritative
+definition: a level now describes how evidence was obtained — Static, Substituted
+Execution, Runtime, Representative, Operational — and attaches to an evidence record
+rather than to a claim. `C3` Failure and `C4` Composed are superseded as level
+meanings, because failure names what an experiment was for and composition names what
+the path was, and neither is a strength. 0005's text stands as accepted, its ceiling
+mechanism is untouched and still enforced, and **no record is reclassified**: the
+committed strategy data still carries the superseded names, and migrating it and the
+existing evidence is `V1-S5-011-PR2` and `V1-S5-012`.
 
 0008 decides what V1 protects and from whom: the architecture's five trust boundaries
 adopted verbatim plus a sixth for publication, six pod-security properties and a

@@ -766,6 +766,14 @@
       "note": "It needs no Helm, no Terraform, and no network. It checks the machinery that decides whether a tool control passed, not the tools: those run in the helm-chart and terraform gates. One test asserts a gap still exists - four cluster-smoke scripts do not call the provider guard - so that closing the gap has to correct the matrix."
     },
     {
+      "module": "tests/testing/test_evidence_levels.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The InferOps evidence-level model against the documents that publish it: that `docs/testing/evidence-levels.md` is the only document binding `C0` to `C4` to their current names, that a superseded meaning survives only in a mapping document or on a surface registered as awaiting migration and carrying a supersession notice, that the legacy mapping and the project-defined disclaimer are published, that ADR 0005 D4's accepted text is annotated rather than rewritten, and that the enforcing strategy data still carries the superseded names the specification says it carries.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that the repository states one definition of the evidence levels, never that the definition is a good one or that any record is classified correctly under it. It reads committed documents and the strategy data only."
+    },
+    {
       "module": "tests/testing/test_document_links.py",
       "layer": "documentation",
       "marker": "docs",

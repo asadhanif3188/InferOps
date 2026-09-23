@@ -8,6 +8,7 @@
 | Decision owner | [`repository-maintainer`](../../governance/decision-authority.md), assigned retrospectively on 2026-09-21 by [ADR 0015](ADR-0015-v1-decision-ownership-and-sign-off-authority.md) |
 | Supersedes | None |
 | Superseded by | [ADR 0012](ADR-0012-continuous-integration-service.md), in part, for D6 |
+| Amended by | [ADR 0016](ADR-0016-inferops-evidence-level-model.md), on 2026-09-23, for D4's level **meanings** only; the ceiling mechanism, the layers, and the lanes are untouched |
 
 > [!IMPORTANT]
 > This record decides how V1 will be tested and certified. It did **not** configure
@@ -38,7 +39,7 @@
 | D1 | Eleven test layers, each with an evidence class and a certification ceiling | **Accepted** | A committed strategy, with the ceiling enforced by a test |
 | D2 | Four lanes, and the default lane downloads no model and touches no cluster | **Accepted** | Enforced by a test over the strategy data and the committed marker expression |
 | D3 | Markers registered in `pytest.ini`, with capable-host markers deselected by default | **Accepted**, and executed | The configuration is committed and the suite runs under it |
-| D4 | Certification levels C0 to C2 for V1, with class ceilings that stop a mock at C1 | **Accepted** | The published integration certification framework, plus three enforcing tests |
+| D4 | Certification levels C0 to C2 for V1, with class ceilings that stop a mock at C1 | **Accepted**; the level **meanings** are **amended** by [ADR 0016](ADR-0016-inferops-evidence-level-model.md) from 2026-09-23. The ceilings are unchanged and still enforced | The published integration certification framework, plus three enforcing tests |
 | D5 | Evidence retention: lane artifacts expire, certifying records are committed and do not | **Accepted** as a rule | Review, plus a test that a claim cites a record only when certified |
 | D6 | Which continuous-integration service runs the lanes, and what labels a capable runner | **Superseded in part** by [ADR 0012](ADR-0012-continuous-integration-service.md), which selects the service for `default-checks`. What labels a capable runner is still **not decided** | A committed workflow for one lane, whose original nine gates have passed on the service. Nothing for the runner: none is labelled, and ADR 0012 D7 publishes the rules a cluster-lane workflow must satisfy without committing one |
 
@@ -148,6 +149,18 @@ it, the markers and the strategy can agree perfectly while `pytest -m contract`
 collects nothing.
 
 ## D4 — C0 to C2, with class ceilings
+
+> **Amended on 2026-09-23 by [ADR 0016](ADR-0016-inferops-evidence-level-model.md).**
+> What C0 to C4 *mean* is redefined there, and
+> [the evidence-level specification](../../testing/evidence-levels.md) is now the
+> authoritative definition. The section below is left exactly as it was accepted on
+> 2026-08-25, because it is the record of what was decided then and every result
+> classified between those dates was classified under it. **Nothing it certified is
+> reclassified**, and the mechanism this section is actually about — a ceiling per
+> evidence class, enforced by three tests — is unchanged and still runs. What changes
+> is the wording of the five levels: `C3` Failure and `C4` Composed are superseded as
+> level meanings, and the remaining three map conceptually onto Static, Substituted
+> Execution, and Runtime Evidence.
 
 V1 certifies at C0, C1, and C2 as
 [the published certification framework](../../testing/certification.md) defines them.
