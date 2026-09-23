@@ -1,18 +1,41 @@
 # Certification levels and evidence classes
 
-Status: **accepted definition**, in
-[ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md),
-effective for evidence produced after this document is merged. It certifies nothing
-by existing. It fixes what a certification level means, what each evidence class may
-support, and why a mock stops at C1 — before there is an argument about a specific
-claim to settle.
+Status: **accepted definition** for the evidence classes, their ceilings, and what a
+real-runtime record must contain, in
+[ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
+It certifies nothing by existing.
+
+> [!IMPORTANT]
+> **The level meanings below are superseded.** Since 2026-09-23,
+> [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
+> redefines `C0` to `C4`, and
+> [InferOps Evidence Levels (C0–C4)](evidence-levels.md) is the single authoritative
+> current definition. `C3` Failure and `C4` Composed are superseded outright: failure
+> is a scenario and composition is a topology, and neither is a strength. The other
+> three map conceptually — Schema to Static, Mock to Substituted Execution, Real
+> controlled to Runtime — and *conceptually* means the definitions describe the same
+> dimension, not that any record has been re-examined.
+>
+> **Nothing here is reclassified, and this document is still the one a layer is
+> assigned from.** The evidence classes, their ceilings, and the contents a real
+> record must carry are unchanged and stay in force. The table immediately below is
+> retained as the meaning every record written before 2026-09-23 was classified
+> under, so that a historical record stays readable. Re-examining those records
+> against the new definitions is `V1-S5-012-PR2`, and until it runs, no level in this
+> repository has moved.
 
 Two things are described here and they are routinely conflated. **Certification level
 describes proof strength.** **Evidence class describes what the proof ran against.**
 A result can be real and weak, or exhaustive and worthless. Keeping them separate is
-the only way to say so.
+the only way to say so. [The evidence-level specification](evidence-levels.md) adds
+a third that this document never separated out: a level belongs to an **evidence
+record**, and a claim's **status** is a different question again.
 
 ## Certification levels
+
+**Superseded as current meanings.** This table is the historical definition, kept for
+reading records written under it. The current one is in
+[InferOps Evidence Levels (C0–C4)](evidence-levels.md).
 
 | Level | Name | Meaning | In V1 scope |
 |---|---|---|---|
@@ -28,6 +51,15 @@ outside V1 scope: such a claim must either be deferred or lowered.
 
 `C4` is not merely unreached. There is no second project, so it is not reachable at
 all from inside this repository.
+
+Both sentences describe the superseded meanings and both stay true of them. Under
+[the current definitions](evidence-levels.md) the ceiling is unchanged in practice
+and the reasons differ: `C3` Representative Evidence is reachable in principle and
+nothing is classified there, and `C4` Operational Evidence is unreachable because
+there is no organizational production to observe rather than because there is no
+second project. The committed strategy data still ranks the superseded levels and
+still refuses an active claim requiring `C3` or `C4`, which is what the enforcement
+below acts on.
 
 ## Evidence classes
 
@@ -115,6 +147,11 @@ the retention periods, and what happens to a superseded record are in
 
 ## What this document does not do
 
+- **It no longer defines what a level means.**
+  [InferOps Evidence Levels (C0–C4)](evidence-levels.md) does, under
+  [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md).
+  What stays here is what a class may support, the ceiling each one carries, and what
+  a record certifying real behaviour must contain.
 - It does not grant a level to anything. Levels are reached by records, and
   [the claim/test matrix](claim-test-matrix.md) says which claims currently hold one.
 - It does not define a process for disputing a level. Since

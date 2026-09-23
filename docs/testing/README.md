@@ -26,7 +26,8 @@ page, generated from the matrix's data rather than written beside it.
 | Document | What it covers |
 |---|---|
 | [Test and CI strategy](test-strategy.md) | Eleven test layers, four lanes, markers, prerequisites, timeouts, artifacts, failure diagnostics, and evidence retention |
-| [Certification levels](certification.md) | What C0 to C2 mean, what each evidence class may support, why a mock stops at C1, and what a real record must contain |
+| [InferOps Evidence Levels (C0–C4)](evidence-levels.md) | The authoritative current definition: Static, Substituted Execution, Runtime, Representative, and Operational Evidence, what each can and cannot establish, why a level belongs to an evidence record rather than to a claim, and the mapping from the superseded meanings |
+| [Certification levels](certification.md) | What each evidence class may support, why a mock stops at C1, and what a real record must contain. Its level *names* are superseded by [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md); its ceilings are unchanged and still enforced |
 | [Claim and test matrix](claim-test-matrix.md) | Every public claim, with its layers, environment, required level, and evidence owner |
 | [Claim and evidence matrix](claim-evidence-matrix.md) | Every claim V1 intends to publish, with its implementation, tests, gates, executed record, evidence label, limitation, and status — including the ones that are planned, deferred, and not claimed |
 | [Test inventory](test-inventory.md) | Every pytest module, its layer and lane, the claim it protects, and the claims no module protects |
@@ -48,6 +49,12 @@ A mock may never certify real runtime behaviour, however faithful it is. That is
 [accepted rule](../serving/mock-and-real-boundary.md); what this directory adds is a
 ceiling in the data and three tests that enforce it, so the rule holds without
 anybody remembering it.
+
+What `C0` to `C4` mean is in [the evidence-level specification](evidence-levels.md),
+and since [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
+a level says how evidence was obtained rather than which rung a suite occupies. That
+specification defines; it does not yet enforce. The committed strategy data still
+carries the superseded level names, and no record has been reclassified.
 
 Evidence that certifies a claim is committed under [`docs/proof/`](../proof/) and
 kept for as long as the claim stands. A lane's raw output expires and may never be

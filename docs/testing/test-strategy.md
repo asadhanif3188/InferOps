@@ -19,8 +19,9 @@ lanes, a ceiling on what each layer's evidence can support, and a marker express
 that makes the ceiling hold when nobody is watching.
 
 The companion documents are
-[the certification levels](certification.md), which say what C0, C1, and C2 mean and
-why a mock stops at C1, and [the claim/test matrix](claim-test-matrix.md), which
+[the evidence levels](evidence-levels.md), which say what C0 to C4 mean,
+[the certification levels](certification.md), which say what each evidence class may
+support and why a mock stops at C1, and [the claim/test matrix](claim-test-matrix.md), which
 lists every public claim with the layer, environment, and owner behind it. The
 authoritative form of all three is
 [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json), which
@@ -392,8 +393,12 @@ certified on the strength of a layer nobody has written.
 
 - [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md)
   — the decision, its alternatives, and its consequences.
-- [The certification levels](certification.md) — what C0 to C2 mean, and why a mock
-  stops at C1.
+- [InferOps Evidence Levels (C0–C4)](evidence-levels.md) — what the levels mean,
+  since [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
+  made this the authoritative definition on 2026-09-23.
+- [The certification levels](certification.md) — what each evidence class may support
+  and why a mock stops at C1. Its own level names are superseded; its ceilings are
+  unchanged and still enforced.
 - [The claim/test matrix](claim-test-matrix.md) — every public claim, with its layer,
   environment, and owner.
 - [The gate matrix](ci-gate-matrix.md) — every automated gate, the claims it defends,
