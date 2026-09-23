@@ -6,6 +6,16 @@ It holds 59 claims: 43 certified, 7 planned,
 1 deferred, and 8 not claimed. The last group is the point of
 the document. A register that listed only what worked would be an advertisement.
 
+> [!NOTE]
+> **A successor version of this register's data model is published, and this file
+> is not it.** [`claim-evidence-matrix.v1alpha2.schema.json`](claim-evidence-matrix.v1alpha2.schema.json)
+> puts the evidence level on an evidence record and lets one claim hold several,
+> which is what [the evidence-level specification](evidence-levels.md) says a level
+> is a property of. Nothing here has moved: this register is still `v1alpha1`, still
+> stores one level per claim, and is still what every consumer reads. The version
+> and the path between them are in [the model document](evidence-record-model.md),
+> and migrating the rows is `V1-S5-012-PR2`.
+
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
 continuous-integration gates that run them, the executed record that certifies

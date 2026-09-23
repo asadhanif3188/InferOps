@@ -1,0 +1,759 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inferops.io/testing/claim-evidence-matrix.v1alpha2.schema.json",
+  "title": "Claim and evidence register v1alpha2",
+  "description": "The versioned claim and evidence data model. It differs from v1alpha1 in one structural way that everything else follows from: an evidence level is a property of an evidence record, not of a claim, and one claim may carry several records at several levels. A claim keeps its identity, its statement, its status, and the boundary it is published with; a record carries what executed, what was substituted, where the workload came from, where it ran, what versions were pinned, how it was measured, what was accepted, what happened, and what it does not establish. The level names are defined in docs/testing/evidence-levels.md and are not restated here; this schema constrains shape. No committed register declares this version yet: migrating docs/testing/claim-evidence-matrix.v1alpha1.json is V1-S5-012-PR2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$id",
+    "contractVersion",
+    "supersedes",
+    "title",
+    "description",
+    "schemaRef",
+    "documentRef",
+    "specificationRef",
+    "decisionRef",
+    "evidenceRoot",
+    "templateRoot",
+    "claimStatuses",
+    "evidenceLevels",
+    "evidenceClasses",
+    "areas",
+    "claims"
+  ],
+  "properties": {
+    "$id": { "type": "string", "minLength": 1 },
+    "contractVersion": {
+      "description": "Contract group and maturity version. A breaking change requires a new value here, never a redefinition of this one. v1alpha1 keeps its meaning and its file.",
+      "const": "inferops.io/v1alpha2"
+    },
+    "supersedes": {
+      "description": "The version this one replaces, stated in the data so a reader never has to infer it from a filename.",
+      "const": "inferops.io/v1alpha1"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "schemaRef": {
+      "description": "This schema, by repository path, so a register names the contract it claims to satisfy.",
+      "const": "docs/testing/claim-evidence-matrix.v1alpha2.schema.json"
+    },
+    "documentRef": { "$ref": "#/$defs/repositoryPath" },
+    "specificationRef": {
+      "description": "The authoritative definition of the evidence levels. This schema constrains shape and defines no level.",
+      "const": "docs/testing/evidence-levels.md"
+    },
+    "decisionRef": {
+      "description": "The decision that made a level a property of a record.",
+      "const": "docs/architecture/decisions/ADR-0016-inferops-evidence-level-model.md"
+    },
+    "modelRef": { "$ref": "#/$defs/repositoryPath" },
+    "readmeRef": { "$ref": "#/$defs/repositoryPath" },
+    "strategyRef": { "$ref": "#/$defs/repositoryPath" },
+    "strategyDocumentRef": { "$ref": "#/$defs/repositoryPath" },
+    "matrixRef": { "$ref": "#/$defs/repositoryPath" },
+    "inventoryRef": { "$ref": "#/$defs/repositoryPath" },
+    "ciGateMatrixRef": { "$ref": "#/$defs/repositoryPath" },
+    "certificationRef": { "$ref": "#/$defs/repositoryPath" },
+    "providerContractRef": { "$ref": "#/$defs/repositoryPath" },
+    "costMethodRef": { "$ref": "#/$defs/repositoryPath" },
+    "boundariesRef": { "$ref": "#/$defs/repositoryPath" },
+    "contributingRef": { "$ref": "#/$defs/repositoryPath" },
+    "evidenceRoot": { "$ref": "#/$defs/repositoryPath" },
+    "templateRoot": { "$ref": "#/$defs/repositoryPath" },
+    "claimStatuses": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/claimStatus" }
+    },
+    "evidenceLevels": {
+      "description": "The level vocabulary, carried so a consumer of the data does not have to parse a document. The names must match docs/testing/evidence-levels.md exactly: this block is a copy of a definition made elsewhere, never a second definition.",
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/evidenceLevelDefinition" }
+    },
+    "evidenceClasses": {
+      "description": "What a result ran against, kept as its own dimension. A class is not a level and implies none: production-experience names where a result would come from, C4 names how it was obtained, and collapsing the two would lose the difference between an unreachable source and an unreached strength.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidenceClass" }
+    },
+    "areas": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/area" }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/claim" }
+    },
+    "nonClaimSurfaces": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonClaimSurface" }
+    },
+    "prohibitions": { "type": "array", "items": { "$ref": "#/$defs/prohibition" } },
+    "limitations": { "type": "array", "items": { "$ref": "#/$defs/sentence" } }
+  },
+  "$defs": {
+    "kebabIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[A-Za-z0-9._][A-Za-z0-9._/-]*$"
+    },
+    "sentence": { "type": "string", "minLength": 1 },
+    "evidenceLevelId": {
+      "description": "The five identifiers. Their meanings are in docs/testing/evidence-levels.md and are deliberately not restated here.",
+      "enum": ["C0", "C1", "C2", "C3", "C4"]
+    },
+    "evidenceLevelDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["levelId", "name", "definitionRef"],
+      "properties": {
+        "levelId": { "$ref": "#/$defs/evidenceLevelId" },
+        "name": { "type": "string", "minLength": 1 },
+        "definitionRef": { "const": "docs/testing/evidence-levels.md" }
+      }
+    },
+    "claimStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "statusId",
+        "meaning",
+        "mayCiteEvidence",
+        "mayBePublishedAsACapability",
+        "rank"
+      ],
+      "properties": {
+        "statusId": { "enum": ["certified", "planned", "deferred", "not-claimed"] },
+        "meaning": { "$ref": "#/$defs/sentence" },
+        "mayCiteEvidence": { "type": "boolean" },
+        "mayBePublishedAsACapability": { "type": "boolean" },
+        "rank": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "evidenceClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classId", "meaning", "maySupportRealBehaviour", "reachedInV1"],
+      "properties": {
+        "classId": { "$ref": "#/$defs/kebabIdentifier" },
+        "meaning": { "$ref": "#/$defs/sentence" },
+        "maySupportRealBehaviour": { "type": "boolean" },
+        "reachedInV1": { "type": "boolean" },
+        "legacyCeiling": {
+          "description": "The ceiling this class carried in v1alpha1, retained so the previous rule stays auditable. It is NOT applied by this schema: a ceiling is a rule about a test layer, the layer rules still live in docs/testing/test-strategy.v1alpha1.json and are still enforced there, and the synthetic ceiling in particular is the rule ADR 0016 D3 records as too broad. Replacing the mechanism is V1-S5-012-PR1.",
+          "anyOf": [{ "$ref": "#/$defs/evidenceLevelId" }, { "const": "none" }]
+        }
+      }
+    },
+    "area": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["areaId", "name"],
+      "properties": {
+        "areaId": { "$ref": "#/$defs/kebabIdentifier" },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "prohibition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleId", "statement"],
+      "properties": {
+        "ruleId": { "$ref": "#/$defs/kebabIdentifier" },
+        "statement": { "$ref": "#/$defs/sentence" },
+        "controlledBy": { "type": "string", "minLength": 1 }
+      }
+    },
+    "nonClaimSurface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "reason"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "reason": { "$ref": "#/$defs/sentence" }
+      }
+    },
+    "componentRole": {
+      "description": "What part the component played in the path the record exercised.",
+      "enum": [
+        "api",
+        "adapter",
+        "inference-runtime",
+        "model",
+        "cluster",
+        "chart",
+        "collector",
+        "tool",
+        "validator",
+        "load-generator",
+        "other"
+      ]
+    },
+    "executedComponent": {
+      "description": "A component that actually ran. A component named here was not substituted; a substituted component belongs in substitutions and nowhere else.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["componentId", "role"],
+      "properties": {
+        "componentId": { "$ref": "#/$defs/kebabIdentifier" },
+        "role": { "$ref": "#/$defs/componentRole" },
+        "note": { "$ref": "#/$defs/sentence" }
+      }
+    },
+    "substitution": {
+      "description": "A component the record replaced. claimMaterial answers the one question that decides C1: was the replaced component material to evaluating THIS claim. A non-material substitution is recorded rather than omitted, because a reviewer decides materiality and a record that mentions no substitution cannot be reviewed for one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "componentId",
+        "role",
+        "substituteKind",
+        "claimMaterial",
+        "rationale"
+      ],
+      "properties": {
+        "componentId": { "$ref": "#/$defs/kebabIdentifier" },
+        "role": { "$ref": "#/$defs/componentRole" },
+        "substituteKind": {
+          "enum": [
+            "mock",
+            "stub",
+            "fake",
+            "simulator",
+            "emulator",
+            "recorded-response",
+            "fixture"
+          ]
+        },
+        "claimMaterial": { "type": "boolean" },
+        "rationale": { "$ref": "#/$defs/sentence" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetBehaviourExecuted", "executedComponents", "substitutions"],
+      "properties": {
+        "targetBehaviourExecuted": {
+          "description": "Whether the behaviour the claim is about was executed at all. False is what separates static evidence from every other kind; it is not a defect, and a C0 record states it plainly.",
+          "type": "boolean"
+        },
+        "executedComponents": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/executedComponent" }
+        },
+        "substitutions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/substitution" }
+        }
+      }
+    },
+    "workload": {
+      "description": "Where the input came from and what shape it had. Source is a property of the input and decides no level on its own: a generated request through a real path is evidence about the real path, and a captured production request through a mocked provider is evidence about the mock. What a synthetic workload can contribute to is decided by representativeness, and only for C3.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "description"],
+      "properties": {
+        "source": {
+          "enum": [
+            "none",
+            "synthetic",
+            "captured",
+            "operator-issued",
+            "production-traffic"
+          ]
+        },
+        "description": { "$ref": "#/$defs/sentence" },
+        "shape": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "concurrency": { "type": "integer", "minimum": 0 },
+            "requestCount": { "type": "integer", "minimum": 0 },
+            "promptSizeDistribution": { "$ref": "#/$defs/sentence" },
+            "arrivalPattern": { "$ref": "#/$defs/sentence" },
+            "durationSeconds": { "type": "number", "minimum": 0 }
+          }
+        },
+        "representativeness": {
+          "description": "Present only when the record asserts the workload was chosen to represent intended use. declared false does not mean the workload is unrepresentative; it means the record may not be read as C3.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["declared", "intendedUse", "assumptions"],
+          "properties": {
+            "declared": { "type": "boolean" },
+            "intendedUse": { "$ref": "#/$defs/sentence" },
+            "assumptions": {
+              "description": "Written down as assumptions, because an assumption a reader cannot see is one nobody can disagree with.",
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/sentence" }
+            }
+          }
+        }
+      }
+    },
+    "environment": {
+      "description": "Where it ran. Two records at the same level in different environments are not interchangeable, which is why this is required of every migrated record.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environmentId", "provider", "hardwareClass"],
+      "properties": {
+        "environmentId": {
+          "enum": [
+            "repository-only",
+            "local-process",
+            "local-container",
+            "local-kubernetes",
+            "cloud-kubernetes",
+            "organizational-production"
+          ]
+        },
+        "provider": {
+          "description": "not-applicable is a value, not a blank. A record that contacted no provider says so.",
+          "type": "string",
+          "minLength": 1
+        },
+        "hardwareClass": {
+          "enum": ["not-applicable", "cpu", "gpu", "other-accelerator"]
+        },
+        "region": { "type": "string", "minLength": 1 },
+        "note": { "$ref": "#/$defs/sentence" }
+      }
+    },
+    "versionRef": {
+      "description": "One immutable identifier. A record without them cannot be repeated, whatever its level.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "kind", "value"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "image-digest",
+            "model-revision",
+            "artifact-hash",
+            "chart-version",
+            "package-version",
+            "commit"
+          ]
+        },
+        "value": { "type": "string", "minLength": 1 }
+      }
+    },
+    "procedure": {
+      "description": "How to run it again: either the exact commands or the workflow that carries them. A record that names neither is not repeatable.",
+      "type": "object",
+      "additionalProperties": false,
+      "anyOf": [{ "required": ["commands"] }, { "required": ["workflowRef"] }],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "workflowRef": { "$ref": "#/$defs/repositoryPath" },
+        "scriptRefs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        }
+      }
+    },
+    "observationPeriod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" },
+        "durationSeconds": { "type": "number", "minimum": 0 }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {
+        "method": { "$ref": "#/$defs/sentence" },
+        "instrument": { "$ref": "#/$defs/sentence" },
+        "methodRef": { "$ref": "#/$defs/repositoryPath" },
+        "observationPeriod": { "$ref": "#/$defs/observationPeriod" }
+      }
+    },
+    "acceptanceCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criterionId", "statement", "declaredBefore", "outcome"],
+      "properties": {
+        "criterionId": { "$ref": "#/$defs/kebabIdentifier" },
+        "statement": { "$ref": "#/$defs/sentence" },
+        "declaredBefore": {
+          "description": "Whether the criterion was registered before the run. A criterion written afterwards is a description of what happened, and the record says which it is.",
+          "type": "boolean"
+        },
+        "outcome": { "enum": ["met", "not-met", "not-evaluated"] }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resultId", "statement"],
+      "properties": {
+        "resultId": { "$ref": "#/$defs/kebabIdentifier" },
+        "statement": { "$ref": "#/$defs/sentence" },
+        "value": { "type": ["string", "number", "boolean", "null"] },
+        "unit": { "type": "string", "minLength": 1 },
+        "criterionId": { "$ref": "#/$defs/kebabIdentifier" }
+      }
+    },
+    "productionContext": {
+      "description": "What C4 requires beyond a real run: an organization, a workload that depended on the system, and a stated period. Paying a cloud provider produces none of the three.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["organization", "dependingWorkload", "observationPeriod"],
+      "properties": {
+        "organization": { "$ref": "#/$defs/sentence" },
+        "dependingWorkload": { "$ref": "#/$defs/sentence" },
+        "observationPeriod": { "$ref": "#/$defs/observationPeriod" },
+        "knownGaps": { "type": "array", "items": { "$ref": "#/$defs/sentence" } }
+      }
+    },
+    "legacyClassification": {
+      "description": "A v1alpha1 classification, carried verbatim and never reinterpreted. certificationLevel is the value the row held under the superseded meanings ADR 0005 D4 published; it is not an evidence level under ADR 0016, and nothing in this schema converts one into the other. Reading each record against the current definitions is V1-S5-012-PR2.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceVersion",
+        "certificationLevel",
+        "evidenceLabel",
+        "vocabularyRef"
+      ],
+      "properties": {
+        "sourceVersion": { "const": "inferops.io/v1alpha1" },
+        "certificationLevel": {
+          "anyOf": [{ "$ref": "#/$defs/evidenceLevelId" }, { "type": "null" }]
+        },
+        "evidenceLabel": { "$ref": "#/$defs/kebabIdentifier" },
+        "provider": { "type": "string", "minLength": 1 },
+        "environment": { "type": "string", "minLength": 1 },
+        "versionsRecordedIn": { "$ref": "#/$defs/repositoryPath" },
+        "vocabularyRef": {
+          "description": "Where the superseded meanings are published, so a reader of a carried value can find out what it meant.",
+          "const": "docs/architecture/decisions/ADR-0016-inferops-evidence-level-model.md"
+        },
+        "note": { "$ref": "#/$defs/sentence" }
+      }
+    },
+    "evidenceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recordId",
+        "claimId",
+        "migrationState",
+        "summary",
+        "evidenceRefs"
+      ],
+      "properties": {
+        "recordId": { "$ref": "#/$defs/kebabIdentifier" },
+        "claimId": {
+          "description": "The claim this record supports, repeated on the record so a record lifted out of its claim still says what it is evidence for.",
+          "$ref": "#/$defs/kebabIdentifier"
+        },
+        "migrationState": {
+          "description": "migrated means the record carries v1alpha2 metadata. legacy-unmigrated means it was derived from a v1alpha1 row whose metadata this model cannot reconstruct: it carries no evidence level, and the absence is the point.",
+          "enum": ["migrated", "legacy-unmigrated"]
+        },
+        "evidenceLevel": {
+          "anyOf": [{ "$ref": "#/$defs/evidenceLevelId" }, { "type": "null" }]
+        },
+        "summary": { "$ref": "#/$defs/sentence" },
+        "execution": { "$ref": "#/$defs/execution" },
+        "workload": { "$ref": "#/$defs/workload" },
+        "environment": { "$ref": "#/$defs/environment" },
+        "versions": { "type": "array", "items": { "$ref": "#/$defs/versionRef" } },
+        "versionsRecordedIn": { "$ref": "#/$defs/repositoryPath" },
+        "procedure": { "$ref": "#/$defs/procedure" },
+        "measurement": { "$ref": "#/$defs/measurement" },
+        "acceptanceCriteria": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/acceptanceCriterion" }
+        },
+        "results": { "type": "array", "items": { "$ref": "#/$defs/result" } },
+        "productionContext": { "$ref": "#/$defs/productionContext" },
+        "evidenceRefs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        },
+        "limitations": { "type": "array", "items": { "$ref": "#/$defs/sentence" } },
+        "doesNotEstablish": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sentence" }
+        },
+        "legacyClassification": { "$ref": "#/$defs/legacyClassification" }
+      },
+      "allOf": [
+        {
+          "$comment": "A migrated record carries the metadata the specification requires of a record, and a level.",
+          "if": {
+            "properties": { "migrationState": { "const": "migrated" } },
+            "required": ["migrationState"]
+          },
+          "then": {
+            "required": [
+              "evidenceLevel",
+              "execution",
+              "environment",
+              "procedure",
+              "limitations",
+              "doesNotEstablish"
+            ],
+            "properties": {
+              "evidenceLevel": { "$ref": "#/$defs/evidenceLevelId" },
+              "limitations": { "minItems": 1 },
+              "doesNotEstablish": { "minItems": 1 }
+            }
+          }
+        },
+        {
+          "$comment": "An unmigrated record is representable without being enriched. It carries no level, and the classification it did carry is kept verbatim.",
+          "if": {
+            "properties": { "migrationState": { "const": "legacy-unmigrated" } },
+            "required": ["migrationState"]
+          },
+          "then": {
+            "required": ["legacyClassification"],
+            "properties": { "evidenceLevel": { "type": "null" } }
+          }
+        },
+        {
+          "$comment": "C0 is the level for evidence obtained without executing the target behaviour.",
+          "if": {
+            "properties": { "evidenceLevel": { "const": "C0" } },
+            "required": ["evidenceLevel"]
+          },
+          "then": {
+            "properties": {
+              "execution": {
+                "required": ["targetBehaviourExecuted"],
+                "properties": { "targetBehaviourExecuted": { "const": false } }
+              }
+            }
+          }
+        },
+        {
+          "$comment": "Every other level requires that the behaviour the claim is about actually ran.",
+          "if": {
+            "properties": { "evidenceLevel": { "enum": ["C1", "C2", "C3", "C4"] } },
+            "required": ["evidenceLevel"]
+          },
+          "then": {
+            "properties": {
+              "execution": {
+                "required": ["targetBehaviourExecuted"],
+                "properties": { "targetBehaviourExecuted": { "const": true } }
+              }
+            }
+          }
+        },
+        {
+          "$comment": "C1 is decided by substitution and by nothing else. A record classified C1 names the claim-material substitution that put it there.",
+          "if": {
+            "properties": { "evidenceLevel": { "const": "C1" } },
+            "required": ["evidenceLevel"]
+          },
+          "then": {
+            "properties": {
+              "execution": {
+                "required": ["substitutions"],
+                "properties": {
+                  "substitutions": {
+                    "contains": {
+                      "type": "object",
+                      "required": ["claimMaterial"],
+                      "properties": { "claimMaterial": { "const": true } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "$comment": "Real is relative to the claim: no claim-material component may be substituted at C2 or above, whatever else in the path was real.",
+          "if": {
+            "properties": { "evidenceLevel": { "enum": ["C2", "C3", "C4"] } },
+            "required": ["evidenceLevel"]
+          },
+          "then": {
+            "properties": {
+              "execution": {
+                "properties": {
+                  "substitutions": {
+                    "not": {
+                      "contains": {
+                        "type": "object",
+                        "required": ["claimMaterial"],
+                        "properties": { "claimMaterial": { "const": true } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "$comment": "C3 requires declared representativeness, a measurement method, and criteria registered before the run.",
+          "if": {
+            "properties": { "evidenceLevel": { "const": "C3" } },
+            "required": ["evidenceLevel"]
+          },
+          "then": {
+            "required": ["workload", "measurement", "acceptanceCriteria", "results"],
+            "properties": {
+              "workload": {
+                "required": ["representativeness"],
+                "properties": {
+                  "representativeness": {
+                    "properties": { "declared": { "const": true } }
+                  }
+                }
+              },
+              "acceptanceCriteria": {
+                "minItems": 1,
+                "items": { "properties": { "declaredBefore": { "const": true } } }
+              },
+              "results": { "minItems": 1 }
+            }
+          }
+        },
+        {
+          "$comment": "C4 requires an organization, a workload that depended on the system, and a stated observation period.",
+          "if": {
+            "properties": { "evidenceLevel": { "const": "C4" } },
+            "required": ["evidenceLevel"]
+          },
+          "then": {
+            "required": ["productionContext", "results"],
+            "properties": {
+              "environment": {
+                "properties": {
+                  "environmentId": { "const": "organizational-production" }
+                }
+              },
+              "results": { "minItems": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimId",
+        "area",
+        "statement",
+        "status",
+        "assertsRealBehaviour",
+        "strategyClaimIds",
+        "implementationRefs",
+        "automatedTestRefs",
+        "recordedCoverageGaps",
+        "ciGateIds",
+        "evidenceRecords",
+        "limitation",
+        "doesNotEstablish",
+        "readmeRefs",
+        "notClaimedReason"
+      ],
+      "properties": {
+        "claimId": { "$ref": "#/$defs/kebabIdentifier" },
+        "area": { "$ref": "#/$defs/kebabIdentifier" },
+        "statement": { "$ref": "#/$defs/sentence" },
+        "status": { "enum": ["certified", "planned", "deferred", "not-claimed"] },
+        "assertsRealBehaviour": { "type": "boolean" },
+        "strategyClaimIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/kebabIdentifier" }
+        },
+        "implementationRefs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        },
+        "automatedTestRefs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        },
+        "recordedCoverageGaps": { "type": "array", "items": { "type": "string" } },
+        "ciGateIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/kebabIdentifier" }
+        },
+        "evidenceRecords": {
+          "description": "Every record supporting this claim, each at its own level. A claim with static, substituted, and runtime records is better documented than one with a runtime record alone, and none of the three is redundant.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidenceRecord" }
+        },
+        "limitation": {
+          "description": "The boundary the published claim travels with. A record's own limitations belong to the record; this is the claim's, and it may not be narrower than what its records support.",
+          "$ref": "#/$defs/sentence"
+        },
+        "doesNotEstablish": { "$ref": "#/$defs/sentence" },
+        "readmeRefs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        },
+        "notClaimedReason": {
+          "anyOf": [{ "$ref": "#/$defs/sentence" }, { "type": "null" }]
+        },
+        "legacyClassification": {
+          "description": "Present only on an unmigrated claim that named no record at all, where the v1alpha1 row's label would otherwise be lost. A claim whose records carry their own legacyClassification does not repeat it here.",
+          "$ref": "#/$defs/legacyClassification"
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "A claim nothing has proven cites no record. The status vocabulary says so and the shape refuses otherwise.",
+          "if": {
+            "properties": { "status": { "enum": ["planned", "deferred"] } },
+            "required": ["status"]
+          },
+          "then": { "properties": { "evidenceRecords": { "maxItems": 0 } } }
+        },
+        {
+          "$comment": "A certified claim rests on at least one record.",
+          "if": {
+            "properties": { "status": { "const": "certified" } },
+            "required": ["status"]
+          },
+          "then": { "properties": { "evidenceRecords": { "minItems": 1 } } }
+        },
+        {
+          "$comment": "not-claimed states why. The reason is null on the other three.",
+          "if": {
+            "properties": { "status": { "const": "not-claimed" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": { "notClaimedReason": { "$ref": "#/$defs/sentence" } }
+          }
+        }
+      ]
+    }
+  }
+}

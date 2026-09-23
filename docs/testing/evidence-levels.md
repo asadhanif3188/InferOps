@@ -381,8 +381,18 @@ stronger; it changes what the evidence is about.
   applies a `C1` ceiling to the `synthetic` evidence class — the specific rule the
   `C3` section above says is too broad. Those rules are left in force on purpose: a
   data contract published as `v1alpha1` is not re-pointed at new semantics in the
-  change that writes the semantics down. A versioned evidence-record model, and then
-  validators for the requirements above, are what make this page executable.
+  change that writes the semantics down.
+
+  **A versioned evidence-record model now exists, and it holds no committed data.**
+  [`claim-evidence-matrix.v1alpha2.schema.json`](claim-evidence-matrix.v1alpha2.schema.json)
+  is the shape the definitions above describe — a level on each record, several
+  records per claim, substitution separated from workload origin — and
+  [the model document](evidence-record-model.md) explains the version and the path
+  out of `v1alpha1`. `V1-S5-011-PR2` published the schema and changed no register:
+  [the claim and evidence matrix](claim-evidence-matrix.md) is still `v1alpha1`,
+  still stores one level per claim, and is still what every consumer reads. Reading
+  each record against the definitions above is `V1-S5-012-PR2`, and validators for
+  the requirements the schema cannot check are `V1-S5-012-PR1`.
 - **It defines no dispute procedure.** Since
   [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
   an authority exists that would arbitrate a classification — the
@@ -399,6 +409,7 @@ stronger; it changes what the evidence is about.
 | Topic | Document |
 |---|---|
 | The decision that established this model | [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md) |
+| The data model that can hold a record at one of these levels | [The claim and evidence data model, `v1alpha2`](evidence-record-model.md) |
 | The decision that established the previous one | [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md) |
 | Evidence classes, their ceilings, and what a real record must contain | [Certification levels and evidence classes](certification.md) |
 | Every claim, its status, its evidence, and its limitation | [Claim and evidence matrix](claim-evidence-matrix.md) |

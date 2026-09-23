@@ -1,0 +1,11 @@
+{
+  "recordId": "legacy-record-without-its-carried-classification",
+  "claimId": "an-illustrative-legacy-row",
+  "migrationState": "legacy-unmigrated",
+  "evidenceLevel": null,
+  "summary": "A carried row whose superseded classification was dropped instead of kept.",
+  "evidenceRefs": [
+    "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  ],
+  "versionsRecordedIn": "docs/proof/templates/TEMPLATE-claim-evidence.md"
+}

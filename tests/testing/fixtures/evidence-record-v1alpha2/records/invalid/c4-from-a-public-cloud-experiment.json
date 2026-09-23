@@ -1,0 +1,69 @@
+{
+  "recordId": "c4-from-a-public-cloud-experiment",
+  "claimId": "an-illustrative-service-meets-its-targets-in-production",
+  "migrationState": "migrated",
+  "evidenceLevel": "C4",
+  "summary": "C4 claimed for a long-running cloud deployment nobody depended on. Paying a provider is not production operation.",
+  "execution": {
+    "targetBehaviourExecuted": true,
+    "executedComponents": [
+      {
+        "componentId": "inference-api",
+        "role": "api"
+      },
+      {
+        "componentId": "inference-runtime",
+        "role": "inference-runtime"
+      },
+      {
+        "componentId": "pinned-model",
+        "role": "model"
+      }
+    ],
+    "substitutions": []
+  },
+  "workload": {
+    "source": "production-traffic",
+    "description": "Whatever the depending workload sent during the window."
+  },
+  "environment": {
+    "environmentId": "cloud-kubernetes",
+    "provider": "a-public-cloud",
+    "hardwareClass": "gpu",
+    "region": "somewhere"
+  },
+  "versions": [
+    {
+      "component": "release",
+      "kind": "chart-version",
+      "value": "1.0.0"
+    }
+  ],
+  "procedure": {
+    "workflowRef": "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  },
+  "measurement": {
+    "method": "Production telemetry aggregated over the observation window.",
+    "observationPeriod": {
+      "start": "2026-01-01T00:00:00Z",
+      "end": "2026-02-01T00:00:00Z"
+    }
+  },
+  "results": [
+    {
+      "resultId": "availability",
+      "statement": "Observed availability over the window.",
+      "value": 99.9,
+      "unit": "percent"
+    }
+  ],
+  "evidenceRefs": [
+    "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  ],
+  "limitations": [
+    "One organization, one window, one workload. A month of operation in which a failure never happened says nothing about that failure."
+  ],
+  "doesNotEstablish": [
+    "Future performance, or behaviour under failure modes that did not occur during the window."
+  ]
+}

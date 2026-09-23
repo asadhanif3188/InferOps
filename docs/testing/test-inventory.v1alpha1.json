@@ -766,6 +766,14 @@
       "note": "It needs no Helm, no Terraform, and no network. It checks the machinery that decides whether a tool control passed, not the tools: those run in the helm-chart and terraform gates. One test asserts a gap still exists - four cluster-smoke scripts do not call the provider guard - so that closing the gap has to correct the matrix."
     },
     {
+      "module": "tests/testing/test_evidence_record_model.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The versioned claim and evidence data model against what V1-S5-011-PR1 decided it had to be: that `docs/testing/claim-evidence-matrix.v1alpha2.schema.json` puts the evidence level on an evidence record and not on a claim, that a claim may hold several records at several levels, that a valid shape exists for each of C0 to C4, that substitution and workload origin are separate fields so synthetic input imposes no ceiling, that the shapes the model exists to refuse are refused where the committed refusal matrix says they are, and that the committed v1alpha1 register reads into the new version with every field accounted for, nothing given an evidence level, and every superseded classification carried verbatim.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that a shape exists and is internally consistent, never that any evidence is classified correctly under it. Two of its tests are tripwires that fail when V1-S5-012-PR2 migrates the register, so the documents describing the unmigrated state are corrected in the same change. It reads committed files only."
+    },
+    {
       "module": "tests/testing/test_evidence_levels.py",
       "layer": "documentation",
       "marker": "docs",

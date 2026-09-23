@@ -1,0 +1,239 @@
+{
+  "claimId": "a-claim-carrying-an-evidence-level",
+  "area": "serving-api",
+  "statement": "One claim, three records, three levels. The weaker two are the history of how confidence was built and are kept rather than replaced.",
+  "status": "certified",
+  "assertsRealBehaviour": true,
+  "strategyClaimIds": [],
+  "implementationRefs": [
+    "src/inferops"
+  ],
+  "automatedTestRefs": [
+    "tests/testing/test_evidence_record_model.py"
+  ],
+  "recordedCoverageGaps": [],
+  "ciGateIds": [
+    "default-lane-tests"
+  ],
+  "evidenceRecords": [
+    {
+      "recordId": "static-check-over-the-committed-manifest",
+      "claimId": "an-illustrative-claim-with-three-records",
+      "migrationState": "migrated",
+      "evidenceLevel": "C0",
+      "summary": "A committed schema and its fixtures were validated by a deterministic check that executed no part of the behaviour the claim is about.",
+      "execution": {
+        "targetBehaviourExecuted": false,
+        "executedComponents": [
+          {
+            "componentId": "contract-validator",
+            "role": "validator",
+            "note": "Reads committed files. No network, no cluster, no model, no clock."
+          }
+        ],
+        "substitutions": []
+      },
+      "workload": {
+        "source": "none",
+        "description": "No request was issued. The check reads files."
+      },
+      "environment": {
+        "environmentId": "repository-only",
+        "provider": "not-applicable",
+        "hardwareClass": "not-applicable"
+      },
+      "versions": [
+        {
+          "component": "repository",
+          "kind": "commit",
+          "value": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "procedure": {
+        "commands": [
+          "python -m pytest tests/contracts -q"
+        ]
+      },
+      "results": [
+        {
+          "resultId": "every-fixture-classified",
+          "statement": "Every valid fixture validated and every invalid fixture was refused by the rule the matrix names.",
+          "value": true
+        }
+      ],
+      "evidenceRefs": [
+        "docs/proof/templates/TEMPLATE-claim-evidence.md"
+      ],
+      "limitations": [
+        "The schema and its fixtures are files. Nothing consumed the contract at run time."
+      ],
+      "doesNotEstablish": [
+        "That any workload was ever deployed from a contract document."
+      ]
+    },
+    {
+      "recordId": "control-flow-against-a-fake-provider",
+      "claimId": "an-illustrative-claim-with-three-records",
+      "migrationState": "migrated",
+      "evidenceLevel": "C1",
+      "summary": "The real API and adapter executed against a fake inference provider configured to time out. The provider is material to the claim and was replaced, which is what puts this record at C1.",
+      "execution": {
+        "targetBehaviourExecuted": true,
+        "executedComponents": [
+          {
+            "componentId": "inference-api",
+            "role": "api"
+          },
+          {
+            "componentId": "provider-adapter",
+            "role": "adapter"
+          }
+        ],
+        "substitutions": [
+          {
+            "componentId": "inference-runtime",
+            "role": "inference-runtime",
+            "substituteKind": "fake",
+            "claimMaterial": true,
+            "rationale": "The claim is about what the API does when the provider times out, so the provider had to be controlled. Replacing it is what the record may not be read past."
+          }
+        ]
+      },
+      "workload": {
+        "source": "synthetic",
+        "description": "One generated completion request.",
+        "shape": {
+          "concurrency": 1,
+          "requestCount": 1
+        }
+      },
+      "environment": {
+        "environmentId": "local-process",
+        "provider": "not-applicable",
+        "hardwareClass": "cpu"
+      },
+      "versions": [
+        {
+          "component": "inferops",
+          "kind": "commit",
+          "value": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "procedure": {
+        "commands": [
+          "python -m pytest tests/serving -q -k timeout"
+        ]
+      },
+      "results": [
+        {
+          "resultId": "canonical-timeout-returned",
+          "statement": "The API returned the canonical timeout response with a retryable flag.",
+          "value": true
+        }
+      ],
+      "evidenceRefs": [
+        "docs/proof/templates/TEMPLATE-claim-evidence.md"
+      ],
+      "limitations": [
+        "The provider was a fake. Making it more faithful would not change what the record establishes."
+      ],
+      "doesNotEstablish": [
+        "That the real inference runtime behaves this way under a real timeout."
+      ]
+    },
+    {
+      "recordId": "a-real-completion-through-the-real-path",
+      "claimId": "an-illustrative-claim-with-three-records",
+      "migrationState": "migrated",
+      "evidenceLevel": "C2",
+      "summary": "A generated request traversed the real API, the real adapter, the real inference runtime, and the pinned model. The input was synthetic and no component material to the claim was substituted, so the record is C2 and not C1.",
+      "execution": {
+        "targetBehaviourExecuted": true,
+        "executedComponents": [
+          {
+            "componentId": "inference-api",
+            "role": "api"
+          },
+          {
+            "componentId": "provider-adapter",
+            "role": "adapter"
+          },
+          {
+            "componentId": "inference-runtime",
+            "role": "inference-runtime"
+          },
+          {
+            "componentId": "pinned-model",
+            "role": "model"
+          }
+        ],
+        "substitutions": [
+          {
+            "componentId": "metrics-collector",
+            "role": "collector",
+            "substituteKind": "stub",
+            "claimMaterial": false,
+            "rationale": "Telemetry was captured in-process rather than scraped. Nothing about the completion depends on it, and it is recorded so a reviewer decides that rather than assuming it."
+          }
+        ]
+      },
+      "workload": {
+        "source": "synthetic",
+        "description": "One generated prompt of a fixed length, issued once.",
+        "shape": {
+          "concurrency": 1,
+          "requestCount": 1
+        }
+      },
+      "environment": {
+        "environmentId": "local-container",
+        "provider": "not-applicable",
+        "hardwareClass": "cpu"
+      },
+      "versions": [
+        {
+          "component": "runtime-image",
+          "kind": "image-digest",
+          "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "component": "model",
+          "kind": "model-revision",
+          "value": "0000000000000000000000000000000000000000"
+        }
+      ],
+      "procedure": {
+        "commands": [
+          "python -m tools.runtime_certification"
+        ],
+        "scriptRefs": [
+          "scripts/certify-runtime.sh"
+        ]
+      },
+      "measurement": {
+        "method": "One request issued and its response body, status, and wall-clock duration recorded."
+      },
+      "results": [
+        {
+          "resultId": "completion-returned",
+          "statement": "The pinned model returned a non-empty completion through the real path.",
+          "value": true
+        }
+      ],
+      "evidenceRefs": [
+        "docs/proof/templates/TEMPLATE-claim-evidence.md"
+      ],
+      "limitations": [
+        "One request on one contributor's CPU. Nothing about capacity, latency under load, or an accelerator follows."
+      ],
+      "doesNotEstablish": [
+        "Representative capacity, a sustained latency target, or behaviour under a production workload distribution."
+      ]
+    }
+  ],
+  "limitation": "An illustrative boundary. The fixture is a shape, not a result.",
+  "doesNotEstablish": "Anything at all about InferOps. It is a fixture.",
+  "readmeRefs": [],
+  "notClaimedReason": null,
+  "evidenceLevel": "C2"
+}

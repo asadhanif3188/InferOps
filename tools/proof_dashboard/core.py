@@ -33,6 +33,7 @@ __all__ = [
     "DASHBOARD_PATH",
     "RECORD_PATH",
     "RULES",
+    "SUPPORTED_CONTRACT_VERSIONS",
     "Capability",
     "Finding",
     "Rule",
@@ -67,6 +68,15 @@ DASHBOARD_DIR: Final = "docs/proof"
 #: The certification ladder, so a level can be compared with a label's ceiling.
 #: ``none`` is a ceiling rather than a level: a label carrying it certifies nothing.
 _LEVEL_RANK: Final[dict[str, int]] = {"none": -1, "C0": 0, "C1": 1, "C2": 2}
+
+#: The register versions this module knows how to read. Everything below assumes
+#: the ``v1alpha1`` shape -- one certification level and one evidence label per
+#: claim -- and ``v1alpha2`` moves both onto evidence records, where a claim may
+#: have several. A reader that carried on regardless would print the strongest
+#: value it could still find and show nothing at all for the records it could not
+#: reach, which is the quiet failure a version string exists to prevent. So the
+#: version is checked, and an unknown one renders no page.
+SUPPORTED_CONTRACT_VERSIONS: Final[frozenset[str]] = frozenset({"inferops.io/v1alpha1"})
 
 
 @dataclass(frozen=True)
@@ -274,6 +284,15 @@ CAPABILITIES: Final[tuple[Capability, ...]] = (
 #: thing a dashboard does wrong when nobody is checking, and each is driven over a
 #: register corrupted to break it in tests/testing/test_proof_dashboard.py.
 RULES: Final[tuple[Rule, ...]] = (
+    Rule(
+        rule_id="a-register-declares-a-version-the-page-can-read",
+        statement=(
+            "The register declares a contract version this renderer implements. "
+            "Every value below is read out of the v1alpha1 shape, and a register "
+            "that moved its levels onto evidence records would be summarised "
+            "against fields that no longer mean what they used to."
+        ),
+    ),
     Rule(
         rule_id="a-capability-names-only-claims-the-register-holds",
         statement=(
@@ -718,11 +737,36 @@ def _cell_findings(record: Mapping[str, Any]) -> list[Finding]:
     return findings
 
 
+def _version_findings(record: Mapping[str, Any]) -> list[Finding]:
+    """The register says which shape it is, before anything reads a field of it."""
+    declared = str(record.get("contractVersion", ""))
+    if declared in SUPPORTED_CONTRACT_VERSIONS:
+        return []
+    return [
+        Finding(
+            "a-register-declares-a-version-the-page-can-read",
+            declared or "no contractVersion",
+            "is not a version this page implements; supported: "
+            + ", ".join(sorted(SUPPORTED_CONTRACT_VERSIONS)),
+        )
+    ]
+
+
 def check_view(
     record: Mapping[str, Any],
     capabilities: Sequence[Capability] = CAPABILITIES,
 ) -> list[Finding]:
-    """Apply every rule to the register. An empty list is what lets a page render."""
+    """Apply every rule to the register. An empty list is what lets a page render.
+
+    The version check comes first and returns alone. A register in a shape this
+    module does not implement would produce a page of findings about fields that
+    are missing because they moved, and the one finding that explains all of them
+    would be buried among them.
+    """
+    version = _version_findings(record)
+    if version:
+        return version
+
     statuses = statuses_by_id(record)
     labels = labels_by_id(record)
 
