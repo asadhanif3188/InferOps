@@ -385,7 +385,7 @@ stronger; it changes what the evidence is about.
   govern has no substitution metadata a replacement could read.
 
   **The rules are executable, over data nobody has committed yet.**
-  [The evidence-level rule catalogue](evidence-level-rules.md) lists forty-one
+  [The evidence-level rule catalogue](evidence-level-rules.md) lists forty-three
   classification rules, which of the schema, the validator in
   [`tools/evidence_model`](../../tools/evidence_model/), or review enforces each, and
   the six judgements left to review. Every enforced rule is watched refusing a

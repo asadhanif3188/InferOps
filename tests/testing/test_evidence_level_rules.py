@@ -153,9 +153,12 @@ def assert_refused_by_its_rule(mutation_id: str, found: list[Refusal]) -> None:
         matching = [r for r in found if r.rule == declared.rule_id and _touches(r, at)]
     else:
         # A schema refusal carries the JSON Schema keyword that failed, not a
-        # catalogue identifier, so it is matched by where it landed and by not
-        # being one of this module's own rules.
-        matching = [r for r in found if r.rule not in RULE_BY_ID and _touches(r, at)]
+        # catalogue identifier, so it is matched by where it landed and by the
+        # keyword the mutation declares. Matching any keyword at that place let a
+        # mutation pass by tripping an unrelated clause; an independent review of
+        # this change found that and the declared keyword closes it.
+        keyword = entry["schemaKeyword"]
+        matching = [r for r in found if r.rule == keyword and _touches(r, at)]
     assert matching, {
         "mutation": mutation_id,
         "rule": declared.rule_id,
@@ -589,3 +592,108 @@ def test_the_limitation_heuristic_accepts_a_sentence_that_says_little() -> None:
     ]
 
     assert check_register(document) == []
+
+
+def test_every_schema_mutation_names_the_keyword_that_must_refuse_it() -> None:
+    for entry in MUTATIONS:
+        declared = RULE_BY_ID[entry["rule"]]
+        if declared.enforced_by == "schema":
+            assert entry.get("schemaKeyword"), entry["mutationId"]
+        else:
+            assert "schemaKeyword" not in entry, entry["mutationId"]
+
+
+# ------------------------------------------------------ what the review found
+
+
+def _under_declared(claim: int, record: int, executed_index: int) -> dict[str, Any]:
+    """Claim `claim` declares only the API, and its record mocks the runtime."""
+    at = f"/claims/{claim}/evidenceRecords/{record}/execution"
+    return apply(
+        REGISTER,
+        [
+            {
+                "op": "replace",
+                "path": f"/claims/{claim}/claimMaterialComponents",
+                "value": ["inference-api"],
+            },
+            {"op": "remove", "path": f"{at}/executedComponents/{executed_index}"},
+            {
+                "op": "add",
+                "path": f"{at}/substitutions/-",
+                "value": {
+                    "componentId": "inference-runtime",
+                    "role": "inference-runtime",
+                    "substituteKind": "mock",
+                    "claimMaterial": False,
+                    "rationale": "The mock is faithful to the contract.",
+                },
+            },
+        ],
+    )
+
+
+def test_an_under_declared_claim_still_lets_a_mocked_runtime_pass_at_c2() -> None:
+    """A measured gap, kept visible, found by the independent review of this change.
+
+    Every rule that refuses a mock-backed `C2` record holds the record to the claim's
+    declaration. A claim that leaves the runtime out of `claimMaterialComponents`
+    lets a record mock the runtime, call the mock immaterial, and pass -- here the
+    `C3` record, whose claim holds no other record. Whether the declaration is
+    complete is the review rule
+    `the-declared-claim-material-components-are-the-right-ones`. If a later change
+    makes this fail, the catalogue's account of that rule has become too modest.
+    """
+    assert check_register(_under_declared(claim=1, record=0, executed_index=1)) == []
+    assert (
+        RULE_BY_ID[
+            "the-declared-claim-material-components-are-the-right-ones"
+        ].enforced_by
+        == "review"
+    )
+
+
+def test_an_under_declaration_is_caught_when_another_record_flags_the_component() -> (
+    None
+):
+    """The gap's edge. A claim that also holds a `C1` record substituting the runtime
+    as material cannot leave the runtime undeclared: that record's substitution then
+    names a component the claim does not declare, and it is refused."""
+    found = check_register(_under_declared(claim=0, record=2, executed_index=2))
+
+    assert [r.rule for r in found] == [
+        "a-claim-material-substitution-replaces-a-declared-component"
+    ], found
+
+
+@pytest.mark.parametrize("value", [["not", "a", "record"], "a string", None, 3])
+@pytest.mark.parametrize("check", [check_record, check_claim, check_register])
+def test_a_document_that_is_not_an_object_is_refused_rather_than_raising(
+    check: Any, value: Any
+) -> None:
+    """The entry points return refusals. The first draft raised on a non-object."""
+    assert check(value)
+
+
+def test_malformed_evidence_classes_do_not_raise() -> None:
+    claim = REGISTER["claims"][3]
+
+    found = check_claim(claim, evidence_classes=[{"notClassId": "x"}])
+
+    assert any(r.rule == "a-real-behaviour-claim-rests-on-real-evidence" for r in found)
+
+
+def test_two_records_missing_an_identifier_are_not_reported_as_duplicates() -> None:
+    """Two missing identifiers are two schema refusals, not one duplicate."""
+    document = apply(
+        REGISTER,
+        [
+            {"op": "remove", "path": "/claims/0/evidenceRecords/0/recordId"},
+            {"op": "remove", "path": "/claims/2/evidenceRecords/0/recordId"},
+        ],
+    )
+
+    found = check_register(document)
+
+    assert not [r for r in found if r.rule == "a-record-identifier-is-unique"], found
+    assert len([r for r in found if r.rule == "required"]) == 2, found

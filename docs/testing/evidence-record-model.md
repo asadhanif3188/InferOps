@@ -93,7 +93,7 @@ What moved, and what deliberately did not:
 | Results | not represented | `results[]` |
 | Limitations | one sentence on the claim | one sentence on the claim, **and** `limitations[]` per record |
 | Evidence class | `claim.evidenceLabel` | `evidenceClasses[]` vocabulary, kept as its own dimension |
-| Class ceiling | `evidenceLabels[].ceiling`, enforced | `evidenceClasses[].legacyCeiling`, carried and **not** applied |
+| Class ceiling | `evidenceLabels[].ceiling`, enforced | `evidenceClasses[].legacyCeiling`, carried, **never** applied to an `evidenceLevel`; since `V1-S5-012-PR1`, applied to carried legacy values only |
 
 ### The three separations the shape enforces
 
@@ -148,7 +148,7 @@ The shape makes them impossible to leave out. It cannot make them true.
 validator, in [`tools/evidence_model/rules.py`](../../tools/evidence_model/rules.py),
 for the rules that compare two fields of a record, a record with its claim, or a claim
 with its register, and published [the rule catalogue](evidence-level-rules.md) saying
-which of the schema, the validator, or review enforces each of forty-one rules. The
+which of the schema, the validator, or review enforces each of forty-three rules. The
 first of the four judgements above moved as a result: a claim now declares its
 claim-material components once, in the optional `claimMaterialComponents` field, and
 every record is held to that declaration rather than to its own `claimMaterial` flags.

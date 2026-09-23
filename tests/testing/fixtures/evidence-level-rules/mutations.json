@@ -1,5 +1,5 @@
 {
-  "description": "Each entry corrupts the illustrative register in register.json to break one classification rule, and says where the refusal must land and why it must happen. Operations are a subset of RFC 6902: add, remove, replace, copy. Every rule the catalogue marks as enforced by the schema or the validator has at least one entry here; a rule marked for review has none, because no mutation can make a judgement fail.",
+  "description": "Each entry corrupts the illustrative register in register.json to break one classification rule, and says where the refusal must land and why it must happen. An entry against a schema rule also names the JSON Schema keyword that must refuse it, so a mutation cannot pass by tripping an unrelated clause at the same place. Operations are a subset of RFC 6902: add, remove, replace, copy. Every rule the catalogue marks as enforced by the schema or the validator has at least one entry here; a rule marked for review has none, because no mutation can make a judgement fail.",
   "mutations": [
     {
       "mutationId": "a-claim-that-carries-a-level",
@@ -12,7 +12,8 @@
           "value": "C2"
         }
       ],
-      "refusedAt": "$.claims[0]"
+      "refusedAt": "$.claims[0]",
+      "schemaKeyword": "additionalProperties"
     },
     {
       "mutationId": "a-c2-record-with-no-environment",
@@ -24,7 +25,8 @@
           "path": "/claims/0/evidenceRecords/2/environment"
         }
       ],
-      "refusedAt": "$.claims[0].evidenceRecords[2]"
+      "refusedAt": "$.claims[0].evidenceRecords[2]",
+      "schemaKeyword": "required"
     },
     {
       "mutationId": "a-c2-record-with-no-limitations",
@@ -37,7 +39,8 @@
           "value": []
         }
       ],
-      "refusedAt": "$.claims[0].evidenceRecords[2].limitations"
+      "refusedAt": "$.claims[0].evidenceRecords[2].limitations",
+      "schemaKeyword": "minItems"
     },
     {
       "mutationId": "a-c2-record-that-does-not-say-what-it-does-not-establish",
@@ -49,7 +52,8 @@
           "path": "/claims/0/evidenceRecords/2/doesNotEstablish"
         }
       ],
-      "refusedAt": "$.claims[0].evidenceRecords[2]"
+      "refusedAt": "$.claims[0].evidenceRecords[2]",
+      "schemaKeyword": "required"
     },
     {
       "mutationId": "a-legacy-record-given-a-level",
@@ -62,7 +66,8 @@
           "value": "C2"
         }
       ],
-      "refusedAt": "$.claims[3].evidenceRecords[0].evidenceLevel"
+      "refusedAt": "$.claims[3].evidenceRecords[0].evidenceLevel",
+      "schemaKeyword": "type"
     },
     {
       "mutationId": "a-c0-record-that-executed-the-behaviour",
@@ -75,7 +80,8 @@
           "value": true
         }
       ],
-      "refusedAt": "$.claims[0].evidenceRecords[0].execution.targetBehaviourExecuted"
+      "refusedAt": "$.claims[0].evidenceRecords[0].execution.targetBehaviourExecuted",
+      "schemaKeyword": "const"
     },
     {
       "mutationId": "a-c2-record-naming-nothing-that-ran",
@@ -88,7 +94,8 @@
           "value": []
         }
       ],
-      "refusedAt": "$.claims[0].evidenceRecords[2].execution.executedComponents"
+      "refusedAt": "$.claims[0].evidenceRecords[2].execution.executedComponents",
+      "schemaKeyword": "minItems"
     },
     {
       "mutationId": "a-c1-record-with-no-substitution",
@@ -101,7 +108,8 @@
           "value": []
         }
       ],
-      "refusedAt": "$.claims[0].evidenceRecords[1].execution.substitutions"
+      "refusedAt": "$.claims[0].evidenceRecords[1].execution.substitutions",
+      "schemaKeyword": "contains"
     },
     {
       "mutationId": "a-mock-backed-record-honestly-flagged-and-marked-c2",
@@ -124,7 +132,8 @@
           }
         }
       ],
-      "refusedAt": "$.claims[0].evidenceRecords[2].execution.substitutions"
+      "refusedAt": "$.claims[0].evidenceRecords[2].execution.substitutions",
+      "schemaKeyword": "not"
     },
     {
       "mutationId": "a-c3-record-without-representativeness",
@@ -136,7 +145,8 @@
           "path": "/claims/1/evidenceRecords/0/workload/representativeness"
         }
       ],
-      "refusedAt": "$.claims[1].evidenceRecords[0].workload"
+      "refusedAt": "$.claims[1].evidenceRecords[0].workload",
+      "schemaKeyword": "required"
     },
     {
       "mutationId": "a-c3-record-without-acceptance-criteria",
@@ -148,7 +158,8 @@
           "path": "/claims/1/evidenceRecords/0/acceptanceCriteria"
         }
       ],
-      "refusedAt": "$.claims[1].evidenceRecords[0]"
+      "refusedAt": "$.claims[1].evidenceRecords[0]",
+      "schemaKeyword": "required"
     },
     {
       "mutationId": "a-c3-record-with-a-criterion-written-afterwards",
@@ -161,7 +172,8 @@
           "value": false
         }
       ],
-      "refusedAt": "$.claims[1].evidenceRecords[0].acceptanceCriteria[0].declaredBefore"
+      "refusedAt": "$.claims[1].evidenceRecords[0].acceptanceCriteria[0].declaredBefore",
+      "schemaKeyword": "const"
     },
     {
       "mutationId": "a-cloud-experiment-marked-c4",
@@ -174,7 +186,8 @@
           "value": "cloud-kubernetes"
         }
       ],
-      "refusedAt": "$.claims[2].evidenceRecords[0].environment.environmentId"
+      "refusedAt": "$.claims[2].evidenceRecords[0].environment.environmentId",
+      "schemaKeyword": "const"
     },
     {
       "mutationId": "a-c4-record-without-a-production-context",
@@ -186,7 +199,8 @@
           "path": "/claims/2/evidenceRecords/0/productionContext"
         }
       ],
-      "refusedAt": "$.claims[2].evidenceRecords[0]"
+      "refusedAt": "$.claims[2].evidenceRecords[0]",
+      "schemaKeyword": "required"
     },
     {
       "mutationId": "a-planned-claim-citing-a-record",
@@ -199,7 +213,8 @@
           "path": "/claims/4/evidenceRecords/-"
         }
       ],
-      "refusedAt": "$.claims[4].evidenceRecords"
+      "refusedAt": "$.claims[4].evidenceRecords",
+      "schemaKeyword": "maxItems"
     },
     {
       "mutationId": "a-component-that-both-ran-and-was-replaced",
@@ -588,6 +603,24 @@
       "refusedAt": "$.claims[3].evidenceRecords"
     },
     {
+      "mutationId": "a-real-serving-statement-that-does-not-declare-it",
+      "rule": "a-statement-about-real-behaviour-declares-it",
+      "reason": "A statement about real inference with the real-behaviour flag left false, which would exempt the claim from needing real evidence at all.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/2/assertsRealBehaviour",
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": "/claims/2/statement",
+          "value": "An illustrative claim that real inference meets its targets under genuine production traffic."
+        }
+      ],
+      "refusedAt": "$.claims[2].assertsRealBehaviour"
+    },
+    {
       "mutationId": "two-claims-sharing-an-identifier",
       "rule": "a-claim-identifier-is-unique",
       "reason": "A register row is found by claimId; two rows with one identifier make every reference to it ambiguous.",
@@ -599,6 +632,32 @@
         }
       ],
       "refusedAt": "$.claims[4].claimId"
+    },
+    {
+      "mutationId": "a-template-cited-through-a-detour",
+      "rule": "a-citation-is-a-plain-repository-path",
+      "reason": "The template itself, reached through a '..' segment, so its string no longer starts with the template root that the template rule compares against.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/evidenceRefs/0",
+          "value": "docs/proof/x/../templates/TEMPLATE-claim-evidence.md"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].evidenceRefs[0]"
+    },
+    {
+      "mutationId": "a-citation-that-climbs-out-of-the-evidence-root",
+      "rule": "a-citation-is-a-plain-repository-path",
+      "reason": "A changelog cited as evidence through '..' segments, prefixed by the evidence root and pointing outside it.",
+      "operations": [
+        {
+          "op": "replace",
+          "path": "/claims/0/evidenceRecords/2/evidenceRefs/0",
+          "value": "docs/proof/../../CHANGELOG.md"
+        }
+      ],
+      "refusedAt": "$.claims[0].evidenceRecords[2].evidenceRefs[0]"
     },
     {
       "mutationId": "a-template-cited-as-evidence",

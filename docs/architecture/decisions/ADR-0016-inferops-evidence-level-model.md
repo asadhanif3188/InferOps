@@ -77,7 +77,7 @@ and [the model document](../../testing/evidence-record-model.md) that explains i
 A second dated note, on the same terms as the first: the accepted text is unchanged.
 
 `V1-S5-012-PR1` made the rules executable. [The rule catalogue](../../testing/evidence-level-rules.md)
-lists forty-one classification rules and says, for each, whether the `v1alpha2` schema,
+lists forty-three classification rules and says, for each, whether the `v1alpha2` schema,
 the validator in [`tools/evidence_model/rules.py`](../../../tools/evidence_model/rules.py),
 or review enforces it; every rule marked for the schema or the validator is watched
 refusing a document built to break it. It added one optional field to the `v1alpha2`

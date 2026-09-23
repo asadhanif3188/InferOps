@@ -27,8 +27,8 @@ Every rule has exactly one of the three in the `Enforced by` column below, and a
 reads that column against the code: a rule published here as enforced that no code
 enforces fails the suite. Every rule marked `schema` or `validator` has at least one
 committed mutation — the illustrative register, corrupted to break that rule — and the
-suite asserts it is refused by that rule at that place. Forty-one rules: eleven
-enforced by the schema, twenty-four by the validator, and six left to review.
+suite asserts it is refused by that rule at that place. Forty-three rules: eleven
+enforced by the schema, twenty-six by the validator, and six left to review.
 
 ## The decision that makes `C1` and `C2` checkable
 
@@ -43,7 +43,7 @@ So a claim now declares its claim-material components **once**, in
 declaration:
 
 - a record that substitutes a declared component must flag it material, so a record
-  cannot call its own mock immaterial;
+  cannot call a mock of a declared component immaterial;
 - a record at `C2` or above must name every declared component as having executed,
   because *real* is relative to the claim;
 - a substitution flagged material must replace a declared component, so a record cannot
@@ -52,7 +52,16 @@ declaration:
 
 A claim holding any classified record at `C1` or above must carry the declaration.
 Whether the declaration names the right components remains a judgement, and it is the
-first review rule below. What changed is where the judgement is made: once per claim,
+first review rule below.
+
+**The declaration is the limit of all three rules.** A claim that declares only the API
+lets a record mock the runtime, flag the mock immaterial, and pass at `C2`; a test
+asserts that it still does. The gap has one edge the rules do reach: if another record
+under the same claim substitutes the runtime and flags it material, that substitution
+names a component the claim does not declare, and it is refused — so an
+under-declaration survives only in a claim none of whose records ever admits the
+component mattered. This paragraph was added after an independent review of the change
+found that the first draft described the mock-at-`C2` case as closed. What changed is where the judgement is made: once per claim,
 in the open, where one reviewer reads it — rather than once per record, by the person
 who wants that record to pass.
 
@@ -100,12 +109,14 @@ or is not level-specific. The subject is the smallest object the rule needs to s
 | `a-record-names-the-claim-that-holds-it` | claim | any | validator | A record's claimId is the identifier of the claim that holds it. |
 | `a-record-identifier-is-unique` | register | any | validator | No two records in a claim, or in a register, share a recordId. |
 | `an-executed-claim-declares-its-claim-material-components` | claim | `C1`, `C2`, `C3`, `C4` | validator | A claim holding a classified record at C1 or above declares the components material to evaluating it, in claimMaterialComponents. |
-| `a-substituted-claim-material-component-is-flagged-material` | claim | any | validator | A record that substitutes a component its claim declares material flags the substitution claim-material. A record cannot call its own mock immaterial. |
+| `a-substituted-claim-material-component-is-flagged-material` | claim | any | validator | A record that substitutes a component its claim declares material flags the substitution claim-material. A record cannot call a mock of a declared component immaterial; a component the claim never declared is not caught. |
 | `a-claim-material-substitution-replaces-a-declared-component` | claim | `C1` | validator | A substitution flagged claim-material replaces a component the claim declares material. Input is not a component, so a synthetic workload cannot be the substitution that puts a record at C1. |
 | `a-real-record-executed-every-claim-material-component` | claim | `C2`, `C3`, `C4` | validator | A record at C2 or above names every component its claim declares material among the components that executed. |
 | `a-certified-claim-rests-on-classified-evidence` | claim | any | validator | A certified claim holds at least one record with a level, or a carried legacy classification with one. A claim with no classified evidence is not published as a capability. |
 | `a-real-behaviour-claim-rests-on-real-evidence` | claim | `C2`, `C3`, `C4` | validator | A certified claim that asserts real behaviour holds a record at C2 or above, or a carried legacy classification whose evidence class may support real behaviour. A mock cannot establish what it replaced. |
+| `a-statement-about-real-behaviour-declares-it` | claim | any | validator | A claim whose statement says it serves a real completion or real inference sets assertsRealBehaviour, so the real-evidence rule cannot be switched off by leaving one flag false. A phrase list, carried from the v1alpha1 register. |
 | `a-claim-identifier-is-unique` | register | any | validator | No two claims in a register share a claimId. |
+| `a-citation-is-a-plain-repository-path` | register | any | validator | No evidence reference, versions reference, or procedure workflow contains a '.' or '..' segment or an empty one, so no citation can detour into the template root or out of the evidence root while its prefix says otherwise. |
 | `a-template-is-not-evidence` | register | any | validator | No evidence reference, versions reference, or procedure workflow names a file under the register's templateRoot. |
 | `evidence-is-cited-from-the-evidence-root` | register | any | validator | Every evidence reference names a file under the register's evidenceRoot. |
 | `a-cited-record-exists` | register | any | validator | Every evidence reference names a file that exists, when the check is given a repository to look in. |
@@ -140,8 +151,10 @@ to read. It cannot make them true, and nothing on this page claims it does.
 
 Across all five: no component is both executed and substituted, every observation
 period is ordered and agrees with any stated duration, every result names a criterion
-the record declares, limitations are not placeholders, and a record says which claim
-holds it.
+the record declares, limitations are not placeholders, a record says which claim holds
+it, and every citation is a plain repository path with no `.` or `..` segment — the
+first draft compared prefixes of unnormalised strings, and an independent review cited
+the template through `docs/proof/x/../templates/` and passed.
 
 ## Synthetic input imposes no ceiling
 
@@ -200,6 +213,11 @@ a real-behaviour claim resting on a static label — against the replacement.
 - **`a-c0-record-ran-only-inspection`** reads component roles. A record that names the
   inference runtime under the role `tool` passes it; the role vocabulary is what the
   record's author chose, and review reads it.
+- **`a-statement-about-real-behaviour-declares-it`** matches two phrases, the same two
+  the `v1alpha1` register suite matches. A statement about real serving phrased any
+  other way, with `assertsRealBehaviour` left false, passes it and is exempt from the
+  real-evidence rule. It is the replacement of the rule that already runs, not a
+  better one.
 - **`a-cited-record-exists`** only runs when given a repository to look in. The
   illustrative fixtures cite paths nobody has written, so the suite checks them against
   a temporary directory it populates, and checks the committed register against this

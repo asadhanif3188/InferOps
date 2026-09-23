@@ -3,8 +3,8 @@
 Change: the classification rules the `v1alpha2` schema cannot express, as a validator in
 [`tools/evidence_model/rules.py`](../../../tools/evidence_model/rules.py); a published
 [rule catalogue](../../testing/evidence-level-rules.md) saying which of the schema, the
-validator, or review enforces each of forty-one rules; one optional field on the
-`v1alpha2` claim, `claimMaterialComponents`; an illustrative register and forty-eight
+validator, or review enforces each of forty-three rules; one optional field on the
+`v1alpha2` claim, `claimMaterialComponents`; an illustrative register and fifty-one
 committed mutations of it; and [a suite](../../../tests/testing/test_evidence_level_rules.py)
 that watches every enforced rule refuse the mutation built to break it. This record
 says what was run, what it found, and what none of it supports.
@@ -31,7 +31,7 @@ dated note, described below.
 **The rules a schema cannot express.** `V1-S5-011-PR2`'s schema holds the shape of one
 record at each level. What it cannot hold is anything that compares: two fields of one
 record, a record with the claim that holds it, a claim with the register around it.
-Twenty-four rules of that kind are now functions, each registered under a catalogue
+Twenty-six rules of that kind are now functions, each registered under a catalogue
 identifier, and each refusal names the rule that made it. The eleven rules the schema
 already enforced are catalogued beside them rather than re-implemented, because a
 constraint expressed twice is a constraint that can disagree with itself.
@@ -78,12 +78,12 @@ claim is not certified; claim status is not an evidence level.
 
 ## Negative tests, and why each must fail
 
-Forty-eight mutations in
+Fifty-one mutations in
 [`mutations.json`](../../../tests/testing/fixtures/evidence-level-rules/mutations.json),
-fifteen against schema rules and thirty-three against validator rules. Each corrupts the
+fifteen against schema rules and thirty-six against validator rules. Each corrupts the
 illustrative register to break one rule, names the place the refusal must land, and says
 in words why it must happen; the suite asserts the refusal comes from that rule at that
-place. Every rule marked `schema` or `validator` has at least one. The cases the rules
+place — and, for a schema rule, from the JSON Schema keyword the entry names. Every rule marked `schema` or `validator` has at least one. The cases the rules
 exist for, named:
 
 | Case | Mutation | Refused by |
@@ -98,7 +98,7 @@ exist for, named:
 
 Every mutation was also run and its full refusal set printed, to check that each is
 refused *for the reason declared* rather than by an unrelated rule that happened to
-fire at the same path. Thirty-nine of the forty-eight produce exactly one refusal. The
+fire at the same path. Forty-two of the fifty-one produce exactly one refusal. The
 other nine produce two or three, and every extra refusal is a true consequence of the
 same corruption — removing the model from what executed also leaves the claim's
 declaration unmet; copying a record into a planned claim also files it under the wrong
@@ -160,6 +160,55 @@ dashboard's `a-level-may-not-exceed-its-labels-ceiling` — keep running on the 
 register. Their replacement exists beside them, which is the ordering
 [the model document](../../testing/evidence-record-model.md) said the migration needs.
 
+## What the independent review found
+
+The change was committed once, then reviewed by two independent reviewers: one probing
+the validator adversarially by running documents against it, one recomputing every
+figure and statement in these pages. The second found every number reproduced and one
+stale sentence. The first found real defects. What the first draft got wrong:
+
+- **A path could detour past both citation rules.** The template and evidence-root rules
+  compared string prefixes without normalising `.` and `..`, and the schema's path
+  pattern allows both. `docs/proof/x/../templates/TEMPLATE-claim-evidence.md` — the
+  template itself — passed as evidence, and `docs/proof/../../CHANGELOG.md` passed as a
+  record under the evidence root, including the existence check, because the file
+  system resolves `..` when it looks. A new rule, `a-citation-is-a-plain-repository-path`,
+  refuses any citation with a `.`, `..`, or empty segment, and two mutations drive it.
+- **The flagship case was described as closed and is not, entirely.** This record's
+  first draft, the catalogue, the module docstring, and the commit message said a record
+  could no longer mock the runtime and call the mock immaterial at `C2`. It can, if the
+  claim leaves the runtime out of `claimMaterialComponents`; every rule that refuses the
+  case reads that declaration, and its completeness is a review rule. Each of those
+  pages now says so. A test asserts the gap still passes, and a second measures its
+  edge: in a claim that also holds a `C1` record substituting the runtime as material,
+  the under-declaration is refused, because that record then names an undeclared
+  component. The rule statement for
+  `a-substituted-claim-material-component-is-flagged-material` was narrowed to match.
+- **A real-serving statement could opt out of needing real evidence.** The
+  real-evidence rule fires only when `assertsRealBehaviour` is set, and nothing tied the
+  flag to the statement. The `v1alpha1` register suite already did, with a two-phrase
+  heuristic, so a replacement without it was weaker than what it replaces. The same
+  heuristic is now `a-statement-about-real-behaviour-declares-it`, with the same two
+  phrases and its limit stated in the catalogue.
+- **The entry points raised on a non-object.** `check_record`, `check_claim`, and
+  `check_register` promised refusals and raised `AttributeError` on a list, a string, or
+  `None`, and `check_claim` raised `KeyError` on an evidence class with no `classId`.
+  Each now returns the schema's refusal, and twelve parametrised cases hold it.
+- **Two missing identifiers were reported as one duplicate.** Two records each lacking
+  a `recordId` produced a refusal saying record `None` was held twice. Missing
+  identifiers are now left to the schema's `required` refusal.
+- **A schema mutation could pass by tripping the wrong clause.** The suite matched a
+  schema refusal by place alone. Each of the fifteen schema mutations now names the
+  keyword that must refuse it, and the suite requires that keyword.
+- **One current-state sentence was stale.** The ADR 0016 row of the decision index in
+  [the architecture README](../../architecture/README.md) still said replacing the
+  ceiling mechanism *is* `V1-S5-012-PR1`, while the same file's narrative paragraph
+  had been corrected. It now says what was done.
+
+The fixes added two rules, three mutations, and twenty tests to the numbers the first
+commit recorded: forty-one rules became forty-three, forty-eight mutations became
+fifty-one, and the module's 113 tests became 133.
+
 ## What the checks caught
 
 **The `V1-S5-011-PR2` valid shapes cite a template as their evidence.** Every one names
@@ -185,12 +234,12 @@ Run from the repository root on Windows, in Git Bash, against the staged tree.
 
 | Command | Result |
 |---|---|
-| `python -m pytest tests/testing/test_evidence_level_rules.py -q` | 113 passed |
+| `python -m pytest tests/testing/test_evidence_level_rules.py -q` | 133 passed |
 | `python -m pytest tests/testing/test_evidence_record_model.py -q` | 119 passed |
 | `python -m pytest tests/testing/test_evidence_levels.py -q` | 40 passed |
-| `python -m pytest tests/testing tests/security -q` | 5569 passed |
+| `python -m pytest tests/testing tests/security -q` | 5589 passed |
 | `python -m pytest tests/telemetry -q` | 1218 passed, as `CONTRIBUTING.md` requires of a change touching `docs/proof/README.md` |
-| `python -m pytest -q` | 13183 passed, 33 skipped, 14 deselected |
+| `python -m pytest -q` | 13203 passed, 33 skipped, 14 deselected |
 | `uv run ruff check .` | All checks passed |
 | `uv run ruff format --check .` | 488 files already formatted |
 | `uv run mypy` | Success: no issues found in 268 source files |

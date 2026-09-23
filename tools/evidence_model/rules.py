@@ -19,9 +19,15 @@ supporting it is checked against that one declaration: a record cannot substitut
 declared component and call it immaterial, cannot reach `C2` without executing every
 declared component, and cannot reach `C1` by substituting something that was never
 declared material -- which is how a synthetic prompt set dressed up as a substituted
-"component" is refused. Whether the declaration itself is right is still a reviewer's
-call. What changed is that it is made once per claim, in the open, rather than once
-per record by the person who wants the record to pass.
+"component" is refused.
+
+**The declaration is the limit of all three.** A claim that under-declares -- names the
+API and leaves the runtime out -- lets a record mock the runtime, flag the mock
+immaterial, and pass at `C2`, and a test asserts that it still does. Whether the
+declaration is complete is a reviewer's call, catalogued as
+`the-declared-claim-material-components-are-the-right-ones`. What changed is where
+that call is made: once per claim, in the open, rather than once per record by the
+person who wants the record to pass.
 
 Nothing here reads a committed register as `v1alpha2`, because no committed register
 declares that version yet. What runs over committed data is the in-memory read in
@@ -310,8 +316,8 @@ RULES: Final[tuple[Rule, ...]] = (
         (),
         "validator",
         "A record that substitutes a component its claim declares material flags "
-        "the substitution claim-material. A record cannot call its own mock "
-        "immaterial.",
+        "the substitution claim-material. A record cannot call a mock of a declared "
+        "component immaterial; a component the claim never declared is not caught.",
     ),
     Rule(
         "a-claim-material-substitution-replaces-a-declared-component",
@@ -349,11 +355,29 @@ RULES: Final[tuple[Rule, ...]] = (
         "support real behaviour. A mock cannot establish what it replaced.",
     ),
     Rule(
+        "a-statement-about-real-behaviour-declares-it",
+        "claim",
+        (),
+        "validator",
+        "A claim whose statement says it serves a real completion or real inference "
+        "sets assertsRealBehaviour, so the real-evidence rule cannot be switched off "
+        "by leaving one flag false. A phrase list, carried from the v1alpha1 register.",
+    ),
+    Rule(
         "a-claim-identifier-is-unique",
         "register",
         (),
         "validator",
         "No two claims in a register share a claimId.",
+    ),
+    Rule(
+        "a-citation-is-a-plain-repository-path",
+        "register",
+        (),
+        "validator",
+        "No evidence reference, versions reference, or procedure workflow contains a "
+        "'.' or '..' segment or an empty one, so no citation can detour into the "
+        "template root or out of the evidence root while its prefix says otherwise.",
     ),
     Rule(
         "a-template-is-not-evidence",
@@ -822,6 +846,8 @@ def _record_identifiers_in_a_claim(
     seen: set[Any] = set()
     for index, record in _records(claim):
         identifier = record.get("recordId")
+        if identifier is None:
+            continue  # refused by the schema as missing, not as duplicated
         if identifier in seen:
             yield _refuse(
                 "a-record-identifier-is-unique",
@@ -923,6 +949,29 @@ def _real_record_executed_material(
             )
 
 
+#: The phrases the `v1alpha1` register suite treats as a statement about real serving.
+#: Carried rather than extended: a longer list would be a new heuristic, and this one
+#: is only the replacement of the rule that already runs.
+REAL_BEHAVIOUR_WORDS: Final = ("serves a real completion", "real inference")
+
+
+@_claim_check("a-statement-about-real-behaviour-declares-it")
+def _statement_declares_real_behaviour(
+    claim: Mapping[str, Any], at: str, _: Mapping[str, Mapping[str, Any]] | None
+) -> Iterator[Refusal]:
+    statement = str(claim.get("statement", "")).lower()
+    if (
+        any(words in statement for words in REAL_BEHAVIOUR_WORDS)
+        and claim.get("assertsRealBehaviour") is not True
+    ):
+        yield _refuse(
+            "a-statement-about-real-behaviour-declares-it",
+            f"{at}.assertsRealBehaviour",
+            "the statement is about real serving and the claim does not assert real "
+            "behaviour, which exempts it from the rule that it rest on real evidence",
+        )
+
+
 def _legacy_values(claim: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     carried = [
         _dict(record.get("legacyClassification"))
@@ -1003,6 +1052,11 @@ def _under(path: str, root: str) -> bool:
     return path.startswith(root.rstrip("/") + "/")
 
 
+def _is_plain(path: str) -> bool:
+    """No `.`, `..`, or empty segment: the prefix of the string is where it points."""
+    return all(segment not in ("", ".", "..") for segment in path.split("/"))
+
+
 def _register_refusals(
     document: Mapping[str, Any], repo_root: Path | None
 ) -> Iterator[Refusal]:
@@ -1037,15 +1091,18 @@ def _register_refusals(
         for record_index, record in _records(claim):
             at = f"{claim_at}.evidenceRecords[{record_index}]"
             identifier = record.get("recordId")
-            if identifier in seen_records and not seen_records[identifier].startswith(
-                f"{claim_at}."
+            if (
+                identifier is not None
+                and identifier in seen_records
+                and not seen_records[identifier].startswith(f"{claim_at}.")
             ):
                 yield _refuse(
                     "a-record-identifier-is-unique",
                     f"{at}.recordId",
                     f"record {identifier!r} is also held at {seen_records[identifier]}",
                 )
-            seen_records.setdefault(identifier, at)
+            if identifier is not None:
+                seen_records.setdefault(identifier, at)
 
             if "legacyClassification" in record:
                 yield from _legacy_ceiling(
@@ -1055,6 +1112,14 @@ def _register_refusals(
                 )
 
             for path, reference in _references(record, at):
+                if not _is_plain(reference):
+                    yield _refuse(
+                        "a-citation-is-a-plain-repository-path",
+                        path,
+                        f"{reference!r} has a '.', '..', or empty segment, so where it "
+                        "points is not what its prefix says",
+                    )
+                    continue
                 if template_root and _under(reference, template_root):
                     yield _refuse(
                         "a-template-is-not-evidence",
@@ -1142,7 +1207,11 @@ def check_record(record: Mapping[str, Any]) -> list[Refusal]:
     check has a coherent shape; whether it supports its claim at its level is
     `check_claim`'s question.
     """
-    return _sorted([*validate_record(record), *_record_rule_refusals(record, "$")])
+    # A non-object is refused by the schema; the rules read it as empty rather than
+    # raising, so a caller always gets refusals back.
+    return _sorted(
+        [*validate_record(record), *_record_rule_refusals(_dict(record), "$")]
+    )
 
 
 def check_claim(
@@ -1157,11 +1226,13 @@ def check_claim(
     on one is refused with a message that says so.
     """
     classes = (
-        {str(entry["classId"]): entry for entry in evidence_classes}
+        {str(_dict(entry).get("classId")): _dict(entry) for entry in evidence_classes}
         if evidence_classes is not None
         else None
     )
-    return _sorted([*validate_claim(claim), *_claim_rule_refusals(claim, "$", classes)])
+    return _sorted(
+        [*validate_claim(claim), *_claim_rule_refusals(_dict(claim), "$", classes)]
+    )
 
 
 def check_register(
@@ -1174,7 +1245,7 @@ def check_register(
     a record nobody has written.
     """
     return _sorted(
-        [*validate_register(document), *_register_refusals(document, repo_root)]
+        [*validate_register(document), *_register_refusals(_dict(document), repo_root)]
     )
 
 
@@ -1184,6 +1255,7 @@ _REGISTER_RULES: Final = frozenset(
     {
         "a-claim-identifier-is-unique",
         "a-record-identifier-is-unique",
+        "a-citation-is-a-plain-repository-path",
         "a-template-is-not-evidence",
         "evidence-is-cited-from-the-evidence-root",
         "a-cited-record-exists",

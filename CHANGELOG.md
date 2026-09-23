@@ -14,7 +14,7 @@ once versioned releases begin.
   [`tools/evidence_model/rules.py`](tools/evidence_model/rules.py) enforces the rules
   the `v1alpha2` schema cannot express — the ones that compare two fields of a record,
   a record with its claim, or a claim with its register — and
-  [the rule catalogue](docs/testing/evidence-level-rules.md) lists all forty-one,
+  [the rule catalogue](docs/testing/evidence-level-rules.md) lists all forty-three,
   saying for each whether the schema, the validator, or review enforces it. A test
   reads that column against the code, so a rule published as enforced that nothing
   enforces fails the suite.
@@ -26,10 +26,12 @@ once versioned releases begin.
   component that was substituted must be flagged material, a `C2` record must have
   executed every declared component, and a material substitution must replace a
   declared component. The last is what refuses a real path classified `C1` because
-  its prompts were generated. Whether the declaration is right is one of six
-  judgements the catalogue leaves to review and says why.
+  its prompts were generated. Whether the declaration is complete is one of six
+  judgements the catalogue leaves to review: a claim that leaves the runtime out of
+  its declaration still lets a record mock it at `C2`, and a test asserts that gap
+  rather than hiding it.
 
-  **Forty-eight committed mutations**, each corrupting an illustrative register to
+  **Fifty-one committed mutations**, each corrupting an illustrative register to
   break one rule and stating why it must fail, and every rule marked `schema` or
   `validator` has at least one. Changing a workload's origin changes no verdict below
   `C4`. The committed `v1alpha1` register, read into the new shape in memory, passes
@@ -47,7 +49,11 @@ once versioned releases begin.
   gain dated notes rather than edits. [The validation record](docs/proof/testing/v1-s5-012-pr1-validation.md)
   lists what ran, what the checks caught — including that the `V1-S5-011-PR2` record
   shapes cite a template as their evidence, now measured by a test rather than
-  rewritten — and what none of it establishes.
+  rewritten — what an independent review found in the first commit (a `..` path that
+  cited the template past both citation rules, entry points that raised on malformed
+  input, the mock-at-`C2` case described as closed when it depends on the claim's
+  declaration, and a real-serving statement that could opt out of needing real
+  evidence), and what none of it establishes.
 
 - **A versioned claim and evidence data model that can hold what the evidence-level
   specification describes.**
