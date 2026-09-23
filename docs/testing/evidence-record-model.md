@@ -98,7 +98,9 @@ What moved, and what deliberately did not:
 
 **A level belongs to a record.** `claim` has no `evidenceLevel` property and refuses
 unknown ones, so the one-level-per-claim shape cannot be reintroduced by adding a
-field. The strongest level a claim holds is derived by a reader, not stored.
+field. The strongest level a claim holds is for a reader to derive; nothing stores
+it, and nothing committed derives it yet either — the proof dashboard still reads
+`v1alpha1`, which is why it gained a version guard rather than a second code path.
 
 **Substitution decides `C1`; workload origin decides nothing.** `execution.substitutions[]`
 carries `claimMaterial`, and `workload.source` carries where the input came from. They
@@ -116,19 +118,38 @@ absence somebody measured is worth more than one nobody mentions.
 The schema encodes the parts of [the specification](evidence-levels.md) that are
 structural. It does not encode the parts that are judgements.
 
+Every record that declares itself `migrated` — that is, every record carrying a
+level at all — must state what executed, where its input came from, where it ran,
+how to run it again, at least one immutable identifier or the record that names
+them, at least one artifact a reader can open, its limitations, and what it does
+not establish. Those are the sentences
+[the specification](evidence-levels.md#what-a-level-does-not-carry) says a record
+states, and they are required rather than encouraged.
+
+On top of that, per level:
+
 | Level | What the shape requires |
 |---|---|
 | `C0` | `execution.targetBehaviourExecuted` is `false` |
-| `C1` | something executed, and `substitutions[]` contains a `claimMaterial` one |
-| `C2` | something executed, and no substitution is `claimMaterial` |
+| `C1` | something executed and is named, and `substitutions[]` contains a `claimMaterial` one |
+| `C2` | something executed and is named, and no substitution is `claimMaterial` |
 | `C3` | everything `C2` requires, plus declared representativeness with written assumptions, a measurement method, results, and acceptance criteria registered **before** the run |
-| `C4` | an `organizational-production` environment, a `productionContext` naming the organization and the workload that depended on the system, a stated observation period, and results |
+| `C4` | an `organizational-production` environment, a `productionContext` naming the organization and the workload that depended on the system, a stated observation period, documented known gaps, and results |
 
-**What it cannot check.** Whether a component was *really* material to a claim, whether
-a workload is *really* representative of intended use, and whether a criterion was
-*really* registered before the run are all judgements a validator reads as booleans.
+**What it cannot check.** Four judgements: whether a component was *really* material to
+a claim, whether the components named as having executed are *really* the ones the
+claim needs, whether a workload is *really* representative of intended use, and whether
+a criterion was *really* registered before the run. A validator reads all four as flags
+and names.
 The shape makes them impossible to leave out. It cannot make them true. Turning the
 remaining rules into executable checks over committed data is `V1-S5-012-PR1`.
+
+The first draft of this schema made four of those sentences optional at every level, so
+a record could be classified `C2` while naming no component that ran, no workload, no
+immutable identifier, and no artifact a reader could open. Two independent reviews of
+the change that published it found the gap, and the refused fixtures beside
+[the suite](../../tests/testing/test_evidence_record_model.py) now drive each rule over
+a record built to break it.
 
 **No evidence in this repository is `C3` or `C4`.** The fixtures at those levels are
 shapes, committed so that the model can express a level before anybody needs it rather
@@ -151,9 +172,12 @@ It is deliberately dull, and the three rules it follows are the interesting part
 1. **Every record it produces is `legacy-unmigrated` and carries no
    `evidenceLevel`.** The superseded value is kept verbatim under
    `legacyClassification`, together with the record that publishes what it used to
-   mean. Writing `evidenceLevel = certificationLevel` would restate fifty-nine
-   classifications in a vocabulary they were not made in — and for a `C3` or `C4`
-   value, in a vocabulary where the old meaning has no counterpart at all.
+   mean. Writing `evidenceLevel = certificationLevel` would restate the forty-three
+   classifications the register holds in a vocabulary they were not made in. For a
+   `C3` or `C4` value it would be worse still, because the old meaning has no
+   counterpart at all — there is no such value in the register today, so that half of
+   the objection is about the value somebody adds next rather than about anything
+   committed.
 2. **One record per claim, not one per cited path.** `v1alpha1` gave the claim a
    single level covering every record it named. Splitting the row would hand each
    cited path a level nothing ever assigned to it individually.
@@ -184,11 +208,23 @@ own keys against it. "Nothing is lost" is checked rather than asserted.
 ### The class ceiling is carried, not re-enforced
 
 `v1alpha1` gives every evidence label a `ceiling` — the strongest level a result of
-that class may certify. Those ceilings are still enforced, in
-[`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json), where they always were,
-and this change does not touch them.
+that class may certify — and it lives in
+[the register itself](claim-evidence-matrix.v1alpha1.json), as `evidenceLabels[].ceiling`.
+It is enforced in two places, and a third rule of the same shape lives elsewhere:
 
-They are **not** re-encoded as rules in `v1alpha2`. They come across as
+| Where | What is enforced | What reads it |
+|---|---|---|
+| `claim-evidence-matrix.v1alpha1.json`, `evidenceLabels[].ceiling` | a claim's level may not exceed its label's ceiling | [`tests/testing/test_claim_evidence_matrix.py`](../../tests/testing/test_claim_evidence_matrix.py), and the dashboard rule `a-level-may-not-exceed-its-labels-ceiling` in [`tools/proof_dashboard`](../../tools/proof_dashboard/) |
+| `test-strategy.v1alpha1.json`, `evidenceClasses[].maxCertification` | a test *layer* may not certify above its class | [`tests/testing/test_test_strategy.py`](../../tests/testing/test_test_strategy.py) |
+
+None of the three moves in this change. The two bound to the register are worth
+naming precisely, because **they stop applying the moment the register is migrated**:
+they read `claim.certificationLevel` and `evidenceLabels[].ceiling`, and `v1alpha2` has
+neither. `V1-S5-012-PR2` therefore cannot migrate the register and leave the guard
+running — its replacement has to exist first, which is `V1-S5-012-PR1`. The layer rule
+in the strategy data is untouched by any of that and keeps working either way.
+
+The ceilings are **not** re-encoded as rules in `v1alpha2`. They come across as
 `legacyCeiling`, which the schema stores and applies to nothing. Two reasons:
 
 - A ceiling constrains what a **test layer** may certify. A level describes how one
@@ -201,7 +237,9 @@ They are **not** re-encoded as rules in `v1alpha2`. They come across as
 
 Replacing the mechanism — a validator that reads a record and applies the rules above
 — is `V1-S5-012-PR1`. Until it exists, the old ceilings stay in force on the old data,
-which is a stricter rule than intended rather than a missing one.
+which is a stricter rule than intended rather than a missing one. After the register
+moves they stop applying to it, which is the ordering constraint above and not a second
+opinion about it.
 
 ### `production-experience` and `C4`
 

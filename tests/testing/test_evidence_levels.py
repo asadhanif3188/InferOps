@@ -22,10 +22,19 @@ finds out that it is.
 The last of those is the one worth understanding. The specification says, in as many
 words, that the committed strategy data still carries the superseded level names and
 still applies a `C1` ceiling to the `synthetic` evidence class. That is an honest
-statement today and a false one the moment `V1-S5-011-PR2` versions the data model.
+statement today and a false one the moment that data moves.
 `test_the_enforcing_data_still_carries_the_superseded_names` fails on that day, on
-purpose, so that whoever migrates the data has to come back and correct the page that
-described the old state.
+purpose, so that whoever moves it has to come back and correct the page that described
+the old state.
+
+This module originally named `V1-S5-011-PR2` as that day, and it was wrong. That
+change versioned the *evidence-record* model -- it published
+`docs/testing/claim-evidence-matrix.v1alpha2.schema.json` -- and deliberately left
+`test-strategy.v1alpha1.json` alone, so the tripwire did not fire and was not supposed
+to. The day this test fails is `V1-S5-012-PR1`, which replaces the ceiling mechanism.
+The wrong prediction was corrected on 2026-09-23, after an independent review of
+`V1-S5-011-PR2` observed that a published tripwire had been announced and had not
+tripped.
 """
 
 from __future__ import annotations
@@ -391,9 +400,11 @@ def test_the_prior_decision_is_amended_rather_than_rewritten() -> None:
 def test_the_enforcing_data_still_carries_the_superseded_names() -> None:
     """A tripwire, and it is meant to fire.
 
-    The specification tells a reader that enforcement has not moved. When
-    `V1-S5-011-PR2` versions the data model this test fails, and the page that made
-    the claim has to be corrected in the same change rather than a later one.
+    The specification tells a reader that enforcement has not moved. When the
+    enforcing strategy data moves, this test fails, and the page that made the claim
+    has to be corrected in the same change rather than a later one. That is
+    `V1-S5-012-PR1`, which replaces the ceiling mechanism -- not `V1-S5-011-PR2`,
+    which versioned the evidence-record model and left this data alone.
     """
     strategy = json.loads(read(STRATEGY_DATA))
     published = {

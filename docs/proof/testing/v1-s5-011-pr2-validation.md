@@ -5,7 +5,7 @@ Change: a published schema for the next version of the claim and evidence regist
 the document explaining it at
 [the claim and evidence data model](../../testing/evidence-record-model.md), a
 compatibility reader at [`tools/evidence_model`](../../../tools/evidence_model/),
-twenty-five committed fixtures with a refusal matrix, and
+thirty committed fixtures with a refusal matrix, and
 [a suite](../../../tests/testing/test_evidence_record_model.py) that holds the schema
 to what `V1-S5-011-PR1` decided a level is. This record says what was run, what it
 found, and what none of it supports.
@@ -21,13 +21,21 @@ change publishes a shape.
 [`claim-evidence-matrix.v1alpha1.json`](../../testing/claim-evidence-matrix.v1alpha1.json)
 is byte-for-byte unchanged. No claim status, certification level, evidence class, or
 evidence reference moves. `contracts/`, `src/`, `charts/`, `deploy/`, `infra/`, and
-`scripts/` are unchanged. One file under `tools/` changes and it is not the register's
-reader: [`tools/proof_dashboard`](../../../tools/proof_dashboard/) gains a version
-guard, described below.
+`scripts/` are unchanged. Four files under `tools/` are touched and none is the
+register's writer: two are the new [`tools/evidence_model`](../../../tools/evidence_model/)
+package, and two are [`tools/proof_dashboard`](../../../tools/proof_dashboard/), whose
+`core.py` gains a version guard and whose `__init__.py` re-exports the constant it
+added. The guard is described below. (This paragraph said "one file" until the
+independent review counted them.)
 
-**No dated evidence record is edited.** Two files under [`docs/proof/`](../) change
-and neither is a record: this one, which is new, and [the evidence index](../README.md),
-which gains a row for it.
+**One dated evidence record is annotated, and none is rewritten.** Three files under
+[`docs/proof/`](../) change. Two are not records: this one, which is new, and
+[the evidence index](../README.md), which gains a row for it. The third is
+[the `V1-S5-011-PR1` record](v1-s5-011-pr1-validation.md), which predicted that this
+change would fire a tripwire it did not fire. Its text is left exactly as written and a
+dated note is added beside it, which is the same treatment ADR 0005 D4 received from
+`V1-S5-011-PR1`: a record is evidence about what was believed when it was made, and
+editing it to be currently correct destroys the only thing it is good for.
 
 ## What the change is
 
@@ -79,6 +87,11 @@ refused for naming no claim-material substitution.
 | `C3` criteria were registered before the run | the flag is required | whether the flag is true |
 | `C4` requires production, a depending workload, and a period | yes | everything about whether the claim is honest |
 | A record states limitations and what it does not establish | yes — both non-empty for a migrated record | whether they are the right ones |
+| A record names what executed | yes — non-empty `executedComponents` whenever the target behaviour ran | whether the components named are the ones the claim needs |
+| A record says where its input came from | yes — `workload` is required of every migrated record | whether the description is accurate |
+| A record can be repeated | yes — `versions[]` or `versionsRecordedIn`, and a non-empty `procedure` | whether the commands still work |
+| A record cites something a reader can open | yes — non-empty `evidenceRefs` for a migrated record | whether the artifact says what the record says it says |
+| `C4` documents what the window did not cover | yes — non-empty `knownGaps` | whether the gaps listed are the real ones |
 | No evidence is reclassified by the transformation | yes — an unmigrated record may carry no level | — |
 
 **This is enforced over documents that declare `v1alpha2`, and none is committed.**
@@ -87,13 +100,29 @@ The rules above apply to fixtures. Applying them to committed evidence is
 `V1-S5-012-PR2`.
 
 **The class ceilings are carried, not re-enforced.** `v1alpha1` gives every evidence
-label a ceiling, and those ceilings are still enforced where they always were, in
-[`test-strategy.v1alpha1.json`](../../testing/test-strategy.v1alpha1.json). They come
-into `v1alpha2` as `legacyCeiling`, which the schema stores and applies to nothing, for
-two reasons: a ceiling constrains what a test *layer* may certify rather than how one
-*record* was obtained, and the `synthetic` ceiling in particular is the rule ADR 0016
-D3 records as too broad. Copying it forward under a new name would have carried the
-defect and made it look freshly decided.
+label a ceiling, in `evidenceLabels[].ceiling` of
+[the register itself](../../testing/claim-evidence-matrix.v1alpha1.json), enforced by
+[`tests/testing/test_claim_evidence_matrix.py`](../../../tests/testing/test_claim_evidence_matrix.py)
+and by the proof dashboard's `a-level-may-not-exceed-its-labels-ceiling` rule. A third
+rule of the same shape — `evidenceClasses[].maxCertification` in
+[`test-strategy.v1alpha1.json`](../../testing/test-strategy.v1alpha1.json) — constrains
+a test *layer* instead. None of the three moves here.
+
+They come into `v1alpha2` as `legacyCeiling`, which the schema stores and applies to
+nothing, for two reasons: a ceiling constrains what a test layer or a whole claim may
+certify rather than how one *record* was obtained, and the `synthetic` ceiling in
+particular is the rule ADR 0016 D3 records as too broad. Copying it forward under a new
+name would have carried the defect and made it look freshly decided.
+
+**Which matters for the ordering of `V1-S5-012`.** The two register-bound guards read
+`claim.certificationLevel` and `evidenceLabels[].ceiling`, and `v1alpha2` has neither,
+so they stop applying the moment the register is migrated. `V1-S5-012-PR2` therefore
+cannot migrate and leave the guard running: its replacement, `V1-S5-012-PR1`, has to
+land first. Earlier drafts of this record and of
+[the model document](../../testing/evidence-record-model.md) named only the strategy
+file and said the ceilings were enforced "where they always were", which was both the
+wrong file and an implication that the guard survives the migration. The independent
+review found it.
 
 ## The compatibility path
 
@@ -153,19 +182,35 @@ replaced with two checks that can: the model document states in words that no ev
 here is `C3` or `C4`, and the committed register is read for the values rather than
 trusted not to have acquired them.
 
+**A schema that let `C2` mean nothing in particular.** The first draft required no
+component to be named as having executed, no workload object outside `C3`, no immutable
+identifier at any level, no non-empty `evidenceRefs`, and no documented known gaps at
+`C4`. A record could therefore be classified `C2` — *the actual components required to
+evaluate the claim executed* — while naming no component, no input, no version, and no
+artifact a reader could open, and `C4` while saying nothing about what the observation
+window failed to cover. The specification's own sentence about what every record states
+was the thing the schema was supposed to encode, and it did not. Two independent reviews
+of this change found it before it was pushed: one by construction, probing the schema
+for documents that should be refused and are not, and one by reading the schema against
+the specification. Five rules were added, five refused fixtures now drive them, and two
+tests assert the requirements against the schema directly rather than only through the
+fixtures.
+
 ## Commands and results
 
 Run from the repository root on Windows, in Git Bash, against the staged tree.
 
 | Command | Result |
 |---|---|
-| `python -m pytest tests/testing/test_evidence_record_model.py -q` | 107 passed |
+| `python -m pytest tests/testing/test_evidence_record_model.py -q` | 119 passed |
+| `python -m pytest tests/testing/test_evidence_levels.py -q` | 40 passed |
 | `python -m pytest tests/testing/test_proof_dashboard.py -q` | 173 passed |
 | `python -m pytest tests/testing/test_test_inventory.py -q` | 909 passed |
 | `python -m pytest tests/testing/test_claim_evidence_matrix.py -q` | 1824 passed |
 | `python -m pytest tests/testing/test_document_links.py -q` | 219 passed |
-| `python -m pytest tests/testing tests/architecture -q` | 7470 passed, 6 skipped |
-| `python -m pytest -q` | 13045 passed, 33 skipped, 14 deselected |
+| `python -m pytest tests/testing tests/architecture -q` | 7482 passed, 6 skipped |
+| `python -m pytest tests/telemetry -q` | 1218 passed, as `CONTRIBUTING.md` requires of a change touching `docs/proof/README.md` |
+| `python -m pytest -q` | 13057 passed, 33 skipped, 14 deselected |
 | `uv run ruff check .` | All checks passed |
 | `uv run ruff format --check .` | 484 files already formatted |
 | `uv run mypy` | Success: no issues found in 266 source files |
@@ -190,10 +235,11 @@ resolved to a declared destination that the schema has.
 - **That the `C3` and `C4` fixtures describe anything this project has.** They are
   shapes. Nothing in the register reaches either level under either vocabulary, and a
   test asserts that rather than assuming it.
-- **That the schema's booleans are true.** Whether a substitution was material, whether
-  a workload represents intended use, and whether a criterion was registered before a
-  run are judgements a validator reads as flags. The shape makes them impossible to
-  omit; it cannot make them honest.
+- **That the schema's booleans and strings are true.** Whether a substitution was
+  material, whether the components named as executed are the ones the claim needs,
+  whether a workload represents intended use, and whether a criterion was registered
+  before a run are four judgements a validator reads as flags and names. The shape
+  makes them impossible to omit; it cannot make them honest.
 - **That the register will migrate cleanly.** The reader demonstrates that the *fields*
   transfer. Which level each record actually holds under the current definitions is a
   separate reading, claim by claim, and it is `V1-S5-012-PR2`.

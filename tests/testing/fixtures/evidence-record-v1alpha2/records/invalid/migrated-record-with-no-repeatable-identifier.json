@@ -1,0 +1,77 @@
+{
+  "recordId": "migrated-record-with-no-repeatable-identifier",
+  "claimId": "an-illustrative-model-serves-a-completion",
+  "migrationState": "migrated",
+  "evidenceLevel": "C2",
+  "summary": "A migrated record with neither an immutable identifier nor the record that names one. Nobody can run it again.",
+  "execution": {
+    "targetBehaviourExecuted": true,
+    "executedComponents": [
+      {
+        "componentId": "inference-api",
+        "role": "api"
+      },
+      {
+        "componentId": "provider-adapter",
+        "role": "adapter"
+      },
+      {
+        "componentId": "inference-runtime",
+        "role": "inference-runtime"
+      },
+      {
+        "componentId": "pinned-model",
+        "role": "model"
+      }
+    ],
+    "substitutions": [
+      {
+        "componentId": "metrics-collector",
+        "role": "collector",
+        "substituteKind": "stub",
+        "claimMaterial": false,
+        "rationale": "Telemetry was captured in-process rather than scraped. Nothing about the completion depends on it, and it is recorded so a reviewer decides that rather than assuming it."
+      }
+    ]
+  },
+  "workload": {
+    "source": "synthetic",
+    "description": "One generated prompt of a fixed length, issued once.",
+    "shape": {
+      "concurrency": 1,
+      "requestCount": 1
+    }
+  },
+  "environment": {
+    "environmentId": "local-container",
+    "provider": "not-applicable",
+    "hardwareClass": "cpu"
+  },
+  "procedure": {
+    "commands": [
+      "python -m tools.runtime_certification"
+    ],
+    "scriptRefs": [
+      "scripts/certify-runtime.sh"
+    ]
+  },
+  "measurement": {
+    "method": "One request issued and its response body, status, and wall-clock duration recorded."
+  },
+  "results": [
+    {
+      "resultId": "completion-returned",
+      "statement": "The pinned model returned a non-empty completion through the real path.",
+      "value": true
+    }
+  ],
+  "evidenceRefs": [
+    "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  ],
+  "limitations": [
+    "One request on one contributor's CPU. Nothing about capacity, latency under load, or an accelerator follows."
+  ],
+  "doesNotEstablish": [
+    "Representative capacity, a sustained latency target, or behaviour under a production workload distribution."
+  ]
+}

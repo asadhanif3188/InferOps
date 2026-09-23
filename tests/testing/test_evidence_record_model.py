@@ -215,6 +215,50 @@ def test_a_record_can_answer_every_question_the_specification_asks_of_one(
     assert field in SCHEMA["$defs"]["evidenceRecord"]["properties"], field
 
 
+def migrated_block() -> dict:
+    """The `then` clause that applies to a record claiming to be migrated."""
+    for block in SCHEMA["$defs"]["evidenceRecord"]["allOf"]:
+        if (
+            block["if"]["properties"].get("migrationState", {}).get("const")
+            == "migrated"
+        ):
+            return dict(block["then"])
+    raise AssertionError("the schema no longer has a block for a migrated record")
+
+
+def test_a_migrated_record_must_say_what_ran_where_and_how_to_repeat_it() -> None:
+    """The fields the specification says every record states, made mandatory.
+
+    The first draft of this schema made all four optional at every level, so a
+    record could be classified `C2` -- *the actual components required to evaluate
+    the claim executed* -- while naming no component, no workload, no immutable
+    identifier, and no artifact a reader could open. Two independent reviews of
+    this change found it. The refused fixtures beside this module drive each one.
+    """
+    block = migrated_block()
+
+    assert {"execution", "workload", "environment", "procedure"} <= set(
+        block["required"]
+    ), block["required"]
+    assert block["properties"]["evidenceRefs"]["minItems"] == 1
+    assert [sorted(branch.get("required", [])) for branch in block["anyOf"]] == [
+        ["versions"],
+        ["versionsRecordedIn"],
+    ], block["anyOf"]
+
+
+def test_a_record_that_executed_something_names_what_executed() -> None:
+    """`C1` to `C4` all assert an execution, so all four have to describe one."""
+    for block in SCHEMA["$defs"]["evidenceRecord"]["allOf"]:
+        levels = block["if"]["properties"].get("evidenceLevel", {}).get("enum")
+        if levels == ["C1", "C2", "C3", "C4"]:
+            execution = block["then"]["properties"]["execution"]
+            assert "executedComponents" in execution["required"]
+            assert execution["properties"]["executedComponents"]["minItems"] == 1
+            return
+    raise AssertionError("the schema no longer constrains execution at C1 to C4")
+
+
 def test_substitution_and_workload_origin_are_separate_fields() -> None:
     """The defect ADR 0016 D3 names, refused in the shape rather than in review."""
     record = SCHEMA["$defs"]["evidenceRecord"]["properties"]
@@ -243,6 +287,7 @@ def test_an_observation_period_and_a_production_context_can_be_recorded() -> Non
         "organization",
         "dependingWorkload",
         "observationPeriod",
+        "knownGaps",
     }
 
 

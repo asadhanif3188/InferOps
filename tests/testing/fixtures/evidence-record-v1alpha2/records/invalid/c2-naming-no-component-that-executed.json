@@ -1,0 +1,72 @@
+{
+  "recordId": "c2-naming-no-component-that-executed",
+  "claimId": "an-illustrative-model-serves-a-completion",
+  "migrationState": "migrated",
+  "evidenceLevel": "C2",
+  "summary": "Runtime evidence claimed by a record that names nothing which ran. The level says the actual components required to evaluate the claim executed, and the record has to say which ones.",
+  "execution": {
+    "targetBehaviourExecuted": true,
+    "executedComponents": [],
+    "substitutions": [
+      {
+        "componentId": "metrics-collector",
+        "role": "collector",
+        "substituteKind": "stub",
+        "claimMaterial": false,
+        "rationale": "Telemetry was captured in-process rather than scraped. Nothing about the completion depends on it, and it is recorded so a reviewer decides that rather than assuming it."
+      }
+    ]
+  },
+  "workload": {
+    "source": "synthetic",
+    "description": "One generated prompt of a fixed length, issued once.",
+    "shape": {
+      "concurrency": 1,
+      "requestCount": 1
+    }
+  },
+  "environment": {
+    "environmentId": "local-container",
+    "provider": "not-applicable",
+    "hardwareClass": "cpu"
+  },
+  "versions": [
+    {
+      "component": "runtime-image",
+      "kind": "image-digest",
+      "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "component": "model",
+      "kind": "model-revision",
+      "value": "0000000000000000000000000000000000000000"
+    }
+  ],
+  "procedure": {
+    "commands": [
+      "python -m tools.runtime_certification"
+    ],
+    "scriptRefs": [
+      "scripts/certify-runtime.sh"
+    ]
+  },
+  "measurement": {
+    "method": "One request issued and its response body, status, and wall-clock duration recorded."
+  },
+  "results": [
+    {
+      "resultId": "completion-returned",
+      "statement": "The pinned model returned a non-empty completion through the real path.",
+      "value": true
+    }
+  ],
+  "evidenceRefs": [
+    "docs/proof/templates/TEMPLATE-claim-evidence.md"
+  ],
+  "limitations": [
+    "One request on one contributor's CPU. Nothing about capacity, latency under load, or an accelerator follows."
+  ],
+  "doesNotEstablish": [
+    "Representative capacity, a sustained latency target, or behaviour under a production workload distribution."
+  ]
+}

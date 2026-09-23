@@ -88,6 +88,17 @@ of those things. When `V1-S5-011-PR2` versions the data model, this test fails, 
 the page that described the old state has to be corrected in the same change rather
 than a later one.
 
+> [!NOTE]
+> **Dated correction, 2026-09-23.** The paragraph above is left as written, because a
+> record is what was believed when it was made. It was wrong about which change would
+> fire the tripwire. `V1-S5-011-PR2` versioned the evidence-record data model — it
+> published [`claim-evidence-matrix.v1alpha2.schema.json`](../../testing/claim-evidence-matrix.v1alpha2.schema.json)
+> — and deliberately left `test-strategy.v1alpha1.json` untouched, so the test passed
+> and was right to. The change that fires it is `V1-S5-012-PR1`, which replaces the
+> ceiling mechanism. An independent review of `V1-S5-011-PR2` found the prediction
+> published and unfulfilled; [that change's record](v1-s5-011-pr2-validation.md) carries
+> the correction, and the module's own docstrings now name `V1-S5-012-PR1`.
+
 ## What the checks caught
 
 **The first draft of the suite bound the wrong table cell.** The pattern matched an

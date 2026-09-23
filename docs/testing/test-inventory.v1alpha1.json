@@ -777,7 +777,7 @@
       "module": "tests/testing/test_evidence_levels.py",
       "layer": "documentation",
       "marker": "docs",
-      "protects": "The InferOps evidence-level model against the documents that publish it: that `docs/testing/evidence-levels.md` is the only document binding `C0` to `C4` to their current names, that a superseded meaning survives only in a mapping document or on a surface registered as awaiting migration and carrying a supersession notice, that the legacy mapping and the project-defined disclaimer are published, that ADR 0005 D4's accepted text is annotated rather than rewritten, and that the enforcing strategy data still carries the superseded names the specification says it carries.",
+      "protects": "The InferOps evidence-level model against the documents that publish it: that `docs/testing/evidence-levels.md` is the only document binding `C0` to `C4` to their current names, that a superseded meaning survives only in a mapping document or on a surface registered as awaiting migration and carrying a supersession notice, that the legacy mapping and the project-defined disclaimer are published, that ADR 0005 D4's accepted text is annotated rather than rewritten, and that the enforcing strategy data still carries the superseded names the specification says it carries - a tripwire that fails when that data moves, which is V1-S5-012-PR1 and not V1-S5-011-PR2.",
       "claims": [],
       "note": "Deliberately no claim: it establishes that the repository states one definition of the evidence levels, never that the definition is a good one or that any record is classified correctly under it. It reads committed documents and the strategy data only."
     },

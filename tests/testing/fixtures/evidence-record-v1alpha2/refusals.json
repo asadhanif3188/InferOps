@@ -9,6 +9,10 @@
       "jsonPath": "$.execution.substitutions",
       "reason": "Synthetic input does not make a record C1. C1 requires a claim-material substitution, and this record names none."
     },
+    "c2-naming-no-component-that-executed": {
+      "jsonPath": "$.execution.executedComponents",
+      "reason": "A record that executed the target behaviour names at least one component that ran. Otherwise the level asserts an execution the record cannot describe."
+    },
     "c2-with-a-claim-material-substitution": {
       "jsonPath": "$.execution.substitutions",
       "reason": "Real is relative to the claim. A claim-material substitution puts the record at C1 however much of the rest of the path was real."
@@ -25,6 +29,10 @@
       "jsonPath": "$",
       "reason": "C4 requires an organization, a workload that depended on the system, and a stated observation period. A cloud experiment is C2, or C3 where it meets the representativeness requirements."
     },
+    "c4-without-documented-known-gaps": {
+      "jsonPath": "$.productionContext",
+      "reason": "C4 requires documented conditions and known gaps. A production window with nothing said about what it did not cover reads as covering everything."
+    },
     "legacy-record-enriched-with-a-level": {
       "jsonPath": "$.evidenceLevel",
       "reason": "An unmigrated record carries no evidence level. Copying the superseded certificationLevel into evidenceLevel is the reclassification V1-S5-012-PR2 exists to do properly."
@@ -32,6 +40,18 @@
     "legacy-record-without-its-carried-classification": {
       "jsonPath": "$",
       "reason": "An unmigrated record keeps its v1alpha1 classification verbatim. Dropping it destroys the audit trail the migration is reviewed against."
+    },
+    "migrated-record-citing-no-evidence": {
+      "jsonPath": "$.evidenceRefs",
+      "reason": "A migrated record cites at least one committed artifact. A result nobody can open is a summary, not evidence."
+    },
+    "migrated-record-that-never-says-where-its-input-came-from": {
+      "jsonPath": "$",
+      "reason": "Every migrated record states where its input came from, including when the answer is that nothing was issued. Leaving it out is how a synthetic workload passes for a captured one."
+    },
+    "migrated-record-with-no-repeatable-identifier": {
+      "jsonPath": "$",
+      "reason": "A migrated record carries either its immutable identifiers or the record that names them. Without one it cannot be repeated, whatever its level."
     },
     "migrated-record-without-limitations": {
       "jsonPath": "$.limitations",
