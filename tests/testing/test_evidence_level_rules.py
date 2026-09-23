@@ -9,11 +9,12 @@ fail is a rule that may already be unreachable.
 What it establishes is narrow. It establishes that the published rules refuse the
 documents they were written to refuse, that they accept an illustrative register
 holding one claim at three levels and records at all five, that a synthetic workload
-changes no verdict below `C4`, and that the committed `v1alpha1` register, read into
-the new shape in memory, passes every rule with every cited file present. It
-establishes **nothing** about whether any committed record is classified correctly:
-no committed record carries a current evidence level yet, and reading each one against
-the definitions is `V1-S5-012-PR2`.
+changes no verdict below `C4`, that the committed `v1alpha2` register passes every
+rule with every cited file present, and that the superseded `v1alpha1` register, read
+into the new shape in memory, does as well. It establishes **nothing** about whether
+any committed record is classified correctly: since `V1-S5-012-PR2` every committed
+record carries a level, and each was chosen by reading the record, which is a
+judgement the migration report records and no rule here can make.
 
 Six rules are marked `review` in the catalogue and have no mutation here. That is the
 point of marking them. Whether a declared claim-material component is the right one,
@@ -40,6 +41,7 @@ from tools.evidence_model import (
     check_record,
     check_register,
     load_legacy_register,
+    load_register,
     read_legacy_as_v1alpha2,
     unimplemented_rules,
 )
@@ -355,6 +357,16 @@ def test_the_published_shapes_cite_a_template_and_the_register_rule_says_so() ->
 
 
 # ------------------------------------------- the committed register, read
+
+
+def test_the_committed_register_passes_every_rule() -> None:
+    """What the rules exist for: the register every consumer reads.
+
+    Since `V1-S5-012-PR2` that register is `v1alpha2`, every record in it carries a
+    level, and every one of those levels has to be consistent with what the record
+    says it executed and substituted and with what its claim declares material.
+    """
+    assert check_register(load_register(), repo_root=REPO_ROOT) == []
 
 
 def test_the_committed_register_passes_every_rule_when_read_into_the_new_shape() -> (

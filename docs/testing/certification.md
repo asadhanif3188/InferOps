@@ -6,76 +6,75 @@ real-runtime record must contain, in
 It certifies nothing by existing.
 
 > [!IMPORTANT]
-> **The level meanings below are superseded.** Since 2026-09-23,
-> [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
-> redefines `C0` to `C4`, and
-> [InferOps Evidence Levels (C0–C4)](evidence-levels.md) is the single authoritative
-> current definition. `C3` Failure and `C4` Composed are superseded outright: failure
-> is a scenario and composition is a topology, and neither is a strength. The other
-> three map conceptually — Schema to Static, Mock to Substituted Execution, Real
-> controlled to Runtime — and *conceptually* means the definitions describe the same
-> dimension, not that any record has been re-examined.
+> **This document does not define what a level means.**
+> [InferOps Evidence Levels (C0–C4)](evidence-levels.md) does, under
+> [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md), and
+> it is the single authoritative definition. The levels are project-defined; they are
+> not an ISO, NIST, regulatory, or industry certification standard, and the word
+> *certification* in this document's name and in the strategy's field names is an
+> identifier rather than a claim that anybody outside this repository certified
+> anything.
 >
-> **Nothing here is reclassified, and this document is still the one a layer is
-> assigned from.** The evidence classes, their ceilings, and the contents a real
-> record must carry are unchanged and stay in force. The table immediately below is
-> retained as the meaning every record written before 2026-09-23 was classified
-> under, so that a historical record stays readable. Re-examining those records
-> against the new definitions is `V1-S5-012-PR2`, and until it runs, no level in this
-> repository has moved.
+> Until `V1-S5-012-PR2` this page also published the level meanings ADR 0005 D4
+> accepted. Those meanings are superseded, and the mapping from each of them to the
+> current one is published in [the specification](evidence-levels.md#what-this-supersedes-and-what-it-does-not)
+> and in ADR 0016 rather than restated here. A record written before 2026-09-23 is
+> read through that mapping.
 
-Two things are described here and they are routinely conflated. **Certification level
-describes proof strength.** **Evidence class describes what the proof ran against.**
-A result can be real and weak, or exhaustive and worthless. Keeping them separate is
-the only way to say so. [The evidence-level specification](evidence-levels.md) adds
-a third that this document never separated out: a level belongs to an **evidence
-record**, and a claim's **status** is a different question again.
+Three things are described across this document and its neighbours, and they are
+routinely conflated. **An evidence level says how one evidence record was obtained**,
+and belongs to the record. **An evidence class says what a test layer runs
+against**, and carries a ceiling on the level that layer may reach. **A claim's
+status** says whether the project publishes the property at all. A result can be real
+and narrow, or exhaustive and worthless; keeping the three apart is the only way to
+say so.
 
-## Certification levels
+## The levels a layer may reach
 
-**Superseded as current meanings.** This table is the historical definition, kept for
-reading records written under it. The current one is in
-[InferOps Evidence Levels (C0–C4)](evidence-levels.md).
+A layer names the highest level it may reach, and its evidence class caps that. The
+identifiers are the ones [the specification](evidence-levels.md) defines; this table
+says only which of them V1 layers may reach and where each is used as a ceiling.
 
-| Level | Name | Meaning | In V1 scope |
+| Level | In V1 scope | Used here as the ceiling of | Defined in |
 |---|---|---|---|
-| `C0` | Schema | Documents, schemas, and inventories in this repository are internally consistent and validate. Nothing is executed against a runtime. | yes |
-| `C1` | Mock | A consumer passes a deterministic contract suite against a labelled mock provider. | yes |
-| `C2` | Real controlled | A real provider works in a controlled, reproducible environment carrying an explicit environment label. | yes |
-| `C3` | Failure | Timeout, denial, unavailability, retry, and recovery are proven against a real provider. | no |
-| `C4` | Composed | End-to-end integration across at least two real projects is proven. | no |
+| `C0` | yes | `local-static` | [Static Evidence](evidence-levels.md#c0--static-evidence) |
+| `C1` | yes | `mock`, `synthetic` | [Substituted Execution Evidence](evidence-levels.md#c1--substituted-execution-evidence) |
+| `C2` | yes | `local-real-cpu`, `cloud-real-cpu`, `cloud-real-gpu` | [Runtime Evidence](evidence-levels.md#c2--runtime-evidence) |
+| `C3` | no | no class | [Representative Evidence](evidence-levels.md#c3--representative-evidence) |
+| `C4` | no | no class | [Operational Evidence](evidence-levels.md#c4--operational-evidence) |
 
-**V1 claims nothing above C2.** `C3` and `C4` are defined here so that the ceiling is
-visible rather than implied, and a test refuses to let an active claim require a level
-outside V1 scope: such a claim must either be deferred or lowered.
-
-`C4` is not merely unreached. There is no second project, so it is not reachable at
-all from inside this repository.
-
-Both sentences describe the superseded meanings and both stay true of them. Under
-[the current definitions](evidence-levels.md) the ceiling is unchanged in practice
-and the reasons differ: `C3` Representative Evidence is reachable in principle and
-nothing is classified there, and `C4` Operational Evidence is unreachable because
-there is no organizational production to observe rather than because there is no
-second project. The committed strategy data still ranks the superseded levels and
-still refuses an active claim requiring `C3` or `C4`, which is what the enforcement
-below acts on.
+**No V1 layer reaches above `C2`, and no V1 claim requires more.** A test refuses an
+active claim requiring a level outside V1 scope: such a claim must be deferred or
+lowered. `C3` is reachable in principle — it needs declared representativeness and
+acceptance criteria registered before the run — and no record reaches it. `C4` is
+unreachable from this repository, because there is no organizational production to
+observe.
 
 ## Evidence classes
 
 An evidence class describes what produced a result, and it carries a hard ceiling on
-what that result may certify.
+the level a layer of that class may reach.
 
 | Class | What produced it | Ceiling |
 |---|---|---|
 | `documented-unexecuted` | A statement in a document. Nothing ran. | certifies nothing |
 | `local-static` | A deterministic check over files in this repository. No network, no cluster, no model, no clock, no randomness. | `C0` |
 | `mock` | A labelled mock provider that loads no model. | `C1` |
-| `synthetic` | Generated inputs or a simulated environment rather than the real one. | `C1` |
+| `synthetic` | A simulated environment rather than the real one: a simulator or emulator standing in for a component the result is about. Generated input is not this class. | `C1` |
 | `estimated` | A calculation rather than a measurement. | certifies nothing |
 | `local-real-cpu` | The real component, on a contributor's own machine, on CPU, with versions and commands recorded. | `C2` |
 | `cloud-real-cpu` | The real component on authorized cloud CPU capacity, with provider, region, node shape, budget, and verified cleanup recorded. | `C2` |
 | `cloud-real-gpu` | The real component on authorized cloud GPU capacity, with the accelerator stack, allocation mode, budget window, and verified cleanup recorded. | `C2` |
+
+**`synthetic` no longer covers generated input.** Until `V1-S5-012-PR2` the class read
+*generated inputs or a simulated environment*, and its `C1` ceiling therefore capped
+any layer whose prompts were generated, however real the path they travelled. That
+is the rule [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
+D3 records as too broad: a simulated environment is a substitution and belongs at
+`C1`, and a workload's origin is not. The class now names only the first, and a layer
+whose only generated part is its input is classed by what it ran against. No layer
+and no gate in the committed strategy uses `synthetic`, so the change moves no
+layer's ceiling; what it removes is the rule, before somebody relied on it.
 
 `local-static` extends the vocabulary [CONTRIBUTING](../../CONTRIBUTING.md) publishes.
 The existing proof records already describe themselves in prose as "local static
@@ -95,26 +94,39 @@ It stays part of the evidence vocabulary [CONTRIBUTING](../../CONTRIBUTING.md)
 publishes — unreachable rather than unmentioned — so that a future record cannot
 reintroduce it as though the question had never been asked.
 
+## A layer ceiling is not a record's level
+
+The ceilings above constrain what a **test layer** may reach. Since `V1-S5-012-PR2`
+every evidence record in [the claim and evidence register](claim-evidence-matrix.md)
+carries its own level, decided by what that record executed and what it substituted,
+and checked by the rules in [the rule catalogue](evidence-level-rules.md) rather than
+by the class of the layer that produced it. The two agree in the direction that
+matters — a record that substituted a claim-material component cannot be `C2`, and a
+layer of a mock class cannot reach `C2` — and they are held by different code so
+that neither can quietly stand in for the other.
+
 ## Why a mock stops at C1
 
 [The mock and real serving boundary](../serving/mock-and-real-boundary.md) argues
 this at length and is the accepted rule; this section says how the strategy makes it
 mechanical.
 
-The argument in one line: **certification asks whether the contract matches reality,
+The argument in one line: **the question is whether the contract matches reality,
 and a mock is built from the contract.** Pointing one at the other tests the author's
 understanding against itself. It passes. It would also pass if the contract were
 wrong, which is the only case where the test was worth running.
 
 The mechanism is a ceiling in the data rather than a warning in a document. Each
 layer declares an evidence class; each class declares the highest level it can
-support; a test refuses a layer that certifies above its class. A second test refuses
+support; a test refuses a layer that reaches above its class. A second test refuses
 a claim requiring `C2` or above whose qualifying layers are `mock`, `synthetic`, or
 `estimated`. A third refuses a layer labelled with an unreal class that also claims to
-need a real model, which is the shape a misfiled layer takes.
+need a real model, which is the shape a misfiled layer takes. For a record, the same
+rule is the substitution rule: a record that replaced a component material to its
+claim is `C1` for that claim, and the validator refuses it at `C2`.
 
 The consequence a contributor actually feels: making the mock more faithful does not
-raise what it can certify, and no amount of coverage in the default lane produces a
+raise what it can support, and no amount of coverage in the default lane produces a
 serving claim. The only thing that produces one is running the real thing and
 recording it.
 
@@ -138,6 +150,11 @@ shape and accelerator stack, the allocation mode, the authorization and maximum
 budget with its price source, the infrastructure owner, the shutdown deadline, and
 verified cleanup. And an explicit statement that it is not production.
 
+The register's `v1alpha2` shape asks the same of every record at any level, in
+fields a validator reads: what executed, what was substituted, where the workload came
+from, where it ran, the immutable identifiers or the record that names them, how to
+run it again, its limitations, and what it does not establish.
+
 ## Where certifying records live
 
 Under [`docs/proof/`](../proof/), committed, retained for as long as the claim stands.
@@ -147,13 +164,14 @@ the retention periods, and what happens to a superseded record are in
 
 ## What this document does not do
 
-- **It no longer defines what a level means.**
+- **It does not define what a level means.**
   [InferOps Evidence Levels (C0–C4)](evidence-levels.md) does, under
   [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md).
   What stays here is what a class may support, the ceiling each one carries, and what
   a record certifying real behaviour must contain.
 - It does not grant a level to anything. Levels are reached by records, and
-  [the claim/test matrix](claim-test-matrix.md) says which claims currently hold one.
+  [the claim and evidence register](claim-evidence-matrix.md) says which records hold
+  which level.
 - It does not define a process for disputing a level. Since
   [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md)
   there is an authority that would arbitrate one — the `repository-maintainer` role,

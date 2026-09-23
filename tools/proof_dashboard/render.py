@@ -1,16 +1,17 @@
 """The register, projected into one page a reviewer can read in a few minutes.
 
-Nothing here decides a status. Every cell is a value read out of the register, a
-count computed from it, or fixed prose that says the same thing whatever the
-register holds. The page is regenerated and compared byte for byte, so an edit
+Nothing here decides a status or a level. Every cell is a value read out of the
+register, a count computed from it, or fixed prose that says the same thing whatever
+the register holds. The page is regenerated and compared byte for byte, so an edit
 made to it by hand is a failing check rather than a new claim.
 
 Two shapes carry most of the page. A capability table shows the rows behind one
-capability group with their level, evidence class, provider, environment, record,
-and limitation side by side, because those are what a summary usually drops.
-The table after them is the one that matters more: every claim this project does
-**not** certify, derived from the register rather than selected, so an absence
-cannot be left out of the page by leaving it out of a list.
+capability group with every evidence record each claim holds -- its level, where it
+ran, what it substituted, and the files behind it -- beside the claim's status and
+limitation, because those are what a summary usually drops. The table after them is
+the one that matters more: every claim this project does **not** certify, derived
+from the register rather than selected, so an absence cannot be left out of the page
+by leaving it out of a list.
 """
 
 from __future__ import annotations
@@ -19,25 +20,40 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Final
 
 from .core import (
+    LEVEL_ORDER,
+    UNRECORDED_PROVIDER,
     Capability,
+    environment_counts,
+    evidence_records,
     grouped_claims,
-    label_counts,
-    labels_by_id,
     level_counts,
+    levels_by_id,
     link_from_dashboard,
     named_providers,
     provider_counts,
+    reclassified_claims,
+    record_providers,
     status_counts,
     statuses_by_id,
     strongest_level,
     uncertified_claims,
+    unmigrated_records,
+    unrecorded_provider_records,
 )
 
 __all__ = ["anchor", "render_dashboard"]
 
-#: Printed where a register field is null. A status with no certification level
-#: has not reached one, and an em dash says that without inventing a value.
+#: Printed where there is nothing to print. A claim with no classified record has
+#: not reached a level, and an em dash says that without inventing a value.
 ABSENT: Final = "—"
+
+#: Between two evidence records in one cell. A line break would end the table row;
+#: an HTML break is rendered inside the cell by the hosting service.
+RECORD_BREAK: Final = "<br>"
+
+#: Where the reasons behind every level change are written down. A fixed path: the
+#: page links it and the link suite resolves it.
+MIGRATION_REPORT: Final = "testing/v1-s5-012-pr2-migration-report.md"
 
 
 def _cell(text: str) -> str:
@@ -70,25 +86,66 @@ def _table(header: Sequence[str], rows: Iterable[Sequence[str]]) -> list[str]:
     return lines
 
 
-def _records(row: Mapping[str, Any]) -> str:
-    """Every record a row cites, linked so the page can be walked into the proof."""
-    if not row["evidenceRefs"]:
-        if row["status"] in ("planned", "deferred"):
-            return f"none, and a `{row['status']}` claim may cite none"
-        return "none recorded"
+def _links(references: Iterable[Any]) -> str:
+    """Every file a record cites, linked so the page can be walked into the proof."""
     return ", ".join(
         f"[`{link_from_dashboard(str(reference))}`]({link_from_dashboard(str(reference))})"
-        for reference in row["evidenceRefs"]
+        for reference in references
     )
 
 
-def _scope(row: Mapping[str, Any]) -> str:
-    """Where the result came from, with the provider kept beside the environment."""
-    provider = str(row["provider"])
-    environment = str(row["environment"])
-    if provider == "not-applicable":
-        return f"`{environment}`, no provider"
-    return f"`{provider}`, `{environment}`"
+def _where(held: Mapping[str, Any]) -> str:
+    """Where one record ran, with the provider kept beside the environment."""
+    environment = held["environment"]
+    provider = str(environment["provider"])
+    placed = f"`{environment['environmentId']}`"
+    if provider == UNRECORDED_PROVIDER:
+        placed += ", provider not named by its record"
+    elif provider != "not-applicable":
+        placed += f" on `{provider}`"
+    hardware = str(environment["hardwareClass"])
+    if hardware != "not-applicable":
+        placed += f", `{hardware}`"
+    return placed
+
+
+def _substituted(held: Mapping[str, Any]) -> str:
+    """What the record replaced, and whether the replacement was material."""
+    substitutions = (held.get("execution") or {}).get("substitutions") or []
+    if not substitutions:
+        return ""
+    return "substituted " + ", ".join(
+        f"`{entry['componentId']}` ({entry['substituteKind']}"
+        + (", claim-material)" if entry["claimMaterial"] else ")")
+        for entry in substitutions
+    )
+
+
+def _record(held: Mapping[str, Any]) -> str:
+    """One evidence record as one line of a cell."""
+    if held.get("migrationState") != "migrated" or not held.get("evidenceLevel"):
+        carried = (held.get("legacyClassification") or {}).get("certificationLevel")
+        was = f", superseded `{carried}`" if carried else ""
+        return f"legacy, not migrated{was} · {_links(held['evidenceRefs'])}"
+    parts = [f"`{held['evidenceLevel']}`", _where(held)]
+    workload = str((held.get("workload") or {}).get("source", "none"))
+    if workload != "none":
+        parts.append(f"workload `{workload}`")
+    substituted = _substituted(held)
+    if substituted:
+        parts.append(substituted)
+    parts.append(_links(held["evidenceRefs"]))
+    return " · ".join(parts)
+
+
+def _records(row: Mapping[str, Any]) -> str:
+    """Every record a claim holds, one per line of the cell."""
+    held = evidence_records(row)
+    if not held:
+        if row["status"] in ("planned", "deferred"):
+            return f"none, and a `{row['status']}` claim may hold none"
+        return "none recorded"
+    return RECORD_BREAK.join(_record(entry) for entry in held)
 
 
 def _capability_counts(rows: Sequence[Mapping[str, Any]]) -> str:
@@ -101,6 +158,10 @@ def _capability_counts(rows: Sequence[Mapping[str, Any]]) -> str:
     return "**Tally:** " + ", ".join(parts) + "."
 
 
+def _record_total(record: Mapping[str, Any]) -> int:
+    return sum(len(evidence_records(row)) for row in record["claims"])
+
+
 def _heading(record: Mapping[str, Any]) -> list[str]:
     counts = status_counts(record)
     total = len(record["claims"])
@@ -110,7 +171,7 @@ def _heading(record: Mapping[str, Any]) -> list[str]:
         "",
         "Status: **generated page**. It is produced by",
         "`python -m tools.proof_dashboard` from",
-        "[the claim and evidence register](../testing/claim-evidence-matrix.v1alpha1.json),",
+        "[the claim and evidence register](../testing/claim-evidence-matrix.v1alpha2.json),",
         "and [`tests/testing/test_proof_dashboard.py`](../../tests/testing/test_proof_dashboard.py)",
         "regenerates it and fails if the committed page and the register disagree.",
         "**Do not edit it by hand.** An edit here would be the only place in this",
@@ -131,24 +192,35 @@ def _heading(record: Mapping[str, Any]) -> list[str]:
         "this page is counted from the register at render time; there is no field",
         "anywhere in this tool that a count could be typed into.",
         "",
+        "> [!IMPORTANT]",
+        "> **A claim's status and an evidence level are different things.** The status",
+        "> says whether this project publishes a property at all. A level belongs to",
+        f"> one evidence record — {_record_total(record)} of them sit behind these claims — and",
+        "> says only how that record was obtained. The levels `C0` to `C4` are",
+        "> [InferOps Evidence Levels](../testing/evidence-levels.md): **project-defined,",
+        "> and not an ISO, NIST, regulatory, or industry certification standard.** Nobody",
+        "> outside this repository has reviewed a claim or a record on this page.",
+        "",
         "## Five minutes, in order",
         "",
         "1. **Read the overview.** [The capabilities at a",
         "   glance](#the-capabilities-at-a-glance) is one row per capability: how many",
         "   of its claims are certified, planned, deferred, or not claimed, the",
-        "   strongest level reached, and the provider the real results came from.",
+        "   highest level any record behind a certified claim reached, and the",
+        "   provider the real results came from.",
         "2. **Open the capability you came for.** Each row of the overview links to",
         "   its section under [the capabilities](#the-capabilities), where every claim",
-        "   is shown with its status, level, evidence class, provider and environment,",
-        "   record, and the limitation that travels with it.",
-        "3. **Follow a record.** Every certified row links the committed record under",
-        "   `docs/proof/` that supports it. The record carries the commands, the",
+        "   is shown with its status, every evidence record behind it — each with its",
+        "   own level, where it ran, what it substituted, and its files — and the",
+        "   limitation that travels with the claim.",
+        "3. **Follow a record.** Every certified row links the committed records under",
+        "   `docs/proof/` that support it. A record carries the commands, the",
         "   versions, the host, and what it does not establish; the row is a summary",
         "   of it and never more than it.",
         "4. **Read what is absent.** [What V1 does not claim](#what-v1-does-not-claim)",
         "   lists every claim that is not certified, derived from the register.",
         "5. **Read the boundary.** [Where V1 stands](#where-v1-stands) says what each",
-        "   status, level, and evidence label may and may not be read as, and",
+        "   status and each level may and may not be read as, and",
         "   [what this page is not](#what-this-page-is-not) says what the page itself",
         "   cannot tell you.",
         "",
@@ -157,7 +229,7 @@ def _heading(record: Mapping[str, Any]) -> list[str]:
 
 def _where_v1_stands(record: Mapping[str, Any]) -> list[str]:
     statuses = statuses_by_id(record)
-    labels = labels_by_id(record)
+    levels = levels_by_id(record)
 
     lines = [
         "## Where V1 stands",
@@ -182,59 +254,80 @@ def _where_v1_stands(record: Mapping[str, Any]) -> list[str]:
             ],
         )
     )
+
+    unmigrated = unmigrated_records(record)
+    if unmigrated:
+        unmigrated_note = [
+            f"{len(unmigrated)} records are left `legacy-unmigrated` and carry no level:",
+            "a fact the current shape requires could not be taken from the files they",
+            "cite, and their superseded classification is kept as history rather than",
+            "read as a level. They are counted in no row of this table.",
+        ]
+    else:
+        unmigrated_note = [
+            "Every record carries a level: none was left `legacy-unmigrated`.",
+        ]
     lines.extend(
         [
             "",
-            "### The levels the certified claims reached",
+            "### The levels the evidence records reached",
             "",
-            "A level says how strong a proof is, and it is not the same question as",
-            "whether the claim may be published. The meanings are in",
-            "[the certification document](../testing/certification.md).",
+            "A level belongs to one evidence record and says how it was obtained:",
+            "statically, with a component material to the claim substituted, or with",
+            "the real components running. The definitions are in",
+            "[the evidence-level specification](../testing/evidence-levels.md). A claim",
+            "may hold several records at several levels, so the two columns count",
+            "different things: records, and the certified claims holding at least one",
+            "record at that level.",
             "",
         ]
     )
+    counted = level_counts(record)
     lines.extend(
         _table(
-            ("Certification level", "Certified claims"),
+            ("Evidence level", "Records", "Certified claims holding one", "Defined as"),
             [
-                (f"`{level}`", str(count))
-                for level, count in level_counts(record).items()
+                (
+                    f"`{level}`",
+                    str(counted[level][0]),
+                    str(counted[level][1]),
+                    # Cited with a link rather than bound in the second column: the
+                    # specification is the one document allowed to define a level,
+                    # and a test refuses a second table that binds the names.
+                    f"[{_cell(str(levels[level]['name']))}]"
+                    f"(../testing/evidence-levels.md#{anchor(level + ' — ' + str(levels[level]['name']))})",
+                )
+                for level in LEVEL_ORDER
             ],
         )
     )
-    used = label_counts(record)
-    silent = sum(
-        1 for label_id in used if not labels[label_id]["maySupportRealBehaviour"]
-    )
     lines.extend(
         [
             "",
-            "### What the evidence behind them is",
+            *unmigrated_note,
             "",
-            "The label decides the ceiling. A claim cannot be certified above what its",
-            f"evidence class can support, and {silent} of the {len(used)} classes in use",
-            "below can support no statement about real runtime behaviour at all.",
+            "**`C0` to `C4` is not a maturity score.** The numbering tracks closeness to",
+            "the intended operating context, and a record with a higher number is not",
+            "better evidence for every claim: a static check is the right evidence for",
+            "a claim about a schema, and no runtime record would be. Nothing in this",
+            "repository is `C3` or `C4`; `C4` needs organizational production, and",
+            "there is none.",
+            "",
+            "### Where the records ran",
+            "",
+            "Two records at the same level in different environments are not",
+            "interchangeable, so the environment is counted per record.",
             "",
         ]
     )
     lines.extend(
         _table(
-            (
-                "Evidence label",
-                "Claims",
-                "Ceiling",
-                "May support real runtime behaviour",
-                "What it is",
-            ),
+            ("Environment", "Provider", "Hardware", "Records"),
             [
-                (
-                    f"`{label_id}`",
-                    str(count),
-                    f"`{labels[label_id]['ceiling']}`",
-                    "yes" if labels[label_id]["maySupportRealBehaviour"] else "no",
-                    _cell(str(labels[label_id]["meaning"])),
-                )
-                for label_id, count in used.items()
+                (f"`{environment}`", f"`{provider}`", f"`{hardware}`", str(count))
+                for (environment, provider, hardware), count in environment_counts(
+                    record
+                ).items()
             ],
         )
     )
@@ -245,19 +338,33 @@ def _where_v1_stands(record: Mapping[str, Any]) -> list[str]:
             "",
             "### Which provider the real results came from",
             "",
-            "Only the claims that name a provider are counted here. The rest named none",
-            "because no provider produced them, and folding those in would make the",
-            "reference provider look like a minority of the evidence rather than all of",
-            "it.",
+            "Only the records that name a provider are counted here. The rest named",
+            "none because no provider produced them, and folding those in would make",
+            "the reference provider look like a minority of the evidence rather than",
+            "all of it.",
             "",
         ]
     )
     lines.extend(
         _table(
-            ("Provider", "Claims naming it"),
-            [(f"`{provider}`", str(count)) for provider, count in providers.items()],
+            ("Provider", "Records naming it", "Claims holding one"),
+            [
+                (f"`{provider}`", str(records), str(claims))
+                for provider, (records, claims) in providers.items()
+            ],
         )
     )
+    unrecorded = unrecorded_provider_records(record)
+    if unrecorded:
+        lines.extend(
+            [
+                "",
+                f"{len(unrecorded)} records ran on a Kubernetes cluster whose source",
+                "record never names the provider. They say `unrecorded` rather than",
+                "borrowing a provider from a neighbouring record, and they are counted",
+                "under no provider here.",
+            ]
+        )
     lines.extend(
         [
             "",
@@ -269,6 +376,58 @@ def _where_v1_stands(record: Mapping[str, Any]) -> list[str]:
             "",
         ]
     )
+    lines.extend(_migration(record))
+    return lines
+
+
+def _migration(record: Mapping[str, Any]) -> list[str]:
+    """Where a record's level differs from what its claim carried before.
+
+    Derived from the register: every claim carries its superseded ``v1alpha1``
+    classification, and this compares it with the levels the claim's records hold.
+    """
+    changed = reclassified_claims(record)
+    carried = sum(
+        1
+        for row in record["claims"]
+        if (row.get("legacyClassification") or {}).get("certificationLevel")
+    )
+    lines = [
+        "### What the migration changed",
+        "",
+        "Until `V1-S5-012-PR2` the register stored one level per claim, under",
+        "meanings ADR 0016 supersedes. Every claim still carries that value as",
+        "history, and the levels on its records are the result of reading each",
+        f"record against the current definitions. {carried} claims carried a level;",
+        f"{len(changed)} claims now hold records at a level other than the one they",
+        "carried, or hold a level where they carried none. They are listed here, and",
+        f"[the migration report]({MIGRATION_REPORT}) says why each one moved.",
+        "",
+        "This table cannot show a status that moved, because a claim carries its",
+        "superseded level and not its superseded status. The migration report lists",
+        "every status the migration changed, with the measurement that required it.",
+        "",
+    ]
+    lines.extend(
+        _table(
+            (
+                "Claim",
+                "Status",
+                "Carried before (superseded meanings)",
+                "Levels its records hold",
+            ),
+            [
+                (
+                    _cell(str(row["statement"])),
+                    f"`{row['status']}`",
+                    f"`{before}`" if before else "none",
+                    ", ".join(f"`{level}`" for level in after),
+                )
+                for row, before, after in changed
+            ],
+        )
+    )
+    lines.append("")
     return lines
 
 
@@ -285,24 +444,11 @@ def _capability_section(
     ]
     lines.extend(
         _table(
-            (
-                "Claim",
-                "Status",
-                "Level",
-                "Evidence class",
-                "Provider and environment",
-                "Record",
-                "Limitation",
-            ),
+            ("Claim", "Status", "Evidence records", "Limitation"),
             [
                 (
                     _cell(str(row["statement"])),
                     f"`{row['status']}`",
-                    f"`{row['certificationLevel']}`"
-                    if row["certificationLevel"]
-                    else ABSENT,
-                    f"`{row['evidenceLabel']}`",
-                    _scope(row),
                     _records(row),
                     _cell(str(row["limitation"])),
                 )
@@ -319,17 +465,19 @@ def _overview(record: Mapping[str, Any]) -> list[str]:
 
     This is the table a reviewer with five minutes reads, and so it is the table
     most tempted to carry a colour. It carries counts instead: a group is four
-    numbers, not one status, and the strongest level shown is reached only by the
-    group's certified rows.
+    numbers, not one status, and the level shown is reached only by records behind
+    the group's certified rows.
     """
     grouped = grouped_claims(record)
     lines = [
         "## The capabilities at a glance",
         "",
         f"{len(grouped)} capability groups, each linking to its own section below.",
-        "Every count is the group's own rows, and *strongest level* is the highest",
-        "level any of its certified rows reached; a group with no certified row shows",
-        "none. A provider is named only where a row names one, and a result on one",
+        "Every count is the group's own rows. *Highest level reached* is the",
+        "highest-numbered level any record behind a certified row reached — the one",
+        "nearest the intended operating context, which is not the same as the best",
+        "evidence for any one claim — and a group with no certified row shows none. A",
+        "provider is named only where a record names one, and a result on one",
         "provider certifies that provider alone.",
         "",
     ]
@@ -362,7 +510,7 @@ def _overview(record: Mapping[str, Any]) -> list[str]:
                 "Planned",
                 "Deferred",
                 "Not claimed",
-                "Strongest level",
+                "Highest level reached",
                 "Provider named",
             ),
             rows,
@@ -377,11 +525,13 @@ def _capabilities(record: Mapping[str, Any]) -> list[str]:
         "## The capabilities",
         "",
         "Each group is a question a reviewer asks, and the rows under it are the",
-        "register's answer with the four things a summary usually loses kept beside",
-        "each one: the level, the evidence class, the provider and environment, and",
-        "the limitation that travels with the claim. A group's tally is counted from",
-        "its own rows, and a group is never given a single colour, because a group",
-        "holding one certified row and one measured absence is not one status.",
+        "register's answer with what a summary usually loses kept beside each one:",
+        "every evidence record the claim holds, with its level, the environment and",
+        "provider it ran on, the workload's origin where one was issued, anything it",
+        "substituted, and its files; and the limitation that travels with the claim.",
+        "A group's tally is counted from its own rows, and a group is never given a",
+        "single colour, because a group holding one certified row and one measured",
+        "absence is not one status.",
         "",
     ]
     for capability, rows in grouped_claims(record):
@@ -397,12 +547,19 @@ def _not_claimed(record: Mapping[str, Any]) -> list[str]:
         f"{len(rows)} claims, derived from the register rather than listed here: a",
         "claim that stops being certified joins this table without anybody adding it.",
         "That is deliberate. A page that can only be complete about its successes is",
-        "an advertisement.",
+        "an advertisement. A record beside a claim here is the measurement of an",
+        "absence or a refusal, at the level that measurement was obtained; it is not a",
+        "weaker form of the capability.",
         "",
     ]
     lines.extend(
         _table(
-            ("Claim", "Status", "Why it is not certified", "Record, where one exists"),
+            (
+                "Claim",
+                "Status",
+                "Why it is not certified",
+                "Evidence records, where any exist",
+            ),
             [
                 (
                     _cell(str(row["statement"])),
@@ -416,6 +573,25 @@ def _not_claimed(record: Mapping[str, Any]) -> list[str]:
     )
     lines.append("")
     return lines
+
+
+def _fleet_sentence(record: Mapping[str, Any]) -> list[str]:
+    """Whether any claim holds records from more than one provider, derived."""
+    spanning = [row for row in record["claims"] if len(record_providers(row)) > 1]
+    if spanning:
+        return [
+            f"- **Fleet and environment comparison.** {len(spanning)} claims hold",
+            "  records from more than one provider, and the page lists them side by",
+            "  side without comparing them. A page that compared the same claim across",
+            "  providers, hosts, or clusters would need a method for doing so, and V1",
+            "  publishes none.",
+        ]
+    return [
+        "- **Fleet and environment comparison.** Every row names at most one",
+        "  provider, and no claim here was run on two. A page that compared the same",
+        "  claim across providers, hosts, or clusters would need that claim's result",
+        "  from more than one of each, and V1 has no claim with more than one.",
+    ]
 
 
 def _closing(record: Mapping[str, Any]) -> list[str]:
@@ -466,11 +642,14 @@ def _closing(record: Mapping[str, Any]) -> list[str]:
         "  one host. The record is linked from the telemetry rows above and the",
         "  screenshots are linked from the record; neither is a proof state, and no",
         "  panel in them is a certification.",
-        "- **It is not a second source of truth.** Every status, level, label,",
-        "  provider, environment, record, and limitation above is read from",
+        "- **It is not a second source of truth.** Every status, level, environment,",
+        "  provider, substitution, record, and limitation above is read from",
         "  [the register](../testing/claim-evidence-matrix.md) when the page is",
-        "  generated. This tool holds one thing the register does not: which claims a",
-        "  reviewer is shown under which heading.",
+        "  generated, and the register's own evidence rules are run again before a",
+        "  page is produced. This tool holds one thing the register does not: which",
+        "  claims a reviewer is shown under which heading.",
+        "- **It is not an external certification.** The levels are project-defined,",
+        "  and no outside party has reviewed the register, a record, or this page.",
         "- **It is not a freshness or assurance signal.** Nothing here says when a",
         "  result was last re-run, whether the environment that produced it still",
         "  exists, or whether it would reproduce today. A record's own date and",
@@ -482,10 +661,12 @@ def _closing(record: Mapping[str, Any]) -> list[str]:
         "## Limitations",
         "",
         "- The page inherits every limitation the register carries, including the",
-        "  largest: the checks establish that references resolve, that ranks and",
-        "  ceilings hold, and that the page and the register agree. None of them",
-        "  establishes that a statement is true, or that a record says what the row",
-        "  citing it says it says.",
+        "  largest: the checks establish that references resolve, that every record",
+        "  carries what its level requires and passes the evidence-level rules, and",
+        "  that the page and the register agree. None of them establishes that a",
+        "  statement is true, that a record says what the row citing it says it says,",
+        "  or that a claim declared the right components material — those are review",
+        "  judgements, listed in [the rule catalogue](../testing/evidence-level-rules.md).",
         "- Every real result behind these rows was produced on one Windows host, by",
         "  one author, by hand. No outside party has reviewed a claim against its",
         "  evidence.",
@@ -511,10 +692,7 @@ def _closing(record: Mapping[str, Any]) -> list[str]:
         "- **Freshness and expiry.** Nothing here ages a result. A record from",
         "  2026-08 and one from 2026-09 are shown alike, and no row says when it would",
         "  stop being believed.",
-        "- **Fleet and environment comparison.** Every row names at most one",
-        "  provider, and no claim here was run on two. A page that compared the same",
-        "  claim across providers, hosts, or clusters would need that claim's result",
-        "  from more than one of each, and V1 has no claim with more than one.",
+        *_fleet_sentence(record),
         "- **Continuous verification.** No schedule re-runs a record and no lane",
         "  reports that a certified claim still holds; every real result is a run",
         "  somebody made by hand and wrote down.",

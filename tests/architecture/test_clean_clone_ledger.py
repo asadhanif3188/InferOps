@@ -144,11 +144,11 @@ def test_every_evidence_label_the_checklist_uses_is_one_the_claim_register_defin
     import json
 
     register = json.loads(
-        (REPO_ROOT / "docs/testing/claim-evidence-matrix.v1alpha1.json").read_text(
+        (REPO_ROOT / "docs/testing/claim-evidence-matrix.v1alpha2.json").read_text(
             encoding="utf-8"
         )
     )
-    defined = {label["labelId"] for label in register["evidenceLabels"]}
+    defined = {row["classId"] for row in register["evidenceClasses"]}
     assert set(DESCRIPTOR["evidenceLabels"]) <= defined
 
 

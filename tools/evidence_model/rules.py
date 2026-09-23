@@ -29,9 +29,11 @@ declaration is complete is a reviewer's call, catalogued as
 that call is made: once per claim, in the open, rather than once per record by the
 person who wants the record to pass.
 
-Nothing here reads a committed register as `v1alpha2`, because no committed register
-declares that version yet. What runs over committed data is the in-memory read in
-`core.read_legacy_as_v1alpha2`, and a test holds it to zero refusals.
+Since `V1-S5-012-PR2` these rules govern committed evidence: the authoritative register
+is `docs/testing/claim-evidence-matrix.v1alpha2.json`, and a test holds it to zero
+refusals with every cited file required to exist. They still also run over the
+in-memory read of the superseded `v1alpha1` register in `core.read_legacy_as_v1alpha2`,
+which is the migration's starting point.
 """
 
 from __future__ import annotations

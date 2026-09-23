@@ -24,10 +24,21 @@ Date captured: `<YYYY-MM-DD>`
 
 ## Classification and certification
 
-Evidence class: `<local-static | local-real-cpu | cloud-real-cpu | cloud-real-gpu>`
+The heading is kept because every record carries it. What goes under it is an
+evidence level under [InferOps Evidence Levels](../../testing/evidence-levels.md),
+which are project-defined and not an ISO, NIST, regulatory, or industry
+certification standard.
 
-An environment record is a description of a machine, and on its own it certifies
-nothing about behaviour. It carries a class because the results that cite it do.
+An environment record is a description of a machine, and it carries **no evidence
+level of its own**: nothing about behaviour executed to produce it. The records that
+cite it carry levels, and they take their environment fields from here:
+
+| Field | Value |
+|---|---|
+| Environment | `<local-process | local-container | local-kubernetes | cloud-kubernetes>` |
+| Provider | `<docker-desktop | kind | a cloud provider | not-applicable>` |
+| Hardware class | `<cpu | gpu | other-accelerator>` |
+| Evidence class of the layer it serves | `<local-static | local-real-cpu | cloud-real-cpu | cloud-real-gpu>` |
 
 Claim boundary: `<what this record is cited by, and what it does not itself establish>`
 

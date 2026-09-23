@@ -38,8 +38,9 @@ observation and no figure is a capacity, an SLO, or a benchmark.
 | Alerts over recorded telemetry | local static and synthetic | Five of the six alerts replayed over the telemetry three real experiments recorded: one fires, over one capture, and every silence has a recorded reason; nothing routes or delivers an alert to anybody | [Alert validation](docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md) |
 
 The full picture is [the V1 proof dashboard](docs/proof/dashboard.md): 59 claims,
-43 certified, 7 planned, 1 deferred, and 8 that V1 states it does not have, each
-with its level, evidence class, provider, limitation, and record. It opens with
+42 certified, 7 planned, 1 deferred, and 9 that V1 states it does not have, each
+with every evidence record behind it — at its own level, with where it ran and what
+it substituted — and the limitation that travels with the claim. It opens with
 one row per capability and a five-minute reading order, and every row above is
 there under its capability with the claim that cites its record. It is generated
 from [the claim and evidence register](docs/testing/claim-evidence-matrix.md), and a
@@ -129,10 +130,13 @@ Three decisions shape it:
 - **A mock may never certify real behaviour.** The adapter is chosen by name, the
   mock declares itself, and there is no fallback from real to mock
   ([the boundary](docs/serving/mock-and-real-boundary.md)).
-- **A claim is published only with its evidence and its limitation.** Certification
-  levels `C0` to `C2` say how strong a proof is; evidence labels say what it ran
-  against; a record never nominates its own strength
-  ([certification](docs/testing/certification.md)).
+- **A claim is published only with its evidence and its limitation.** Every evidence
+  record carries its own level, `C0` Static to `C4` Operational, which says how that
+  record was obtained and nothing more; a claim's status is a separate question, and
+  a validator holds each record to what its level requires
+  ([InferOps Evidence Levels](docs/testing/evidence-levels.md)). **The levels are
+  project-defined and not an ISO, NIST, regulatory, or industry certification
+  standard.** No V1 record is above `C2`.
 
 The design boundary, the request and deployment flows, the trust boundaries, and
 what is not defended at each are in
@@ -343,10 +347,12 @@ intention reads as a capability:
   absence of any credential or model artifact from public history.
 - **Deferred.** [Sustained throughput and capacity under load](docs/testing/claim-evidence-matrix.md#load-and-performance)
   is out of V1 by an accepted decision.
-- **Not claimed.** [Eight things a reader would expect](docs/proof/dashboard.md#what-v1-does-not-claim),
+- **Not claimed.** [Nine things a reader would expect](docs/proof/dashboard.md#what-v1-does-not-claim),
   stated as absent rather than omitted, including a delivered alert, an enforced
   network policy, a defended workload, a cluster lane in CI, a published release,
-  and portability as a production platform.
+  portability as a production platform, and an authorisation statement in every
+  certifying record — which the evidence migration measured and moved out of the
+  certified column.
 - **Release.** [The release process](docs/releases.md) names `v1.0.0` as the first
   planned stable release and the checklist it must pass; no tag exists.
 
@@ -390,9 +396,10 @@ intention reads as a capability:
 | Test and CI strategy | [docs/testing/test-strategy.md](docs/testing/test-strategy.md) | Strategy accepted and machine-checked; nine of eleven test layers exist and two do not. One lane of four is automated since [ADR 0012](docs/architecture/decisions/ADR-0012-continuous-integration-service.md); nine of its eleven gates have passed on the service and the two infrastructure gates have not run there |
 | Continuous-integration gate matrix | [docs/testing/ci-gate-matrix.md](docs/testing/ci-gate-matrix.md) | Eleven gates for the `default-checks` lane, each mapped to the claims it defends or to a recorded reason it defends none, compared to the committed workflow in both directions. Helm and Terraform run there only as subcommands that read files; the normal lane cannot reach a cluster or download the model, and neither is a promise: both are checked. No workflow for a cluster lane is committed, only the rules one must satisfy |
 | Python toolchain | [docs/architecture/decisions/ADR-0009-python-toolchain.md](docs/architecture/decisions/ADR-0009-python-toolchain.md) | Packaging, dependency manager, lockfile, linter, formatter, and type checker accepted and executed; no task runner and no CI service selected |
-| Certification levels | [docs/testing/certification.md](docs/testing/certification.md) | Accepted definition of the evidence classes and their ceilings; V1 certifies at C0 to C2 and a mock stops at C1. What the levels themselves mean moved to docs/testing/evidence-levels.md on 2026-09-23, and this document's level names are superseded |
+| Evidence levels | [docs/testing/evidence-levels.md](docs/testing/evidence-levels.md) | The single definition of `C0` Static to `C4` Operational: how one evidence record was obtained, attached to the record rather than to a claim, and project-defined rather than an external certification standard. Every record in the register is classified under it and held to it by a validator; no V1 record is above `C2` |
+| Certification levels | [docs/testing/certification.md](docs/testing/certification.md) | Accepted definition of the evidence classes and the ceiling each places on a test layer; a mock stops at C1, and a simulated environment is the only thing the `synthetic` class still covers. It no longer defines what a level means |
 | Claim and test matrix | [docs/testing/claim-test-matrix.md](docs/testing/claim-test-matrix.md) | Sixteen of twenty-four public claims certified, seven are commitments, and one is deferred |
-| Claim and evidence matrix | [docs/testing/claim-evidence-matrix.md](docs/testing/claim-evidence-matrix.md) | Every claim V1 intends to publish, bound to its implementation, the test modules that would fail if it stopped being true, the gates that run them, the executed record that certifies it, the evidence label that decides what that record may support, and the limitation that travels with it. 58 claims: 42 certified, 7 planned, 1 deferred, and 8 not claimed. Every public entry point in the table you are reading is either claimed by a row there or listed, with a reason, as a surface that claims nothing, and a test refuses an entry point that neither list accounts for |
+| Claim and evidence matrix | [docs/testing/claim-evidence-matrix.md](docs/testing/claim-evidence-matrix.md) | Every claim V1 intends to publish, bound to its implementation, the test modules that would fail if it stopped being true, the gates that run them, every evidence record behind it at its own level, and the limitation that travels with it. 59 claims: 42 certified, 7 planned, 1 deferred, and 9 not claimed, and 54 evidence records. Since `V1-S5-012-PR2` the register is `v1alpha2`, migrated by reading every cited record against the current definitions, and [the migration report](docs/proof/testing/v1-s5-012-pr2-migration-report.md) says what changed and why. Every public entry point in the table you are reading is either claimed by a row there or listed, with a reason, as a surface that claims nothing, and a test refuses an entry point that neither list accounts for |
 | Telemetry and evidence | [docs/telemetry/README.md](docs/telemetry/README.md) | The API emits eight catalog metrics and structured request logs, and a release-scoped collector has scraped both InferOps jobs on `docker-desktop`; its series are ephemeral, no component emits a span, and no durable store, dashboard server, or alert routing path exists; [a dashboard definition](docs/telemetry/inference-operations-dashboard.md) is checked and was validated once on `docker-desktop` in a throwaway Grafana that no server runs. [The V1 observability method](docs/telemetry/observability-method.md) walks attributes, logs, metrics, collection, the dashboard, alerts, and retention with what is implemented kept apart from what is not, and a test resolves every test, gate, and record it names |
 | The V1 alerts | [docs/telemetry/inference-alerts.md](docs/telemetry/inference-alerts.md) | Six alerts, each with an owner, a severity, a caller impact, an evidence query, an action and a runbook section; five conditions deferred because nothing emits the signal, and eight refused with the rule that refuses each. No threshold is a figure this project measured. Five of the six replayed over the telemetry three real experiments recorded: one fires, over one capture, and every silence has a reason the record carries. The pinned collector's own promtool loads both rendered rule files. Nothing evaluates or routes any of it -- no receiver, no routing tree, nobody on the other end |
 | Redaction rules | [docs/telemetry/redaction.md](docs/telemetry/redaction.md) | Accepted and enforced at the API's metric-declaration and structured-record sinks; content capture is disabled and has no policy that could enable it |
@@ -400,7 +407,7 @@ intention reads as a capability:
 | Worked cost example | [docs/cost/worked-example.md](docs/cost/worked-example.md) | Every figure synthetic and recomputed by the suite; confidence `none` and no figure for what anything costs |
 | Threat model and security baseline | [docs/security/README.md](docs/security/README.md) | Baseline accepted and machine-checked; deployed workloads carry the rendered pod-security settings and nothing here establishes that a running system is defended, and twelve risks are carried rather than reduced. [The V1 security method](docs/security/security-method.md) walks every security topic, including prompt and response handling, with each control on the side of the line its derived status allows and every implemented one linked to a test or gate and a record |
 | Deferred security risks | [docs/security/deferred-risks.md](docs/security/deferred-risks.md) | Twelve risks and six accepted exceptions; ten of the twelve block production use |
-| V1 proof dashboard | [docs/proof/dashboard.md](docs/proof/dashboard.md) | One generated page over the claim and evidence matrix: the certified, planned, deferred, and not-claimed counts, a one-row-per-capability overview, fourteen capability groups that between them show every claim with its certification level, evidence class, provider, environment, record link, and limitation, and every claim V1 does not certify listed in full. It is produced by `python -m tools.proof_dashboard` and a test regenerates it, so it cannot state a status the register does not. It answers what has been proven; Grafana answers what is happening now |
+| V1 proof dashboard | [docs/proof/dashboard.md](docs/proof/dashboard.md) | One generated page over the claim and evidence matrix: the certified, planned, deferred, and not-claimed counts, a one-row-per-capability overview, fourteen capability groups that between them show every claim with every evidence record behind it — its level, the environment and provider it ran on, anything it substituted, and its files — and its limitation, and every claim V1 does not certify listed in full. It is produced by `python -m tools.proof_dashboard` and a test regenerates it, so it cannot state a status the register does not. It answers what has been proven; Grafana answers what is happening now |
 | Evidence records and templates | [docs/proof/README.md](docs/proof/README.md) | Four templates published, two of which have produced records, and no Sprint 3 record declares one; the full record index is in [docs/proof/README.md](docs/proof/README.md) |
 | Release process | [docs/releases.md](docs/releases.md) | Process documented; no release executed |
 | Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; private channel not published, which is a gap the baseline records |

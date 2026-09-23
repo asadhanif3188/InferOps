@@ -32,17 +32,35 @@ edited to fit its evidence is a claim nobody tested.
 
 ## Classification and certification
 
+The heading is kept because every record carries it. What goes under it is an
+evidence level under [InferOps Evidence Levels](../../testing/evidence-levels.md),
+which are project-defined and not an ISO, NIST, regulatory, or industry
+certification standard.
+
 | Field | Value |
 |---|---|
-| Evidence class | `<local-static / mock / synthetic / estimated / local-real-cpu / cloud-real-cpu / cloud-real-gpu>` |
-| Ceiling that class carries | `<C0 / C1 / C2 / none>` |
-| Level claimed | `<C0 / C1 / C2>` |
+| Claims supported | `<claim-id, matching the register row>` |
+| Evidence level | `<C0 / C1 / C2 / C3 / C4>` |
+| Why this level and not the next | `<one sentence: what executed, what was substituted, and why that decides it>` |
+| Claim-material components | `<the components evaluating this claim requires, as the register row declares them>` |
+| Components that executed | `<component — role — how it ran>` |
+| Substitutions | `<component — replaced by a mock / stub / fake / simulator / fixture — claim-material yes or no — why>`, or `none` |
+| Workload | `<none / synthetic / captured / operator-issued / production-traffic>`: `<what it was, and its shape: concurrency, request count, prompt sizes, arrival pattern, duration>` |
+| Evidence class of the layer that produced it | `<local-static / mock / synthetic / estimated / local-real-cpu / cloud-real-cpu / cloud-real-gpu>` |
 | Evidence owner | `<contracts / architecture / environment / serving / platform / security / documentation>` |
 
-The level claimed may not exceed the ceiling. A mock certifies at most `C1` however
-faithful it is — that is
-[an accepted rule](../../serving/mock-and-real-boundary.md) with a mechanism behind
-it, not a preference.
+A record that substituted a component its claim declares material is `C1`, however
+faithful the substitute — that is
+[an accepted rule](../../serving/mock-and-real-boundary.md) with a validator behind
+it, not a preference. The workload's origin decides nothing: a generated prompt set
+through the real path is runtime evidence about the real path. A level describes how
+this record was obtained; it is not a maturity score and it is not the claim's status.
+
+`C3` additionally needs the intended use the workload represents, the
+representativeness assumptions written down, and acceptance criteria registered
+**before** the run, under Method. `C4` needs genuine organizational production
+operation over a stated observation period, and nothing in this repository can reach
+it.
 
 ## Provenance
 
@@ -54,12 +72,16 @@ it, not a preference.
 
 ## Environment
 
-Where the evidence was produced: `<repository-only / local-kubernetes / capable-host>`
+| Field | Value |
+|---|---|
+| Environment | `<repository-only / local-process / local-container / local-kubernetes / cloud-kubernetes>` |
+| Provider | `<docker-desktop / kind / a cloud provider / not-applicable>` — or `unrecorded` if a cited source never names it; never borrowed from another record |
+| Hardware class | `<cpu / gpu / other-accelerator / not-applicable>` |
 
 `<link to the environment record, or the essential rows from it>`
 
-The environment says where a result ran. The certification level says how strong it
-is. Neither implies the other, and a record that conflates them will be read as
+The environment says where a result ran. The evidence level says how it was
+obtained. Neither implies the other, and a record that conflates them will be read as
 whichever is more flattering.
 
 ## Method
@@ -72,6 +94,14 @@ How the claim was tested:
 
 What would have falsified the claim: `<the observation that would have shown it to
 be false>`
+
+Acceptance criteria, where the record has them:
+
+| ID | Criterion | Registered before the run? | Outcome |
+|---|---|---|---|
+| `<c1>` | `<the condition>` | `<yes / no — a criterion written afterwards is a description of what happened>` | `<met / not met / not evaluated>` |
+
+Observation period, where one applies: `<start and end, as timestamps>`
 
 If nothing would have falsified it, it is not a claim, and this record should not
 exist.
@@ -92,6 +122,11 @@ unsupported half is how a partial result becomes a full claim.
 - `<what the claim does not extend to>`
 - `<the adjacent claim a reader might think this supports, and why it does not>`
 - `<what would have to change for this record to stop being true>`
+
+Does not establish:
+
+- `<the conclusion a reader is most likely to draw from this record that it does not
+  support>`
 
 ## Authorisation
 

@@ -292,8 +292,11 @@ carries that limitation rather than leaving it to a reader.
 
 `failure-and-resilience` provokes the failures the architecture names as canonical
 errors — model not ready, runtime unreachable, timeout — against the real runtime
-rather than against an anticipated mock. Full C3 certification is out of V1 scope;
-what V1 needs is that each canonical error is produced by the condition it names.
+rather than against an anticipated mock. Failure is a scenario rather than a level
+under [the evidence levels](evidence-levels.md): a failure experiment is `C1`, `C2`, or
+`C3` by what executed and how representative its conditions were, and no V1 record is
+above `C2`. What V1 needs is that each canonical error is produced by the condition it
+names.
 
 `capacity-and-load` is defined and deferred. V1 may publish no throughput, latency,
 capacity, or benchmark figure, so this layer exists in order that adding one is a
@@ -397,8 +400,9 @@ certified on the strength of a layer nobody has written.
   since [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md)
   made this the authoritative definition on 2026-09-23.
 - [The certification levels](certification.md) — what each evidence class may support
-  and why a mock stops at C1. Its own level names are superseded; its ceilings are
-  unchanged and still enforced.
+  and why a mock stops at C1. It no longer defines the levels; its ceilings are
+  unchanged and still enforced, and its `synthetic` class no longer covers generated
+  input.
 - [The claim/test matrix](claim-test-matrix.md) — every public claim, with its layer,
   environment, and owner.
 - [The gate matrix](ci-gate-matrix.md) — every automated gate, the claims it defends,

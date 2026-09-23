@@ -108,13 +108,48 @@ rather than asserted per record by the record's author.
   `a-criterion-flagged-declared-before-was-registered-before`. A timestamp comparison
   was considered and rejected: the record's author writes both timestamps.
 
+## What `V1-S5-012-PR2` settled, on 2026-09-23
+
+A third dated note, on the same terms: the accepted text is unchanged, and several of
+its present-tense sentences — "the new rules are not yet enforced", "two vocabularies
+coexist until `V1-S5-012-PR2` finishes" — describe the day it was accepted.
+
+`V1-S5-012-PR2` read every record the `v1alpha1` register cited against `D1`, one claim
+at a time, and wrote the result as
+[the `v1alpha2` register](../../testing/claim-evidence-matrix.v1alpha2.json), which every
+consumer now reads. [The migration report](../../proof/testing/v1-s5-012-pr2-migration-report.md)
+says what each record turned out to be.
+
+- **`D2` and `R4`.** Closed. The register stores a level on each of 54 evidence records,
+  and nine claims hold more than one — the weaker runs a claim-level `C2` used to hide
+  are visible beside the real ones.
+- **`D3` and `R1`.** Enforced over committed evidence. Every record passes the schema
+  and the validator with every cited file present, and the dashboard runs the same
+  rules before it renders. The committed strategy data carries the current level names,
+  and its `synthetic` class names a simulated environment only, so the `synthetic → C1`
+  rule over generated input is gone from the data. No layer or gate used the class.
+- **`D8`.** Held, and checked. No record was upgraded by terminology: 43 kept the level
+  their claim carried, 8 moved with a justification from what they executed — three to
+  a higher-numbered level, each named in a test so that a fourth has to be added on
+  purpose — and no record is `C3` or `C4`. One claim moved from `certified` to
+  `not-claimed`, because the audit measured its statement untrue of the committed
+  records; its statement was kept.
+- **`R3`.** The conceptual mapping for `C0`–`C2` held for 43 records and was not used
+  for the other 8. That is the reason it was published as conceptual.
+- **Consequence on vocabularies.** The certification document no longer states the
+  superseded meanings and left the list of surfaces awaiting migration, which is empty.
+  The superseded meanings are stated only where they are mapped — the specification,
+  this record, ADR 0005, and the architecture index — and in dated records.
+- **`Q3`** is untouched and remains open: field names, file paths, and tool names still
+  say `certification`.
+
 ## Decision status
 
 | ID | Decision | Status | What supports it |
 |---|---|---|---|
 | D1 | A level describes **how evidence was obtained**: `C0` Static, `C1` Substituted Execution, `C2` Runtime, `C3` Representative, `C4` Operational | **Accepted** | A published specification, and a test that refuses a competing current definition |
-| D2 | A level is a property of an **evidence record**, not of a claim, a suite, or the system; one claim may carry several records at different levels | **Accepted** as a definition | Stated in the specification; the register still stores one level per claim until `V1-S5-011-PR2` |
-| D3 | `C1` is decided by **substitution of a claim-material component**, and not by the origin of the input workload | **Accepted** as a definition; **not yet enforced** | The specification; the committed `synthetic → C1` ceiling still enforces the old rule and is left in force on purpose |
+| D2 | A level is a property of an **evidence record**, not of a claim, a suite, or the system; one claim may carry several records at different levels | **Accepted** as a definition; **represented in the register since `V1-S5-012-PR2`** | Stated in the specification. The cell said the register stored one level per claim until `V1-S5-011-PR2`; that change published only the schema, and the register moved in `V1-S5-012-PR2` — see the dated notes above |
+| D3 | `C1` is decided by **substitution of a claim-material component**, and not by the origin of the input workload | **Accepted** as a definition; **enforced over committed evidence since `V1-S5-012-PR2`** | The specification and the validator. At acceptance the committed `synthetic → C1` ceiling still enforced the old rule; `V1-S5-012-PR2` narrowed the class so it no longer covers generated input — see the dated notes above |
 | D4 | `C3` Failure and `C4` Composed are **superseded as level meanings**; failure mode and composition become evidence-record metadata | **Accepted** | The mapping table, the supersession note on ADR 0005 D4, and a test over both |
 | D5 | `C4` requires genuine organizational production operation over a stated observation period; public-cloud execution is not `C4` | **Accepted** | Stated in the specification, and unreachable here: there is no organizational production |
 | D6 | The framework is **project-defined** and may not be presented as an ISO, NIST, regulatory, or industry certification | **Accepted** | A required disclaimer, checked by a test |
@@ -426,10 +461,10 @@ once and consistently.
 
 | ID | Risk or question | Status | Consequence |
 |---|---|---|---|
-| R1 | The definition is published and not enforced | Open, and scheduled | Between this record and `V1-S5-012-PR1`, the specification describes rules that only review applies. The committed ceilings still enforce the old rules, so the gap is a stricter rule than intended rather than a missing one |
+| R1 | The definition is published and not enforced | Closed in `V1-S5-012-PR2`, see the dated note above | Between this record and `V1-S5-012-PR1`, the specification describes rules that only review applies. The committed ceilings still enforce the old rules, so the gap is a stricter rule than intended rather than a missing one |
 | R2 | `C3` meant *failure* and now means *representative* | Mitigated | The supersession is dated, the mapping is published, ADR 0005 D4 carries a note, and nothing in this repository is classified `C3` under either meaning |
 | R3 | A reclassification could be read into the conceptual mapping for `C0`–`C2` | Mitigated | `D4` and `D8` both state that no record was re-examined; `V1-S5-012-PR2` does that claim by claim |
-| R4 | The register cannot represent multiple records per claim | Open, and scheduled | `D2` is a definition the data model does not yet support; `V1-S5-011-PR2` versions it |
+| R4 | The register cannot represent multiple records per claim | Closed in `V1-S5-012-PR2`, see the dated note above | `D2` is a definition the data model does not yet support; `V1-S5-011-PR2` versions it |
 | R5 | `C4` is defined and permanently unreachable here | Accepted | Recorded so that no later change can reach for the word without an organizational production system and an observation period |
 | Q1 | Should `C3` require a pre-registered acceptance criterion in data, or by review? | Open | The experiment template already registers a method and a failure condition before a run; whether a validator reads them is `V1-S5-012-PR1`'s question |
 | Q2 | Does the `production-experience` evidence label survive alongside `C4`? | Open | Both say the same thing at different layers. Collapsing them is a data-model question `V1-S5-011-PR2` may answer |

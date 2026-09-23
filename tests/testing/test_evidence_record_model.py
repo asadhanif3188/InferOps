@@ -14,13 +14,14 @@ committed evidence is reclassified here, the fixtures are illustrations rather
 than results, and a fixture at `C3` or `C4` is a shape this repository has never
 reached.
 
-Two of the checks here exist to fail later. `test_the_committed_register_is_still_v1alpha1`
-and `test_the_committed_register_still_carries_a_certification_level_per_claim`
-are tripwires: they pass while the register is unmigrated, and `V1-S5-012-PR2`
-has to come back and correct this module and the documents that describe the
-current state in the same change that migrates it. That is the same device
-`tests/testing/test_evidence_levels.py` used to make this change correct the page
-`V1-S5-011-PR1` wrote.
+Two of the checks here were written to fail later: tripwires that passed while
+the register was unmigrated, so that `V1-S5-012-PR2` would have to come back and
+correct this module and the documents describing the unmigrated state in the same
+change that migrated it. They fired there, and that change replaced them with the
+state they were waiting for: the authoritative register is `v1alpha2`, it holds a
+level on every record, and the superseded `v1alpha1` register is kept unchanged as
+the migration's starting point. `tests/testing/test_evidence_migration.py` holds the
+comparison between the two.
 """
 
 from __future__ import annotations
@@ -37,7 +38,9 @@ from tools.evidence_model import (
     LEGACY_CONTRACT_VERSION,
     LEGACY_FIELD_DESTINATIONS,
     LEGACY_REGISTER_PATH,
+    REGISTER_PATH,
     load_legacy_register,
+    load_register,
     load_schema,
     read_legacy_as_v1alpha2,
     validate_claim,
@@ -603,40 +606,38 @@ def test_the_production_experience_class_survives_alongside_the_operational_leve
     assert "C4" in SCHEMA["$defs"]["evidenceLevelId"]["enum"]
 
 
-# -------------------------------------------------------------- the tripwires
+# ------------------------------------------------- what the tripwires became
 
 
-def test_the_committed_register_is_still_v1alpha1() -> None:
-    """A tripwire, and it is meant to fire.
+def test_the_authoritative_register_declares_v1alpha2() -> None:
+    """The first tripwire fired in `V1-S5-012-PR2`, and this is what replaced it."""
+    register = load_register()
 
-    This module and the documents beside it say the register has not been
-    migrated. `V1-S5-012-PR2` migrates it, and on that day this test fails so
-    that every sentence describing the unmigrated state is corrected in the same
-    change rather than left behind as a confident falsehood.
-    """
-    register = load_legacy_register()
-
-    assert register["contractVersion"] == LEGACY_CONTRACT_VERSION, {
-        "declared": register["contractVersion"],
-        "why": (
-            "the committed register has moved off v1alpha1; correct "
-            "docs/testing/evidence-record-model.md, docs/testing/evidence-levels.md, "
-            "and this module, which all state that it has not"
-        ),
-    }
-    assert LEGACY_REGISTER_PATH.name == "claim-evidence-matrix.v1alpha1.json"
+    assert register["contractVersion"] == CONTRACT_VERSION
+    assert REGISTER_PATH.name == "claim-evidence-matrix.v1alpha2.json"
+    assert not validate_register(register)
 
 
-def test_the_committed_register_still_carries_a_certification_level_per_claim() -> None:
-    """The other half of the same tripwire."""
-    register = load_legacy_register()
+def test_the_authoritative_register_holds_levels_on_records_not_claims() -> None:
+    """The second one: one level per claim is gone from the data every consumer reads."""
+    register = load_register()
 
-    assert all("certificationLevel" in row for row in register["claims"]), (
-        "the committed register no longer stores one level per claim; the "
-        "migration has landed and the documents describing the old state have to "
-        "be corrected"
+    assert not any("certificationLevel" in row for row in register["claims"])
+    assert all("evidenceRecords" in row for row in register["claims"])
+    assert any(
+        record.get("evidenceLevel")
+        for row in register["claims"]
+        for record in row["evidenceRecords"]
     )
-    assert not any("evidenceRecords" in row for row in register["claims"])
+
+
+def test_the_superseded_register_is_kept_as_it_was() -> None:
+    """History, not a second register: the reader still turns it into v1alpha2."""
+    legacy = load_legacy_register()
+
+    assert legacy["contractVersion"] == LEGACY_CONTRACT_VERSION
+    assert LEGACY_REGISTER_PATH.name == "claim-evidence-matrix.v1alpha1.json"
+    assert all("certificationLevel" in row for row in legacy["claims"])
 
 
 # ----------------------------------------------------------- the documentation
@@ -667,24 +668,20 @@ def test_the_testing_index_sends_a_reader_to_the_model_document() -> None:
     assert "evidence-record-model.md" in TESTING_INDEX.read_text(encoding="utf-8")
 
 
-def test_the_specification_no_longer_says_the_data_model_is_unversioned() -> None:
-    """The statement `V1-S5-011-PR1` wrote about its own successor.
+def test_the_specification_says_the_register_is_migrated() -> None:
+    """The statement `V1-S5-011-PR1` wrote about its own successor, finished.
 
     The specification said a versioned evidence-record model was what would make
-    the page executable. It exists now, and the page has to say what did and did
-    not change: the schema is published, the register is not migrated, and the
-    ceilings are still the old ones.
+    the page executable, and then that the register had not moved. Since
+    `V1-S5-012-PR2` the register is migrated, and the page has to say so and point
+    at it rather than at the schema alone.
     """
     specification = SPECIFICATION.read_text(encoding="utf-8")
 
-    assert "claim-evidence-matrix.v1alpha2.schema.json" in specification, (
-        f"{SPECIFICATION} does not name the versioned model that now exists"
+    assert "claim-evidence-matrix.v1alpha2.json" in specification, (
+        f"{SPECIFICATION} does not name the migrated register"
     )
-    assert "not yet machine-enforced" in specification.lower(), (
-        f"{SPECIFICATION} no longer records that these rules are not enforced over "
-        "the committed register, which is still true"
+    assert "not yet machine-enforced" not in specification.lower(), (
+        f"{SPECIFICATION} still records the rules as unenforced over the register"
     )
-    assert "test-strategy.v1alpha1.json" in specification, (
-        f"{SPECIFICATION} no longer names the data that still enforces the "
-        "superseded rules"
-    )
+    assert "test-strategy.v1alpha1.json" in specification

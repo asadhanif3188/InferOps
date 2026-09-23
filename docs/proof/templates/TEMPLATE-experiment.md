@@ -29,13 +29,30 @@ Date executed: `<YYYY-MM-DD, or "not executed">`
 
 ## Classification and certification
 
-Evidence class: `<local-static | mock | synthetic | estimated | local-real-cpu | cloud-real-cpu | cloud-real-gpu | documented-unexecuted>`
+The heading is kept because every record carries it. What goes under it is an
+evidence level under [InferOps Evidence Levels](../../testing/evidence-levels.md),
+which are project-defined and not an ISO, NIST, regulatory, or industry
+certification standard.
 
-Ceiling this class carries: `<C0 | C1 | C2 | none>`, per
-[the certification document](../../testing/certification.md).
+Claims this experiment is evidence for: `<claim-id, matching the register row>`
 
-Level this record actually supports: `<...>`. Pick the weakest label the record
-supports, not the strongest one it could be read as.
+Evidence level this record actually supports: `<C0 | C1 | C2 | C3>`, because
+`<what executed, what was substituted, and why that decides it>`. Pick the level the
+record supports, not the strongest one it could be read as.
+
+Components that executed: `<component — role>`
+
+Substitutions: `<component — replaced by a mock / stub / fake / simulator / fixture —
+claim-material yes or no>`, or `none`. A substituted claim-material component makes
+the record `C1` however faithful the substitute.
+
+Workload: `<none | synthetic | captured | operator-issued>`, `<shape: concurrency,
+request count, prompt sizes, arrival pattern, duration>`. Its origin decides no level.
+
+Evidence class of the layer that produced it: `<local-static | mock | synthetic |
+estimated | local-real-cpu | cloud-real-cpu | cloud-real-gpu | documented-unexecuted>`,
+whose ceiling, per [the certification document](../../testing/certification.md), caps
+what that layer may reach.
 
 Claim boundary: `<one paragraph: exactly what this establishes and what it does not.>`
 
@@ -88,6 +105,13 @@ Pre-registered thresholds:
 Failure condition: `<what result would make the hypothesis wrong, stated so that it
 cannot be reinterpreted afterwards>`
 
+Representativeness, only if this record is to be read as `C3`: `<the intended use the
+workload and infrastructure represent, and every assumption that makes them
+representative, written down as assumptions>`. Without it the record is `C2` at most,
+however carefully its thresholds were registered.
+
+Observation period: `<start and end, as timestamps, or "a single run">`
+
 Stop condition: `<what would end the run early — a budget, a timeout, a hazard>`
 
 ## Results
@@ -114,6 +138,11 @@ Unexpected observations: `<what happened that the method did not anticipate>`
 - `<what varied between runs, and by how much>`
 - `<what was not executed, and why>`
 - `<which claims must not cite this record>`
+
+Does not establish:
+
+- `<the conclusion a reader is most likely to draw from this record that it does not
+  support>`
 
 ## Authorisation
 

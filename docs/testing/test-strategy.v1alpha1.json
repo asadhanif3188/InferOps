@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/testing/test-strategy.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "V1 test, lane, and certification strategy, v1alpha1",
-  "description": "Which test layer proves which public claim, in which execution lane, at what strength, and who owns the evidence. Certification level describes proof strength; the execution environment describes where the proof ran; the two are never conflated. A layer may not certify above the ceiling its evidence class allows, which is how a mock is prevented from certifying real runtime behaviour. Most rows are commitments for work that does not exist yet; v1Status says which is which, and a claim may cite evidence only once it is certified.",
+  "description": "Which test layer proves which public claim, in which execution lane, at what strength, and who owns the evidence. Certification level names the evidence level a layer may reach, whose meanings are defined in docs/testing/evidence-levels.md; the execution environment describes where the proof ran; the two are never conflated. A layer may not certify above the ceiling its evidence class allows, which is how a mock is prevented from certifying real runtime behaviour. Most rows are commitments for work that does not exist yet; v1Status says which is which, and a claim may cite evidence only once it is certified.",
   "decisionRef": "docs/architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md",
   "documentRef": "docs/testing/test-strategy.md",
   "certificationRef": "docs/testing/certification.md",
@@ -12,36 +12,36 @@
   "certificationLevels": [
     {
       "levelId": "C0",
-      "name": "Schema",
-      "meaning": "Documents, schemas, and inventories in this repository are internally consistent and validate. Nothing is executed against a runtime.",
+      "name": "Static Evidence",
+      "meaning": "Relevant artifacts are inspected, analysed, or validated without executing the target behaviour. Defined in docs/testing/evidence-levels.md; until V1-S5-012-PR2 this identifier was named Schema, a meaning ADR 0016 supersedes.",
       "rank": 0,
       "v1Scope": true
     },
     {
       "levelId": "C1",
-      "name": "Mock",
-      "meaning": "A consumer passes a deterministic contract suite against a labelled mock provider. It proves something about the consumer and the contract, and nothing about a provider.",
+      "name": "Substituted Execution Evidence",
+      "meaning": "Behaviour is executed and a component material to the claim is replaced by a mock, stub, fake, simulator, or other substitute. It establishes nothing about the component that was replaced. Defined in docs/testing/evidence-levels.md.",
       "rank": 1,
       "v1Scope": true
     },
     {
       "levelId": "C2",
-      "name": "Real controlled",
-      "meaning": "A real provider works in a controlled, reproducible environment carrying an explicit environment label. The highest level V1 may claim.",
+      "name": "Runtime Evidence",
+      "meaning": "The actual components required to evaluate the claim execute, in a recorded environment. The highest level V1 reaches. Defined in docs/testing/evidence-levels.md.",
       "rank": 2,
       "v1Scope": true
     },
     {
       "levelId": "C3",
-      "name": "Failure",
-      "meaning": "Timeout, denial, unavailability, retry, and recovery are proven against a real provider. Out of V1 scope.",
+      "name": "Representative Evidence",
+      "meaning": "The real system is exercised under conditions deliberately chosen to represent intended use, against acceptance criteria declared before the run. Reachable in principle; no V1 claim requires it and no V1 record reaches it. Defined in docs/testing/evidence-levels.md.",
       "rank": 3,
       "v1Scope": false
     },
     {
       "levelId": "C4",
-      "name": "Composed",
-      "meaning": "End-to-end integration across at least two real projects is proven. Out of V1 scope; there is no second project.",
+      "name": "Operational Evidence",
+      "meaning": "Evidence from genuine organizational production operation over a stated observation period. Unreachable here: there is no organizational production. Defined in docs/testing/evidence-levels.md.",
       "rank": 4,
       "v1Scope": false
     }
@@ -64,7 +64,7 @@
     },
     {
       "classId": "synthetic",
-      "meaning": "A result produced against generated inputs or a simulated environment rather than the real one.",
+      "meaning": "A result produced against a simulated environment rather than the real one: a simulator or emulator standing in for a component the result is about, which is a substitution. Generated input is not this class. Since ADR 0016 D3 a workload's origin sets no ceiling, and a layer whose only generated part is its input is classed by what it ran against.",
       "maxCertification": "C1"
     },
     {

@@ -60,7 +60,7 @@ BASELINE_PATH = REPO_ROOT / "docs" / "security" / "security-baseline.v1alpha1.js
 CATALOG_PATH = REPO_ROOT / "docs" / "telemetry" / "telemetry-catalog.v1alpha1.json"
 ALERTS_PATH = REPO_ROOT / "docs" / "telemetry" / "inference-alerts.v1alpha1.json"
 COST_RULES_PATH = REPO_ROOT / "docs" / "cost" / "cost-method.v1alpha1.json"
-REGISTER_PATH = REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha1.json"
+REGISTER_PATH = REPO_ROOT / "docs" / "testing" / "claim-evidence-matrix.v1alpha2.json"
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "checks.yml"
 PROOF_ROOT = "docs/proof/"
 
@@ -246,7 +246,11 @@ EXCEPTION_IDS = frozenset(row["exceptionId"] for row in BASELINE["exceptions"])
 METRICS = {row["name"]: row for row in CATALOG["metrics"]}
 ALERT_IDS = frozenset(row["alertId"] for row in ALERTS["alerts"])
 CLAIMS = {row["claimId"]: row for row in REGISTER["claims"]}
-LABELS = {row["labelId"]: row for row in REGISTER["evidenceLabels"]}
+#: The evidence classes the register names. Since the register moved to v1alpha2 a
+#: class is no longer a property of a record; each claim carries the class its
+#: v1alpha1 row gave it, in its carried classification, and that is what a method
+#: item's label is compared with.
+LABELS = {row["classId"]: row for row in REGISTER["evidenceClasses"]}
 RULES = {row["ruleId"]: row for row in COST_RULES["prohibitions"]}
 BASES = {row["basisId"]: row for row in COST_RULES["bases"]}
 COST_LIMITATION_IDS = frozenset(
@@ -443,7 +447,8 @@ def test_an_implemented_item_carries_an_evidence_label_it_can_reach(row: tuple) 
     assert label not in NEVER_IMPLEMENTED_LABELS
     assert LABELS[label]["reachedInV1"] is True
     claim_labels = {
-        CLAIMS[claim_id]["evidenceLabel"] for claim_id in row[3]["claimIds"]
+        CLAIMS[claim_id]["legacyClassification"]["evidenceLabel"]
+        for claim_id in row[3]["claimIds"]
     }
     if claim_labels:
         assert label in claim_labels, (

@@ -672,14 +672,14 @@ than written.
         |                           by rerunning the thing it describes
         v
    [ the claim and evidence register ]
-   docs/testing/claim-evidence-matrix.v1alpha1.json
-        |  one row per published claim: its status, the evidence class of
-        |  the record it cites, the certification level that class can
-        |  support, the provider and environment it came from, and the
-        |  limitation that travels with it
+   docs/testing/claim-evidence-matrix.v1alpha2.json
+        |  one row per published claim: its status and the limitation that
+        |  travels with it, and every evidence record behind it -- each with
+        |  its own level, what executed and was substituted, the environment
+        |  and provider it ran on, and what it does not establish
         |
-        |  a claim may cite only a record that exists, and may not claim a
-        |  level its evidence class cannot reach
+        |  a record may cite only files that exist, and may not carry a
+        |  level its execution does not support
         v
    [ the proof dashboard ]  python -m tools.proof_dashboard
         |
