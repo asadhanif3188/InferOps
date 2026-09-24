@@ -1,0 +1,1885 @@
+{
+  "$id": "https://inferops.io/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 evidence completeness and freeze, V1-S5-006-PR2",
+  "description": "What V1-S5-006-PR2 verified before the V1 evidence pack could be frozen, and what it decided: every finding the V1-S5-006-PR1 normalization answered, and every finding this verification made, each with exactly one final state; how each executed record identifies the repository code that ran; the register changes this verification made, with the value before and after; the release blockers, each with the evidence that would close it; and the release gate those blockers decide.",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "priorLedgerRef": "docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
+  "reportRef": "docs/proof/testing/v1-s5-006-pr2-evidence-completeness.md",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "finalStates": [
+    {
+      "stateId": "RESOLVED",
+      "meaning": "Committed evidence and citations now support the claim, or the finding was a record-keeping defect that has been corrected and verified."
+    },
+    {
+      "stateId": "NARROWED",
+      "meaning": "The public statement or its limitation says only what the record supports, and the reduction is published where the claim is."
+    },
+    {
+      "stateId": "DOWNGRADED",
+      "meaning": "A claim status or an evidence level was lowered because the stronger proof is not present."
+    },
+    {
+      "stateId": "HISTORICAL-CORRECTION",
+      "meaning": "The historical record is kept exactly as written, and an additive correction beside it is authoritative for current use."
+    },
+    {
+      "stateId": "BLOCKER",
+      "meaning": "Required evidence is unavailable or contradictory, a certified claim depends on it, and the release gate stays incomplete until a named run or a decision closes it."
+    }
+  ],
+  "auditCategories": [
+    {
+      "categoryId": "partial-or-incorrect-citations",
+      "name": "A citation supports less of a statement than it is cited for",
+      "findingIds": [
+        "f01-link-claim-cites-the-shell-check",
+        "f02-gates-claim-states-a-service-result-no-record-promotes",
+        "f03-manifest-claim-cites-a-record-that-reads-no-pod",
+        "f04-helm-claim-cites-only-the-uninstall"
+      ]
+    },
+    {
+      "categoryId": "claim-scope-and-identifier-mismatch",
+      "name": "A claim's identifier says more than its statement",
+      "findingIds": [
+        "f05-k8s-identifier-says-more-than-its-statement"
+      ]
+    },
+    {
+      "categoryId": "pod-loss-intervention-wording",
+      "name": "The pod-loss statement said more about intervention than its record",
+      "findingIds": [
+        "f06-podloss-statement-says-no-person-intervened"
+      ]
+    },
+    {
+      "categoryId": "baseline-registration-wording",
+      "name": "The baseline statement read as though its fixture was registered first",
+      "findingIds": [
+        "f07-baseline-statement-reads-as-a-registered-fixture"
+      ]
+    },
+    {
+      "categoryId": "contradictory-counts-and-exit-codes",
+      "name": "A record disagrees with itself on a test count or an exit code",
+      "findingIds": [
+        "f08-domain-record-disagrees-with-itself-on-a-count",
+        "f09-troubleshooting-record-says-all-exit-zero"
+      ]
+    },
+    {
+      "categoryId": "model-name-discrepancy",
+      "name": "Two records name the model differently",
+      "findingIds": [
+        "f10-closure-and-certification-name-the-model-differently"
+      ]
+    },
+    {
+      "categoryId": "mutable-revision-in-pod-restart-evidence",
+      "name": "The pod-restart record names a branch as its revision",
+      "findingIds": [
+        "f11-pod-restart-names-a-branch-not-a-commit"
+      ]
+    },
+    {
+      "categoryId": "unready-model-descriptor-digests",
+      "name": "The unready-model record carries two descriptor digests",
+      "findingIds": [
+        "f12-unready-record-carries-two-descriptor-digests"
+      ]
+    },
+    {
+      "categoryId": "collector-evidence-and-digest",
+      "name": "Collector results held outside the repository, and no collector image digest",
+      "findingIds": [
+        "f13-collector-per-query-results-are-host-state"
+      ]
+    },
+    {
+      "categoryId": "unexplained-telemetry-sample",
+      "name": "One clean-clone telemetry sample nobody explained",
+      "findingIds": [
+        "f14-clean-clone-telemetry-sample-is-unexplained"
+      ]
+    },
+    {
+      "categoryId": "alert-replay-inputs-and-cadence",
+      "name": "Alert-replay inputs not cited, and its capture cadence",
+      "findingIds": [
+        "f15-alert-replay-inputs-not-cited"
+      ]
+    },
+    {
+      "categoryId": "record-granularity-and-unrecorded-provider",
+      "name": "Records coarser than one per execution, and a provider no cited file names",
+      "findingIds": [
+        "f16-records-are-coarser-than-one-per-execution",
+        "f17-closure-run-provider-is-unrecorded"
+      ]
+    }
+  ],
+  "findingStates": [
+    {
+      "findingId": "f01-link-claim-cites-the-shell-check",
+      "normalizationDisposition": "corrected-authoritative-metadata",
+      "finalState": "RESOLVED",
+      "verification": "Re-read: the link claim holds a record of its own for the document-link suite, citing the V1-S5-002-PR2 record, which states 204 passed twice. The shell-check record stays for what it ran."
+    },
+    {
+      "findingId": "f02-gates-claim-states-a-service-result-no-record-promotes",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "NARROWED",
+      "verification": "Re-read: the statement no longer says nine gates passed on the service, and a suite refuses that sentence in any current document. The limitation's corrected sentence about the infrastructure gates rests on a committed API read that itself says it certifies nothing, and the statement does not repeat it."
+    },
+    {
+      "findingId": "f03-manifest-claim-cites-a-record-that-reads-no-pod",
+      "normalizationDisposition": "corrected-authoritative-metadata",
+      "finalState": "RESOLVED",
+      "verification": "Re-read: the manifest-refusal record cites only the validator's own record, which supports the whole statement, and its chart version is the one that record names."
+    },
+    {
+      "findingId": "f04-helm-claim-cites-only-the-uninstall",
+      "normalizationDisposition": "corrected-authoritative-metadata",
+      "finalState": "RESOLVED",
+      "verification": "Re-read: the paved-road record under the claim installs a release, passes its release test, and removes it, so the install half the identifier names is cited. The claim is still a release blocker, for a different reason recorded under n04: the part of the statement only the scoped-cleanup record supports rests on code nothing identifies."
+    },
+    {
+      "findingId": "f05-k8s-identifier-says-more-than-its-statement",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "NARROWED",
+      "verification": "Re-read: the limitation says the statement, which says machine-checked, is what is certified, and names the two cleanup radii that were executed. The identifier is unchanged, because renaming it would break every surface that cites it."
+    },
+    {
+      "findingId": "f06-podloss-statement-says-no-person-intervened",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "NARROWED",
+      "verification": "Re-read: the statement says the workflow issued no mutating command between the delete and its closing uninstall, which the record establishes; no current document says no person intervened, and a suite keeps it that way."
+    },
+    {
+      "findingId": "f07-baseline-statement-reads-as-a-registered-fixture",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "NARROWED",
+      "verification": "Re-read: the statement names what was registered first and says the fixture was rewritten after the registered one was refused. The claim is still a release blocker, for a different reason recorded under n04: the code the baseline measured is identified by nothing."
+    },
+    {
+      "findingId": "f08-domain-record-disagrees-with-itself-on-a-count",
+      "normalizationDisposition": "additive-historical-correction",
+      "finalState": "HISTORICAL-CORRECTION",
+      "verification": "Re-checked: the record is byte-for-byte what it was, by content hash, and the correction beside it names the pytest output as the count to read. The pinned run this change adds reports a later count for the same module at a named revision, and does not replace the historical one."
+    },
+    {
+      "findingId": "f09-troubleshooting-record-says-all-exit-zero",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "NARROWED",
+      "verification": "Re-read: the statement excepts the Linux branch of the processor-feature probe and says the diagnostics ran on one Windows host; the correction beside the record states the one exit 5 and why it was correct."
+    },
+    {
+      "findingId": "f10-closure-and-certification-name-the-model-differently",
+      "normalizationDisposition": "additive-historical-correction",
+      "finalState": "HISTORICAL-CORRECTION",
+      "verification": "Re-checked: both names are values of the operator-set platform identifier and both records name the same model revision; the correction beside the closure record is unchanged and its record's content hash still matches."
+    },
+    {
+      "findingId": "f11-pod-restart-names-a-branch-not-a-commit",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "BLOCKER",
+      "verification": "Re-read: the record names a branch and no commit, and nothing else identifies the chart and Terraform code it ran; the chart version it names has carried ten chart states. The two later recovery runs, which do name their revisions, each say in their own records that they did not re-prove the artifact's survival. The claim stays a release blocker until the pod-restart workflow is repeated at a recorded revision."
+    },
+    {
+      "findingId": "f12-unready-record-carries-two-descriptor-digests",
+      "normalizationDisposition": "corrected-authoritative-metadata",
+      "finalState": "RESOLVED",
+      "verification": "Re-checked against the repository's history: the descriptor the register pins as executed, sha256 7220395254fe7da172d438df1252a59b66a376685937c94d5b7834276c4fdb59, is the LF-normalised content of deploy/serving/experiments/unready-model-recovery.v1.json at be0fa9adf623, the commit that first carried the run's files, and the run's environment file lists the same value among the files that decided the run."
+    },
+    {
+      "findingId": "f13-collector-per-query-results-are-host-state",
+      "normalizationDisposition": "corrected-authoritative-metadata",
+      "finalState": "NARROWED",
+      "verification": "Re-read: the claim holds a record whose per-query outcome is committed, and that record identifies the collector that ran by the version and build revision the collector reported about itself, 3.5.0 at 8be3a9560fbdd18a94dedec4b747c35178177202. No record observed the collector's image digest; both records say so, and no digest is borrowed from the chart."
+    },
+    {
+      "findingId": "f14-clean-clone-telemetry-sample-is-unexplained",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "NARROWED",
+      "verification": "Examined against committed code and configuration. The verification tool polls the collector's targets every 5 s until both jobs are up and then asks every query at once, and the two queries that read unexpectedly -- serving-runtime-scrape-job-absent and scrape-target-health-by-job -- read recording rules the chart evaluates every 30 s. A rule evaluation that ran before the runtime target's first scrape would record the absence as 1 and count only the API job, which accounts for both readings; the file keeps counts and no timestamps, so this is a mechanism consistent with the record and not a confirmed cause. Neither certified statement rests on either query: the collector claim's discovery and scraping rest on the targets API's own answer, both jobs up, and its evaluation clause on every asked query parsing. Both records keep the sample as a limitation."
+    },
+    {
+      "findingId": "f15-alert-replay-inputs-not-cited",
+      "normalizationDisposition": "corrected-authoritative-metadata",
+      "finalState": "RESOLVED",
+      "verification": "Re-read: the replay record cites all three experiment records and the three capture files the replay tool reads, and its limitation says a held count is a count of 15-second steps over a 30-second scrape. The statement counts alerts and captures, not held steps, so the cadence bounds no published figure."
+    },
+    {
+      "findingId": "f16-records-are-coarser-than-one-per-execution",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "RESOLVED",
+      "verification": "Re-read: where a distinct execution supported a part of a claim no cited record did, a record was added, including the three this change adds; no certified claim now rests on a coarse record for a fact its files do not report separately, and the index binds every cited file by its own hash."
+    },
+    {
+      "findingId": "f17-closure-run-provider-is-unrecorded",
+      "normalizationDisposition": "retained-with-narrower-claim-or-limitation",
+      "finalState": "NARROWED",
+      "verification": "Re-read: the closure run's provider stays unrecorded and no statement of the three claims that cite it names a provider. The model-hash and API-completion claims' limitations say that record names none; the quick start's statement is about a smoke run having been executed, not where."
+    },
+    {
+      "findingId": "n01-baseline-revision-committed-after-the-run",
+      "normalizationDisposition": "additive-historical-correction",
+      "finalState": "HISTORICAL-CORRECTION",
+      "verification": "Re-checked against the repository's history: the commit the baseline records name was created after the run's teardown, and the corrections beside both records are unchanged. What that means for the claim is recorded under n04."
+    },
+    {
+      "findingId": "n02-manifest-record-pins-another-changes-chart-version",
+      "normalizationDisposition": "corrected-authoritative-metadata",
+      "finalState": "RESOLVED",
+      "verification": "Re-read: the manifest-refusal record's chart version, inferops-llm-0.2.0, is the value the only file it cites gives."
+    },
+    {
+      "findingId": "n03-alert-validation-introduction-names-two-runs",
+      "normalizationDisposition": "additive-historical-correction",
+      "finalState": "HISTORICAL-CORRECTION",
+      "verification": "Re-checked: the record is unchanged by content hash and the correction beside it says the replay covers three captures."
+    },
+    {
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "normalizationDisposition": "carried-as-release-blocker",
+      "finalState": "BLOCKER",
+      "verification": "Decided record by record. Of the 18 executed records that did not name the revision that ran, 13 no longer leave a claim's code unidentified: four pin the uncommitted part of their tree by content hashes that equal the files at a named commit, now cited; four involve no repository code among the claim-material components that executed and pin the third-party ones, one of them under a claim V1 does not make; three are under claims that gain a run of the same suites at a named revision; and two are under claims that hold another record which names its code and supports the statement. Five certified claims rest on code nothing identifies and are release blockers: the local baseline, the kind helper, the Helm uninstall's survival clause, the upgrade rollback, and the pod replacement."
+    }
+  ],
+  "findings": [
+    {
+      "findingId": "p01-strategy-data-pairs-c3-with-failure",
+      "observation": "The failure-and-resilience layer's note in docs/testing/test-strategy.v1alpha1.json said full C3 failure certification is out of V1 scope, pairing C3 with the superseded meaning in a current data file. The level-meaning guard reads Markdown and matches the capitalised pairing, so it saw neither.",
+      "finalState": "RESOLVED",
+      "resolution": "The note now says exhaustive failure testing is out of V1 scope and names no level. A test reads every current JSON data file under docs/ for the superseded pairings, in either case.",
+      "claimIds": [],
+      "recordIds": [],
+      "source": "this-verification"
+    },
+    {
+      "findingId": "p02-content-pinned-records-do-not-cite-their-pins",
+      "observation": "Four executed records name a base revision with the change's own files uncommitted. Each run wrote an environment file listing the LF-normalised SHA-256 of every file that decided it, and none of the four records cited that file, so the pins could not be used under the rule that a fact comes from a file the record cites.",
+      "finalState": "RESOLVED",
+      "resolution": "Each record now cites its run's environment file. Every one of the 34 hashes equals the LF-normalised content of its path at the commit that first carried the run's files, and a test checks each against the repository's history.",
+      "claimIds": [
+        "repeatable-llm-load-can-be-generated-from-a-versioned-profile",
+        "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator"
+      ],
+      "recordIds": [
+        "repeatable-llm-load-can-be-generated-from-a-versioned-profile-c2-real-load",
+        "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed-c2",
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2",
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator-c2"
+      ],
+      "source": "this-verification"
+    },
+    {
+      "findingId": "p03-a-chart-version-is-a-label-not-a-pin",
+      "observation": "inferops-llm-0.3.0 is the chart version twelve records name, and the repository's history holds ten different trees of the chart that all carry that version. A chart version therefore does not identify the chart's content.",
+      "finalState": "NARROWED",
+      "resolution": "No record is treated as identifying its chart by the version it names; the index page says a chart version is a label. Where a record also pins the chart's files by content, as the four content-pinned records do, that pin is what identifies it.",
+      "claimIds": [],
+      "recordIds": [],
+      "source": "this-verification"
+    },
+    {
+      "findingId": "p04-the-experiment-api-image-names-no-source",
+      "observation": "The API image the four content-pinned runs deployed is pinned by digest, localhost/inferops-api@sha256:9687e1bb11bd2b728bd61fd1338718a6816efa65958b9366cdf536fe8fdfc087, in the chart values those runs hashed. The same digest appears in three runs at three different base revisions, and no committed record says which source tree built it; it was published to no registry.",
+      "finalState": "NARROWED",
+      "resolution": "The image is identified by an immutable digest, which is what the story asks of an image; the source revision that built it is not recorded, and the completeness report says so beside the four records. It is not a blocker, because the claims those runs support are about the release that digest names, and the digest is what ran.",
+      "claimIds": [],
+      "recordIds": [],
+      "source": "this-verification"
+    },
+    {
+      "findingId": "p05-current-pages-described-the-freeze-as-undecided",
+      "observation": "The index page, the README's index row, and the testing and proof indexes described the freeze as an open decision for V1-S5-006-PR2, which is this change.",
+      "finalState": "RESOLVED",
+      "resolution": "They now state the decision: the evidence pack is not frozen, and why.",
+      "claimIds": [],
+      "recordIds": [],
+      "source": "this-verification"
+    },
+    {
+      "findingId": "p06-a-feasibility-record-quotes-its-test-prompt",
+      "observation": "The scan of every cited file for prompts and responses found one: the Sprint 0 runtime feasibility record quotes the request it sent the runtime, a fixed project-authored question about Kubernetes, and the model's one-sentence reply. Every later record retains no prompt or completion text.",
+      "finalState": "RESOLVED",
+      "resolution": "Examined rather than removed. The prompt is a fixture the project wrote, it names no person, credential, host, or customer, and the reply is a general sentence about Kubernetes; neither is sensitive. The record is dated history and is left as written.",
+      "claimIds": [
+        "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure"
+      ],
+      "recordIds": [
+        "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure-c2"
+      ],
+      "source": "this-verification"
+    }
+  ],
+  "registerChanges": [
+    {
+      "changeId": "d01-domain-pinned-record",
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "operation": "add-record",
+      "claimId": "the-workload-domain-parses-a-contract-document-into-typed-objects",
+      "position": 1,
+      "reason": "The claim's only record names the branch point b2f1bee, not the tree that ran. The same suites, run in process in a detached worktree at a named revision with nothing uncommitted, give the claim a record whose code revision is exact; the older record is kept for what it did.",
+      "record": {
+        "recordId": "the-workload-domain-parses-a-contract-document-into-typed-objects-c2-pinned-run",
+        "claimId": "the-workload-domain-parses-a-contract-document-into-typed-objects",
+        "migrationState": "migrated",
+        "evidenceLevel": "C2",
+        "summary": "The domain suites were run again at a named revision, e145a6e6fe2417a18e6d77a7f14751ec71786888, in a detached worktree with nothing uncommitted, executing the workload domain package in process under pytest: every committed valid fixture parsed into typed objects, unsupported contract versions refused, and the semantic rules applied to parsed documents.",
+        "execution": {
+          "targetBehaviourExecuted": true,
+          "executedComponents": [
+            {
+              "componentId": "workload-domain",
+              "role": "other",
+              "note": "The workload domain package in src/inferops/domain/workload, called directly by the suites."
+            },
+            {
+              "componentId": "pytest",
+              "role": "tool",
+              "note": "tests/domain run through uv run --locked."
+            }
+          ],
+          "substitutions": []
+        },
+        "workload": {
+          "source": "operator-issued",
+          "description": "The committed valid and invalid contract fixtures and documents written into the suites, parsed and validated by fixed test cases."
+        },
+        "environment": {
+          "environmentId": "local-process",
+          "provider": "not-applicable",
+          "hardwareClass": "cpu",
+          "note": "One Windows 11 Enterprise 10.0.26200 host, Python 3.12.12 provisioned by uv 0.9.16, pytest 8.4.2, on 2026-09-24, in a detached worktree at e145a6e6fe2417a18e6d77a7f14751ec71786888 with no tracked change and no untracked file before or after the run."
+        },
+        "versions": [
+          {
+            "component": "inferops repository",
+            "kind": "commit",
+            "value": "e145a6e6fe2417a18e6d77a7f14751ec71786888"
+          },
+          {
+            "component": "pytest",
+            "kind": "package-version",
+            "value": "8.4.2"
+          },
+          {
+            "component": "uv",
+            "kind": "package-version",
+            "value": "0.9.16"
+          }
+        ],
+        "versionsRecordedIn": "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md",
+        "procedure": {
+          "commands": [
+            "uv run --locked python -m pytest tests/domain -q",
+            "uv run --locked python -m pytest tests/domain/test_workload_domain.py -q",
+            "uv run --locked python -m pytest tests/domain/test_workload_schema_agreement.py -q",
+            "uv run --locked python -m pytest tests/domain/test_workload_validation.py -q"
+          ]
+        },
+        "results": [
+          {
+            "resultId": "domain-suite",
+            "statement": "tests/domain reported 398 passed and 18 skipped, of which 33 passed are the serving adapter modules that share the directory."
+          },
+          {
+            "resultId": "domain-modules",
+            "statement": "test_workload_domain.py reported 108 passed, test_workload_schema_agreement.py 163 passed, and test_workload_validation.py 94 passed and 18 skipped."
+          },
+          {
+            "resultId": "skips",
+            "statement": "Each of the 18 skips gives the reason that its invalid fixture is not a semantic layer fixture; the structural layer is the schema suites'."
+          }
+        ],
+        "evidenceRefs": [
+          "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md"
+        ],
+        "limitations": [
+          "One run on one Windows host on 2026-09-24; it says what these suites report for the tree at e145a6e6fe2417a18e6d77a7f14751ec71786888 and nothing about any other tree.",
+          "It does not recover what the earlier records ran: the suites have grown since, every count here is larger than theirs, and nothing says the earlier trees were this one.",
+          "Parsing, version handling, and the semantic rules executed only inside a pytest process."
+        ],
+        "doesNotEstablish": [
+          "That a deployment is derived from a parsed document, or that anything consumes a domain object.",
+          "That these suites pass on Linux, on macOS, or in continuous integration."
+        ]
+      }
+    },
+    {
+      "changeId": "d02-api-pinned-record",
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "operation": "add-record",
+      "claimId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection",
+      "position": 1,
+      "reason": "The claim's only record names two branch points, eccc5fe and 8786620, not the trees that ran. The same suites, run in process at a named revision with nothing uncommitted, give the claim a record whose code revision is exact; the older record is kept for what it did.",
+      "record": {
+        "recordId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1-pinned-run",
+        "claimId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection",
+        "migrationState": "migrated",
+        "evidenceLevel": "C1",
+        "summary": "The API and serving suites were run again at a named revision, e145a6e6fe2417a18e6d77a7f14751ec71786888, in a detached worktree with nothing uncommitted, driving the InferOps ASGI application in process against the labelled mock adapter and controlled doubles, with the real selection composed over a transport that answers nothing.",
+        "execution": {
+          "targetBehaviourExecuted": true,
+          "executedComponents": [
+            {
+              "componentId": "inferops-api",
+              "role": "api",
+              "note": "The ASGI application, driven through its own calling convention by tests/api and tests/serving; no server and no socket."
+            },
+            {
+              "componentId": "mock-serving-adapter",
+              "role": "adapter",
+              "note": "The committed mock, which replays a fixture and loads no model, answered every route check that needed a backend."
+            },
+            {
+              "componentId": "llama-cpp-adapter",
+              "role": "adapter",
+              "note": "Constructed by the selection tests over a stub transport; it answered no request."
+            },
+            {
+              "componentId": "pytest",
+              "role": "tool",
+              "note": "pytest 8.4.2 under uv run --locked."
+            }
+          ],
+          "substitutions": [
+            {
+              "componentId": "llama-cpp-server",
+              "role": "inference-runtime",
+              "substituteKind": "stub",
+              "claimMaterial": true,
+              "rationale": "No runtime was reached: route checks ran against the mock adapter or a controlled double, and the real selection composed the real adapter over a stub transport."
+            },
+            {
+              "componentId": "qwen3-1-7b-q8-0",
+              "role": "model",
+              "substituteKind": "mock",
+              "claimMaterial": false,
+              "rationale": "No weight file was read; the mock adapter's fixture stood in for any model output. The model is not declared material to a claim about routes and selection."
+            }
+          ]
+        },
+        "workload": {
+          "source": "operator-issued",
+          "description": "Fixed requests written into the committed suites under tests/api and tests/serving, sent to the ASGI application in process."
+        },
+        "environment": {
+          "environmentId": "local-process",
+          "provider": "not-applicable",
+          "hardwareClass": "cpu",
+          "note": "One Windows 11 Enterprise 10.0.26200 host, Python 3.12.12 provisioned by uv 0.9.16, pytest 8.4.2, on 2026-09-24, in a detached worktree at e145a6e6fe2417a18e6d77a7f14751ec71786888 with no tracked change and no untracked file before or after the run."
+        },
+        "versions": [
+          {
+            "component": "inferops repository",
+            "kind": "commit",
+            "value": "e145a6e6fe2417a18e6d77a7f14751ec71786888"
+          },
+          {
+            "component": "pytest",
+            "kind": "package-version",
+            "value": "8.4.2"
+          }
+        ],
+        "versionsRecordedIn": "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md",
+        "procedure": {
+          "commands": [
+            "uv run --locked python -m pytest tests/api -q",
+            "uv run --locked python -m pytest tests/serving -q",
+            "uv run --locked python -m pytest -m mockintegration -q",
+            "uv run --locked python -m pytest tests/api/test_api_adapter_selection.py -q"
+          ]
+        },
+        "results": [
+          {
+            "resultId": "api-suite",
+            "statement": "tests/api reported 373 passed, tests/serving 1028 passed and 2 skipped, and the mockintegration marker 373 passed with 14336 deselected."
+          },
+          {
+            "resultId": "selection-module",
+            "statement": "test_api_adapter_selection.py, which holds the refusal of an unset, empty, misspelled, or incomplete selection, reported 44 passed."
+          },
+          {
+            "resultId": "serving-skips",
+            "statement": "The 2 skips in tests/serving are in test_model_lifecycle.py, because the host does not permit creating a symbolic link."
+          }
+        ],
+        "evidenceRefs": [
+          "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md"
+        ],
+        "limitations": [
+          "One run on one Windows host on 2026-09-24; it says what these suites report for the tree at e145a6e6fe2417a18e6d77a7f14751ec71786888 and nothing about any other tree.",
+          "It does not recover what the earlier records ran: the suites have grown since, every count here is larger than theirs, and nothing says the earlier trees were this one.",
+          "Nothing crossed a socket: the application was driven through the ASGI calling convention in process.",
+          "Every route that needed a backend was answered by the committed mock adapter or a controlled double."
+        ],
+        "doesNotEstablish": [
+          "That the API answers a network request.",
+          "That the real adapter composed behind the API reaches, or is answered by, a real runtime."
+        ]
+      }
+    },
+    {
+      "changeId": "d03-metrics-pinned-record",
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "operation": "add-record",
+      "claimId": "the-api-emits-catalog-metrics-and-structured-request-records",
+      "position": 1,
+      "reason": "The claim's only record names the base revision aadf4c5 and says its counts were taken at a branch head it does not name. The same two suites, run at a named revision with nothing uncommitted, give the claim a record whose code revision is exact; the older record is kept for what it did.",
+      "record": {
+        "recordId": "the-api-emits-catalog-metrics-and-structured-request-records-c1-pinned-run",
+        "claimId": "the-api-emits-catalog-metrics-and-structured-request-records",
+        "migrationState": "migrated",
+        "evidenceLevel": "C1",
+        "summary": "The API observability and API-telemetry agreement suites were run again at a named revision, e145a6e6fe2417a18e6d77a7f14751ec71786888, in a detached worktree with nothing uncommitted, driving the InferOps ASGI application composed with the labelled mock adapter and checking its exposition and structured records against the telemetry catalog.",
+        "execution": {
+          "targetBehaviourExecuted": true,
+          "executedComponents": [
+            {
+              "componentId": "inferops-api",
+              "role": "api",
+              "note": "The ASGI application with its telemetry registry and structured-record sink, driven through its own ASGI interface; no socket was opened."
+            },
+            {
+              "componentId": "mock-serving-adapter",
+              "role": "adapter",
+              "note": "The committed mock serving adapter replaying a fixture."
+            },
+            {
+              "componentId": "pytest",
+              "role": "tool",
+              "note": "tests/api/test_api_observability.py and tests/telemetry/test_api_telemetry_agreement.py."
+            }
+          ],
+          "substitutions": [
+            {
+              "componentId": "llama-cpp-adapter",
+              "role": "adapter",
+              "substituteKind": "mock",
+              "claimMaterial": true,
+              "rationale": "The identity, outcome, and error series carry what the adapter reported and returned; the mock stood in for the real adapter throughout."
+            },
+            {
+              "componentId": "llama-cpp-server",
+              "role": "inference-runtime",
+              "substituteKind": "mock",
+              "claimMaterial": true,
+              "rationale": "No runtime was started; a real runtime's error text and token usage never passed through this code."
+            },
+            {
+              "componentId": "qwen3-1-7b-q8-0",
+              "role": "model",
+              "substituteKind": "mock",
+              "claimMaterial": true,
+              "rationale": "No model was loaded; the model identity on every series is the mock's fixed fixture identity."
+            }
+          ]
+        },
+        "workload": {
+          "source": "operator-issued",
+          "description": "Fixed requests written into the two suites, sent through the ASGI interface in process."
+        },
+        "environment": {
+          "environmentId": "local-process",
+          "provider": "not-applicable",
+          "hardwareClass": "cpu",
+          "note": "One Windows 11 Enterprise 10.0.26200 host, Python 3.12.12 provisioned by uv 0.9.16, pytest 8.4.2, on 2026-09-24, in a detached worktree at e145a6e6fe2417a18e6d77a7f14751ec71786888 with no tracked change and no untracked file before or after the run."
+        },
+        "versions": [
+          {
+            "component": "inferops repository",
+            "kind": "commit",
+            "value": "e145a6e6fe2417a18e6d77a7f14751ec71786888"
+          },
+          {
+            "component": "pytest",
+            "kind": "package-version",
+            "value": "8.4.2"
+          }
+        ],
+        "versionsRecordedIn": "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md",
+        "procedure": {
+          "commands": [
+            "uv run --locked python -m pytest tests/api/test_api_observability.py tests/telemetry/test_api_telemetry_agreement.py -q",
+            "uv run --locked python -m pytest tests/api/test_api_observability.py -q",
+            "uv run --locked python -m pytest tests/telemetry/test_api_telemetry_agreement.py -q"
+          ]
+        },
+        "results": [
+          {
+            "resultId": "telemetry-suites",
+            "statement": "test_api_observability.py reported 41 passed and test_api_telemetry_agreement.py 130 passed, 171 together."
+          }
+        ],
+        "evidenceRefs": [
+          "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md"
+        ],
+        "limitations": [
+          "One run on one Windows host on 2026-09-24; it says what these suites report for the tree at e145a6e6fe2417a18e6d77a7f14751ec71786888 and nothing about any other tree.",
+          "It does not recover what the earlier records ran: the suites have grown since, every count here is larger than theirs, and nothing says the earlier trees were this one.",
+          "Every record and every series came from an application composed with the committed mock serving adapter replaying a fixture.",
+          "Nothing crossed a socket; the application was driven through its own interface."
+        ],
+        "doesNotEstablish": [
+          "Anything about a deployed network service, a real selected-model response, or a durable store.",
+          "That a real runtime's error text or token usage passes through the API's telemetry as the mock's did."
+        ]
+      }
+    },
+    {
+      "changeId": "d04-real-load-cites-its-pins",
+      "findingId": "p02-content-pinned-records-do-not-cite-their-pins",
+      "operation": "set-record-field",
+      "claimId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile",
+      "recordId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile-c2-real-load",
+      "field": "evidenceRefs",
+      "before": [
+        "docs/proof/serving/v1-s4-004-pr1-validation.md"
+      ],
+      "after": [
+        "docs/proof/serving/v1-s4-004-pr1-validation.md",
+        "docs/proof/serving/v1-s4-004-pr1-environment.v1alpha1.json"
+      ],
+      "reason": "docs/proof/serving/v1-s4-004-pr1-environment.v1alpha1.json is the same run's committed environment output. Its repository block names the base revision the record already names, says the change's own files were uncommitted, and lists the LF-normalised SHA-256 of every file that decided the run, so the uncommitted part is pinned there; the record did not cite it."
+    },
+    {
+      "changeId": "d05-performance-matrix-cites-its-pins",
+      "findingId": "p02-content-pinned-records-do-not-cite-their-pins",
+      "operation": "set-record-field",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+      "recordId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed-c2",
+      "field": "evidenceRefs",
+      "before": [
+        "docs/proof/serving/v1-s4-004-pr1-validation.md",
+        "docs/proof/serving/v1-s4-004-pr2-performance-findings.md"
+      ],
+      "after": [
+        "docs/proof/serving/v1-s4-004-pr1-validation.md",
+        "docs/proof/serving/v1-s4-004-pr2-performance-findings.md",
+        "docs/proof/serving/v1-s4-004-pr1-environment.v1alpha1.json"
+      ],
+      "reason": "docs/proof/serving/v1-s4-004-pr1-environment.v1alpha1.json is the same run's committed environment output. Its repository block names the base revision the record already names, says the change's own files were uncommitted, and lists the LF-normalised SHA-256 of every file that decided the run, so the uncommitted part is pinned there; the record did not cite it."
+    },
+    {
+      "changeId": "d06-pod-loss-cites-its-pins",
+      "findingId": "p02-content-pinned-records-do-not-cite-their-pins",
+      "operation": "set-record-field",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+      "recordId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2",
+      "field": "evidenceRefs",
+      "before": [
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md"
+      ],
+      "after": [
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/proof/serving/v1-s4-006-pr1-environment.v1alpha1.json"
+      ],
+      "reason": "docs/proof/serving/v1-s4-006-pr1-environment.v1alpha1.json is the same run's committed environment output. Its repository block names the base revision the record already names, says the change's own files were uncommitted, and lists the LF-normalised SHA-256 of every file that decided the run, so the uncommitted part is pinned there; the record did not cite it."
+    },
+    {
+      "changeId": "d07-unready-model-cites-its-pins",
+      "findingId": "p02-content-pinned-records-do-not-cite-their-pins",
+      "operation": "set-record-field",
+      "claimId": "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+      "recordId": "an-unready-model-was-held-unready-and-recovered-by-an-operator-c2",
+      "field": "evidenceRefs",
+      "before": [
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ],
+      "after": [
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+        "docs/proof/serving/v1-s4-007-pr1-environment.v1alpha1.json"
+      ],
+      "reason": "docs/proof/serving/v1-s4-007-pr1-environment.v1alpha1.json is the same run's committed environment output. Its repository block names the base revision the record already names, says the change's own files were uncommitted, and lists the LF-normalised SHA-256 of every file that decided the run, so the uncommitted part is pinned there; the record did not cite it."
+    },
+    {
+      "changeId": "d08-baseline-blocker-limitation",
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "operation": "set-claim-field",
+      "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+      "field": "limitation",
+      "before": "One host, one day on 2026-09-03, CPU only, concurrency one, one request shape. The five thresholds were registered before the run; the fixture was not the one registered — the original two-message fixture was refused by the API on all thirty requests of the prior attempt and was rewritten to be answerable before this run, which the experiment record states in its own correction section. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load. The identifier's method registered first is true of the thresholds, the warm-up, the measured count, and the procedure, and not of the fixture, which the statement names.",
+      "after": "One host, one day on 2026-09-03, CPU only, concurrency one, one request shape. The five thresholds were registered before the run; the fixture was not the one registered — the original two-message fixture was refused by the API on all thirty requests of the prior attempt and was rewritten to be answerable before this run, which the experiment record states in its own correction section. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load. The identifier's method registered first is true of the thresholds, the warm-up, the measured count, and the procedure, and not of the fixture, which the statement names. Release blocker since V1-S5-006-PR2: the only record names a commit the repository's history dates after the run, the tree that ran was a working tree with uncommitted changes that nothing pins, and the API and adapter code it measured is identified by nothing else, so the V1 evidence pack is not frozen while this claim is certified on it.",
+      "reason": "The claim is certified on evidence whose repository code is not identified, which V1-S5-006-PR2 holds as a release blocker. The limitation says so, so every surface generated from the register carries the blocker rather than only the completeness report."
+    },
+    {
+      "changeId": "d09-kind-cluster-blocker-limitation",
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "operation": "set-claim-field",
+      "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+      "field": "limitation",
+      "before": "One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "after": "One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. Release blocker since V1-S5-006-PR2: the only record names no revision of this repository, and the helper it ran is identified by nothing else, so the V1 evidence pack is not frozen while this claim is certified on it.",
+      "reason": "The claim is certified on evidence whose repository code is not identified, which V1-S5-006-PR2 holds as a release blocker. The limitation says so, so every surface generated from the register carries the blocker rather than only the completeness report."
+    },
+    {
+      "changeId": "d10-helm-uninstall-blocker-limitation",
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "operation": "set-claim-field",
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "field": "limitation",
+      "before": "One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. The statement names only the uninstall; the install the identifier names is in the second record cited, the paved-road run, which installed a release, passed its release test, and removed it with no release-labelled object left behind.",
+      "after": "One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. The statement names only the uninstall; the install the identifier names is in the second record cited, the paved-road run, which installed a release, passed its release test, and removed it with no release-labelled object left behind. Release blocker since V1-S5-006-PR2: the paved-road record names the revision that ran and supports the removal of every release-labelled object and the survival of the Terraform-owned namespace and claim; the survival of the cluster, its node, and its storage class rests only on the scoped-cleanup record, which names no revision of this repository and pins the chart by a version label that ten chart states have carried, so the V1 evidence pack is not frozen while the whole statement is certified.",
+      "reason": "The claim is certified on evidence whose repository code is not identified, which V1-S5-006-PR2 holds as a release blocker. The limitation says so, so every surface generated from the register carries the blocker rather than only the completeness report."
+    },
+    {
+      "changeId": "d11-rollback-blocker-limitation",
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "operation": "set-claim-field",
+      "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+      "field": "limitation",
+      "before": "One provider, one host, one moment, one replica of each tier, and one injected fault — an artifact byte-count mismatch. Five attempts were made and four failed for reasons the record lists. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "after": "One provider, one host, one moment, one replica of each tier, and one injected fault — an artifact byte-count mismatch. Five attempts were made and four failed for reasons the record lists. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. Release blocker since V1-S5-006-PR2: the only record names no revision of this repository, and the chart and the rollback workflow it ran are identified by a chart version label that ten chart states have carried and by nothing else, so the V1 evidence pack is not frozen while this claim is certified on it.",
+      "reason": "The claim is certified on evidence whose repository code is not identified, which V1-S5-006-PR2 holds as a release blocker. The limitation says so, so every surface generated from the register carries the blocker rather than only the completeness report."
+    },
+    {
+      "changeId": "d12-pod-replacement-blocker-limitation",
+      "findingId": "f11-pod-restart-names-a-branch-not-a-commit",
+      "operation": "set-claim-field",
+      "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+      "field": "limitation",
+      "before": "One provider, one host, one pod deleted once on 2026-09-12, with one replica. Four defects were found: two by running it, and two more by an independent review of the change afterwards, both of the second pair defects in a published figure rather than in a run that failed, which is why running it did not find them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "after": "One provider, one host, one pod deleted once on 2026-09-12, with one replica. Four defects were found: two by running it, and two more by an independent review of the change afterwards, both of the second pair defects in a published figure rather than in a run that failed, which is why running it did not find them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. Release blocker since V1-S5-006-PR2: the only record names a branch and no commit, the chart it ran is identified only by a version label that ten chart states have carried, and the two later recovery runs say in their own records that they did not re-prove the artifact's survival, so the V1 evidence pack is not frozen while this claim is certified on it.",
+      "reason": "The claim is certified on evidence whose repository code is not identified, which V1-S5-006-PR2 holds as a release blocker. The limitation says so, so every surface generated from the register carries the blocker rather than only the completeness report."
+    }
+  ],
+  "recordCorrections": [],
+  "codeRevisions": [
+    {
+      "recordId": "the-api-emits-catalog-metrics-and-structured-request-records-c1-pinned-run",
+      "entries": [
+        {
+          "value": "e145a6e6fe2417a18e6d77a7f14751ec71786888",
+          "relation": "stated-revision",
+          "path": "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md",
+          "quote": "| Repository revision | `e145a6e6fe2417a18e6d77a7f14751ec71786888`, the merge of `V1-S5-006-PR1`, checked out as a detached worktree created for this run."
+        }
+      ],
+      "note": "A detached worktree at this commit; its status was empty before the first command and after the last."
+    },
+    {
+      "recordId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1-pinned-run",
+      "entries": [
+        {
+          "value": "e145a6e6fe2417a18e6d77a7f14751ec71786888",
+          "relation": "stated-revision",
+          "path": "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md",
+          "quote": "| Repository revision | `e145a6e6fe2417a18e6d77a7f14751ec71786888`, the merge of `V1-S5-006-PR1`, checked out as a detached worktree created for this run."
+        }
+      ],
+      "note": "A detached worktree at this commit; its status was empty before the first command and after the last."
+    },
+    {
+      "recordId": "the-workload-domain-parses-a-contract-document-into-typed-objects-c2-pinned-run",
+      "entries": [
+        {
+          "value": "e145a6e6fe2417a18e6d77a7f14751ec71786888",
+          "relation": "stated-revision",
+          "path": "docs/proof/testing/v1-s5-006-pr2-pinned-suite-run.md",
+          "quote": "| Repository revision | `e145a6e6fe2417a18e6d77a7f14751ec71786888`, the merge of `V1-S5-006-PR1`, checked out as a detached worktree created for this run."
+        }
+      ],
+      "note": "A detached worktree at this commit; its status was empty before the first command and after the last."
+    }
+  ],
+  "codeIdentityKinds": [
+    {
+      "identity": "stated-revision",
+      "meaning": "The record names the commit that ran, without saying the tree carried changes over it."
+    },
+    {
+      "identity": "content-pinned",
+      "meaning": "The record names a base commit and says its change's files were uncommitted, and a file of the same run it cites lists the LF-normalised SHA-256 of every file that decided the run, each equal to that path at a named commit."
+    },
+    {
+      "identity": "no-repository-code",
+      "meaning": "No repository code is among the claim-material components that executed, and each third-party one carries the identifiers its kind requires."
+    },
+    {
+      "identity": "unidentified",
+      "meaning": "Repository code among the claim-material components executed, and nothing the record cites identifies which."
+    }
+  ],
+  "repositoryComponents": [
+    {
+      "componentId": "workload-domain",
+      "what": "src/inferops/domain/workload"
+    },
+    {
+      "componentId": "workload-scaffold",
+      "what": "the scaffolding command under src/"
+    },
+    {
+      "componentId": "inferops-api",
+      "what": "src/inferops/api, and the image built from it"
+    },
+    {
+      "componentId": "llama-cpp-adapter",
+      "what": "the real serving adapter under src/"
+    },
+    {
+      "componentId": "model-acquisition",
+      "what": "the acquisition Job the repository renders and its tools/model_acquisition"
+    },
+    {
+      "componentId": "inferops-llm-chart",
+      "what": "charts/inferops-llm"
+    },
+    {
+      "componentId": "terraform-prerequisites",
+      "what": "infra/ and scripts/environment/terraform-prerequisites.sh"
+    },
+    {
+      "componentId": "kind-cluster-helper",
+      "what": "the optional kind helper under scripts/environment"
+    },
+    {
+      "componentId": "helm-upgrade-rollback-workflow",
+      "what": "scripts/environment/helm-upgrade-rollback.sh and tools/helm_upgrade_rollback"
+    },
+    {
+      "componentId": "llm-load-generator",
+      "what": "tools/llm_load"
+    },
+    {
+      "componentId": "release-collector",
+      "what": "the collector the chart renders; its configuration is repository code"
+    },
+    {
+      "componentId": "clean-clone-workflow",
+      "what": "scripts/environment/clean-clone.sh and tools/clean_clone"
+    },
+    {
+      "componentId": "default-lane-suite",
+      "what": "the committed default test lane"
+    },
+    {
+      "componentId": "inference-pod-recovery-experiment",
+      "what": "tools/inference_pod_recovery and its operating script"
+    },
+    {
+      "componentId": "target-verification-guard",
+      "what": "the target verification in scripts/environment/lib.sh"
+    }
+  ],
+  "thirdPartyComponents": [
+    {
+      "componentId": "llama-cpp-server",
+      "requiredIdentifierKinds": [
+        "image-digest"
+      ]
+    },
+    {
+      "componentId": "qwen3-1-7b-q8-0",
+      "requiredIdentifierKinds": [
+        "model-revision",
+        "artifact-hash"
+      ]
+    },
+    {
+      "componentId": "grafana",
+      "requiredIdentifierKinds": []
+    },
+    {
+      "componentId": "docker-desktop-cluster",
+      "requiredIdentifierKinds": []
+    },
+    {
+      "componentId": "kind-cluster",
+      "requiredIdentifierKinds": [
+        "image-digest"
+      ]
+    }
+  ],
+  "codeIdentity": [
+    {
+      "recordId": "the-workload-domain-parses-a-contract-document-into-typed-objects-c2",
+      "claimId": "the-workload-domain-parses-a-contract-document-into-typed-objects",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "workload-domain"
+      ],
+      "repositoryCodeAmongThem": [
+        "workload-domain"
+      ]
+    },
+    {
+      "recordId": "the-workload-domain-parses-a-contract-document-into-typed-objects-c2-pinned-run",
+      "claimId": "the-workload-domain-parses-a-contract-document-into-typed-objects",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "workload-domain"
+      ],
+      "repositoryCodeAmongThem": [
+        "workload-domain"
+      ]
+    },
+    {
+      "recordId": "a-workload-scaffold-is-generated-without-overwriting-anything-c2",
+      "claimId": "a-workload-scaffold-is-generated-without-overwriting-anything",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "workload-scaffold"
+      ],
+      "repositoryCodeAmongThem": [
+        "workload-scaffold"
+      ]
+    },
+    {
+      "recordId": "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout-mock-workflow-c1",
+      "claimId": "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "inferops-api"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api"
+      ]
+    },
+    {
+      "recordId": "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout-real-smoke-c2",
+      "claimId": "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "inferops-api",
+        "llama-cpp-adapter",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "llama-cpp-adapter"
+      ]
+    },
+    {
+      "recordId": "a-reviewer-can-reproduce-v1-from-a-clean-clone-c2",
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "clean-clone-workflow",
+        "default-lane-suite",
+        "docker-desktop-cluster",
+        "inference-pod-recovery-experiment",
+        "inferops-api",
+        "inferops-llm-chart",
+        "llama-cpp-adapter",
+        "llama-cpp-server",
+        "llm-load-generator",
+        "model-acquisition",
+        "qwen3-1-7b-q8-0",
+        "release-collector",
+        "terraform-prerequisites"
+      ],
+      "repositoryCodeAmongThem": [
+        "clean-clone-workflow",
+        "default-lane-suite",
+        "inference-pod-recovery-experiment",
+        "inferops-api",
+        "inferops-llm-chart",
+        "llama-cpp-adapter",
+        "llm-load-generator",
+        "model-acquisition",
+        "release-collector",
+        "terraform-prerequisites"
+      ]
+    },
+    {
+      "recordId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1",
+      "claimId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "inferops-api",
+        "llama-cpp-adapter"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "llama-cpp-adapter"
+      ]
+    },
+    {
+      "recordId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1-pinned-run",
+      "claimId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "inferops-api",
+        "llama-cpp-adapter"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "llama-cpp-adapter"
+      ]
+    },
+    {
+      "recordId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure-c2",
+      "claimId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure",
+      "claimStatus": "certified",
+      "identity": "no-repository-code",
+      "executedClaimMaterialComponents": [
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": []
+    },
+    {
+      "recordId": "the-model-artifact-matches-its-published-hash-c2-feasibility",
+      "claimId": "the-model-artifact-matches-its-published-hash",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "model-acquisition",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "model-acquisition"
+      ]
+    },
+    {
+      "recordId": "the-model-artifact-matches-its-published-hash-c2-closure",
+      "claimId": "the-model-artifact-matches-its-published-hash",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "model-acquisition",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "model-acquisition"
+      ]
+    },
+    {
+      "recordId": "the-selected-model-serves-a-real-completion-through-the-inferops-api-c2-loopback",
+      "claimId": "the-selected-model-serves-a-real-completion-through-the-inferops-api",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "inferops-api",
+        "llama-cpp-adapter",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "llama-cpp-adapter"
+      ]
+    },
+    {
+      "recordId": "the-selected-model-serves-a-real-completion-through-the-inferops-api-c2-kubernetes",
+      "claimId": "the-selected-model-serves-a-real-completion-through-the-inferops-api",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "inferops-api",
+        "llama-cpp-adapter",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "llama-cpp-adapter"
+      ]
+    },
+    {
+      "recordId": "a-local-serving-baseline-was-measured-under-a-method-registered-first-c2",
+      "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "inferops-api",
+        "llama-cpp-adapter",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "llama-cpp-adapter"
+      ]
+    },
+    {
+      "recordId": "the-model-lifecycle-states-were-measured-across-six-real-starts-c2",
+      "claimId": "the-model-lifecycle-states-were-measured-across-six-real-starts",
+      "claimStatus": "certified",
+      "identity": "no-repository-code",
+      "executedClaimMaterialComponents": [
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": []
+    },
+    {
+      "recordId": "inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating-c2-docker-desktop",
+      "claimId": "inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "target-verification-guard"
+      ],
+      "repositoryCodeAmongThem": [
+        "target-verification-guard"
+      ]
+    },
+    {
+      "recordId": "a-local-cluster-is-created-and-removed-without-residue-c2",
+      "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "kind-cluster",
+        "kind-cluster-helper"
+      ],
+      "repositoryCodeAmongThem": [
+        "kind-cluster-helper"
+      ]
+    },
+    {
+      "recordId": "the-selected-runtime-serves-a-real-completion-in-a-cluster-c2-paved-road",
+      "claimId": "the-selected-runtime-serves-a-real-completion-in-a-cluster",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-llm-chart",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0",
+        "terraform-prerequisites"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-llm-chart",
+        "terraform-prerequisites"
+      ]
+    },
+    {
+      "recordId": "the-selected-runtime-serves-a-real-completion-in-a-cluster-c1-feasibility",
+      "claimId": "the-selected-runtime-serves-a-real-completion-in-a-cluster",
+      "claimStatus": "certified",
+      "identity": "no-repository-code",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": []
+    },
+    {
+      "recordId": "a-helm-release-installs-and-uninstalls-without-residue-c2",
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-llm-chart",
+        "terraform-prerequisites"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-llm-chart",
+        "terraform-prerequisites"
+      ]
+    },
+    {
+      "recordId": "a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road",
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-llm-chart",
+        "terraform-prerequisites"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-llm-chart",
+        "terraform-prerequisites"
+      ]
+    },
+    {
+      "recordId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored-c2",
+      "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "helm-upgrade-rollback-workflow",
+        "inferops-llm-chart",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "helm-upgrade-rollback-workflow",
+        "inferops-llm-chart"
+      ]
+    },
+    {
+      "recordId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2",
+      "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-llm-chart",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0",
+        "terraform-prerequisites"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-llm-chart",
+        "terraform-prerequisites"
+      ]
+    },
+    {
+      "recordId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile-c1-stub-rehearsal",
+      "claimId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "llm-load-generator"
+      ],
+      "repositoryCodeAmongThem": [
+        "llm-load-generator"
+      ]
+    },
+    {
+      "recordId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile-c2-real-load",
+      "claimId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile",
+      "claimStatus": "certified",
+      "identity": "content-pinned",
+      "executedClaimMaterialComponents": [
+        "inferops-api",
+        "llama-cpp-server",
+        "llm-load-generator",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "llm-load-generator"
+      ]
+    },
+    {
+      "recordId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed-c2",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+      "claimStatus": "certified",
+      "identity": "content-pinned",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-api",
+        "inferops-llm-chart",
+        "llama-cpp-server",
+        "llm-load-generator",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "inferops-llm-chart",
+        "llm-load-generator"
+      ]
+    },
+    {
+      "recordId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+      "claimStatus": "certified",
+      "identity": "content-pinned",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-api",
+        "inferops-llm-chart",
+        "llama-cpp-server",
+        "llm-load-generator",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "inferops-llm-chart",
+        "llm-load-generator"
+      ]
+    },
+    {
+      "recordId": "an-unready-model-was-held-unready-and-recovered-by-an-operator-c2",
+      "claimId": "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+      "claimStatus": "certified",
+      "identity": "content-pinned",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-api",
+        "inferops-llm-chart",
+        "llama-cpp-adapter",
+        "llama-cpp-server",
+        "qwen3-1-7b-q8-0"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "inferops-llm-chart",
+        "llama-cpp-adapter"
+      ]
+    },
+    {
+      "recordId": "the-api-emits-catalog-metrics-and-structured-request-records-c1",
+      "claimId": "the-api-emits-catalog-metrics-and-structured-request-records",
+      "claimStatus": "certified",
+      "identity": "unidentified",
+      "executedClaimMaterialComponents": [
+        "inferops-api"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api"
+      ]
+    },
+    {
+      "recordId": "the-api-emits-catalog-metrics-and-structured-request-records-c1-pinned-run",
+      "claimId": "the-api-emits-catalog-metrics-and-structured-request-records",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "inferops-api"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api"
+      ]
+    },
+    {
+      "recordId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2",
+      "claimId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-api",
+        "inferops-llm-chart",
+        "llama-cpp-server",
+        "release-collector"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "inferops-llm-chart",
+        "release-collector"
+      ]
+    },
+    {
+      "recordId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2-clean-clone",
+      "claimId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster",
+        "inferops-api",
+        "inferops-llm-chart",
+        "llama-cpp-server",
+        "release-collector"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "inferops-llm-chart",
+        "release-collector"
+      ]
+    },
+    {
+      "recordId": "the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered-c2",
+      "claimId": "the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered",
+      "claimStatus": "certified",
+      "identity": "stated-revision",
+      "executedClaimMaterialComponents": [
+        "grafana",
+        "inferops-api",
+        "llama-cpp-server",
+        "release-collector"
+      ],
+      "repositoryCodeAmongThem": [
+        "inferops-api",
+        "release-collector"
+      ]
+    },
+    {
+      "recordId": "the-rendered-network-policy-is-enforced-by-the-cluster-c1",
+      "claimId": "the-rendered-network-policy-is-enforced-by-the-cluster",
+      "claimStatus": "not-claimed",
+      "identity": "no-repository-code",
+      "executedClaimMaterialComponents": [
+        "docker-desktop-cluster"
+      ],
+      "repositoryCodeAmongThem": []
+    }
+  ],
+  "contentPins": [
+    {
+      "recordId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile-c2-real-load",
+      "source": "docs/proof/serving/v1-s4-004-pr1-environment.v1alpha1.json",
+      "sourcePointer": "/repository",
+      "baseRevision": "53492c5ddf20f982690dc3e8c4b0c982e7585c48",
+      "filesCommittedIn": "8e31d494264fffd2afb7f6f961d5a23c73f59daa",
+      "files": [
+        {
+          "path": "charts/inferops-llm/Chart.yaml",
+          "sha256": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b"
+        },
+        {
+          "path": "charts/inferops-llm/ci/real-values.yaml",
+          "sha256": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48"
+        },
+        {
+          "path": "charts/inferops-llm/values.yaml",
+          "sha256": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9"
+        },
+        {
+          "path": "deploy/serving/experiments/performance-scenarios.v1.json",
+          "sha256": "cae87607cd65fe3152f68fb487e723e0b085148abbabe99252ec0d9c153e4fc1"
+        },
+        {
+          "path": "deploy/serving/load/llm-load-profile.v1.json",
+          "sha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5"
+        },
+        {
+          "path": "scripts/environment/lib.sh",
+          "sha256": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd"
+        },
+        {
+          "path": "scripts/environment/performance-scenarios.sh",
+          "sha256": "f6c95f330f152892ef9fab51bae42d6ad2750070dbbb5dee9d0fa1c0e8509d52"
+        },
+        {
+          "path": "tools/llm_load/__main__.py",
+          "sha256": "eacfd0172576145febf3a7fba8f12f57543293d79e266d3893f4c3db7d5b833e"
+        },
+        {
+          "path": "tools/llm_load/core.py",
+          "sha256": "0fd164d1f4bcd34a64e88ea7ffa6907191b7e0deaaaf32bc5942c46b3d2d52ec"
+        },
+        {
+          "path": "tools/performance_scenarios/__main__.py",
+          "sha256": "48d7789606c9b58011d69f44d07a199465369e396d027338deeea08d14edf1cc"
+        },
+        {
+          "path": "tools/performance_scenarios/core.py",
+          "sha256": "b790523b384670a00ee357be33837ed91180fd56b56f0b090a631f602e27257c"
+        },
+        {
+          "path": "tools/performance_scenarios/live.py",
+          "sha256": "d670a4f0d6fcfadcc4076ef0a1a5e1937b0e7983cbe3d4eb63cd15a0e9a2f462"
+        }
+      ],
+      "codePathsCompared": [
+        "charts",
+        "src",
+        "infra",
+        "scripts",
+        "tools",
+        "deploy"
+      ],
+      "otherFilesTheCommitChanged": [
+        "tools/performance_scenarios/__init__.py"
+      ]
+    },
+    {
+      "recordId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed-c2",
+      "source": "docs/proof/serving/v1-s4-004-pr1-environment.v1alpha1.json",
+      "sourcePointer": "/repository",
+      "baseRevision": "53492c5ddf20f982690dc3e8c4b0c982e7585c48",
+      "filesCommittedIn": "8e31d494264fffd2afb7f6f961d5a23c73f59daa",
+      "files": [
+        {
+          "path": "charts/inferops-llm/Chart.yaml",
+          "sha256": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b"
+        },
+        {
+          "path": "charts/inferops-llm/ci/real-values.yaml",
+          "sha256": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48"
+        },
+        {
+          "path": "charts/inferops-llm/values.yaml",
+          "sha256": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9"
+        },
+        {
+          "path": "deploy/serving/experiments/performance-scenarios.v1.json",
+          "sha256": "cae87607cd65fe3152f68fb487e723e0b085148abbabe99252ec0d9c153e4fc1"
+        },
+        {
+          "path": "deploy/serving/load/llm-load-profile.v1.json",
+          "sha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5"
+        },
+        {
+          "path": "scripts/environment/lib.sh",
+          "sha256": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd"
+        },
+        {
+          "path": "scripts/environment/performance-scenarios.sh",
+          "sha256": "f6c95f330f152892ef9fab51bae42d6ad2750070dbbb5dee9d0fa1c0e8509d52"
+        },
+        {
+          "path": "tools/llm_load/__main__.py",
+          "sha256": "eacfd0172576145febf3a7fba8f12f57543293d79e266d3893f4c3db7d5b833e"
+        },
+        {
+          "path": "tools/llm_load/core.py",
+          "sha256": "0fd164d1f4bcd34a64e88ea7ffa6907191b7e0deaaaf32bc5942c46b3d2d52ec"
+        },
+        {
+          "path": "tools/performance_scenarios/__main__.py",
+          "sha256": "48d7789606c9b58011d69f44d07a199465369e396d027338deeea08d14edf1cc"
+        },
+        {
+          "path": "tools/performance_scenarios/core.py",
+          "sha256": "b790523b384670a00ee357be33837ed91180fd56b56f0b090a631f602e27257c"
+        },
+        {
+          "path": "tools/performance_scenarios/live.py",
+          "sha256": "d670a4f0d6fcfadcc4076ef0a1a5e1937b0e7983cbe3d4eb63cd15a0e9a2f462"
+        }
+      ],
+      "codePathsCompared": [
+        "charts",
+        "src",
+        "infra",
+        "scripts",
+        "tools",
+        "deploy"
+      ],
+      "otherFilesTheCommitChanged": [
+        "tools/performance_scenarios/__init__.py"
+      ]
+    },
+    {
+      "recordId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2",
+      "source": "docs/proof/serving/v1-s4-006-pr1-environment.v1alpha1.json",
+      "sourcePointer": "/repository",
+      "baseRevision": "7a9ff83d96959671d1d2491d5d09228fe63bf6df",
+      "filesCommittedIn": "bfdfcc6f28c256bd1e3599f325de0f90f6490e41",
+      "files": [
+        {
+          "path": "charts/inferops-llm/Chart.yaml",
+          "sha256": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b"
+        },
+        {
+          "path": "charts/inferops-llm/ci/real-values.yaml",
+          "sha256": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48"
+        },
+        {
+          "path": "charts/inferops-llm/values.yaml",
+          "sha256": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9"
+        },
+        {
+          "path": "deploy/serving/experiments/inference-pod-recovery.v1.json",
+          "sha256": "62b30549c881dd4aae2b2f9b009e72a0f82e1e1222c6ed8e532c2f3dc8ecbf70"
+        },
+        {
+          "path": "deploy/serving/load/llm-load-profile.v1.json",
+          "sha256": "4dc0fe4a4217f035875fcddbdb99b75246f3a74188d5eca8b4dbbec8f57081c5"
+        },
+        {
+          "path": "scripts/environment/inference-pod-recovery.sh",
+          "sha256": "b057c4b55dd616fd83a45fb91f8bdf1064082aca6e460c9eefa11982ff750386"
+        },
+        {
+          "path": "scripts/environment/lib.sh",
+          "sha256": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd"
+        },
+        {
+          "path": "tools/inference_pod_recovery/__main__.py",
+          "sha256": "60bf9b99435ce8cff8ca3d2cb85a0e6897a35257336ab5c446de565de1adfb7c"
+        },
+        {
+          "path": "tools/inference_pod_recovery/core.py",
+          "sha256": "7c204b66433ce1810e72850facfd9e21c5b1d00c8cdb7c9a85feb84046e8f8df"
+        },
+        {
+          "path": "tools/inference_pod_recovery/live.py",
+          "sha256": "d41808fd115bd4e615c78a950f4b899641e07d926699d6104e54d186964cf8a0"
+        },
+        {
+          "path": "tools/llm_load/__main__.py",
+          "sha256": "eacfd0172576145febf3a7fba8f12f57543293d79e266d3893f4c3db7d5b833e"
+        },
+        {
+          "path": "tools/llm_load/core.py",
+          "sha256": "0fd164d1f4bcd34a64e88ea7ffa6907191b7e0deaaaf32bc5942c46b3d2d52ec"
+        }
+      ],
+      "codePathsCompared": [
+        "charts",
+        "src",
+        "infra",
+        "scripts",
+        "tools",
+        "deploy"
+      ],
+      "otherFilesTheCommitChanged": [
+        "tools/inference_pod_recovery/__init__.py"
+      ]
+    },
+    {
+      "recordId": "an-unready-model-was-held-unready-and-recovered-by-an-operator-c2",
+      "source": "docs/proof/serving/v1-s4-007-pr1-environment.v1alpha1.json",
+      "sourcePointer": "/repository",
+      "baseRevision": "0c784d8b3fd939fec1ce0e47f846368e28b08f02",
+      "filesCommittedIn": "be0fa9adf623af6bbb129fc9eb167df1f18b8dac",
+      "files": [
+        {
+          "path": "charts/inferops-llm/Chart.yaml",
+          "sha256": "dcabc74d11d9425d23ab9db9a98137edac130c5de83813b95224367ddc0c166b"
+        },
+        {
+          "path": "charts/inferops-llm/ci/real-values.yaml",
+          "sha256": "a1cc8693dd657e15fe801c227a5faadafe4200e485dc8d9b0ae6f25ca2393a48"
+        },
+        {
+          "path": "charts/inferops-llm/values.yaml",
+          "sha256": "7c22eab7b9859cb9718d9fd8e19e59746db30ada7e14e201f5d76f41133406e9"
+        },
+        {
+          "path": "deploy/serving/experiments/unready-model-recovery.v1.json",
+          "sha256": "7220395254fe7da172d438df1252a59b66a376685937c94d5b7834276c4fdb59"
+        },
+        {
+          "path": "deploy/serving/experiments/unready-model-values.v1.yaml",
+          "sha256": "4ed92f844f2158dae6b4fbef5e0c7a084c8932009730280b1434534d8ffcbfb5"
+        },
+        {
+          "path": "scripts/environment/lib.sh",
+          "sha256": "b969003e21605e57bf4714a84cf021286846d8b3c87ac3363442027fd79a46bd"
+        },
+        {
+          "path": "scripts/environment/unready-model-recovery.sh",
+          "sha256": "2cb043655cef6b68da8d588504451009abbe77f2f4629936fc3b069c3f1f623f"
+        },
+        {
+          "path": "tools/unready_model_recovery/__main__.py",
+          "sha256": "428cb4ae67b6b68610ae716d3a2794bb471cd95e4edfe60ed61480a56bccc6b3"
+        },
+        {
+          "path": "tools/unready_model_recovery/core.py",
+          "sha256": "2ffe2418f99a1e2c0ea53efd50d659717cc04aeaa01fc227814daceeb17f2493"
+        },
+        {
+          "path": "tools/unready_model_recovery/live.py",
+          "sha256": "02cec608934df36431d22b4dbcb66f712b9da69c1cd789c80e52be590fa777b3"
+        }
+      ],
+      "codePathsCompared": [
+        "charts",
+        "src",
+        "infra",
+        "scripts",
+        "tools",
+        "deploy"
+      ],
+      "otherFilesTheCommitChanged": [
+        "tools/unready_model_recovery/__init__.py"
+      ]
+    }
+  ],
+  "claimCodeIdentity": [
+    {
+      "claimId": "the-workload-domain-parses-a-contract-document-into-typed-objects",
+      "state": "identified",
+      "identifiedByRecordIds": [
+        "the-workload-domain-parses-a-contract-document-into-typed-objects-c2-pinned-run"
+      ],
+      "note": "The run this change adds executed the same suites at a named revision."
+    },
+    {
+      "claimId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection",
+      "state": "identified",
+      "identifiedByRecordIds": [
+        "the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1-pinned-run"
+      ],
+      "note": "The run this change adds executed the same suites at a named revision."
+    },
+    {
+      "claimId": "the-api-emits-catalog-metrics-and-structured-request-records",
+      "state": "identified",
+      "identifiedByRecordIds": [
+        "the-api-emits-catalog-metrics-and-structured-request-records-c1-pinned-run"
+      ],
+      "note": "The run this change adds executed the same two suites at a named revision."
+    },
+    {
+      "claimId": "the-model-artifact-matches-its-published-hash",
+      "state": "identified",
+      "identifiedByRecordIds": [
+        "the-model-artifact-matches-its-published-hash-c2-closure"
+      ],
+      "note": "The closure record names the revision that ran and records the acquisition, its resumption over three bounded attempts, and the comparison before the file was mounted."
+    },
+    {
+      "claimId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile",
+      "state": "identified",
+      "identifiedByRecordIds": [
+        "repeatable-llm-load-can-be-generated-from-a-versioned-profile-c2-real-load"
+      ],
+      "note": "The real-load record's code is pinned by content: its base revision plus the files that decided the run, each equal to the file at a named commit."
+    },
+    {
+      "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+      "state": "blocked",
+      "identifiedByRecordIds": [],
+      "note": "The only record's code is identified by nothing."
+    },
+    {
+      "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+      "state": "blocked",
+      "identifiedByRecordIds": [],
+      "note": "The only record names no revision, and the helper it ran is pinned by nothing."
+    },
+    {
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "state": "blocked",
+      "identifiedByRecordIds": [
+        "a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road"
+      ],
+      "note": "The paved-road record identifies its code and supports the statement except the survival of the cluster, its node, and its storage class, which rests only on a record whose code nothing identifies."
+    },
+    {
+      "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+      "state": "blocked",
+      "identifiedByRecordIds": [],
+      "note": "The only record names no revision, and the chart and workflow it ran are pinned by nothing but a version label."
+    },
+    {
+      "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+      "state": "blocked",
+      "identifiedByRecordIds": [],
+      "note": "The only record names a branch, and no later run re-proved the artifact's survival."
+    }
+  ],
+  "blockers": [
+    {
+      "blockerId": "b1-local-baseline-code-unidentified",
+      "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+      "recordIds": [
+        "a-local-serving-baseline-was-measured-under-a-method-registered-first-c2"
+      ],
+      "findingIds": [
+        "n04-executed-records-do-not-name-the-revision-that-ran",
+        "n01-baseline-revision-committed-after-the-run"
+      ],
+      "why": "The record names d60407741101e3a2516870e40c869c91ab77ce40 as the revision at execution, and the repository's history dates that commit after the run; the tree that ran was the branch's working tree, and neither the API and adapter code it measured nor any file that decided the run is pinned by content.",
+      "requiredEvidence": {
+        "authorisation": "A real model and runtime on a capable host; the maintainer's authorisation, as the original run had.",
+        "procedure": [
+          "Start from a fresh clone, or a detached worktree, at a named commit.",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+          "uv run --locked python -m tools.serving_baseline check",
+          "uv run --locked python -m tools.serving_baseline environment",
+          "uv run --locked python -m tools.serving_baseline run --confirm-real-runtime",
+          "uv run --locked python -m tools.serving_baseline summarize",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+        ],
+        "mustRecord": "The commit printed and an empty status before and after, beside the method registered first; the tool does not record either itself."
+      },
+      "alternative": "Decide the claim's status again with the maintainer. No record under it identifies its code, so no narrower statement is supported."
+    },
+    {
+      "blockerId": "b2-kind-helper-code-unidentified",
+      "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+      "recordIds": [
+        "a-local-cluster-is-created-and-removed-without-residue-c2"
+      ],
+      "findingIds": [
+        "n04-executed-records-do-not-name-the-revision-that-ran"
+      ],
+      "why": "The record names no revision of this repository. The node image and the kind binary are pinned; the helper that created and removed the clusters is repository code and is pinned by nothing.",
+      "requiredEvidence": {
+        "authorisation": "Creating and deleting local kind clusters on a host with kind and a container engine; the maintainer's authorisation.",
+        "procedure": [
+          "Start from a fresh clone, or a detached worktree, at a named commit.",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+          "scripts/environment/proof.sh --cycles 2",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+        ],
+        "mustRecord": "The commit printed and an empty status before and after, beside what the verifier found; the helper does not record either itself."
+      },
+      "alternative": "Decide the claim's status again with the maintainer. The helper is optional since ADR 0011, and no other record exercises it."
+    },
+    {
+      "blockerId": "b3-helm-uninstall-survival-clause-code-unidentified",
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "recordIds": [
+        "a-helm-release-installs-and-uninstalls-without-residue-c2"
+      ],
+      "findingIds": [
+        "n04-executed-records-do-not-name-the-revision-that-ran"
+      ],
+      "why": "The survival of the operator's cluster, its node, and its storage class is supported only by the scoped-cleanup record, which names no revision of this repository and identifies the chart by a version label ten chart states have carried. The paved-road record, which names its revision, supports the rest of the statement.",
+      "requiredEvidence": {
+        "authorisation": "Installing, uninstalling, and removing the Terraform prerequisites of a real release on docker-desktop; the maintainer's authorisation.",
+        "procedure": [
+          "Start from a fresh clone, or a detached worktree, at a named commit.",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+          "Install a release as the paved road does.",
+          "helm uninstall inferops --namespace inferops-release --wait --timeout 600s",
+          "Record the release-labelled objects left, and the Terraform namespace and claim, before Terraform is asked.",
+          "scripts/environment/terraform-prerequisites.sh",
+          "Record that the API server answers, the node is Ready, and the default storage class is unchanged.",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+        ],
+        "mustRecord": "The commit printed and an empty status before and after; neither script records them."
+      },
+      "alternative": "Narrow the statement to what the paved-road record supports: helm uninstall removes every object carrying the release's instance label and leaves the Terraform-owned namespace and model cache claim intact."
+    },
+    {
+      "blockerId": "b4-upgrade-rollback-code-unidentified",
+      "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+      "recordIds": [
+        "a-controlled-release-change-can-be-reversed-and-real-inference-restored-c2"
+      ],
+      "findingIds": [
+        "n04-executed-records-do-not-name-the-revision-that-ran"
+      ],
+      "why": "The record names no revision of this repository; the runtime image, the node image, and the model are pinned, and the chart and the rollback workflow it ran are identified only by a chart version label ten chart states have carried.",
+      "requiredEvidence": {
+        "authorisation": "A real release with the pinned model on docker-desktop, a deliberate fault, and a rollback; the maintainer's authorisation.",
+        "procedure": [
+          "Start from a fresh clone, or a detached worktree, at a named commit.",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+          "scripts/environment/helm-upgrade-rollback.sh",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+        ],
+        "mustRecord": "The commit printed and an empty status before and after; the workflow does not record either itself."
+      },
+      "alternative": "Decide the claim's status again with the maintainer. No record under it identifies its code."
+    },
+    {
+      "blockerId": "b5-pod-replacement-code-unidentified",
+      "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+      "recordIds": [
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2"
+      ],
+      "findingIds": [
+        "f11-pod-restart-names-a-branch-not-a-commit",
+        "n04-executed-records-do-not-name-the-revision-that-ran"
+      ],
+      "why": "The record names a branch and no commit, and the chart and Terraform code it ran are identified only by a chart version label. The two later recovery runs, whose revisions are named, each say they did not re-prove the artifact's survival.",
+      "requiredEvidence": {
+        "authorisation": "A real release with the pinned model on docker-desktop and a deleted serving pod; the maintainer's authorisation.",
+        "procedure": [
+          "Start from a fresh clone, or a detached worktree, at a named commit.",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+          "scripts/environment/kubernetes-pod-restart.sh",
+          "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+        ],
+        "mustRecord": "The commit printed and an empty status before and after, beside the artifact's byte count, SHA-256, inode, and modification time either side of the replacement; the workflow does not record the first two itself."
+      },
+      "alternative": "Decide the claim's status again with the maintainer. The recovery runs support that no acquisition Job appeared and the replacement served, which is a different and weaker statement than the artifact surviving."
+    }
+  ],
+  "releaseGate": {
+    "storyId": "V1-S5-006",
+    "decision": "incomplete",
+    "consumersBlocked": [
+      "V1-S5-007",
+      "V1-S5-008"
+    ],
+    "reason": "Five certified claims rest on evidence whose repository code nothing identifies. Each blocker names the run that would close it and the decision that could replace the run; until every one is closed, the evidence pack is not frozen and no later story may consume it as frozen."
+  },
+  "contentPinReading": "The commit that first carried each run's files has the run's base revision as its only parent, and under the compared code paths it changes only the files the run hashed and the package __init__ files named beside each pin, which re-export what the hashed modules define. So the chart, the Terraform, and the API source the run used are the base revision's, on the record's word that the hashed files are the ones that decided the run."
+}

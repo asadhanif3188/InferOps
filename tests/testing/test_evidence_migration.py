@@ -22,11 +22,12 @@ judgement is written down and consistent, not that it is correct.
 **What it compares is the register as the migration left it.** `V1-S5-006-PR1`
 changed the register afterwards -- it narrowed four statements, moved citations, and
 added records -- and its normalization ledger names every one of those changes with
-the value before and after. This module undoes them through the ledger before it
+the value before and after. `V1-S5-006-PR2` changed it again, and its completeness
+ledger does the same. This module undoes both ledgers, last change first, before it
 compares anything, so it keeps checking the migration rather than the migration plus
-everything since, and a later change the ledger does not name makes the undo fail
-here rather than pass unseen. What the later change did is checked by
-`tests/testing/test_evidence_index.py`.
+everything since, and a later change neither ledger names makes the undo fail here
+rather than pass unseen. What the later changes did is checked by
+`tests/testing/test_evidence_index.py` and `tests/testing/test_evidence_completeness.py`.
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ from typing import Any
 
 import pytest
 
-from tools.evidence_index import load_ledger, restore_migrated_register
+from tools.evidence_index import load_ledgers, restore_migrated_register
 from tools.evidence_model import (
     CONTRACT_VERSION,
     LEGACY_CONTRACT_VERSION,
@@ -61,9 +62,9 @@ REPORT_PATH = (
 LEGACY = load_legacy_register()
 CURRENT_REGISTER = load_register()
 #: The register as `V1-S5-012-PR2` wrote it, recovered by undoing every change the
-#: `V1-S5-006-PR1` ledger names. The undo raises if the register does not hold
-#: exactly what the ledger says was written.
-REGISTER = restore_migrated_register(CURRENT_REGISTER, load_ledger())
+#: `V1-S5-006-PR1` and `V1-S5-006-PR2` ledgers name. The undo raises if the register
+#: does not hold exactly what a ledger says was written.
+REGISTER = restore_migrated_register(CURRENT_REGISTER, load_ledgers())
 AUDIT: dict[str, Any] = json.loads(AUDIT_PATH.read_text(encoding="utf-8"))
 REPORT = REPORT_PATH.read_text(encoding="utf-8")
 REPORT_FLAT = " ".join(REPORT.split())

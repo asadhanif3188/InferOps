@@ -30,6 +30,7 @@ import pytest
 
 from tools.evidence_index import (
     CODE_REVISION_RELATIONS,
+    COMPLETENESS_PATH,
     DISPOSITIONS,
     INDEX_PATH,
     LEDGER_PATH,
@@ -40,6 +41,7 @@ from tools.evidence_index import (
     entry_sha256,
     load_index,
     load_ledger,
+    load_ledgers,
     recorded_date,
     render_index,
     restore_migrated_register,
@@ -58,6 +60,9 @@ pytestmark = pytest.mark.docs
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REGISTER = load_register()
 LEDGER = load_ledger()
+#: Both ledgers, in the order applied: `V1-S5-006-PR1`'s normalization and
+#: `V1-S5-006-PR2`'s completeness verification. Undoing the register takes both.
+LEDGERS = load_ledgers()
 INDEX = load_index()
 INDEX_PAGE = REPO_ROOT / "docs" / "proof" / "v1-evidence-index.md"
 REPORT_PATH = (
@@ -80,6 +85,8 @@ INDEX_BY_ID = {entry["recordId"]: entry for entry in INDEX["records"]}
 #: as the tree that ran. Pinned rather than derived: this is the gap the
 #: normalization carried to `V1-S5-006-PR2`, and a record leaving the set -- or a new
 #: one joining it -- has to be a decision somebody makes here, beside the finding.
+#: `V1-S5-006-PR2` decided each of them in its completeness ledger, and
+#: `tests/testing/test_evidence_completeness.py` derives how each identifies its code.
 EXECUTED_WITHOUT_A_STATED_REVISION = frozenset(
     {
         "the-workload-domain-parses-a-contract-document-into-typed-objects-c2",
@@ -161,6 +168,9 @@ def test_the_index_is_built_from_the_authoritative_register() -> None:
     assert INDEX["registerRef"] == REGISTER_PATH.relative_to(REPO_ROOT).as_posix()
     assert INDEX["registerContractVersion"] == CONTRACT_VERSION
     assert INDEX["ledgerRef"] == LEDGER_PATH.relative_to(REPO_ROOT).as_posix()
+    assert (
+        INDEX["completenessRef"] == COMPLETENESS_PATH.relative_to(REPO_ROOT).as_posix()
+    )
 
 
 def test_every_register_record_is_indexed_once_in_register_order() -> None:
@@ -395,11 +405,12 @@ def test_the_readme_row_states_the_revision_count() -> None:
 
 def test_the_ledger_restores_the_migration_and_reapplies_to_the_register() -> None:
     """Every change is named: undoing them all and redoing them is the identity."""
-    migrated = restore_migrated_register(REGISTER, LEDGER)
-    assert apply_register_changes(migrated, LEDGER) == REGISTER
+    migrated = restore_migrated_register(REGISTER, LEDGERS)
+    assert apply_register_changes(migrated, LEDGERS) == REGISTER
     added = [
         change
-        for change in LEDGER["registerChanges"]
+        for ledger in LEDGERS
+        for change in ledger["registerChanges"]
         if change["operation"] == "add-record"
     ]
     restored_records = sum(
@@ -416,8 +427,8 @@ def test_a_misdescribed_change_is_refused_rather_than_restored() -> None:
         if change["operation"] == "set-claim-field"
     )
     change["after"] = change["after"] + " An extra sentence."
-    with pytest.raises(ValueError):
-        restore_migrated_register(REGISTER, ledger)
+    with pytest.raises(ValueError, match=change["changeId"]):
+        restore_migrated_register(REGISTER, [ledger, LEDGERS[1]])
 
 
 def test_every_finding_has_exactly_one_known_disposition() -> None:
@@ -479,12 +490,16 @@ def test_only_the_release_blocker_is_carried_and_it_is_carried_to_pr2() -> None:
 
 
 @pytest.mark.parametrize(
-    "change", LEDGER["registerChanges"], ids=lambda change: change["changeId"]
+    "change",
+    [change for ledger in LEDGERS for change in ledger["registerChanges"]],
+    ids=lambda change: change["changeId"],
 )
 def test_every_register_change_names_its_reason_and_its_finding(
     change: dict[str, Any],
 ) -> None:
-    findings = {finding["findingId"] for finding in LEDGER["findings"]}
+    findings = {
+        finding["findingId"] for ledger in LEDGERS for finding in ledger["findings"]
+    }
     assert len(change["reason"]) > 40, change["changeId"]
     if change["findingId"] is None:
         assert change["operation"] == "set-register-field", change["changeId"]
@@ -516,7 +531,8 @@ def _strings(value: Any) -> list[str]:
     "change",
     [
         change
-        for change in LEDGER["registerChanges"]
+        for ledger in LEDGERS
+        for change in ledger["registerChanges"]
         if change["operation"] == "add-record"
     ],
     ids=lambda change: change["changeId"],
@@ -541,8 +557,8 @@ def test_every_date_time_and_identifier_in_an_added_record_is_in_a_file_it_cites
 
 
 def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
-    """Normalization may narrow, correct, and add; it may not promote."""
-    migrated = restore_migrated_register(REGISTER, LEDGER)
+    """Normalization and verification may narrow, correct, and add; not promote."""
+    migrated = restore_migrated_register(REGISTER, LEDGERS)
     before = {claim["claimId"]: claim for claim in migrated["claims"]}
     for claim in REGISTER["claims"]:
         assert claim["status"] == before[claim["claimId"]]["status"], claim["claimId"]
@@ -555,7 +571,8 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
                 assert record.get("evidenceLevel") == levels[record["recordId"]]
     touched = {
         change["field"]
-        for change in LEDGER["registerChanges"]
+        for ledger in LEDGERS
+        for change in ledger["registerChanges"]
         if change["operation"] != "add-record"
     }
     assert not touched & {"status", "evidenceLevel", "assertsRealBehaviour", "claimId"}
@@ -615,20 +632,23 @@ def test_every_correction_is_indexed_against_the_file_it_concerns() -> None:
 # ------------------------------------------------------------- code revisions
 
 
+#: Every revision reading, from both ledgers: `V1-S5-006-PR1` read the records that
+#: existed, and `V1-S5-006-PR2` reads the ones it added.
+READINGS = [reading for ledger in LEDGERS for reading in ledger["codeRevisions"]]
+
+
 def test_every_executed_record_has_exactly_one_revision_reading() -> None:
     executed = [
         record["recordId"]
         for _, record in RECORDS
         if record["execution"]["targetBehaviourExecuted"]
     ]
-    read_ = [reading["recordId"] for reading in LEDGER["codeRevisions"]]
+    read_ = [reading["recordId"] for reading in READINGS]
     assert sorted(read_) == sorted(executed)
     assert len(read_) == len(set(read_))
 
 
-@pytest.mark.parametrize(
-    "reading", LEDGER["codeRevisions"], ids=lambda reading: reading["recordId"]
-)
+@pytest.mark.parametrize("reading", READINGS, ids=lambda reading: reading["recordId"])
 def test_every_revision_is_quoted_from_a_file_the_record_cites(
     reading: dict[str, Any],
 ) -> None:
@@ -713,7 +733,7 @@ def test_the_normalization_report_states_the_counts_the_ledger_produces() -> Non
 
 
 def test_the_ledger_and_the_index_name_no_private_path() -> None:
-    for path in (LEDGER_PATH, INDEX_PATH):
+    for path in (LEDGER_PATH, COMPLETENESS_PATH, INDEX_PATH):
         text = path.read_text(encoding="utf-8")
         # A drive letter not preceded by another letter, so `https://` is not one.
         # `planning` alone is an ordinary word in the register's statements; a path

@@ -4,12 +4,16 @@
     python -m tools.evidence_index --print
     python -m tools.evidence_index --check
     python -m tools.evidence_index --write
+    python -m tools.evidence_index --gate
 
 The first prints the index's summary counts. ``--print`` prints the whole index the
 register and the ledger produce today and writes nothing. ``--check`` compares that
 with the committed ``docs/proof/v1-evidence-index.v1alpha1.json`` and exits 1 on
 the first difference, so it is usable as a gate. ``--write`` is the only mode that
-touches a file, and it writes that one file.
+touches a file, and it writes that one file. ``--gate`` prints the release gate the
+completeness ledger's blockers decide, one line per blocker, and exits 1 while any
+blocker stands, so the evidence pack cannot be treated as frozen by a script that
+checks an exit code.
 
 **Every mode reads files.** None contacts a cluster, a runtime, a model, or the
 network. See docs/proof/v1-evidence-index.md.
@@ -21,7 +25,14 @@ import argparse
 import json
 import sys
 
-from .core import INDEX_PATH, build_index, render_index
+from .core import (
+    COMPLETENESS_PATH,
+    INDEX_PATH,
+    build_index,
+    load_ledger,
+    release_gate,
+    render_index,
+)
 
 
 def _check(text: str) -> int:
@@ -52,12 +63,31 @@ def _check(text: str) -> int:
     return 1
 
 
+def _gate() -> int:
+    completeness = load_ledger(COMPLETENESS_PATH)
+    decision = release_gate(completeness)
+    stated = completeness["releaseGate"]["decision"]
+    if stated != decision:
+        print(
+            f"MISMATCH the ledger states {stated!r}; its blockers decide {decision!r}"
+        )
+        return 1
+    story = completeness["releaseGate"]["storyId"]
+    if decision == "complete":
+        print(f"COMPLETE {story}: no release blocker; the evidence pack may be frozen")
+        return 0
+    print(f"INCOMPLETE {story}: {len(completeness['blockers'])} release blockers")
+    for blocker in completeness["blockers"]:
+        print(f"         {blocker['blockerId']}  {blocker['claimId']}")
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m tools.evidence_index",
         description=(
             "Print, check, or regenerate the V1 evidence index from the claim and "
-            "evidence register and the normalization ledger."
+            "evidence register and its two ledgers, or report the release gate."
         ),
     )
     group = parser.add_mutually_exclusive_group()
@@ -68,7 +98,15 @@ def main(argv: list[str] | None = None) -> int:
         "--check", action="store_true", help="compare the committed index"
     )
     group.add_argument("--write", action="store_true", help="regenerate the index")
+    group.add_argument(
+        "--gate",
+        action="store_true",
+        help="print the release gate; exit 1 while any blocker stands",
+    )
     arguments = parser.parse_args(argv)
+
+    if arguments.gate:
+        return _gate()
 
     text = render_index(build_index())
 
