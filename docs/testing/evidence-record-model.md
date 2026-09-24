@@ -101,9 +101,12 @@ What moved, and what deliberately did not:
 
 **A level belongs to a record.** `claim` has no `evidenceLevel` property and refuses
 unknown ones, so the one-level-per-claim shape cannot be reintroduced by adding a
-field. The strongest level a claim holds is for a reader to derive; nothing stores
-it, and nothing committed derives it yet either — the proof dashboard still reads
-`v1alpha1`, which is why it gained a version guard rather than a second code path.
+field. The strongest level a claim holds is for a reader to derive, and nothing
+stores it. Since `V1-S5-012-PR2` the [proof dashboard](../proof/dashboard.md) reads
+`v1alpha2` and derives the levels each capability group reached from its records at
+render time, and since `V1-S5-006-PR1` [the V1 evidence
+index](../proof/v1-evidence-index.md) lists every claim's levels beside its records.
+Both derive; neither writes a level back onto a claim.
 
 **Substitution decides `C1`; workload origin decides nothing.** `execution.substitutions[]`
 carries `claimMaterial`, and `workload.source` carries where the input came from. They
@@ -299,6 +302,15 @@ moved one claim's status on a measurement, and published
 not simply carry across. The suite behind this page still publishes no claim, for the
 reason [the test inventory](test-inventory.md) records: it establishes that a shape
 exists and is consistent, never that any evidence is classified correctly under it.
+
+`V1-S5-006-PR1` then answered the findings the migration left open. It narrowed four
+claim statements to what their records support, moved citations, added three records,
+and corrected limitations, and it wrote every one of those changes, with the value
+before and after, into [a normalization
+ledger](../proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json) from which the
+migration's own register can be restored and compared. It added no field to this
+shape: [the V1 evidence index](../proof/v1-evidence-index.md) it generates beside the
+register is a projection of it, not a second model.
 
 ## Related documents
 

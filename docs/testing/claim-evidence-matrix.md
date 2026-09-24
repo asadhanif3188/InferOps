@@ -3,7 +3,7 @@
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json).
 It holds 59 claims: 42 certified, 7 planned,
-1 deferred, and 9 not claimed, supported by 54 evidence records. The not-claimed
+1 deferred, and 9 not claimed, supported by 57 evidence records. The not-claimed
 group is the point of the document. A register that listed only what worked would
 be an advertisement.
 
@@ -18,6 +18,17 @@ be an advertisement.
 > [the migration report](../proof/testing/v1-s5-012-pr2-migration-report.md) says,
 > claim by claim, what the reading found, which levels moved and why, and the one
 > status that moved.
+>
+> **Since `V1-S5-006-PR1` the register has changed once more, and every change is
+> named.** The migration audit left findings open; the
+> [normalization ledger](../proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json)
+> gives each one a disposition, and records every field this change altered with its
+> value before and after, including four statements narrowed to what their records
+> support and three records added where a committed run supported part of a claim no
+> cited record did. [The normalization report](../proof/testing/v1-s5-006-pr1-evidence-normalization.md)
+> explains each, and [the V1 evidence index](../proof/v1-evidence-index.md) lists every
+> record below with its identifiers, the revision it names, and a content hash of every
+> file it cites.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -71,9 +82,9 @@ this table says how many records in this register reached each.
 
 | Level | Where it is defined | Records here |
 |---|---|---|
-| `C0` | [Static Evidence](evidence-levels.md#c0--static-evidence) | 25 |
+| `C0` | [Static Evidence](evidence-levels.md#c0--static-evidence) | 26 |
 | `C1` | [Substituted Execution Evidence](evidence-levels.md#c1--substituted-execution-evidence) | 6 |
-| `C2` | [Runtime Evidence](evidence-levels.md#c2--runtime-evidence) | 23 |
+| `C2` | [Runtime Evidence](evidence-levels.md#c2--runtime-evidence) | 25 |
 | `C3` | [Representative Evidence](evidence-levels.md#c3--representative-evidence) | 0 |
 | `C4` | [Operational Evidence](evidence-levels.md#c4--operational-evidence) | 0 |
 
@@ -284,7 +295,7 @@ it claims no cold-start effect at all.
 | Claim | Status | Evidence records: level, identifier, where it ran, files | Automated coverage |
 |---|---|---|---|
 | `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | certified | `C2` `a-controlled-release-change-can-be-reversed-and-real-inference-restored-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-upgrade-rollback.md](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md) | 1 module(s) |
-| `a-helm-release-installs-and-uninstalls-without-residue` | certified | `C2` `a-helm-release-installs-and-uninstalls-without-residue-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) | 2 module(s) |
+| `a-helm-release-installs-and-uninstalls-without-residue` | certified | `C2` `a-helm-release-installs-and-uninstalls-without-residue-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md)<br>`C2` `a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 2 module(s) |
 | `a-local-cluster-is-created-and-removed-without-residue` | certified | `C2` `a-local-cluster-is-created-and-removed-without-residue-c2` — local-kubernetes, `kind` — [v1-s0-002-pr2-cluster-smoke.md](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) | 1 module(s) |
 | `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating` | certified | `C2` `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating-c2-docker-desktop` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C0` `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating-c0-contract` — repository-only — [v1-s3-010-pr1-validation.md](../proof/architecture/v1-s3-010-pr1-validation.md) | 4 module(s) |
 | `kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed` | certified | `C0` `kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed-c0` — repository-only — [v1-s3-009-pr1-validation.md](../proof/environment/v1-s3-009-pr1-validation.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) | 1 module(s) |
@@ -354,12 +365,12 @@ figure, a service-level objective, an error budget, or a recovery-time objective
 
 | Claim | Status | Evidence records: level, identifier, where it ran, files | Automated coverage |
 |---|---|---|---|
-| `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider` | certified | `C2` `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-telemetry-during-recovery.md](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 4 module(s) |
+| `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider` | certified | `C2` `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-telemetry-during-recovery.md](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C2` `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2-clean-clone` — local-kubernetes, `docker-desktop` — [v1-s5-001-pr2-telemetry-verification.json](../proof/environment/v1-s5-001-pr2-telemetry-verification.json), [v1-s5-001-pr2-clean-clone-run.md](../proof/environment/v1-s5-001-pr2-clean-clone-run.md) | 4 module(s) |
 | `six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link` | certified | `C0` `six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link-c0` — repository-only — [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-008-pr1-validation.md](../proof/telemetry/v1-s4-008-pr1-validation.md) | 2 module(s) |
 | `the-api-emits-catalog-metrics-and-structured-request-records` | certified | `C1` `the-api-emits-catalog-metrics-and-structured-request-records-c1` — local-process — [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md) | 3 module(s) |
 | `the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered` | certified | `C2` `the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered-c2` — local-kubernetes, `docker-desktop` — [v1-s4-002-pr2-dashboard-validation.md](../proof/telemetry/v1-s4-002-pr2-dashboard-validation.md)<br>`C0` `the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered-c0-definition` — repository-only — [v1-s4-002-pr1-validation.md](../proof/telemetry/v1-s4-002-pr1-validation.md) | 2 module(s) |
 | `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | certified | `C0` `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label-c0` — repository-only — [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md), [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md) | 2 module(s) |
-| `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded` | certified | `C0` `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0` — repository-only — [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md) | 1 module(s) |
+| `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded` | certified | `C0` `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0` — repository-only — [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md), [v1-s4-006-pr1-inference-pod-recovery.md](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md), [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-007-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-007-pr1-telemetry.v1alpha1.json), [v1-s4-006-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json), [v1-s4-004-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-004-pr1-telemetry.v1alpha1.json) | 1 module(s) |
 | `no-prompt-response-or-secret-reaches-a-log-or-a-metric` | planned | none, by rule | 2 module(s) |
 | `an-alert-reaches-somebody` | not-claimed | none | 0 module(s) |
 
@@ -406,7 +417,7 @@ themselves. Nothing here has ever been paid for, so `actual` is unreachable and
 | Claim | Status | Evidence records: level, identifier, where it ran, files | Automated coverage |
 |---|---|---|---|
 | `a-security-control-cannot-claim-enforcement-it-does-not-have` | certified | `C0` `a-security-control-cannot-claim-enforcement-it-does-not-have-c0` — repository-only — [v1-s0-009-pr1-validation.md](../proof/security/v1-s0-009-pr1-validation.md) | 1 module(s) |
-| `a-workload-manifest-that-omits-a-required-security-control-is-refused` | certified | `C0` `a-workload-manifest-that-omits-a-required-security-control-is-refused-c0` — repository-only — [v1-s3-004-pr1-validation.md](../proof/security/v1-s3-004-pr1-validation.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 1 module(s) |
+| `a-workload-manifest-that-omits-a-required-security-control-is-refused` | certified | `C0` `a-workload-manifest-that-omits-a-required-security-control-is-refused-c0` — repository-only — [v1-s3-004-pr1-validation.md](../proof/security/v1-s3-004-pr1-validation.md) | 1 module(s) |
 | `the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published` | certified | `C0` `the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published-c0` — repository-only — [v1-s2-006-pr1-validation.md](../proof/security/v1-s2-006-pr1-validation.md) | 1 module(s) |
 | `no-credential-or-model-artifact-enters-public-history` | planned | none, by rule | 0 module(s) |
 | `a-deployed-inferops-workload-is-defended` | not-claimed | none | 0 module(s) |
@@ -436,7 +447,7 @@ network plugin, and it stays here rather than being hidden.
 | `eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend` | certified | `C0` `eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend-c0` — repository-only — [v1-s4-001-pr1-validation.md](../proof/testing/v1-s4-001-pr1-validation.md), [v1-s4-001-pr2-validation.md](../proof/testing/v1-s4-001-pr2-validation.md) | 2 module(s) |
 | `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary` | not-claimed | `C0` `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary-c0` — repository-only — [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md)<br>`C0` `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary-c0-measured-absence` — repository-only — [v1-s5-012-pr2-migration-report.md](../proof/testing/v1-s5-012-pr2-migration-report.md) | 1 module(s) |
 | `no-resource-in-the-architecture-has-two-owners` | certified | `C0` `no-resource-in-the-architecture-has-two-owners-c0` — repository-only — [v1-s0-005-pr1-validation.md](../proof/architecture/v1-s0-005-pr1-validation.md), [v1-s3-002-pr2-validation.md](../proof/architecture/v1-s3-002-pr2-validation.md), [v1-s3-010-pr1-validation.md](../proof/architecture/v1-s3-010-pr1-validation.md) | 3 module(s) |
-| `published-documents-link-only-to-things-that-exist` | certified | `C0` `published-documents-link-only-to-things-that-exist-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md) | 1 module(s) |
+| `published-documents-link-only-to-things-that-exist` | certified | `C0` `published-documents-link-only-to-things-that-exist-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md)<br>`C0` `published-documents-link-only-to-things-that-exist-c0-suite` — repository-only — [v1-s5-002-pr2-validation.md](../proof/testing/v1-s5-002-pr2-validation.md) | 1 module(s) |
 | `the-default-lane-cannot-execute-a-real-model` | certified | `C0` `the-default-lane-cannot-execute-a-real-model-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md), [v1-s4-001-pr2-validation.md](../proof/testing/v1-s4-001-pr2-validation.md) | 2 module(s) |
 | `the-published-strategy-and-its-data-cannot-drift-apart` | certified | `C0` `the-published-strategy-and-its-data-cannot-drift-apart-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md), [v1-s1-007-pr1-validation.md](../proof/testing/v1-s1-007-pr1-validation.md), [v1-s4-001-pr1-validation.md](../proof/testing/v1-s4-001-pr1-validation.md), [v1-s4-009-pr1-validation.md](../proof/testing/v1-s4-009-pr1-validation.md) | 4 module(s) |
 | `a-cluster-or-real-runtime-lane-runs-in-continuous-integration` | not-claimed | none | 0 module(s) |
@@ -490,7 +501,7 @@ the claim weaker than silence would; both make the absence checkable.
 
 ## Surfaces that make no capability claim
 
-9 public entry points in the README are reference, policy, vocabulary, or a
+10 public entry points in the README are reference, policy, vocabulary, or a
 projection of this register rather than a claim about what the software does. They
 are listed rather than skipped, so that the completeness check has something to
 compare against and the exclusion list cannot quietly grow.
@@ -505,6 +516,7 @@ compare against and the exclusion list cannot quietly grow.
 | [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) | Interim conduct expectations, with a formal policy deferred. |
 | [LICENSE](../../LICENSE) | The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does. |
 | [docs/proof/dashboard.md](../proof/dashboard.md) | A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them. |
+| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the V1-S5-006-PR1 normalization ledger: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256. Every value is read from this file, from a cited file, or from the ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
 | [docs/testing/evidence-levels.md](evidence-levels.md) | The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it. |
 
 ## What this matrix does not do

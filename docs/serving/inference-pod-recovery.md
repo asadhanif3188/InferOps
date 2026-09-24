@@ -78,9 +78,10 @@ delete. No Deployment, no claim, no release revision, no cluster-scoped object, 
 nothing in another namespace.
 
 Between the delete and the uninstall that ends the run, the workflow issues no mutating
-command at all. That is what lets the record say the Deployment controller did the
-recovering rather than a person, and it is read off the script by a test rather than
-promised here.
+command at all. That is what lets the record say nothing in the workflow did the
+recovering, which leaves the Deployment controller, and it is read off the script by a
+test rather than promised here. It does not establish that nothing outside the workflow
+intervened, and the record says so.
 
 ## Where each interval begins and ends
 

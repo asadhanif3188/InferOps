@@ -19,7 +19,9 @@ project actually asks: **what has been run, where, and what may it be used to sa
 [The claim and evidence matrix](claim-evidence-matrix.md) is that answer, and it is
 the only document here that carries claims this project deliberately does **not**
 make. [The V1 proof dashboard](../proof/dashboard.md) is the same answer in one
-page, generated from the matrix's data rather than written beside it.
+page, generated from the matrix's data rather than written beside it, and [the V1
+evidence index](../proof/v1-evidence-index.md) is the same data one evidence record at
+a time, with the identifiers each pins and a content hash of every file it cites.
 
 ## Documents
 
