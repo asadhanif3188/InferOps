@@ -434,7 +434,7 @@
       "publishable": true,
       "v1Status": "planned",
       "evidenceRef": null,
-      "notes": "Full C3 failure certification — denial, retry, and recovery proven exhaustively — is out of V1 scope. What V1 needs from this layer is that each canonical error is produced by the condition it names."
+      "notes": "Exhaustive failure testing — denial, retry, and recovery proven for every condition — is out of V1 scope. What V1 needs from this layer is that each canonical error is produced by the condition it names."
     },
     {
       "layerId": "capacity-and-load",

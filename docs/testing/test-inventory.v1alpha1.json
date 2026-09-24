@@ -790,6 +790,14 @@
       "note": "Deliberately no claim: it establishes that the migration's judgements are written down and consistent, never that any of them is right. It reads committed files only."
     },
     {
+      "module": "tests/testing/test_evidence_completeness.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The V1 evidence pack's completeness check and freeze decision against what they rest on: every finding the normalization answered, and every finding the check made, has exactly one final state, and every open item of the migration audit is in exactly one category; the stated release gate is the one the blockers decide, any blocker fails it, and the gate command exits non-zero while one stands; every blocker names a certified claim, the run that would close it, and an alternative, and every blocked claim says so in the limitation the dashboard publishes; every executed record's code identity is derived from the register, the revision readings, and the content pins rather than read, and no certified claim rests only on unidentified code without being a blocker; every content pin is cited and equals the file at the commit that carried it; every cited file's git blob name is what git holds and the evidence-set digest covers them all; no record is unmigrated; no tool reads the superseded register; no current data file pairs a level with a superseded meaning; and no current page describes the freeze as undecided.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that the completeness decision is recorded, derived where it can be, consistent, and carried to every surface that publishes the claims, never that a judgement in it is right. It reads committed files and the repository's history only."
+    },
+    {
       "module": "tests/testing/test_evidence_index.py",
       "layer": "documentation",
       "marker": "docs",

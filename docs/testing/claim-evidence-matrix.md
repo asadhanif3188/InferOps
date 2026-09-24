@@ -3,7 +3,7 @@
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json).
 It holds 59 claims: 42 certified, 7 planned,
-1 deferred, and 9 not claimed, supported by 57 evidence records. The not-claimed
+1 deferred, and 9 not claimed, supported by 60 evidence records. The not-claimed
 group is the point of the document. A register that listed only what worked would
 be an advertisement.
 
@@ -29,6 +29,15 @@ be an advertisement.
 > explains each, and [the V1 evidence index](../proof/v1-evidence-index.md) lists every
 > record below with its identifiers, the revision it names, and a content hash of every
 > file it cites.
+>
+> **Since `V1-S5-006-PR2` the evidence is checked for a freeze, and it is not frozen.**
+> The [completeness ledger](../proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json)
+> names its twelve register changes the same way: three records added where the same
+> suites were run again at a named revision, four records that now cite the file holding
+> their content pins, and five claim limitations that now say the claim is a release
+> blocker, because the code its only supporting record ran is identified by nothing.
+> No status and no level moved. [The completeness report](../proof/testing/v1-s5-006-pr2-evidence-completeness.md)
+> gives every finding a final state and each blocker the run that would close it.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -83,8 +92,8 @@ this table says how many records in this register reached each.
 | Level | Where it is defined | Records here |
 |---|---|---|
 | `C0` | [Static Evidence](evidence-levels.md#c0--static-evidence) | 26 |
-| `C1` | [Substituted Execution Evidence](evidence-levels.md#c1--substituted-execution-evidence) | 6 |
-| `C2` | [Runtime Evidence](evidence-levels.md#c2--runtime-evidence) | 25 |
+| `C1` | [Substituted Execution Evidence](evidence-levels.md#c1--substituted-execution-evidence) | 8 |
+| `C2` | [Runtime Evidence](evidence-levels.md#c2--runtime-evidence) | 26 |
 | `C3` | [Representative Evidence](evidence-levels.md#c3--representative-evidence) | 0 |
 | `C4` | [Operational Evidence](evidence-levels.md#c4--operational-evidence) | 0 |
 
@@ -186,7 +195,7 @@ refusal is.
 |---|---|---|---|
 | `an-invalid-workload-document-is-refused-with-a-published-reason` | certified | `C0` `an-invalid-workload-document-is-refused-with-a-published-reason-c0` — repository-only — [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) | 2 module(s) |
 | `the-workload-contract-and-its-rejection-matrix-are-published` | certified | `C0` `the-workload-contract-and-its-rejection-matrix-are-published-c0` — repository-only — [v1-s0-004-pr1-validation.md](../proof/contracts/v1-s0-004-pr1-validation.md), [v1-s0-004-pr2-validation.md](../proof/contracts/v1-s0-004-pr2-validation.md) | 2 module(s) |
-| `the-workload-domain-parses-a-contract-document-into-typed-objects` | certified | `C2` `the-workload-domain-parses-a-contract-document-into-typed-objects-c2` — local-process — [v1-s1-001-pr1-validation.md](../proof/domain/v1-s1-001-pr1-validation.md), [v1-s1-001-pr2-validation.md](../proof/domain/v1-s1-001-pr2-validation.md) | 3 module(s) |
+| `the-workload-domain-parses-a-contract-document-into-typed-objects` | certified | `C2` `the-workload-domain-parses-a-contract-document-into-typed-objects-c2` — local-process — [v1-s1-001-pr1-validation.md](../proof/domain/v1-s1-001-pr1-validation.md), [v1-s1-001-pr2-validation.md](../proof/domain/v1-s1-001-pr2-validation.md)<br>`C2` `the-workload-domain-parses-a-contract-document-into-typed-objects-c2-pinned-run` — local-process — [v1-s5-006-pr2-pinned-suite-run.md](../proof/testing/v1-s5-006-pr2-pinned-suite-run.md) | 3 module(s) |
 | `deployment-values-derive-only-from-a-validated-document` | planned | none, by rule | 2 module(s) |
 | `the-platform-serves-a-workload-the-contract-describes` | planned | none, by rule | 2 module(s) |
 
@@ -239,7 +248,7 @@ scaffolding command in `src/` is its subject, and it ran against a real file sys
 | Claim | Status | Evidence records: level, identifier, where it ran, files | Automated coverage |
 |---|---|---|---|
 | `a-mock-result-can-never-certify-real-runtime-behaviour` | certified | `C0` `a-mock-result-can-never-certify-real-runtime-behaviour-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md) | 1 module(s) |
-| `the-inference-api-serves-five-routes-with-explicit-adapter-selection` | certified | `C1` `the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1` — local-process — [v1-s1-005-pr1-validation.md](../proof/serving/v1-s1-005-pr1-validation.md), [v1-s1-005-pr2-validation.md](../proof/serving/v1-s1-005-pr2-validation.md) | 4 module(s) |
+| `the-inference-api-serves-five-routes-with-explicit-adapter-selection` | certified | `C1` `the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1` — local-process — [v1-s1-005-pr1-validation.md](../proof/serving/v1-s1-005-pr1-validation.md), [v1-s1-005-pr2-validation.md](../proof/serving/v1-s1-005-pr2-validation.md)<br>`C1` `the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1-pinned-run` — local-process — [v1-s5-006-pr2-pinned-suite-run.md](../proof/testing/v1-s5-006-pr2-pinned-suite-run.md) | 4 module(s) |
 | `a-model-that-is-not-ready-is-a-canonical-error` | planned | none, by rule | 2 module(s) |
 | `an-unreachable-runtime-is-a-canonical-error` | planned | none, by rule | 2 module(s) |
 | `the-mock-serving-path-identifies-itself-as-a-mock` | planned | none, by rule | 2 module(s) |
@@ -328,8 +337,8 @@ ran.
 
 | Claim | Status | Evidence records: level, identifier, where it ran, files | Automated coverage |
 |---|---|---|---|
-| `a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed` | certified | `C2` `a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed-c2` — local-kubernetes, `docker-desktop` — [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-004-pr2-performance-findings.md](../proof/serving/v1-s4-004-pr2-performance-findings.md) | 2 module(s) |
-| `repeatable-llm-load-can-be-generated-from-a-versioned-profile` | certified | `C1` `repeatable-llm-load-can-be-generated-from-a-versioned-profile-c1-stub-rehearsal` — local-process — [v1-s4-003-pr1-validation.md](../proof/serving/v1-s4-003-pr1-validation.md)<br>`C2` `repeatable-llm-load-can-be-generated-from-a-versioned-profile-c2-real-load` — local-kubernetes, `docker-desktop` — [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md) | 1 module(s) |
+| `a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed` | certified | `C2` `a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed-c2` — local-kubernetes, `docker-desktop` — [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-004-pr2-performance-findings.md](../proof/serving/v1-s4-004-pr2-performance-findings.md), [v1-s4-004-pr1-environment.v1alpha1.json](../proof/serving/v1-s4-004-pr1-environment.v1alpha1.json) | 2 module(s) |
+| `repeatable-llm-load-can-be-generated-from-a-versioned-profile` | certified | `C1` `repeatable-llm-load-can-be-generated-from-a-versioned-profile-c1-stub-rehearsal` — local-process — [v1-s4-003-pr1-validation.md](../proof/serving/v1-s4-003-pr1-validation.md)<br>`C2` `repeatable-llm-load-can-be-generated-from-a-versioned-profile-c2-real-load` — local-kubernetes, `docker-desktop` — [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-004-pr1-environment.v1alpha1.json](../proof/serving/v1-s4-004-pr1-environment.v1alpha1.json) | 1 module(s) |
 | `sustained-throughput-and-capacity-under-load` | deferred | none, by rule | 0 module(s) |
 
 Both certified rows are bounded observations under
@@ -351,8 +360,8 @@ load itself is generated, and that decides no level.
 | Claim | Status | Evidence records: level, identifier, where it ran, files | Automated coverage |
 |---|---|---|---|
 | `a-v1-operator-runbook-covers-every-incident-class-and-every-alert-links-into-it` | certified | `C0` `a-v1-operator-runbook-covers-every-incident-class-and-every-alert-links-into-it-c0` — repository-only — [v1-s5-005-pr1-validation.md](../proof/environment/v1-s5-005-pr1-validation.md) | 1 module(s) |
-| `an-unready-model-was-held-unready-and-recovered-by-an-operator` | certified | `C2` `an-unready-model-was-held-unready-and-recovered-by-an-operator-c2` — local-kubernetes, `docker-desktop` — [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md) | 1 module(s) |
-| `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load` | certified | `C2` `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2` — local-kubernetes, `docker-desktop` — [v1-s4-006-pr1-inference-pod-recovery.md](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md) | 1 module(s) |
+| `an-unready-model-was-held-unready-and-recovered-by-an-operator` | certified | `C2` `an-unready-model-was-held-unready-and-recovered-by-an-operator-c2` — local-kubernetes, `docker-desktop` — [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md), [v1-s4-007-pr1-environment.v1alpha1.json](../proof/serving/v1-s4-007-pr1-environment.v1alpha1.json) | 1 module(s) |
+| `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load` | certified | `C2` `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2` — local-kubernetes, `docker-desktop` — [v1-s4-006-pr1-inference-pod-recovery.md](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md), [v1-s4-006-pr1-environment.v1alpha1.json](../proof/serving/v1-s4-006-pr1-environment.v1alpha1.json) | 1 module(s) |
 
 Both rows measure what a caller experienced, and both refuse to turn that into a
 figure about availability. The pod-loss run's most useful result is a
@@ -367,7 +376,7 @@ figure, a service-level objective, an error budget, or a recovery-time objective
 |---|---|---|---|
 | `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider` | certified | `C2` `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-telemetry-during-recovery.md](../proof/telemetry/v1-s3-011-pr2-telemetry-during-recovery.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C2` `a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2-clean-clone` — local-kubernetes, `docker-desktop` — [v1-s5-001-pr2-telemetry-verification.json](../proof/environment/v1-s5-001-pr2-telemetry-verification.json), [v1-s5-001-pr2-clean-clone-run.md](../proof/environment/v1-s5-001-pr2-clean-clone-run.md), [v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json](../proof/environment/v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json) | 4 module(s) |
 | `six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link` | certified | `C0` `six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link-c0` — repository-only — [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-008-pr1-validation.md](../proof/telemetry/v1-s4-008-pr1-validation.md) | 2 module(s) |
-| `the-api-emits-catalog-metrics-and-structured-request-records` | certified | `C1` `the-api-emits-catalog-metrics-and-structured-request-records-c1` — local-process — [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md) | 3 module(s) |
+| `the-api-emits-catalog-metrics-and-structured-request-records` | certified | `C1` `the-api-emits-catalog-metrics-and-structured-request-records-c1` — local-process — [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md)<br>`C1` `the-api-emits-catalog-metrics-and-structured-request-records-c1-pinned-run` — local-process — [v1-s5-006-pr2-pinned-suite-run.md](../proof/testing/v1-s5-006-pr2-pinned-suite-run.md) | 3 module(s) |
 | `the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered` | certified | `C2` `the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered-c2` — local-kubernetes, `docker-desktop` — [v1-s4-002-pr2-dashboard-validation.md](../proof/telemetry/v1-s4-002-pr2-dashboard-validation.md)<br>`C0` `the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered-c0-definition` — repository-only — [v1-s4-002-pr1-validation.md](../proof/telemetry/v1-s4-002-pr1-validation.md) | 2 module(s) |
 | `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | certified | `C0` `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label-c0` — repository-only — [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md), [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md) | 2 module(s) |
 | `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded` | certified | `C0` `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0` — repository-only — [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md), [v1-s4-006-pr1-inference-pod-recovery.md](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md), [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-007-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-007-pr1-telemetry.v1alpha1.json), [v1-s4-006-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json), [v1-s4-004-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-004-pr1-telemetry.v1alpha1.json) | 1 module(s) |

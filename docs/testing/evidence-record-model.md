@@ -312,6 +312,14 @@ migration's own register can be restored and compared. It added no field to this
 shape: [the V1 evidence index](../proof/v1-evidence-index.md) it generates beside the
 register is a projection of it, not a second model.
 
+`V1-S5-006-PR2` checked the result for a freeze and added no field either. It wrote
+its twelve register changes into [a completeness
+ledger](../proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json) in the same form,
+read how every executed record identifies the repository code that ran — a question
+this shape answers only through `versions` and the files a record cites — and held five
+certified claims as release blockers in their own `limitation`, because that is where
+every surface generated from the register already looks.
+
 ## Related documents
 
 | Topic | Document |

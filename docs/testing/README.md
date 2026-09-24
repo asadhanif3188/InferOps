@@ -21,7 +21,11 @@ the only document here that carries claims this project deliberately does **not*
 make. [The V1 proof dashboard](../proof/dashboard.md) is the same answer in one
 page, generated from the matrix's data rather than written beside it, and [the V1
 evidence index](../proof/v1-evidence-index.md) is the same data one evidence record at
-a time, with the identifiers each pins and a content hash of every file it cites.
+a time, with the identifiers each pins, how each identifies the code that ran, and a
+content hash and git blob of every file it cites. It also carries the release gate:
+[the completeness check](../proof/testing/v1-s5-006-pr2-evidence-completeness.md) found
+five certified claims resting on code nothing identifies, so the evidence is not
+frozen.
 
 ## Documents
 
