@@ -1,0 +1,1679 @@
+{
+  "$id": "https://inferops.io/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 evidence normalization, V1-S5-006-PR1",
+  "description": "What V1-S5-006-PR1 did to the claim and evidence register after the V1-S5-012-PR2 migration, and why: every open finding of the migration audit and every finding this normalization made, each with exactly one disposition; every register field it changed, with the value before and after; every record it added, whole; the corrections to historical records made beside them rather than inside them, each bound to the unchanged file by its content hash; and a reading of the repository revision each executed record names. Nothing under docs/proof was rewritten.",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "auditRef": "docs/proof/testing/v1-s5-012-pr2-migration.v1alpha1.json",
+  "auditReportRef": "docs/proof/testing/v1-s5-012-pr2-migration-report.md",
+  "reportRef": "docs/proof/testing/v1-s5-006-pr1-evidence-normalization.md",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "dispositions": [
+    {
+      "dispositionId": "corrected-authoritative-metadata",
+      "meaning": "Resolved by correcting the register's own metadata or citations, including citing another committed record that supports the part of a claim no cited record did."
+    },
+    {
+      "dispositionId": "additive-historical-correction",
+      "meaning": "Resolved by a correction recorded beside a historical record, which is left exactly as it was written."
+    },
+    {
+      "dispositionId": "retained-with-narrower-claim-or-limitation",
+      "meaning": "Kept, with the claim's statement narrowed to what the evidence supports or a limitation that says what the evidence does not."
+    },
+    {
+      "dispositionId": "downgraded",
+      "meaning": "A claim's status or a record's level lowered because the stronger statement is unsupported."
+    },
+    {
+      "dispositionId": "carried-as-release-blocker",
+      "meaning": "Not closable by reading committed files; carried to the named change, which must resolve it before the evidence is frozen."
+    }
+  ],
+  "codeRevisionRelations": [
+    {
+      "relation": "stated-revision",
+      "meaning": "The record names this commit as the revision it ran, without saying the tree carried changes over it."
+    },
+    {
+      "relation": "stated-revision-with-uncommitted-changes",
+      "meaning": "The record names this commit and says the change's own files were uncommitted when it ran."
+    },
+    {
+      "relation": "base-revision",
+      "meaning": "The record names this commit as the base or branch point of the working tree that ran, not as the tree itself."
+    },
+    {
+      "relation": "commit-created-after-the-run",
+      "meaning": "The record names this commit as what ran, and the repository's history dates it after the run."
+    },
+    {
+      "relation": "branch-name-only",
+      "meaning": "The record names a branch and no commit."
+    }
+  ],
+  "findings": [
+    {
+      "findingId": "f01-link-claim-cites-the-shell-check",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The link claim rests on a 2026-08-25 record that ran the contributor shell check rather than the suite the row names.",
+      "observation": null,
+      "disposition": "corrected-authoritative-metadata",
+      "claimIds": [
+        "published-documents-link-only-to-things-that-exist"
+      ],
+      "recordIds": [
+        "published-documents-link-only-to-things-that-exist-c0",
+        "published-documents-link-only-to-things-that-exist-c0-suite"
+      ],
+      "resolution": "The named suite did not exist on 2026-08-25; the V1-S5-002-PR2 record ran it by itself on 2026-09-19 and recorded 204 passed twice. That run is now a record of its own under the claim, and the shell-check record is kept for what it did.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f02-gates-claim-states-a-service-result-no-record-promotes",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The eleven-gates claim's \"nine have passed on the service\" rests on job conclusions read from a public API, which its own record says certify nothing until a run is promoted into a record.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [
+        "eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend"
+      ],
+      "recordIds": [
+        "eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend-c0"
+      ],
+      "resolution": "The clause was removed from the statement, which now says only what the two records establish. The limitation, which said the two infrastructure gates have never run on the service, is corrected: a committed read of the same API has shown all eleven concluding success since V1-S5-004-PR1, and that file, like the second record, states it certifies nothing.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f03-manifest-claim-cites-a-record-that-reads-no-pod",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The manifest-refusal claim cites the paved-road record, which reads no pod against the rules.",
+      "observation": null,
+      "disposition": "corrected-authoritative-metadata",
+      "claimIds": [
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+      ],
+      "recordIds": [
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused-c0"
+      ],
+      "resolution": "The paved-road citation was removed from the record, whose statement the validator's own record supports in full, and the two limitations that described it as the second record cited now say why it is not.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f04-helm-claim-cites-only-the-uninstall",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The installs-and-uninstalls claim's statement and record cover only the uninstall; the install is in a record the claim does not cite.",
+      "observation": null,
+      "disposition": "corrected-authoritative-metadata",
+      "claimIds": [
+        "a-helm-release-installs-and-uninstalls-without-residue"
+      ],
+      "recordIds": [
+        "a-helm-release-installs-and-uninstalls-without-residue-c2",
+        "a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road"
+      ],
+      "resolution": "The paved-road run, which installed a release, passed its release test, and removed it with no release-labelled object left, is now a second C2 record under the claim, and the limitation says which record carries which half of the identifier. The statement is unchanged.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f05-k8s-identifier-says-more-than-its-statement",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The Kubernetes diagnosis claim is named *published-and-executed*, and its cited records executed two of the four cleanup radii; the statement says *machine-checked*, which is what is supported.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [
+        "kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed"
+      ],
+      "recordIds": [
+        "kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed-c0"
+      ],
+      "resolution": "The identifier is kept, because it is the claim's identity on every surface that cites it, and the claim's limitation now says that the statement governs and which two radii were executed.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f06-podloss-statement-says-no-person-intervened",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The pod-loss statement says no person intervened; the record tabulates no intervention and says that \"none\" means nothing *in the workflow* intervened, not that nothing outside it did.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+      ],
+      "recordIds": [
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2"
+      ],
+      "resolution": "The statement now says the workflow issued no mutating command between the delete and its closing uninstall, which is what the record establishes.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f07-baseline-statement-reads-as-a-registered-fixture",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The local baseline statement reads as though its fixture was registered before the run; the fixture that ran was rewritten after the registered one was refused, which the claim's limitation, and not its statement, discloses.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [
+        "a-local-serving-baseline-was-measured-under-a-method-registered-first"
+      ],
+      "recordIds": [
+        "a-local-serving-baseline-was-measured-under-a-method-registered-first-c2"
+      ],
+      "resolution": "The statement now names what was registered first -- the warm-up, the measured count, and the five thresholds -- and says the fixture was rewritten after the registered one was refused. The identifier is kept, and the limitation says which part of it is exact.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f08-domain-record-disagrees-with-itself-on-a-count",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The domain `v1-s1-001-pr2` record's results line disagrees with its own evidence block on how many tests ran.",
+      "observation": null,
+      "disposition": "additive-historical-correction",
+      "claimIds": [
+        "the-workload-domain-parses-a-contract-document-into-typed-objects"
+      ],
+      "recordIds": [
+        "the-workload-domain-parses-a-contract-document-into-typed-objects-c2"
+      ],
+      "resolution": "The register already reports both figures and the disagreement. A correction beside the record says which figure is the tool's output, and the record is unchanged.",
+      "correctionIds": [
+        "rc01-domain-results-line"
+      ],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f09-troubleshooting-record-says-all-exit-zero",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The local-runtime troubleshooting record says every diagnostic exited `0` while its own table shows one exiting `5`, and it never ran the Linux branch of the processor-feature probe.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [
+        "local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes"
+      ],
+      "recordIds": [
+        "local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes-c0"
+      ],
+      "resolution": "The statement said every diagnostic was executed and now excepts the Linux branch of the processor-feature probe. A correction beside the record states the exit code and what it means, and the claim's limitation points to it.",
+      "correctionIds": [
+        "rc02-troubleshooting-exit-codes"
+      ],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f10-closure-and-certification-name-the-model-differently",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The Sprint 1 closure run's response names the model `qwen3-1-7b-instruct` where the certification result names `qwen3-1-7b-q8-0`, and neither record explains the difference.",
+      "observation": null,
+      "disposition": "additive-historical-correction",
+      "claimIds": [
+        "the-selected-model-serves-a-real-completion-through-the-inferops-api",
+        "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout",
+        "the-model-artifact-matches-its-published-hash"
+      ],
+      "recordIds": [
+        "the-selected-model-serves-a-real-completion-through-the-inferops-api-c2-loopback",
+        "the-selected-model-serves-a-real-completion-through-the-inferops-api-c2-kubernetes"
+      ],
+      "resolution": "Both names are values of the operator-set platform label INFEROPS_MODEL_IDENTIFIER, which is what the API reports as the model; the second is pinned by committed configuration, and both runs name the same model revision and artifact. A correction beside the closure record quotes the code and configuration, and the Kubernetes record carries a limitation saying so.",
+      "correctionIds": [
+        "rc03-closure-model-name"
+      ],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f11-pod-restart-names-a-branch-not-a-commit",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The pod-restart record names a branch rather than a commit as its revision.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim"
+      ],
+      "recordIds": [
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2"
+      ],
+      "resolution": "The commit that ran is not recorded and is not inferred from the commit that later added the record. The record carries a limitation saying so, and that it names no API image digest; the index reads its revision as a branch name only. What it does pin -- the runtime image, the model revision, and the artifact hash -- is unchanged.",
+      "correctionIds": [
+        "rc04-pod-restart-revision"
+      ],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f12-unready-record-carries-two-descriptor-digests",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The unready-model record was regenerated after the run and carries two descriptor digests; the migrated record pins the one that executed.",
+      "observation": null,
+      "disposition": "corrected-authoritative-metadata",
+      "claimIds": [
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator"
+      ],
+      "recordIds": [
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator-c2"
+      ],
+      "resolution": "Verified rather than changed: the descriptor as committed at the run's commit, be0fa9a, hashes to sha256:7220395254fe7da172d438df1252a59b66a376685937c94d5b7834276c4fdb59, the value the register pins as executed, and the record itself says in its own words that it was regenerated from unchanged inputs.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f13-collector-per-query-results-are-host-state",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The collector claim's per-query results are in an ignored host directory rather than a committed record, and neither cited file records the collector's image digest.",
+      "observation": null,
+      "disposition": "corrected-authoritative-metadata",
+      "claimIds": [
+        "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider"
+      ],
+      "recordIds": [
+        "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2",
+        "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2-clean-clone"
+      ],
+      "resolution": "The clean-clone run's telemetry step committed a per-query outcome on the same provider with both jobs up, and it is now a second C2 record under the claim, carrying the unexplained sample as a limitation. The first record carries a limitation that no cited file records the collector's image digest; the chart's pin is not borrowed as if it were an observation.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f14-clean-clone-telemetry-sample-is-unexplained",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The clean-clone run's telemetry record returned one sample for a query the correlation suite expects to be empty in a healthy run, while the same record shows both scrape jobs up.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+        "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider"
+      ],
+      "recordIds": [
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone-c2",
+        "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2-clean-clone"
+      ],
+      "resolution": "Not explained: the committed file keeps counts, not samples, and explaining it needs a run that records what the query returned, which this change was not authorised to make. Both records that cite the file carry it as a limitation, and a correction beside the file says what its verified outcome does and does not check. No claim rests on the absence query reading empty.",
+      "correctionIds": [
+        "rc07-clean-clone-telemetry-outcome",
+        "rc08-clean-clone-run-page-telemetry"
+      ],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f15-alert-replay-inputs-not-cited",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "The alert-replay claim cites one of the three experiment records whose captures it replayed, and its captures step at fifteen seconds over a thirty-second scrape.",
+      "observation": null,
+      "disposition": "corrected-authoritative-metadata",
+      "claimIds": [
+        "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded"
+      ],
+      "recordIds": [
+        "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0"
+      ],
+      "resolution": "The record now cites all three experiment records and all three committed capture files the replay tool reads, and carries a limitation that a held count is a count of 15-second steps over a 30-second scrape rather than of independent observations.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f16-records-are-coarser-than-one-per-execution",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "Records are as coarse as the `v1alpha1` rows made them.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [],
+      "recordIds": [],
+      "resolution": "Three records were added where a distinct execution supported a part of a claim no cited record did. No existing record was split: where one record covers several runs, the runs are the same procedure in the same environment, and splitting them would assign each a result its files do not report separately. The index instead lists every file a record cites with its own content hash and the date the file gives for itself, which is per-execution provenance without per-run facts nobody recorded.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "f17-closure-run-provider-is-unrecorded",
+      "source": "v1-s5-012-pr2-audit",
+      "auditQuote": "A fact that exists only in a record a claim does not cite was not used, which is why the closure run's provider is `unrecorded` although another record implies it.",
+      "observation": null,
+      "disposition": "retained-with-narrower-claim-or-limitation",
+      "claimIds": [
+        "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout",
+        "the-model-artifact-matches-its-published-hash",
+        "the-selected-model-serves-a-real-completion-through-the-inferops-api"
+      ],
+      "recordIds": [
+        "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout-real-smoke-c2",
+        "the-model-artifact-matches-its-published-hash-c2-closure",
+        "the-selected-model-serves-a-real-completion-through-the-inferops-api-c2-kubernetes"
+      ],
+      "resolution": "Kept as unrecorded. The closure record does not name its provider, and borrowing one from a neighbouring record is the inference this normalization may not make.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "n01-baseline-revision-committed-after-the-run",
+      "source": "this-normalization",
+      "auditQuote": null,
+      "observation": "Both baseline records give d60407741101e3a2516870e40c869c91ab77ce40 as the revision at execution and say the fixes were in it before the run; the repository's history dates that commit at 2026-09-03T15:03:04Z, after the run's teardown at 14:59:42.090Z.",
+      "disposition": "additive-historical-correction",
+      "claimIds": [
+        "a-local-serving-baseline-was-measured-under-a-method-registered-first"
+      ],
+      "recordIds": [
+        "a-local-serving-baseline-was-measured-under-a-method-registered-first-c2"
+      ],
+      "resolution": "A correction beside each record says what the history shows, the register record carries it as a limitation, and the index reads the revision as committed after the run.",
+      "correctionIds": [
+        "rc05-baseline-raw-results-revision",
+        "rc06-baseline-experiment-revision"
+      ],
+      "carriedTo": null
+    },
+    {
+      "findingId": "n02-manifest-record-pins-another-changes-chart-version",
+      "source": "this-normalization",
+      "auditQuote": null,
+      "observation": "The manifest-refusal record pinned chart version inferops-llm-0.3.0, which appears only in the paved-road record; the validator's own record says the chart version moved to 0.2.0 in the change it validates.",
+      "disposition": "corrected-authoritative-metadata",
+      "claimIds": [
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused"
+      ],
+      "recordIds": [
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused-c0"
+      ],
+      "resolution": "The record's chart version is now 0.2.0, the value its own file gives. Found because removing the paved-road citation left the old value in no file the record cites, which the register's suite refuses.",
+      "correctionIds": [],
+      "carriedTo": null
+    },
+    {
+      "findingId": "n03-alert-validation-introduction-names-two-runs",
+      "source": "this-normalization",
+      "auditQuote": null,
+      "observation": "The alert validation record's introduction says the replay runs over the pod-loss and unready-model runs and that no alerting rule existed during either experiment, while its replay section runs over three captures.",
+      "disposition": "additive-historical-correction",
+      "claimIds": [
+        "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded"
+      ],
+      "recordIds": [
+        "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0"
+      ],
+      "resolution": "A correction beside the record says the replay covers three captures. The register already said three, and no figure depends on the wording.",
+      "correctionIds": [
+        "rc09-alert-validation-two-runs"
+      ],
+      "carriedTo": null
+    },
+    {
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "source": "this-normalization",
+      "auditQuote": null,
+      "observation": "Of the records that executed their target behaviour, the index reads a stated repository revision in some; the others name a base revision, a revision with uncommitted changes, a commit made after the run, a branch, or nothing.",
+      "disposition": "carried-as-release-blocker",
+      "claimIds": [],
+      "recordIds": [],
+      "resolution": "Not closable by reading: the revision that ran was not recorded, and inferring it would manufacture provenance. For several of these records the code that ran is pinned another way -- a built image by digest, or the LF-normalised hashes of the files that decided the run -- and the index shows which identifiers each record does pin. Whether V1 freezes with these records as they are, with a limitation, or re-runs the ones a published claim depends on is the V1-S5-006-PR2 completeness decision.",
+      "correctionIds": [],
+      "carriedTo": "V1-S5-006-PR2"
+    }
+  ],
+  "registerChanges": [
+    {
+      "changeId": "c01-link-suite-record",
+      "findingId": "f01-link-claim-cites-the-shell-check",
+      "operation": "add-record",
+      "claimId": "published-documents-link-only-to-things-that-exist",
+      "position": 1,
+      "record": {
+        "recordId": "published-documents-link-only-to-things-that-exist-c0-suite",
+        "claimId": "published-documents-link-only-to-things-that-exist",
+        "migrationState": "migrated",
+        "evidenceLevel": "C0",
+        "summary": "The document-link suite the claim names as its automated test, tests/testing/test_document_links.py, was run on its own over the committed Markdown on 2026-09-19, on the tree as first committed and again after an independent review's corrections, and passed both times.",
+        "execution": {
+          "targetBehaviourExecuted": false,
+          "executedComponents": [
+            {
+              "componentId": "document-link-suite",
+              "role": "validator",
+              "note": "tests/testing/test_document_links.py, run by pytest; it resolves every relative link in the committed Markdown against the file system."
+            }
+          ],
+          "substitutions": []
+        },
+        "workload": {
+          "source": "none",
+          "description": "No workload was issued. The input was the repository's committed Markdown on 2026-09-19, read as files."
+        },
+        "environment": {
+          "environmentId": "repository-only",
+          "provider": "not-applicable",
+          "hardwareClass": "not-applicable",
+          "note": "One Windows host, commands run from the repository root in Git Bash, on 2026-09-19; the record names no interpreter or package versions of its own."
+        },
+        "versionsRecordedIn": "docs/proof/testing/v1-s5-002-pr2-validation.md",
+        "procedure": {
+          "commands": [
+            "python -m pytest tests/testing/test_document_links.py -q"
+          ]
+        },
+        "results": [
+          {
+            "resultId": "link-suite",
+            "statement": "The document-link suite reported 204 passed on the tree as first committed and 204 passed after the review's corrections."
+          },
+          {
+            "resultId": "full-lane",
+            "statement": "The full default lane on the same tree reported 11900 passed, 30 skipped, and 14 deselected, and 11902 passed after the corrections."
+          }
+        ],
+        "evidenceRefs": [
+          "docs/proof/testing/v1-s5-002-pr2-validation.md"
+        ],
+        "limitations": [
+          "It establishes that a path resolves, and nothing more; the suite reads committed Markdown only.",
+          "One Windows host on one day; the record names no interpreter or package versions, only the commands and what they returned.",
+          "The run is a snapshot of 2026-09-19; the continuous-integration lane runs the same suite, and no run of that lane is promoted into a record."
+        ],
+        "doesNotEstablish": [
+          "That the document at the other end says what the citing sentence claims it says; no check reads meaning.",
+          "That every relative link resolves today; the cited run is a snapshot dated 2026-09-19."
+        ]
+      },
+      "reason": "The claim's automated test is tests/testing/test_document_links.py, and its only record ran the contributor shell check on 2026-08-25, before that suite existed. The V1-S5-002-PR2 record ran the named suite by itself and records its result, so it is cited as a record of its own rather than folded into the older one."
+    },
+    {
+      "changeId": "c02-gates-statement",
+      "findingId": "f02-gates-claim-states-a-service-result-no-record-promotes",
+      "operation": "set-claim-field",
+      "claimId": "eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend",
+      "field": "statement",
+      "before": "Eleven gates are committed as one workflow and as a matrix that maps each to the claims it defends or to a recorded reason it defends none, compared with the workflow in both directions; nine of them have passed on the selected service.",
+      "after": "Eleven gates are committed as one workflow and as a matrix that maps each to the claims it defends or to a recorded reason it defends none, compared with the workflow in both directions.",
+      "reason": "The removed clause said nine gates have passed on the selected service. The only support was job conclusions read from the service's public API, which the cited record itself says certify nothing until a run is promoted into a record, and no run has been. The rest of the statement is what the two records establish."
+    },
+    {
+      "changeId": "c02-gates-limitation",
+      "findingId": "f02-gates-claim-states-a-service-result-no-record-promotes",
+      "operation": "set-claim-field",
+      "claimId": "eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend",
+      "field": "limitation",
+      "before": "The first record cited committed nine gates and no job had then executed on the service; its one hosted run failed three jobs. The second is where the count reaches eleven and where the nine are read back from the service's public API on 2026-09-13. No log or artifact from those runs is promoted into a record and the logs expire, the two infrastructure gates have never run there, and two gates are not deterministic because a vulnerability database moves daily.",
+      "after": "The first record cited committed nine gates and no job had then executed on the service; its one hosted run failed three jobs. The second is where the count reaches eleven and where nine gates' job conclusions were read back from the service's public API on 2026-09-13, when the two infrastructure gates had not yet run there. A later committed read of the same API, `docs/proof/security/v1-s5-004-pr1-hosted-runs.v1alpha1.json`, lists nineteen pushes to `main` in which every job concluded `success`, the two infrastructure gates in the eighteen runs that carry them; it and the second record both state that they promote no run and certify nothing, so this claim states no service result and rests on neither. No log or artifact from any run is promoted into a record and the logs expire, and two gates are not deterministic because a vulnerability database moves daily.",
+      "reason": "The limitation said the two infrastructure gates have never run on the service, which a committed file has contradicted since V1-S5-004-PR1. It now says when that was true and what the later read shows, and why the claim still does not rest on it."
+    },
+    {
+      "changeId": "c03-manifest-citations",
+      "findingId": "f03-manifest-claim-cites-a-record-that-reads-no-pod",
+      "operation": "set-record-field",
+      "claimId": "a-workload-manifest-that-omits-a-required-security-control-is-refused",
+      "recordId": "a-workload-manifest-that-omits-a-required-security-control-is-refused-c0",
+      "field": "evidenceRefs",
+      "before": [
+        "docs/proof/security/v1-s3-004-pr1-validation.md",
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
+      ],
+      "after": [
+        "docs/proof/security/v1-s3-004-pr1-validation.md"
+      ],
+      "reason": "The paved-road record installs, certifies, and removes a release; it runs no validator and reads no pod against the workload policy, so it supports no part of a statement about refusing a manifest. The validator's own record supports the whole statement."
+    },
+    {
+      "changeId": "c03-manifest-versions",
+      "findingId": "n02-manifest-record-pins-another-changes-chart-version",
+      "operation": "set-record-field",
+      "claimId": "a-workload-manifest-that-omits-a-required-security-control-is-refused",
+      "recordId": "a-workload-manifest-that-omits-a-required-security-control-is-refused-c0",
+      "field": "versions",
+      "before": [
+        {
+          "component": "helm",
+          "kind": "package-version",
+          "value": "v3.19.0"
+        },
+        {
+          "component": "inferops-llm",
+          "kind": "chart-version",
+          "value": "inferops-llm-0.3.0"
+        }
+      ],
+      "after": [
+        {
+          "component": "helm",
+          "kind": "package-version",
+          "value": "v3.19.0"
+        },
+        {
+          "component": "inferops-llm",
+          "kind": "chart-version",
+          "value": "0.2.0"
+        }
+      ],
+      "reason": "The chart version was the paved-road record's, inferops-llm-0.3.0, rendered a week later by a different change. The validator's own record says the chart version moved to 0.2.0 in the change it validates, and with the paved-road citation gone the old value appears in no file the record cites."
+    },
+    {
+      "changeId": "c03-manifest-record-limitation",
+      "findingId": "f03-manifest-claim-cites-a-record-that-reads-no-pod",
+      "operation": "set-record-field",
+      "claimId": "a-workload-manifest-that-omits-a-required-security-control-is-refused",
+      "recordId": "a-workload-manifest-that-omits-a-required-security-control-is-refused-c0",
+      "field": "limitations",
+      "before": [
+        "The validator reads YAML. It holds no credential, contacts no cluster, and stops nothing being applied; no admission control applies any of its rules to a pod.",
+        "When the first record was written no release had been installed; the paved-road record installed one from later renders, and no check in either reads a pod that resulted.",
+        "The trial apparatus under deploy/ is held to only two rules by a lifecycle-label exemption, which is a real gap in a real set of committed manifests."
+      ],
+      "after": [
+        "The validator reads YAML. It holds no credential, contacts no cluster, and stops nothing being applied; no admission control applies any of its rules to a pod.",
+        "When the record was written no release had been installed; V1-S3-011 later installed one, and no committed record reads a pod that resulted against these rules.",
+        "The trial apparatus under deploy/ is held to only two rules by a lifecycle-label exemption, which is a real gap in a real set of committed manifests."
+      ],
+      "reason": "The sentence described the paved-road record as the second record cited; it is no longer cited."
+    },
+    {
+      "changeId": "c03-manifest-claim-limitation",
+      "findingId": "f03-manifest-claim-cites-a-record-that-reads-no-pod",
+      "operation": "set-claim-field",
+      "claimId": "a-workload-manifest-that-omits-a-required-security-control-is-refused",
+      "field": "limitation",
+      "before": "The validator reads YAML. It holds no credential, contacts no cluster, and stops nothing being applied; no admission control applies any of its rules to a pod. When the first record cited was written no release had been installed and none could be, because no API image was published; `V1-S3-011` installed one from those renders afterwards, which is the second record cited, and no check in either reads a pod that resulted.",
+      "after": "The validator reads YAML. It holds no credential, contacts no cluster, and stops nothing being applied; no admission control applies any of its rules to a pod. When the record cited was written no release had been installed and none could be, because no API image was published; `V1-S3-011` installed one afterwards, and no committed record reads a pod that resulted against these rules, which is why the paved-road record that installed it is not cited here.",
+      "reason": "The claim's limitation described the paved-road record as the second record cited; it is no longer cited, and the limitation says why."
+    },
+    {
+      "changeId": "c04-helm-install-record",
+      "findingId": "f04-helm-claim-cites-only-the-uninstall",
+      "operation": "add-record",
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "position": 1,
+      "record": {
+        "recordId": "a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road",
+        "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+        "migrationState": "migrated",
+        "evidenceLevel": "C2",
+        "summary": "The paved-road certification installed a release of inferops-llm-0.3.0 into Docker Desktop's cluster on the Terraform-owned namespace and claim, reached revision 1 deployed with its release test passing, and removed it with helm uninstall, after which no object carrying the release's instance label remained while the namespace and the model cache claim survived.",
+        "execution": {
+          "targetBehaviourExecuted": true,
+          "executedComponents": [
+            {
+              "componentId": "docker-desktop-cluster",
+              "role": "cluster",
+              "note": "Docker Desktop's single-node cluster, Kubernetes v1.34.3."
+            },
+            {
+              "componentId": "terraform-prerequisites",
+              "role": "other",
+              "note": "The namespace and model cache claim, applied by Terraform before the release."
+            },
+            {
+              "componentId": "inferops-llm-chart",
+              "role": "chart",
+              "note": "helm install accepted in 7 458 ms; release revision 1 of inferops-llm-0.3.0, status deployed, release test passed; then removed with helm uninstall."
+            },
+            {
+              "componentId": "inferops-api",
+              "role": "api",
+              "note": "The platform API in the release, from a locally built image."
+            },
+            {
+              "componentId": "llama-cpp-server",
+              "role": "inference-runtime",
+              "note": "llama.cpp llama-server at the pinned digest, serving the one real completion the certification requires."
+            }
+          ],
+          "substitutions": []
+        },
+        "workload": {
+          "source": "operator-issued",
+          "description": "The certification workflow's own install and uninstall, and the one fixed completion request it sends between them; the three telemetry-stage requests are not material to this claim and their timings were not recorded."
+        },
+        "environment": {
+          "environmentId": "local-kubernetes",
+          "provider": "docker-desktop",
+          "hardwareClass": "cpu",
+          "note": "One Windows 11 Enterprise host (build 26200), Docker Desktop server 29.7.2, 12 processors, Kubernetes v1.34.3 on one node, CPU only, captured 2026-09-12."
+        },
+        "versions": [
+          {
+            "component": "inferops-llm",
+            "kind": "chart-version",
+            "value": "inferops-llm-0.3.0"
+          },
+          {
+            "component": "inferops-api",
+            "kind": "image-digest",
+            "value": "localhost/inferops-api@sha256:7762924ac72ad7235ca6990980cb6a307bb5adca91276bf82240760590337c58"
+          },
+          {
+            "component": "llama.cpp server",
+            "kind": "image-digest",
+            "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+          },
+          {
+            "component": "repository",
+            "kind": "commit",
+            "value": "820a97797aa1cdafffc8944be3bc7299a54abd31"
+          }
+        ],
+        "versionsRecordedIn": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+        "procedure": {
+          "commands": [
+            "scripts/environment/terraform-prerequisites.sh apply",
+            "scripts/environment/kubernetes-certification.sh certify"
+          ]
+        },
+        "results": [
+          {
+            "resultId": "install",
+            "statement": "helm install was accepted in 7 458 ms, and the release reached revision 1 of inferops-llm-0.3.0, status deployed, with its release test passed."
+          },
+          {
+            "resultId": "uninstall",
+            "statement": "helm uninstall removed every object carrying the release's instance label; the namespace and the model cache claim survived, and the claim count was unchanged by the release."
+          },
+          {
+            "resultId": "certification-attempts",
+            "statement": "The certification succeeded on its fifth attempt; the four failed attempts each found a defect fixed in the same change."
+          }
+        ],
+        "evidenceRefs": [
+          "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
+        ],
+        "limitations": [
+          "One provider, one Windows host, one install and one uninstall on 2026-09-12, inside the certification workflow rather than as a teardown experiment of its own.",
+          "This record reads the release's own objects after the uninstall; that the node, the storage class, and the Terraform-owned prerequisites survived is the scoped-cleanup record's result, not this one's.",
+          "The API image digest is a local manifest digest that resolves in no registry."
+        ],
+        "doesNotEstablish": [
+          "That an install succeeds on kind, on another host, or with more than one replica.",
+          "That the cluster, its node, and its storage class survive the teardown; the scoped-cleanup record carries that."
+        ]
+      },
+      "reason": "The identifier promises an install and an uninstall, and the only record cited covered a teardown of a release it did not say it installed. The paved-road run installed a release and removed it with no release-labelled object left, and the migration had cited it only under other claims."
+    },
+    {
+      "changeId": "c04-helm-claim-limitation",
+      "findingId": "f04-helm-claim-cites-only-the-uninstall",
+      "operation": "set-claim-field",
+      "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+      "field": "limitation",
+      "before": "One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record.",
+      "after": "One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. The statement names only the uninstall; the install the identifier names is in the second record cited, the paved-road run, which installed a release, passed its release test, and removed it with no release-labelled object left behind.",
+      "reason": "Says which record carries the half of the identifier the statement does not name."
+    },
+    {
+      "changeId": "c05-k8s-identifier-limitation",
+      "findingId": "f05-k8s-identifier-says-more-than-its-statement",
+      "operation": "set-claim-field",
+      "claimId": "kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed",
+      "field": "limitation",
+      "before": "Every command is checked against the repository, which is a property of strings rather than of a cluster. The record that machine-checks the guide contacted no cluster, and states that when it was written the release half had never been run by anybody; `V1-S3-011` ran that half afterwards, on one Windows host, on `docker-desktop`, and those two records are cited beside it.",
+      "after": "Every command is checked against the repository, which is a property of strings rather than of a cluster. The record that machine-checks the guide contacted no cluster, and states that when it was written the release half had never been run by anybody; `V1-S3-011` ran that half afterwards, on one Windows host, on `docker-desktop`, and those two records are cited beside it. The identifier says executed and the statement, which is what is certified, says machine-checked: of the four cleanup radii, `helm uninstall` and the guarded `terraform destroy` were executed in the cited records, and the host model-cache clean and `cluster-down.sh` were not executed in any record this claim cites. The identifier is kept because it is the claim's identity on every surface that cites it.",
+      "reason": "A reader who takes the identifier at its word would believe all four radii ran. The statement never said so; the limitation now says which two did."
+    },
+    {
+      "changeId": "c06-podloss-statement",
+      "findingId": "f06-podloss-statement-says-no-person-intervened",
+      "operation": "set-claim-field",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+      "field": "statement",
+      "before": "One serving pod deleted by name mid-load produced a 31,960 ms caller-visible outage in which 40 of 41 dispatched requests were refused with `capability-unavailable`, the replacement reported itself Ready 33,665 ms after the delete, and no person intervened.",
+      "after": "One serving pod deleted by name mid-load produced a 31,960 ms caller-visible outage in which 40 of 41 dispatched requests were refused with `capability-unavailable`, the replacement reported itself Ready 33,665 ms after the delete, and the workflow issued no mutating command between the delete and its closing uninstall.",
+      "reason": "The statement said no person intervened. The record establishes that the operating workflow issued no mutating command between the delete and the uninstall, and says in its own words that this does not establish that nothing outside the workflow intervened."
+    },
+    {
+      "changeId": "c07-baseline-statement",
+      "findingId": "f07-baseline-statement-reads-as-a-registered-fixture",
+      "operation": "set-claim-field",
+      "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+      "field": "statement",
+      "before": "A local serving baseline was executed against a fixture, a warm-up, and five thresholds registered before the run, and all thirty measured requests succeeded with every threshold met.",
+      "after": "A local serving baseline was executed under a warm-up, a measured count, and five thresholds registered before the run, against a fixture rewritten after the registered one was refused, and all thirty measured requests succeeded with every threshold met.",
+      "reason": "The statement said the fixture was registered before the run. The fixture that ran was rewritten after the registered one was refused on every request of the prior attempt; the thresholds, warm-up, measured count, and procedure were registered first and did not change. The limitation disclosed this; the statement now says it."
+    },
+    {
+      "changeId": "c07-baseline-identifier-limitation",
+      "findingId": "f07-baseline-statement-reads-as-a-registered-fixture",
+      "operation": "set-claim-field",
+      "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+      "field": "limitation",
+      "before": "One host, one day on 2026-09-03, CPU only, concurrency one, one request shape. The five thresholds were registered before the run; the fixture was not the one registered — the original two-message fixture was refused by the API on all thirty requests of the prior attempt and was rewritten to be answerable before this run, which the experiment record states in its own correction section. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load.",
+      "after": "One host, one day on 2026-09-03, CPU only, concurrency one, one request shape. The five thresholds were registered before the run; the fixture was not the one registered — the original two-message fixture was refused by the API on all thirty requests of the prior attempt and was rewritten to be answerable before this run, which the experiment record states in its own correction section. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load. The identifier's method registered first is true of the thresholds, the warm-up, the measured count, and the procedure, and not of the fixture, which the statement names.",
+      "reason": "The identifier is kept as the claim's identity; the limitation says which part of it is exact."
+    },
+    {
+      "changeId": "c07-baseline-revision-limitation",
+      "findingId": "n01-baseline-revision-committed-after-the-run",
+      "operation": "set-record-field",
+      "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+      "recordId": "a-local-serving-baseline-was-measured-under-a-method-registered-first-c2",
+      "field": "limitations",
+      "before": [
+        "One run on one host on one day, CPU only, concurrency one, and one request shape.",
+        "The executed fixture is not the one originally registered: the two-message fixture was refused on all thirty requests of the prior attempt and was rewritten as one user message before this run.",
+        "The periodic CPU sample lands between requests and materially understates the runtime's load.",
+        "The 30.9 s margin against the load budget is not a reliable start-within-budget, because the same host was 58.7 s over it in the prior attempt."
+      ],
+      "after": [
+        "One run on one host on one day, CPU only, concurrency one, and one request shape.",
+        "The executed fixture is not the one originally registered: the two-message fixture was refused on all thirty requests of the prior attempt and was rewritten as one user message before this run.",
+        "The periodic CPU sample lands between requests and materially understates the runtime's load.",
+        "The 30.9 s margin against the load budget is not a reliable start-within-budget, because the same host was 58.7 s over it in the prior attempt.",
+        "The revision both records give for the run, d60407741101e3a2516870e40c869c91ab77ce40, was committed at 2026-09-03T15:03:04Z, after the run's teardown at 14:59:42.090Z, so what ran was the working tree that commit later recorded; that the two were identical is not established."
+      ],
+      "reason": "Found by this change: the records say the fixes were in that commit before the run, and the repository's history dates the commit after it."
+    },
+    {
+      "changeId": "c09-troubleshooting-statement",
+      "findingId": "f09-troubleshooting-record-says-all-exit-zero",
+      "operation": "set-claim-field",
+      "claimId": "local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes",
+      "field": "statement",
+      "before": "The local runtime troubleshooting guide's symptoms, commands, and quoted figures are checked against the repository and the evidence records they come from, and every diagnostic in it was executed on one host.",
+      "after": "The local runtime troubleshooting guide's symptoms, commands, and quoted figures are checked against the repository and the evidence records they come from, and every read-only diagnostic in it except the Linux branch of the processor-feature probe was executed on one Windows host.",
+      "reason": "The statement said every diagnostic was executed. The record's own limitation says the Linux branch of the AVX2 probe has never been run, because no Linux host ran any of it."
+    },
+    {
+      "changeId": "c09-troubleshooting-exit-limitation",
+      "findingId": "f09-troubleshooting-record-says-all-exit-zero",
+      "operation": "set-claim-field",
+      "claimId": "local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes",
+      "field": "limitation",
+      "before": "The authorization-gated recoveries are described rather than run, and the check establishes that a command and a figure match the repository rather than that following the guide fixes anything.",
+      "after": "The authorization-gated recoveries are described rather than run, and the check establishes that a command and a figure match the repository rather than that following the guide fixes anything. The record's criteria table says every diagnostic exited `0`; its own diagnostics table shows `local_composition status --confirm-real-runtime` exiting `5`, the documented composed-but-not-ready code, and a correction beside the record says so.",
+      "reason": "Points a reader of the claim at the defect in the record it rests on."
+    },
+    {
+      "changeId": "c10-model-name-limitation",
+      "findingId": "f10-closure-and-certification-name-the-model-differently",
+      "operation": "set-record-field",
+      "claimId": "the-selected-model-serves-a-real-completion-through-the-inferops-api",
+      "recordId": "the-selected-model-serves-a-real-completion-through-the-inferops-api-c2-kubernetes",
+      "field": "limitations",
+      "before": [
+        "One local CPU host, one runtime image, one model revision, and one day.",
+        "The API was exercised through ASGI in process; no ASGI server, API container, API Deployment, or API Service exists.",
+        "The runtime was deployed from its feasibility manifest, not from a generated WorkloadContract.",
+        "The runtime was reached through a loopback port-forward, not through cluster DNS from an in-cluster client."
+      ],
+      "after": [
+        "One local CPU host, one runtime image, one model revision, and one day.",
+        "The API was exercised through ASGI in process; no ASGI server, API container, API Deployment, or API Service exists.",
+        "The runtime was deployed from its feasibility manifest, not from a generated WorkloadContract.",
+        "The runtime was reached through a loopback port-forward, not through cluster DNS from an in-cluster client.",
+        "The response in this record names the model qwen3-1-7b-instruct and the loopback certification names qwen3-1-7b-q8-0: both are values of the operator-set platform label INFEROPS_MODEL_IDENTIFIER, the second pinned by committed configuration, and both runs name the same model revision; which value was set for this run is recorded only by the response."
+      ],
+      "reason": "The two records under one claim disagreed on the model's name with no explanation; the explanation is in committed code and configuration, and a correction beside the closure record quotes it."
+    },
+    {
+      "changeId": "c11-pod-restart-revision-limitation",
+      "findingId": "f11-pod-restart-names-a-branch-not-a-commit",
+      "operation": "set-record-field",
+      "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+      "recordId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2",
+      "field": "limitations",
+      "before": [
+        "One provider, one host, one pod deleted once on 2026-09-12, with one replica.",
+        "Four defects were found in the new tooling, two by running it and two by an independent review of published figures.",
+        "The install hook's own log was not observed, because a successful hook deletes itself."
+      ],
+      "after": [
+        "One provider, one host, one pod deleted once on 2026-09-12, with one replica.",
+        "Four defects were found in the new tooling, two by running it and two by an independent review of published figures.",
+        "The install hook's own log was not observed, because a successful hook deletes itself.",
+        "The record names its repository revision only as a branch, so the commit that ran is not recorded, and it records no digest for the InferOps API image it built and loaded."
+      ],
+      "reason": "A branch name is not an immutable identifier. The commit that later added the record is not evidence of what ran, and is not used as if it were."
+    },
+    {
+      "changeId": "c13-collector-committed-queries-record",
+      "findingId": "f13-collector-per-query-results-are-host-state",
+      "operation": "add-record",
+      "claimId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+      "position": 1,
+      "record": {
+        "recordId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2-clean-clone",
+        "claimId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+        "migrationState": "migrated",
+        "evidenceLevel": "C2",
+        "summary": "In the clean-clone run's telemetry-verification step on 2026-09-18, the collector a release installed on docker-desktop discovered one target for each of the two InferOps scrape jobs, both up, and a real Prometheus asked and parsed 21 of the catalogue's 23 queries, the two not asked being the ones with no source; the per-query outcome is committed.",
+        "execution": {
+          "targetBehaviourExecuted": true,
+          "executedComponents": [
+            {
+              "componentId": "release-collector",
+              "role": "collector",
+              "note": "Prometheus 3.5.0, build revision 8be3a9560fbdd18a94dedec4b747c35178177202, evaluating the catalogue's queries."
+            },
+            {
+              "componentId": "inferops-llm-chart",
+              "role": "chart",
+              "note": "The release whose scrape jobs the collector discovered, in namespace inferops-release."
+            },
+            {
+              "componentId": "docker-desktop-cluster",
+              "role": "cluster",
+              "note": "Provider docker-desktop, cluster docker-desktop, server v1.34.3."
+            },
+            {
+              "componentId": "inferops-api",
+              "role": "api",
+              "note": "Its scrape job inferops-inferops-llm-platform-api had one target, up."
+            },
+            {
+              "componentId": "llama-cpp-server",
+              "role": "inference-runtime",
+              "note": "Its scrape job inferops-inferops-llm-serving-runtime had one target, up; the run's environment table names its serving runtime as ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384, and the attempt ledger labels the step local-real-cpu."
+            }
+          ],
+          "substitutions": []
+        },
+        "workload": {
+          "source": "operator-issued",
+          "description": "The verification step's own queries to the collector, one per catalogue query asked; whatever inference traffic the step sent is not recorded in the committed file."
+        },
+        "environment": {
+          "environmentId": "local-kubernetes",
+          "provider": "docker-desktop",
+          "hardwareClass": "cpu",
+          "note": "The clean-clone run's host: one Windows 11 Enterprise workstation, Docker Desktop, CPU only; attempt 3's ledger places the step from 2026-09-18T14:22:02.372Z to 2026-09-18T14:23:13.935Z, before the run's load and failure steps."
+        },
+        "versions": [
+          {
+            "component": "release-collector (prometheus)",
+            "kind": "package-version",
+            "value": "3.5.0"
+          },
+          {
+            "component": "release-collector build revision",
+            "kind": "commit",
+            "value": "8be3a9560fbdd18a94dedec4b747c35178177202"
+          },
+          {
+            "component": "repository at attempt 3",
+            "kind": "commit",
+            "value": "1cb7d861a33df12c6568bd7630f57dc30397bfa5"
+          }
+        ],
+        "versionsRecordedIn": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+        "procedure": {
+          "workflowRef": "scripts/environment/clean-clone.sh",
+          "scriptRefs": [
+            "scripts/environment/telemetry-collection-verify.sh",
+            "tools/telemetry_collection"
+          ]
+        },
+        "results": [
+          {
+            "resultId": "both-jobs-discovered",
+            "statement": "Both InferOps scrape jobs had one discovered target, and both targets were up."
+          },
+          {
+            "resultId": "queries-parsed",
+            "statement": "21 of 23 catalogue queries were asked and all 21 parsed; 7 returned samples, and the 2 not asked are the ones with no source."
+          },
+          {
+            "resultId": "unexplained-absence-sample",
+            "statement": "serving-runtime-scrape-job-absent returned one sample, and scrape-target-health-by-job one row, while both jobs were discovered and up; the correlation suite expects the first to be empty on a healthy release, and the sample is unexplained."
+          }
+        ],
+        "evidenceRefs": [
+          "docs/proof/environment/v1-s5-001-pr2-telemetry-verification.json",
+          "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+          "docs/proof/environment/v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json"
+        ],
+        "limitations": [
+          "One provider, one Windows host, one moment on 2026-09-18, one replica of each tier.",
+          "The committed result keeps a sample count per query, not labels, values, or timestamps, so what any returned sample contained cannot be read back.",
+          "The verification tool reports verified when every asked query parses and no query the catalogue marks as reading nothing returns a sample; it does not check that an absence query is empty, and one was not.",
+          "Neither the telemetry file nor the run page records which image the collector ran; the telemetry file's revision is the collector's own build revision. The runtime is identified by the run's environment table, which covers every step of the run, rather than by anything the telemetry step recorded itself."
+        ],
+        "doesNotEstablish": [
+          "That any query's result is correct; the record establishes that the queries were asked and parsed, not what they should have returned.",
+          "Anything about the kind provider or more than one replica."
+        ]
+      },
+      "reason": "The claim says a real Prometheus evaluated every accepted correlation query, and the per-query result of the run it cited was written to an ignored host path. The clean-clone run's telemetry step committed its per-query outcome, on the same provider, with both jobs up, so it is cited for that part, with the unexplained sample it carries stated."
+    },
+    {
+      "changeId": "c13-collector-digest-limitation",
+      "findingId": "f13-collector-per-query-results-are-host-state",
+      "operation": "set-record-field",
+      "claimId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+      "recordId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2",
+      "field": "limitations",
+      "before": [
+        "One provider, one Windows host, one moment, one replica of each tier, sampled every five seconds.",
+        "The collector's series are in an emptyDir and are ephemeral; no durable store exists.",
+        "Three and six inference requests are not a measurement; no latency, throughput, or capacity figure is published.",
+        "The per-query verification result was written to an ignored host path and is not committed."
+      ],
+      "after": [
+        "One provider, one Windows host, one moment, one replica of each tier, sampled every five seconds.",
+        "The collector's series are in an emptyDir and are ephemeral; no durable store exists.",
+        "Three and six inference requests are not a measurement; no latency, throughput, or capacity figure is published.",
+        "The per-query verification result was written to an ignored host path and is not committed.",
+        "Neither cited file records the collector's image digest; the chart at the recorded revision pins the collector image by digest, and no record of this run observed which image ran."
+      ],
+      "reason": "The audit found the digest absent. It is not borrowed from the chart or from another run's record."
+    },
+    {
+      "changeId": "c13-collector-claim-limitation",
+      "findingId": "f13-collector-per-query-results-are-host-state",
+      "operation": "set-claim-field",
+      "claimId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+      "field": "limitation",
+      "before": "One provider, one Windows host, one moment, one replica of each tier, sampled every five seconds. The collector's series are ephemeral and no durable store exists.",
+      "after": "One provider, one Windows host, one moment, one replica of each tier, sampled every five seconds. The collector's series are ephemeral and no durable store exists. The first run's per-query result was written to an ignored host path; the committed per-query result is the second record's, from the clean-clone run, which also returned one sample nobody has explained for a query expected to be empty.",
+      "reason": "Says where the committed per-query result is and what it carries."
+    },
+    {
+      "changeId": "c14-clean-clone-sample-limitation",
+      "findingId": "f14-clean-clone-telemetry-sample-is-unexplained",
+      "operation": "set-record-field",
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+      "recordId": "a-reviewer-can-reproduce-v1-from-a-clean-clone-c2",
+      "field": "limitations",
+      "before": [
+        "One complete run, on docker-desktop, on one Windows host, made by the author of the change that ran it, after two attempts at two earlier revisions that stopped on defects this change fixed.",
+        "No second engineer has followed the workflow; the story asks for that confirmation where available and it was not available.",
+        "The host's uv package cache, the engine's build cache, and the pinned runtime image were already present, so a cold host was not exercised.",
+        "The local C2 step passes or fails on a 300 000 ms runtime readiness budget this host sometimes exceeds, so a second run could stop at local-real-inference and need a resume.",
+        "The complete ledger holds three invocations of run and three model-acquisition attempts, so the journey did not complete in one command.",
+        "Attempts 2 and 3 were cloned from the working repository's unpushed branch rather than from the hosted repository.",
+        "The raw load files, resource samples, and telemetry of the two experiment records stayed in the clone and are named only by SHA-256."
+      ],
+      "after": [
+        "One complete run, on docker-desktop, on one Windows host, made by the author of the change that ran it, after two attempts at two earlier revisions that stopped on defects this change fixed.",
+        "No second engineer has followed the workflow; the story asks for that confirmation where available and it was not available.",
+        "The host's uv package cache, the engine's build cache, and the pinned runtime image were already present, so a cold host was not exercised.",
+        "The local C2 step passes or fails on a 300 000 ms runtime readiness budget this host sometimes exceeds, so a second run could stop at local-real-inference and need a resume.",
+        "The complete ledger holds three invocations of run and three model-acquisition attempts, so the journey did not complete in one command.",
+        "Attempts 2 and 3 were cloned from the working repository's unpushed branch rather than from the hosted repository.",
+        "The raw load files, resource samples, and telemetry of the two experiment records stayed in the clone and are named only by SHA-256.",
+        "The telemetry record returned one sample for serving-runtime-scrape-job-absent, which the correlation suite expects to be empty on a healthy release, while showing both scrape jobs up; the verification tool's verified outcome does not check absence queries, the record keeps counts rather than samples, and the sample is unexplained."
+      ],
+      "reason": "The record says verified and the run page reports the step as clean; the sample is a real, unexamined signal, and a limitation is where a reader of the claim meets it."
+    },
+    {
+      "changeId": "c15-replay-citations",
+      "findingId": "f15-alert-replay-inputs-not-cited",
+      "operation": "set-record-field",
+      "claimId": "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded",
+      "recordId": "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0",
+      "field": "evidenceRefs",
+      "before": [
+        "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ],
+      "after": [
+        "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/proof/serving/v1-s4-004-pr1-validation.md",
+        "docs/proof/serving/v1-s4-007-pr1-telemetry.v1alpha1.json",
+        "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+        "docs/proof/serving/v1-s4-004-pr1-telemetry.v1alpha1.json"
+      ],
+      "reason": "The replay read the committed captures of three experiments and the record cited one experiment's record and none of the captures. The two other experiment records and all three capture files are committed, and the replay tool names the captures it reads."
+    },
+    {
+      "changeId": "c15-replay-cadence-limitation",
+      "findingId": "f15-alert-replay-inputs-not-cited",
+      "operation": "set-record-field",
+      "claimId": "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded",
+      "recordId": "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0",
+      "field": "limitations",
+      "before": [
+        "The captures are real and step at 15 seconds, but the replay over them is this repository's own evaluator, not Prometheus.",
+        "A replay verdict is a statement about a reconstruction of query results; two captured expressions are refused rather than approximated.",
+        "One alert missed the unready-model run by one evaluation, and that is recorded rather than tuned away.",
+        "An alert reported not in the capture is not evidence of silence during that run."
+      ],
+      "after": [
+        "The captures are real and step at 15 seconds, but the replay over them is this repository's own evaluator, not Prometheus.",
+        "A replay verdict is a statement about a reconstruction of query results; two captured expressions are refused rather than approximated.",
+        "One alert missed the unready-model run by one evaluation, and that is recorded rather than tuned away.",
+        "An alert reported not in the capture is not evidence of silence during that run.",
+        "The captures step at 15 seconds over a collector that scraped every 30 seconds, so consecutive steps can read the same scraped value, and a held count is a count of steps rather than of independent observations."
+      ],
+      "reason": "The cadence was stated in separate files and never reconciled; a held count of 20 of 21 reads differently once it is."
+    },
+    {
+      "changeId": "c16-index-is-a-non-claim-surface",
+      "findingId": null,
+      "operation": "set-register-field",
+      "field": "nonClaimSurfaces",
+      "before": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations, and a recorded gap: no private channel is published. The gap belongs to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        }
+      ],
+      "after": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations, and a recorded gap: no private channel is published. The gap belongs to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the V1-S5-006-PR1 normalization ledger: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256. Every value is read from this file, from a cited file, or from the ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        }
+      ],
+      "reason": "The evidence index is a public entry point in the README, and every entry point is either a claim's surface or listed here with the reason it claims nothing."
+    }
+  ],
+  "recordCorrections": [
+    {
+      "correctionId": "rc01-domain-results-line",
+      "findingId": "f08-domain-record-disagrees-with-itself-on-a-count",
+      "path": "docs/proof/domain/v1-s1-001-pr2-validation.md",
+      "sha256": "712e08710c5ae2c744162320bc4e11c1ad8c207369ae9d19ac125e4c8f4b041d",
+      "says": "**Results**: 56 tests passing, 18 skipped (structural layer fixtures)",
+      "correction": "The pytest output in the same record's evidence block reports 49 passed and 18 skipped for tests/domain/test_workload_validation.py. That output is the count to read; no committed file records a run that produced 56.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/domain/v1-s1-001-pr2-validation.md",
+          "quote": "49 passed, 18 skipped"
+        }
+      ],
+      "stillUnknown": "Where the figure 56 came from; nothing committed records it as an observed count."
+    },
+    {
+      "correctionId": "rc02-troubleshooting-exit-codes",
+      "findingId": "f09-troubleshooting-record-says-all-exit-zero",
+      "path": "docs/proof/serving/v1-s2-008-pr1-validation.md",
+      "sha256": "e1a912bbb065c6ccab24b2c22e6fc0ea26cf7a0a7c946c160e09df574f3cc609",
+      "says": "Every diagnostic in the table above was run and exited `0`.",
+      "correction": "One diagnostic exited 5, not 0: local_composition status --confirm-real-runtime, as the record's own table and prose report. Exit 5 is the documented composed-but-not-ready code, and nothing was composed, so 5 was the correct answer. The Linux branch of the processor-feature probe was never run, as the record's own limitations say.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s2-008-pr1-validation.md",
+          "quote": "it exited **`5`**, not"
+        },
+        {
+          "kind": "file",
+          "path": "tools/local_composition/__main__.py",
+          "quote": "EXIT_NOT_READY = 5"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s2-008-pr1-validation.md",
+          "quote": "**The Linux branch of the AVX2 probe has never been run here.**"
+        }
+      ],
+      "stillUnknown": null
+    },
+    {
+      "correctionId": "rc03-closure-model-name",
+      "findingId": "f10-closure-and-certification-name-the-model-differently",
+      "path": "docs/proof/serving/v1-s1-real-runtime-closure.md",
+      "sha256": "49b9f7fe3a919258b5655d5e820795143eb6ed02ce7788b323886f2dc93d775a",
+      "says": "| `model` | `qwen3-1-7b-instruct` |",
+      "correction": "The model field an InferOps response carries is the platform identifier the operator configures in INFEROPS_MODEL_IDENTIFIER, not the runtime alias or the artifact's file name. The certification result's qwen3-1-7b-q8-0 is the value committed composition configuration pins; this run's value was set by its operator and is recorded only by the response. Both records name the same model revision.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "src/inferops/api/selection.py",
+          "quote": "model_identifier=_required(environment, ENV_MODEL_IDENTIFIER)"
+        },
+        {
+          "kind": "file",
+          "path": "src/inferops/adapters/llama_cpp/adapter.py",
+          "quote": "model=configuration.platform_model_identifier,"
+        },
+        {
+          "kind": "file",
+          "path": "deploy/serving/local/composition.v1.json",
+          "quote": "\"INFEROPS_MODEL_IDENTIFIER\": \"qwen3-1-7b-q8-0\""
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s1-real-runtime-closure.md",
+          "quote": "| Model repository revision | `90862c4b9d2787eaed51d12237eafdfe7c5f6077` |"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s2-004-c2-certification-result.md",
+          "quote": "| Model revision | `90862c4b9d2787eaed51d12237eafdfe7c5f6077` |"
+        }
+      ],
+      "stillUnknown": "Which value the operator set for the closure run, beyond what its response reports."
+    },
+    {
+      "correctionId": "rc04-pod-restart-revision",
+      "findingId": "f11-pod-restart-names-a-branch-not-a-commit",
+      "path": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md",
+      "sha256": "1b379d8e371cd005edf46ffeac4b396f876799e32f5316b27c6e5a4939ac3a3f",
+      "says": "| Repository revision | this change, on `test/v1-s3-011-lifecycle-cleanup-evidence-reconciliation` |",
+      "correction": "A branch name is not a revision. The commit that ran is not recorded, and the commit that later added this record is not evidence of it. The record also names no digest for the InferOps API image it built and loaded; the identifiers it does pin are the node image, the runtime image, the chart version, and the model revision and artifact hash.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md",
+          "quote": "| Serving runtime image | `ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384` |"
+        }
+      ],
+      "stillUnknown": "The repository commit and the API image digest that ran."
+    },
+    {
+      "correctionId": "rc05-baseline-raw-results-revision",
+      "findingId": "n01-baseline-revision-committed-after-the-run",
+      "path": "docs/proof/serving/v1-s2-005-baseline-raw-results.md",
+      "sha256": "497b7d1723766d24ed98ede5dba54e12d0b99d77ecff3692a879da439557f0c3",
+      "says": "All three are fixed on this branch, commit `d604077`, before this run:",
+      "correction": "The repository's history records commit d60407741101e3a2516870e40c869c91ab77ce40 as created at 2026-09-03T20:03:04+05:00, which is 15:03:04Z, and this record's own span ends at 2026-09-03T14:59:42.090Z. The fixes were in the working tree when the run executed and were committed afterwards.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s2-005-baseline-raw-results.md",
+          "quote": "`2026-09-03T14:55:03.739Z` to `2026-09-03T14:59:42.090Z`"
+        },
+        {
+          "kind": "git-commit",
+          "commit": "d60407741101e3a2516870e40c869c91ab77ce40",
+          "committedAt": "2026-09-03T20:03:04+05:00"
+        }
+      ],
+      "stillUnknown": "That the tree committed as d604077 is identical to the working tree that ran."
+    },
+    {
+      "correctionId": "rc06-baseline-experiment-revision",
+      "findingId": "n01-baseline-revision-committed-after-the-run",
+      "path": "docs/proof/serving/v1-s2-005-local-baseline-experiment.md",
+      "sha256": "eee7cdacd16f6da9c7672c2a0ba63a11d445b524f55153f81061997c1d2c223a",
+      "says": "| Repository revision at execution | `d60407741101e3a2516870e40c869c91ab77ce40` (branch `fix/v1-s2-005-baseline-tooling-defects`, a descendant of the row above) |",
+      "correction": "The commit this row names was created at 2026-09-03T15:03:04Z, after the run's teardown at 14:59:42.090Z, so it is the commit the executed working tree was later recorded as, not a revision that existed when the run executed.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s2-005-baseline-raw-results.md",
+          "quote": "`2026-09-03T14:55:03.739Z` to `2026-09-03T14:59:42.090Z`"
+        },
+        {
+          "kind": "git-commit",
+          "commit": "d60407741101e3a2516870e40c869c91ab77ce40",
+          "committedAt": "2026-09-03T20:03:04+05:00"
+        }
+      ],
+      "stillUnknown": "That the tree committed as d604077 is identical to the working tree that ran."
+    },
+    {
+      "correctionId": "rc07-clean-clone-telemetry-outcome",
+      "findingId": "f14-clean-clone-telemetry-sample-is-unexplained",
+      "path": "docs/proof/environment/v1-s5-001-pr2-telemetry-verification.json",
+      "sha256": "cbbdca0e9f9a648a30cd9650a15937bdabba638ac6dfa9edb4bca2007b7ef4ce",
+      "says": "\"outcome\": \"verified\"",
+      "correction": "verified means every asked query parsed and no query the catalogue marks as reading nothing returned a sample. It does not check absence queries. serving-runtime-scrape-job-absent returned one sample, which the correlation suite expects to be empty on a healthy release, while both scrape jobs were discovered and up, and scrape-target-health-by-job returned one row for two jobs. The file keeps counts rather than samples, so neither can be examined, and neither is explained.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/environment/v1-s5-001-pr2-telemetry-verification.json",
+          "quote": "\"queryId\": \"serving-runtime-scrape-job-absent\""
+        },
+        {
+          "kind": "file",
+          "path": "tools/telemetry_collection/verify.py",
+          "quote": "A query the catalog says nothing emits must return nothing."
+        },
+        {
+          "kind": "file",
+          "path": "tests/telemetry/test_telemetry_correlation.py",
+          "quote": "Three answerable queries are empty on a healthy store on purpose"
+        }
+      ],
+      "stillUnknown": "What the sample was: its labels, its value, and when it was read."
+    },
+    {
+      "correctionId": "rc08-clean-clone-run-page-telemetry",
+      "findingId": "f14-clean-clone-telemetry-sample-is-unexplained",
+      "path": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+      "sha256": "e84581b4065d52dbb9c3c85059a0d5467380489553b8ba32dc545a02e454b0cc",
+      "says": "**Telemetry** -- `verified`: Prometheus `3.5.0` discovered one target for each of the two scrape jobs and both were up",
+      "correction": "The step's verified outcome does not check absence queries, and one of them, serving-runtime-scrape-job-absent, returned a sample while both jobs were up; see the correction beside the telemetry file.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/environment/v1-s5-001-pr2-telemetry-verification.json",
+          "quote": "\"queryId\": \"serving-runtime-scrape-job-absent\""
+        }
+      ],
+      "stillUnknown": "What the sample was."
+    },
+    {
+      "correctionId": "rc09-alert-validation-two-runs",
+      "findingId": "n03-alert-validation-introduction-names-two-runs",
+      "path": "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+      "sha256": "4dde3808ef96063fe16b0c5ae9eb6eb32e8ce0e8bc4f99385b4905131bf53032",
+      "says": "no alerting rule existed during either experiment",
+      "correction": "The replay section of the same record runs the alerts over three captures, v1-s4-004-pr1, v1-s4-006-pr1, and v1-s4-007-pr1, and the introduction names two. No alerting rule existed during any of the three.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+          "quote": "## Replayed over what three real runs recorded"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md",
+          "quote": "All three captures step at 15 s."
+        }
+      ],
+      "stillUnknown": null
+    }
+  ],
+  "codeRevisions": [
+    {
+      "recordId": "the-workload-domain-parses-a-contract-document-into-typed-objects-c2",
+      "entries": [
+        {
+          "value": "b2f1bee",
+          "relation": "base-revision",
+          "path": "docs/proof/domain/v1-s1-001-pr1-validation.md",
+          "quote": "| Branch base | `main` at `b2f1bee` |"
+        }
+      ],
+      "note": "The suites ran on a branch whose base is named; the PR2 record names no revision."
+    },
+    {
+      "recordId": "a-workload-scaffold-is-generated-without-overwriting-anything-c2",
+      "entries": [
+        {
+          "value": "96503868fcbcbf3e473f136989708ebc94892504",
+          "relation": "stated-revision",
+          "path": "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md",
+          "quote": "| Repository revision | `96503868fcbcbf3e473f136989708ebc94892504` |"
+        },
+        {
+          "value": "bf55d5d",
+          "relation": "base-revision",
+          "path": "docs/proof/scaffolding/v1-s1-006-pr2-validation.md",
+          "quote": "| Repository revision at branch point | `bf55d5d` |"
+        }
+      ],
+      "note": "The walkthrough ran the two documented commands at a stated revision; the refusal of an occupied destination rests on the suite, run on a branch whose branch point is named."
+    },
+    {
+      "recordId": "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout-mock-workflow-c1",
+      "entries": [
+        {
+          "value": "96503868fcbcbf3e473f136989708ebc94892504",
+          "relation": "stated-revision",
+          "path": "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md",
+          "quote": "| Repository revision | `96503868fcbcbf3e473f136989708ebc94892504` |"
+        },
+        {
+          "value": "aadf4c5",
+          "relation": "base-revision",
+          "path": "docs/proof/quickstart/v1-s1-009-pr1-validation.md",
+          "quote": "| Base revision | `aadf4c5` |"
+        }
+      ],
+      "note": "The independent run was a clean detached worktree at a stated revision; the author run names only its base."
+    },
+    {
+      "recordId": "the-developer-quick-start-runs-end-to-end-on-a-clean-checkout-real-smoke-c2",
+      "entries": [
+        {
+          "value": "b6e4b85c84fc0ee09d0eefccdc71c33851b87056",
+          "relation": "stated-revision",
+          "path": "docs/proof/serving/v1-s1-real-runtime-closure.md",
+          "quote": "| Executed source/evidence revision | `b6e4b85c84fc0ee09d0eefccdc71c33851b87056` |"
+        }
+      ],
+      "note": null
+    },
+    {
+      "recordId": "a-reviewer-can-reproduce-v1-from-a-clean-clone-c2",
+      "entries": [
+        {
+          "value": "1cb7d861a33df12c6568bd7630f57dc30397bfa5",
+          "relation": "stated-revision",
+          "path": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+          "quote": "| 3 | `1cb7d861a33df12c6568bd7630f57dc30397bfa5` | new, from the branch | **complete** |"
+        },
+        {
+          "value": "ca2040c7bf878dc507c0fb6e62718c18350a9d7f",
+          "relation": "stated-revision",
+          "path": "docs/proof/environment/v1-s5-001-pr2-attempt-1-ledger.v1alpha1.json",
+          "quote": "\"repositoryRevision\": \"ca2040c7bf878dc507c0fb6e62718c18350a9d7f\""
+        },
+        {
+          "value": "4eea7d3adf43b3a49c552c36cb065374ba5dc046",
+          "relation": "stated-revision",
+          "path": "docs/proof/environment/v1-s5-001-pr2-attempt-2-ledger.v1alpha1.json",
+          "quote": "\"repositoryRevision\": \"4eea7d3adf43b3a49c552c36cb065374ba5dc046\""
+        }
+      ],
+      "note": "Each attempt was a fresh clone at a stated revision; attempts 1 and 2 stopped, and attempt 3 is the complete run."
+    },
+    {
+      "recordId": "the-inference-api-serves-five-routes-with-explicit-adapter-selection-c1",
+      "entries": [
+        {
+          "value": "eccc5fe",
+          "relation": "base-revision",
+          "path": "docs/proof/serving/v1-s1-005-pr1-validation.md",
+          "quote": "| Repository revision at branch point | `eccc5fe` |"
+        },
+        {
+          "value": "8786620",
+          "relation": "base-revision",
+          "path": "docs/proof/serving/v1-s1-005-pr2-validation.md",
+          "quote": "| Repository revision at branch point | `8786620` |"
+        }
+      ],
+      "note": "Both records name the branch point their change started from, not the tree that ran."
+    },
+    {
+      "recordId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure-c2",
+      "entries": [],
+      "note": "The cited files name no revision of this repository. The record pins the runtime's own source revision, its image digest, and the model revision and hash."
+    },
+    {
+      "recordId": "the-model-artifact-matches-its-published-hash-c2-feasibility",
+      "entries": [],
+      "note": "The cited files name no revision of this repository. The record pins the model revision and hash."
+    },
+    {
+      "recordId": "the-model-artifact-matches-its-published-hash-c2-closure",
+      "entries": [
+        {
+          "value": "b6e4b85c84fc0ee09d0eefccdc71c33851b87056",
+          "relation": "stated-revision",
+          "path": "docs/proof/serving/v1-s1-real-runtime-closure.md",
+          "quote": "| Executed source/evidence revision | `b6e4b85c84fc0ee09d0eefccdc71c33851b87056` |"
+        }
+      ],
+      "note": null
+    },
+    {
+      "recordId": "the-selected-model-serves-a-real-completion-through-the-inferops-api-c2-loopback",
+      "entries": [
+        {
+          "value": "47478a49848f98a590016cd4bb693a5bc799277c",
+          "relation": "stated-revision",
+          "path": "docs/proof/serving/v1-s2-004-c2-certification-result.md",
+          "quote": "| Repository revision | `47478a49848f98a590016cd4bb693a5bc799277c` on `main`, the Sprint 2 head |"
+        }
+      ],
+      "note": "The record also names a branch, fix/sprint-2-completion-remediation, beside the revision and does not say whether it carried changes over it."
+    },
+    {
+      "recordId": "the-selected-model-serves-a-real-completion-through-the-inferops-api-c2-kubernetes",
+      "entries": [
+        {
+          "value": "b6e4b85c84fc0ee09d0eefccdc71c33851b87056",
+          "relation": "stated-revision",
+          "path": "docs/proof/serving/v1-s1-real-runtime-closure.md",
+          "quote": "| Executed source/evidence revision | `b6e4b85c84fc0ee09d0eefccdc71c33851b87056` |"
+        }
+      ],
+      "note": null
+    },
+    {
+      "recordId": "a-local-serving-baseline-was-measured-under-a-method-registered-first-c2",
+      "entries": [
+        {
+          "value": "d60407741101e3a2516870e40c869c91ab77ce40",
+          "relation": "commit-created-after-the-run",
+          "path": "docs/proof/serving/v1-s2-005-local-baseline-experiment.md",
+          "quote": "| Repository revision at execution | `d60407741101e3a2516870e40c869c91ab77ce40` (branch `fix/v1-s2-005-baseline-tooling-defects`, a descendant of the row above) |"
+        }
+      ],
+      "note": "The record calls this the revision at execution; the repository's history dates the commit after the run's teardown."
+    },
+    {
+      "recordId": "the-model-lifecycle-states-were-measured-across-six-real-starts-c2",
+      "entries": [
+        {
+          "value": "639f4639edee4804aa424b87e9cba00fa5872c8f",
+          "relation": "base-revision",
+          "path": "docs/proof/serving/v1-s2-007-pr1-cold-warm-start.md",
+          "quote": "the working tree of `feat/v1-s2-007-model-lifecycle`, whose base is `639f4639edee4804aa424b87e9cba00fa5872c8f` on `main`"
+        }
+      ],
+      "note": "The run used a branch's working tree; the command it ran does not exist at the named base."
+    },
+    {
+      "recordId": "inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating-c2-docker-desktop",
+      "entries": [
+        {
+          "value": "820a97797aa1cdafffc8944be3bc7299a54abd31",
+          "relation": "stated-revision",
+          "path": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+          "quote": "| Repository revision | `820a97797aa1cdafffc8944be3bc7299a54abd31` (the merge of V1-S3-010-PR2) |"
+        }
+      ],
+      "note": null
+    },
+    {
+      "recordId": "a-local-cluster-is-created-and-removed-without-residue-c2",
+      "entries": [],
+      "note": "The cited files name no revision of this repository. The record pins the node image digest and the tool versions."
+    },
+    {
+      "recordId": "the-selected-runtime-serves-a-real-completion-in-a-cluster-c2-paved-road",
+      "entries": [
+        {
+          "value": "820a97797aa1cdafffc8944be3bc7299a54abd31",
+          "relation": "stated-revision",
+          "path": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+          "quote": "| Repository revision | `820a97797aa1cdafffc8944be3bc7299a54abd31` (the merge of V1-S3-010-PR2) |"
+        }
+      ],
+      "note": null
+    },
+    {
+      "recordId": "the-selected-runtime-serves-a-real-completion-in-a-cluster-c1-feasibility",
+      "entries": [],
+      "note": "The cited files name no revision of this repository. The record pins the runtime's source revision and image digest and the model revision and hash."
+    },
+    {
+      "recordId": "a-helm-release-installs-and-uninstalls-without-residue-c2",
+      "entries": [],
+      "note": "The cited files name no revision of this repository. The record names the chart version and the release revision."
+    },
+    {
+      "recordId": "a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road",
+      "entries": [
+        {
+          "value": "820a97797aa1cdafffc8944be3bc7299a54abd31",
+          "relation": "stated-revision",
+          "path": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+          "quote": "| Repository revision | `820a97797aa1cdafffc8944be3bc7299a54abd31` (the merge of V1-S3-010-PR2) |"
+        }
+      ],
+      "note": null
+    },
+    {
+      "recordId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored-c2",
+      "entries": [],
+      "note": "The cited files name no revision of this repository. The record pins the chart version, the image digests, and the model revision and hash."
+    },
+    {
+      "recordId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2",
+      "entries": [
+        {
+          "value": "test/v1-s3-011-lifecycle-cleanup-evidence-reconciliation",
+          "relation": "branch-name-only",
+          "path": "docs/proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md",
+          "quote": "| Repository revision | this change, on `test/v1-s3-011-lifecycle-cleanup-evidence-reconciliation` |"
+        }
+      ],
+      "note": "A branch name only; see the correction beside the record."
+    },
+    {
+      "recordId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile-c1-stub-rehearsal",
+      "entries": [
+        {
+          "value": "feat/v1-s4-003-llm-load-generator",
+          "relation": "branch-name-only",
+          "path": "docs/proof/serving/v1-s4-003-pr1-validation.md",
+          "quote": "| Source branch | `feat/v1-s4-003-llm-load-generator` |"
+        }
+      ],
+      "note": "A branch name only."
+    },
+    {
+      "recordId": "repeatable-llm-load-can-be-generated-from-a-versioned-profile-c2-real-load",
+      "entries": [
+        {
+          "value": "53492c5ddf20f982690dc3e8c4b0c982e7585c48",
+          "relation": "stated-revision-with-uncommitted-changes",
+          "path": "docs/proof/serving/v1-s4-004-pr1-validation.md",
+          "quote": "| Repository | `53492c5ddf20f982690dc3e8c4b0c982e7585c48` (the merge of V1-S4-003-PR1), **with this change uncommitted**."
+        }
+      ],
+      "note": "The run recorded the LF-normalised SHA-256 of the files that decided what it did, which pins the uncommitted part."
+    },
+    {
+      "recordId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed-c2",
+      "entries": [
+        {
+          "value": "53492c5ddf20f982690dc3e8c4b0c982e7585c48",
+          "relation": "stated-revision-with-uncommitted-changes",
+          "path": "docs/proof/serving/v1-s4-004-pr1-validation.md",
+          "quote": "| Repository | `53492c5ddf20f982690dc3e8c4b0c982e7585c48` (the merge of V1-S4-003-PR1), **with this change uncommitted**."
+        }
+      ],
+      "note": "The same run as the real-load record; the findings record analyses it and names no revision of its own."
+    },
+    {
+      "recordId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2",
+      "entries": [
+        {
+          "value": "7a9ff83d96959671d1d2491d5d09228fe63bf6df",
+          "relation": "stated-revision-with-uncommitted-changes",
+          "path": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+          "quote": "| Repository revision | `7a9ff83d96959671d1d2491d5d09228fe63bf6df`, with this change's own files uncommitted at run time"
+        }
+      ],
+      "note": null
+    },
+    {
+      "recordId": "an-unready-model-was-held-unready-and-recovered-by-an-operator-c2",
+      "entries": [
+        {
+          "value": "0c784d8b3fd939fec1ce0e47f846368e28b08f02",
+          "relation": "stated-revision-with-uncommitted-changes",
+          "path": "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+          "quote": "| Repository revision | `0c784d8b3fd939fec1ce0e47f846368e28b08f02`, with this change's own tracked and untracked files present |"
+        }
+      ],
+      "note": "The descriptor as executed is pinned by its own hash."
+    },
+    {
+      "recordId": "the-api-emits-catalog-metrics-and-structured-request-records-c1",
+      "entries": [
+        {
+          "value": "aadf4c5",
+          "relation": "base-revision",
+          "path": "docs/proof/telemetry/v1-s1-008-pr1-validation.md",
+          "quote": "On `main` at the base revision `aadf4c5`"
+        }
+      ],
+      "note": "The counts were taken at the branch head, which the record does not name by commit."
+    },
+    {
+      "recordId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2",
+      "entries": [
+        {
+          "value": "820a97797aa1cdafffc8944be3bc7299a54abd31",
+          "relation": "stated-revision",
+          "path": "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md",
+          "quote": "| Repository revision | `820a97797aa1cdafffc8944be3bc7299a54abd31` (the merge of V1-S3-010-PR2) |"
+        }
+      ],
+      "note": "The revision is the paved-road run's; the telemetry-during-recovery record names none of its own."
+    },
+    {
+      "recordId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider-c2-clean-clone",
+      "entries": [
+        {
+          "value": "1cb7d861a33df12c6568bd7630f57dc30397bfa5",
+          "relation": "stated-revision",
+          "path": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+          "quote": "| 3 | `1cb7d861a33df12c6568bd7630f57dc30397bfa5` | new, from the branch | **complete** |"
+        }
+      ],
+      "note": "The telemetry step ran in attempt 3; the telemetry file's own revision field is the collector's build revision, not this repository's."
+    },
+    {
+      "recordId": "the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered-c2",
+      "entries": [
+        {
+          "value": "7dda44fad4eff8f85bf71b232956055fde6b755b",
+          "relation": "stated-revision",
+          "path": "docs/proof/telemetry/v1-s4-002-pr2-dashboard-validation.md",
+          "quote": "| Repository revision | `7dda44fad4eff8f85bf71b232956055fde6b755b` (the merge of V1-S4-002-PR1) |"
+        }
+      ],
+      "note": null
+    },
+    {
+      "recordId": "the-rendered-network-policy-is-enforced-by-the-cluster-c1",
+      "entries": [],
+      "note": "The cited files name no revision of this repository."
+    }
+  ]
+}

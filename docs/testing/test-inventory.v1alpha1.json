@@ -790,6 +790,14 @@
       "note": "Deliberately no claim: it establishes that the migration's judgements are written down and consistent, never that any of them is right. It reads committed files only."
     },
     {
+      "module": "tests/testing/test_evidence_index.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The V1 evidence index and the normalization ledger behind it against their sources: the committed index is what the register and ledger produce, byte for byte; every entry points at and hashes its register record; every cited file is tracked, under docs/proof, and has the content it was indexed with; every certified claim resolves to records with explicit limitations and doesNotEstablish; the dashboard and the index count the same register; every ledger change can be undone and redone to the identity, and a misdescribed one is refused; every open finding of the migration audit has one disposition and a verbatim quote; no change moved a status or an existing record's level; every corrected historical record is unchanged and quoted verbatim; every executed record has one quoted revision reading, and the records that name no revision that ran are pinned; and no current document describes the evidence model as unmigrated.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that the index and the normalization are consistent with the register and the files they quote, never that any disposition or reading is right. It reads committed files and the repository's history only."
+    },
+    {
       "module": "tests/testing/test_evidence_levels.py",
       "layer": "documentation",
       "marker": "docs",

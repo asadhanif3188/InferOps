@@ -18,6 +18,15 @@ What it does not establish is that any reading was right. Whether a record is `C
 or `C0` for its claim is a judgement the audit made and recorded, and the report
 lists the places it could have gone the other way. This module checks that the
 judgement is written down and consistent, not that it is correct.
+
+**What it compares is the register as the migration left it.** `V1-S5-006-PR1`
+changed the register afterwards -- it narrowed four statements, moved citations, and
+added records -- and its normalization ledger names every one of those changes with
+the value before and after. This module undoes them through the ledger before it
+compares anything, so it keeps checking the migration rather than the migration plus
+everything since, and a later change the ledger does not name makes the undo fail
+here rather than pass unseen. What the later change did is checked by
+`tests/testing/test_evidence_index.py`.
 """
 
 from __future__ import annotations
@@ -29,6 +38,7 @@ from typing import Any
 
 import pytest
 
+from tools.evidence_index import load_ledger, restore_migrated_register
 from tools.evidence_model import (
     CONTRACT_VERSION,
     LEGACY_CONTRACT_VERSION,
@@ -49,7 +59,11 @@ REPORT_PATH = (
 )
 
 LEGACY = load_legacy_register()
-REGISTER = load_register()
+CURRENT_REGISTER = load_register()
+#: The register as `V1-S5-012-PR2` wrote it, recovered by undoing every change the
+#: `V1-S5-006-PR1` ledger names. The undo raises if the register does not hold
+#: exactly what the ledger says was written.
+REGISTER = restore_migrated_register(CURRENT_REGISTER, load_ledger())
 AUDIT: dict[str, Any] = json.loads(AUDIT_PATH.read_text(encoding="utf-8"))
 REPORT = REPORT_PATH.read_text(encoding="utf-8")
 REPORT_FLAT = " ".join(REPORT.split())
@@ -143,8 +157,8 @@ def normalised(text: str) -> str:
 
 def test_the_authoritative_register_is_v1alpha2() -> None:
     """The tripwire `V1-S5-011-PR2` left for this change, now a statement of fact."""
-    assert REGISTER["contractVersion"] == CONTRACT_VERSION
-    assert REGISTER["supersedes"] == LEGACY_CONTRACT_VERSION
+    assert CURRENT_REGISTER["contractVersion"] == CONTRACT_VERSION
+    assert CURRENT_REGISTER["supersedes"] == LEGACY_CONTRACT_VERSION
     assert REGISTER_PATH.name == "claim-evidence-matrix.v1alpha2.json"
 
 
@@ -402,9 +416,12 @@ def test_the_claim_the_count_refutes_stays_uncertified_while_the_count_holds() -
     rather than a status that drifts back.
     """
     _, silent = _authorisation_count()
-    claim = REGISTER_BY_ID[
-        "every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary"
-    ]
+    claim = next(
+        row
+        for row in CURRENT_REGISTER["claims"]
+        if row["claimId"]
+        == "every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary"
+    )
     assert silent > 0, "the count reached zero; revisit the not-claimed claim"
     assert claim["status"] == "not-claimed"
 

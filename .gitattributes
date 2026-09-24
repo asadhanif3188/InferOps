@@ -37,6 +37,11 @@ charts/** text eol=lf
 # `--write` immediately undoes, which turns a no-op into a whole-file diff.
 docs/proof/dashboard.md text eol=lf
 
+# The V1 evidence index is generated the same way, from the register and the
+# normalization ledger, with its newlines pinned by `--write`, and a test compares
+# the committed file with what the generator produces. Pinned for the same reason.
+docs/proof/v1-evidence-index.v1alpha1.json text eol=lf
+
 # The generated Prometheus rule files are compared byte for byte against what
 # `python -m tools.inference_alerts --rules` prints, and a collector's promtool
 # reads them out of a Linux container. `text=auto` already normalises what is
