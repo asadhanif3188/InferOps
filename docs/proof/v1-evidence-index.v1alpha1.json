@@ -6301,7 +6301,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/36/evidenceRecords/1",
-      "registerEntrySha256": "77adec86efcb10ac67a56c1679818df16ef782092d9761ec5ad130db5b621651",
+      "registerEntrySha256": "dcf58aee13a5dda4b3af83cf50c3e60f928c0d04ec9f9aa4ce7a46f2b9a97690",
       "summary": "In the clean-clone run's telemetry-verification step on 2026-09-18, the collector a release installed on docker-desktop discovered one target for each of the two InferOps scrape jobs, both up, and a real Prometheus asked and parsed 21 of the catalogue's 23 queries, the two not asked being the ones with no source; the per-query outcome is committed.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -6398,7 +6398,7 @@
         "One provider, one Windows host, one moment on 2026-09-18, one replica of each tier.",
         "The committed result keeps a sample count per query, not labels, values, or timestamps, so what any returned sample contained cannot be read back.",
         "The verification tool reports verified when every asked query parses and no query the catalogue marks as reading nothing returns a sample; it does not check that an absence query is empty, and one was not.",
-        "Neither cited file records the collector's image digest; the recorded revision is the collector's own build revision."
+        "Neither the telemetry file nor the run page records which image the collector ran; the telemetry file's revision is the collector's own build revision. The runtime is identified by the run's environment table, which covers every step of the run, rather than by anything the telemetry step recorded itself."
       ],
       "doesNotEstablish": [
         "That any query's result is correct; the record establishes that the queries were asked and parsed, not what they should have returned.",
@@ -6425,6 +6425,13 @@
           "corrections": [
             "rc08-clean-clone-run-page-telemetry"
           ]
+        },
+        {
+          "path": "docs/proof/environment/v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json",
+          "sha256": "0ff6a0f72e92e73e3a45d0de1b2ed5bbef7c76581019219fa4bc6de53b4f2646",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
         }
       ],
       "findings": [

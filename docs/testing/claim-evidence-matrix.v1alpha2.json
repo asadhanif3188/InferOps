@@ -5989,7 +5989,7 @@
               {
                 "componentId": "llama-cpp-server",
                 "role": "inference-runtime",
-                "note": "Its scrape job inferops-inferops-llm-serving-runtime had one target, up; the chart installs a serving runtime only under its real profile, which runs llama-server."
+                "note": "Its scrape job inferops-inferops-llm-serving-runtime had one target, up; the run's environment table names its serving runtime as ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384, and the attempt ledger labels the step local-real-cpu."
               }
             ],
             "substitutions": []
@@ -6002,7 +6002,7 @@
             "environmentId": "local-kubernetes",
             "provider": "docker-desktop",
             "hardwareClass": "cpu",
-            "note": "The clean-clone run's host: one Windows 11 Enterprise workstation, Docker Desktop, CPU only, 2026-09-18; the step ran between 14:22:02Z and 14:23:13Z, before the run's load and failure steps."
+            "note": "The clean-clone run's host: one Windows 11 Enterprise workstation, Docker Desktop, CPU only; attempt 3's ledger places the step from 2026-09-18T14:22:02.372Z to 2026-09-18T14:23:13.935Z, before the run's load and failure steps."
           },
           "versions": [
             {
@@ -6045,13 +6045,14 @@
           ],
           "evidenceRefs": [
             "docs/proof/environment/v1-s5-001-pr2-telemetry-verification.json",
-            "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md"
+            "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+            "docs/proof/environment/v1-s5-001-pr2-attempt-3-ledger.v1alpha1.json"
           ],
           "limitations": [
             "One provider, one Windows host, one moment on 2026-09-18, one replica of each tier.",
             "The committed result keeps a sample count per query, not labels, values, or timestamps, so what any returned sample contained cannot be read back.",
             "The verification tool reports verified when every asked query parses and no query the catalogue marks as reading nothing returns a sample; it does not check that an absence query is empty, and one was not.",
-            "Neither cited file records the collector's image digest; the recorded revision is the collector's own build revision."
+            "Neither the telemetry file nor the run page records which image the collector ran; the telemetry file's revision is the collector's own build revision. The runtime is identified by the run's environment table, which covers every step of the run, rather than by anything the telemetry step recorded itself."
           ],
           "doesNotEstablish": [
             "That any query's result is correct; the record establishes that the queries were asked and parsed, not what they should have returned.",

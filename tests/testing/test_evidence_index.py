@@ -492,6 +492,54 @@ def test_every_register_change_names_its_reason_and_its_finding(
         assert change["findingId"] in findings, change["changeId"]
 
 
+#: The identifiers and instants a record's free text can quote. Each one has to be
+#: something a cited file says, not something the author knew from elsewhere.
+_GROUNDED_TOKENS = re.compile(
+    r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)?"
+    r"|\b\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?"
+    r"|sha256:[0-9a-f]{64}"
+    r"|\b[0-9a-f]{40}\b"
+)
+
+
+def _strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [text for item in value.values() for text in _strings(item)]
+    if isinstance(value, list):
+        return [text for item in value for text in _strings(item)]
+    return []
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        change
+        for change in LEDGER["registerChanges"]
+        if change["operation"] == "add-record"
+    ],
+    ids=lambda change: change["changeId"],
+)
+def test_every_date_time_and_identifier_in_an_added_record_is_in_a_file_it_cites(
+    change: dict[str, Any],
+) -> None:
+    """An added record's notes may not carry a fact from a file it does not cite.
+
+    The first commit of this change added a record whose environment note quoted step
+    times from a ledger the record did not cite; an independent review found it, and
+    nothing here checked free text until then.
+    """
+    record = change["record"]
+    cited = normalised("\n".join(read(path) for path in record["evidenceRefs"]))
+    tokens = {
+        token for text in _strings(record) for token in _GROUNDED_TOKENS.findall(text)
+    }
+    assert tokens, record["recordId"]
+    missing = sorted(token for token in tokens if token not in cited)
+    assert not missing, (record["recordId"], missing)
+
+
 def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
     """Normalization may narrow, correct, and add; it may not promote."""
     migrated = restore_migrated_register(REGISTER, LEDGER)

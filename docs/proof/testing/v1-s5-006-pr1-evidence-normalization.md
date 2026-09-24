@@ -249,13 +249,40 @@ may not do.
   on the old one, because one record has one environment, one procedure, and one set of
   results, and the added runs differ in at least one.
 - **Stated revision, taken at the record's word.** A record that names its revision
-  without mentioning uncommitted changes is read as naming the tree that ran. Two such
-  records sit beside a branch name the record does not explain, and the ledger's note
-  says so.
-- **The collector's `llama-server`.** The added collector record lists the runtime as
-  executed because its serving-runtime job had a target up and the chart installs a
-  serving runtime only under its real profile. That is a reading of the chart, not of
-  another run's record, and its note says which.
+  without mentioning uncommitted changes is read as naming the tree that ran. One such
+  record, the loopback certification, names a branch beside its revision without
+  saying whether the branch carried changes over it, and the ledger's note says so.
+- **The collector's runtime.** The added collector record lists `llama-server` as
+  executed because its serving-runtime job had a target up and the run's own
+  environment table, which it cites, names the pinned `llama.cpp` image as the serving
+  runtime for the whole run. The telemetry step did not record the image itself; a
+  reader who wants a per-step identification would call that component unrecorded.
+
+## What the independent review found
+
+The first commit was reviewed before push by an independent reviewer who read every
+changed file and the records it cites, and recomputed the counts. No count was wrong,
+and no disposition was disputed. Two defects were found, both in one record this change
+added, and both were facts that no file the record cited stated:
+
+- **The collector record's runtime was identified from the chart.** Its note said the
+  chart installs a serving runtime only under its real profile — true, and not in any
+  file the record cites, while this report's own rules say an executed component
+  appears only if a cited file states it. The note now rests on the cited run page's
+  environment table, and the judgement call above says what that does and does not
+  establish.
+- **Its environment note quoted step times from a file it did not cite.** The times
+  come from attempt 3's ledger, which the record now cites, and the note quotes them
+  exactly as that ledger writes them; the first draft had also truncated them.
+
+Neither was caught by a test, because the suite checked quotes in the ledger and not
+the free text of a record's notes. It now does, for every record this change added:
+every date, time, digest, and commit identifier in such a record has to appear in a
+file the record cites.
+
+This report also said, in the judgement call above, that two stated-revision records
+sit beside an unexplained branch name. One does; the sentence was found wrong while
+the review's fixes were made, and is corrected.
 
 ## Limitations
 

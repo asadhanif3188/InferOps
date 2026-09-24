@@ -51,9 +51,42 @@ commit.
 | `uv run --locked python -m mypy` | `Success: no issues found in 273 source files` |
 | `git diff --check` | no output |
 
-The full default lane was not run for the first commit; it is run on the committed tree
-and recorded with the review below, because a suite that lists tracked files counts a
-new record only once it is committed.
+The full default lane was then run on the first commit itself, because a suite that
+lists tracked files counts a new record only once it is committed:
+
+| Command | Result |
+|---|---|
+| `uv run --locked python -m pytest -q` | `14658 passed, 33 skipped, 14 deselected in 583.49s` |
+
+## What the independent review found, and what the first commit got wrong
+
+An independent reviewer read the first commit before it was pushed: every changed file,
+the records the changed register entries cite, and every count the documents publish,
+recomputed from the data. It disputed no count and no disposition. It found two facts
+in one added record — the collector's clean-clone record — that no file the record
+cited stated:
+
+| Severity | Finding | Fix |
+|---|---|---|
+| High | The record listed `llama-server` as executed on the strength of the chart, which it does not cite, while the normalization report said no executed component appears unless a cited file states it | The note now rests on the cited run page's environment table, which names the serving runtime for the whole run; the report's judgement call says what that does not establish |
+| Medium | The environment note quoted step times that appear only in attempt 3's ledger, which the record did not cite | The ledger is now cited, and the times are quoted as it writes them; the first draft had truncated them |
+
+No test caught either, because the suite checked the ledger's quotes and not a
+record's free text. A test now requires every date, time, digest, and commit identifier
+in a record this change added to appear in a file that record cites; run against the
+first commit's ledger, it fails on exactly those two times. Making the fixes also
+turned up a sentence in the report that said two stated-revision records sit beside an
+unexplained branch name; one does, and the report says so.
+
+After the fixes, on the working tree that became the second commit:
+
+| Command | Result |
+|---|---|
+| `python -m tools.evidence_index --check` | `OK       v1-evidence-index.v1alpha1.json is what the register and ledger produce` |
+| `python -m tools.proof_dashboard --check` | `OK       dashboard.md is what the register produces` |
+| `uv run --locked python -m pytest tests/testing/test_evidence_index.py -q` | `368 passed` |
+| `uv run --locked python -m pytest tests/testing tests/security tests/telemetry -q` | `8266 passed` |
+| `uv run --locked ruff format --check .` / `ruff check .` / `python -m mypy` | `498 files already formatted`, `All checks passed!`, `Success: no issues found in 273 source files` |
 
 ## Private-information review of the diff
 
