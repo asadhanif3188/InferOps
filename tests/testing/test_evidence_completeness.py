@@ -414,7 +414,14 @@ def test_the_commit_behind_every_pin_changed_nothing_else_that_decides_a_run(
     assert other == pin["otherFilesTheCommitChanged"]
     for path in other:
         assert path.endswith("/__init__.py"), path
-    assert {"charts", "src", "infra", "tools"} <= set(pin["codePathsCompared"])
+    assert pin["codePathsCompared"] == [
+        "charts",
+        "src",
+        "infra",
+        "scripts",
+        "tools",
+        "deploy",
+    ]
 
 
 # ------------------------------------------------------------ immutability
@@ -655,6 +662,33 @@ def test_the_completeness_report_states_what_the_ledger_produces() -> None:
             if step.startswith(("scripts/", "uv run", "helm ")):
                 assert step in flat, step
     assert f"**{COMPLETENESS['releaseGate']['decision'].upper()}**" in report
+
+
+#: A tracked file with one of these suffixes would be a model artifact in history.
+MODEL_SUFFIXES = (".gguf", ".safetensors", ".bin", ".pt", ".pth", ".onnx", ".ckpt")
+
+
+def test_the_report_states_the_largest_committed_object_and_no_model_artifact() -> None:
+    """A size is the committed object's, not a checkout's.
+
+    The first commit of this change quoted the largest file's size in a Windows
+    checkout, with CRLF line endings, which an independent review caught.
+    """
+    listed = _git("ls-tree", "-r", "-l", "HEAD")
+    if listed is None:
+        pytest.skip("git is not available to read the committed tree")
+    sizes = []
+    for line in listed.splitlines():
+        meta, path = line.split("\t", 1)
+        size = meta.split()[3]
+        if size != "-":
+            sizes.append((int(size), path))
+    assert not [p for _, p in sizes if p.lower().endswith(MODEL_SUFFIXES)]
+    largest, _ = max(sizes)
+    stated = f"{largest:,}".replace(",", " ")
+    report = normalised(REPORT_PATH.read_text(encoding="utf-8"))
+    assert f"committed object is {stated} bytes" in report, stated
+    assert "No model artifact is tracked" in report
 
 
 def test_the_ledgers_and_the_run_record_name_no_private_path() -> None:

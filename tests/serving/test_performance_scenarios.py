@@ -1214,6 +1214,12 @@ def test_the_collector_is_asked_by_get_without_parameters_and_by_post_with_them(
     class Handler(http.server.BaseHTTPRequestHandler):
         def answer(self) -> None:
             seen.append((self.command, self.path))
+            # Read the form body before answering. A server that closes with it
+            # unread can reset the connection on Windows before the client reads
+            # the answer, which failed this test intermittently in the full lane.
+            length = int(self.headers.get("Content-Length") or 0)
+            if length:
+                self.rfile.read(length)
             if self.command == "POST" and self.path.startswith("/api/v1/status"):
                 self.send_response(405)
                 self.end_headers()

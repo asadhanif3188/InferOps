@@ -30,7 +30,7 @@ continuous-integration service.
 | The register | [`claim-evidence-matrix.v1alpha2.json`](../../testing/claim-evidence-matrix.v1alpha2.json): 12 changes, every one in the completeness ledger; 60 evidence records, up from 57 |
 | The strategy data | [`test-strategy.v1alpha1.json`](../../testing/test-strategy.v1alpha1.json): one layer note that paired `C3` with its superseded meaning |
 | Pages that describe the register | [The claim and evidence matrix](../../testing/claim-evidence-matrix.md), [the evidence-record model](../../testing/evidence-record-model.md), [the testing index](../../testing/README.md), [the evidence records index](../README.md), [the README](../../../README.md), and the changelog |
-| Tests | New [`tests/testing/test_evidence_completeness.py`](../../../tests/testing/test_evidence_completeness.py); [`test_evidence_index.py`](../../../tests/testing/test_evidence_index.py) and [`test_evidence_migration.py`](../../../tests/testing/test_evidence_migration.py) undo and read both ledgers; `test_test_inventory.py` learned the number forty-two |
+| Tests | New [`tests/testing/test_evidence_completeness.py`](../../../tests/testing/test_evidence_completeness.py); [`test_evidence_index.py`](../../../tests/testing/test_evidence_index.py) and [`test_evidence_migration.py`](../../../tests/testing/test_evidence_migration.py) undo and read both ledgers; `test_test_inventory.py` learned the number forty-two; one stub server in `tests/serving/test_performance_scenarios.py` now reads a request body before answering, for the reason under the commands below |
 | The test inventory | One module added to [the data](../../testing/test-inventory.v1alpha1.json) and [the document](../../testing/test-inventory.md), with the no-claim and documentation-layer counts moved to match |
 
 Nothing under `docs/proof/` that existed before this change was edited except the
@@ -59,16 +59,64 @@ records.
 | `uv run --locked python -m mypy` | `Success: no issues found in 274 source files` |
 | `git diff --cached --check` | no output |
 
-**The one failure is not this change's.** It was
+**The one failure, and what was done about it.** It was
 `tests/serving/test_performance_scenarios.py::test_the_collector_is_asked_by_get_without_parameters_and_by_post_with_them`,
 which serves a stub collector on a loopback socket and failed with a
-`ConnectionAbortedError` from the host's socket layer. It passed when run on its own,
-and neither it nor anything it imports is touched by this change. The full lane is run
-again on the first commit itself before the change is pushed.
+`ConnectionAbortedError` from the host's socket layer, while the client read an answer.
+The first commit's validation said it was not this change's; that was asserted before
+it was checked, and what the checking found is less tidy:
+
+| Run | Result |
+|---|---|
+| The test alone, and its module alone, on this branch | passed; `123 passed` for the module |
+| The full lane on the first commit, `d1232a4` | `1 failed, 14808 passed, 33 skipped, 14 deselected in 811.47s` — the same test |
+| Every module that runs before `tests/testing/`, on this branch | `7267 passed, 33 skipped, 14 deselected` |
+| The same modules on the unchanged `e145a6e` | `7264 passed, 33 skipped, 14 deselected` |
+| The full lane on the unchanged `e145a6e`, in a clean detached worktree | `14662 passed, 33 skipped, 14 deselected in 1098.83s` |
+
+So it failed in both full-lane runs of this branch and in none of the other runs, and
+nothing this change touches runs before it. No cause in this change was found; one
+cause in the test was. Its stub answers the form POST the collector client sends
+without reading the request body, and a server that closes a connection with the body
+unread can reset it on Windows before the client reads the answer — a race whose
+outcome depends on timing, which is what the pattern above looks like. The stub now
+reads the body before it answers, which is what a server is meant to do, and the test
+asserts what it asserted before. Whether that race is the whole cause is not proven:
+it was the only mechanism found, and after the fix the full lane passed.
+
+After the review's corrections and the stub fix, on the working tree that became the
+second commit:
+
+| Command | Result |
+|---|---|
+| `uv run --locked python -m pytest -q` | `14810 passed, 33 skipped, 14 deselected in 1322.33s` |
+| `uv run --locked python -m pytest tests/testing/test_evidence_completeness.py tests/testing/test_document_links.py tests/security -q` | `1182 passed` |
+| `uv run --locked python -m pytest tests/serving/test_performance_scenarios.py -q` | `123 passed` |
+| `uv run --locked ruff format --check .`, `ruff check .`, `python -m mypy` | clean, `All checks passed!`, `Success: no issues found in 274 source files` |
 
 The pinned suite run's own commands and results are in
 [its record](v1-s5-006-pr2-pinned-suite-run.md); it ran in a separate detached worktree
 at `e145a6e6fe2417a18e6d77a7f14751ec71786888`, which was removed afterwards.
+
+## What the independent review found, and what the first commit got wrong
+
+An independent reviewer read the first commit before it was pushed: every changed file,
+the records the changed register entries cite, and every count the documents publish,
+recomputed from the register, the ledgers, and the repository's history. It matched
+every headline count, confirmed the ten chart trees, the twelve records naming the chart
+version, the four content pins' parents and changed paths, the telemetry mechanism
+against the verification tool and the chart's rules, and both recovery records' own
+words, and disputed no classification and no blocker. It found one defect:
+
+| Severity | Finding | Fix |
+|---|---|---|
+| Low | The report's privacy section gave the largest tracked file's size as 913 227 bytes, its size in this Windows checkout with CRLF line endings; the committed object is 882 177 bytes. No test read the sentence | Corrected, and a test now reads the largest committed object's size, and that no model artifact is tracked, from the repository |
+
+It also noted that the content-pin test asserted a subset of the code paths the ledger
+records; it now requires all six. The first commit's claim that the full-lane failure
+was not this change's is corrected above, under the commands: it was asserted before it
+was checked. Neither was caught by a test before, because the
+report's tests read its summary table and identifiers, not its prose.
 
 ## Private-information review of the diff
 

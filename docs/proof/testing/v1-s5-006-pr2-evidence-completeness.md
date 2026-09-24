@@ -406,8 +406,8 @@ account, and prompt or response content. What it found: two documented placehold
 strings shaped like an access key, one test sample path, model file *names* rather than
 files, one historical record that names the private planning repository only to say
 nothing from it was copied, and the feasibility record's test prompt, finding `p06`. No
-model artifact is tracked, and the largest tracked file is a 913 227-byte bill of
-materials.
+model artifact is tracked, and the largest tracked file is a bill of materials whose
+committed object is 882 177 bytes. A test holds both.
 
 ## Judgement calls that could have gone the other way
 
@@ -427,7 +427,23 @@ materials.
   were re-run each gained a record, because the run is a different execution with its
   own environment and results; the older records stay for what they did.
 
-## Limitations
+## What the independent review found
+
+The first commit was read before push by an independent reviewer, who recomputed every
+count the report, the index page, the README, the changelog, and the commit message
+publish from the register, the ledgers, and the repository's history — the chart trees,
+the content pins' parents and changed paths, the recording rules and their interval,
+and the two recovery records' own words — and ran the suites and the gate. Every
+headline count matched, and no classification or blocker was disputed. It found one
+defect:
+
+| Severity | Finding | Fix |
+|---|---|---|
+| Low | The privacy section gave the largest tracked file as 913 227 bytes, which is its size in a Windows checkout with CRLF line endings; the object the repository stores is 882 177 bytes. This page's own tools hash committed content precisely to avoid that mistake, and no test read the sentence | The sentence gives the committed size, and a test now reads the largest tracked object's size and the absence of a tracked model artifact from the repository and requires the page to state them |
+
+It also noted that one test asserted the content pins compared a subset of the code
+paths they record; the test now requires all six.
+
 
 - One maintainer's reading, with an independent review before push; every quote and
   every count the ledger rests on is checked by a test, and the judgements are not.
