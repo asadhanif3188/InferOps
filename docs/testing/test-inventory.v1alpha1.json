@@ -798,6 +798,14 @@
       "note": "Deliberately no claim: it establishes that the completeness decision is recorded, derived where it can be, consistent, and carried to every surface that publishes the claims, never that a judgement in it is right. It reads committed files and the repository's history only."
     },
     {
+      "module": "tests/testing/test_case_study.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The draft V1 engineering case study against the register and the records it quotes: every claim it cites is a register row and each section cites exactly the claims its data file declares; every cell of its claims appendix -- status, the levels of the claim's records, and release-blocker state -- is derived from the register and the completeness ledger; the section on what V1 does not prove cites every uncertified claim and every release blocker; every figure it quotes reads back from the committed file it names, by JSON pointer or verbatim, and no duration, percentage, or memory size appears without a declared source; every count it states is recomputed from the register and the evidence index; it quotes no amount from a cost result; and it stays a draft while the release gate is incomplete.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that the draft's citations and figures agree with the files they come from, never that a sentence says what its record says. It reads committed files only."
+    },
+    {
       "module": "tests/testing/test_evidence_index.py",
       "layer": "documentation",
       "marker": "docs",

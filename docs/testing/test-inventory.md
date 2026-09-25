@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are forty-two, and they are listed in their own section rather than
+empty list. There are forty-three, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -159,7 +159,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Forty modules. Committed machine-readable data checked against the documents
+Forty-one modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -208,9 +208,11 @@ every enforced evidence-level classification rule over a register corrupted to
 break it, `V1-S5-012-PR2` the thirty-eighth, which holds the evidence migration to
 the two registers and the audit record it produced, `V1-S5-006-PR1` the
 thirty-ninth, which holds the V1 evidence index and its normalization ledger to the
-register, the files they cite, and the history they quote, and `V1-S5-006-PR2` the
+register, the files they cite, and the history they quote, `V1-S5-006-PR2` the
 fortieth, which holds the completeness check and the release gate it decides to the
-ledgers, the repository's history, and every surface that publishes the claims.
+ledgers, the repository's history, and every surface that publishes the claims, and
+`V1-S5-007-PR1` the forty-first, which holds the draft case study to the register, the
+completeness ledger, and the records whose figures it quotes.
 
 That sentence is itself a correction. `V1-S4-009-PR1` added a module and wrote
 "thirty-first", and an independent review of `V1-S4-009-PR2` found thirty-two
@@ -239,7 +241,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Forty-two suites protect something no row of the claim matrix names. (This sentence
+Forty-three suites protect something no row of the claim matrix names. (This sentence
 said twenty-four while the table below held twenty-five rows; `V1-S4-003-PR1` added
 the twenty-sixth row and corrected it. `V1-S4-004-PR1` added the twenty-seventh and
 first left this sentence at twenty-six; its review corrected it. `V1-S4-004-PR2` added
@@ -248,7 +250,7 @@ the twenty-eighth, and `V1-S4-006-PR1` the twenty-ninth. It drifted again: by
 change added the thirty-second and thirty-third and corrected it. `V1-S5-003-PR1` added the
 thirty-fourth, and `V1-S5-004-PR1` the thirty-fifth. It drifted once more: the table held
 thirty-nine rows while this sentence said thirty-four, until `V1-S5-012-PR2` added the fortieth
-and corrected it, `V1-S5-006-PR1` added the forty-first, and `V1-S5-006-PR2` the forty-second. The machine-checked count is the one in the opening section.) Each carries its
+and corrected it, `V1-S5-006-PR1` added the forty-first, `V1-S5-006-PR2` the forty-second, and `V1-S5-007-PR1` the forty-third. The machine-checked count is the one in the opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -279,6 +281,7 @@ matrix is complete needs to see them together.
 | [`tests/testing/test_evidence_level_rules.py`](../../tests/testing/test_evidence_level_rules.py) | The evidence-level classification rules against the documents they were written to refuse: that every rule [the rule catalogue](evidence-level-rules.md) marks as enforced by the schema or the validator is refused by that rule, at that place, in a committed mutation of an illustrative `v1alpha2` register; that the catalogue publishes every rule the code defines and says truthfully which of schema, validator, or review enforces it; that a claim's declared claim-material components decide `C1` and `C2` rather than a record's own flags, so a mock flagged immaterial is refused at `C2` and a real path classified `C1` for its generated prompts is refused; that changing a workload's origin changes no verdict below `C4`; and that the committed `v1alpha2` register, and the superseded `v1alpha1` register read into the new shape in memory, both pass every rule with every cited file present. Deliberately no claim: it establishes that the rules refuse what they were written to refuse, never that any committed record is classified correctly under them -- that is a reading, recorded in the migration report |
 | [`tests/testing/test_evidence_migration.py`](../../tests/testing/test_evidence_migration.py) | The evidence migration from `v1alpha1` to `v1alpha2`: that no claim's identity, statement, or citations moved; that every status, flag, and sentence that did move is a correction [the audit record](../proof/testing/v1-s5-012-pr2-migration.v1alpha1.json) names with its text before and after; that every record's outcome is the one the two registers imply; that every level that moved up is named by identifier; that every quote the audit rests on is verbatim; and that every number [the migration report](../proof/testing/v1-s5-012-pr2-migration-report.md) publishes is recomputed. Deliberately no claim: it establishes that the migration's judgements are written down and consistent, never that any of them is right |
 | [`tests/testing/test_evidence_completeness.py`](../../tests/testing/test_evidence_completeness.py) | The V1 evidence pack's completeness check against what it rests on: that every finding has one final state and every open item of the migration audit is in one category; that the stated release gate is the one the blockers decide and the gate command fails while one stands; that every blocked claim says so where the dashboard publishes it; that every executed record's code identity is derived rather than read, and every content pin equals the file at the commit that carried it; that every cited file's git blob is what git holds; and that no current page or data file describes the freeze as undecided or pairs a level with a superseded meaning. Deliberately no claim: consistency, not correctness |
+| [`tests/testing/test_case_study.py`](../../tests/testing/test_case_study.py) | The draft V1 engineering case study against what it cites: that every claim it names is a register row and each section cites exactly the claims [its data file](../case-study/v1-engineering-case-study.v1alpha1.json) declares; that every cell of its claims appendix is derived from the register and the completeness ledger; that its section on what V1 does not prove cites every uncertified claim and every release blocker; that every figure it quotes reads back from the committed file it names and no measurement appears without a declared source; that every count it states is recomputed; that it quotes no amount from a cost result; and that it stays a draft while the release gate is incomplete. Deliberately no claim: agreement with the files it quotes, never that a sentence says what its record says |
 | [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py) | The V1 evidence index and its normalization ledger against their sources: that [the index](../proof/v1-evidence-index.md) is what the register and the ledger produce; that every cited file is a tracked file under `docs/proof/` with the content it was indexed with; that every certified claim resolves to records with explicit boundaries; that every register change the ledger names can be undone and redone, every open migration finding has one disposition, no status or existing level moved, every corrected historical record is unchanged, and every executed record's revision is quoted from its own files. Deliberately no claim: consistency, not correctness |
 | [`tests/architecture/test_kubernetes_certification.py`](../../tests/architecture/test_kubernetes_certification.py) | The Kubernetes real-inference certification read as committed data and text: the descriptor against the chart and the accepted budgets, the collected cluster facts against the descriptor, the refusal of mock identity and of a forward that is not loopback, and the safety properties of the operating script. The claim that the selected runtime serves a real completion in a cluster belongs to the real-runtime layer, which runs the workflow instead of reading it |
 | [`tests/architecture/test_kubernetes_multi_replica_certification.py`](../../tests/architecture/test_kubernetes_multi_replica_certification.py) | The multi-replica Kubernetes certification read as committed data and text: the descriptor against the chart, the accepted budgets, and the single-replica descriptor it may not disagree with; the capacity gate that refuses before anything is installed; the per-pod readiness and per-replica correlation refusals that stop a multi-replica claim being made on a controller's summary count or on requests nobody recorded; the serving-tier refusals that stop the same claim being made about model servers on a counter snapshot that is missing a replica, a counter that fell across a restart, a replica that decoded nothing, or runtimes reporting less work than the driver was told about; the safety properties of the operating script, its request driver, and its per-pod counter forward; and the counter reader run against the runtime's own recorded exposition body rather than against an assumption about its shape. The claim that requests reach two replicas in a cluster belongs to the real-runtime layer, which runs the workflow instead of reading it |
