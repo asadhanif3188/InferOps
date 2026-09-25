@@ -1,24 +1,14 @@
 # InferOps V1: an engineering case study
 
-Status: **draft**, written in `V1-S5-007-PR1`. It is not published: nothing links to it
-from the README, and it may change in any sentence before it is. It was written against
-an evidence pack that is **not frozen**. The release gate that decides the freeze is
-incomplete while five certified claims rest on records whose repository code nothing
+Status: **draft**, written in `V1-S5-007-PR1` and verified in `V1-S5-007-PR2`, and not
+published. The README does not link here. The page was checked sentence by sentence
+against the evidence set whose digest is
+`1bf2a83ff0548a7d07e68fabdacd0d8b10c35d012b25c03b40bc469297fb5bec`, and that set is
+**not frozen**: five certified claims rest on records whose repository code nothing
 identifies, and `python -m tools.evidence_index --gate` exits 1 until each is closed.
-Those five are named where this draft leans on them and in
-[the claims appendix](#appendix-the-claims-this-draft-relies-on). Verifying every
-sentence against a frozen pack, and publishing, belong to the next change.
-
-Every duration, percentage, and memory size below is declared in
-[`v1-engineering-case-study.v1alpha1.json`](v1-engineering-case-study.v1alpha1.json)
-with the committed file and the field or the sentence it is read from, and
-[`tests/testing/test_case_study.py`](../../tests/testing/test_case_study.py) reads each
-one back and refuses one that is not declared. It also recomputes the claim, record,
-code-identity, and blocker counts from the register and the evidence index, and fails
-if a claim this page cites changes status, level, or blocker state without the page
-changing with it. Other numbers — thresholds, panels, alerts, risks, requests — are
-quoted from the records cited beside them and checked by review only, and whether a
-sentence says what its record says is a reading that no test performs.
+None of the findings in [the summary below](#at-a-glance-what-v1-investigated-and-what-it-found)
+rests on one of the five. The sections that do lean on them name them, and so does
+[the claims appendix](#appendix-the-claims-this-draft-relies-on).
 
 > [!IMPORTANT]
 > **Every real serving result in this study is one provider, one host, one replica.**
@@ -29,6 +19,96 @@ sentence says what its record says is a reading that no test performs.
 > serving on `kind`, Linux, macOS, a GPU, another model, or another runtime version.
 > The evidence levels `C0` to `C4` used below are [InferOps Evidence Levels](../testing/evidence-levels.md): **project-defined,
 > and not an ISO, NIST, regulatory, or industry certification standard.**
+
+## At a glance: what V1 investigated and what it found
+
+**The problem.** A language model can be made to answer in a Kubernetes cluster in an
+afternoon. The hard part is saying, with evidence, what a caller gets when load rises,
+when the serving pod is lost, or when the model never finishes loading, and which
+signal an operator can trust meanwhile. V1 served one open model behind one API, one
+replica of each tier on one CPU host, and caused each situation on purpose.
+
+| Problem investigated | What was measured | Why it matters operationally | Evidence and boundary |
+|---|---|---|---|
+| Do more concurrent callers get more work done? | From concurrency 1 to 4, completed requests stayed between 0.554 and 0.575 per second while median latency rose about fourfold; the runtime served one request at a time at 99.1–99.9% of its processor limit and deferred the rest | More callers bought waiting, not throughput. Whether the slot or the processor held the rate was not tested | [Section 7](#declared-load-and-where-that-setup-degraded), Figure 2. One single-slot release, one prompt; not capacity |
+| Which signal tells the truth when the only serving pod is lost? | 40 of the 41 requests in a 31 960 ms caller-visible outage were refused. Until the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint, and scrape health stayed up. The outage ended 30 059 ms after the replacement was observed Ready | Pod readiness and scrape health did not describe what a caller could reach. The Service's ready endpoints went to zero with the loss, and the API's errors by canonical code named it | [Section 7](#losing-the-serving-pod-under-load), Figure 3. One replica, one loss; a second run's outage was 2 832 ms. Not an availability figure |
+| What does a model that never finishes loading look like? | Alive and unready for 179 755 ms with no restart; every completion came back `capability-unavailable`, `runtime-unreachable`, and none `model-not-ready` | The probe split kept a loading process alive. Probes and Service topology, not only the adapter, decide which error a caller meets, so error contracts need testing through the deployed topology | [Section 7](#a-model-that-did-not-become-ready). One overlay; completions asked of the API pod through a forward |
+| Does the whole path work from nothing? | All 18 steps from a fresh clone in 1 h 30 min 32 s, on the third attempt; the first two stopped on five repository defects | Running the whole path is a test in its own right: an inherited setting, an error naming no stage, and a check asked once all surfaced there, none a host problem | [Section 5](#5-local-and-kubernetes-implementation). One run, by the author, not repeated by anyone else |
+| What does the measured use cost? | The request path used about 5.4 times the processor time it reserved while most of its memory reservation sat idle | Reservation and use diverged in opposite directions, so an estimate must say which it prices | [Section 9](#9-cost-a-method-not-a-price). Synthetic prices, confidence `none`, no cost figure |
+
+**What V1 does not establish.** None of these figures is a capacity, a service-level
+objective, an availability figure, a benchmark, or a cost, or describes another
+provider, host, replica count, or model. V1 does not serve a workload from its contract
+alone, has no multi-replica serving, no alert that reaches anybody, no defended workload,
+and no production operation, and no evidence record is above `C2`.
+[Section 12](#12-what-v1-does-not-prove) lists every claim V1 does not certify.
+
+**Evidence.** Claims
+`a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed`,
+`caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load`,
+`an-unready-model-was-held-unready-and-recovered-by-an-operator`,
+`a-reviewer-can-reproduce-v1-from-a-clean-clone`,
+`the-cost-method-was-applied-to-use-taken-from-a-measured-run`.
+
+## What this demonstrates
+
+These are practices this project shows on its own evidence. They are not a result
+achieved anywhere else, and each is as bounded as the record behind it.
+
+- **Following one failure across layers.** The pod-loss experiment read the callers'
+  records, the Service's endpoints, the pods' conditions, and the collector's series side
+  by side, and located where they disagreed instead of trusting any one of them.
+- **Registering the question before the run.** Each of the three experiments against a
+  release ran from a descriptor registered before it. When the first pod-loss attempt's
+  code measured the outage from the wrong end and published negative intervals, the
+  code was brought back to the registration and the experiment re-run; the
+  registration was not moved.
+- **Separating process health from serving health.** The chart asks liveness at the
+  socket and readiness at the model, which kept a loading process alive without a
+  restart and explains why no caller met `model-not-ready`.
+- **Reasoning about saturation without generalising it.** The load result is stated for
+  one setup, with what moved together (a single slot, a processor at its limit, rising
+  latency) kept apart from what was tested (neither cause).
+- **Separating use from price.** Use was taken from committed samples by a tool, the only
+  prices were synthetic by name, and no amount of them is quoted.
+- **Binding a public claim to its evidence.** Every statement a reader meets is a
+  register row with its limitation, and the gate that holds five claims as release
+  blockers is the one that holds this page as a draft.
+
+**Evidence.** [The pod-recovery record's first attempt](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md#what-the-first-attempt-got-wrong-and-why-it-was-re-run)
+and [the unready-model record](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md).
+Claims `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load`,
+`an-unready-model-was-held-unready-and-recovered-by-an-operator`,
+`a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed`,
+`the-cost-method-was-applied-to-use-taken-from-a-measured-run`.
+
+## How to read and check this page
+
+**The reader path.** [The README](../../README.md) says what V1 is and is not. This page
+interprets the evidence as one narrative. [The proof dashboard](../proof/dashboard.md)
+lists every claim with every evidence record behind it and is generated from
+[the claim and evidence register](../testing/claim-evidence-matrix.md). The records
+under [`docs/proof/`](../proof/README.md), indexed by
+[the V1 evidence index](../proof/v1-evidence-index.md), and
+[the decision records](../architecture/README.md) are the evidence itself. This page
+adds no claim of its own: its appendix is derived from the register, and where it and
+a record disagree, the record is right.
+
+**What is checked by a test.** Every duration, percentage, and memory size is declared
+in [`v1-engineering-case-study.v1alpha1.json`](v1-engineering-case-study.v1alpha1.json)
+with the committed file and the field or the sentence it is read from, and
+[`tests/testing/test_case_study.py`](../../tests/testing/test_case_study.py) reads each
+one back and refuses one that is not declared. In Figures 2 and 3 the rule is stricter:
+every number is declared, whatever its unit. The test also recomputes the claim,
+record, code-identity, and blocker counts from the register and the evidence index,
+fails if a claim this page cites changes status, level, or blocker state without the
+page changing with it, and fails if the evidence set's digest moves from the one
+named above.
+
+**What is checked only by review.** Other numbers — thresholds, panels, alerts, risks,
+requests — are quoted from the records cited beside them. Whether a sentence says what
+its record says, and whether a figure's arrangement implies more than its record, are
+readings that no test performs.
 
 ## 1. Why LLM serving needs a paved road
 
@@ -51,12 +131,13 @@ here, on this project's host, and none is offered as a survey of anybody else's.
 - **Memory accounting does not mean what it appears to.** The runtime memory-maps its
   weights, and two identical pods were observed reporting 2.167 GiB and 531 MiB for the
   same work, because the kernel charges mapped pages to whichever group faults them in
-  first. A limit sized from the smaller figure produces page eviction and silent
-  latency rather than an obvious failure.
+  first. The record reasons, without having provoked it, that a limit sized from the
+  smaller figure would produce page eviction and silent latency rather than an obvious
+  failure.
 - **The signal an operator reaches for first can be wrong.** When the serving pod was
-  deleted under load, the deleted pod went on reporting `Ready: True` for the whole
-  outage while the Service had no ready endpoint, and scrape health said the job was up
-  throughout.
+  deleted under load, the deleted pod went on reporting `Ready: True` until its
+  replacement was observed Ready, while the Service had no ready endpoint, and scrape
+  health said the job was up throughout.
 - **A figure is a property of its setup.** One single-slot runtime, one fixed prompt:
   adding concurrent callers added waiting and no completed requests beyond the
   difference between two runs. Quoted without that setup, the same figure is a
@@ -122,6 +203,17 @@ and [the claim and evidence register](../testing/claim-evidence-matrix.md). Clai
 
 ## 3. The architecture and the self-service contract
 
+[![InferOps V1 architecture: workload contract validation, platform domain, an unbuilt deployment rendering step with release values written by hand, the serving path, and the proof register a reviewer reads](../architecture/inferops-v1-architecture.png)](../architecture/inferops-v1-architecture.png)
+
+**Figure 1.** The V1 architecture, the committed image the README also shows. Deployment
+rendering is unbuilt, and release values are written by hand. The register box says
+each claim is bound to a record: every certified claim is, and fourteen uncertified
+claims hold none, which [section 6](#6-how-a-claim-becomes-publishable) explains. The
+image shows components and flows, not anything measured.
+
+<details>
+<summary>The same architecture as text</summary>
+
 ```text
   workload owner                                         reviewer
        | writes a WorkloadContract v1alpha1                  | reads
@@ -144,6 +236,8 @@ and [the claim and evidence register](../testing/claim-evidence-matrix.md). Clai
                         Qwen3-1.7B GGUF from a Terraform-owned model cache
      release-scoped Prometheus collector, a checked dashboard, six alert definitions
 ```
+
+</details>
 
 The self-service surface is the contract. A workload owner writes a `WorkloadContract`
 `v1alpha1` document; the validator refuses a malformed one with a canonical error code,
@@ -354,6 +448,30 @@ prompt-token totals are consistent with nearly every request reusing a cached pr
 though that split is inferred from totals rather than observed per request; if it
 holds, every service time here is for a prompt the runtime had almost entirely seen.
 
+```text
+Declared load, run twice: one single-slot runtime, one fixed prompt, docker-desktop
+
+                       concurrency 1        concurrency 2        concurrency 4
+callers, closed loop   o                    o o                  o o o o
+                       |                    | |                  | | | |
+                       v                    v v                  v v v v
+runtime, deferred      none seen            at most one seen     at most three seen
+runtime, processing    one at a time        one at a time        one at a time
+runtime processor      99.1–99.9% of its limit at every level, the baseline included
+completed per second   0.554–0.573          0.554–0.557          0.567–0.575
+median latency         1 700–1 744 ms       3 411–3 504 ms       6 775–6 908 ms
+```
+
+**Figure 2.** What moved together as callers were added, drawn from
+[the performance findings](../proof/serving/v1-s4-004-pr2-findings.v1alpha1.json). Each
+range spans the two runs. The deferred and processing rows are the largest collector
+readings at 15-second steps of a 30-second scrape, so a shorter excursion could be
+missed, and the processor row is averaged over each measured phase. The figure shows
+a queue forming in front of one slot while the completed rate stays put; it does not
+show which of the slot or the processor held the rate, because that was not tested.
+One release on `docker-desktop`, on one host, with one fixed prompt: not a capacity,
+a service-level objective, or a benchmark.
+
 One finding is about observation rather than serving: the dashboard's latency and rate
 panels, read at a phase's end, are **not** that phase's figures, because they take a
 five-minute window over phases shorter than two minutes. The raw record sets are the
@@ -361,15 +479,19 @@ source for a level's own distribution.
 
 ### Losing the serving pod under load
 
-One serving pod was deleted by name while the load profile was running. The
-replacement reported itself Ready 33 665 ms after the delete. Callers saw a 31 960 ms
-outage in which 40 of the 41 requests dispatched were refused — fast, between 20 ms and
-83 ms each, with `503` `capability-unavailable`, because the API refuses immediately
-once the Service has no ready endpoint. The one request already in flight when the pod
-went was a different shape: it hung and came back `500`. The Deployment controller did
-the recovering: the workflow issued no mutating command between the delete and its
-closing uninstall, which establishes that nothing in the workflow intervened and not
-that nothing outside it did.
+One serving pod was deleted by name while the load profile was running at
+concurrency 1. The replacement reported itself Ready 33 665 ms after the delete. The
+one request already in flight when the pod went hung and came back `500`, 31 764 ms
+after the delete, and that is where the record's caller-visible outage begins: it runs
+from the first completion after the delete that was not served to the next one that
+was, 31 960 ms in all. In it, 40 of the 41 requests dispatched were refused — fast,
+between 20 ms and 83 ms each, with `503` `capability-unavailable`, because the API
+refuses immediately once the Service has no ready endpoint. The request that ended it
+took 30 287 ms and was served 30 059 ms after the replacement was observed Ready; why
+it took that long, the record does not establish. The Deployment controller did the
+recovering: the workflow issued no mutating command between the delete and its closing
+uninstall, which establishes that nothing in the workflow intervened and not that
+nothing outside it did.
 
 The clean-clone run executed the same experiment again two days later, and its figures
 differ a great deal: the replacement was Ready 12 042 ms after the delete, one request
@@ -377,11 +499,48 @@ was refused, and the caller-visible outage was 2 832 ms. The first execution rem
 the certifying record for its claim. Two executions are not a distribution, and
 neither record lets its figures be compared with anything.
 
-The finding that matters most is the disagreement already quoted in section 1: pod
-readiness reported a healthy replica for the whole outage. The signal that tracked what
-a caller could reach was the Service's ready-endpoint count, and the one that named
-what went wrong was the API's error counter by canonical code. One replica is the
-cause of the outage, and the experiment says nothing about what a second would change.
+The finding that matters most is the disagreement already quoted in section 1. Until
+the replacement was observed Ready, every readiness sample found one runtime pod
+reporting `Ready: True` — by the record's reading, the deleted one — while the Service
+had no ready endpoint; and once the replacement was Ready, a caller was still not
+served for a while. Neither pod readiness nor scrape health described what a caller
+could reach. The Service's ready-endpoint count came closest: it was zero while the
+deleted pod still reported Ready, though it read one ready endpoint again at the sample
+that saw the replacement Ready, before a caller was served. The signal that named what
+went wrong was the API's error counter by canonical code. One replica is the cause of
+the outage, and the experiment says nothing about what a second would change.
+
+```text
+Losing the only serving pod under load: one replica, one request at a time, docker-desktop
+
+after the delete  what the caller got                          runtime pods      Service
+                                                               reporting Ready   endpoints
+----------------  -------------------------------------------  ----------------  ---------
+the delete        one request already in flight; it hangs      not sampled       not sampled
+1.4 s – 28.6 s    (six readiness samples)                      one, the deleted  none
+31 764 ms         the hung request returns 500:                not sampled       not sampled
+                  the caller-visible outage begins
+                  40 of the 41 requests dispatched in it are
+                  refused with 503, between 20 ms and 83 ms each
+33 665 ms         (the replacement is observed Ready)          one, the new one  one
+63 724 ms         a request that took 30 287 ms returns 200:   not sampled       not sampled
+                  the outage ends, 31 960 ms long, and
+                  30 059 ms after the replacement was observed Ready
+then              84 more requests served in the same run
+scrape health     the targets-up ratio read all up before and after, unchanged
+```
+
+**Figure 3.** One pod lost once, drawn from
+[the pod-recovery record](../proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json)
+and its [narrative](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md). Every
+interval comes from the raw load records and the workflow's stamps. The readiness
+columns are samples taken every two seconds plus the time `kubectl` took to answer, so
+their boundaries are several seconds wide; which pod was Ready is the record's reading
+of a count. The error counter by canonical code, not shown, is the series that named
+both failure shapes. One replica on `docker-desktop`, on one host, under one load
+profile: not an availability figure, a recovery-time objective, or a number to compare
+another run against, and [the second execution](#losing-the-serving-pod-under-load)
+measured very different intervals.
 
 ### A model that did not become ready
 
@@ -396,7 +555,10 @@ Every completion asked in that window came back `capability-unavailable` with co
 the code the adapter gives a runtime it can reach that answers `Loading model`: the
 readiness probe had already removed the runtime's only address from its Service before
 the adapter could see that answer. Which canonical error a caller meets is decided by
-the topology, and that was written down nowhere before the run. It is also a reason
+the topology, and that was written down nowhere before the run. Those completions were
+asked of the API pod through a forward, because neither Service had a ready endpoint;
+a caller arriving through the API's Service would have met no endpoint at all, which
+the record states rather than measures. It is also a reason
 the claim that an unready model produces a canonical error of its own stays
 `planned`.
 
@@ -433,7 +595,7 @@ the repository's own evaluator rather than by a Prometheus, over the telemetry t
 real experiments recorded, and in that replay one fired.
 
 What the experiments added is a list of what the signals **cannot** do. Scrape health
-stayed up through an outage. Pod readiness lied about a deleted pod. A dashboard panel
+stayed up through an outage. Pod readiness reported a deleted pod as Ready. A dashboard panel
 at a phase end mixes that phase with the ones before it. Two registered series,
 `inferops_model_ready` and container restarts, are still emitted by nothing. The
 collector's series live in an `emptyDir` and vanish with the release, and nothing

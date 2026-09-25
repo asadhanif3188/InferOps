@@ -362,8 +362,9 @@ kubectl --kubeconfig .kube/inferops-target.config --context docker-desktop \
 ```
 
 Read the runtime Service's EndpointSlice before you read any pod. **Pod readiness is
-not what a caller sees.** Throughout the recorded pod loss, the deleted pod kept
-reporting `Ready: True` while the Service had no ready endpoint at all.
+not what a caller sees.** In the recorded pod loss, until the replacement was observed
+Ready, the deleted pod kept reporting `Ready: True` while the Service had no ready
+endpoint at all.
 
 | What the listing shows | Open |
 |---|---|
@@ -475,7 +476,7 @@ A serving runtime pod is deleted, evicted, or lost with its node.
 |---|---|
 | Detection | `InferOpsInferenceCallersRefused` if the outage lasts longer than its window. In the recorded run it did not, and nothing fired. There is no restart alert: the series it would read comes from kube-state-metrics, which nothing here installs. By hand, the runtime Service's EndpointSlice listing no ready endpoint |
 | User impact | With one replica, an outage. In the recorded run, a request already in flight hung and came back `500 internal-error`. Requests sent while the Service had no ready endpoint came back `503 capability-unavailable` within tens of milliseconds: 40 of them in a 31,960 ms caller-visible outage |
-| Automatic recovery | **Yes.** The Deployment controller creates a replacement, which reuses the model already in the claim and loads it again. The replacement reported Ready 33,665 ms after the delete, and the model reload took 32,304 ms of that. Nobody intervened |
+| Automatic recovery | **Yes.** The Deployment controller creates a replacement, which reuses the model already in the claim and loads it again. The replacement reported Ready 33,665 ms after the delete, and the model reload took 32,304 ms of that. The workflow issued no mutating command between the delete and its closing uninstall, which says nothing about anything outside it |
 | Human action | None to restore service. Find out why the pod went before it happens again. Do not delete the replacement to "help": it is the recovery |
 | Validation | The EndpointSlice lists one ready endpoint, the replacement's own `Ready` condition is true, and a request comes back `200`. Not the Deployment's ready count, which still counted the deleted pod |
 | Escalation and limits | If the replacement does not become ready, this is no longer pod loss: open [unready model](#unready-model) or [model and cache faults](#model-and-cache-faults). Every figure here comes from one pod lost once, on one host. None of them is an availability figure or a recovery-time objective |

@@ -1,4 +1,4 @@
-"""The draft V1 engineering case study, held to the register and the records it quotes.
+"""The V1 engineering case study, held to the register and the records it quotes.
 
 Every check here reads files from this repository and nothing else. No network, no
 cluster, no model, no clock, no randomness.
@@ -20,18 +20,29 @@ exists. It establishes:
   pointer or verbatim, and no duration, percentage, or memory size appears on the page
   without a declared source;
 * every count the page states is recomputed from the register and the evidence index;
+* the page names the evidence set it was verified against, and fails when the index's
+  digest, gate, or blocker count moves, so the page is verified again rather than left
+  behind;
+* the results-first summary is the page's first section, stays short, and rests on no
+  release blocker;
+* every number in a text figure is declared, whatever its unit, every figure's caption
+  states its boundary, and the architecture image it shows is committed;
+* no reader surface says of the pod-loss experiment that nobody intervened, which is
+  broader than the record;
 * the page quotes no amount from a cost result, and stays a draft while the release
   gate is incomplete.
 
 It establishes **nothing about whether a sentence says what its record says**. A
-figure can be quoted correctly inside a sentence that misreads it, and a verbatim
-figure is only checked for being present in the file it names. That is a reading, and
-the case study says so itself.
+figure can be quoted correctly inside a sentence that misreads it, a verbatim figure
+is only checked for being present in the file it names, and a drawn figure's
+arrangement can imply more than its records. That is a reading, and the case study
+says so itself.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
@@ -50,6 +61,29 @@ EXPECTED_CONTRACT_VERSION = "inferops.io/v1alpha1"
 #: The section that must account for every claim V1 does not certify. Fixed here
 #: rather than read from the data it constrains, so dropping it fails a test.
 NOT_PROVEN_SECTION = "not-proven"
+
+#: The sections an engineering reader meets first, fixed here for the same reason.
+SUMMARY_SECTIONS = ("at-a-glance", "what-this-demonstrates")
+
+#: A proxy for "readable in about three minutes": the words from the top of the page
+#: to the end of the results-first summary -- status, boundary, and summary -- at a
+#: reading speed of about 250 words a minute. It bounds length and says nothing about
+#: whether the words are the right ones.
+FIRST_SCREEN_WORD_BUDGET = 850
+
+#: Where readers meet the pod-loss experiment outside the dated records. A dated
+#: record keeps the words it was written with.
+READER_SURFACES = (
+    "README.md",
+    "docs/case-study/v1-engineering-case-study.md",
+    "docs/environment/operator-runbook.md",
+)
+
+#: Wording broader than the pod-recovery record, which establishes only that the
+#: workflow issued no mutating command between the delete and its closing uninstall.
+BROADER_THAN_THE_RECORD = re.compile(
+    r"\b(?:nobody|no one|no-one)\s+(?:intervened|had to intervene)\b", re.IGNORECASE
+)
 
 #: The heading the claims appendix sits under.
 APPENDIX_HEADING = "Appendix: the claims this draft relies on"
@@ -82,6 +116,16 @@ NUMBER_WORDS = {
     8: "eight",
     9: "nine",
     10: "ten",
+    11: "eleven",
+    12: "twelve",
+    13: "thirteen",
+    14: "fourteen",
+    15: "fifteen",
+    16: "sixteen",
+    17: "seventeen",
+    18: "eighteen",
+    19: "nineteen",
+    20: "twenty",
 }
 
 
@@ -107,6 +151,9 @@ CLAIMS = {row["claimId"]: row for row in REGISTER["claims"]}
 BLOCKED_CLAIMS = {row["claimId"] for row in COMPLETENESS["blockers"]}
 SECTIONS = DATA["sections"]
 FIGURES = DATA["figures"]
+FIGURES_BY_ID = {figure["figureId"]: figure for figure in FIGURES}
+VISUALS = DATA["visuals"]
+TEXT_VISUALS = [visual for visual in VISUALS if visual["kind"] == "text"]
 
 
 def _sections_of_document() -> list[tuple[str, str]]:
@@ -190,11 +237,15 @@ def test_every_reference_the_data_file_makes_resolves() -> None:
         "registerRef",
         "indexRef",
         "completenessRef",
-        "validationRef",
     ):
         assert (REPO_ROOT / DATA[key]).is_file(), f"{key} does not resolve: {DATA[key]}"
+    for ref in DATA["validationRefs"]:
+        assert (REPO_ROOT / ref).is_file(), f"validationRefs does not resolve: {ref}"
     for figure in FIGURES:
         assert (REPO_ROOT / figure["sourceRef"]).is_file(), figure["figureId"]
+    for visual in VISUALS:
+        for ref in [*visual["derivedFrom"], *filter(None, [visual.get("imageRef")])]:
+            assert (REPO_ROOT / ref).is_file(), f"{visual['visualId']}: {ref}"
 
 
 def test_every_render_a_figure_names_is_declared() -> None:
@@ -229,6 +280,65 @@ def test_the_status_paragraph_counts_the_blockers_and_names_the_gate() -> None:
     status = normalised(DOCUMENT.split("\n## ", 1)[0])
     assert f"{NUMBER_WORDS[blockers]} certified claims" in status
     assert "`python -m tools.evidence_index --gate` exits 1" in status
+
+
+def test_the_page_names_the_evidence_set_it_was_verified_against() -> None:
+    """A page verified against one evidence set is not verified against the next.
+
+    When the index's digest, gate, or blocker count moves, this fails, and the change
+    that moved them must verify the page again and restate what it was verified
+    against, rather than leave a verification that no longer describes the evidence.
+    """
+    summary = INDEX["summary"]
+    verified = DATA["verifiedAgainst"]
+    assert verified["evidenceSetSha256"] == summary["evidenceSetSha256"]
+    assert verified["releaseGate"] == summary["releaseGate"]
+    assert verified["releaseBlockers"] == summary["releaseBlockers"]
+    status = DOCUMENT.split("\n## ", 1)[0]
+    assert f"`{summary['evidenceSetSha256']}`" in normalised(status)
+    assert f"verified in `{DATA['verifiedIn']}`" in normalised(status)
+
+
+# ---------------------------------------------------------------- summary
+
+
+def test_the_results_first_summary_is_the_first_section() -> None:
+    """An engineering reader meets the findings before the deep sections."""
+    first = [head for head, _ in DOCUMENT_SECTIONS[: len(SUMMARY_SECTIONS)]]
+    expected = [
+        section["heading"]
+        for section in SECTIONS
+        if section["sectionId"] in SUMMARY_SECTIONS
+    ]
+    assert first == expected
+
+
+def test_the_first_screen_stays_within_its_word_budget() -> None:
+    bridge = next(s for s in SECTIONS if s["sectionId"] == SUMMARY_SECTIONS[1])
+    first_screen = DOCUMENT.split(f"\n## {bridge['heading']}\n", 1)
+    assert len(first_screen) == 2, "the summary's closing boundary was not found"
+    words = len(first_screen[0].split())
+    assert words <= FIRST_SCREEN_WORD_BUDGET, (
+        f"{words} words up to the end of the summary; "
+        f"the budget is {FIRST_SCREEN_WORD_BUDGET}"
+    )
+
+
+@pytest.mark.parametrize("section_id", SUMMARY_SECTIONS)
+def test_the_summary_rests_on_no_release_blocker(section_id: str) -> None:
+    """A finding led with must not depend on a claim the gate holds as a blocker."""
+    section = next(s for s in SECTIONS if s["sectionId"] == section_id)
+    leaning = set(section["claims"]) & BLOCKED_CLAIMS
+    assert not leaning, sorted(leaning)
+    assert all(CLAIMS[claim]["status"] == "certified" for claim in section["claims"])
+
+
+def test_the_summary_links_every_finding_to_its_section() -> None:
+    body = dict(DOCUMENT_SECTIONS)[SECTIONS[0]["heading"]]
+    rows = [line for line in body.splitlines() if line.startswith("| ")][1:]
+    assert rows, "the summary table is missing"
+    for row in rows:
+        assert re.search(r"\[Section \d+\]\(#[a-z0-9-]+\)", row), row
 
 
 # --------------------------------------------------------------- sections
@@ -369,6 +479,134 @@ def test_no_measurement_is_quoted_without_a_declared_figure() -> None:
         }
     )
     assert not stray, f"measurements quoted without a declared source: {stray}"
+
+
+# ---------------------------------------------------------------- visuals
+
+
+def _fenced_blocks(text: str) -> list[list[str]]:
+    blocks: list[list[str]] = []
+    current: list[str] | None = None
+    for line in text.splitlines():
+        if line.startswith("```"):
+            if current is None:
+                current = []
+            else:
+                blocks.append(current)
+                current = None
+        elif current is not None:
+            current.append(line)
+    return blocks
+
+
+def _section_text(section_id: str) -> str:
+    heading = next(s["heading"] for s in SECTIONS if s["sectionId"] == section_id)
+    return dict(DOCUMENT_SECTIONS)[heading]
+
+
+def _visual_block(visual: dict[str, Any]) -> str:
+    """The fenced block a text figure is, found by its first line inside its section."""
+    blocks = [
+        block
+        for block in _fenced_blocks(_section_text(visual["sectionId"]))
+        if block and block[0] == visual["firstLine"]
+    ]
+    assert len(blocks) == 1, f"{visual['visualId']}: found {len(blocks)} blocks"
+    return "\n".join(blocks[0])
+
+
+def _caption(visual: dict[str, Any]) -> str:
+    """The paragraph that opens with the figure's number, inside its section."""
+    marker = f"**Figure {visual['figureNumber']}.**"
+    paragraphs = _section_text(visual["sectionId"]).split("\n\n")
+    found = [p for p in paragraphs if p.startswith(marker)]
+    assert len(found) == 1, f"{visual['visualId']}: {len(found)} captions"
+    return normalised(found[0])
+
+
+def test_visual_identifiers_and_figure_numbers_are_unique_and_in_order() -> None:
+    ids = [visual["visualId"] for visual in VISUALS]
+    assert len(ids) == len(set(ids))
+    numbers = [visual["figureNumber"] for visual in VISUALS]
+    assert numbers == list(range(1, len(VISUALS) + 1))
+    positions = [DOCUMENT.index(f"**Figure {n}.**") for n in numbers]
+    assert positions == sorted(positions), "figures are not numbered in page order"
+
+
+@pytest.mark.parametrize("visual", VISUALS, ids=lambda visual: visual["visualId"])
+def test_every_visual_has_a_caption_that_states_its_boundary(
+    visual: dict[str, Any],
+) -> None:
+    caption = _caption(visual)
+    missing = [phrase for phrase in visual["captionMustSay"] if phrase not in caption]
+    assert not missing, f"{visual['visualId']}: the caption omits {missing}"
+
+
+@pytest.mark.parametrize(
+    "visual",
+    [visual for visual in VISUALS if visual["kind"] == "image"],
+    ids=lambda visual: visual["visualId"],
+)
+def test_every_image_the_page_shows_is_committed_and_in_its_section(
+    visual: dict[str, Any],
+) -> None:
+    image = REPO_ROOT / visual["imageRef"]
+    assert image.is_file()
+    page_dir = (REPO_ROOT / DATA["documentRef"]).parent
+    relative = Path(os.path.relpath(image, page_dir)).as_posix()
+    assert f"]({relative})" in _section_text(visual["sectionId"])
+
+
+@pytest.mark.parametrize("visual", TEXT_VISUALS, ids=lambda visual: visual["visualId"])
+def test_every_number_in_a_text_figure_is_declared(visual: dict[str, Any]) -> None:
+    """In a drawn figure a number carries more weight than in prose, so all are held.
+
+    Every numeral must come from a figure the visual declares, or be listed as
+    unpoliced with a reason; and every numeral those figures quote must be drawn, so a
+    figure cannot be declared and then left out.
+    """
+    block = normalised(_visual_block(visual))
+    drawn = set(NUMERAL.findall(block))
+    declared: set[str] = set()
+    for figure_id in visual["figures"]:
+        declared |= set(NUMERAL.findall(FIGURES_BY_ID[figure_id]["quoted"]))
+    unpoliced = set(visual["unpolicedNumerals"])
+    assert all(len(reason) > 20 for reason in visual["unpolicedNumerals"].values())
+    stray = sorted(drawn - declared - unpoliced)
+    assert not stray, f"{visual['visualId']} draws numbers nothing declares: {stray}"
+    undrawn = sorted(declared - drawn)
+    assert not undrawn, (
+        f"{visual['visualId']} declares numbers it does not draw: {undrawn}"
+    )
+
+
+@pytest.mark.parametrize("visual", TEXT_VISUALS, ids=lambda visual: visual["visualId"])
+def test_every_figure_a_visual_draws_is_read_from_a_record_it_derives_from(
+    visual: dict[str, Any],
+) -> None:
+    sources = set(visual["derivedFrom"])
+    for figure_id in visual["figures"]:
+        assert FIGURES_BY_ID[figure_id]["sourceRef"] in sources, figure_id
+
+
+# ------------------------------------------------ wording broader than a record
+
+
+def test_the_page_counts_the_claims_that_hold_no_record() -> None:
+    """Figure 1's caption corrects the image's register box with the register's count."""
+    holding_none = [c for c in CLAIMS.values() if not c.get("evidenceRecords")]
+    assert all(claim["status"] != "certified" for claim in holding_none)
+    word = NUMBER_WORDS[len(holding_none)]
+    assert f"every certified claim is, and {word} uncertified claims hold none" in (
+        normalised(DOCUMENT)
+    )
+
+
+@pytest.mark.parametrize("surface", READER_SURFACES)
+def test_no_reader_surface_says_nobody_intervened_in_the_pod_loss(surface: str) -> None:
+    """The record establishes that its workflow intervened in nothing, and no more."""
+    found = BROADER_THAN_THE_RECORD.findall(_read(surface))
+    assert not found, f"{surface}: {found}"
 
 
 # ----------------------------------------------------------------- counts
