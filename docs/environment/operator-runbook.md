@@ -362,9 +362,9 @@ kubectl --kubeconfig .kube/inferops-target.config --context docker-desktop \
 ```
 
 Read the runtime Service's EndpointSlice before you read any pod. **Pod readiness is
-not what a caller sees.** In the recorded pod loss, until the replacement was observed
-Ready, the deleted pod kept reporting `Ready: True` while the Service had no ready
-endpoint at all.
+not what a caller sees.** In the recorded pod loss, at every readiness sample before the
+replacement was observed Ready, the deleted pod kept reporting `Ready: True` while the
+Service had no ready endpoint at all.
 
 | What the listing shows | Open |
 |---|---|

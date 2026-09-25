@@ -586,10 +586,10 @@
     }
   ],
   "limitations": [
-    "Only durations, percentages, and memory sizes are declared in the prose. Other numbers on the page -- thresholds, panels, alerts, risks, requests -- are quoted from the records cited beside them and checked by review only. In the text figures every number is declared, or listed as unpoliced with a reason.",
+    "In the prose, only numbers written in digits beside a unit of time, a percentage, or a unit of memory are declared. Other numbers on the page -- thresholds, panels, alerts, risks, requests, and counts written in words -- are quoted from the records cited beside them and checked by review only. In a text figure's body every numeral and every count word is declared, bar the HTTP statuses listed as unpoliced; a figure's title line is checked by review.",
     "A figure that reads back from its source is quoted correctly; whether the sentence around it says what the record says is a reading, and no test performs one.",
     "A verbatim figure is checked only for being present in the file it names, not for being attached there to the same subject.",
-    "A drawn figure is checked for its numbers and for the boundary its caption must state. Whether its arrangement -- what sits beside what, what an arrow implies -- says more than its records is a reading. The architecture image is a committed picture, and nothing reads its content.",
+    "A drawn figure is checked for its numbers, its count words, and the boundary its caption must state. Whether its arrangement -- what sits beside what, what a row implies -- says more than its records is a reading. The architecture image is a tracked picture, and nothing reads its content.",
     "The claims appendix is derived from the register and the completeness ledger, so it cannot disagree with them; the prose of each section can, and review is the only check on it.",
     "The page is verified against an evidence set that is not frozen. It stays a draft, and the test holds it to that, until the release gate is complete; and it fails when the evidence set's digest moves, so that the page is verified again."
   ],
@@ -600,6 +600,7 @@
       "sectionId": "architecture",
       "kind": "image",
       "imageRef": "docs/architecture/inferops-v1-architecture.png",
+      "textAlternativeFirstLine": "  workload owner                                         reviewer",
       "derivedFrom": [
         "docs/architecture/system-architecture.md"
       ],
@@ -637,6 +638,48 @@
         "one fixed prompt",
         "not tested",
         "not a capacity"
+      ],
+      "countedWords": [
+        {
+          "phrase": "none seen",
+          "value": 0,
+          "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+          "pointers": [
+            "/phases/0/collector/runtimeRequestsDeferred/maximum",
+            "/phases/3/collector/runtimeRequestsDeferred/maximum"
+          ]
+        },
+        {
+          "phrase": "at most one seen",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+          "pointers": [
+            "/phases/1/collector/runtimeRequestsDeferred/maximum",
+            "/phases/4/collector/runtimeRequestsDeferred/maximum"
+          ]
+        },
+        {
+          "phrase": "at most three seen",
+          "value": 3,
+          "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+          "pointers": [
+            "/phases/2/collector/runtimeRequestsDeferred/maximum",
+            "/phases/5/collector/runtimeRequestsDeferred/maximum"
+          ]
+        },
+        {
+          "phrase": "one at a time",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+          "pointers": [
+            "/phases/0/collector/runtimeRequestsProcessing/maximum",
+            "/phases/1/collector/runtimeRequestsProcessing/maximum",
+            "/phases/2/collector/runtimeRequestsProcessing/maximum",
+            "/phases/3/collector/runtimeRequestsProcessing/maximum",
+            "/phases/4/collector/runtimeRequestsProcessing/maximum",
+            "/phases/5/collector/runtimeRequestsProcessing/maximum"
+          ]
+        }
       ]
     },
     {
@@ -644,10 +687,11 @@
       "figureNumber": 3,
       "sectionId": "experiments",
       "kind": "text",
-      "firstLine": "Losing the only serving pod under load: one replica, one request at a time, docker-desktop",
+      "firstLine": "Losing the only serving pod under load: one replica, docker-desktop",
       "derivedFrom": [
         "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
-        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md"
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json"
       ],
       "figures": [
         "readiness-sample-span",
@@ -671,7 +715,60 @@
         "one host",
         "One replica",
         "not an availability figure",
-        "several seconds wide"
+        "several seconds wide",
+        "committed telemetry"
+      ],
+      "countedWords": [
+        {
+          "phrase": "one request already in flight",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/callerImpact/inFlightAtDeletion/dispatched"
+          ]
+        },
+        {
+          "phrase": "one, the deleted",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/readinessSamples/0/runtimePodsReady",
+            "/readinessSamples/1/runtimePodsReady",
+            "/readinessSamples/2/runtimePodsReady",
+            "/readinessSamples/3/runtimePodsReady",
+            "/readinessSamples/4/runtimePodsReady",
+            "/readinessSamples/5/runtimePodsReady"
+          ]
+        },
+        {
+          "phrase": "none ready",
+          "value": 0,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/readinessSamples/0/runtimeEndpointsReady",
+            "/readinessSamples/1/runtimeEndpointsReady",
+            "/readinessSamples/2/runtimeEndpointsReady",
+            "/readinessSamples/3/runtimeEndpointsReady",
+            "/readinessSamples/4/runtimeEndpointsReady",
+            "/readinessSamples/5/runtimeEndpointsReady"
+          ]
+        },
+        {
+          "phrase": "one, the new pod",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/readinessSamples/6/runtimePodsReady"
+          ]
+        },
+        {
+          "phrase": "one ready",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/readinessSamples/6/runtimeEndpointsReady"
+          ]
+        }
       ]
     }
   ]
