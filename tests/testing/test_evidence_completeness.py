@@ -707,7 +707,9 @@ def test_the_report_states_the_largest_committed_object_and_no_model_artifact() 
     ]
     report = normalised(REPORT_PATH.read_text(encoding="utf-8"))
     assert "No model artifact is tracked" in report
-    named = {path: size for size, path in _object_sizes("HEAD")}[LARGEST_AT_REPORT]
+    sizes = {path: size for size, path in _object_sizes("HEAD")}
+    assert LARGEST_AT_REPORT in sizes, f"{LARGEST_AT_REPORT} is no longer tracked"
+    named = sizes[LARGEST_AT_REPORT]
     stated = f"{named:,}".replace(",", " ")
     assert f"committed object is {stated} bytes" in report, stated
 

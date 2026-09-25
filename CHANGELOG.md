@@ -20,7 +20,7 @@ once versioned releases begin.
   gate still holds **not frozen**, with the five release blockers named where it leans
   on them. [Its data file](docs/case-study/v1-engineering-case-study.v1alpha1.json)
   declares the claims each section cites and the committed file and field or sentence
-  each of its 22 quoted figures is read from, and
+  each of its 24 declared durations, percentages, and memory sizes is read from, and
   [`tests/testing/test_case_study.py`](tests/testing/test_case_study.py) reads every
   figure back, derives its claims appendix from the register and the completeness
   ledger, requires its section on what V1 does not prove to cite every uncertified

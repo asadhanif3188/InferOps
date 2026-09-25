@@ -63,6 +63,12 @@ MEASURED = re.compile(
     r"(?<![\w.])(\d+(?: \d{3})*(?:\.\d+)?)(?=\s?(?:ms\b|%|GiB\b|MiB\b))"
 )
 
+#: A whole numeral, as the page and the records write one. Numbers are compared as
+#: whole tokens: comparing them as substrings of the declared figures, as the first
+#: version of this module did, let a stray `5 ms` pass because some declared figure
+#: happened to contain the digit 5.
+NUMERAL = re.compile(r"(?<![\w.])\d+(?: \d{3})*(?:\.\d+)?")
+
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
 
 NUMBER_WORDS = {
@@ -104,9 +110,21 @@ FIGURES = DATA["figures"]
 
 
 def _sections_of_document() -> list[tuple[str, str]]:
-    """Each `## ` heading of the page and the text beneath it, in order."""
-    parts = re.split(r"(?m)^## ", DOCUMENT)[1:]
-    return [(part.split("\n", 1)[0].strip(), part) for part in parts]
+    """Each `## ` heading of the page and the text beneath it, in order.
+
+    A line inside a fenced block is never a heading, however it starts, so a diagram
+    that grew a `## ` line cannot split a section in two.
+    """
+    sections: list[tuple[str, list[str]]] = []
+    fenced = False
+    for line in DOCUMENT.splitlines():
+        if line.startswith("```"):
+            fenced = not fenced
+        if not fenced and line.startswith("## "):
+            sections.append((line[3:].strip(), [line[3:]]))
+        elif sections:
+            sections[-1][1].append(line)
+    return [(heading, "\n".join(lines)) for heading, lines in sections]
 
 
 DOCUMENT_SECTIONS = _sections_of_document()
@@ -323,6 +341,11 @@ def test_every_figure_reads_back_from_the_file_it_names(figure: dict[str, Any]) 
 
 @pytest.mark.parametrize("figure", FIGURES, ids=lambda figure: figure["figureId"])
 def test_a_figure_names_a_claim_the_page_cites(figure: dict[str, Any]) -> None:
+    """A figure belongs to a cited claim, or says in the data why it belongs to none."""
+    if figure["claimId"] is None:
+        assert len(figure.get("noClaimReason") or "") > 40, figure["figureId"]
+        return
+    assert "noClaimReason" not in figure, figure["figureId"]
     cited = {claim for section in SECTIONS for claim in section["claims"]}
     assert figure["claimId"] in cited, figure["figureId"]
 
@@ -335,7 +358,9 @@ def test_the_document_quotes_every_declared_figure() -> None:
 
 def test_no_measurement_is_quoted_without_a_declared_figure() -> None:
     """A duration, a percentage, or a memory size on the page must have a source."""
-    declared = " | ".join(figure["quoted"] for figure in FIGURES)
+    declared = {
+        number for figure in FIGURES for number in NUMERAL.findall(figure["quoted"])
+    }
     stray = sorted(
         {
             number

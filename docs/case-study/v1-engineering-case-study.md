@@ -9,22 +9,25 @@ Those five are named where this draft leans on them and in
 [the claims appendix](#appendix-the-claims-this-draft-relies-on). Verifying every
 sentence against a frozen pack, and publishing, belong to the next change.
 
-Every figure below is quoted from a committed record, and
+Every duration, percentage, and memory size below is declared in
 [`v1-engineering-case-study.v1alpha1.json`](v1-engineering-case-study.v1alpha1.json)
-names the file and the field or the sentence each one is read from.
-[`tests/testing/test_case_study.py`](../../tests/testing/test_case_study.py) reads every
-one of them back, recomputes every count this page states from the register, and
-fails if a claim this page cites changes status, level, or blocker state without the
-page changing with it. It checks citations and figures. Whether a sentence says what
-its record says is a reading, and no test performs one.
+with the committed file and the field or the sentence it is read from, and
+[`tests/testing/test_case_study.py`](../../tests/testing/test_case_study.py) reads each
+one back and refuses one that is not declared. It also recomputes the claim, record,
+code-identity, and blocker counts from the register and the evidence index, and fails
+if a claim this page cites changes status, level, or blocker state without the page
+changing with it. Other numbers — thresholds, panels, alerts, risks, requests — are
+quoted from the records cited beside them and checked by review only, and whether a
+sentence says what its record says is a reading that no test performs.
 
 > [!IMPORTANT]
-> **Every real result in this study is one provider, one host, one replica.** Docker
-> Desktop's Kubernetes (`docker-desktop`), one Windows workstation, CPU only, one
-> replica of each tier. No figure here is a capacity, a service-level objective, an
-> availability figure, or a benchmark, and none describes `kind`, Linux, macOS, a GPU,
-> another model, or another runtime version. The evidence levels `C0` to `C4` used
-> below are [InferOps Evidence Levels](../testing/evidence-levels.md): **project-defined,
+> **Every real serving result in this study is one provider, one host, one replica.**
+> Docker Desktop's Kubernetes (`docker-desktop`), one Windows workstation, CPU only,
+> one replica of each tier. The one `kind` result cited, the optional cluster helper's,
+> served no model and is a release blocker. No figure here is a capacity, a
+> service-level objective, an availability figure, or a benchmark, and none describes
+> serving on `kind`, Linux, macOS, a GPU, another model, or another runtime version.
+> The evidence levels `C0` to `C4` used below are [InferOps Evidence Levels](../testing/evidence-levels.md): **project-defined,
 > and not an ISO, NIST, regulatory, or industry certification standard.**
 
 ## 1. Why LLM serving needs a paved road
@@ -48,15 +51,16 @@ here, on this project's host, and none is offered as a survey of anybody else's.
 - **Memory accounting does not mean what it appears to.** The runtime memory-maps its
   weights, and two identical pods were observed reporting 2.167 GiB and 531 MiB for the
   same work, because the kernel charges mapped pages to whichever group faults them in
-  first. A limit sized from the smaller figure fails as silent eviction, not as an
-  error.
+  first. A limit sized from the smaller figure produces page eviction and silent
+  latency rather than an obvious failure.
 - **The signal an operator reaches for first can be wrong.** When the serving pod was
   deleted under load, the deleted pod went on reporting `Ready: True` for the whole
   outage while the Service had no ready endpoint, and scrape health said the job was up
   throughout.
 - **A figure is a property of its setup.** One single-slot runtime, one fixed prompt:
-  adding concurrent callers added waiting and no completed requests. Quoted without
-  that setup, the same figure is a capacity claim nobody measured.
+  adding concurrent callers added waiting and no completed requests beyond the
+  difference between two runs. Quoted without that setup, the same figure is a
+  capacity claim nobody measured.
 - **A mock can pass every API test while nothing is served.** A mock is necessary for
   fast checks and worthless as evidence that a model answers, and the two are easy to
   confuse once both are green.
@@ -94,19 +98,23 @@ Three readers are served, and they want different things:
 
 V1 was bound by the host it had and by rules it set itself:
 
-- **One host.** A Windows workstation whose container virtual machine had 7.60 GiB of
-  memory, an AVX2 processor without AVX-512, and no discrete accelerator. The CPU path
-  was mandatory, and the host met the minimum tier and not the recommended one.
+- **One host.** A Windows workstation with an AVX2 processor without AVX-512 and no
+  discrete accelerator, whose container virtual machine had 7.60 GiB of memory when
+  the runtime and model were selected. The CPU path was mandatory, and the host met the
+  minimum tier and not the recommended one. The allocation was later raised to
+  9.716 GiB, after a cold model load at the smaller one repeatedly overran the startup
+  budget; the later runs this study quotes were made at the larger allocation.
 - **No paid API and no account.** The serving path had to use an openly licensed model
   and a runtime anyone can fetch anonymously.
 - **The cluster is the operator's.** InferOps may not create, reset, or delete a
   cluster, so it consumes one the operator already has, selected explicitly.
 - **Nothing is published without its evidence.** Every capability claim is a row in a
   register with the limitation that travels with it, a certified one is bound to the
-  executed records behind it, and the pages a reader meets are derived from that
+  evidence records behind it, and the pages a reader meets are derived from that
   register or checked against it.
 
 **Evidence.** [ADR 0002's context](../architecture/decisions/ADR-0002-model-and-serving-runtime.md#context),
+[the restart measurement that raised the allocation](../proof/serving/v1-s3-003-pr1-restart-reload.md),
 [ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md),
 and [the claim and evidence register](../testing/claim-evidence-matrix.md). Claims
 `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating`,
@@ -161,8 +169,11 @@ Three structural decisions carry most of the design:
   network hop and a failure mode — the API healthy while its runtime is unreachable —
   that therefore has to be a first-class error.
 - **Terraform owns what outlives a release; Helm owns the release.** The model cache
-  claim and the namespace are prerequisites, so a replaced pod reads the cached
-  artifact rather than repeating the download.
+  claim and the namespace are prerequisites, so that a replaced pod reads the cached
+  artifact rather than repeating the download. That is the design's intent; the run
+  that showed the artifact surviving a replacement,
+  `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim`, is a
+  release blocker, because nothing identifies the code it ran.
 
 **Evidence.** [The system architecture](../architecture/system-architecture.md),
 [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md),
@@ -187,8 +198,9 @@ and fetched again by digest, was not compared on anything else.
 
 - **Runtime: llama.cpp `llama-server`**, pinned by image digest. Its CPU path on AVX2
   is the designed path rather than a degraded one, it exposes health that reports
-  not-ready while loading, and it serves native metrics. vLLM's CPU backend was set
-  aside because its own documentation puts CPUs without AVX-512 on a limited path;
+  not-ready while loading, and it serves native metrics. vLLM's CPU backend was kept as
+  the recorded fallback rather than selected, because its own documentation puts CPUs
+  without AVX-512 on a limited path;
   Ollama because it exposes no metrics endpoint of its own; the archived Text
   Generation Inference project on maintenance status; serving platforms because they
   would add a second orchestration layer inside a cluster InferOps already
@@ -217,11 +229,14 @@ Claims `a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedur
 
 ## 5. Local and Kubernetes implementation
 
-**Locally**, one guarded workflow acquires the model at its pinned revision, verifies
-its hash, starts the digest-pinned runtime, starts a real-adapter API in front of it,
-sends one completion, asserts the real identity, and tears both down. Every step that
-touches the network, the container engine, or the model asks for consent by flag, and
-none falls back to a mock. In the clean-clone run the runtime became ready in
+**Locally**, model acquisition fetches the weights at the pinned revision and refuses
+to promote bytes whose SHA-256 does not match. A separate certification workflow, run
+with `--confirm-real-runtime`, then starts the digest-pinned runtime against the
+verified model, starts a real-adapter API in front of it, sends one completion,
+asserts the real identity, and tears both down. It pulls nothing implicitly, and
+nothing in it falls back to a mock. Consent flags do not cover everything a run
+reaches, though: the clean-clone run found that the package index, the base-image
+registries, and the Terraform registry are fetched from without one. In the clean-clone run the runtime became ready in
 183 015 ms and the completion returned in 3 641 ms with 43 tokens. That readiness
 margin is thin on this host: on the same day an earlier attempt failed that step twice,
 and its record infers, without having observed it, that the budget was spent.
@@ -241,12 +256,12 @@ the operator's cluster survived — and keeps a ledger of every step. It complet
 attempt: the first two stopped on five defects of the repository, each fixed before
 the next attempt ran. No second engineer has repeated it.
 
-Two of the Kubernetes lifecycle claims are **release blockers** today: the Helm
-uninstall's clause that the operator's cluster, node, and storage class survive, and
-the upgrade-and-rollback experiment. Both executed and both were recorded, and in
-neither does the record identify the repository code that ran. The same holds for the
-optional `kind` helper and for the pod-replacement run that showed the model artifact
-surviving on the Terraform-owned claim.
+Three of the Kubernetes lifecycle claims are **release blockers** today: the Helm
+uninstall's clause that the operator's cluster, node, and storage class survive, the
+upgrade-and-rollback experiment, and the pod-replacement run that showed the model
+artifact surviving on the Terraform-owned claim. Each executed and was recorded, and
+in none does the record identify the repository code that ran. The same holds for the
+optional `kind` helper.
 
 **Evidence.** [Real-runtime certification](../proof/serving/v1-s2-004-c2-certification-result.md),
 [the Docker Desktop paved road](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md),
@@ -265,12 +280,14 @@ and [the clean-clone run](../proof/environment/v1-s5-001-pr2-clean-clone-run.md)
 
 The rule the project holds itself to is that **the strength of a claim must not exceed
 the evidence supporting it.** Each public claim is one row in
-[the claim and evidence register](../testing/claim-evidence-matrix.md), and every row
-has the same chain: a statement; the implementation that makes it true; the tests that
-would fail if it stopped being true; the continuous-integration gates that run them;
-one or more evidence records, each at its own level, naming what executed, what was
-substituted, the workload, and where it ran; and the limitation and the boundary of
-what it does not establish. The README's entry points must each be governed by a row,
+[the claim and evidence register](../testing/claim-evidence-matrix.md). Every row has a
+statement, a status, a limitation, and the boundary of what it does not establish. A
+certified row is also bound to one or more evidence records, each at its own level,
+naming what executed, what was substituted, the workload, and where it ran, and most
+rows name the implementation that makes the statement true, the tests that would fail
+if it stopped being true, and the continuous-integration gates that run them. A
+planned, deferred, or not-claimed row need hold no record at all. Each of the README's
+entry points must be governed by a row or listed as a surface that claims nothing,
 [the proof dashboard](../proof/dashboard.md) is generated from the register, and a test
 refuses either if it disagrees.
 
@@ -291,12 +308,12 @@ there is no production operation to observe.
 
 **The pack is not frozen.** The completeness check that stands before a freeze read how
 every executed record identifies the code that ran. 16 of the 34 executed records name
-the revision that ran. Where a certified statement rests on a record that identifies its
-code by nothing better than a branch name, a chart version label, or a revision dated
-after the run, and no other record supports it, the claim is a
-release blocker, and there are 5 release blockers. Each names the run that would close
-it and the status decision that could replace the run. None of the five has been
-closed.
+the revision that ran. Where a certified statement rests on a record that names no
+revision, or only a branch, a chart version label, or a revision dated after the run,
+and no other record supports it, the claim is a release blocker, and there are 5
+release blockers. Each names the run that would close it and the decision that could
+replace the run — a status decision, or for one of them a narrower statement. None of
+the five has been closed.
 
 **Evidence.** [InferOps Evidence Levels](../testing/evidence-levels.md),
 [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md),
@@ -310,7 +327,8 @@ Claims `published-documents-link-only-to-things-that-exist`,
 ## 7. Experiments and what they found
 
 Four experiments were run against a real release on `docker-desktop`, each once or
-twice, each from a descriptor registered before it ran. Every figure is published under
+twice: the first three from a descriptor registered before they ran, the clean-clone
+run from its committed checklist. Every figure is published under
 [ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md),
 which allows a bounded observation of one declared experiment to be published with its
 setup named, and refuses capacity, service-level objectives, availability figures,
@@ -320,7 +338,7 @@ benchmarks, and any reading of one provider's figures as another's.
 
 The committed load profile — a three-request warm-up, then 60 requests each at
 concurrency 1, 2, and 4, closed loop, one fixed prompt of 35 input tokens — ran twice
-against one single-replica release whose runtime had one parallel slot and a six-core
+against one single-replica release whose runtime had one parallel slot and a 6-CPU
 limit. All 360 measured requests answered `HTTP 200`, and so did the warm-ups. Completed requests stayed
 between 0.554 and 0.575 per second at every level, while median latency rose about
 twofold and fourfold. **For that setup, the observed degradation point is concurrency
@@ -333,7 +351,8 @@ processor limit, averaged over each measured phase, at every level, the baseline
 included. Whether the single slot or the
 processor bound the rate was not tested, and processor throttling was not sampled. The
 prompt-token totals are consistent with nearly every request reusing a cached prompt,
-so every service time here is for a prompt the runtime had almost entirely seen.
+though that split is inferred from totals rather than observed per request; if it
+holds, every service time here is for a prompt the runtime had almost entirely seen.
 
 One finding is about observation rather than serving: the dashboard's latency and rate
 panels, read at a phase's end, are **not** that phase's figures, because they take a
@@ -347,9 +366,16 @@ replacement reported itself Ready 33 665 ms after the delete. Callers saw a 31 9
 outage in which 40 of the 41 requests dispatched were refused — fast, between 20 ms and
 83 ms each, with `503` `capability-unavailable`, because the API refuses immediately
 once the Service has no ready endpoint. The one request already in flight when the pod
-went was a different shape: it hung and came back `500`. Nothing in the workflow
-intervened between the delete and its closing uninstall; the replica set and the
-endpoint slice did all of the recovering.
+went was a different shape: it hung and came back `500`. The Deployment controller did
+the recovering: the workflow issued no mutating command between the delete and its
+closing uninstall, which establishes that nothing in the workflow intervened and not
+that nothing outside it did.
+
+The clean-clone run executed the same experiment again two days later, and its figures
+differ a great deal: the replacement was Ready 12 042 ms after the delete, one request
+was refused, and the caller-visible outage was 2 832 ms. The first execution remains
+the certifying record for its claim. Two executions are not a distribution, and
+neither record lets its figures be compared with anything.
 
 The finding that matters most is the disagreement already quoted in section 1: pod
 readiness reported a healthy replica for the whole outage. The signal that tracked what
@@ -378,8 +404,8 @@ the claim that an unready model produces a canonical error of its own stays
 
 Described in [section 5](#5-local-and-kubernetes-implementation). Its most useful
 output was not its duration but its five defects: a test suite inheriting the
-operator's provider selection, a certification that called a spent readiness budget
-"unexpected", a test writing a diagnostics record into the checkout, a residue check
+operator's provider selection, a certification that reported its failure only as
+"unexpected", naming no stage or reason, a test writing a diagnostics record into the checkout, a residue check
 asked once instead of within a bound, and three network sources the consent flags did
 not name. None was a host problem.
 
@@ -402,8 +428,9 @@ provider error body, and a secret no permitted placement at all. A release-scope
 Prometheus collector scraped both InferOps jobs on `docker-desktop`. A real Prometheus
 evaluated all 30 panel expressions of the operations dashboard in nine controlled
 states, and a real Grafana rendered all 29 panels. Six alerts are published, each with
-an owner, a severity, an evidence query, and a runbook section; five were replayed over
-the telemetry three real experiments recorded, and one fired.
+an owner, a severity, an evidence query, and a runbook section; five were replayed, by
+the repository's own evaluator rather than by a Prometheus, over the telemetry three
+real experiments recorded, and in that replay one fired.
 
 What the experiments added is a list of what the signals **cannot** do. Scrape health
 stayed up through an outage. Pod readiness lied about a deleted pod. A dashboard panel
@@ -435,13 +462,13 @@ recomputed from its own inputs rather than read from a field.
 
 The method was applied to use taken, by a tool, from the committed samples of the load
 experiment, and priced at a rate card that is **synthetic** by name, so every record
-carries confidence `none`. Three findings survive the invented prices because they are
-about measured use:
+carries confidence `none`, and no share or amount of those invented prices is quoted
+here. Two findings survive them, because they are about measured use rather than
+price:
 
-- processor time is 98.9% of each amount, because the runtime ran at its limit;
 - the request path was measured using about 5.4 times the processor time it reserved,
-  and the estimate prices the time used rather than the time reserved, while most of
-  the memory reservation sat idle;
+  because the runtime ran at its limit, and the estimate prices the time used rather
+  than the time reserved, while most of the memory reservation sat idle;
 - the method declined to publish a cost per million tokens, because the run produced
   fewer tokens than its declared minimum sample.
 
@@ -482,17 +509,17 @@ Claims `a-security-control-cannot-claim-enforcement-it-does-not-have`,
 
 ## 11. Trade-offs and the alternatives not taken
 
-| Decision | Selected | Alternative not taken | What the selection costs |
+| Decision | Selected | Alternative, not taken or superseded | What the selection costs |
 |---|---|---|---|
 | Serving runtime | llama.cpp `llama-server`, digest-pinned | vLLM on CPU; Ollama; a serving platform | A blocking threshold failed and argued past: the runtime counts no requests, so the platform must |
 | Model | Qwen3-1.7B, publisher's `Q8_0` | A smaller community quantisation; 0.6B | More disk and slower decode for first-party provenance and an informative model size |
 | Runtime placement | Its own Deployment and Service | A sidecar in the API pod | A network hop, and an API that can be healthy while its runtime is unreachable |
-| Cluster ownership | The operator's, verified before mutation | InferOps creating and deleting a `kind` cluster | No control of the cluster's version or its other tenants, recorded as limitations |
+| Cluster ownership | The operator's, verified before mutation | InferOps creating and deleting a `kind` cluster, the superseded design | No control of the cluster's version or its other tenants, recorded as limitations |
 | Lifecycle split | Terraform for prerequisites, Helm for the release | One tool for both | Two tools to operate, and a boundary the ownership inventory has to check |
 | Performance publication | Bounded observations of one declared setup | Publishing nothing; publishing capacity | Every figure must carry its setup, and nothing can check prose for portability |
 | Cost | A method, applied at a synthetic rate card | A provider rate card | No real price anywhere in V1 |
-| Evidence strength | A level per record, status per claim, a gate before a freeze | One level per claim | More data per claim, and a release blocked until five claims' code is identified |
-| Continuous integration | One default lane, no cluster and no model | A lane that installs a release or loads a model | Nothing in continuous integration exercises real serving |
+| Evidence strength | A level per record, status per claim, a gate before a freeze | One level per claim, the superseded design | More data per claim, and a release blocked until five claims' code is identified |
+| Continuous integration | One default lane, no cluster and no model | A lane that installs a release or loads a model: its rules are published, no workflow is committed, and which runner could run it is undecided | Nothing in continuous integration exercises real serving |
 
 **Evidence.** [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md),
 [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md),
@@ -510,7 +537,7 @@ Claims `eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-de
 Every claim the register does not certify is listed here, because an absence somebody
 measured is worth more than one nobody mentions.
 
-- **Planned, and proven by nothing:** a workload the contract describes is served; deployment
+- **Planned, and bound to no evidence record:** a workload the contract describes is served; deployment
   values derive only from a validated document; the mock path identifies itself and
   refuses a model identity that is not mock-labelled; an unready model and an
   unreachable runtime each produce a canonical error of their own; redaction holds in

@@ -33,8 +33,8 @@ or as evidence for any claim.
 | File | Change |
 |---|---|
 | `docs/case-study/v1-engineering-case-study.md` | New. The draft, in thirteen sections and a claims appendix |
-| `docs/case-study/v1-engineering-case-study.v1alpha1.json` | New. The claims each section cites, and the source of each of the 22 quoted figures |
-| `tests/testing/test_case_study.py` | New. 131 tests over the draft, its data file, the register, the evidence index, the completeness ledger, and the quoted records |
+| `docs/case-study/v1-engineering-case-study.v1alpha1.json` | New. The claims each section cites, and the source of each of the 24 declared figures |
+| `tests/testing/test_case_study.py` | New. 135 tests over the draft, its data file, the register, the evidence index, the completeness ledger, and the quoted records |
 | `docs/testing/test-inventory.v1alpha1.json`, `docs/testing/test-inventory.md`, `tests/testing/test_test_inventory.py` | The new module registered in the `documentation` layer, which now holds forty-one modules, and in the list of modules that defend no claim, which now holds forty-three |
 | `tests/testing/test_evidence_completeness.py` | One test repaired, because it failed on `main` before this change; see [a failure on `main` this change repairs](#a-failure-on-main-this-change-repairs) |
 | `docs/proof/README.md` | A `Case study` row indexing this record |
@@ -64,7 +64,7 @@ record.
 7. **Experiments and what they found** — declared load, pod loss, the unready model, and
    the clean-clone run.
 8. **Telemetry** — what the signals showed, and the list of what they cannot.
-9. **Cost** — the method, the synthetic rate card, and the three findings about
+9. **Cost** — the method, the synthetic rate card, and the two findings about
    measured use that survive invented prices.
 10. **The security boundary** — what is not defended, and the narrower things that are
     enforced.
@@ -75,11 +75,13 @@ record.
 
 ## Evidence used
 
-Every figure is read from one of ten committed files, and the data file names which:
-eleven by JSON pointer from the local certification result, the performance findings,
-the pod-recovery record, and the unready-model record; eleven verbatim from the
-clean-clone run, the performance findings, the pod-recovery record, the cost baseline,
-the feasibility record, and ADR 0002.
+Every duration, percentage, and memory size is read from one of twelve committed
+files, and the data file names which: thirteen by JSON pointer from the local
+certification result, the performance findings, both pod-recovery records, and the
+unready-model record; eleven verbatim from the clean-clone run, the performance
+findings, the pod-recovery record, the cost baseline, the feasibility record, the
+restart record, and ADR 0002. Other numbers on the page are quoted from the records
+cited beside them and are checked by review only.
 
 The draft cites 55 of the register's 59 claims: 38 certified, 7 planned, 1 deferred, and
 9 not claimed, including all five release blockers. Four certified claims are not cited,
@@ -108,14 +110,14 @@ These are what the final version needs and this draft could not supply:
 
 ## Claims and statements needing final verification
 
-- **The five blocked claims**, cited in sections 5 and 12: the local serving baseline,
+- **The five blocked claims**, all cited in section 12, and all but the local serving baseline in section 5; the pod replacement in section 3 as well: the local serving baseline,
   the `kind` helper, the Helm uninstall's survival clause, the upgrade and rollback, and
   the pod replacement. The draft quotes no figure from any of them.
 - **Paraphrases of records.** Every figure reads back, but the sentences around them are
   readings. The ones most worth a second reading: the attribution of the degradation
   point in section 7, which the record says is correlated and not established; the
   explanation of why no caller met `model-not-ready`, in section 7; and the cost
-  findings in section 9, whose third point restates a record's refusal rather than a
+  findings in section 9, whose second point restates a record's refusal rather than a
   figure.
 - **Two figures anchored to a decision record rather than a proof record**: the
   1.71 GiB model size and the 7.60 GiB container memory, both read from ADR 0002. The
@@ -201,13 +203,79 @@ On 2026-09-25, on one Windows host, before the first commit:
 | `ruff format --check .` | 505 files already formatted |
 | `ruff check .` | All checks passed |
 | `python -m mypy` | No issues in 275 source files |
-| `pytest tests/testing/test_case_study.py -q` | 131 passed |
+| `pytest tests/testing/test_case_study.py -q` | 131 passed; 135 after the review's fixes |
 | `pytest tests/testing tests/security -q` | 7340 passed |
 | `pytest -q`, the default lane | 14954 passed, 33 skipped, 14 deselected, in 23 min 2 s |
 | `python -m tools.evidence_index --gate` | `INCOMPLETE V1-S5-006: 5 release blockers`, exit 1, as intended |
 | `git diff --cached --check` | Clean |
 
 The Helm and Terraform gates were not run: nothing under `charts/` or `infra/` changed.
+
+After the review's fixes, before the second commit: formatting, lint, and types clean
+again; the case-study suite 135 passed; the default lane 14958 passed, 33 skipped, 14
+deselected, the four added tests being the two new figures' read-back and claim checks.
+
+## What the independent review found
+
+Two reviewers read the first commit independently: one fact-checked every sentence of
+the draft against the records it cites, and one reviewed the tests and the bookkeeping.
+Every finding below was verified against the files and fixed in the second commit.
+Nothing was dismissed.
+
+**The first draft's test was weaker than its own description.** It was described as
+refusing any duration, percentage, or memory size without a declared source, and it
+compared numbers as substrings of the declared figures, so a stray `5 ms` passed
+because some declared figure contained the digit 5. The reviewer demonstrated it with
+exactly that sentence. Numbers are now compared as whole tokens, and the same sentence
+now fails the test. The reviewer also noted that splitting sections on `## ` would split
+inside a fenced diagram, which the split now ignores, and that a renamed file named by
+the completeness repair would raise a bare `KeyError`, which is now an assertion with a
+message.
+
+**The first draft said more than its records in five places:**
+
+1. It presented a 98.9% processor share of each amount as a finding that "survives the
+   invented prices". It does not: it is a share of synthetic amounts, and the ratio
+   depends on the synthetic card. It is removed, and the cost section now quotes no
+   share or amount of those prices.
+2. It described one local workflow that acquires the model and certifies it, with
+   every network, engine, and model step asking for consent. Acquisition and
+   certification are separate, the certification downloads nothing, and the
+   clean-clone run found three network sources no consent flag names. Corrected.
+3. It gave the container virtual machine as 7.60 GiB. That was the allocation at
+   selection; it was raised to 9.716 GiB after a cold model load repeatedly overran the
+   startup budget, and the later runs quoted were made at the larger allocation.
+   Corrected, with the restart record cited.
+4. It said every figure was declared and read back. Only durations, percentages, and
+   memory sizes are; thresholds, panels, alerts, risks, and request counts are checked
+   by review only. The page, the data file, and the changelog now say so.
+5. It said every register row carries implementation, tests, gates, and evidence
+   records. Fourteen rows hold no record, and several name no test or gate. Corrected.
+
+**Ten more were misleading or imprecise**, and each is corrected: the banner excluded
+`kind` while the draft cites the `kind` helper's record; a cached-prompt reading the
+record states conditionally was stated as fact; recovery was attributed more strongly
+than the record allows; the second execution of the pod-loss experiment, in the
+clean-clone run, with a 2 832 ms outage against the first's 31 960 ms, was left out;
+the alert that fired did so in the repository's own evaluator, not in a Prometheus;
+the model cache paragraph leaned on a release blocker without naming it; vLLM was the
+recorded fallback, not a rejected candidate; the continuous-integration lane that
+installs a release is undecided rather than rejected, and two table rows were
+superseded designs rather than alternatives; planned claims were called "proven by
+nothing" when some have partial evidence that binds to no record; and two sentences
+said "executed records" and "each entry point is governed by a row" where the register
+is narrower.
+
+**Seven were wording**, each corrected: the blocker rule, the count of Kubernetes
+lifecycle blockers (three, not two), a dropped "beyond the difference between two
+runs", "silent eviction" for the record's "page eviction and silent latency", "six-core"
+for "6-CPU", an inferred readiness cause stated as fact, and this record naming the
+sections that cite the blockers wrongly.
+
+What the reviewers confirmed rather than corrected: every count the page states, all
+55 appendix rows, the figure split, the inventory counts, the test-inventory
+bookkeeping, the completeness repair's correctness in a shallow clone, and the absence
+of private information in the diff.
 
 ## Privacy and publicability
 

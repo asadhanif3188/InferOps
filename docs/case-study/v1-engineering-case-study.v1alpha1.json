@@ -39,6 +39,7 @@
       "sectionId": "architecture",
       "heading": "3. The architecture and the self-service contract",
       "claims": [
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
         "the-workload-contract-and-its-rejection-matrix-are-published",
         "an-invalid-workload-document-is-refused-with-a-published-reason",
         "the-workload-domain-parses-a-contract-document-into-typed-objects",
@@ -246,6 +247,14 @@
       "claimId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure"
     },
     {
+      "figureId": "container-vm-memory-raised",
+      "quoted": "9.716 GiB",
+      "sourceRef": "docs/proof/serving/v1-s3-003-pr1-restart-reload.md",
+      "verbatim": true,
+      "claimId": null,
+      "noClaimReason": "A fact about the host rather than about a capability: no claim in the register cites the restart record it comes from."
+    },
+    {
       "figureId": "clean-clone-steps",
       "quoted": "18 steps",
       "sourceRef": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
@@ -331,6 +340,28 @@
       "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
     },
     {
+      "figureId": "second-run-replacement-ready",
+      "quoted": "12 042 ms",
+      "sourceRef": "docs/proof/environment/v1-s5-001-pr2-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/timings/deletionToReplacementReadyMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+    },
+    {
+      "figureId": "second-run-caller-visible-outage",
+      "quoted": "2 832 ms",
+      "sourceRef": "docs/proof/environment/v1-s5-001-pr2-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/timings/callerVisibleOutageMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+    },
+    {
       "figureId": "unready-window",
       "quoted": "179 755 ms",
       "sourceRef": "docs/proof/serving/v1-s4-007-pr1-unready-model-record.v1alpha1.json",
@@ -364,13 +395,6 @@
       "claimId": "an-unready-model-was-held-unready-and-recovered-by-an-operator"
     },
     {
-      "figureId": "processor-share-of-amount",
-      "quoted": "98.9%",
-      "sourceRef": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
-      "verbatim": true,
-      "claimId": "the-cost-method-was-applied-to-use-taken-from-a-measured-run"
-    },
-    {
       "figureId": "use-over-reservation",
       "quoted": "about 5.4 times",
       "sourceRef": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
@@ -379,6 +403,7 @@
     }
   ],
   "limitations": [
+    "Only durations, percentages, and memory sizes are declared here. Other numbers on the page -- thresholds, panels, alerts, risks, requests -- are quoted from the records cited beside them and checked by review only.",
     "A figure that reads back from its source is quoted correctly; whether the sentence around it says what the record says is a reading, and no test performs one.",
     "A verbatim figure is checked only for being present in the file it names, not for being attached there to the same subject.",
     "The claims appendix is derived from the register and the completeness ledger, so it cannot disagree with them; the prose of each section can, and review is the only check on it.",
