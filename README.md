@@ -82,6 +82,13 @@ index of what has and has not been proven.
 
 ## Architecture
 
+[![InferOps V1 architecture: workload contract validation, platform domain, manually prepared release values, serving path, and proof register](docs/architecture/inferops-v1-architecture.png)](docs/architecture/inferops-v1-architecture.png)
+
+*Select the diagram to view it at full size. Deployment rendering is unbuilt; release values are written by hand.*
+
+<details>
+<summary>View the text architecture diagram</summary>
+
 ```text
   workload owner (an application team)                      reviewer
        |                                                        |
@@ -121,6 +128,8 @@ index of what has and has not been proven.
       the cluster is the operator's: docker-desktop or kind, selected
       explicitly, verified before anything is mutated, and never created
 ```
+
+</details>
 
 Three decisions shape it:
 
