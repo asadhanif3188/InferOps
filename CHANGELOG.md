@@ -10,6 +10,26 @@ once versioned releases begin.
 
 ### Added
 
+- **A draft V1 engineering case study, not published.** `V1-S5-007-PR1` wrote
+  [the case study](docs/case-study/v1-engineering-case-study.md) from the problem and
+  the constraints through the architecture, the runtime and model decision, the local
+  and Kubernetes implementation, how a claim becomes publishable, the four
+  experiments, telemetry, cost, the security boundary, the trade-offs, what V1 does not
+  prove, and what evidence would justify a second version. It is a **draft**: nothing
+  links to it from the README, and it was written against an evidence pack the release
+  gate still holds **not frozen**, with the five release blockers named where it leans
+  on them. [Its data file](docs/case-study/v1-engineering-case-study.v1alpha1.json)
+  declares the claims each section cites and the committed file and field or sentence
+  each of its 22 quoted figures is read from, and
+  [`tests/testing/test_case_study.py`](tests/testing/test_case_study.py) reads every
+  figure back, derives its claims appendix from the register and the completeness
+  ledger, requires its section on what V1 does not prove to cite every uncertified
+  claim and every blocker, refuses a measurement with no declared source or any amount
+  from a cost result, and holds it a draft while the gate is incomplete. It certifies
+  nothing and moves no status or level. [The validation record](docs/proof/case-study/v1-s5-007-pr1-validation.md)
+  lists the evidence used, the inputs still missing, and the claims needing final
+  verification before it can be published.
+
 - **A release gate for the V1 evidence, and it is not passed.** `V1-S5-006-PR2` checked
   the normalized evidence for a freeze. [The completeness ledger](docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json)
   gives all 21 findings the normalization answered, and 6 of its own, exactly one final
@@ -132,6 +152,14 @@ once versioned releases begin.
   does not establish, under the section headings every existing record already carries.
 
 ### Fixed
+
+- **A completeness test that failed on `main` for a dated record's sentence.** After
+  the architecture image was committed, `tests/testing/test_evidence_completeness.py`
+  required [the V1-S5-006-PR2 report](docs/proof/testing/v1-s5-006-pr2-evidence-completeness.md)
+  to name the largest object in the current tree rather than in the tree it describes,
+  and failed. `V1-S5-007-PR1` checks the named file's committed size on `HEAD` and,
+  where history exists, that it was the largest object at the report's commit. The
+  absence of a model artifact is still checked on `HEAD`, and the report is unchanged.
 
 - [The evidence-record model](docs/testing/evidence-record-model.md) said the proof
   dashboard still reads `v1alpha1` and nothing committed derives a claim's levels, and

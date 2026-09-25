@@ -79,6 +79,7 @@ identifies, and holds each as a release blocker with the run that would close it
 | Toolchain | [`v1-s0-011-pr1-validation.md`](toolchain/v1-s0-011-pr1-validation.md) |
 | Scaffolding | [`v1-s1-006-pr1-validation.md`](scaffolding/v1-s1-006-pr1-validation.md), [`v1-s1-006-pr2-validation.md`](scaffolding/v1-s1-006-pr2-validation.md), and the [independent clean-checkout walkthrough](scaffolding/v1-s1-006-independent-walkthrough.md) |
 | Developer quick start | [`v1-s1-009-pr1-validation.md`](quickstart/v1-s1-009-pr1-validation.md) |
+| Case study | [the validation of the draft V1 engineering case study](case-study/v1-s5-007-pr1-validation.md), a draft that is not published and was written against an evidence pack that is not frozen |
 
 ## Templates
 

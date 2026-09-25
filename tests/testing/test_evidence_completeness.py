@@ -668,13 +668,14 @@ def test_the_completeness_report_states_what_the_ledger_produces() -> None:
 MODEL_SUFFIXES = (".gguf", ".safetensors", ".bin", ".pt", ".pth", ".onnx", ".ckpt")
 
 
-def test_the_report_states_the_largest_committed_object_and_no_model_artifact() -> None:
-    """A size is the committed object's, not a checkout's.
+#: The file the report names as the largest tracked one when it was written.
+LARGEST_AT_REPORT = (
+    "docs/proof/security/sbom/v1-s2-006-pr1-runtime-image.cyclonedx.json"
+)
 
-    The first commit of this change quoted the largest file's size in a Windows
-    checkout, with CRLF line endings, which an independent review caught.
-    """
-    listed = _git("ls-tree", "-r", "-l", "HEAD")
+
+def _object_sizes(revision: str) -> list[tuple[int, str]]:
+    listed = _git("ls-tree", "-r", "-l", revision)
     if listed is None:
         pytest.skip("git is not available to read the committed tree")
     sizes = []
@@ -683,12 +684,42 @@ def test_the_report_states_the_largest_committed_object_and_no_model_artifact() 
         size = meta.split()[3]
         if size != "-":
             sizes.append((int(size), path))
-    assert not [p for _, p in sizes if p.lower().endswith(MODEL_SUFFIXES)]
-    largest, _ = max(sizes)
-    stated = f"{largest:,}".replace(",", " ")
+    return sizes
+
+
+def test_the_report_states_the_largest_committed_object_and_no_model_artifact() -> None:
+    """A size is the committed object's, not a checkout's.
+
+    The first commit of this change quoted the largest file's size in a Windows
+    checkout, with CRLF line endings, which an independent review caught.
+
+    The report is a dated record: "the largest tracked file" is a statement about the
+    tree it was published in, not about every later tree. This test first read the
+    size from `HEAD`, so it failed on `main` the moment a larger file was committed
+    after it (the architecture image, in `4fd96a4`), without the report having become
+    any less true. `V1-S5-007-PR1` moved it to the commit that last changed the
+    report, and kept the absence of a model artifact on `HEAD`, where it belongs.
+    The named file's committed size is checked on `HEAD` as well, which needs no
+    history, because the default lane's checkout is shallow.
+    """
+    assert not [
+        p for _, p in _object_sizes("HEAD") if p.lower().endswith(MODEL_SUFFIXES)
+    ]
     report = normalised(REPORT_PATH.read_text(encoding="utf-8"))
-    assert f"committed object is {stated} bytes" in report, stated
     assert "No model artifact is tracked" in report
+    named = {path: size for size, path in _object_sizes("HEAD")}[LARGEST_AT_REPORT]
+    stated = f"{named:,}".replace(",", " ")
+    assert f"committed object is {stated} bytes" in report, stated
+
+    shallow = _git("rev-parse", "--is-shallow-repository")
+    if shallow is None or shallow.strip() != "false":
+        return
+    relative = REPORT_PATH.relative_to(REPO_ROOT).as_posix()
+    published = _git("log", "-1", "--format=%H", "--", relative)
+    assert published, f"no commit carries {relative}"
+    largest, path = max(_object_sizes(published.strip()))
+    assert path == LARGEST_AT_REPORT, (path, largest)
+    assert largest == named
 
 
 def test_the_ledgers_and_the_run_record_name_no_private_path() -> None:

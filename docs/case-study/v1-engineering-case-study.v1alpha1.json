@@ -1,0 +1,387 @@
+{
+  "$id": "https://inferops.io/case-study/v1-engineering-case-study.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "The InferOps V1 engineering case study, as the data a test holds it to",
+  "description": "Which claims each section of the draft case study cites, and the committed file and field or sentence every quoted figure is read from. The page states no status, level, or blocker of its own: its claims appendix is derived from the register and the completeness ledger by tests/testing/test_case_study.py, which also reads every figure below back from its source.",
+  "status": "draft",
+  "documentRef": "docs/case-study/v1-engineering-case-study.md",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "completenessRef": "docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json",
+  "validationRef": "docs/proof/case-study/v1-s5-007-pr1-validation.md",
+  "renders": {
+    "grouped": "An integer written with a space between each group of three digits, as the records write milliseconds.",
+    "thousandths": "An integer count of thousandths written as a decimal with three places.",
+    "percent-one-place": "A fraction written as a percentage with one decimal place, rounded half up."
+  },
+  "sections": [
+    {
+      "sectionId": "problem",
+      "heading": "1. Why LLM serving needs a paved road",
+      "claims": [
+        "the-model-artifact-matches-its-published-hash",
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+        "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+        "a-mock-result-can-never-certify-real-runtime-behaviour"
+      ]
+    },
+    {
+      "sectionId": "stakeholders-and-constraints",
+      "heading": "2. Who it is for, and what bound it",
+      "claims": [
+        "inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating",
+        "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure"
+      ]
+    },
+    {
+      "sectionId": "architecture",
+      "heading": "3. The architecture and the self-service contract",
+      "claims": [
+        "the-workload-contract-and-its-rejection-matrix-are-published",
+        "an-invalid-workload-document-is-refused-with-a-published-reason",
+        "the-workload-domain-parses-a-contract-document-into-typed-objects",
+        "a-workload-scaffold-is-generated-without-overwriting-anything",
+        "the-inference-api-serves-five-routes-with-explicit-adapter-selection",
+        "no-resource-in-the-architecture-has-two-owners",
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document"
+      ]
+    },
+    {
+      "sectionId": "runtime-and-model",
+      "heading": "4. Choosing a runtime and a model",
+      "claims": [
+        "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure",
+        "the-model-artifact-matches-its-published-hash"
+      ]
+    },
+    {
+      "sectionId": "implementation",
+      "heading": "5. Local and Kubernetes implementation",
+      "claims": [
+        "the-selected-model-serves-a-real-completion-through-the-inferops-api",
+        "inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating",
+        "the-selected-runtime-serves-a-real-completion-in-a-cluster",
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+        "a-helm-release-installs-and-uninstalls-without-residue",
+        "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+        "a-local-cluster-is-created-and-removed-without-residue",
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim"
+      ]
+    },
+    {
+      "sectionId": "publishing-a-claim",
+      "heading": "6. How a claim becomes publishable",
+      "claims": [
+        "published-documents-link-only-to-things-that-exist",
+        "the-published-strategy-and-its-data-cannot-drift-apart",
+        "a-mock-result-can-never-certify-real-runtime-behaviour",
+        "every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary"
+      ]
+    },
+    {
+      "sectionId": "experiments",
+      "heading": "7. Experiments and what they found",
+      "claims": [
+        "repeatable-llm-load-can-be-generated-from-a-versioned-profile",
+        "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+        "a-model-that-is-not-ready-is-a-canonical-error"
+      ]
+    },
+    {
+      "sectionId": "telemetry",
+      "heading": "8. Telemetry: what the signals did and did not show",
+      "claims": [
+        "the-api-emits-catalog-metrics-and-structured-request-records",
+        "the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label",
+        "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+        "the-inference-operations-dashboard-was-asked-of-a-real-prometheus-and-rendered",
+        "six-v1-alerts-carry-an-owner-a-severity-an-evidence-query-and-a-runbook-link",
+        "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded",
+        "a-v1-operator-runbook-covers-every-incident-class-and-every-alert-links-into-it",
+        "an-alert-reaches-somebody"
+      ]
+    },
+    {
+      "sectionId": "cost",
+      "heading": "9. Cost: a method, not a price",
+      "claims": [
+        "a-cost-figure-cannot-be-presented-as-a-bill",
+        "the-cost-method-was-applied-to-use-taken-from-a-measured-run",
+        "what-running-an-inference-workload-costs-on-a-provider"
+      ]
+    },
+    {
+      "sectionId": "security",
+      "heading": "10. The security boundary",
+      "claims": [
+        "a-security-control-cannot-claim-enforcement-it-does-not-have",
+        "a-workload-manifest-that-omits-a-required-security-control-is-refused",
+        "the-pinned-image-and-the-locked-dependencies-were-scanned-and-a-bill-of-materials-published",
+        "the-rendered-network-policy-is-enforced-by-the-cluster",
+        "a-deployed-inferops-workload-is-defended",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric"
+      ]
+    },
+    {
+      "sectionId": "trade-offs",
+      "heading": "11. Trade-offs and the alternatives not taken",
+      "claims": [
+        "eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-defend",
+        "the-default-lane-cannot-execute-a-real-model",
+        "a-cluster-or-real-runtime-lane-runs-in-continuous-integration"
+      ]
+    },
+    {
+      "sectionId": "not-proven",
+      "heading": "12. What V1 does not prove",
+      "claims": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document",
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "a-model-that-is-not-ready-is-a-canonical-error",
+        "an-unreachable-runtime-is-a-canonical-error",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric",
+        "no-credential-or-model-artifact-enters-public-history",
+        "sustained-throughput-and-capacity-under-load",
+        "multi-replica-serving-is-certified",
+        "an-alert-reaches-somebody",
+        "the-rendered-network-policy-is-enforced-by-the-cluster",
+        "a-deployed-inferops-workload-is-defended",
+        "a-cluster-or-real-runtime-lane-runs-in-continuous-integration",
+        "a-v1-release-has-been-published",
+        "inferops-is-a-portable-production-platform",
+        "what-running-an-inference-workload-costs-on-a-provider",
+        "every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary",
+        "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+        "a-local-cluster-is-created-and-removed-without-residue",
+        "a-helm-release-installs-and-uninstalls-without-residue",
+        "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+        "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim"
+      ]
+    },
+    {
+      "sectionId": "second-version-evidence",
+      "heading": "13. What evidence would justify a second version",
+      "claims": [
+        "multi-replica-serving-is-certified",
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document",
+        "a-v1-release-has-been-published"
+      ]
+    }
+  ],
+  "figures": [
+    {
+      "figureId": "model-file-size",
+      "quoted": "1.71 GiB",
+      "sourceRef": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+      "verbatim": true,
+      "claimId": "the-model-artifact-matches-its-published-hash"
+    },
+    {
+      "figureId": "local-runtime-ready",
+      "quoted": "183 015 ms",
+      "sourceRef": "docs/proof/environment/v1-s5-001-pr2-c2-smoke.json",
+      "pointers": [
+        "/readiness/runtimeReadyMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+    },
+    {
+      "figureId": "local-readiness-budget",
+      "quoted": "300 000 ms",
+      "sourceRef": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+      "verbatim": true,
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+    },
+    {
+      "figureId": "local-completion-elapsed",
+      "quoted": "3 641 ms",
+      "sourceRef": "docs/proof/environment/v1-s5-001-pr2-c2-smoke.json",
+      "pointers": [
+        "/inference/elapsedMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+    },
+    {
+      "figureId": "local-completion-tokens",
+      "quoted": "43 tokens",
+      "sourceRef": "docs/proof/environment/v1-s5-001-pr2-c2-smoke.json",
+      "pointers": [
+        "/inference/totalTokens"
+      ],
+      "render": "grouped",
+      "template": "{} tokens",
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+    },
+    {
+      "figureId": "worst-case-memory-charge",
+      "quoted": "2.167 GiB",
+      "sourceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "verbatim": true,
+      "claimId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure"
+    },
+    {
+      "figureId": "private-memory",
+      "quoted": "531 MiB",
+      "sourceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
+      "verbatim": true,
+      "claimId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure"
+    },
+    {
+      "figureId": "container-vm-memory",
+      "quoted": "7.60 GiB",
+      "sourceRef": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+      "verbatim": true,
+      "claimId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure"
+    },
+    {
+      "figureId": "clean-clone-steps",
+      "quoted": "18 steps",
+      "sourceRef": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+      "verbatim": true,
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+    },
+    {
+      "figureId": "clean-clone-wall-clock",
+      "quoted": "1 h 30 min 32 s",
+      "sourceRef": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+      "verbatim": true,
+      "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+    },
+    {
+      "figureId": "measured-requests",
+      "quoted": "360 measured requests",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/acrossMeasuredPhases/requests"
+      ],
+      "render": "grouped",
+      "template": "{} measured requests",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "completed-rate-range",
+      "quoted": "between 0.554 and 0.575 per second",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/acrossMeasuredPhases/successfulRequestsPerSecondMilliRange/0",
+        "/acrossMeasuredPhases/successfulRequestsPerSecondMilliRange/1"
+      ],
+      "render": "thousandths",
+      "template": "between {} and {} per second",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "runtime-cpu-of-limit",
+      "quoted": "99.1–99.9%",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-performance-findings.md",
+      "verbatim": true,
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "replacement-ready",
+      "quoted": "33 665 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/timings/deletionToReplacementReadyMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "caller-visible-outage",
+      "quoted": "31 960 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/timings/callerVisibleOutageMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "outage-refusals",
+      "quoted": "40 of the 41 requests",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/callerImpact/windows/2/unsuccessful",
+        "/callerImpact/windows/2/dispatched"
+      ],
+      "render": "grouped",
+      "template": "{} of the {} requests",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "refusal-latency",
+      "quoted": "between 20 ms and 83 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+      "verbatim": true,
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "unready-window",
+      "quoted": "179 755 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-007-pr1-unready-model-record.v1alpha1.json",
+      "pointers": [
+        "/timings/unreadyWindowHeldMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "an-unready-model-was-held-unready-and-recovered-by-an-operator"
+    },
+    {
+      "figureId": "unready-share-of-budget",
+      "quoted": "30.0%",
+      "sourceRef": "docs/proof/serving/v1-s4-007-pr1-unready-model-record.v1alpha1.json",
+      "pointers": [
+        "/timings/unreadyWindowAsShareOfStartupBudget"
+      ],
+      "render": "percent-one-place",
+      "template": "{}%",
+      "claimId": "an-unready-model-was-held-unready-and-recovered-by-an-operator"
+    },
+    {
+      "figureId": "startup-probe-budget",
+      "quoted": "600 000 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-007-pr1-unready-model-record.v1alpha1.json",
+      "pointers": [
+        "/timings/runtimeStartupProbeBudgetMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "an-unready-model-was-held-unready-and-recovered-by-an-operator"
+    },
+    {
+      "figureId": "processor-share-of-amount",
+      "quoted": "98.9%",
+      "sourceRef": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
+      "verbatim": true,
+      "claimId": "the-cost-method-was-applied-to-use-taken-from-a-measured-run"
+    },
+    {
+      "figureId": "use-over-reservation",
+      "quoted": "about 5.4 times",
+      "sourceRef": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
+      "verbatim": true,
+      "claimId": "the-cost-method-was-applied-to-use-taken-from-a-measured-run"
+    }
+  ],
+  "limitations": [
+    "A figure that reads back from its source is quoted correctly; whether the sentence around it says what the record says is a reading, and no test performs one.",
+    "A verbatim figure is checked only for being present in the file it names, not for being attached there to the same subject.",
+    "The claims appendix is derived from the register and the completeness ledger, so it cannot disagree with them; the prose of each section can, and review is the only check on it.",
+    "The draft is written against an evidence pack that is not frozen. It stays a draft, and the test holds it to that, until the release gate is complete."
+  ]
+}
