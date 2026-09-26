@@ -10,6 +10,31 @@ once versioned releases begin.
 
 ### Added
 
+- **The V1 case study verified against the evidence as it stands, and kept a draft.**
+  `V1-S5-007-PR2` was to verify [the case study](docs/case-study/v1-engineering-case-study.md)
+  against a frozen evidence pack and publish it. The pack is not frozen —
+  `python -m tools.evidence_index --gate` still exits 1 on five release blockers — so
+  the page stays a **draft**, the README still does not link to it, and the change
+  says so rather than publishing around the gate. What it did instead: it checked the
+  page against the evidence set whose digest the index states, and a test now fails
+  when that digest moves; it led the page with a results-first summary of five
+  findings, none of which rests on a blocker, and a short account of what the evidence
+  demonstrates; it added two text figures, of the declared load and of the pod loss,
+  in whose bodies every numeral and every count written as a word is declared and read
+  back, and showed the committed architecture image; and it corrected what the first
+  draft, the README, and the operator runbook said more broadly than their records.
+  Among the corrections: the pod-recovery record establishes that its workflow issued
+  no mutating command, not that nobody intervened; the deleted pod's `Ready` is shown
+  at every readiness sample before the replacement was observed Ready, not for the
+  whole outage; the collector's committed telemetry shows scrape health falling inside
+  the outage, where the record's narrative says it stayed up; and the unready model
+  was kept alive by its startup probe's budget, not by the liveness probe, which
+  Kubernetes does not ask until a startup probe passes. The independent review found
+  those last two, and that the tests claimed more than they held; both are corrected,
+  and [the validation record](docs/proof/case-study/v1-s5-007-pr2-validation.md) lists
+  every finding, what the first draft of this change got wrong, and what still stands
+  between the draft and publication.
+
 - **A draft V1 engineering case study, not published.** `V1-S5-007-PR1` wrote
   [the case study](docs/case-study/v1-engineering-case-study.md) from the problem and
   the constraints through the architecture, the runtime and model decision, the local

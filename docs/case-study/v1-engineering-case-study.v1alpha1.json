@@ -2,19 +2,55 @@
   "$id": "https://inferops.io/case-study/v1-engineering-case-study.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "The InferOps V1 engineering case study, as the data a test holds it to",
-  "description": "Which claims each section of the draft case study cites, and the committed file and field or sentence every quoted figure is read from. The page states no status, level, or blocker of its own: its claims appendix is derived from the register and the completeness ledger by tests/testing/test_case_study.py, which also reads every figure below back from its source.",
+  "description": "Which claims each section of the draft case study cites, the committed file and field or sentence every quoted figure is read from, the figures drawn in it and what each is drawn from, and the evidence set it was verified against. The page states no status, level, or blocker of its own: its claims appendix is derived from the register and the completeness ledger by tests/testing/test_case_study.py, which also reads every figure below back from its source.",
   "status": "draft",
+  "verifiedIn": "V1-S5-007-PR2",
+  "verifiedAgainst": {
+    "evidenceSetSha256": "1bf2a83ff0548a7d07e68fabdacd0d8b10c35d012b25c03b40bc469297fb5bec",
+    "releaseGate": "incomplete",
+    "releaseBlockers": 5,
+    "note": "The digest, gate, and blocker count of the V1 evidence index when the page was verified. The set is not frozen, so the page stays a draft; a test fails when the index moves from these values, so that the page is verified again rather than left behind."
+  },
   "documentRef": "docs/case-study/v1-engineering-case-study.md",
   "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
   "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
   "completenessRef": "docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json",
-  "validationRef": "docs/proof/case-study/v1-s5-007-pr1-validation.md",
+  "validationRefs": [
+    "docs/proof/case-study/v1-s5-007-pr1-validation.md",
+    "docs/proof/case-study/v1-s5-007-pr2-validation.md"
+  ],
   "renders": {
     "grouped": "An integer written with a space between each group of three digits, as the records write milliseconds.",
     "thousandths": "An integer count of thousandths written as a decimal with three places.",
     "percent-one-place": "A fraction written as a percentage with one decimal place, rounded half up."
   },
   "sections": [
+    {
+      "sectionId": "at-a-glance",
+      "heading": "At a glance: what V1 investigated and what it found",
+      "claims": [
+        "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+        "the-cost-method-was-applied-to-use-taken-from-a-measured-run"
+      ]
+    },
+    {
+      "sectionId": "what-this-demonstrates",
+      "heading": "What this demonstrates",
+      "claims": [
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+        "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+        "the-cost-method-was-applied-to-use-taken-from-a-measured-run"
+      ]
+    },
+    {
+      "sectionId": "reading-and-checking",
+      "heading": "How to read and check this page",
+      "claims": []
+    },
     {
       "sectionId": "problem",
       "heading": "1. Why LLM serving needs a paved road",
@@ -181,7 +217,7 @@
     {
       "figureId": "model-file-size",
       "quoted": "1.71 GiB",
-      "sourceRef": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+      "sourceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
       "verbatim": true,
       "claimId": "the-model-artifact-matches-its-published-hash"
     },
@@ -242,7 +278,7 @@
     {
       "figureId": "container-vm-memory",
       "quoted": "7.60 GiB",
-      "sourceRef": "docs/architecture/decisions/ADR-0002-model-and-serving-runtime.md",
+      "sourceRef": "docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md",
       "verbatim": true,
       "claimId": "a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure"
     },
@@ -400,13 +436,340 @@
       "sourceRef": "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md",
       "verbatim": true,
       "claimId": "the-cost-method-was-applied-to-use-taken-from-a-measured-run"
+    },
+    {
+      "figureId": "concurrency-levels",
+      "quoted": "concurrency 1, 2, and 4",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/levels/0/concurrency",
+        "/levels/1/concurrency",
+        "/levels/2/concurrency"
+      ],
+      "render": "grouped",
+      "template": "concurrency {}, {}, and {}",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "completed-rate-range-c1",
+      "quoted": "0.554–0.573",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/levels/0/successfulRequestsPerSecondMilliRange/0",
+        "/levels/0/successfulRequestsPerSecondMilliRange/1"
+      ],
+      "render": "thousandths",
+      "template": "{}–{}",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "completed-rate-range-c2",
+      "quoted": "0.554–0.557",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/levels/1/successfulRequestsPerSecondMilliRange/0",
+        "/levels/1/successfulRequestsPerSecondMilliRange/1"
+      ],
+      "render": "thousandths",
+      "template": "{}–{}",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "completed-rate-range-c4",
+      "quoted": "0.567–0.575",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/levels/2/successfulRequestsPerSecondMilliRange/0",
+        "/levels/2/successfulRequestsPerSecondMilliRange/1"
+      ],
+      "render": "thousandths",
+      "template": "{}–{}",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "median-latency-range-c1",
+      "quoted": "1 700–1 744 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/levels/0/p50MsRange/0",
+        "/levels/0/p50MsRange/1"
+      ],
+      "render": "grouped",
+      "template": "{}–{} ms",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "median-latency-range-c2",
+      "quoted": "3 411–3 504 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/levels/1/p50MsRange/0",
+        "/levels/1/p50MsRange/1"
+      ],
+      "render": "grouped",
+      "template": "{}–{} ms",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "median-latency-range-c4",
+      "quoted": "6 775–6 908 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+      "pointers": [
+        "/levels/2/p50MsRange/0",
+        "/levels/2/p50MsRange/1"
+      ],
+      "render": "grouped",
+      "template": "{}–{} ms",
+      "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed"
+    },
+    {
+      "figureId": "first-unserved-completion",
+      "quoted": "31 764 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/timings/deletionToFirstUnservedCompletionMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "outage-ending-request",
+      "quoted": "30 287 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/callerImpact/windows/2/latencyOfSuccesses/maxMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "service-restored",
+      "quoted": "63 724 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/timings/deletionToServiceRestoredMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "restored-after-observed-ready",
+      "quoted": "30 059 ms",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/timings/serviceRestoredRelativeToObservedReadyMs"
+      ],
+      "render": "grouped",
+      "template": "{} ms",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "served-after-the-outage",
+      "quoted": "84 more requests",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+      "pointers": [
+        "/callerImpact/windows/3/successful"
+      ],
+      "render": "grouped",
+      "template": "{} more requests",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+    },
+    {
+      "figureId": "readiness-sample-span",
+      "quoted": "1.4 s – 28.6 s",
+      "sourceRef": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+      "verbatim": true,
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
     }
   ],
   "limitations": [
-    "Only durations, percentages, and memory sizes are declared here. Other numbers on the page -- thresholds, panels, alerts, risks, requests -- are quoted from the records cited beside them and checked by review only.",
+    "In the prose, only numbers written in digits beside a unit of time, a percentage, or a unit of memory are declared. Other numbers on the page -- thresholds, panels, alerts, risks, requests, and counts written in words -- are quoted from the records cited beside them and checked by review only. In a text figure's body every numeral and every count word is declared, bar the HTTP statuses listed as unpoliced; a figure's title line is checked by review.",
     "A figure that reads back from its source is quoted correctly; whether the sentence around it says what the record says is a reading, and no test performs one.",
     "A verbatim figure is checked only for being present in the file it names, not for being attached there to the same subject.",
+    "A drawn figure is checked for its numbers, its count words, and the boundary its caption must state. Whether its arrangement -- what sits beside what, what a row implies -- says more than its records is a reading. The architecture image is a tracked picture, and nothing reads its content.",
     "The claims appendix is derived from the register and the completeness ledger, so it cannot disagree with them; the prose of each section can, and review is the only check on it.",
-    "The draft is written against an evidence pack that is not frozen. It stays a draft, and the test holds it to that, until the release gate is complete."
+    "The page is verified against an evidence set that is not frozen. It stays a draft, and the test holds it to that, until the release gate is complete; and it fails when the evidence set's digest moves, so that the page is verified again."
+  ],
+  "visuals": [
+    {
+      "visualId": "architecture",
+      "figureNumber": 1,
+      "sectionId": "architecture",
+      "kind": "image",
+      "imageRef": "docs/architecture/inferops-v1-architecture.png",
+      "textAlternativeFirstLine": "  workload owner                                         reviewer",
+      "derivedFrom": [
+        "docs/architecture/system-architecture.md"
+      ],
+      "figures": [],
+      "unpolicedNumerals": {},
+      "captionMustSay": [
+        "unbuilt",
+        "not anything measured"
+      ]
+    },
+    {
+      "visualId": "declared-load",
+      "figureNumber": 2,
+      "sectionId": "experiments",
+      "kind": "text",
+      "firstLine": "Declared load, run twice: one single-slot runtime, one fixed prompt, docker-desktop",
+      "derivedFrom": [
+        "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+        "docs/proof/serving/v1-s4-004-pr2-performance-findings.md"
+      ],
+      "figures": [
+        "concurrency-levels",
+        "runtime-cpu-of-limit",
+        "completed-rate-range-c1",
+        "completed-rate-range-c2",
+        "completed-rate-range-c4",
+        "median-latency-range-c1",
+        "median-latency-range-c2",
+        "median-latency-range-c4"
+      ],
+      "unpolicedNumerals": {},
+      "captionMustSay": [
+        "`docker-desktop`",
+        "one host",
+        "one fixed prompt",
+        "not tested",
+        "not a capacity"
+      ],
+      "countedWords": [
+        {
+          "phrase": "none seen",
+          "value": 0,
+          "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+          "pointers": [
+            "/phases/0/collector/runtimeRequestsDeferred/maximum",
+            "/phases/3/collector/runtimeRequestsDeferred/maximum"
+          ]
+        },
+        {
+          "phrase": "at most one seen",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+          "pointers": [
+            "/phases/1/collector/runtimeRequestsDeferred/maximum",
+            "/phases/4/collector/runtimeRequestsDeferred/maximum"
+          ]
+        },
+        {
+          "phrase": "at most three seen",
+          "value": 3,
+          "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+          "pointers": [
+            "/phases/2/collector/runtimeRequestsDeferred/maximum",
+            "/phases/5/collector/runtimeRequestsDeferred/maximum"
+          ]
+        },
+        {
+          "phrase": "one at a time",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-004-pr2-findings.v1alpha1.json",
+          "pointers": [
+            "/phases/0/collector/runtimeRequestsProcessing/maximum",
+            "/phases/1/collector/runtimeRequestsProcessing/maximum",
+            "/phases/2/collector/runtimeRequestsProcessing/maximum",
+            "/phases/3/collector/runtimeRequestsProcessing/maximum",
+            "/phases/4/collector/runtimeRequestsProcessing/maximum",
+            "/phases/5/collector/runtimeRequestsProcessing/maximum"
+          ]
+        }
+      ]
+    },
+    {
+      "visualId": "pod-loss",
+      "figureNumber": 3,
+      "sectionId": "experiments",
+      "kind": "text",
+      "firstLine": "Losing the only serving pod under load: one replica, docker-desktop",
+      "derivedFrom": [
+        "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json"
+      ],
+      "figures": [
+        "readiness-sample-span",
+        "first-unserved-completion",
+        "outage-refusals",
+        "refusal-latency",
+        "replacement-ready",
+        "service-restored",
+        "outage-ending-request",
+        "caller-visible-outage",
+        "restored-after-observed-ready",
+        "served-after-the-outage"
+      ],
+      "unpolicedNumerals": {
+        "200": "An HTTP status the record states, not a measurement.",
+        "500": "An HTTP status the record states, not a measurement.",
+        "503": "An HTTP status the record states, not a measurement."
+      },
+      "captionMustSay": [
+        "`docker-desktop`",
+        "one host",
+        "One replica",
+        "not an availability figure",
+        "several seconds wide",
+        "committed telemetry"
+      ],
+      "countedWords": [
+        {
+          "phrase": "one request already in flight",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/callerImpact/inFlightAtDeletion/dispatched"
+          ]
+        },
+        {
+          "phrase": "one, the deleted",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/readinessSamples/0/runtimePodsReady",
+            "/readinessSamples/1/runtimePodsReady",
+            "/readinessSamples/2/runtimePodsReady",
+            "/readinessSamples/3/runtimePodsReady",
+            "/readinessSamples/4/runtimePodsReady",
+            "/readinessSamples/5/runtimePodsReady"
+          ]
+        },
+        {
+          "phrase": "none ready",
+          "value": 0,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/readinessSamples/0/runtimeEndpointsReady",
+            "/readinessSamples/1/runtimeEndpointsReady",
+            "/readinessSamples/2/runtimeEndpointsReady",
+            "/readinessSamples/3/runtimeEndpointsReady",
+            "/readinessSamples/4/runtimeEndpointsReady",
+            "/readinessSamples/5/runtimeEndpointsReady"
+          ]
+        },
+        {
+          "phrase": "one, the new pod",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/readinessSamples/6/runtimePodsReady"
+          ]
+        },
+        {
+          "phrase": "one ready",
+          "value": 1,
+          "sourceRef": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "pointers": [
+            "/readinessSamples/6/runtimeEndpointsReady"
+          ]
+        }
+      ]
+    }
   ]
 }
