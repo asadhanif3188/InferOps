@@ -2,24 +2,28 @@
   "$id": "https://inferops.io/case-study/v1-engineering-case-study.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "The InferOps V1 engineering case study, as the data a test holds it to",
-  "description": "Which claims each section of the draft case study cites, the committed file and field or sentence every quoted figure is read from, the figures drawn in it and what each is drawn from, and the evidence set it was verified against. The page states no status, level, or blocker of its own: its claims appendix is derived from the register and the completeness ledger by tests/testing/test_case_study.py, which also reads every figure below back from its source.",
-  "status": "draft",
-  "verifiedIn": "V1-S5-013-PR1",
+  "description": "Which claims each section of the case study cites, the committed file and field or sentence every quoted figure is read from, the figures drawn in it and what each is drawn from, and the evidence set and the evidence pack it was verified against. The page states no status, level, or blocker of its own: its claims appendix is derived from the register and the completeness and closure ledgers by tests/testing/test_case_study.py, which also reads every figure below back from its source.",
+  "status": "published",
+  "verifiedIn": "V1-S5-013-PR2",
   "verifiedAgainst": {
     "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
+    "evidencePackSha256": "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2",
     "releaseGate": "complete",
     "releaseBlockers": 0,
-    "note": "The digest, gate, and blocker count of the V1 evidence index when V1-S5-013-PR1 re-verified the page for what it moved. The set is the pre-publication freeze candidate; the page stays a draft until V1-S5-013-PR2 publishes it, and a test fails when the index moves from these values, so that the page is verified again rather than left behind."
+    "evidenceFreeze": "frozen",
+    "note": "The two digests, the gate, the blocker count, and the freeze of the V1 evidence index when V1-S5-013-PR2 verified the page and published it. The evidence set covers every file a record cites; the evidence pack covers those files with the register and its four ledgers. A test fails when the index moves from any of these values, so a later change to the register, a ledger, or a cited file has to verify the page again rather than leave it behind."
   },
   "documentRef": "docs/case-study/v1-engineering-case-study.md",
   "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
   "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
   "completenessRef": "docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json",
   "closureRef": "docs/proof/testing/v1-s5-013-pr1-closure.v1alpha1.json",
+  "publicationRef": "docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json",
   "validationRefs": [
     "docs/proof/case-study/v1-s5-007-pr1-validation.md",
     "docs/proof/case-study/v1-s5-007-pr2-validation.md",
-    "docs/proof/testing/v1-s5-013-pr1-validation.md"
+    "docs/proof/testing/v1-s5-013-pr1-validation.md",
+    "docs/proof/testing/v1-s5-013-pr2-validation.md"
   ],
   "renders": {
     "grouped": "An integer written with a space between each group of three digits, as the records write milliseconds.",
@@ -593,7 +597,7 @@
     "A verbatim figure is checked only for being present in the file it names, not for being attached there to the same subject.",
     "A drawn figure is checked for its numbers, its count words, and the boundary its caption must state. Whether its arrangement -- what sits beside what, what a row implies -- says more than its records is a reading. The architecture image is a tracked picture, and nothing reads its content.",
     "The claims appendix is derived from the register and the completeness and closure ledgers, so it cannot disagree with them; the prose of each section can, and review is the only check on it.",
-    "The page is verified against the pre-publication freeze candidate, which is not the final freeze: publishing it changes the register, so V1-S5-013-PR2 recomputes the digest. It stays a draft until then, and the test fails when the evidence set's digest moves, so that the page is verified again."
+    "The page is verified against the frozen evidence pack. The freeze binds files, not readings: a test fails when either digest moves, and whether a sentence here says what its record says was checked by review, as for every earlier verification."
   ],
   "visuals": [
     {

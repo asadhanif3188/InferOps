@@ -1,18 +1,18 @@
 # InferOps V1: an engineering case study
 
-Status: **draft**, written in `V1-S5-007-PR1`, verified in `V1-S5-007-PR2`, and
-re-verified in `V1-S5-013-PR1` for what that change moved: the five claims it closed as
-release blockers, the counts, and the gate. It is not published, and the README does not
-link here; publishing it belongs to `V1-S5-013-PR2`. The page was checked against the
-evidence set whose digest is
-`1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`. For that set the release
-gate is complete and `python -m tools.evidence_index --gate` exits 0: the five blockers
-the completeness check raised were closed, four by a rerun at a named revision and the
-`kind` helper's by moving its claim to not claimed. That set is the **pre-publication
-freeze candidate**, not the final freeze: publishing this page changes the register,
-so `V1-S5-013-PR2` recomputes the digest and freezes that one. None of the findings in
+Status: **published**. Written in `V1-S5-007-PR1`, verified in `V1-S5-007-PR2`,
+re-verified in `V1-S5-013-PR1` for the five release blockers it closed, and verified in
+`V1-S5-013-PR2` against the frozen evidence pack before it was published. The release
+gate is complete, the pack is **frozen**, and `python -m tools.evidence_index --gate`
+exits 0. The page is bound to the evidence set
+`1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`, every file a record
+cites, and to the evidence pack
+`652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2`, those files with the
+register and its ledgers; a test fails if either moves. The pre-publication freeze
+candidate `V1-S5-013-PR1` named is superseded: publishing changed the register and no
+cited file, so the set's digest is unchanged and the pack's is new. None of the findings in
 [the summary below](#at-a-glance-what-v1-investigated-and-what-it-found) rested on any
-of the five.
+of the five blockers.
 
 > [!IMPORTANT]
 > **Every real serving result in this study is one provider, one host, one replica.**
@@ -35,7 +35,7 @@ replica of each tier on one CPU host, and caused each situation on purpose.
 | Problem investigated | What was measured | Why it matters operationally | Evidence and boundary |
 |---|---|---|---|
 | Do more concurrent callers get more work done? | From concurrency 1 to 4, completed requests stayed between 0.554 and 0.575 per second while median latency rose about fourfold; the runtime served one request at a time at 99.1–99.9% of its processor limit and deferred the rest | More callers bought waiting, not throughput. Whether the slot or the processor held the rate was not tested | [Section 7](#declared-load-and-where-that-setup-degraded), Figure 2. One single-slot release, one prompt; not capacity |
-| Which signal tells the truth when the only serving pod is lost? | 40 of the 41 requests in a 31 960 ms caller-visible outage were refused. At every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint, and scrape health still read the deleted pod up at its first readings after the delete | Pod readiness, and scrape health for a scrape or more, did not describe what a caller could reach. The Service's ready endpoints went to zero with the loss, and the API's errors by canonical code named it | [Section 7](#losing-the-serving-pod-under-load), Figure 3. One replica, one loss; a second run's outage was 2 832 ms. Not an availability figure |
+| Which signal tells the truth when the only serving pod is lost? | 40 of the 41 requests in a 31 960 ms caller-visible outage were refused. At every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint, and scrape health still read the deleted pod up at its first readings after the delete | Pod readiness, and scrape health at its first readings after the delete, did not describe what a caller could reach. The Service's ready endpoints went to zero with the loss, and the API's errors by canonical code named it | [Section 7](#losing-the-serving-pod-under-load), Figure 3. One replica, one loss; a second run's outage was 2 832 ms. Not an availability figure |
 | What does a model that never finishes loading look like? | Alive and unready for 179 755 ms with no restart; every completion came back `capability-unavailable`, `runtime-unreachable`, and none `model-not-ready` | A startup budget sized to the model load kept a loading process alive. Probes and Service topology, not only the adapter, decide which error a caller meets, so error contracts need testing through the deployed topology | [Section 7](#a-model-that-did-not-become-ready). One overlay; completions asked of the API pod through a forward |
 | Does the whole path work from nothing? | All 18 steps from a fresh clone in 1 h 30 min 32 s, on the third attempt; the first two stopped on five repository defects | Running the whole path is a test in its own right: an inherited setting, an error naming no stage, and a check asked once all surfaced there, none a host problem | [Section 5](#5-local-and-kubernetes-implementation). One run, by the change's author, an AI coding agent; no second engineer has repeated it |
 | What does the measured use cost? | In the first run, the request path used about 5.4 times the processor time it reserved while most of its memory reservation sat idle | Reservation and use diverged in opposite directions, so an estimate must say which it prices | [Section 9](#9-cost-a-method-not-a-price). Synthetic prices, confidence `none`, no cost figure |
@@ -80,7 +80,7 @@ achieved anywhere else, and each is as bounded as the record behind it.
   prices were synthetic by name, and this page quotes no amount of them.
 - **Binding a public claim to its evidence.** Every claim this page cites is a
   register row with its limitation, and the gate that held five claims as release
-  blockers held this page as a draft until each was closed.
+  blockers held this page as a draft until each was closed and the pack frozen.
 
 **Evidence.** [The pod-recovery record's first attempt](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md#what-the-first-attempt-got-wrong-and-why-it-was-re-run)
 and [the unready-model record](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md).
@@ -91,8 +91,8 @@ Claims `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-loa
 
 ## How to read and check this page
 
-**The reader path.** [The README](../../README.md) says what V1 is and is not. This page
-interprets the evidence as one narrative. [The proof dashboard](../proof/dashboard.md)
+**The reader path.** [The README](../../README.md) says what V1 is and is not, and
+links here. This page interprets the evidence as one narrative. [The proof dashboard](../proof/dashboard.md)
 lists every claim with every evidence record behind it and is generated from
 [the claim and evidence register](../testing/claim-evidence-matrix.md). The records
 under [`docs/proof/`](../proof/README.md), indexed by
@@ -111,8 +111,8 @@ rule is stricter: every number, in digits or in words, is declared and read back
 except three HTTP statuses the data file lists with a reason. The test also
 recomputes the claim, record, code-identity, and blocker counts from the register and
 the evidence index, fails if a claim this page cites changes status, level, or blocker
-state without the page changing with it, and fails if the evidence set's digest moves
-from the one named above.
+state without the page changing with it, and fails if the evidence set's or the
+evidence pack's digest moves from the one named above.
 
 **What is checked only by review.** Other numbers in the prose — thresholds, panels,
 alerts, risks, requests, and counts written in words — and the title line of each
@@ -262,7 +262,7 @@ synchronous profiles, without overwriting anything.
 release values. A values file is written by hand, so the two claims that would close
 the loop — that a described workload is served, and that deployment values come only
 from a validated document — are `planned`, not certified. This is the most important
-unbuilt component in V1, and the draft says so here rather than in a footnote.
+unbuilt component in V1, and this page says so here rather than in a footnote.
 
 Three structural decisions carry most of the design:
 
@@ -417,21 +417,23 @@ none at `C3` or `C4`. Nothing here is `C3`, because no experiment was run under 
 deliberately representative workload with stated criteria; nothing is `C4`, because
 there is no production operation to observe.
 
-**The pack is a freeze candidate.** The completeness check that stands before a freeze
+**The pack is frozen.** The completeness check that stands before a freeze
 read how every executed record identifies the code that ran. Where a certified
 statement rested on a record that names no revision, or only a branch, a chart version
 label, or a revision dated after the run, and no other record supported it, the claim
 was a release blocker, and it found five. `V1-S5-013-PR1` closed all five: four by a
 rerun from a fresh clone at a named revision, each with a record of its own, and one
-by moving the `kind` helper's claim to not claimed. No older record was edited, and
-each stays cited for what it observed. Now 20 of the 38 executed records name the
-revision that ran, and no release blocker stands.
+by moving the `kind` helper's claim to not claimed. `V1-S5-013-PR2` then froze the
+pack and published this page. No older record was edited: where one says more than its
+own data, a correction stands beside it in the evidence index. Now 20 of the 38
+executed records name the revision that ran, and no release blocker stands.
 
 **Evidence.** [InferOps Evidence Levels](../testing/evidence-levels.md),
 [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md),
 [the V1 evidence index](../proof/v1-evidence-index.md),
-[the completeness check](../proof/testing/v1-s5-006-pr2-evidence-completeness.md), and
-[the blocker closure](../proof/testing/v1-s5-013-pr1-blocker-closure.md).
+[the completeness check](../proof/testing/v1-s5-006-pr2-evidence-completeness.md),
+[the blocker closure](../proof/testing/v1-s5-013-pr1-blocker-closure.md), and
+[the publication and freeze](../proof/testing/v1-s5-013-pr2-publication-and-freeze.md).
 Claims `published-documents-link-only-to-things-that-exist`,
 `the-published-strategy-and-its-data-cannot-drift-apart`,
 `a-mock-result-can-never-certify-real-runtime-behaviour`,
@@ -526,9 +528,11 @@ every readiness sample before the replacement was observed Ready, one runtime po
 reported `Ready: True` — by the record's reading, the deleted one — while the Service
 had no ready endpoint. Scrape health lagged as well: the collector's readings of the
 serving-runtime job still showed the deleted pod up after the delete, and fell only
-inside the outage, a scrape or more behind it. The record's own narrative says that
+inside the outage; at scrapes half a minute apart, read at quarter-minute steps, the
+telemetry cannot say how long it lagged the loss. The record's own narrative says that
 scrape health stayed up throughout; its committed telemetry, read at every step, does
-not bear that out, and this page follows the telemetry. The signal that tracked what a
+not bear that out, and this page follows the telemetry, as does the correction now
+recorded beside the record. The signal that tracked what a
 caller could reach was the Service's ready-endpoint count, and the one that named what
 went wrong was the API's error counter by canonical code. One replica is the cause of
 the outage, and the experiment says nothing about what a second would change.
@@ -579,7 +583,7 @@ It was held there for 179 755 ms — 30.0% of the runtime's own 600 000 ms start
 startup probe, which asks the model's health endpoint, had not spent its budget, and
 Kubernetes asks neither the liveness nor the readiness probe until a startup probe has
 passed; the unready record credits the socket-level liveness probe, which by that rule
-was never asked in the window. Dropping the overlay and upgrading returned it to a served completion.
+was never asked in the window, and a correction beside the record now says so. Dropping the overlay and upgrading returned it to a served completion.
 
 Every completion asked in that window came back `capability-unavailable` with condition
 `runtime-unreachable` and `retryable: true`. **None came back `model-not-ready`**,
@@ -626,7 +630,7 @@ the repository's own evaluator rather than by a Prometheus, over the telemetry t
 real experiments recorded, and in that replay one fired.
 
 What the experiments added is a list of what the signals **cannot** do. Scrape health
-lagged an outage by a scrape or more. Pod readiness reported a deleted pod as Ready. A dashboard panel
+still read a deleted pod up after the delete. Pod readiness reported a deleted pod as Ready. A dashboard panel
 at a phase end mixes that phase with the ones before it. Two registered series,
 `inferops_model_ready` and container restarts, are still emitted by nothing. The
 collector's series live in an `emptyDir` and vanish with the release, and nothing
@@ -785,9 +789,9 @@ Claims `the-platform-serves-a-workload-the-contract-describes`,
 This section states evidence, not scope. Whether a second version proceeds, and what it
 contains, is a separate decision that has not been made, and nothing here assumes it.
 
-**Before anything new:** the evidence pack frozen, now that the five release blockers
-are closed, and a first versioned release cut against it. A second version built on an unfrozen first one would inherit
-claims nobody can tie to code.
+**Before anything new:** a first versioned release cut against the evidence pack, which
+is now frozen. A second version started before that release would build on claims no
+release has fixed.
 
 **Evidence that V1's shape holds beyond one setup:**
 
@@ -823,9 +827,9 @@ Claims `multi-replica-serving-is-certified`,
 `deployment-values-derive-only-from-a-validated-document`,
 `a-v1-release-has-been-published`.
 
-## Appendix: the claims this draft relies on
+## Appendix: the claims this case study relies on
 
-Every claim this draft cites, with its status, the levels of the records behind it, and
+Every claim this page cites, with its status, the levels of the records behind it, and
 whether a release blocker stands on it, all as the register and the closure ledger hold
 them. A test derives each cell and fails if this table, or the sections citing a claim,
 disagree with them. A certified claim marked as a blocker may be read only with its

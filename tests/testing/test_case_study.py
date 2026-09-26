@@ -3,10 +3,9 @@
 Every check here reads files from this repository and nothing else. No network, no
 cluster, no model, no clock, no randomness.
 
-The claim register has said, since it was written, that the case study it is meant to
-govern did not exist, and that "a future case-study claim with no row here would be
-caught by nothing". This module is the thing that catches it, for the draft that now
-exists. It establishes:
+The claim register said, until the case study was published, that the case study it
+is meant to govern did not exist, and that "a future case-study claim with no row here
+would be caught by nothing". This module is the thing that catches it. It establishes:
 
 * every claim the case study cites is a row of the register, each section cites
   exactly the claims its data file declares, and the claims appendix holds each cited
@@ -20,9 +19,9 @@ exists. It establishes:
   pointer or verbatim, and no number beside a unit of time, a percentage, or a unit of
   memory appears on the page without a declared source;
 * every count the page states is recomputed from the register and the evidence index;
-* the page names the evidence set it was verified against, and fails when the index's
-  digest, gate, or blocker count moves, so the page is verified again rather than left
-  behind;
+* the page names the evidence set and the evidence pack it was verified against, and
+  fails when either digest, the gate, the blocker count, or the freeze moves, so the
+  page is verified again rather than left behind;
 * the results-first summary is the page's first section, stays short, and rests on no
   release blocker;
 * every figure on the page is a declared one; in a text figure's body every numeral
@@ -31,8 +30,10 @@ exists. It establishes:
   architecture image it shows is tracked and has a text alternative;
 * no reader surface says of the pod-loss experiment that nobody intervened, which is
   broader than the record;
-* the page quotes no amount from a cost result, and stays a draft while the release
-  gate is incomplete.
+* the page quotes no amount from a cost result; it is a draft exactly while the
+  evidence is not frozen and published exactly once it is, so neither an early
+  publication nor a stale draft passes; and once published, the README links it as an
+  entry point that the register lists as claiming nothing.
 
 It establishes **nothing about whether a sentence says what its record says**. A
 figure can be quoted correctly inside a sentence that misreads it, a verbatim figure
@@ -98,7 +99,7 @@ BROADER_THAN_THE_RECORD = re.compile(
 FENCE = re.compile(r"^\s*(?:```|~~~)")
 
 #: The heading the claims appendix sits under.
-APPENDIX_HEADING = "Appendix: the claims this draft relies on"
+APPENDIX_HEADING = "Appendix: the claims this case study relies on"
 
 #: Where the evidence levels are published; a row's levels are these, in this order.
 LEVEL_ORDER = ("C0", "C1", "C2", "C3", "C4")
@@ -174,6 +175,8 @@ REGISTER = _load(DATA["registerRef"])
 INDEX = _load(DATA["indexRef"])
 COMPLETENESS = _load(DATA["completenessRef"])
 CLOSURE = _load(DATA["closureRef"])
+PUBLICATION = _load(DATA["publicationRef"])
+README = _read("README.md")
 
 CLAIMS = {row["claimId"]: row for row in REGISTER["claims"]}
 #: The blockers that stand today: those the completeness ledger raised and the
@@ -269,6 +272,7 @@ def test_every_reference_the_data_file_makes_resolves() -> None:
         "indexRef",
         "completenessRef",
         "closureRef",
+        "publicationRef",
     ):
         assert (REPO_ROOT / DATA[key]).is_file(), f"{key} does not resolve: {DATA[key]}"
     for ref in DATA["validationRefs"]:
@@ -286,62 +290,123 @@ def test_every_render_a_figure_names_is_declared() -> None:
     assert used <= declared, sorted(used - declared)
 
 
-# ------------------------------------------------------ draft and the gate
+# -------------------------------------------------- publication and the freeze
 
 
-def test_the_case_study_stays_a_draft_while_the_release_gate_is_incomplete() -> None:
-    """A case study published over an unfrozen evidence pack is the failure this is for.
+def _status_line() -> str:
+    return next(line for line in DOCUMENT.splitlines() if line.startswith("Status:"))
 
-    When the gate completes, this test still passes for a draft; it is publishing
-    while the gate is incomplete that it refuses.
-    """
-    gate = INDEX["summary"]["releaseGate"]
-    assert GATE["decision"].lower() == gate
-    blocked = "V1-S5-007" in GATE.get("consumersBlocked", [])
-    first_status = next(
-        line for line in DOCUMENT.splitlines() if line.startswith("Status:")
+
+def _readme_links_the_page() -> tuple[bool, bool]:
+    """Whether the README links the page before its architecture, and in its table."""
+    target = f"]({DATA['documentRef']})"
+    visible = "\n".join(
+        line
+        for block in _unfenced(re.sub(r"<!--.*?-->", "", README, flags=re.DOTALL))
+        for line in block
     )
-    if gate != "complete" or blocked:
+    for heading in ("\n## Architecture\n", "\n## Public entry points\n"):
+        assert visible.count(heading) == 1, f"the README lost {heading.strip()!r}"
+    first_screen = visible.split("\n## Architecture\n", 1)[0]
+    table = visible.split("\n## Public entry points\n", 1)[1]
+    return target in first_screen, target in table
+
+
+def _unfenced(text: str) -> list[list[str]]:
+    """The text outside fenced blocks, as runs of lines, so a link in a fence is unseen."""
+    runs: list[list[str]] = [[]]
+    fenced = False
+    for line in text.splitlines():
+        if FENCE.match(line):
+            fenced = not fenced
+            runs.append([])
+        elif not fenced:
+            runs[-1].append(line)
+    return runs
+
+
+def test_the_case_study_is_published_exactly_when_the_evidence_is_frozen() -> None:
+    """A page published over an unfrozen pack, or left a draft over a frozen one, fails.
+
+    The freeze is the index's, which derives it from the closure ledger's gate and the
+    publication ledger's decision and refuses a freeze beside an open blocker.
+    """
+    summary = INDEX["summary"]
+    assert GATE["decision"].lower() == summary["releaseGate"]
+    frozen = summary["evidenceFreeze"] == "frozen"
+    if frozen:
+        assert summary["releaseGate"] == "complete"
+        assert DATA["status"] == "published"
+        assert _status_line().startswith("Status: **published**"), _status_line()
+        assert PUBLICATION["freeze"]["decidedIn"] == DATA["verifiedIn"]
+    else:
         assert DATA["status"] == "draft"
-        assert first_status.startswith("Status: **draft**"), first_status
-        assert "**not frozen**" in DOCUMENT
+        assert _status_line().startswith("Status: **draft**"), _status_line()
+
+
+def test_the_readme_links_the_page_only_once_it_is_published() -> None:
+    """The entry point is the publication: a draft is not linked, a published page is.
+
+    Linked twice: before the architecture, where a reader meets the results, and in
+    the entry-point table, which the register governs. The register must list the page
+    as a surface that claims nothing, because it adds no claim of its own.
+    """
+    first_screen, table = _readme_links_the_page()
+    surfaces = {row["path"] for row in REGISTER["nonClaimSurfaces"]}
+    if DATA["status"] == "published":
+        assert first_screen, (
+            "the README does not link the case study before its architecture"
+        )
+        assert table, "the README's entry-point table does not link the case study"
+        assert DATA["documentRef"] in surfaces
+    else:
+        assert not first_screen and not table
+        assert DATA["documentRef"] not in surfaces
 
 
 def test_the_status_paragraph_counts_the_blockers_and_names_the_gate() -> None:
-    """The status says what the gate decides, in whichever state it is in.
+    """The status says what the gate and the freeze decide, in whichever state.
 
-    While blockers stand it counts them and says the gate exits 1. Once the gate
-    passes it says so, says the set is a freeze candidate rather than the freeze, and
-    names the change that publishes the page, so a passing gate cannot be read as
-    publication.
+    While blockers stand it counts them and says the gate exits 1. Once the pack is
+    frozen it says so, says the gate exits 0, and says the pre-publication candidate
+    is superseded, so a passing gate cannot be read as an earlier state.
     """
-    blockers = INDEX["summary"]["releaseBlockers"]
+    summary = INDEX["summary"]
+    blockers = summary["releaseBlockers"]
     status = normalised(DOCUMENT.split("\n## ", 1)[0])
     if blockers:
         assert f"{NUMBER_WORDS[blockers]} certified claims" in status
         assert "`python -m tools.evidence_index --gate` exits 1" in status
+        return
+    assert summary["releaseGate"] == "complete"
+    assert "`python -m tools.evidence_index --gate` exits 0" in status
+    if summary["evidenceFreeze"] == "frozen":
+        assert "the pack is **frozen**" in status
+        assert "The pre-publication freeze candidate" in status
+        assert "is superseded" in status
     else:
-        assert INDEX["summary"]["releaseGate"] == "complete"
-        assert "`python -m tools.evidence_index --gate` exits 0" in status
         assert "**pre-publication freeze candidate**" in status
-        assert "publishing it belongs to `V1-S5-013-PR2`" in status
 
 
 def test_the_page_names_the_evidence_set_it_was_verified_against() -> None:
-    """A page verified against one evidence set is not verified against the next.
+    """A page verified against one evidence pack is not verified against the next.
 
-    When the index's digest, gate, or blocker count moves, this fails, and the change
-    that moved them must verify the page again and restate what it was verified
-    against, rather than leave a verification that no longer describes the evidence.
+    When either digest, the gate, the blocker count, or the freeze moves, this fails,
+    and the change that moved them must verify the page again and restate what it was
+    verified against. The pack digest covers the register and every ledger, so a
+    change to a claim's wording moves it where the set digest would not.
     """
     summary = INDEX["summary"]
     verified = DATA["verifiedAgainst"]
     assert verified["evidenceSetSha256"] == summary["evidenceSetSha256"]
+    assert verified["evidencePackSha256"] == summary["evidencePackSha256"]
     assert verified["releaseGate"] == summary["releaseGate"]
     assert verified["releaseBlockers"] == summary["releaseBlockers"]
-    status = DOCUMENT.split("\n## ", 1)[0]
-    assert f"`{summary['evidenceSetSha256']}`" in normalised(status)
-    assert f"verified in `{DATA['verifiedIn']}`" in normalised(status)
+    assert verified["evidenceFreeze"] == summary["evidenceFreeze"]
+    status = normalised(DOCUMENT.split("\n## ", 1)[0])
+    assert f"`{summary['evidenceSetSha256']}`" in status
+    assert f"`{summary['evidencePackSha256']}`" in status
+    assert f"verified in `{DATA['verifiedIn']}`" in status
 
 
 # ---------------------------------------------------------------- summary

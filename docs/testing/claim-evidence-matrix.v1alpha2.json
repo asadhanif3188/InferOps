@@ -5876,7 +5876,7 @@
       "notClaimedReason": null,
       "assertsRealBehaviour": true,
       "limitation": "One provider, one host, one single-replica release, one load profile, one pod lost once on 2026-09-16, as a bounded observation under ADR 0013. One replica is the cause of the outage. The forward is in every latency, and the readiness sampler takes 1.7 to 5.4 seconds to answer.",
-      "doesNotEstablish": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: for the whole outage the deleted pod went on reporting `Ready: True` while the Service had no ready endpoint at all.",
+      "doesNotEstablish": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: at every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint at all. Those samples were started 1.4 s to 28.6 s after the delete and had all finished before the caller-visible outage began; the next, started 33.7 s after the delete, shows the replacement Ready with one endpoint. So the run does not establish what either reported between 28.6 s and 33.7 s, the first seconds of the outage.",
       "claimMaterialComponents": [
         "llm-load-generator",
         "inferops-api",
@@ -6014,7 +6014,7 @@
             },
             {
               "resultId": "readiness-disagreement",
-              "statement": "For the whole outage the deleted pod went on reporting Ready: True while the runtime Service had zero ready endpoints."
+              "statement": "At every readiness sample before the replacement was observed Ready, taken 1.4 s to 28.6 s after the delete, one runtime pod reported Ready: True, by the record's reading the deleted one, while the runtime Service had zero ready endpoints."
             },
             {
               "resultId": "no-intervention",
@@ -9497,11 +9497,15 @@
     },
     {
       "path": "docs/proof/v1-evidence-index.md",
-      "reason": "A generated projection of this register and the V1-S5-006-PR1 normalization ledger: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256. Every value is read from this file, from a cited file, or from the ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+      "reason": "A generated projection of this register and the four ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, and the evidence set and evidence pack digests. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
     },
     {
       "path": "docs/testing/evidence-levels.md",
       "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+    },
+    {
+      "path": "docs/case-study/v1-engineering-case-study.md",
+      "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
     }
   ],
   "prohibitions": [
@@ -9565,7 +9569,7 @@
     "A row's automated tests name modules rather than test functions. A module that protects a claim may protect several, and nothing here says which function would fail first if the claim stopped being true. Five rows name modules for a claim the inventory records as covered by none; those rows carry the gap in `recordedCoverageGaps` and in their limitation, and the modules they name are adjacent to the claim rather than proof of it.",
     "Nine of the eleven continuous-integration gates have passed on the selected service and no log from those runs is promoted into a record. Every other check cited here was run by hand, on one host, by the author.",
     "Twenty-two of the fifty-eight rows were corrected before the v1alpha1 form of this register was merged, and fourteen of those shared one shape: the row stated the repository's state today while citing a record that froze an earlier one — the security control counts, the ownership row counts, the gate counts, the template counts, the strategy-drift scope, and the claim that a release had been installed among them. Each was fixed by citing the later record as well, or by restating the figure the cited record actually holds; four more were misreadings of a record, and four could not be fixed by re-citing at all. Nothing in the suite would have caught any of them: they are exactly what the first limitation above describes, and they were found by an independent reader opening all forty-six cited records and comparing them with the rows citing them.",
-    "The case study this matrix is meant to govern has not been written. Its claims are expected to be drawn from these rows; until it exists, `readmeRefs` is the only surface binding a row to published text, and a future case-study claim with no row here would be caught by nothing.",
+    "The V1 engineering case study, docs/case-study/v1-engineering-case-study.md, is published and draws every claim it cites from these rows: tests/testing/test_case_study.py fails if it cites a claim that is not a row here, if a cell of its claims appendix disagrees with this register, or if a figure it quotes does not read back from the committed file it names. It adds no claim of its own, so its README entry point is listed under nonClaimSurfaces rather than bound by readmeRefs. Whether its prose says what these rows say is a reading, as it is for the README.",
     "The levels on the records are readings. V1-S5-012-PR2 read every record the v1alpha1 rows cited against the current definitions and wrote what executed, what was substituted, and where it ran; the validator checks that each record is consistent with its level and with its claim's declared claim-material components, and cannot check that the declaration, the representativeness, or the limitation is the right one. Those are review judgements, and the migration report lists every place the reading could have gone the other way."
   ]
 }

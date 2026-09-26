@@ -13,7 +13,10 @@ the first difference, so it is usable as a gate. ``--write`` is the only mode th
 touches a file, and it writes that one file. ``--gate`` prints the release gate the
 closure ledger decides, one line per blocker, and exits 1 while any blocker stands or
 while any blocker the completeness ledger raised has no disposition, so the evidence
-pack cannot be treated as frozen by a script that checks an exit code.
+pack cannot be treated as frozen by a script that checks an exit code. Where the
+publication ledger declares the pack frozen, it also prints both digests, read from
+the committed index, and exits 1 if that index is not what the register and the
+ledgers produce, so a freeze is never reported from a stale digest.
 
 **Every mode reads files.** None contacts a cluster, a runtime, a model, or the
 network. See docs/proof/v1-evidence-index.md.
@@ -29,7 +32,9 @@ from .core import (
     CLOSURE_PATH,
     COMPLETENESS_PATH,
     INDEX_PATH,
+    PUBLICATION_PATH,
     build_index,
+    evidence_freeze,
     load_ledger,
     open_blockers,
     release_gate,
@@ -82,6 +87,12 @@ def _gate() -> int:
         return 1
     story = closure["releaseGate"]["storyId"]
     closed = closure["blockerDispositions"]
+    publication = load_ledger(PUBLICATION_PATH)
+    try:
+        freeze = evidence_freeze(closure, publication)
+    except ValueError as error:
+        print(f"MISMATCH {error}")
+        return 1
     if decision == "complete":
         print(
             f"COMPLETE {story}: no release blocker; {len(closed)} of "
@@ -91,6 +102,9 @@ def _gate() -> int:
         )
         for row in closed:
             print(f"         {row['blockerId']}  {row['mechanism']}")
+        if freeze == "frozen":
+            return _frozen(publication["freeze"]["decidedIn"])
+        print("NOT FROZEN the publication ledger declares no freeze of the pack")
         return 0
     print(f"INCOMPLETE {story}: {len(still_open)} release blockers")
     for blocker in still_open:
@@ -98,12 +112,37 @@ def _gate() -> int:
     return 1
 
 
+def _frozen(decided_in: str) -> int:
+    """Report a declared freeze with the digests the committed index states.
+
+    The digests are read from the committed index only after it is shown to be
+    what the register and the ledgers produce today; otherwise the freeze is not
+    reported and the gate fails.
+    """
+    try:
+        produced = render_index(build_index())
+    except ValueError as error:
+        print(f"MISMATCH {error}")
+        return 1
+    if not INDEX_PATH.exists() or INDEX_PATH.read_text(encoding="utf-8") != produced:
+        print(
+            f"MISMATCH {INDEX_PATH.name} is not what the register and ledgers "
+            "produce, so the frozen digests cannot be read from it"
+        )
+        return 1
+    summary = json.loads(produced)["summary"]
+    print(f"FROZEN   {decided_in}: the committed index is current")
+    print(f"         evidence set   {summary['evidenceSetSha256']}")
+    print(f"         evidence pack  {summary['evidencePackSha256']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m tools.evidence_index",
         description=(
             "Print, check, or regenerate the V1 evidence index from the claim and "
-            "evidence register and its three ledgers, or report the release gate."
+            "evidence register and its four ledgers, or report the release gate."
         ),
     )
     group = parser.add_mutually_exclusive_group()

@@ -31,6 +31,7 @@ from tools.evidence_index import (
     CLOSURE_PATH,
     COMPLETENESS_PATH,
     INDEX_PATH,
+    PUBLICATION_PATH,
     load_index,
     load_ledger,
     merged_identities,
@@ -47,12 +48,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REGISTER = load_register()
 COMPLETENESS = load_ledger(COMPLETENESS_PATH)
 CLOSURE = load_ledger(CLOSURE_PATH)
+PUBLICATION = load_ledger(PUBLICATION_PATH)
 INDEX = load_index()
 REPORT_PATH = REPO_ROOT / CLOSURE["reportRef"]
 REVISION = CLOSURE["runRevision"]["revision"]
 
-#: The register as `V1-S5-006-PR2` left it: the current one with the closure undone.
-AT_PR2 = restore_migrated_register(REGISTER, CLOSURE)
+#: The register as `V1-S5-006-PR2` left it: the current one with the publication and
+#: then the closure undone, last applied first.
+AT_PR2 = restore_migrated_register(REGISTER, [CLOSURE, PUBLICATION])
 CLAIMS = {claim["claimId"]: claim for claim in REGISTER["claims"]}
 CLAIMS_AT_PR2 = {claim["claimId"]: claim for claim in AT_PR2["claims"]}
 RECORDS = {
@@ -336,9 +339,20 @@ def test_every_added_record_names_the_run_revision_and_cites_its_transcript(
 
 
 def test_no_record_that_existed_was_edited_removed_or_given_another_level() -> None:
+    """Read across the closure alone: before it, and after it with nothing later applied.
+
+    The publication ledger narrowed one record's result afterwards, through its own
+    change, and `tests/testing/test_evidence_publication.py` holds that change.
+    """
+    after_closure = restore_migrated_register(REGISTER, PUBLICATION)
+    records = {
+        record["recordId"]: record
+        for claim in after_closure["claims"]
+        for record in claim["evidenceRecords"]
+    }
     for claim in AT_PR2["claims"]:
         for record in claim["evidenceRecords"]:
-            assert RECORDS.get(record["recordId"]) == record, record["recordId"]
+            assert records.get(record["recordId"]) == record, record["recordId"]
 
 
 def test_no_record_reaches_c3_or_c4() -> None:
@@ -461,10 +475,18 @@ def test_the_report_states_what_the_ledger_and_the_index_produce() -> None:
 
 
 def test_the_report_quotes_the_gate_it_ran(capsys: pytest.CaptureFixture[str]) -> None:
+    """The report quotes the closure lines the gate prints, as it printed them.
+
+    The report is dated. Since `V1-S5-013-PR2` the gate prints the freeze after the
+    closure lines, and the publication report quotes those; this one keeps what the
+    gate said about the closure, which has not changed.
+    """
     index_main(["--gate"])
-    printed = capsys.readouterr().out.strip()
+    printed = capsys.readouterr().out.strip().splitlines()
+    closure_lines = printed[: 1 + len(CLOSURE["blockerDispositions"])]
+    assert closure_lines[0].startswith("COMPLETE V1-S5-013")
     report = REPORT_PATH.read_text(encoding="utf-8")
-    assert printed in report
+    assert "\n".join(closure_lines) in report
 
 
 def test_the_closure_files_name_no_private_path() -> None:

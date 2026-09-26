@@ -10,6 +10,31 @@ once versioned releases begin.
 
 ### Added
 
+- **The V1 case study published, and the evidence pack frozen.** `V1-S5-013-PR2`
+  published [the V1 engineering case study](docs/case-study/v1-engineering-case-study.md)
+  against the evidence `V1-S5-013-PR1` unblocked, and linked it from the README as an
+  entry point the register lists as claiming nothing. A fourth ledger,
+  [the publication ledger](docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json),
+  names its four register changes — the limitation that said the case study had not
+  been written, the new non-claim surface, and the pod-loss claim's boundary and its
+  record's readiness result, narrowed to the readiness samples, all of which were taken
+  before the outage began — and writes four corrections beside three dated records
+  whose narratives say more than their own data: the pod-recovery record's scrape
+  health and readiness, the unready-model record's liveness reasoning, and the
+  clean-clone run's "nobody intervened". No status, statement, or level moved, and no
+  record was added or removed; one record's readiness result was narrowed.
+  Publishing turned out not to move the evidence-set digest, which covers cited files
+  only, so the index adds `evidencePackSha256`, over those files with the register and
+  the four ledgers of register changes; that is the digest a release quotes, and the
+  case study is bound to both. An independent review of the first commit found an
+  overread correction, a boundary one sample too broad, stale surfaces, and tests that
+  checked less than they said; each is recorded and corrected in the report. `python -m tools.evidence_index --gate` exits 0, prints the freeze and both
+  digests, and exits 1 if the committed index is stale or a ledger declares a freeze
+  beside an open blocker. `V1-S5-008` may consume the freeze only if every other P0
+  gate also passes. [The publication report](docs/proof/testing/v1-s5-013-pr2-publication-and-freeze.md)
+  maps every blocker and residual condition to its final disposition, and
+  `tests/testing/test_evidence_publication.py` holds it.
+
 - **The five V1 evidence blockers closed, and the release gate passes.** `V1-S5-006-PR2`
   held five certified claims as release blockers because the repository code their only
   supporting record ran was identified by nothing. `V1-S5-013-PR1` closed all five

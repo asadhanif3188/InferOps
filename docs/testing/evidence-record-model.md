@@ -326,6 +326,14 @@ in the same form: four records of reruns at a named revision, each an ordinary r
 this shape whose `versions` names the commit, one status moved from `certified` to
 `not-claimed`, and limitations that say how each blocker was closed.
 
+`V1-S5-013-PR2` published the case study and added no field to a record either. It
+wrote its four register changes into [a publication
+ledger](../proof/testing/v1-s5-013-pr2-publication.v1alpha1.json) in the same form, and
+four corrections beside dated records, which this shape does not hold because a record
+is not edited. The freeze it declares added `evidencePackSha256` to the evidence
+index, a digest over the cited files together with the register and every ledger; that
+is a field of the index, a projection of this shape, and not of a record.
+
 ## Related documents
 
 | Topic | Document |

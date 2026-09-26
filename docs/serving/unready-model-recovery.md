@@ -95,8 +95,10 @@ check -> terraform prerequisites -> install WITH the overlay -> wait for the con
 when a pod is *ready*, and neither of the two tiers this experiment misconfigures will
 be — so what is waited for instead is the container being reported running, and then
 the runtime answering anything at all on its own port. **That second wait is evidence
-rather than plumbing**: the chart's liveness probe is a TCP connect, so the instant the
-socket opens is the instant liveness starts being satisfied.
+rather than plumbing**: the chart's liveness probe is a TCP connect, so an open socket
+is what that probe would accept. Until the runtime's startup probe passes the kubelet
+asks neither liveness nor readiness, so during a load that never finishes the liveness
+probe is not asked at all; what keeps the process alive is the startup budget.
 
 ## Why the forwards address pods and not Services
 
