@@ -2,8 +2,8 @@
 
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json).
-It holds 59 claims: 42 certified, 7 planned,
-1 deferred, and 9 not claimed, supported by 60 evidence records. The not-claimed
+It holds 59 claims: 41 certified, 7 planned,
+1 deferred, and 10 not claimed, supported by 64 evidence records. The not-claimed
 group is the point of the document. A register that listed only what worked would
 be an advertisement.
 
@@ -30,7 +30,7 @@ be an advertisement.
 > record below with its identifiers, the revision it names, and a content hash of every
 > file it cites.
 >
-> **Since `V1-S5-006-PR2` the evidence is checked for a freeze, and it is not frozen.**
+> **Since `V1-S5-006-PR2` the evidence is checked for a freeze, which it then failed.**
 > The [completeness ledger](../proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json)
 > names its twelve register changes the same way: three records added where the same
 > suites were run again at a named revision, four records that now cite the file holding
@@ -38,6 +38,18 @@ be an advertisement.
 > blocker, because the code its only supporting record ran is identified by nothing.
 > No status and no level moved. [The completeness report](../proof/testing/v1-s5-006-pr2-evidence-completeness.md)
 > gives every finding a final state and each blocker the run that would close it.
+>
+> **Since `V1-S5-013-PR1` the five blockers are closed, and the gate passes.** The
+> [closure ledger](../proof/testing/v1-s5-013-pr1-closure.v1alpha1.json) names its
+> thirteen register changes the same way. Four blocked claims each gained a record of a
+> rerun from a fresh clone of `main` at a named revision with nothing uncommitted — the
+> local baseline, the Helm uninstall and the cluster's survival, the upgrade rollback,
+> and the pod replacement — and the rollback claim's statement now quotes that run's
+> timings. The fifth, the optional `kind` helper, moved from certified to not claimed,
+> because the maintainer decided the release would not install `kind` to run it again.
+> Every older record stays cited at its level, and no level moved.
+> [The closure report](../proof/testing/v1-s5-013-pr1-blocker-closure.md) gives each
+> blocker its disposition.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -270,7 +282,7 @@ declares material.
 
 | Claim | Status | Evidence records: level, identifier, where it ran, files | Automated coverage |
 |---|---|---|---|
-| `a-local-serving-baseline-was-measured-under-a-method-registered-first` | certified | `C2` `a-local-serving-baseline-was-measured-under-a-method-registered-first-c2` — local-container — [v1-s2-005-local-baseline-experiment.md](../proof/serving/v1-s2-005-local-baseline-experiment.md), [v1-s2-005-baseline-raw-results.md](../proof/serving/v1-s2-005-baseline-raw-results.md) | 1 module(s) |
+| `a-local-serving-baseline-was-measured-under-a-method-registered-first` | certified | `C2` `a-local-serving-baseline-was-measured-under-a-method-registered-first-c2` — local-container — [v1-s2-005-local-baseline-experiment.md](../proof/serving/v1-s2-005-local-baseline-experiment.md), [v1-s2-005-baseline-raw-results.md](../proof/serving/v1-s2-005-baseline-raw-results.md)<br>`C2` `a-local-serving-baseline-was-measured-under-a-method-registered-first-c2-rerun` — local-container — [v1-s5-013-pr1-baseline-rerun.md](../proof/serving/v1-s5-013-pr1-baseline-rerun.md), [v1-s5-013-pr1-baseline-raw.jsonl](../proof/serving/v1-s5-013-pr1-baseline-raw.jsonl), [v1-s5-013-pr1-baseline-summary.json](../proof/serving/v1-s5-013-pr1-baseline-summary.json), [v1-s5-013-pr1-baseline-transcript.txt](../proof/serving/v1-s5-013-pr1-baseline-transcript.txt) | 1 module(s) |
 | `a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure` | certified | `C2` `a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure-c2` — local-kubernetes, `docker-desktop` — [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) | 2 module(s) |
 | `local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes` | certified | `C0` `local-runtime-diagnosis-is-machine-checked-against-the-records-it-quotes-c0` — repository-only — [v1-s2-008-pr1-validation.md](../proof/serving/v1-s2-008-pr1-validation.md) | 1 module(s) |
 | `the-model-artifact-matches-its-published-hash` | certified | `C2` `the-model-artifact-matches-its-published-hash-c2-feasibility` — local-kubernetes, `docker-desktop` — [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md)<br>`C2` `the-model-artifact-matches-its-published-hash-c2-closure` — local-kubernetes, provider not named — [v1-s1-real-runtime-closure.md](../proof/serving/v1-s1-real-runtime-closure.md) | 1 module(s) |
@@ -303,20 +315,20 @@ it claims no cold-start effect at all.
 
 | Claim | Status | Evidence records: level, identifier, where it ran, files | Automated coverage |
 |---|---|---|---|
-| `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | certified | `C2` `a-controlled-release-change-can-be-reversed-and-real-inference-restored-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-upgrade-rollback.md](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md) | 1 module(s) |
-| `a-helm-release-installs-and-uninstalls-without-residue` | certified | `C2` `a-helm-release-installs-and-uninstalls-without-residue-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md)<br>`C2` `a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 2 module(s) |
-| `a-local-cluster-is-created-and-removed-without-residue` | certified | `C2` `a-local-cluster-is-created-and-removed-without-residue-c2` — local-kubernetes, `kind` — [v1-s0-002-pr2-cluster-smoke.md](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) | 1 module(s) |
+| `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | certified | `C2` `a-controlled-release-change-can-be-reversed-and-real-inference-restored-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-upgrade-rollback.md](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md)<br>`C2` `a-controlled-release-change-can-be-reversed-and-real-inference-restored-c2-rerun` — local-kubernetes, `docker-desktop` — [v1-s5-013-pr1-upgrade-rollback.md](../proof/environment/v1-s5-013-pr1-upgrade-rollback.md), [v1-s5-013-pr1-upgrade-rollback.v1alpha1.json](../proof/environment/v1-s5-013-pr1-upgrade-rollback.v1alpha1.json), [v1-s5-013-pr1-upgrade-rollback-transcript.txt](../proof/environment/v1-s5-013-pr1-upgrade-rollback-transcript.txt), [v1-s5-013-pr1-cluster-prepare-transcript.txt](../proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt) | 1 module(s) |
+| `a-helm-release-installs-and-uninstalls-without-residue` | certified | `C2` `a-helm-release-installs-and-uninstalls-without-residue-c2` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md)<br>`C2` `a-helm-release-installs-and-uninstalls-without-residue-c2-paved-road` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C2` `a-helm-release-installs-and-uninstalls-without-residue-c2-rerun` — local-kubernetes, `docker-desktop` — [v1-s5-013-pr1-scoped-cleanup.md](../proof/environment/v1-s5-013-pr1-scoped-cleanup.md), [v1-s5-013-pr1-scoped-cleanup-transcript.txt](../proof/environment/v1-s5-013-pr1-scoped-cleanup-transcript.txt), [v1-s5-013-pr1-cluster-prepare-transcript.txt](../proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt) | 2 module(s) |
 | `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating` | certified | `C2` `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating-c2-docker-desktop` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C0` `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating-c0-contract` — repository-only — [v1-s3-010-pr1-validation.md](../proof/architecture/v1-s3-010-pr1-validation.md) | 4 module(s) |
 | `kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed` | certified | `C0` `kubernetes-diagnosis-and-four-cleanup-radii-are-published-and-executed-c0` — repository-only — [v1-s3-009-pr1-validation.md](../proof/environment/v1-s3-009-pr1-validation.md), [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md), [v1-s3-011-pr2-scoped-cleanup.md](../proof/environment/v1-s3-011-pr2-scoped-cleanup.md) | 1 module(s) |
-| `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | certified | `C2` `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2` — local-kubernetes, `docker-desktop` — [v1-s3-003-pr2-kubernetes-pod-restart.md](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md) | 1 module(s) |
+| `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | certified | `C2` `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2` — local-kubernetes, `docker-desktop` — [v1-s3-003-pr2-kubernetes-pod-restart.md](../proof/serving/v1-s3-003-pr2-kubernetes-pod-restart.md)<br>`C2` `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2-rerun` — local-kubernetes, `docker-desktop` — [v1-s5-013-pr1-kubernetes-pod-restart.md](../proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.md), [v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json](../proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json), [v1-s5-013-pr1-kubernetes-pod-restart-transcript.txt](../proof/serving/v1-s5-013-pr1-kubernetes-pod-restart-transcript.txt), [v1-s5-013-pr1-cluster-prepare-transcript.txt](../proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt) | 1 module(s) |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | certified | `C2` `the-selected-runtime-serves-a-real-completion-in-a-cluster-c2-paved-road` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md)<br>`C1` `the-selected-runtime-serves-a-real-completion-in-a-cluster-c1-feasibility` — local-kubernetes, `docker-desktop` — [v1-s0-003-pr2-runtime-feasibility.md](../proof/serving/v1-s0-003-pr2-runtime-feasibility.md) | 3 module(s) |
 | `multi-replica-serving-is-certified` | not-claimed | `C0` `multi-replica-serving-is-certified-c0` — local-kubernetes, `docker-desktop` — [v1-s3-011-pr1-docker-desktop-paved-road.md](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md) | 1 module(s) |
 
-Seven certified rows and one refusal. Five of the seven ran on `docker-desktop`,
-one on `kind`, and one is a `C0` check over the troubleshooting guide.
-`docker-desktop` is the executed V1 reference provider and **certifies nothing
-about `kind`** — the only `kind` result in this matrix is the 2026-08-23 cluster
-smoke, whose workload was a static-text HTTP server. Docker Desktop chooses its
+Six certified rows and one refusal. Five of the six ran on `docker-desktop`, and one
+is a `C0` check over the troubleshooting guide. `docker-desktop` is the executed V1
+reference provider and **certifies nothing about `kind`** — the only `kind` result in
+this matrix is the 2026-08-23 cluster smoke, whose workload was a static-text HTTP
+server, and since `V1-S5-013-PR1` its claim is not claimed and sits with the others
+V1 does not make. Docker Desktop chooses its
 own Kubernetes version and node image, and InferOps pins neither.
 
 Two rows here hold a weaker record beside their real one, which `v1alpha1` could not
@@ -381,6 +393,7 @@ figure, a service-level objective, an error budget, or a recovery-time objective
 | `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label` | certified | `C0` `the-telemetry-catalog-cannot-admit-a-prompt-or-an-unbounded-label-c0` — repository-only — [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md), [v1-s1-008-pr1-validation.md](../proof/telemetry/v1-s1-008-pr1-validation.md) | 2 module(s) |
 | `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded` | certified | `C0` `the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0` — repository-only — [v1-s4-008-pr1-alert-validation.md](../proof/telemetry/v1-s4-008-pr1-alert-validation.md), [v1-s4-007-pr1-unready-model-recovery.md](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md), [v1-s4-006-pr1-inference-pod-recovery.md](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md), [v1-s4-004-pr1-validation.md](../proof/serving/v1-s4-004-pr1-validation.md), [v1-s4-007-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-007-pr1-telemetry.v1alpha1.json), [v1-s4-006-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json), [v1-s4-004-pr1-telemetry.v1alpha1.json](../proof/serving/v1-s4-004-pr1-telemetry.v1alpha1.json) | 1 module(s) |
 | `no-prompt-response-or-secret-reaches-a-log-or-a-metric` | planned | none, by rule | 2 module(s) |
+| `a-local-cluster-is-created-and-removed-without-residue` | V1 does not claim that the optional kind helper creates and removes a local cluster without residue at any identified revision of this repository. Its only run, on 2026-08-23, names no revision, and nothing else identifies the helper code that ran. V1-S5-013-PR1 did not run it again: the reference host has no kind CLI, ADR 0011 D11 made the helper optional and not the platform path, the maintainer decided the release would not install kind to re-prove it, and ADR 0011 forbids reading Docker Desktop evidence across to kind. The 2026-08-23 record stays cited for what it observed, at the level it was given. | `C2` `a-local-cluster-is-created-and-removed-without-residue-c2` — local-kubernetes, `kind` — [v1-s0-002-pr2-cluster-smoke.md](../proof/environment/v1-s0-002-pr2-cluster-smoke.md) |
 | `an-alert-reaches-somebody` | not-claimed | none | 0 module(s) |
 
 The alert rows are two claims rather than one, deliberately. The alert *set*'s
@@ -484,7 +497,7 @@ arguing about it later.
 
 ## What V1 does not claim
 
-9 rows carry `not-claimed`. They are collected here because a reader looking
+10 rows carry `not-claimed`. They are collected here because a reader looking
 for what is missing should not have to read eleven tables to find it.
 
 | Claim | Why it is not claimed | Evidence records |
@@ -499,14 +512,17 @@ for what is missing should not have to read eleven tables to find it.
 | `a-v1-release-has-been-published` | The release process is documented and no release has been executed. The changelog holds unreleased changes only. | none |
 | `inferops-is-a-portable-production-platform` | `production-experience` is unreachable from this repository: there is no organizational production to draw it from, and public-cloud execution is not production operation. Every executed result is one Windows host, one provider, CPU, one replica of each tier, started by hand under explicit authorization against a cluster the operator already owns. | none |
 
-Three of them hold a record. `multi-replica-serving-is-certified` holds the run that
+Four of them hold a record. `a-local-cluster-is-created-and-removed-without-residue`
+holds the 2026-08-23 run of the `kind` helper, at the `C2` it was given, because what it
+observed happened and only the code that did it is unidentified;
+`multi-replica-serving-is-certified` holds the run that
 was refused at the capacity gate, at `C0`;
 `the-rendered-network-policy-is-enforced-by-the-cluster` holds the experiment that
 applied a total-denial policy and watched nothing be refused, at `C1`; and
 `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary` holds
 the template check it cited and the count that moved it here. None of those records
-makes
-the claim weaker than silence would; both make the absence checkable.
+makes the claim weaker than silence would; each makes the absence, or the reason for
+it, checkable.
 
 ## Surfaces that make no capability claim
 

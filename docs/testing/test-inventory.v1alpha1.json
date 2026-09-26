@@ -798,6 +798,14 @@
       "note": "Deliberately no claim: it establishes that the completeness decision is recorded, derived where it can be, consistent, and carried to every surface that publishes the claims, never that a judgement in it is right. It reads committed files and the repository's history only."
     },
     {
+      "module": "tests/testing/test_evidence_closure.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The closure of the V1 evidence blockers against what it rests on: the closure ledger publishes exactly three closure mechanisms; every blocker the completeness ledger raised has exactly one disposition, in the order raised, and a closure that drops, doubles, invents a mechanism for, or both closes and leaves open a blocker is refused; the stated gate is the one the closure decides, an open blocker fails it, and the gate command prints every closure; every rerun's transcript shows the named revision and an empty status before and after; every added record names that revision, cites its transcript, and quotes it verbatim; no record that existed was edited, removed, or given another level, none reaches C3 or C4, and only a claim decision moved a status, downwards; every closed claim says how in the limitation the dashboard publishes, and the claim decision reached the test strategy; and every count, the gate output, and the freeze-candidate digest in the closure report are what the ledger and the index produce.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that the closure is recorded, derived where it can be, and consistent with the register, the index, and every surface that publishes the claims, never that a rerun behaved as its record says or that a claim decision was right. It reads committed files and the repository's history only."
+    },
+    {
       "module": "tests/testing/test_case_study.py",
       "layer": "documentation",
       "marker": "docs",

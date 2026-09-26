@@ -4,20 +4,22 @@
   "title": "The InferOps V1 engineering case study, as the data a test holds it to",
   "description": "Which claims each section of the draft case study cites, the committed file and field or sentence every quoted figure is read from, the figures drawn in it and what each is drawn from, and the evidence set it was verified against. The page states no status, level, or blocker of its own: its claims appendix is derived from the register and the completeness ledger by tests/testing/test_case_study.py, which also reads every figure below back from its source.",
   "status": "draft",
-  "verifiedIn": "V1-S5-007-PR2",
+  "verifiedIn": "V1-S5-013-PR1",
   "verifiedAgainst": {
-    "evidenceSetSha256": "1bf2a83ff0548a7d07e68fabdacd0d8b10c35d012b25c03b40bc469297fb5bec",
-    "releaseGate": "incomplete",
-    "releaseBlockers": 5,
-    "note": "The digest, gate, and blocker count of the V1 evidence index when the page was verified. The set is not frozen, so the page stays a draft; a test fails when the index moves from these values, so that the page is verified again rather than left behind."
+    "evidenceSetSha256": "53994a82a562d05e4b63ddb143080fe0110c9c9c8876d62d4f5672d072da3297",
+    "releaseGate": "complete",
+    "releaseBlockers": 0,
+    "note": "The digest, gate, and blocker count of the V1 evidence index when V1-S5-013-PR1 re-verified the page for what it moved. The set is the pre-publication freeze candidate; the page stays a draft until V1-S5-013-PR2 publishes it, and a test fails when the index moves from these values, so that the page is verified again rather than left behind."
   },
   "documentRef": "docs/case-study/v1-engineering-case-study.md",
   "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
   "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
   "completenessRef": "docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json",
+  "closureRef": "docs/proof/testing/v1-s5-013-pr1-closure.v1alpha1.json",
   "validationRefs": [
     "docs/proof/case-study/v1-s5-007-pr1-validation.md",
-    "docs/proof/case-study/v1-s5-007-pr2-validation.md"
+    "docs/proof/case-study/v1-s5-007-pr2-validation.md",
+    "docs/proof/testing/v1-s5-013-pr1-validation.md"
   ],
   "renders": {
     "grouped": "An integer written with a space between each group of three digits, as the records write milliseconds.",
@@ -590,8 +592,8 @@
     "A figure that reads back from its source is quoted correctly; whether the sentence around it says what the record says is a reading, and no test performs one.",
     "A verbatim figure is checked only for being present in the file it names, not for being attached there to the same subject.",
     "A drawn figure is checked for its numbers, its count words, and the boundary its caption must state. Whether its arrangement -- what sits beside what, what a row implies -- says more than its records is a reading. The architecture image is a tracked picture, and nothing reads its content.",
-    "The claims appendix is derived from the register and the completeness ledger, so it cannot disagree with them; the prose of each section can, and review is the only check on it.",
-    "The page is verified against an evidence set that is not frozen. It stays a draft, and the test holds it to that, until the release gate is complete; and it fails when the evidence set's digest moves, so that the page is verified again."
+    "The claims appendix is derived from the register and the completeness and closure ledgers, so it cannot disagree with them; the prose of each section can, and review is the only check on it.",
+    "The page is verified against the pre-publication freeze candidate, which is not the final freeze: publishing it changes the register, so V1-S5-013-PR2 recomputes the digest. It stays a draft until then, and the test fails when the evidence set's digest moves, so that the page is verified again."
   ],
   "visuals": [
     {

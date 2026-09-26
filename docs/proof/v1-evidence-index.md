@@ -5,7 +5,8 @@ index is [`v1-evidence-index.v1alpha1.json`](v1-evidence-index.v1alpha1.json), p
 by `python -m tools.evidence_index --write` from
 [the claim and evidence register](../testing/claim-evidence-matrix.v1alpha2.json),
 [the `V1-S5-006-PR1` normalization ledger](testing/v1-s5-006-pr1-normalization.v1alpha1.json),
-and [the `V1-S5-006-PR2` completeness ledger](testing/v1-s5-006-pr2-completeness.v1alpha1.json).
+[the `V1-S5-006-PR2` completeness ledger](testing/v1-s5-006-pr2-completeness.v1alpha1.json),
+and [the `V1-S5-013-PR1` closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json).
 It states nothing they do not, and
 [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py)
 regenerates it and fails on any difference.
@@ -28,34 +29,40 @@ proven*; this answers *what exactly is the evidence, and can it be pinned*.
 
 ## The freeze decision
 
-The V1 evidence pack is not frozen: the release gate is **incomplete**, with
-**5 release blockers**. Each is a certified claim whose statement rests on a record
-whose repository code nothing identifies — the local serving baseline, the kind cluster
-helper, the Helm uninstall's survival clause, the upgrade rollback, and the pod
-replacement. [The completeness report](testing/v1-s5-006-pr2-evidence-completeness.md)
-names, for each, the run that would close it and the decision that could replace the
-run, and each claim's limitation in the register says it is a blocker, so the
-dashboard shows it too. `python -m tools.evidence_index --gate` prints the decision and
-exits 1 while any blocker stands.
+For V1, the release gate is **complete**, with **0 release blockers**.
+`V1-S5-006-PR2` raised 5 — the local serving baseline, the kind cluster helper, the
+Helm uninstall's survival clause, the upgrade rollback, and the pod replacement, each a
+certified claim whose statement rested on a record whose repository code nothing
+identified — and [the closure report](testing/v1-s5-013-pr1-blocker-closure.md) closed
+every one: 4 by a rerun from a fresh clone at a named revision, whose new record
+identifies the code that ran, and 1 by moving the `kind` helper's claim to
+not-claimed. No older record was edited or dropped; each stays cited for what it
+observed. `python -m tools.evidence_index --gate` prints the decision and each
+blocker's closure, exits 0 now, and exits 1 if a blocker stands or if any blocker
+`V1-S5-006-PR2` raised is left without a disposition.
 
-How the 34 records that executed their target behaviour identify the repository code
+**This evidence set is the pre-publication freeze candidate, not the final freeze.**
+`V1-S5-013-PR2` will change the register to publish the case study, so it must
+recompute the digest below and freeze that one before a release consumes it.
+
+How the 38 records that executed their target behaviour identify the repository code
 that ran:
 
 | Code identity | Records | Meaning |
 |---|---|---|
-| `stated-revision` | 16 | The record names the commit that ran |
+| `stated-revision` | 20 | The record names the commit that ran |
 | `content-pinned` | 4 | A named base commit, plus the LF-normalised SHA-256 of every file that decided the run, each equal to that file at a named commit |
 | `no-repository-code` | 4 | No repository code among the claim-material components that executed; the third-party ones are pinned |
-| `unidentified` | 10 | Repository code executed and nothing the record cites identifies which; five of these are under claims another record settles, and five are the blockers |
+| `unidentified` | 10 | Repository code executed and nothing the record cites identifies which; nine of these are under claims another record settles, four of those by a `V1-S5-013-PR1` rerun, and one is under the `kind` helper's claim, which is now not claimed |
 
 **The whole evidence set's digest is
-`1bf2a83ff0548a7d07e68fabdacd0d8b10c35d012b25c03b40bc469297fb5bec`**, the index's
+`53994a82a562d05e4b63ddb143080fe0110c9c9c8876d62d4f5672d072da3297`**, the index's
 `evidenceSetSha256`: SHA-256 over the sorted lines `<sha256>  <path>` of every cited
 file. A release that quotes it pins the set as a whole.
 
 ## What one entry holds
 
-For each of the **60 evidence records** in the register:
+For each of the **64 evidence records** in the register:
 
 | Field | What it says | Where it comes from |
 |---|---|---|
@@ -74,8 +81,8 @@ For each of the **60 evidence records** in the register:
 
 Claim entries carry the statement, status, limitation, `doesNotEstablish`, the
 declared claim-material components, the levels the claim's records reached, the record
-identifiers, the claim's code-identity decision where one was needed, and its release
-blockers. A summary block carries the counts below and the gate.
+identifiers, the claim's code-identity decision where one was needed, its open release
+blockers, and the blockers closed on it. A summary block carries the counts below and the gate.
 
 **What an entry does not hold.** No record in this repository names an owner, so the
 index has no owner field and does not invent one. A date is taken only from a line the
@@ -88,13 +95,13 @@ version.
 
 ## What the index shows today
 
-- **60 evidence records** under 59 claims: 26 at `C0`, 8 at `C1`, 26 at `C2`, and none
-  at `C3` or `C4`. Every one of the **42 certified claims** holds at least one record,
+- **64 evidence records** under 59 claims: 26 at `C0`, 8 at `C1`, 30 at `C2`, and none
+  at `C3` or `C4`. Every one of the **41 certified claims** holds at least one record,
   and every record states its limitations and what it does not establish.
-- **71 distinct committed files** are cited, all under `docs/proof/`, each hashed and
+- **84 distinct committed files** are cited, all under `docs/proof/`, each hashed and
   each named by its git blob. Nine of them carry a correction recorded beside them
   rather than inside them.
-- **34 records executed their target behaviour, and 16 of them name the repository
+- **38 records executed their target behaviour, and 20 of them name the repository
   revision that ran.** The other 18 name the base their working tree started from, a
   revision with the change's own files uncommitted, a commit the repository's history
   dates after the run, a branch, or nothing at all. The table above says which of them
@@ -127,7 +134,7 @@ python -m tools.evidence_index            # the summary counts
 python -m tools.evidence_index --print    # the whole index, written nowhere
 python -m tools.evidence_index --check    # compare the committed index; exit 1 on drift
 python -m tools.evidence_index --write    # regenerate it
-python -m tools.evidence_index --gate     # the release gate; exit 1 while a blocker stands
+python -m tools.evidence_index --gate     # the release gate; exit 1 while a blocker stands or one is unaccounted for
 ```
 
 Every mode reads files. None contacts a cluster, a runtime, a model, or the network.
@@ -136,13 +143,15 @@ Every mode reads files. None contacts a cluster, a runtime, a model, or the netw
 
 - **That any record is right.** The index copies what the register says and hashes
   what the records are. Whether a level, a limitation, or a citation is the right one is
-  a reading, and [the completeness report](testing/v1-s5-006-pr2-evidence-completeness.md),
+  a reading, and [the closure report](testing/v1-s5-013-pr1-blocker-closure.md),
+  [the completeness report](testing/v1-s5-006-pr2-evidence-completeness.md),
   [the normalization report](testing/v1-s5-006-pr1-evidence-normalization.md), and
   [the migration report](testing/v1-s5-012-pr2-migration-report.md) are where the
   readings are.
-- **That the evidence is frozen.** It is not, for the five reasons above. A hash binds
-  a file to its content today; it says nothing about whether the file should have said
-  more.
+- **That the evidence is frozen for release.** The gate passing makes this set the
+  pre-publication freeze candidate; `V1-S5-013-PR2` recomputes and freezes the final
+  one. A hash binds a file to its content today; it says nothing about whether the
+  file should have said more.
 - **That a revision the index lists as stated is the tree that ran.** It is the record's
   own word, quoted, as a content pin is. The index distinguishes the words a record
   used; it cannot re-run a build to check them.

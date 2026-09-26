@@ -663,9 +663,9 @@
       "requiredCertification": "C2",
       "requiresRealModel": false,
       "evidenceOwner": "environment",
-      "v1Status": "certified",
-      "evidenceRef": "docs/proof/environment/v1-s0-002-pr2-cluster-smoke.md",
-      "deferralReason": null
+      "v1Status": "deferred",
+      "evidenceRef": null,
+      "deferralReason": "Deferred by V1-S5-013-PR1. The helper's only run, on 2026-08-23, names no revision of this repository, so V1-S5-006-PR2 held it as a release blocker, and closing it by a run needs kind, which the reference host does not have. ADR 0011 D11 made the helper optional and not the platform path, and the maintainer decided V1 would not install kind to re-prove it; Docker Desktop evidence may not stand in for kind. The claim and evidence register holds the claim as not-claimed and keeps the 2026-08-23 record cited for what it observed."
     },
     {
       "claimId": "the-selected-runtime-serves-a-real-completion-in-a-cluster",

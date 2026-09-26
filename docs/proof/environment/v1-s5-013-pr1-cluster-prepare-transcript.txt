@@ -1,0 +1,537 @@
+# Transcript of one operating-shell stage, run from a fresh clone at a named
+# revision for V1-S5-013-PR1. Redacted before committing: the clone's absolute
+# path is <clone>, one namespace belonging to unrelated work is <unrelated
+# namespace> with its uid removed, the container engine's local build-dashboard
+# identifiers are <build>, terminal colour codes are removed, and whitespace at
+# the end of a line is removed. Nothing else was changed.
+kubectl: v1.34.3
+helm: v3.19.0+g3d8990f
+terraform: Terraform v1.15.8
+=== identity before prepare: 2026-09-26T01:54:00.541Z
+bcad343133ba6fddfe38832a2694e71777cdd006
+--- status (porcelain, untracked=all) begin
+--- status end
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+=== probe before-any-cluster-work: 2026-09-26T01:54:14.184Z
+target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+server version: v1.34.3
+kube-system uid: ba50c99a-664b-4f15-a242-7f29f07b7664
+--- nodes (name ready kubelet)
+desktop-control-plane True v1.34.3
+--- node container on the engine
+/desktop-control-plane running kind-cluster-label=desktop
+--- storage classes (name provisioner default)
+hostpath rancher.io/local-path false uid=d2aab300-2d8d-4b8e-a6fd-49960bee0af8
+standard rancher.io/local-path true uid=97b761a3-fea2-4dee-8450-c9366a13e249
+--- namespaces
+default uid=11947ed8-8876-4586-81db-f2d47e9b5fb3
+inferops-serving-feasibility uid=7be214b4-9b67-4e34-8838-7e4b88820876
+kube-node-lease uid=293f7058-68d7-4a4e-9f8b-ee3b7e449293
+kube-public uid=5b9e6dc1-0f30-424c-bac7-342f1975a94f
+kube-system uid=ba50c99a-664b-4f15-a242-7f29f07b7664
+local-path-storage uid=b2cd60fb-5fd4-4bdc-8b05-eabf987bcc7b
+<unrelated namespace>
+--- release namespace inferops-release
+Error from server (NotFound): namespaces "inferops-release" not found
+
+[inferops] === docker build ===
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 3.84kB 0.0s done
+#1 DONE 0.2s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2.70kB 0.1s done
+#3 DONE 0.1s
+
+#4 [internal] load build context
+#4 ...
+
+#5 [1/6] FROM docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
+#5 resolve docker.io/library/python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea 0.1s done
+#5 DONE 0.1s
+
+#4 [internal] load build context
+#4 transferring context: 567.53kB 1.6s done
+#4 DONE 1.7s
+
+#6 [2/6] WORKDIR /opt/inferops
+#6 CACHED
+
+#7 [3/6] COPY src/inferops /opt/inferops/src/inferops
+#7 CACHED
+
+#8 [4/6] COPY tools/__init__.py /opt/inferops/tools/__init__.py
+#8 CACHED
+
+#9 [5/6] COPY tools/api_carrier /opt/inferops/tools/api_carrier
+#9 CACHED
+
+#10 [6/6] COPY tools/api_container /opt/inferops/tools/api_container
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers 0.0s done
+#11 exporting manifest sha256:3e89e86509fd2b63ebb44837a9fb706be2f97625efb22b932e8e274c0f45e2f3 done
+#11 exporting config sha256:fa912a7e56848652086afcf6807efcc039d1363a0b5e938246eb24015f7b5a21 done
+#11 exporting attestation manifest sha256:3a67654c3ceb38ff493d0fefd0e34c35aa5d9e3ba85f974a3e4b6cb9a9572afe
+#11 exporting attestation manifest sha256:3a67654c3ceb38ff493d0fefd0e34c35aa5d9e3ba85f974a3e4b6cb9a9572afe 0.0s done
+#11 exporting manifest list sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40 0.0s done
+#11 naming to localhost/inferops-api:dev 0.0s done
+#11 unpacking to localhost/inferops-api:dev 0.0s done
+#11 DONE 0.4s
+
+View build details: <build>
+[inferops] built localhost/inferops-api:dev
+[inferops] digest sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+[inferops] load it into the cluster with: scripts/environment/api-image.sh load
+EXIT_api_build=0
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+time="2026-09-26T01:54:39Z" level=warning msg="DEPRECATION: The support for cgroup v1 is deprecated since containerd v2.2 and will be removed by no later than May 2029. Upgrade the host to use cgroup v2."
+localhost/inferops api:dev              	saved
+application/vnd.oci.image.index.v1+json sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+Importing	elapsed: 6.6 s	total:   0.0 B	(0.0 B/s)
+time="2026-09-26T01:54:46Z" level=warning msg="DEPRECATION: The support for cgroup v1 is deprecated since containerd v2.2 and will be removed by no later than May 2029. Upgrade the host to use cgroup v2."
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40' resolves inside 'desktop-control-plane'.
+[inferops] the real values must set api.image.pullPolicy: Never, so that a reference no registry serves is never fetched.
+EXIT_api_load=0
+EXIT_api_values=0
+
+[inferops] === verify the artifact this image will carry ===
+[inferops] artifact verified: 1834426016 bytes, SHA-256 matches docs/serving/model-source.v1.json
+
+[inferops] === docker build ===
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.29kB 0.1s
+#1 transferring dockerfile: 2.29kB 0.2s done
+#1 DONE 0.2s
+
+#2 [internal] load metadata for docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+#2 DONE 3.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.1s
+
+#4 [internal] load build context
+#4 ...
+
+#5 [1/2] FROM docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+#5 resolve docker.io/library/busybox@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0 0.1s done
+#5 DONE 0.1s
+
+#4 [internal] load build context
+#4 transferring context: 39.66MB 5.0s
+#4 transferring context: 85.80MB 10.1s
+#4 transferring context: 130.31MB 15.2s
+#4 transferring context: 173.05MB 20.2s
+#4 transferring context: 216.96MB 25.2s
+#4 transferring context: 261.83MB 30.2s
+#4 transferring context: 302.37MB 35.2s
+#4 transferring context: 346.72MB 40.2s
+#4 transferring context: 386.57MB 45.3s
+#4 transferring context: 424.85MB 50.3s
+#4 transferring context: 464.28MB 55.4s
+#4 transferring context: 505.67MB 60.4s
+#4 transferring context: 546.97MB 65.5s
+#4 transferring context: 596.13MB 70.6s
+#4 transferring context: 646.57MB 75.6s
+#4 transferring context: 703.46MB 80.7s
+#4 transferring context: 760.78MB 85.8s
+#4 transferring context: 816.83MB 90.8s
+#4 transferring context: 860.81MB 96.0s
+#4 transferring context: 906.86MB 101.0s
+#4 transferring context: 952.45MB 106.0s
+#4 transferring context: 996.79MB 111.0s
+#4 transferring context: 1.04GB 116.0s
+#4 transferring context: 1.10GB 121.1s
+#4 transferring context: 1.15GB 126.2s
+#4 transferring context: 1.20GB 131.3s
+#4 transferring context: 1.24GB 136.3s
+#4 transferring context: 1.28GB 141.3s
+#4 transferring context: 1.33GB 146.4s
+#4 transferring context: 1.37GB 151.4s
+#4 transferring context: 1.41GB 156.4s
+#4 transferring context: 1.47GB 161.5s
+#4 transferring context: 1.52GB 166.6s
+#4 transferring context: 1.57GB 171.6s
+#4 transferring context: 1.62GB 176.7s
+#4 transferring context: 1.66GB 181.7s
+#4 transferring context: 1.71GB 186.8s
+#4 transferring context: 1.75GB 191.9s
+#4 transferring context: 1.80GB 197.0s
+#4 transferring context: 1.83GB 201.2s done
+#4 DONE 201.3s
+
+#6 [2/2] COPY . /seed/
+#6 CACHED
+
+#7 exporting to image
+#7 exporting layers done
+#7 exporting manifest sha256:36fa1601de51adf1a03c4bd08cb584160f7103f1ef59ba000fb1171bfa307657 done
+#7 exporting config sha256:a00dd9e2d610e32b4f34014837f2b94b70faac0b2f66fa1edd50bb7b065cfe46 done
+#7 exporting attestation manifest sha256:73120b1d634efc04e023f1c34d1d5ed1ab78c001a259bac37b9203d1b7d121a1 0.0s done
+#7 exporting manifest list sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d 0.0s done
+#7 naming to localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077
+#7 naming to localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077 done
+#7 unpacking to localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077 0.0s done
+#7 DONE 0.3s
+
+View build details: <build>
+[inferops] built localhost/inferops-model-seed:90862c4b9d2787eaed51d12237eafdfe7c5f6077
+[inferops] digest sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d
+EXIT_seed_build=0
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === import into desktop-control-plane's containerd ===
+time="2026-09-26T01:58:46Z" level=warning msg="DEPRECATION: The support for cgroup v1 is deprecated since containerd v2.2 and will be removed by no later than May 2029. Upgrade the host to use cgroup v2."
+localhost/inferops model seed:90862c4b9d	saved
+application/vnd.oci.image.index.v1+json sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d
+Importing	elapsed: 202.8s	total:   0.0 B	(0.0 B/s)
+time="2026-09-26T02:02:09Z" level=warning msg="DEPRECATION: The support for cgroup v1 is deprecated since containerd v2.2 and will be removed by no later than May 2029. Upgrade the host to use cgroup v2."
+
+[inferops] === verify the reference the chart will use ===
+[inferops] prepared for provider 'docker-desktop' by 'node-ctr-import'; 'localhost/inferops-model-seed@sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d' resolves inside 'desktop-control-plane'.
+[inferops] WARNING: this image carries 1834426016 bytes of model weights and now occupies that much inside the node as well as the claim it fills. Reclaiming it is the operator's operation on their own cluster, and it differs by provider: deleting a kind cluster reclaims both, and on Docker Desktop neither InferOps nor this project's cleanup removes the imported image -- what resetting Kubernetes in Docker Desktop's own settings reclaims has not been observed.
+EXIT_seed_load=0
+EXIT_seed_values=0
+WROTE    .artifacts/s5-013/real-values.merged.yaml from 3 file(s)
+EXIT_values=0
+# Generated by scripts/environment/api-image.sh. Host state, not evidence.
+# The digest is the image built on this host; it exists in no registry.
+api:
+  image:
+    repository: localhost/inferops-api
+    digest: sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+    pullPolicy: Never
+# Generated by scripts/environment/model-seed-image.sh. Host state, not evidence.
+# Pass alongside charts/inferops-llm/ci/real-values.yaml, after it.
+model:
+  artifact:
+    sourceUrl: ""
+  acquisition:
+    source: seed-image
+    seedImage:
+      repository: localhost/inferops-model-seed
+      digest: sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d
+      pullPolicy: Never
+      artifactPath: /seed
+
+[inferops] === terraform fmt ===
+
+[inferops] === terraform init (no backend) ===
+Initializing modules...
+- platform_prerequisites in ..\..\modules\platform-prerequisites
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Installing hashicorp/kubernetes v2.38.0...
+- Installed hashicorp/kubernetes v2.38.0 (signed by HashiCorp)
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+[inferops] === terraform validate ===
+Success! The configuration is valid.
+
+[inferops] format and validation passed. Nothing was contacted and no state was read.
+EXIT_tf_check=0
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+[inferops] === terraform plan ===
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # module.platform_prerequisites.kubernetes_namespace_v1.platform will be created
+  + resource "kubernetes_namespace_v1" "platform" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "platform-namespace"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache will be created
+  + resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
+      + id               = (known after apply)
+      + wait_until_bound = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+              + "inferops.io/retention"                = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "model-cache-volume-claim"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-model-cache"
+          + namespace        = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + spec {
+          + access_modes       = [
+              + "ReadWriteOnce",
+            ]
+          + storage_class_name = (known after apply)
+          + volume_mode        = (known after apply)
+          + volume_name        = (known after apply)
+
+          + resources {
+              + requests = {
+                  + "storage" = "4Gi"
+                }
+            }
+        }
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + model_cache_claim_name      = "inferops-model-cache"
+  + model_cache_size            = "4Gi"
+  + namespace                   = "inferops-release"
+  + prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+<clone>\.artifacts\terraform\prerequisites.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "<clone>\\.artifacts\\terraform\\prerequisites.tfplan"
+[inferops] plan written to .artifacts/terraform/prerequisites.tfplan. It is host state, not evidence, and .artifacts/ is ignored by version control.
+EXIT_tf_plan=0
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+[inferops] === terraform plan ===
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # module.platform_prerequisites.kubernetes_namespace_v1.platform will be created
+  + resource "kubernetes_namespace_v1" "platform" {
+      + id                               = (known after apply)
+      + wait_for_default_service_account = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "platform-namespace"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+    }
+
+  # module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache will be created
+  + resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
+      + id               = (known after apply)
+      + wait_until_bound = false
+
+      + metadata {
+          + annotations      = {
+              + "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              + "inferops.io/removed-by"               = "terraform destroy"
+              + "inferops.io/retention"                = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
+            }
+          + generation       = (known after apply)
+          + labels           = {
+              + "app.kubernetes.io/component"  = "model-cache-volume-claim"
+              + "app.kubernetes.io/managed-by" = "Terraform"
+              + "app.kubernetes.io/part-of"    = "inferops"
+              + "inferops.io/lifecycle"        = "prerequisite"
+            }
+          + name             = "inferops-model-cache"
+          + namespace        = "inferops-release"
+          + resource_version = (known after apply)
+          + uid              = (known after apply)
+        }
+
+      + spec {
+          + access_modes       = [
+              + "ReadWriteOnce",
+            ]
+          + storage_class_name = (known after apply)
+          + volume_mode        = (known after apply)
+          + volume_name        = (known after apply)
+
+          + resources {
+              + requests = {
+                  + "storage" = "4Gi"
+                }
+            }
+        }
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + model_cache_claim_name      = "inferops-model-cache"
+  + model_cache_size            = "4Gi"
+  + namespace                   = "inferops-release"
+  + prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+<clone>\.artifacts\terraform\prerequisites.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "<clone>\\.artifacts\\terraform\\prerequisites.tfplan"
+
+[inferops] === terraform apply ===
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Creating...
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Creation complete after 0s [id=inferops-release]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Creating...
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Creation complete after 0s [id=inferops-release/inferops-model-cache]
+
+Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+model_cache_claim_name = "inferops-model-cache"
+model_cache_size = "4Gi"
+namespace = "inferops-release"
+prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+[inferops] prerequisites applied. Install a release into them with scripts/environment/helm-lifecycle.sh; never pass a flag that would let Helm create this namespace.
+EXIT_tf_apply=0
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+=== probe after-terraform-apply: 2026-09-26T02:03:14.382Z
+target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+server version: v1.34.3
+kube-system uid: ba50c99a-664b-4f15-a242-7f29f07b7664
+--- nodes (name ready kubelet)
+desktop-control-plane True v1.34.3
+--- node container on the engine
+/desktop-control-plane running kind-cluster-label=desktop
+--- storage classes (name provisioner default)
+hostpath rancher.io/local-path false uid=d2aab300-2d8d-4b8e-a6fd-49960bee0af8
+standard rancher.io/local-path true uid=97b761a3-fea2-4dee-8450-c9366a13e249
+--- namespaces
+default uid=11947ed8-8876-4586-81db-f2d47e9b5fb3
+inferops-release uid=70bf4dab-6e96-41f3-8c0f-8929cbf2963d
+inferops-serving-feasibility uid=7be214b4-9b67-4e34-8838-7e4b88820876
+kube-node-lease uid=293f7058-68d7-4a4e-9f8b-ee3b7e449293
+kube-public uid=5b9e6dc1-0f30-424c-bac7-342f1975a94f
+kube-system uid=ba50c99a-664b-4f15-a242-7f29f07b7664
+local-path-storage uid=b2cd60fb-5fd4-4bdc-8b05-eabf987bcc7b
+<unrelated namespace>
+--- release namespace inferops-release
+inferops-release labels={"app.kubernetes.io/component":"platform-namespace","app.kubernetes.io/managed-by":"Terraform","app.kubernetes.io/part-of":"inferops","inferops.io/lifecycle":"prerequisite","kubernetes.io/metadata.name":"inferops-release"}
+--- claims in inferops-release
+inferops-model-cache Pending  uid=29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c
+--- objects labelled app.kubernetes.io/instance=inferops in inferops-release
+deployments 0
+replicasets 0
+services 0
+configmaps 0
+serviceaccounts 0
+pods 0
+networkpolicies 0
+jobs 0
+endpointslices 0
+roles 0
+rolebindings 0
+secrets 0
+--- helm releases in inferops-release
+=== probe after-terraform-apply end
+=== identity after prepare: 2026-09-26T02:03:20.836Z
+bcad343133ba6fddfe38832a2694e71777cdd006
+--- status (porcelain, untracked=all) begin
+--- status end
+DRIVER_EXIT=0

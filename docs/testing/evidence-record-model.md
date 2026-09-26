@@ -320,6 +320,12 @@ this shape answers only through `versions` and the files a record cites — and 
 certified claims as release blockers in their own `limitation`, because that is where
 every surface generated from the register already looks.
 
+`V1-S5-013-PR1` closed those blockers and added no field either. It wrote its thirteen
+register changes into [a closure ledger](../proof/testing/v1-s5-013-pr1-closure.v1alpha1.json)
+in the same form: four records of reruns at a named revision, each an ordinary record of
+this shape whose `versions` names the commit, one status moved from `certified` to
+`not-claimed`, and limitations that say how each blocker was closed.
+
 ## Related documents
 
 | Topic | Document |

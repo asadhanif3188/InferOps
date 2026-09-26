@@ -15,6 +15,13 @@ that a chart version is a label rather than a pin, or that five claims are the r
 five. Those are readings, and the ledger records each with its reason; this module
 checks that they are recorded, consistent, derived where they can be, and carried to
 every surface that publishes the claims.
+
+`V1-S5-013-PR1` closed the five blockers, in a third ledger, and the completeness
+ledger stays as `V1-S5-006-PR2` decided it. So this module reads that ledger's own
+decisions against the register as `V1-S5-006-PR2` left it -- the current register
+with the closure ledger's changes undone -- and reads the current state, which the
+closure changed, through all three ledgers. `tests/testing/test_evidence_closure.py`
+holds the closure itself.
 """
 
 from __future__ import annotations
@@ -32,6 +39,7 @@ from typing import Any
 import pytest
 
 from tools.evidence_index import (
+    CLOSURE_PATH,
     CODE_IDENTITIES,
     COMPLETENESS_PATH,
     FINAL_STATES,
@@ -40,7 +48,9 @@ from tools.evidence_index import (
     git_blob_id,
     load_index,
     load_ledger,
+    open_blockers,
     release_gate,
+    restore_migrated_register,
 )
 from tools.evidence_index.__main__ import main as index_main
 from tools.evidence_model import REGISTER_PATH, load_register
@@ -51,6 +61,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REGISTER = load_register()
 NORMALIZATION = load_ledger()
 COMPLETENESS = load_ledger(COMPLETENESS_PATH)
+CLOSURE = load_ledger(CLOSURE_PATH)
 INDEX = load_index()
 REPORT_PATH = (
     REPO_ROOT / "docs" / "proof" / "testing" / "v1-s5-006-pr2-evidence-completeness.md"
@@ -68,8 +79,28 @@ EXECUTED = {
     for record_id, pair in RECORDS.items()
     if pair[1]["execution"]["targetBehaviourExecuted"]
 }
+
+#: The register as `V1-S5-006-PR2` left it, which is what its ledger decided about.
+AT_PR2 = restore_migrated_register(REGISTER, CLOSURE)
+CLAIMS_AT_PR2 = {claim["claimId"]: claim for claim in AT_PR2["claims"]}
+EXECUTED_AT_PR2 = {
+    record["recordId"]
+    for claim in AT_PR2["claims"]
+    for record in claim["evidenceRecords"]
+    if record["execution"]["targetBehaviourExecuted"]
+}
+
+#: The completeness ledger's readings, and every reading since, the closure's included.
 IDENTITY = {row["recordId"]: row for row in COMPLETENESS["codeIdentity"]}
+CURRENT_IDENTITY = {
+    row["recordId"]: row
+    for ledger in (COMPLETENESS, CLOSURE)
+    for row in ledger["codeIdentity"]
+}
 BLOCKED_CLAIMS = {blocker["claimId"] for blocker in COMPLETENESS["blockers"]}
+OPEN_BLOCKED_CLAIMS = {
+    blocker["claimId"] for blocker in open_blockers(COMPLETENESS, CLOSURE)
+}
 BLOCKER_SENTENCE = "Release blocker since V1-S5-006-PR2"
 
 
@@ -186,9 +217,9 @@ def test_only_findings_in_the_blocker_state_are_carried_by_a_blocker() -> None:
 
 
 def test_the_stated_gate_is_the_one_the_blockers_decide() -> None:
+    """The gate as `V1-S5-006-PR2` decided it, which the index still counts."""
     assert COMPLETENESS["releaseGate"]["decision"] == release_gate(COMPLETENESS)
-    assert INDEX["summary"]["releaseGate"] == release_gate(COMPLETENESS)
-    assert INDEX["summary"]["releaseBlockers"] == len(COMPLETENESS["blockers"])
+    assert INDEX["summary"]["blockersRaised"] == len(COMPLETENESS["blockers"])
 
 
 def test_any_blocker_fails_the_gate_and_none_passes_it() -> None:
@@ -203,18 +234,15 @@ def test_any_blocker_fails_the_gate_and_none_passes_it() -> None:
     assert release_gate(one) == "incomplete"
 
 
-def test_the_gate_command_exits_non_zero_while_a_blocker_stands(
+def test_the_gate_command_names_every_blocker_this_ledger_raised(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """Each blocker is printed while it stands, and with its closure once closed."""
     code = index_main(["--gate"])
     printed = capsys.readouterr().out
-    if COMPLETENESS["blockers"]:
-        assert code == 1
-        assert printed.startswith("INCOMPLETE V1-S5-006")
-        for blocker in COMPLETENESS["blockers"]:
-            assert blocker["blockerId"] in printed
-    else:
-        assert code == 0
+    assert code == (1 if OPEN_BLOCKED_CLAIMS else 0)
+    for blocker in COMPLETENESS["blockers"]:
+        assert blocker["blockerId"] in printed
 
 
 def test_an_incomplete_gate_keeps_its_consumers_blocked() -> None:
@@ -231,7 +259,7 @@ def test_an_incomplete_gate_keeps_its_consumers_blocked() -> None:
 def test_every_blocker_names_a_certified_claim_the_run_and_the_alternative(
     blocker: dict[str, Any],
 ) -> None:
-    claim = CLAIMS[blocker["claimId"]]
+    claim = CLAIMS_AT_PR2[blocker["claimId"]]
     assert claim["status"] == "certified"
     held = {record["recordId"] for record in claim["evidenceRecords"]}
     assert set(blocker["recordIds"]) <= held
@@ -245,22 +273,33 @@ def test_every_blocker_names_a_certified_claim_the_run_and_the_alternative(
     assert len(blocker["alternative"]) > 40
 
 
-def test_every_blocked_claim_says_so_where_the_claim_is_published() -> None:
-    """A blocker the dashboard cannot show is a blocker a reader never meets."""
+def test_every_blocked_claim_said_so_where_the_claim_was_published() -> None:
+    """A blocker the dashboard cannot show is a blocker a reader never meets.
+
+    As `V1-S5-006-PR2` left the register every blocked claim's limitation carried the
+    blocker; today only a blocker still open may, and each one must, and the dashboard
+    and the index show the same set.
+    """
+    stated_at_pr2 = {
+        claim_id
+        for claim_id, claim in CLAIMS_AT_PR2.items()
+        if BLOCKER_SENTENCE in claim["limitation"]
+    }
+    assert stated_at_pr2 == BLOCKED_CLAIMS
     stating = {
         claim_id
         for claim_id, claim in CLAIMS.items()
         if BLOCKER_SENTENCE in claim["limitation"]
     }
-    assert stating == BLOCKED_CLAIMS
+    assert stating == OPEN_BLOCKED_CLAIMS
     dashboard = normalised(read("docs/proof/dashboard.md"))
-    for claim_id in BLOCKED_CLAIMS:
+    for claim_id in OPEN_BLOCKED_CLAIMS:
         sentence = CLAIMS[claim_id]["limitation"].split(BLOCKER_SENTENCE, 1)[1]
         assert normalised(BLOCKER_SENTENCE + sentence) in dashboard, claim_id
     blocked_in_index = {
         claim["claimId"] for claim in INDEX["claims"] if claim["releaseBlockers"]
     }
-    assert blocked_in_index == BLOCKED_CLAIMS
+    assert blocked_in_index == OPEN_BLOCKED_CLAIMS
 
 
 # ------------------------------------------------------------- code identity
@@ -269,7 +308,7 @@ def test_every_blocked_claim_says_so_where_the_claim_is_published() -> None:
 def _stated(record_id: str) -> bool:
     readings = [
         reading
-        for ledger in (NORMALIZATION, COMPLETENESS)
+        for ledger in (NORMALIZATION, COMPLETENESS, CLOSURE)
         for reading in ledger["codeRevisions"]
         if reading["recordId"] == record_id
     ]
@@ -281,15 +320,21 @@ def _stated(record_id: str) -> bool:
 
 
 def test_every_executed_record_has_exactly_one_identity_reading() -> None:
-    assert sorted(IDENTITY) == sorted(EXECUTED)
+    """Every record executed when the ledger was written, read once, and every
+    record executed since read once more, by the ledger that added it."""
+    assert sorted(IDENTITY) == sorted(EXECUTED_AT_PR2)
     assert len(COMPLETENESS["codeIdentity"]) == len(IDENTITY)
+    closure_rows = [row["recordId"] for row in CLOSURE["codeIdentity"]]
+    assert not set(closure_rows) & set(IDENTITY)
+    assert len(closure_rows) == len(set(closure_rows))
+    assert sorted(CURRENT_IDENTITY) == sorted(EXECUTED)
 
 
 @pytest.mark.parametrize("record_id", sorted(EXECUTED))
 def test_every_identity_is_derived_rather_than_asserted(record_id: str) -> None:
     """The identity follows from the register, the readings, and the pins."""
     claim, record = EXECUTED[record_id]
-    row = IDENTITY[record_id]
+    row = CURRENT_IDENTITY[record_id]
     material = set(claim.get("claimMaterialComponents") or [])
     executed = {
         item["componentId"] for item in record["execution"]["executedComponents"]
@@ -318,18 +363,30 @@ def test_every_identity_is_derived_rather_than_asserted(record_id: str) -> None:
     assert row["identity"] == expected
 
 
-def test_a_certified_claim_whose_code_nothing_identifies_is_a_blocker() -> None:
+@pytest.mark.parametrize(
+    ("register", "identity", "blocked"),
+    [
+        (AT_PR2, IDENTITY, BLOCKED_CLAIMS),
+        (REGISTER, CURRENT_IDENTITY, OPEN_BLOCKED_CLAIMS),
+    ],
+    ids=["as-v1-s5-006-pr2-left-it", "current"],
+)
+def test_a_certified_claim_whose_code_nothing_identifies_is_a_blocker(
+    register: dict[str, Any],
+    identity: dict[str, dict[str, Any]],
+    blocked: set[str],
+) -> None:
     """The freeze rule itself: no certified claim rests only on unidentified code."""
-    for claim in REGISTER["claims"]:
+    for claim in register["claims"]:
         if claim["status"] != "certified":
             continue
         identities = [
-            IDENTITY[record["recordId"]]["identity"]
+            identity[record["recordId"]]["identity"]
             for record in claim["evidenceRecords"]
-            if record["recordId"] in IDENTITY
+            if record["recordId"] in identity
         ]
         if identities and set(identities) == {"unidentified"}:
-            assert claim["claimId"] in BLOCKED_CLAIMS, claim["claimId"]
+            assert claim["claimId"] in blocked, claim["claimId"]
 
 
 def test_every_claim_decision_rests_on_records_the_claim_holds() -> None:
@@ -341,7 +398,9 @@ def test_every_claim_decision_rests_on_records_the_claim_holds() -> None:
     }
     assert set(decided) == with_unidentified
     for claim_id, row in decided.items():
-        held = {record["recordId"] for record in CLAIMS[claim_id]["evidenceRecords"]}
+        held = {
+            record["recordId"] for record in CLAIMS_AT_PR2[claim_id]["evidenceRecords"]
+        }
         assert set(row["identifiedByRecordIds"]) <= held, claim_id
         for record_id in row["identifiedByRecordIds"]:
             assert IDENTITY[record_id]["identity"] != "unidentified", record_id
@@ -350,7 +409,7 @@ def test_every_claim_decision_rests_on_records_the_claim_holds() -> None:
         if row["state"] == "blocked":
             assert claim_id in BLOCKED_CLAIMS
         if row["state"] == "not-a-release-claim":
-            assert CLAIMS[claim_id]["status"] != "certified"
+            assert CLAIMS_AT_PR2[claim_id]["status"] != "certified"
     assert {c for c, row in decided.items() if row["state"] == "blocked"} == (
         BLOCKED_CLAIMS
     )
@@ -618,7 +677,10 @@ def test_the_readme_row_states_the_gate() -> None:
         if line.startswith("| V1 evidence index |")
     )
     assert f"release gate is {INDEX['summary']['releaseGate']}" in row
-    assert f"{INDEX['summary']['releaseBlockers']} certified claims" in row
+    assert f"{INDEX['summary']['releaseBlockers']} release blockers stand" in row
+    assert (
+        f"the {INDEX['summary']['blockersRaised']} that `V1-S5-006-PR2` raised" in row
+    )
 
 
 # ------------------------------------------------------------ the report
@@ -631,7 +693,9 @@ def test_the_completeness_report_states_what_the_ledger_produces() -> None:
         *[row["finalState"] for row in COMPLETENESS["findingStates"]],
         *[row["finalState"] for row in COMPLETENESS["findings"]],
     ]
-    identities = INDEX["summary"]["executedRecordsByCodeIdentity"]
+    # The report is dated: its identity counts are the ledger's own, not today's
+    # index, which counts the records the closure added as well.
+    identities = Counter(row["identity"] for row in COMPLETENESS["codeIdentity"])
     expected = {
         "Findings given a final state": len(states),
         "Findings the normalization answered": len(COMPLETENESS["findingStates"]),

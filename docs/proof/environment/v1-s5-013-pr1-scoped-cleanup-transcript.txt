@@ -1,0 +1,589 @@
+# Transcript of one operating-shell stage, run from a fresh clone at a named
+# revision for V1-S5-013-PR1. Redacted before committing: the clone's absolute
+# path is <clone>, one namespace belonging to unrelated work is <unrelated
+# namespace> with its uid removed, the container engine's local build-dashboard
+# identifiers are <build>, terminal colour codes are removed, and whitespace at
+# the end of a line is removed. Nothing else was changed.
+kubectl: v1.34.3
+helm: v3.19.0+g3d8990f
+terraform: Terraform v1.15.8
+=== identity before lifecycle-and-cleanup: 2026-09-26T02:08:32.894Z
+bcad343133ba6fddfe38832a2694e71777cdd006
+--- status (porcelain, untracked=all) begin
+--- status end
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+=== probe before-lifecycle: 2026-09-26T02:08:42.578Z
+target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+server version: v1.34.3
+kube-system uid: ba50c99a-664b-4f15-a242-7f29f07b7664
+--- nodes (name ready kubelet)
+desktop-control-plane True v1.34.3
+--- node container on the engine
+/desktop-control-plane running kind-cluster-label=desktop
+--- storage classes (name provisioner default)
+hostpath rancher.io/local-path false uid=d2aab300-2d8d-4b8e-a6fd-49960bee0af8
+standard rancher.io/local-path true uid=97b761a3-fea2-4dee-8450-c9366a13e249
+--- namespaces
+default uid=11947ed8-8876-4586-81db-f2d47e9b5fb3
+inferops-release uid=70bf4dab-6e96-41f3-8c0f-8929cbf2963d
+inferops-serving-feasibility uid=7be214b4-9b67-4e34-8838-7e4b88820876
+kube-node-lease uid=293f7058-68d7-4a4e-9f8b-ee3b7e449293
+kube-public uid=5b9e6dc1-0f30-424c-bac7-342f1975a94f
+kube-system uid=ba50c99a-664b-4f15-a242-7f29f07b7664
+local-path-storage uid=b2cd60fb-5fd4-4bdc-8b05-eabf987bcc7b
+<unrelated namespace>
+--- release namespace inferops-release
+inferops-release labels={"app.kubernetes.io/component":"platform-namespace","app.kubernetes.io/managed-by":"Terraform","app.kubernetes.io/part-of":"inferops","inferops.io/lifecycle":"prerequisite","kubernetes.io/metadata.name":"inferops-release"}
+--- claims in inferops-release
+inferops-model-cache Bound pvc-29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c uid=29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c
+--- objects labelled app.kubernetes.io/instance=inferops in inferops-release
+deployments 0
+replicasets 0
+services 0
+configmaps 0
+serviceaccounts 0
+pods 0
+networkpolicies 0
+jobs 0
+endpointslices 0
+roles 0
+rolebindings 0
+secrets 0
+--- helm releases in inferops-release
+=== probe before-lifecycle end
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Prerequisites ===
+[inferops] namespace 'inferops-release' already exists; reusing it.
+[inferops] persistent volume claims present before install: 1
+
+[inferops] === Installing ===
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:08:56 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 1
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+NAME                                              READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                                                                               SELECTOR
+deployment.apps/inferops-inferops-llm             1/1     1            1           19s   api          localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40       app.kubernetes.io/component=platform-api,app.kubernetes.io/instance=inferops,app.kubernetes.io/name=inferops-llm
+deployment.apps/inferops-inferops-llm-collector   1/1     1            1           19s   collector    prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996              app.kubernetes.io/component=telemetry-collector,app.kubernetes.io/instance=inferops,app.kubernetes.io/name=inferops-llm
+deployment.apps/inferops-inferops-llm-runtime     1/1     1            1           19s   runtime      ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384   app.kubernetes.io/component=serving-runtime,app.kubernetes.io/instance=inferops,app.kubernetes.io/name=inferops-llm
+
+NAME                                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/inferops-inferops-llm             ClusterIP   10.96.84.185    <none>        8090/TCP   19s   app.kubernetes.io/component=platform-api,app.kubernetes.io/instance=inferops,app.kubernetes.io/name=inferops-llm
+service/inferops-inferops-llm-collector   ClusterIP   10.96.143.237   <none>        9090/TCP   19s   app.kubernetes.io/component=telemetry-collector,app.kubernetes.io/instance=inferops,app.kubernetes.io/name=inferops-llm
+service/inferops-inferops-llm-runtime     ClusterIP   10.96.7.214     <none>        8080/TCP   19s   app.kubernetes.io/component=serving-runtime,app.kubernetes.io/instance=inferops,app.kubernetes.io/name=inferops-llm
+
+NAME                                                      DATA   AGE
+configmap/inferops-inferops-llm-collector-configuration   1      19s
+configmap/inferops-inferops-llm-configuration             21     19s
+configmap/inferops-inferops-llm-telemetry-scrape          2      19s
+
+NAME                                             SECRETS   AGE
+serviceaccount/inferops-inferops-llm-api         0         19s
+serviceaccount/inferops-inferops-llm-collector   0         19s
+serviceaccount/inferops-inferops-llm-runtime     0         19s
+
+NAME                                                   READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+pod/inferops-inferops-llm-6d8d7f495b-rjkdm             1/1     Running   0          19s   10.244.0.29   desktop-control-plane   <none>           <none>
+pod/inferops-inferops-llm-collector-55c95c4b8c-6rl2t   1/1     Running   0          19s   10.244.0.28   desktop-control-plane   <none>           <none>
+pod/inferops-inferops-llm-runtime-56546cfdbd-jktpf     1/1     Running   0          19s   10.244.0.30   desktop-control-plane   <none>           <none>
+
+[inferops] === Testing the installed release ===
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:08:56 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 1
+TEST SUITE:     inferops-inferops-llm-connection-test
+Last Started:   Sat Sep 26 07:09:21 2026
+Last Completed: Sat Sep 26 07:09:25 2026
+Phase:          Succeeded
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+
+[inferops] === Upgrading ===
+Release "inferops" has been upgraded. Happy Helming!
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:09:25 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 2
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:09:25 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 2
+TEST SUITE:     inferops-inferops-llm-connection-test
+Last Started:   Sat Sep 26 07:09:44 2026
+Last Completed: Sat Sep 26 07:09:48 2026
+Phase:          Succeeded
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+
+[inferops] === Rolling back to revision 1 ===
+Rollback was a success! Happy Helming!
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:09:48 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 3
+TEST SUITE:     inferops-inferops-llm-connection-test
+Last Started:   Sat Sep 26 07:10:01 2026
+Last Completed: Sat Sep 26 07:10:05 2026
+Phase:          Succeeded
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+REVISION	UPDATED                 	STATUS    	CHART             	APP VERSION	DESCRIPTION
+1       	Sat Sep 26 07:08:56 2026	superseded	inferops-llm-0.3.0	0.1.0      	Install complete
+2       	Sat Sep 26 07:09:25 2026	superseded	inferops-llm-0.3.0	0.1.0      	Upgrade complete
+3       	Sat Sep 26 07:09:48 2026	deployed  	inferops-llm-0.3.0	0.1.0      	Rollback to 1
+
+[inferops] === Uninstalling ===
+release "inferops" uninstalled
+
+[inferops] === Residue ===
+[inferops] no object carrying the release label remains.
+[inferops] helm reports no release named 'inferops'.
+[inferops] namespace 'inferops-release' survived, as a prerequisite must.
+[inferops] persistent volume claims: 1, unchanged by the release.
+
+[inferops] === Result ===
+[inferops] install, test, upgrade, test, rollback, test, uninstall: all succeeded.
+[inferops] the namespace and every claim survived; no release object did.
+EXIT_helm_lifecycle=0
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+=== probe after-helm-uninstall: 2026-09-26T02:10:21.393Z
+target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+server version: v1.34.3
+kube-system uid: ba50c99a-664b-4f15-a242-7f29f07b7664
+--- nodes (name ready kubelet)
+desktop-control-plane True v1.34.3
+--- node container on the engine
+/desktop-control-plane running kind-cluster-label=desktop
+--- storage classes (name provisioner default)
+hostpath rancher.io/local-path false uid=d2aab300-2d8d-4b8e-a6fd-49960bee0af8
+standard rancher.io/local-path true uid=97b761a3-fea2-4dee-8450-c9366a13e249
+--- namespaces
+default uid=11947ed8-8876-4586-81db-f2d47e9b5fb3
+inferops-release uid=70bf4dab-6e96-41f3-8c0f-8929cbf2963d
+inferops-serving-feasibility uid=7be214b4-9b67-4e34-8838-7e4b88820876
+kube-node-lease uid=293f7058-68d7-4a4e-9f8b-ee3b7e449293
+kube-public uid=5b9e6dc1-0f30-424c-bac7-342f1975a94f
+kube-system uid=ba50c99a-664b-4f15-a242-7f29f07b7664
+local-path-storage uid=b2cd60fb-5fd4-4bdc-8b05-eabf987bcc7b
+<unrelated namespace>
+--- release namespace inferops-release
+inferops-release labels={"app.kubernetes.io/component":"platform-namespace","app.kubernetes.io/managed-by":"Terraform","app.kubernetes.io/part-of":"inferops","inferops.io/lifecycle":"prerequisite","kubernetes.io/metadata.name":"inferops-release"}
+--- claims in inferops-release
+inferops-model-cache Bound pvc-29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c uid=29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c
+--- objects labelled app.kubernetes.io/instance=inferops in inferops-release
+deployments 0
+replicasets 0
+services 0
+configmaps 0
+serviceaccounts 0
+pods 0
+networkpolicies 0
+jobs 0
+endpointslices 0
+roles 0
+rolebindings 0
+secrets 0
+--- helm releases in inferops-release
+=== probe after-helm-uninstall end
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+[inferops] WARNING: terraform destroy removes the namespace 'inferops-release' and the model cache claim. Deleting a namespace cascades: anything still inside it goes too.
+[inferops] WARNING: This reclaims the model weights -- roughly 1.71 GiB -- and so does deleting the cluster, because the claim is backed by local-path storage inside the kind node container. The next release re-downloads them over a transport whose certificate this project does not validate.
+
+[inferops] === terraform destroy ===
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Refreshing state... [id=inferops-release]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Refreshing state... [id=inferops-release/inferops-model-cache]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  - destroy
+
+Terraform will perform the following actions:
+
+  # module.platform_prerequisites.kubernetes_namespace_v1.platform will be destroyed
+  - resource "kubernetes_namespace_v1" "platform" {
+      - id                               = "inferops-release" -> null
+      - wait_for_default_service_account = false -> null
+
+      - metadata {
+          - annotations      = {
+              - "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              - "inferops.io/removed-by"               = "terraform destroy"
+            } -> null
+          - generation       = 0 -> null
+          - labels           = {
+              - "app.kubernetes.io/component"  = "platform-namespace"
+              - "app.kubernetes.io/managed-by" = "Terraform"
+              - "app.kubernetes.io/part-of"    = "inferops"
+              - "inferops.io/lifecycle"        = "prerequisite"
+            } -> null
+          - name             = "inferops-release" -> null
+          - resource_version = "1068665" -> null
+          - uid              = "70bf4dab-6e96-41f3-8c0f-8929cbf2963d" -> null
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache will be destroyed
+  - resource "kubernetes_persistent_volume_claim_v1" "model_cache" {
+      - id               = "inferops-release/inferops-model-cache" -> null
+      - wait_until_bound = false -> null
+
+      - metadata {
+          - annotations      = {
+              - "inferops.io/managed-by-configuration" = "infra/terraform/environments/local"
+              - "inferops.io/removed-by"               = "terraform destroy"
+              - "inferops.io/retention"                = "Holds model weights across helm uninstall. Reclaimed by terraform destroy, or by deleting the cluster this claim is stored inside."
+            } -> null
+          - generation       = 0 -> null
+          - labels           = {
+              - "app.kubernetes.io/component"  = "model-cache-volume-claim"
+              - "app.kubernetes.io/managed-by" = "Terraform"
+              - "app.kubernetes.io/part-of"    = "inferops"
+              - "inferops.io/lifecycle"        = "prerequisite"
+            } -> null
+          - name             = "inferops-model-cache" -> null
+          - namespace        = "inferops-release" -> null
+          - resource_version = "1068773" -> null
+          - uid              = "29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+      - spec {
+          - access_modes       = [
+              - "ReadWriteOnce",
+            ] -> null
+          - storage_class_name = "standard" -> null
+          - volume_mode        = "Filesystem" -> null
+          - volume_name        = "pvc-29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c" -> null
+
+          - resources {
+              - limits   = {} -> null
+              - requests = {
+                  - "storage" = "4Gi"
+                } -> null
+            }
+        }
+    }
+
+Plan: 0 to add, 0 to change, 2 to destroy.
+
+Changes to Outputs:
+  - model_cache_claim_name      = "inferops-model-cache" -> null
+  - model_cache_size            = "4Gi" -> null
+  - namespace                   = "inferops-release" -> null
+  - prerequisite_label_selector = "inferops.io/lifecycle=prerequisite" -> null
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Destroying... [id=inferops-release/inferops-model-cache]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Destruction complete after 1s
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Destroying... [id=inferops-release]
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Destruction complete after 6s
+
+Destroy complete! Resources: 2 destroyed.
+[inferops] prerequisites destroyed. The cluster is untouched: removing it is scripts/environment/cluster-down.sh, and neither Terraform nor Helm may do it.
+EXIT_tf_destroy=0
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+=== probe after-terraform-destroy: 2026-09-26T02:10:50.921Z
+target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+server version: v1.34.3
+kube-system uid: ba50c99a-664b-4f15-a242-7f29f07b7664
+--- nodes (name ready kubelet)
+desktop-control-plane True v1.34.3
+--- node container on the engine
+/desktop-control-plane running kind-cluster-label=desktop
+--- storage classes (name provisioner default)
+hostpath rancher.io/local-path false uid=d2aab300-2d8d-4b8e-a6fd-49960bee0af8
+standard rancher.io/local-path true uid=97b761a3-fea2-4dee-8450-c9366a13e249
+--- namespaces
+default uid=11947ed8-8876-4586-81db-f2d47e9b5fb3
+inferops-serving-feasibility uid=7be214b4-9b67-4e34-8838-7e4b88820876
+kube-node-lease uid=293f7058-68d7-4a4e-9f8b-ee3b7e449293
+kube-public uid=5b9e6dc1-0f30-424c-bac7-342f1975a94f
+kube-system uid=ba50c99a-664b-4f15-a242-7f29f07b7664
+local-path-storage uid=b2cd60fb-5fd4-4bdc-8b05-eabf987bcc7b
+<unrelated namespace>
+--- release namespace inferops-release
+Error from server (NotFound): namespaces "inferops-release" not found
+=== identity after lifecycle-and-cleanup: 2026-09-26T02:10:53.008Z
+bcad343133ba6fddfe38832a2694e71777cdd006
+--- status (porcelain, untracked=all) begin
+--- status end
+DRIVER_EXIT=0
