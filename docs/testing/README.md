@@ -24,8 +24,9 @@ evidence index](../proof/v1-evidence-index.md) is the same data one evidence rec
 a time, with the identifiers each pins, how each identifies the code that ran, and a
 content hash and git blob of every file it cites. It also carries the release gate:
 [the completeness check](../proof/testing/v1-s5-006-pr2-evidence-completeness.md) found
-five certified claims resting on code nothing identifies, so the evidence is not
-frozen.
+five certified claims resting on code nothing identified, and
+[the blocker closure](../proof/testing/v1-s5-013-pr1-blocker-closure.md) closed all five,
+so the gate passes and the evidence is the pre-publication freeze candidate.
 
 ## Documents
 

@@ -4,8 +4,8 @@ Status: **accepted matrix**, in
 [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md).
 It lists every public claim V1 intends to make, the test layers behind it, the
 environment it is proven in, the certification level it needs, and who owns its
-evidence. Sixteen of twenty-four claims are certified today, seven are commitments, and
-one is deferred out of V1. The difference between the three is the point of the table.
+evidence. Fifteen of twenty-four claims are certified today, seven are commitments, and
+two are deferred out of V1. The difference between the three is the point of the table.
 
 The authoritative form is
 [`test-strategy.v1alpha1.json`](test-strategy.v1alpha1.json). This document and that
@@ -56,7 +56,6 @@ Each of these rests on an executed record in [`docs/proof/`](../proof/).
 | `a-cost-figure-cannot-be-presented-as-a-bill` | documentation | repository-only | C0 | documentation |
 | `a-security-control-cannot-claim-enforcement-it-does-not-have` | documentation | repository-only | C0 | security |
 | `a-workload-manifest-that-omits-a-required-security-control-is-refused` | documentation | repository-only | C0 | security |
-| `a-local-cluster-is-created-and-removed-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | real-runtime-smoke | capable-host | C2 | serving |
 | `the-model-artifact-matches-its-published-hash` | real-runtime-smoke | capable-host | C2 | serving |
 | `a-helm-release-installs-and-uninstalls-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
@@ -132,8 +131,7 @@ mock-integration suite checks that forbidden content reaches neither. That is
 repository-local, mock-backed evidence: it establishes nothing about a deployed
 network service, a real selected-model response, a collector or store, or a span.
 
-Three of the others are worth reading with their limitations attached. The cluster claim
-was executed on **one** Windows host and covers no other operating system. The two
+Two of the others are worth reading with their limitations attached. The two
 serving claims come from **one** trial, on one host, on one day, whose record is
 accepted with a pre-registered threshold explicitly not met. And the hash claim is
 load-bearing in a way the others are not: the downloader does not validate TLS
@@ -191,6 +189,7 @@ gate on the reference host, and a refusal is not a weaker certification.
 | Claim | Layers | Environment | Level | Owner |
 |---|---|---|---|---|
 | `sustained-throughput-and-capacity-under-load` | capacity-and-load | capable-host | C2 | serving |
+| `a-local-cluster-is-created-and-removed-without-residue` | kubernetes-smoke | local-kubernetes | C2 | environment |
 
 V1 may publish no throughput, latency, capacity, or benchmark figure. Making one
 runtime work is not the same as engineering the runtime, and a capacity claim would
@@ -200,6 +199,16 @@ rule and this row is what it looks like applied.
 [ADR 0013](../architecture/decisions/ADR-0013-bounded-local-performance-observations.md)
 has since narrowed the rule to allow a bounded observation of one declared, authorized
 local experiment. This claim is the portable one, and it stays deferred.
+
+The `kind` helper claim was certified until `V1-S5-013-PR1`. Its only run, on
+2026-08-23, names no revision of this repository, so `V1-S5-006-PR2` held it as a
+release blocker, and closing it by a run needs `kind`, which the reference host does
+not have.
+[ADR 0011](../architecture/decisions/ADR-0011-external-local-cluster-provider-contract.md)
+D11 made the helper optional and not the platform path, and the maintainer decided V1
+would not install `kind` to re-prove it, so it is deferred here and not claimed in
+[the claim and evidence matrix](claim-evidence-matrix.md), whose record of the run
+stays cited for what it observed. Docker Desktop evidence does not stand in for it.
 
 The claim is written down rather than omitted so that publishing a capacity figure
 means deleting a deferral in public. A test refuses to let any non-deferred claim

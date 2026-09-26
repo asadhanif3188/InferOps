@@ -2613,8 +2613,8 @@
       "status": "certified",
       "notClaimedReason": null,
       "assertsRealBehaviour": true,
-      "limitation": "One host, one day on 2026-09-03, CPU only, concurrency one, one request shape. The five thresholds were registered before the run; the fixture was not the one registered — the original two-message fixture was refused by the API on all thirty requests of the prior attempt and was rewritten to be answerable before this run, which the experiment record states in its own correction section. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load. The identifier's method registered first is true of the thresholds, the warm-up, the measured count, and the procedure, and not of the fixture, which the statement names. Release blocker since V1-S5-006-PR2: the only record names a commit the repository's history dates after the run, the tree that ran was a working tree with uncommitted changes that nothing pins, and the API and adapter code it measured is identified by nothing else, so the V1 evidence pack is not frozen while this claim is certified on it.",
-      "doesNotEstablish": "Concurrent serving, sustained load, GPU execution, or Kubernetes. The 30.9-second margin against the load budget must not be read as a reliable start-within-budget: the same host was 58.7 seconds over that budget in the prior attempt.",
+      "limitation": "One host, two runs, on 2026-09-03 and 2026-09-26, CPU only, concurrency one, one request shape. The five thresholds were registered before the run; the fixture was not the one registered — the original two-message fixture was refused by the API on all thirty requests of the prior attempt and was rewritten to be answerable before this run, which the experiment record states in its own correction section. The record's own warning is that V1 publishes no throughput, latency, capacity, or benchmark figure from these results, and its periodic processor sampler read 0.83 per cent while a live poll during generation read 801.97 per cent, so its processor figures materially understate the load; the 2026-09-26 run's sampler read at most 0.01 per cent for the same reason. The identifier's method registered first is true of the thresholds, the warm-up, the measured count, and the procedure, and not of the fixture, which the statement names. Release blocker b1-local-baseline-code-unidentified closed by V1-S5-013-PR1 with a rerun from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006, whose status was empty before the first step and after the last, which met all five thresholds against the same registered descriptor; the claim's code identity rests on that run, and the 2026-09-03 record stays cited for what it observed.",
+      "doesNotEstablish": "Concurrent serving, sustained load, GPU execution, or Kubernetes. The 30.9-second margin against the load budget must not be read as a reliable start-within-budget: the same host was 58.7 seconds over that budget in the prior attempt. The 2026-09-26 run's 79-second margin is one more observation, not a budget met reliably.",
       "claimMaterialComponents": [
         "inferops-api",
         "llama-cpp-adapter",
@@ -2790,6 +2790,187 @@
           "doesNotEstablish": [
             "Concurrent serving, sustained load, GPU execution, Kubernetes, or any second host or model.",
             "Any throughput, latency, capacity, or benchmark figure for publication; the record forbids citing it for a performance figure."
+          ]
+        },
+        {
+          "recordId": "a-local-serving-baseline-was-measured-under-a-method-registered-first-c2-rerun",
+          "claimId": "a-local-serving-baseline-was-measured-under-a-method-registered-first",
+          "migrationState": "migrated",
+          "evidenceLevel": "C2",
+          "summary": "On 2026-09-26 the registered baseline was executed again from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006, with nothing uncommitted before or after: the baseline tool composed the pinned runtime container and the InferOps API with the real adapter and sent three warm-up and thirty measured requests of the same fixed fixture at concurrency one. All five pre-registered thresholds were met.",
+          "execution": {
+            "targetBehaviourExecuted": true,
+            "executedComponents": [
+              {
+                "componentId": "inferops-api",
+                "role": "api",
+                "note": "33 real HTTP requests went through the API, from the clone at the named revision; ready 187 ms after runtime readiness."
+              },
+              {
+                "componentId": "llama-cpp-adapter",
+                "role": "adapter",
+                "note": "Every one of 33 records carries adapterKind real."
+              },
+              {
+                "componentId": "llama-cpp-server",
+                "role": "inference-runtime",
+                "note": "The pinned image as a local container; model load 221,000 ms."
+              },
+              {
+                "componentId": "qwen3-1-7b-q8-0",
+                "role": "model",
+                "note": "Every record carries modelRef qwen3-1-7b-q8-0; the same cached artifact was verified against the pin's byte count and SHA-256 by the seed-image build minutes after the run, in the preparation transcript."
+              },
+              {
+                "componentId": "serving-baseline-cli",
+                "role": "load-generator",
+                "note": "python -m tools.serving_baseline run --confirm-real-runtime, driving the fixed fixture sequentially."
+              }
+            ],
+            "substitutions": []
+          },
+          "workload": {
+            "source": "operator-issued",
+            "description": "The same registered fixture (single-turn-fixed-v1, one user message, temperature 0, at most 128 output tokens) repeated: three warm-up and thirty measured requests.",
+            "shape": {
+              "concurrency": 1,
+              "requestCount": 33,
+              "arrivalPattern": "Sequential: each request is sent after the previous one completes."
+            }
+          },
+          "environment": {
+            "environmentId": "local-container",
+            "provider": "not-applicable",
+            "hardwareClass": "cpu",
+            "note": "Windows 11, AMD64, 20 logical CPUs, 16,836,890,624 bytes physical memory, Docker 29.7.2, no cluster, CPU only; a fresh clone at the named revision with an empty status before and after; 2026-09-26."
+          },
+          "versions": [
+            {
+              "component": "llama-cpp-server",
+              "kind": "image-digest",
+              "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+            },
+            {
+              "component": "qwen3-1-7b-q8-0",
+              "kind": "model-revision",
+              "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+            },
+            {
+              "component": "qwen3-1-7b-q8-0",
+              "kind": "artifact-hash",
+              "value": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+            },
+            {
+              "component": "inferops repository",
+              "kind": "commit",
+              "value": "bcad343133ba6fddfe38832a2694e71777cdd006"
+            }
+          ],
+          "versionsRecordedIn": "docs/proof/serving/v1-s5-013-pr1-baseline-rerun.md",
+          "procedure": {
+            "commands": [
+              "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+              "uv run --locked python -m tools.serving_baseline check",
+              "uv run --locked python -m tools.serving_baseline environment",
+              "uv run --locked python -m tools.serving_baseline run --confirm-real-runtime",
+              "uv run --locked python -m tools.serving_baseline summarize",
+              "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+            ]
+          },
+          "measurement": {
+            "method": "Wall clock around each full request through the InferOps API, nearest-rank percentiles recomputed from the raw file, and a docker stats sample every five measured requests.",
+            "instrument": "tools.serving_baseline writing raw.jsonl and summary.json, committed beside the record.",
+            "observationPeriod": {
+              "start": "2026-09-26T01:47:20.843Z",
+              "end": "2026-09-26T01:53:25.004Z"
+            }
+          },
+          "acceptanceCriteria": [
+            {
+              "criterionId": "t1-all-succeed",
+              "statement": "All 30 measured requests succeed with HTTP 200.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "t2-real-identity",
+              "statement": "Every answer carries adapterKind real and modelRef qwen3-1-7b-q8-0.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "t3-zero-failures",
+              "statement": "Zero measured requests fail.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "t4-load-budget",
+              "statement": "The model loads within the profile's 300,000 ms startup budget.",
+              "declaredBefore": true,
+              "outcome": "met"
+            },
+            {
+              "criterionId": "t5-spread",
+              "statement": "P99 is within 10 times P50 (informational, not blocking).",
+              "declaredBefore": true,
+              "outcome": "met"
+            }
+          ],
+          "results": [
+            {
+              "resultId": "successes",
+              "statement": "30 of 30 measured requests and 3 of 3 warm-up requests succeeded with HTTP 200.",
+              "criterionId": "t1-all-succeed"
+            },
+            {
+              "resultId": "identity",
+              "statement": "Every one of 33 records carries adapterKind real and modelRef qwen3-1-7b-q8-0.",
+              "criterionId": "t2-real-identity"
+            },
+            {
+              "resultId": "failures",
+              "statement": "0 failures.",
+              "criterionId": "t3-zero-failures"
+            },
+            {
+              "resultId": "model-load",
+              "statement": "Model load 221,000 ms against 300,000 ms.",
+              "criterionId": "t4-load-budget"
+            },
+            {
+              "resultId": "latency",
+              "statement": "P50 2,703 ms, P95 8,860 ms, P99 9,375 ms, range 2,219 to 9,375 ms; P99/P50 = 3.47.",
+              "criterionId": "t5-spread"
+            },
+            {
+              "resultId": "cpu-sampling-gap",
+              "statement": "Periodic CPU samples read at most 0.01 per cent because the sampler runs between requests, so the sampled CPU figure is not this workload's processor use."
+            },
+            {
+              "resultId": "code-identity",
+              "statement": "git rev-parse HEAD printed bcad343133ba6fddfe38832a2694e71777cdd006 and git status --porcelain --untracked-files=all printed nothing, both before the first command and after the last."
+            }
+          ],
+          "evidenceRefs": [
+            "docs/proof/serving/v1-s5-013-pr1-baseline-rerun.md",
+            "docs/proof/serving/v1-s5-013-pr1-baseline-raw.jsonl",
+            "docs/proof/serving/v1-s5-013-pr1-baseline-summary.json",
+            "docs/proof/serving/v1-s5-013-pr1-baseline-transcript.txt",
+            "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+            "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt"
+          ],
+          "limitations": [
+            "One run on one host on one day, CPU only, concurrency one, and one request shape.",
+            "The executed fixture is the rewritten one the 2026-09-03 run also used, not the two-message fixture first registered; the descriptor is unchanged since d604077.",
+            "The periodic CPU sample lands between requests and does not capture the runtime's load.",
+            "The 79 s margin against the load budget is one observation; the same host was 58.7 s over it in the attempt before the 2026-09-03 run.",
+            "It identifies its own code and does not recover what the 2026-09-03 run executed.",
+            "The copy of the model into the clone, its hash comparison in the operating shell, and the composition's teardown events were observed and not transcribed; the cached artifact's verification in the preparation transcript came minutes after the run."
+          ],
+          "doesNotEstablish": [
+            "Concurrent serving, sustained load, GPU execution, Kubernetes, or any second host or model.",
+            "Any throughput, latency, capacity, or benchmark figure for publication, or any comparison with the 2026-09-03 run."
           ]
         }
       ],
@@ -3346,10 +3527,9 @@
       "claimId": "a-local-cluster-is-created-and-removed-without-residue",
       "area": "kubernetes",
       "statement": "The optional `kind` helper creates a local development cluster, runs a workload inside it, and removes it leaving no residue the verifier can find.",
-      "status": "certified",
-      "notClaimedReason": null,
+      "status": "not-claimed",
       "assertsRealBehaviour": true,
-      "limitation": "One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. Release blocker since V1-S5-006-PR2: the only record names no revision of this repository, and the helper it ran is identified by nothing else, so the V1 evidence pack is not frozen while this claim is certified on it.",
+      "limitation": "One Windows host on WSL 2, one architecture, one point in time on 2026-08-23, on cgroup v1, with a static-text HTTP server as the workload. Since ADR 0011 this helper is optional and InferOps no longer creates a cluster for its own workflows. About 0.1 GB of host free space was not returned, and the node image is retained by design. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. Release blocker b2-kind-helper-code-unidentified closed by V1-S5-013-PR1 by a claim decision rather than a run, moving the claim from certified to not-claimed: the record describes what the helper did once, on code nothing identifies, and kind was not run again.",
       "doesNotEstablish": "Anything about inference, models, serving runtimes, throughput, capacity, ingress, load balancing, or any other operating system. No ingress controller and no `Service type=LoadBalancer` was exercised.",
       "claimMaterialComponents": [
         "kind-cluster",
@@ -3476,7 +3656,8 @@
         "note": "Carried verbatim from the v1alpha1 register, under the level meanings ADR 0016 supersedes. It is history: V1-S5-012-PR2 re-read this claim's evidence against the current definitions, and the evidenceLevel on each record is the result.",
         "provider": "kind",
         "environment": "local-kubernetes"
-      }
+      },
+      "notClaimedReason": "V1 does not claim that the optional kind helper creates and removes a local cluster without residue at any identified revision of this repository. Its only run, on 2026-08-23, names no revision, and nothing else identifies the helper code that ran. V1-S5-013-PR1 did not run it again: the reference host has no kind CLI, ADR 0011 D11 made the helper optional and not the platform path, the maintainer decided the release would not install kind to re-prove it, and ADR 0011 forbids reading Docker Desktop evidence across to kind. The 2026-08-23 record stays cited for what it observed, at the level it was given."
     },
     {
       "claimId": "the-selected-runtime-serves-a-real-completion-in-a-cluster",
@@ -3775,7 +3956,7 @@
       "status": "certified",
       "notClaimedReason": null,
       "assertsRealBehaviour": true,
-      "limitation": "One provider, one host, one teardown on 2026-09-12. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. The statement names only the uninstall; the install the identifier names is in the second record cited, the paved-road run, which installed a release, passed its release test, and removed it with no release-labelled object left behind. Release blocker since V1-S5-006-PR2: the paved-road record names the revision that ran and supports the removal of every release-labelled object and the survival of the Terraform-owned namespace and claim; the survival of the cluster, its node, and its storage class rests only on the scoped-cleanup record, which names no revision of this repository and pins the chart by a version label that ten chart states have carried, so the V1 evidence pack is not frozen while the whole statement is certified.",
+      "limitation": "One provider, one host, two teardowns, on 2026-09-12 and 2026-09-26. Survival was checked immediately afterwards and nothing is known about days later. `terraform destroy` reclaims the model weights, so the next real run re-acquires them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed records. The statement names only the uninstall; the install the identifier names is in the second record cited, the paved-road run, which installed a release, passed its release test, and removed it with no release-labelled object left behind. Release blocker b3-helm-uninstall-survival-clause-code-unidentified closed by V1-S5-013-PR1 with a rerun from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006, whose status was empty before the first step and after the last: the lifecycle workflow's uninstall left no release-labelled object and the Terraform-owned namespace and claim intact, and the cluster, its node, and its storage classes were unchanged after the uninstall and again after terraform destroy; the 2026-09-12 scoped-cleanup record stays cited for what it observed.",
       "doesNotEstablish": "That every InferOps object anywhere is removed. A `V1-S0-003` namespace from 2026-09-02 survives, has no owning teardown in any committed workflow, and is recorded as a gap; what a Docker Desktop reset would reclaim, including a 1.83 GB seed image in the node's containerd, was not observed.",
       "claimMaterialComponents": [
         "inferops-llm-chart",
@@ -3979,6 +4160,152 @@
             "That an install succeeds on kind, on another host, or with more than one replica.",
             "That the cluster, its node, and its storage class survive the teardown; the scoped-cleanup record carries that."
           ]
+        },
+        {
+          "recordId": "a-helm-release-installs-and-uninstalls-without-residue-c2-rerun",
+          "claimId": "a-helm-release-installs-and-uninstalls-without-residue",
+          "migrationState": "migrated",
+          "evidenceLevel": "C2",
+          "summary": "On 2026-09-26, from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006 with nothing uncommitted before or after, the lifecycle workflow installed, tested, upgraded, rolled back, and uninstalled a real release in Docker Desktop's cluster, leaving no release-labelled object while the Terraform namespace and claim survived; the cluster, its node, and its storage classes were unchanged after the uninstall and after the guarded terraform destroy.",
+          "execution": {
+            "targetBehaviourExecuted": true,
+            "executedComponents": [
+              {
+                "componentId": "inferops-llm-chart",
+                "role": "chart",
+                "note": "charts/inferops-llm at the named revision: release revisions 1 to 3, the release test passed at each, then helm uninstall."
+              },
+              {
+                "componentId": "terraform-prerequisites",
+                "role": "other",
+                "note": "Namespace inferops-release and claim inferops-model-cache, present after the uninstall and then destroyed through the guarded wrapper at the named revision."
+              },
+              {
+                "componentId": "docker-desktop-cluster",
+                "role": "cluster",
+                "note": "The operator's cluster, read through the repository's target guard before any work, after the uninstall, and after terraform destroy."
+              },
+              {
+                "componentId": "helm-lifecycle-workflow",
+                "role": "tool",
+                "note": "scripts/environment/helm-lifecycle.sh at the named revision, which asserted the residue and the prerequisites itself."
+              },
+              {
+                "componentId": "inferops-api",
+                "role": "api",
+                "note": "Built from the clone at the named revision; part of the release."
+              },
+              {
+                "componentId": "llama-cpp-server",
+                "role": "inference-runtime",
+                "note": "llama.cpp llama-server at the pinned digest, part of the release."
+              }
+            ],
+            "substitutions": []
+          },
+          "workload": {
+            "source": "operator-issued",
+            "description": "No inference was measured; the lifecycle workflow's install, release tests, upgrade, rollback, and uninstall, then the guarded terraform destroy, with the cluster asked about each fact before and after."
+          },
+          "environment": {
+            "environmentId": "local-kubernetes",
+            "provider": "docker-desktop",
+            "hardwareClass": "cpu",
+            "note": "One Windows host, Docker Desktop Kubernetes server v1.34.3 on one node, desktop-control-plane, one replica of each tier; a fresh clone at the named revision with an empty status before and after; 2026-09-26."
+          },
+          "versions": [
+            {
+              "component": "inferops repository",
+              "kind": "commit",
+              "value": "bcad343133ba6fddfe38832a2694e71777cdd006"
+            },
+            {
+              "component": "llama.cpp server",
+              "kind": "image-digest",
+              "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+            },
+            {
+              "component": "inferops-api",
+              "kind": "image-digest",
+              "value": "localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40"
+            },
+            {
+              "component": "model seed image",
+              "kind": "image-digest",
+              "value": "localhost/inferops-model-seed@sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d"
+            },
+            {
+              "component": "Qwen3-1.7B-GGUF",
+              "kind": "model-revision",
+              "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+            },
+            {
+              "component": "Qwen3-1.7B-Q8_0.gguf",
+              "kind": "artifact-hash",
+              "value": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+            },
+            {
+              "component": "docker-desktop node image",
+              "kind": "image-digest",
+              "value": "kindest/node@sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48"
+            },
+            {
+              "component": "inferops-llm",
+              "kind": "chart-version",
+              "value": "inferops-llm-0.3.0"
+            }
+          ],
+          "versionsRecordedIn": "docs/proof/environment/v1-s5-013-pr1-scoped-cleanup.md",
+          "procedure": {
+            "commands": [
+              "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+              "scripts/environment/helm-lifecycle.sh --values <merged values>",
+              "scripts/environment/terraform-prerequisites.sh destroy --confirm",
+              "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+            ],
+            "workflowRef": "scripts/environment/helm-lifecycle.sh",
+            "scriptRefs": [
+              "scripts/environment/terraform-prerequisites.sh"
+            ]
+          },
+          "results": [
+            {
+              "resultId": "release-objects",
+              "statement": "After helm uninstall no object carried app.kubernetes.io/instance=inferops, counted kind by kind, and Helm reported no release named inferops."
+            },
+            {
+              "resultId": "prerequisites-intact",
+              "statement": "The Terraform-owned namespace survived the uninstall with the UID it was created with, and the claim inferops-model-cache was still Bound; the claim count was 1 before the release and 1 after."
+            },
+            {
+              "resultId": "cluster-survived",
+              "statement": "After the uninstall and again after terraform destroy, the target verified through the committed guard, the API server answered v1.34.3, the kube-system UID was unchanged, the node was Ready, and both storage classes were unchanged by UID, the default still standard on rancher.io/local-path."
+            },
+            {
+              "resultId": "namespaces",
+              "statement": "After terraform destroy the seven namespaces present before any work remained and inferops-release was NotFound; six are shown in the transcripts with their earlier UIDs, and the seventh, which belongs to unrelated work, was compared before its name and UID were redacted."
+            },
+            {
+              "resultId": "code-identity",
+              "statement": "git rev-parse HEAD printed bcad343133ba6fddfe38832a2694e71777cdd006 and git status --porcelain --untracked-files=all printed nothing, both before the first step and after the last."
+            }
+          ],
+          "evidenceRefs": [
+            "docs/proof/environment/v1-s5-013-pr1-scoped-cleanup.md",
+            "docs/proof/environment/v1-s5-013-pr1-scoped-cleanup-transcript.txt",
+            "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+            "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt"
+          ],
+          "limitations": [
+            "One provider, one host, one teardown on 2026-09-26; survival was checked immediately afterwards and nothing is known about days later.",
+            "terraform destroy reclaims the model weights, so the next real run re-acquires them.",
+            "It identifies its own code and does not recover what the 2026-09-12 scoped cleanup executed.",
+            "The cluster readings were taken by an operating script that sources the committed lib.sh and is committed as evidence beside the transcripts, not by a repository workflow."
+          ],
+          "doesNotEstablish": [
+            "That every InferOps object anywhere is removed, since the V1-S0-003 feasibility namespace survives with no owning teardown.",
+            "What a Docker Desktop reset would reclaim, including the seed image imported into the node's container store."
+          ]
         }
       ],
       "strategyClaimIds": [
@@ -4016,12 +4343,12 @@
     {
       "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
       "area": "kubernetes",
-      "statement": "A deliberately broken release revision was detected by an init container's non-zero exit 6,425 ms after the fault, rolled back in 1,512 ms, and served a real completion 7,983 ms after detection.",
+      "statement": "A deliberately broken release revision was detected by an init container's non-zero exit 6,949 ms after the fault, rolled back in 1,986 ms, and served a real completion 11,053 ms after detection.",
       "status": "certified",
       "notClaimedReason": null,
       "assertsRealBehaviour": true,
-      "limitation": "One provider, one host, one moment, one replica of each tier, and one injected fault — an artifact byte-count mismatch. Five attempts were made and four failed for reasons the record lists. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. Release blocker since V1-S5-006-PR2: the only record names no revision of this repository, and the chart and the rollback workflow it ran are identified by a chart version label that ten chart states have carried and by nothing else, so the V1 evidence pack is not frozen while this claim is certified on it.",
-      "doesNotEstablish": "Anything about faults that were not injected, including a runtime that starts and answers wrongly; anything about a chart version change, a schema change, or a persisted-state migration; and nothing about behaviour under load, since caller impact was three readiness probes through one forward.",
+      "limitation": "One provider, one host, one replica of each tier, and one injected fault — an artifact byte-count mismatch — in each of two runs. On 2026-09-12 five attempts were made and four failed for reasons that record lists, and it measured 6,425, 1,512, and 7,983 ms for the three intervals on code nothing identifies; the statement's timings are the 2026-09-26 run's, one attempt at a named revision. The two runs are not a trend or a spread. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed records. Release blocker b4-upgrade-rollback-code-unidentified closed by V1-S5-013-PR1 with a rerun from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006, whose status was empty before the first step and after the last, which detected the fault, rolled the release back, and served a real completion again; the 2026-09-12 record stays cited for what it observed.",
+      "doesNotEstablish": "Anything about faults that were not injected, including a runtime that starts and answers wrongly; anything about a chart version change, a schema change, or a persisted-state migration; and nothing about behaviour under load, since caller impact was three readiness probes in the 2026-09-12 run and four in the 2026-09-26 run, each through one forward.",
       "claimMaterialComponents": [
         "inferops-llm-chart",
         "docker-desktop-cluster",
@@ -4165,6 +4492,167 @@
             "Anything about faults that were not injected, including a runtime that starts and answers wrongly.",
             "Anything about a chart version change, a schema change, a persisted-state migration, or behaviour under load."
           ]
+        },
+        {
+          "recordId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored-c2-rerun",
+          "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+          "migrationState": "migrated",
+          "evidenceLevel": "C2",
+          "summary": "On 2026-09-26, from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006 with nothing uncommitted before or after, a real release was upgraded with a controlled change, upgraded again with an injected byte-count fault, the failure was detected from the verify-model init container, the release was rolled back, and a real completion was served again.",
+          "execution": {
+            "targetBehaviourExecuted": true,
+            "executedComponents": [
+              {
+                "componentId": "helm-upgrade-rollback-workflow",
+                "role": "tool",
+                "note": "scripts/environment/helm-upgrade-rollback.sh with tools/helm_upgrade_rollback at the named revision, which detected the failure and performed the rollback."
+              },
+              {
+                "componentId": "inferops-llm-chart",
+                "role": "chart",
+                "note": "charts/inferops-llm at the named revision through release revisions 1 to 4, the fourth a rollback to revision 2."
+              },
+              {
+                "componentId": "docker-desktop-cluster",
+                "role": "cluster",
+                "note": "Docker Desktop's single-node cluster, Kubernetes v1.34.3."
+              },
+              {
+                "componentId": "llama-cpp-server",
+                "role": "inference-runtime",
+                "note": "llama.cpp llama-server at the pinned digest."
+              },
+              {
+                "componentId": "qwen3-1-7b-q8-0",
+                "role": "model",
+                "note": "Pinned revision and SHA-256, served after the rollback."
+              },
+              {
+                "componentId": "inferops-api",
+                "role": "api",
+                "note": "Built from the clone at the named revision; probed for readiness and used for the completion."
+              },
+              {
+                "componentId": "llama-cpp-adapter",
+                "role": "adapter",
+                "note": "Adapter kind reported as real on the recovery completion."
+              }
+            ],
+            "substitutions": []
+          },
+          "workload": {
+            "source": "operator-issued",
+            "description": "One fixed completion after the rollback plus readiness probes at 2 000 ms intervals, four of which fell in the failure window, issued by the operating script."
+          },
+          "environment": {
+            "environmentId": "local-kubernetes",
+            "provider": "docker-desktop",
+            "hardwareClass": "cpu",
+            "note": "One Windows host, Docker Desktop Kubernetes server v1.34.3 on one node, desktop-control-plane, one replica of each tier; a fresh clone at the named revision with an empty status before and after; 2026-09-26."
+          },
+          "versions": [
+            {
+              "component": "inferops repository",
+              "kind": "commit",
+              "value": "bcad343133ba6fddfe38832a2694e71777cdd006"
+            },
+            {
+              "component": "llama.cpp server",
+              "kind": "image-digest",
+              "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+            },
+            {
+              "component": "inferops-api",
+              "kind": "image-digest",
+              "value": "localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40"
+            },
+            {
+              "component": "model seed image",
+              "kind": "image-digest",
+              "value": "localhost/inferops-model-seed@sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d"
+            },
+            {
+              "component": "Qwen3-1.7B-GGUF",
+              "kind": "model-revision",
+              "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+            },
+            {
+              "component": "Qwen3-1.7B-Q8_0.gguf",
+              "kind": "artifact-hash",
+              "value": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+            },
+            {
+              "component": "docker-desktop node image",
+              "kind": "image-digest",
+              "value": "kindest/node@sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48"
+            },
+            {
+              "component": "inferops-llm",
+              "kind": "chart-version",
+              "value": "inferops-llm-0.3.0"
+            }
+          ],
+          "versionsRecordedIn": "docs/proof/environment/v1-s5-013-pr1-upgrade-rollback.md",
+          "procedure": {
+            "commands": [
+              "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+              "scripts/environment/helm-upgrade-rollback.sh run --values <merged values> --confirm-real-kubernetes",
+              "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+            ],
+            "workflowRef": "scripts/environment/helm-upgrade-rollback.sh",
+            "scriptRefs": [
+              "tools/helm_upgrade_rollback"
+            ]
+          },
+          "measurement": {
+            "method": "Stage timestamps stamped by the operating script from the moment the fault was injected, one run only.",
+            "instrument": "scripts/environment/helm-upgrade-rollback.sh and tools/helm_upgrade_rollback at the named revision."
+          },
+          "results": [
+            {
+              "resultId": "detection",
+              "statement": "The verify-model init container exited 1 with reason Error, detected 6 949 ms after the fault was injected.",
+              "value": 6949,
+              "unit": "ms"
+            },
+            {
+              "resultId": "rollback-duration",
+              "statement": "The rollback took 1 986 ms.",
+              "value": 1986,
+              "unit": "ms"
+            },
+            {
+              "resultId": "detection-to-completion",
+              "statement": "A real completion with adapter kind real came back 11 053 ms after detection.",
+              "value": 11053,
+              "unit": "ms"
+            },
+            {
+              "resultId": "caller-impact",
+              "statement": "Four readiness probes fell in the 8 267 ms failure window and all four were answered, because the failing candidate never became ready."
+            },
+            {
+              "resultId": "code-identity",
+              "statement": "git rev-parse HEAD printed bcad343133ba6fddfe38832a2694e71777cdd006 and git status --porcelain --untracked-files=all printed nothing, both before the first step and after the last."
+            }
+          ],
+          "evidenceRefs": [
+            "docs/proof/environment/v1-s5-013-pr1-upgrade-rollback.md",
+            "docs/proof/environment/v1-s5-013-pr1-upgrade-rollback.v1alpha1.json",
+            "docs/proof/environment/v1-s5-013-pr1-upgrade-rollback-transcript.txt",
+            "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+            "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt"
+          ],
+          "limitations": [
+            "One provider, one host, one moment, one replica of each tier, and one injected fault, an artifact byte-count mismatch.",
+            "Detection and rollback were both performed by an operating script that a person started; there is no automated rollback trigger.",
+            "The rollback restored a revision the experiment created minutes earlier on the same cluster, and the runtime was never reloaded.",
+            "It identifies its own code and does not recover what the 2026-09-12 run executed; the two runs' timings are not a trend or a spread."
+          ],
+          "doesNotEstablish": [
+            "Anything about faults that were not injected, including a runtime that starts and answers wrongly.",
+            "Anything about a chart version change, a schema change, a persisted-state migration, or behaviour under load."
+          ]
         }
       ],
       "strategyClaimIds": [
@@ -4204,7 +4692,7 @@
       "status": "certified",
       "notClaimedReason": null,
       "assertsRealBehaviour": true,
-      "limitation": "One provider, one host, one pod deleted once on 2026-09-12, with one replica. Four defects were found: two by running it, and two more by an independent review of the change afterwards, both of the second pair defects in a published figure rather than in a run that failed, which is why running it did not find them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. Release blocker since V1-S5-006-PR2: the only record names a branch and no commit, the chart it ran is identified only by a version label that ten chart states have carried, and the two later recovery runs say in their own records that they did not re-prove the artifact's survival, so the V1 evidence pack is not frozen while this claim is certified on it.",
+      "limitation": "One provider, one host, one replica, and one pod deleted once in each of two runs, on 2026-09-12 and 2026-09-26. The 2026-09-12 run found four defects: two by running it, and two more by an independent review of the change afterwards, both of the second pair defects in a published figure rather than in a run that failed, which is why running it did not find them. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed records. Release blocker b5-pod-replacement-code-unidentified closed by V1-S5-013-PR1 with a rerun from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006, whose status was empty before the first step and after the last, in which the byte count, SHA-256, inode, and modification time were unchanged across a replacement pod with a different UID and no acquisition Job ran; the 2026-09-12 record stays cited for what it observed.",
       "doesNotEstablish": "High availability. The replacement window is an outage for any caller reaching that Service, a deleted pod is not a lost node, the claim's durability across a Docker Desktop reset is recorded as unknown, and nothing here says what an upgrade would re-acquire.",
       "claimMaterialComponents": [
         "docker-desktop-cluster",
@@ -4334,6 +4822,164 @@
             "Four defects were found in the new tooling, two by running it and two by an independent review of published figures.",
             "The install hook's own log was not observed, because a successful hook deletes itself.",
             "The record names its repository revision only as a branch, so the commit that ran is not recorded, and it records no digest for the InferOps API image it built and loaded."
+          ],
+          "doesNotEstablish": [
+            "High availability: the replacement window is an outage for any caller reaching that Service.",
+            "That a lost node, a failed reattach, or a Docker Desktop reset preserves the claim, or what an upgrade would re-acquire."
+          ]
+        },
+        {
+          "recordId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim-c2-rerun",
+          "claimId": "the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim",
+          "migrationState": "migrated",
+          "evidenceLevel": "C2",
+          "summary": "On 2026-09-26, from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006 with nothing uncommitted before or after, one serving pod of a real release was deleted, the Deployment replaced it with a different pod against the same Terraform-owned claim, the in-cluster byte count, SHA-256, inode, and mtime were unchanged, no acquisition Job ran, and a real completion came back.",
+          "execution": {
+            "targetBehaviourExecuted": true,
+            "executedComponents": [
+              {
+                "componentId": "docker-desktop-cluster",
+                "role": "cluster",
+                "note": "Docker Desktop's single-node cluster, node desktop-control-plane, server v1.34.3."
+              },
+              {
+                "componentId": "inferops-llm-chart",
+                "role": "chart",
+                "note": "charts/inferops-llm at the named revision; release revision 1 before and after the deletion."
+              },
+              {
+                "componentId": "terraform-prerequisites",
+                "role": "other",
+                "note": "Namespace inferops-release and claim inferops-model-cache, applied by the guarded wrapper at the named revision; the same claim and bound volume on both sides."
+              },
+              {
+                "componentId": "llama-cpp-server",
+                "role": "inference-runtime",
+                "note": "llama.cpp llama-server at the pinned digest in both pods."
+              },
+              {
+                "componentId": "qwen3-1-7b-q8-0",
+                "role": "model",
+                "note": "The artifact hashed inside the cluster before and after the replacement, and verified by the verify-model init container in both pods."
+              },
+              {
+                "componentId": "inferops-api",
+                "role": "api",
+                "note": "Built from the clone at the named revision; served the before and after completions."
+              },
+              {
+                "componentId": "llama-cpp-adapter",
+                "role": "adapter",
+                "note": "Adapter kind reported as real on both completions."
+              },
+              {
+                "componentId": "kubernetes-pod-restart-workflow",
+                "role": "tool",
+                "note": "scripts/environment/kubernetes-pod-restart.sh with tools/kubernetes_pod_restart, at the named revision."
+              }
+            ],
+            "substitutions": []
+          },
+          "workload": {
+            "source": "operator-issued",
+            "description": "One fixed completion before the deletion and the same request after the replacement, through the same loopback forward, issued by the operating script.",
+            "shape": {
+              "requestCount": 2
+            }
+          },
+          "environment": {
+            "environmentId": "local-kubernetes",
+            "provider": "docker-desktop",
+            "hardwareClass": "cpu",
+            "note": "One Windows host, Docker Desktop Kubernetes server v1.34.3 on one node, desktop-control-plane, one replica of each tier; a fresh clone at the named revision with an empty status before and after; 2026-09-26."
+          },
+          "versions": [
+            {
+              "component": "inferops repository",
+              "kind": "commit",
+              "value": "bcad343133ba6fddfe38832a2694e71777cdd006"
+            },
+            {
+              "component": "llama.cpp server",
+              "kind": "image-digest",
+              "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"
+            },
+            {
+              "component": "inferops-api",
+              "kind": "image-digest",
+              "value": "localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40"
+            },
+            {
+              "component": "model seed image",
+              "kind": "image-digest",
+              "value": "localhost/inferops-model-seed@sha256:1ac37eb22072a7960c64002f13b28eaf81df091cb2d65ff8ebad066e94fb758d"
+            },
+            {
+              "component": "Qwen3-1.7B-GGUF",
+              "kind": "model-revision",
+              "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+            },
+            {
+              "component": "Qwen3-1.7B-Q8_0.gguf",
+              "kind": "artifact-hash",
+              "value": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"
+            },
+            {
+              "component": "docker-desktop node image",
+              "kind": "image-digest",
+              "value": "kindest/node@sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48"
+            },
+            {
+              "component": "inferops-llm",
+              "kind": "chart-version",
+              "value": "inferops-llm-0.3.0"
+            }
+          ],
+          "versionsRecordedIn": "docs/proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.md",
+          "procedure": {
+            "commands": [
+              "git rev-parse HEAD && git status --porcelain --untracked-files=all",
+              "scripts/environment/kubernetes-pod-restart.sh run --values <merged values> --confirm-real-kubernetes",
+              "git rev-parse HEAD && git status --porcelain --untracked-files=all"
+            ],
+            "workflowRef": "scripts/environment/kubernetes-pod-restart.sh",
+            "scriptRefs": [
+              "tools/kubernetes_pod_restart"
+            ]
+          },
+          "results": [
+            {
+              "resultId": "replaced",
+              "statement": "The replacement pod had a different name and UID under the same ReplicaSet, and the release revision stayed at 1."
+            },
+            {
+              "resultId": "same-file",
+              "statement": "Byte count 1 834 426 016, SHA-256, inode 2138770, and mtime 1790388256 were identical before and after, computed inside the cluster; verify-model exited 0 in both pods."
+            },
+            {
+              "resultId": "no-reacquisition",
+              "statement": "Zero acquisition Jobs existed before the deletion and zero after the replacement."
+            },
+            {
+              "resultId": "completion",
+              "statement": "HTTP 200 with adapter kind real and 24 / 29 / 53 tokens both before and after; deletion to the replacement Ready took 13 281 ms and to a real completion 21 603 ms in one run."
+            },
+            {
+              "resultId": "code-identity",
+              "statement": "git rev-parse HEAD printed bcad343133ba6fddfe38832a2694e71777cdd006 and git status --porcelain --untracked-files=all printed nothing, both before the first step and after the last."
+            }
+          ],
+          "evidenceRefs": [
+            "docs/proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.md",
+            "docs/proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json",
+            "docs/proof/serving/v1-s5-013-pr1-kubernetes-pod-restart-transcript.txt",
+            "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+            "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt"
+          ],
+          "limitations": [
+            "One provider, one host, one pod deleted once on 2026-09-26, with one replica.",
+            "The claim's storage was not tested for durability across a host failure or a Docker Desktop reset.",
+            "It identifies its own code and does not recover what the 2026-09-12 run executed."
           ],
           "doesNotEstablish": [
             "High availability: the replacement window is an outage for any caller reaching that Service.",

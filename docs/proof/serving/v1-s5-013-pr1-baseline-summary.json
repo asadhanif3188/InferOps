@@ -1,0 +1,73 @@
+{
+  "certificationCeiling": "C2",
+  "environment": {
+    "accelerator": "none; CPU only",
+    "architecture": "AMD64",
+    "containerEngineVersion": "29.7.2",
+    "freeDiskBytes": 63422099456,
+    "imageReference": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "logicalCpus": 20,
+    "modelArtifactSha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    "modelRepository": "Qwen/Qwen3-1.7B-GGUF",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "operatingSystem": "Windows",
+    "processorFamily": "AMD64",
+    "pythonVersion": "3.12.12",
+    "release": "11",
+    "runtimeSourceRevision": "70adb1b4cea5ee39f867792c78dc59320921eda7",
+    "totalMemoryBytes": 16836890624
+  },
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real runtime",
+  "experimentId": "inferops-local-serving-baseline",
+  "fixtureId": "single-turn-fixed-v1",
+  "latency": {
+    "maxMs": 9375,
+    "meanMs": 3756,
+    "minMs": 2219,
+    "p50Ms": 2703,
+    "p95Ms": 8860,
+    "p99Ms": 9375
+  },
+  "notABenchmark": "Descriptive local measurement on one CPU host at concurrency 1. It is not a production benchmark and no figure here may be published as one.",
+  "percentileMethod": "nearest-rank",
+  "productionBenchmark": false,
+  "requests": {
+    "failed": 0,
+    "measured": 30,
+    "outcomes": {
+      "refused": 0,
+      "success": 30,
+      "transport-error": 0
+    },
+    "successful": 30,
+    "warmup": 3
+  },
+  "resources": {
+    "cpuPercentMax": 0.01,
+    "memoryBytesMax": 590558003,
+    "samples": 6
+  },
+  "schemaVersion": "inferops.io/v1alpha1",
+  "startup": {
+    "apiReadyMs": 187,
+    "modelLoadMs": 221000
+  },
+  "successCriteria": {
+    "maximumFailedRequests": 0,
+    "met": true,
+    "minimumSuccessfulRequests": 30
+  },
+  "throughput": {
+    "measuredWindowMs": 121859,
+    "outputTokensPerSecondMilli": 4185,
+    "requestsPerSecondMilli": 246
+  },
+  "tokens": {
+    "available": true,
+    "inputTotal": 1050,
+    "outputMax": 17,
+    "outputMin": 17,
+    "outputTotal": 510
+  }
+}

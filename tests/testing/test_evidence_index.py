@@ -428,7 +428,7 @@ def test_a_misdescribed_change_is_refused_rather_than_restored() -> None:
     )
     change["after"] = change["after"] + " An extra sentence."
     with pytest.raises(ValueError, match=change["changeId"]):
-        restore_migrated_register(REGISTER, [ledger, LEDGERS[1]])
+        restore_migrated_register(REGISTER, [ledger, *LEDGERS[1:]])
 
 
 def test_every_finding_has_exactly_one_known_disposition() -> None:
@@ -557,11 +557,29 @@ def test_every_date_time_and_identifier_in_an_added_record_is_in_a_file_it_cites
 
 
 def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
-    """Normalization and verification may narrow, correct, and add; not promote."""
+    """Normalization and verification may narrow, correct, and add; not promote.
+
+    The closure ledger is the one exception, and only downwards: a blocker closed by a
+    claim decision may move its claim's status, to exactly the status its disposition
+    names, and to a status that ranks lower. No ledger moves any record's level.
+    """
     migrated = restore_migrated_register(REGISTER, LEDGERS)
     before = {claim["claimId"]: claim for claim in migrated["claims"]}
+    closure = LEDGERS[-1]
+    decided = {
+        row["claimId"]: row
+        for row in closure["blockerDispositions"]
+        if row["mechanism"] == "closed-by-claim-decision"
+    }
+    rank = {row["statusId"]: row["rank"] for row in REGISTER["claimStatuses"]}
     for claim in REGISTER["claims"]:
-        assert claim["status"] == before[claim["claimId"]]["status"], claim["claimId"]
+        was = before[claim["claimId"]]["status"]
+        if claim["claimId"] in decided:
+            row = decided[claim["claimId"]]
+            assert (was, claim["status"]) == (row["statusBefore"], row["statusAfter"])
+            assert rank[claim["status"]] < rank[was], claim["claimId"]
+        else:
+            assert claim["status"] == was, claim["claimId"]
         levels = {
             record["recordId"]: record.get("evidenceLevel")
             for record in before[claim["claimId"]]["evidenceRecords"]
@@ -575,7 +593,20 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         for change in ledger["registerChanges"]
         if change["operation"] != "add-record"
     }
-    assert not touched & {"status", "evidenceLevel", "assertsRealBehaviour", "claimId"}
+    assert not touched & {"evidenceLevel", "assertsRealBehaviour", "claimId"}
+    moved = {
+        change["claimId"]
+        for ledger in LEDGERS
+        for change in ledger["registerChanges"]
+        if change["operation"] != "add-record" and change["field"] == "status"
+    }
+    assert moved == set(decided)
+    for ledger in LEDGERS[:-1]:
+        assert not [
+            change
+            for change in ledger["registerChanges"]
+            if change["operation"] != "add-record" and change["field"] == "status"
+        ]
 
 
 # --------------------------------------------------------- historical records

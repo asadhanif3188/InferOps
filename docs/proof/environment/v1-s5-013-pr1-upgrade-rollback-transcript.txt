@@ -1,0 +1,508 @@
+# Transcript of one operating-shell stage, run from a fresh clone at a named
+# revision for V1-S5-013-PR1. Redacted before committing: the clone's absolute
+# path is <clone>, one namespace belonging to unrelated work is <unrelated
+# namespace> with its uid removed, the container engine's local build-dashboard
+# identifiers are <build>, terminal colour codes are removed, and whitespace at
+# the end of a line is removed. Nothing else was changed.
+kubectl: v1.34.3
+helm: v3.19.0+g3d8990f
+terraform: Terraform v1.15.8
+=== identity before upgrade-rollback: 2026-09-26T02:06:06.119Z
+bcad343133ba6fddfe38832a2694e71777cdd006
+--- status (porcelain, untracked=all) begin
+--- status end
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === Experiment descriptor ===
+experiment    inferops-helm-upgrade-rollback (ceiling C2; local-real-cpu)
+lane          real-runtime; outside the default check lane
+chart         charts/inferops-llm; profile real
+release       inferops in inferops-release; 1 replica(s) of platform-api and serving-runtime
+baseline      agrees with deploy/serving/certification/k8s-real-inference.v1.json
+stages        baseline -> candidate -> unhealthy-candidate -> rollback -> cleanup
+candidate     --set telemetry.serviceVersion=v1-s3-008-candidate, asserted at INFEROPS_SERVICE_VERSION in inferops-inferops-llm-configuration
+fault         model-artifact-byte-count-mismatch: --set model.artifact.sizeBytes=1, failing in the 'verify-model' init container of serving-runtime
+              scoped to the release, reversed by helm-rollback; pulls no image and creates no object outside the release
+              aimed at the workload by --set model.acquisition.enabled=false on the same upgrade, so the acquisition hook the same byte count would otherwise fail is not rendered
+detection     decisive: init-container-nonzero-exit, init-container-crash-loop; polled every 5000 ms
+              a 'progress-deadline-exceeded' is recorded as a deadline, never as health; candidate-pod-unschedulable refuses the run
+rollback      to the last-known-good-revision; configuration, fault removal, release test, and a real completion are each asserted separately
+impact        GET /health/ready every 2000 ms, at least 3 probes across the failure window
+budgets       upgrade 900000 ms; detection 900000 ms; rollback 900000 ms; recovery 1500000 ms; uninstall 600000 ms
+request       POST /v1/chat/completions; identity GET /v1/models; budget 120000 ms
+evidence      .cache/inferops/experiments/helm-upgrade-rollback.json; labelled local real Kubernetes; generated text never retained
+cleanup       uninstalls the release; removes neither the Terraform prerequisites, the model cache claim, nor the cluster
+limitations   6 stated in the descriptor
+execution     not started (offline descriptor validation only)
+
+[inferops] === Applying the Terraform prerequisites ===
+[inferops] target verified: provider=docker-desktop cluster=docker-desktop context=docker-desktop
+
+[inferops] === terraform init ===
+Initializing the backend...
+
+Initializing modules...
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/kubernetes from the dependency lock file
+- Using previously-installed hashicorp/kubernetes v2.38.0
+
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+[inferops] === terraform plan ===
+module.platform_prerequisites.kubernetes_namespace_v1.platform: Refreshing state... [id=inferops-release]
+module.platform_prerequisites.kubernetes_persistent_volume_claim_v1.model_cache: Refreshing state... [id=inferops-release/inferops-model-cache]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+
+[inferops] === terraform apply ===
+
+Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+model_cache_claim_name = "inferops-model-cache"
+model_cache_size = "4Gi"
+namespace = "inferops-release"
+prerequisite_label_selector = "inferops.io/lifecycle=prerequisite"
+[inferops] prerequisites applied. Install a release into them with scripts/environment/helm-lifecycle.sh; never pass a flag that would let Helm create this namespace.
+[inferops] persistent volume claims present before install: 1
+
+[inferops] === Installing the known-good release ===
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:06:37 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 1
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+Waiting for deployment "inferops-inferops-llm-runtime" rollout to finish: 0 of 1 updated replicas are available...
+deployment "inferops-inferops-llm-runtime" successfully rolled out
+Waiting for deployment "inferops-inferops-llm" rollout to finish: 0 of 1 updated replicas are available...
+deployment "inferops-inferops-llm" successfully rolled out
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:06:37 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 1
+TEST SUITE:     inferops-inferops-llm-connection-test
+Last Started:   Sat Sep 26 07:07:01 2026
+Last Completed: Sat Sep 26 07:07:05 2026
+Phase:          Succeeded
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+[inferops] recorded the 'baseline' stage.
+
+[inferops] === Upgrading to the controlled candidate ===
+Release "inferops" has been upgraded. Happy Helming!
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:07:06 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 2
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+Waiting for deployment "inferops-inferops-llm-runtime" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "inferops-inferops-llm-runtime" rollout to finish: 1 old replicas are pending termination...
+deployment "inferops-inferops-llm-runtime" successfully rolled out
+deployment "inferops-inferops-llm" successfully rolled out
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:07:06 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 2
+TEST SUITE:     inferops-inferops-llm-connection-test
+Last Started:   Sat Sep 26 07:07:34 2026
+Last Completed: Sat Sep 26 07:07:38 2026
+Phase:          Succeeded
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+[inferops] recorded the 'candidate' stage.
+[inferops] the last known-good revision is 2.
+
+[inferops] === Forwarding the API Service ===
+[inferops] the API Service is forwarded to http://127.0.0.1:18091.
+
+[inferops] === Upgrading to a candidate the cluster cannot run ===
+[inferops] injecting model.artifact.sizeBytes=1, which the mounted artifact cannot match.
+[inferops] aiming it at the workload with model.acquisition.enabled=false: the same byte count renders into the model acquisition hook, which runs pre-upgrade and would fail before the serving runtime is reached.
+[inferops] this changes no image reference, pulls nothing, creates no object outside the release, and is removed by the rollback.
+
+[inferops] === Watching for the failure ===
+Release "inferops" has been upgraded. Happy Helming!
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:07:42 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 3
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+[inferops] detected 'init-container-nonzero-exit' on inferops-inferops-llm-runtime-dc5986777-xpsvt after 6949 ms (exit 1, Error).
+[inferops] the pod still serving is inferops-inferops-llm-runtime-5c796c6497-bx48j.
+[inferops] recorded the 'unhealthy-candidate' stage.
+
+[inferops] === Rolling back to revision 2 ===
+Rollback was a success! Happy Helming!
+deployment "inferops-inferops-llm-runtime" successfully rolled out
+deployment "inferops-inferops-llm" successfully rolled out
+NAME: inferops
+LAST DEPLOYED: Sat Sep 26 07:07:52 2026
+NAMESPACE: inferops-release
+STATUS: deployed
+REVISION: 4
+TEST SUITE:     inferops-inferops-llm-connection-test
+Last Started:   Sat Sep 26 07:07:55 2026
+Last Completed: Sat Sep 26 07:07:59 2026
+Phase:          Succeeded
+NOTES:
+InferOps LLM release inferops rendered into namespace inferops-release.
+
+  profile:    real
+  capability: inferops-native-serving
+  API image:  localhost/inferops-api@sha256:6d565a391412c74a9c0eb1bf31da216b7edb739a906bbd1827ee8a45b74d9b40
+  runtime:    ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+  model:      qwen3-1-7b-q8-0 at revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+  cache:      claim inferops-model-cache, mounted read only
+
+
+This release installs the real serving path, and V1-S3-011 certified it on one
+provider: on Docker Desktop's Kubernetes, on one Windows host, on CPU, with one
+replica of each tier, this chart installed, loaded the pinned model, returned a
+real completion through its own Service, upgraded, rolled back, replaced a
+deleted serving pod against the surviving claim, and uninstalled without residue.
+
+That certifies nothing about kind, about any other host, or about more than one
+replica -- the multi-replica profile was refused at the capacity gate on that
+host. docs/serving/kubernetes-real-inference-certification.md is the procedure
+and docs/proof/ holds the records.
+
+What this chart does NOT install, so that a reader is not left inferring it:
+
+  - the namespace and the model cache claim. Those are Terraform's, this release
+    is a guest in them, and helm uninstall leaves them exactly where they are.
+
+What it DOES install, which an earlier version of this message denied:
+
+  - the model acquisition job (V1-S3-003), as a pre-install,pre-upgrade hook that
+    fills the claim and removes itself when it succeeds;
+  - NetworkPolicy objects (V1-S3-004). They are created; whether the local
+    network plugin ENFORCES one is a separate question and the answer is still
+    no. See docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md;
+  - the telemetry scrape configuration and, when telemetry.collection.collector
+    .deploy is true, a release-scoped collector that reads it (V1-S3-007). Its
+    series are in an emptyDir and go with its pod.
+
+Asking whether it actually answers, which a completed rollout does not tell you:
+
+  helm test inferops --namespace inferops-release
+
+Reaching the API:
+
+  kubectl --namespace inferops-release port-forward svc/inferops-inferops-llm 8090:8090
+
+There is no ingress and no load balancer. V1 installs neither.
+
+Removing it. `helm uninstall` removes this release and nothing else: the
+namespace and the model cache claim are Terraform's and outlive it by design.
+
+  helm uninstall inferops --namespace inferops-release
+[inferops] recorded the 'rollback' stage.
+REVISION	UPDATED                 	STATUS    	CHART             	APP VERSION	DESCRIPTION
+1       	Sat Sep 26 07:06:37 2026	superseded	inferops-llm-0.3.0	0.1.0      	Install complete
+2       	Sat Sep 26 07:07:06 2026	superseded	inferops-llm-0.3.0	0.1.0      	Upgrade complete
+3       	Sat Sep 26 07:07:42 2026	superseded	inferops-llm-0.3.0	0.1.0      	Upgrade complete
+4       	Sat Sep 26 07:07:52 2026	deployed  	inferops-llm-0.3.0	0.1.0      	Rollback to 2
+
+[inferops] === Collecting lifecycle facts ===
+[inferops] lifecycle facts written to .artifacts/helm-upgrade-rollback/lifecycle-facts.json. They are host state, not evidence, and .artifacts/ is ignored by version control.
+
+[inferops] === Evaluating the experiment ===
+experiment    inferops-helm-upgrade-rollback
+evidence      labelled local real Kubernetes
+cluster       docker-desktop on v1.34.3; chart inferops-llm-0.3.0
+revisions     baseline r1 healthy; candidate r2 healthy; unhealthy-candidate r3 failed; rollback r4 healthy
+detection     init-container-nonzero-exit on serving-runtime/verify-model (exit 1) after 6949 ms
+recovery      11053 ms from detection to a served completion; rollback 1986 ms; r4 restored r2
+impact        4/4 readiness probes answered during the failure window
+identity      adapter real; model qwen3-1-7b-q8-0; runtime llama.cpp llama-server sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384; revision 90862c4b9d2787eaed51d12237eafdfe7c5f6077
+inference     HTTP 200 in 2672 ms; 35 tokens; content not retained
+record        .cache/inferops/experiments/helm-upgrade-rollback.json
+
+[inferops] === Uninstalling ===
+release "inferops" uninstalled
+
+[inferops] === Recording the cleanup outcome ===
+cleanup       added to .cache/inferops/experiments/helm-upgrade-rollback.json
+
+[inferops] === Result ===
+[inferops] install, upgrade, break, detect, roll back, verify, uninstall: all completed.
+[inferops] the namespace and every claim survived; no release object did.
+[inferops] the record is in .cache/inferops/experiments/ and is ignored by version control.
+EXIT_upgrade_rollback=0
+=== identity after upgrade-rollback: 2026-09-26T02:08:19.610Z
+bcad343133ba6fddfe38832a2694e71777cdd006
+--- status (porcelain, untracked=all) begin
+--- status end
+DRIVER_EXIT=0

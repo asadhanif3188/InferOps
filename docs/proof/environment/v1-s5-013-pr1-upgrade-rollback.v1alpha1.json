@@ -1,0 +1,142 @@
+{
+  "certificationCeiling": "C2",
+  "change": {
+    "candidateRevision": 2,
+    "candidateValue": "v1-s3-008-candidate",
+    "configMapKey": "INFEROPS_SERVICE_VERSION",
+    "valuesPath": "telemetry.serviceVersion"
+  },
+  "cleanup": {
+    "claimsAfter": 1,
+    "claimsBefore": 1,
+    "namespacePresent": true,
+    "releaseObjectsRemaining": 0,
+    "uninstallMs": 1466
+  },
+  "detection": {
+    "container": "verify-model",
+    "detectedAfterMs": 6949,
+    "exitCode": 1,
+    "reason": "Error",
+    "signal": "init-container-nonzero-exit",
+    "workload": "serving-runtime"
+  },
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "experimentId": "inferops-helm-upgrade-rollback",
+  "fault": {
+    "container": "verify-model",
+    "injectedSizeBytes": 1,
+    "mechanism": "model-artifact-byte-count-mismatch",
+    "pinnedSizeBytes": 1834426016,
+    "reversedBy": "helm-rollback",
+    "valuesPath": "model.artifact.sizeBytes",
+    "workload": "serving-runtime"
+  },
+  "impact": {
+    "answered": 4,
+    "firstFailureAtMs": null,
+    "probePath": "/health/ready",
+    "probes": 4,
+    "refused": 0,
+    "windowMs": 8267
+  },
+  "limitations": [
+    "The evidence is local real Kubernetes on a single-node cluster belonging to one explicitly selected provider, and implies nothing about another provider, a production upgrade, a multi-node rollout, or a release under load.",
+    "The unhealthy candidate is one injected fault - a byte count the mounted artifact cannot match - and detecting it says nothing about faults this experiment does not inject, including a runtime that starts and answers wrongly.",
+    "The recovery time is measured from the moment the failure was detected to the moment a real completion was served again. It is not a time-to-detect for an operator who was not already watching, and it is not an outage duration.",
+    "No request load is generated. The impact record is a readiness probe at a fixed interval through one forward, so it bounds what a single caller saw and measures no throughput, no latency distribution, and no in-flight request.",
+    "The rollback restores a revision this experiment created minutes earlier on the same cluster. Nothing here says anything about rolling back across a chart version, a schema change, or a persisted-state migration.",
+    "No GitOps controller, no progressive delivery, and no automated rollback trigger exists. Detection and rollback are both performed by the operating script, which a human started."
+  ],
+  "outcome": "upgraded-and-rolled-back",
+  "provenance": {
+    "chart": "inferops-llm-0.3.0",
+    "chartRef": "charts/inferops-llm",
+    "helmVersion": "v3.19.0+g3d8990f",
+    "kubectlVersion": "v1.34.3",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "modelSha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    "nodeImageDigest": "sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48",
+    "serverVersion": "v1.34.3"
+  },
+  "recovery": {
+    "detectionMs": 6949,
+    "recoveryMs": 11053,
+    "restoredFromRevision": 2,
+    "restoredRevision": 4,
+    "rollbackMs": 1986,
+    "runtimeReloaded": false
+  },
+  "release": {
+    "deploymentEnvironment": "dev",
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real"
+  },
+  "restoredCompletion": {
+    "completionCharacters": 55,
+    "completionTokens": 12,
+    "correlationIdEchoed": false,
+    "elapsedMs": 2672,
+    "generatedTextRetained": false,
+    "promptTokens": 23,
+    "requestIdEchoed": false,
+    "status": 200,
+    "totalTokens": 35
+  },
+  "restoredIdentity": {
+    "adapterKind": "real",
+    "modelIdentifier": "qwen3-1-7b-q8-0",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "runtimeName": "llama.cpp llama-server",
+    "runtimeVersion": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "tokenUsageDeclared": true
+  },
+  "stages": [
+    {
+      "artifactSizeBytes": 1834426016,
+      "elapsedMs": 28445,
+      "outcome": "healthy",
+      "readyMs": 16400,
+      "releaseTestPassed": true,
+      "revision": 1,
+      "serviceVersion": "",
+      "stage": "baseline",
+      "status": "deployed"
+    },
+    {
+      "artifactSizeBytes": 1834426016,
+      "elapsedMs": 31913,
+      "outcome": "healthy",
+      "readyMs": 20646,
+      "releaseTestPassed": true,
+      "revision": 2,
+      "serviceVersion": "v1-s3-008-candidate",
+      "stage": "candidate",
+      "status": "deployed"
+    },
+    {
+      "artifactSizeBytes": 1,
+      "elapsedMs": 9092,
+      "outcome": "failed",
+      "readyMs": 0,
+      "releaseTestPassed": false,
+      "revision": 3,
+      "serviceVersion": "v1-s3-008-candidate",
+      "stage": "unhealthy-candidate",
+      "status": "deployed"
+    },
+    {
+      "artifactSizeBytes": 1834426016,
+      "elapsedMs": 7022,
+      "outcome": "healthy",
+      "readyMs": 776,
+      "releaseTestPassed": true,
+      "revision": 4,
+      "serviceVersion": "v1-s3-008-candidate",
+      "stage": "rollback",
+      "status": "deployed"
+    }
+  ]
+}

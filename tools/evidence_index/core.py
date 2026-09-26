@@ -26,8 +26,18 @@ cannot survive both.
 `V1-S5-006-PR2` verified before the evidence could be frozen: a final state for every
 finding, how each executed record identifies the repository code that ran, the
 register changes it made in the same before-and-after form, the release blockers, and
-the release gate they decide. The two ledgers are applied in order, and undone in
-reverse, so the register's history since the migration is the two of them together.
+the release gate they decide.
+
+**The closure ledger** is `docs/proof/testing/v1-s5-013-pr1-closure.v1alpha1.json`,
+the record of how `V1-S5-013-PR1` closed those blockers: the new records its reruns
+added and every other register change, in the same before-and-after form, how each new
+executed record identifies the code that ran, one disposition per blocker, and the
+release gate that is current. The completeness ledger's blockers and gate stay as it
+decided them, as history; the gate is read from the closure ledger, and it refuses
+a closure that leaves any of those blockers without a disposition.
+
+The three ledgers are applied in order, and undone in reverse, so the register's
+history since the migration is the three of them together.
 
 **Content hashes** are SHA-256 over the committed content. A text file is hashed with
 CRLF normalised to LF, because the repository stores text with LF and a Windows
@@ -51,6 +61,8 @@ from typing import Any, Final
 from tools.evidence_model import REGISTER_PATH, load_register
 
 __all__ = [
+    "BLOCKER_CLOSURES",
+    "CLOSURE_PATH",
     "CODE_IDENTITIES",
     "CODE_REVISION_RELATIONS",
     "COMPLETENESS_PATH",
@@ -71,6 +83,8 @@ __all__ = [
     "load_index",
     "load_ledger",
     "load_ledgers",
+    "merged_identities",
+    "open_blockers",
     "recorded_date",
     "release_gate",
     "render_index",
@@ -101,8 +115,13 @@ COMPLETENESS_PATH: Final = (
     / "v1-s5-006-pr2-completeness.v1alpha1.json"
 )
 
+#: How V1-S5-013-PR1 closed the completeness ledger's blockers, and the current gate.
+CLOSURE_PATH: Final = (
+    REPO_ROOT / "docs" / "proof" / "testing" / "v1-s5-013-pr1-closure.v1alpha1.json"
+)
+
 #: Every ledger of register changes since the migration, in the order applied.
-LEDGER_PATHS: Final = (LEDGER_PATH, COMPLETENESS_PATH)
+LEDGER_PATHS: Final = (LEDGER_PATH, COMPLETENESS_PATH, CLOSURE_PATH)
 
 INDEX_CONTRACT_VERSION: Final = "inferops.io/v1alpha1"
 
@@ -146,6 +165,17 @@ CODE_IDENTITIES: Final = (
     "content-pinned",
     "no-repository-code",
     "unidentified",
+)
+
+#: The three honest ways a blocker may be closed, and no fourth. A rerun is a new
+#: execution at a named revision with a record of its own; a re-anchoring cites
+#: committed evidence that already existed and executed what the claim needs; a
+#: claim decision narrows the statement or moves the status so the claim says only
+#: what identified evidence supports.
+BLOCKER_CLOSURES: Final = (
+    "closed-by-rerun",
+    "closed-by-re-anchoring",
+    "closed-by-claim-decision",
 )
 
 #: Files the repository stores as text. Everything else is hashed byte for byte.
@@ -423,13 +453,86 @@ def _code_identity(
     }
 
 
-def release_gate(completeness: Mapping[str, Any]) -> str:
-    """``complete`` only when the completeness ledger names no blocker.
+def release_gate(gate: Mapping[str, Any]) -> str:
+    """``complete`` only when the ledger that decides the gate names no blocker.
 
     Derived, not read: a ledger that says ``complete`` beside a blocker is caught
     by comparing its stated decision with this one.
     """
-    return "incomplete" if completeness["blockers"] else "complete"
+    return "incomplete" if gate["blockers"] else "complete"
+
+
+def open_blockers(
+    completeness: Mapping[str, Any], closure: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """The blockers still standing after the closure ledger, checked against history.
+
+    Every blocker the completeness ledger raised must end in exactly one place: a
+    disposition in the closure ledger, using one of the three closure mechanisms,
+    or the closure ledger's own list of blockers still open. A blocker in neither,
+    in both, or disposed of twice raises, and so does one the completeness ledger
+    never raised, so a closure cannot make a blocker disappear by leaving it out.
+    A disposition or an open blocker must also name the claim the blocker was
+    raised on, so a closure cannot close one blocker by pointing at another claim.
+    """
+    raised = {blocker["blockerId"]: blocker for blocker in completeness["blockers"]}
+    disposed = [row["blockerId"] for row in closure["blockerDispositions"]]
+    still_open = [blocker["blockerId"] for blocker in closure["blockers"]]
+    for row in closure["blockerDispositions"]:
+        if row["mechanism"] not in BLOCKER_CLOSURES:
+            raise ValueError(
+                f"{row['blockerId']}: no closure mechanism {row['mechanism']!r}"
+            )
+    for row in [*closure["blockerDispositions"], *closure["blockers"]]:
+        blocker = raised.get(row["blockerId"])
+        if blocker is not None and row.get("claimId") != blocker["claimId"]:
+            raise ValueError(
+                f"{row['blockerId']}: names claim {row.get('claimId')!r}, "
+                f"and the blocker was raised on {blocker['claimId']!r}"
+            )
+    accounted = Counter(disposed + still_open)
+    missing = sorted(set(raised) - set(accounted))
+    twice = sorted(name for name, count in accounted.items() if count > 1)
+    unknown = sorted(set(accounted) - set(raised))
+    if missing or twice or unknown:
+        raise ValueError(
+            f"blockers without one disposition: missing {missing}, "
+            f"accounted twice {twice}, never raised {unknown}"
+        )
+    return [dict(blocker) for blocker in closure["blockers"]]
+
+
+def merged_identities(
+    completeness: Mapping[str, Any], closure: Mapping[str, Any]
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Every record's code identity, and every claim's decision, across both ledgers.
+
+    A record's identity is read once, by the ledger that first read it: a closure
+    row for a record the completeness ledger already read raises rather than
+    overriding it. A claim's decision is the latest ledger's, and the closure may
+    re-decide only the claims the completeness ledger raised a blocker on; a
+    closure row for any other claim raises.
+    """
+    first = {row["recordId"]: dict(row) for row in completeness["codeIdentity"]}
+    reread = sorted({row["recordId"] for row in closure["codeIdentity"]} & set(first))
+    if reread:
+        raise ValueError(f"records read twice for their code identity: {reread}")
+    identities = {
+        **first,
+        **{row["recordId"]: dict(row) for row in closure["codeIdentity"]},
+    }
+    blocked = {blocker["claimId"] for blocker in completeness["blockers"]}
+    redecided = {row["claimId"] for row in closure["claimCodeIdentity"]}
+    if redecided - blocked:
+        raise ValueError(
+            f"claims re-decided that no blocker was raised on: {sorted(redecided - blocked)}"
+        )
+    claim_identity = {
+        row["claimId"]: dict(row)
+        for one in (completeness, closure)
+        for row in one["claimCodeIdentity"]
+    }
+    return identities, claim_identity
 
 
 def _record_entry(
@@ -523,6 +626,7 @@ def _summary(
     records: Sequence[Mapping[str, Any]],
     ledger: Mapping[str, Any],
     completeness: Mapping[str, Any],
+    closure: Mapping[str, Any],
 ) -> dict[str, Any]:
     cited = [item for record in records for item in record["evidence"]]
     files = {item["path"] for item in cited}
@@ -575,6 +679,9 @@ def _summary(
             )
             for name in CODE_IDENTITIES
         },
+        # The completeness ledger's final states are its own, as it decided them;
+        # the two BLOCKER findings carried the blockers the closure counts below.
+        "findingsByFinalStateDecidedBy": completeness["releaseGate"]["storyId"],
         "findingsByFinalState": {
             name: sum(
                 1
@@ -587,8 +694,16 @@ def _summary(
             for name in FINAL_STATES
         },
         "completenessRegisterChanges": len(completeness["registerChanges"]),
-        "releaseBlockers": len(completeness["blockers"]),
-        "releaseGate": release_gate(completeness),
+        "closureRegisterChanges": len(closure["registerChanges"]),
+        "blockersRaised": len(completeness["blockers"]),
+        "blockersClosedBy": {
+            name: sum(
+                1 for row in closure["blockerDispositions"] if row["mechanism"] == name
+            )
+            for name in BLOCKER_CLOSURES
+        },
+        "releaseBlockers": len(open_blockers(completeness, closure)),
+        "releaseGate": release_gate(closure),
         "evidenceSetSha256": evidence_set_sha256(cited),
     }
 
@@ -598,10 +713,10 @@ def build_index(
     ledgers: Sequence[Mapping[str, Any]] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
-    """The evidence index the register and the two ledgers produce today."""
+    """The evidence index the register and the three ledgers produce today."""
     register = register if register is not None else load_register()
     ledgers = ledgers if ledgers is not None else load_ledgers()
-    ledger, completeness = ledgers
+    ledger, completeness, closure = ledgers
     revisions = {
         entry["recordId"]: entry for one in ledgers for entry in one["codeRevisions"]
     }
@@ -613,11 +728,13 @@ def build_index(
     findings = _by_record(
         [finding for one in ledgers for finding in one["findings"]], "findingId"
     )
-    identities = {row["recordId"]: row for row in completeness["codeIdentity"]}
-    claim_identity = {row["claimId"]: row for row in completeness["claimCodeIdentity"]}
+    identities, claim_identity = merged_identities(completeness, closure)
     blockers: dict[str, list[str]] = {}
-    for blocker in completeness["blockers"]:
+    for blocker in open_blockers(completeness, closure):
         blockers.setdefault(blocker["claimId"], []).append(blocker["blockerId"])
+    closed: dict[str, list[str]] = {}
+    for row in closure["blockerDispositions"]:
+        closed.setdefault(row["claimId"], []).append(row["blockerId"])
 
     claims: list[dict[str, Any]] = []
     records: list[dict[str, Any]] = []
@@ -640,6 +757,7 @@ def build_index(
                     else None
                 ),
                 "releaseBlockers": blockers.get(claim["claimId"], []),
+                "closedBlockers": closed.get(claim["claimId"], []),
             }
         )
         for record_index, held in enumerate(claim["evidenceRecords"]):
@@ -669,16 +787,18 @@ def build_index(
             "procedure, the results, the limitations, and every cited file bound "
             "to its content by SHA-256 and to its repository object by git blob "
             "name, with how the record identifies the repository code that ran and "
-            "the release gate the completeness ledger's blockers decide. Generated "
-            "by python -m tools.evidence_index --write from the register, the "
-            "normalization ledger, and the completeness ledger; it states nothing "
-            "they do not."
+            "the blockers the completeness ledger raised, how the closure ledger "
+            "closed each, and the release gate the closure ledger's open blockers "
+            "decide. Generated by python -m tools.evidence_index --write from the "
+            "register, the normalization ledger, the completeness ledger, and the "
+            "closure ledger; it states nothing they do not."
         ),
         "generatedBy": "python -m tools.evidence_index --write",
         "registerRef": REGISTER_PATH.relative_to(REPO_ROOT).as_posix(),
         "registerContractVersion": register["contractVersion"],
         "ledgerRef": LEDGER_PATH.relative_to(REPO_ROOT).as_posix(),
         "completenessRef": COMPLETENESS_PATH.relative_to(REPO_ROOT).as_posix(),
+        "closureRef": CLOSURE_PATH.relative_to(REPO_ROOT).as_posix(),
         "documentRef": "docs/proof/v1-evidence-index.md",
         "specificationRef": "docs/testing/evidence-levels.md",
         "hashing": {
@@ -703,7 +823,7 @@ def build_index(
                 "'<sha256>  <path>' of every cited file, each ending in LF."
             ),
         },
-        "summary": _summary(claims, records, ledger, completeness),
+        "summary": _summary(claims, records, ledger, completeness, closure),
         "claims": claims,
         "records": records,
     }

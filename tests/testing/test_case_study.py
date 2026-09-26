@@ -53,6 +53,8 @@ from typing import Any
 
 import pytest
 
+from tools.evidence_index import open_blockers
+
 pytestmark = pytest.mark.docs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -171,9 +173,13 @@ DOCUMENT = _read(DATA["documentRef"])
 REGISTER = _load(DATA["registerRef"])
 INDEX = _load(DATA["indexRef"])
 COMPLETENESS = _load(DATA["completenessRef"])
+CLOSURE = _load(DATA["closureRef"])
 
 CLAIMS = {row["claimId"]: row for row in REGISTER["claims"]}
-BLOCKED_CLAIMS = {row["claimId"] for row in COMPLETENESS["blockers"]}
+#: The blockers that stand today: those the completeness ledger raised and the
+#: closure ledger has not closed. The gate is the closure ledger's.
+BLOCKED_CLAIMS = {row["claimId"] for row in open_blockers(COMPLETENESS, CLOSURE)}
+GATE = CLOSURE["releaseGate"]
 SECTIONS = DATA["sections"]
 FIGURES = DATA["figures"]
 FIGURES_BY_ID = {figure["figureId"]: figure for figure in FIGURES}
@@ -262,6 +268,7 @@ def test_every_reference_the_data_file_makes_resolves() -> None:
         "registerRef",
         "indexRef",
         "completenessRef",
+        "closureRef",
     ):
         assert (REPO_ROOT / DATA[key]).is_file(), f"{key} does not resolve: {DATA[key]}"
     for ref in DATA["validationRefs"]:
@@ -289,8 +296,8 @@ def test_the_case_study_stays_a_draft_while_the_release_gate_is_incomplete() -> 
     while the gate is incomplete that it refuses.
     """
     gate = INDEX["summary"]["releaseGate"]
-    assert COMPLETENESS["releaseGate"]["decision"].lower() == gate
-    blocked = "V1-S5-007" in COMPLETENESS["releaseGate"]["consumersBlocked"]
+    assert GATE["decision"].lower() == gate
+    blocked = "V1-S5-007" in GATE.get("consumersBlocked", [])
     first_status = next(
         line for line in DOCUMENT.splitlines() if line.startswith("Status:")
     )
@@ -301,10 +308,23 @@ def test_the_case_study_stays_a_draft_while_the_release_gate_is_incomplete() -> 
 
 
 def test_the_status_paragraph_counts_the_blockers_and_names_the_gate() -> None:
+    """The status says what the gate decides, in whichever state it is in.
+
+    While blockers stand it counts them and says the gate exits 1. Once the gate
+    passes it says so, says the set is a freeze candidate rather than the freeze, and
+    names the change that publishes the page, so a passing gate cannot be read as
+    publication.
+    """
     blockers = INDEX["summary"]["releaseBlockers"]
     status = normalised(DOCUMENT.split("\n## ", 1)[0])
-    assert f"{NUMBER_WORDS[blockers]} certified claims" in status
-    assert "`python -m tools.evidence_index --gate` exits 1" in status
+    if blockers:
+        assert f"{NUMBER_WORDS[blockers]} certified claims" in status
+        assert "`python -m tools.evidence_index --gate` exits 1" in status
+    else:
+        assert INDEX["summary"]["releaseGate"] == "complete"
+        assert "`python -m tools.evidence_index --gate` exits 0" in status
+        assert "**pre-publication freeze candidate**" in status
+        assert "publishing it belongs to `V1-S5-013-PR2`" in status
 
 
 def test_the_page_names_the_evidence_set_it_was_verified_against() -> None:
@@ -805,7 +825,10 @@ def test_the_code_identity_counts_the_page_states_are_the_indexs() -> None:
         f"{summary['executedRecordsNamingTheRevisionThatRan']} of the "
         f"{summary['executedRecords']} executed records name the revision that ran"
     ) in body
-    assert f"there are {summary['releaseBlockers']} release blockers" in body
+    if summary["releaseBlockers"]:
+        assert f"there are {summary['releaseBlockers']} release blockers" in body
+    else:
+        assert "no release blocker stands" in body
     assert summary["releaseBlockers"] == len(BLOCKED_CLAIMS)
 
 

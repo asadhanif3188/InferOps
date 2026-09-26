@@ -11,9 +11,9 @@ register and the ledger produce today and writes nothing. ``--check`` compares t
 with the committed ``docs/proof/v1-evidence-index.v1alpha1.json`` and exits 1 on
 the first difference, so it is usable as a gate. ``--write`` is the only mode that
 touches a file, and it writes that one file. ``--gate`` prints the release gate the
-completeness ledger's blockers decide, one line per blocker, and exits 1 while any
-blocker stands, so the evidence pack cannot be treated as frozen by a script that
-checks an exit code.
+closure ledger decides, one line per blocker, and exits 1 while any blocker stands or
+while any blocker the completeness ledger raised has no disposition, so the evidence
+pack cannot be treated as frozen by a script that checks an exit code.
 
 **Every mode reads files.** None contacts a cluster, a runtime, a model, or the
 network. See docs/proof/v1-evidence-index.md.
@@ -26,10 +26,12 @@ import json
 import sys
 
 from .core import (
+    CLOSURE_PATH,
     COMPLETENESS_PATH,
     INDEX_PATH,
     build_index,
     load_ledger,
+    open_blockers,
     release_gate,
     render_index,
 )
@@ -65,19 +67,33 @@ def _check(text: str) -> int:
 
 def _gate() -> int:
     completeness = load_ledger(COMPLETENESS_PATH)
-    decision = release_gate(completeness)
-    stated = completeness["releaseGate"]["decision"]
+    closure = load_ledger(CLOSURE_PATH)
+    try:
+        still_open = open_blockers(completeness, closure)
+    except ValueError as error:
+        print(f"MISMATCH {error}")
+        return 1
+    decision = release_gate(closure)
+    stated = closure["releaseGate"]["decision"]
     if stated != decision:
         print(
             f"MISMATCH the ledger states {stated!r}; its blockers decide {decision!r}"
         )
         return 1
-    story = completeness["releaseGate"]["storyId"]
+    story = closure["releaseGate"]["storyId"]
+    closed = closure["blockerDispositions"]
     if decision == "complete":
-        print(f"COMPLETE {story}: no release blocker; the evidence pack may be frozen")
+        print(
+            f"COMPLETE {story}: no release blocker; {len(closed)} of "
+            f"{len(completeness['blockers'])} raised by "
+            f"{completeness['releaseGate']['storyId']} closed; the evidence pack "
+            "may be frozen"
+        )
+        for row in closed:
+            print(f"         {row['blockerId']}  {row['mechanism']}")
         return 0
-    print(f"INCOMPLETE {story}: {len(completeness['blockers'])} release blockers")
-    for blocker in completeness["blockers"]:
+    print(f"INCOMPLETE {story}: {len(still_open)} release blockers")
+    for blocker in still_open:
         print(f"         {blocker['blockerId']}  {blocker['claimId']}")
     return 1
 
@@ -87,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m tools.evidence_index",
         description=(
             "Print, check, or regenerate the V1 evidence index from the claim and "
-            "evidence register and its two ledgers, or report the release gate."
+            "evidence register and its three ledgers, or report the release gate."
         ),
     )
     group = parser.add_mutually_exclusive_group()
@@ -108,7 +124,13 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.gate:
         return _gate()
 
-    text = render_index(build_index())
+    try:
+        text = render_index(build_index())
+    except ValueError as error:
+        # The same refusal --gate reports, reported the same way rather than as a
+        # traceback: a ledger that loses a blocker or reads a record twice.
+        print(f"MISMATCH {error}")
+        return 1
 
     if arguments.print:
         # Bytes, so the output is comparable with the committed file on every

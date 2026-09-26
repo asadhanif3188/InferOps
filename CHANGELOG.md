@@ -10,6 +10,28 @@ once versioned releases begin.
 
 ### Added
 
+- **The five V1 evidence blockers closed, and the release gate passes.** `V1-S5-006-PR2`
+  held five certified claims as release blockers because the repository code their only
+  supporting record ran was identified by nothing. `V1-S5-013-PR1` closed all five
+  without editing any of those records: four by a **rerun** from a fresh clone of `main`
+  at `bcad343133ba6fddfe38832a2694e71777cdd006`, with `git rev-parse HEAD` and an empty
+  `git status` printed before and after every stage — the local serving baseline, the
+  pod replacement, the upgrade rollback, and the Helm uninstall with the cluster's
+  survival, each on the reference host and with the maintainer's authorisation — and
+  one by a **claim decision**, moving the optional `kind` helper's
+  claim from certified to not claimed, because `kind` was not installed to run it
+  again. Each rerun supported its claim's statement; the rollback claim's statement now
+  quotes the rerun's timings. The register holds 59 claims, 41 certified, 7 planned,
+  1 deferred, and 10 not claimed, and 64 evidence records, none promoted; the test
+  strategy defers the same `kind` claim. A third ledger,
+  [the closure ledger](docs/proof/testing/v1-s5-013-pr1-closure.v1alpha1.json), names
+  every register change, and `python -m tools.evidence_index --gate` now reads it,
+  exits 0, and exits 1 if any blocker the completeness check raised is left without
+  exactly one disposition. The evidence set is the **pre-publication freeze
+  candidate**; `V1-S5-013-PR2` publishes the case study and freezes the final set.
+  [The closure report](docs/proof/testing/v1-s5-013-pr1-blocker-closure.md) gives each
+  blocker its disposition, and `tests/testing/test_evidence_closure.py` holds it.
+
 - **The V1 case study verified against the evidence as it stands, and kept a draft.**
   `V1-S5-007-PR2` was to verify [the case study](docs/case-study/v1-engineering-case-study.md)
   against a frozen evidence pack and publish it. The pack is not frozen —

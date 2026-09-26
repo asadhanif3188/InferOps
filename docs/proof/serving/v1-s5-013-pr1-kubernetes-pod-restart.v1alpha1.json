@@ -1,0 +1,148 @@
+{
+  "acquisition": {
+    "artifactInodeUnchanged": true,
+    "artifactMtimeUnchanged": true,
+    "installLogObserved": false,
+    "installReportedArtifactAlreadyPresent": false,
+    "jobCountAfter": 0,
+    "jobCountBefore": 0,
+    "jobIdentityUnchanged": true,
+    "repeatedForPodReplacement": false
+  },
+  "after": {
+    "artifactInode": "2138770",
+    "artifactMtimeEpoch": 1790388256,
+    "artifactPath": "/models/Qwen3-1.7B-Q8_0.gguf",
+    "artifactSha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    "artifactSizeBytes": 1834426016,
+    "artifactSubPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "boundVolumeName": "model-cache",
+    "claimName": "inferops-model-cache",
+    "claimReadOnly": true,
+    "initContainer": "verify-model",
+    "initExitCode": 0,
+    "initFinished": true,
+    "name": "inferops-inferops-llm-runtime-56546cfdbd-tt6m6",
+    "nodeName": "desktop-control-plane",
+    "ownerKind": "ReplicaSet",
+    "ownerName": "inferops-inferops-llm-runtime-56546cfdbd",
+    "ready": true,
+    "uid": "565bf6cf-5d42-4eba-9154-0c0d22bc0f38"
+  },
+  "baselineCompletion": {
+    "adapterKind": "real",
+    "completionTokens": 29,
+    "generatedTextRetained": false,
+    "promptTokens": 24,
+    "status": 200,
+    "totalTokens": 53
+  },
+  "before": {
+    "artifactInode": "2138770",
+    "artifactMtimeEpoch": 1790388256,
+    "artifactPath": "/models/Qwen3-1.7B-Q8_0.gguf",
+    "artifactSha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    "artifactSizeBytes": 1834426016,
+    "artifactSubPath": "Qwen--Qwen3-1.7B-GGUF/90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "boundVolumeName": "model-cache",
+    "claimName": "inferops-model-cache",
+    "claimReadOnly": true,
+    "initContainer": "verify-model",
+    "initExitCode": 0,
+    "initFinished": true,
+    "name": "inferops-inferops-llm-runtime-56546cfdbd-htscj",
+    "nodeName": "desktop-control-plane",
+    "ownerKind": "ReplicaSet",
+    "ownerName": "inferops-inferops-llm-runtime-56546cfdbd",
+    "ready": true,
+    "uid": "b7cecdeb-b542-4788-afc4-795997364147"
+  },
+  "certificationCeiling": "C2",
+  "claim": {
+    "boundVolume": "pvc-29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c",
+    "boundVolumeUnchanged": true,
+    "name": "inferops-model-cache",
+    "owner": "terraform",
+    "uid": "29b3d0cc-aca5-46a5-9cde-40e6aaa22a3c"
+  },
+  "cleanup": {
+    "claimPresent": true,
+    "namespacePresent": true,
+    "releaseObjectsRemaining": 0,
+    "releaseRemoved": true
+  },
+  "cluster": {
+    "context": "docker-desktop",
+    "name": "docker-desktop",
+    "nodeImageDigest": "sha256:08497ee19eace7b4b5348db5c6a1591d7752b164530a36f855cb0f2bdcbadd48",
+    "nodeImagePinnedByInferOps": false,
+    "provider": "docker-desktop",
+    "serverVersion": "v1.34.3"
+  },
+  "completion": {
+    "completionCharacters": 153,
+    "completionTokens": 29,
+    "correlationIdEchoed": false,
+    "elapsedMs": 3359,
+    "generatedTextRetained": false,
+    "promptTokens": 24,
+    "requestIdEchoed": false,
+    "status": 200,
+    "totalTokens": 53
+  },
+  "configuration": {
+    "modelIdentifier": "qwen3-1-7b-q8-0",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077"
+  },
+  "disruption": {
+    "deletedPod": "inferops-inferops-llm-runtime-56546cfdbd-htscj",
+    "mechanism": "delete-serving-runtime-pod",
+    "reversedBy": "deployment-controller",
+    "scope": "pod",
+    "target": "serving-runtime"
+  },
+  "evidenceClass": "local-real-cpu",
+  "evidenceLabel": "local real Kubernetes",
+  "experimentId": "inferops-kubernetes-pod-restart-persistence",
+  "identity": {
+    "adapterKind": "real",
+    "modelIdentifier": "qwen3-1-7b-q8-0",
+    "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+    "runtimeName": "llama.cpp llama-server",
+    "runtimeVersion": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+    "tokenUsageDeclared": true
+  },
+  "lane": "real-runtime",
+  "limitations": [
+    "The evidence is local real Kubernetes on a single-node cluster belonging to one explicitly selected provider, and implies nothing about another provider, a multi-node cluster, a node loss, or a claim on network-attached storage.",
+    "One pod was deleted, once. The recovery figures describe that one replacement on one host at one moment and are not a restart benchmark, a service-level objective, or an availability figure.",
+    "The disruption is a deleted pod. It says nothing about a node that goes away, a claim that fails to reattach, a volume that is corrupted, or a runtime that starts and answers wrongly.",
+    "The serving runtime is one replica, so the replacement window is an outage for any caller reaching that Service. Nothing here measures that outage from a caller's side and nothing here claims high availability.",
+    "The artifact is compared by the byte count and SHA-256 the release was rendered with, read inside the cluster. That establishes the bytes the runtime loaded, not that the claim's underlying storage is durable across a host failure or a cluster reset.",
+    "Model acquisition is proven not to repeat for a pod replacement because the acquisition hook runs on install and upgrade and a pod deletion is neither. Nothing here says what an upgrade would re-acquire."
+  ],
+  "outcome": "persisted",
+  "readiness": {
+    "observedNotReady": 4,
+    "observedReady": 1,
+    "samples": 5
+  },
+  "release": {
+    "chart": "inferops-llm-0.3.0",
+    "name": "inferops",
+    "namespace": "inferops-release",
+    "profile": "real",
+    "revisionAfter": 1,
+    "revisionBefore": 1
+  },
+  "schemaVersion": "inferops.io/v1alpha1",
+  "timings": {
+    "note": "One replacement, on one host, at one moment. Not a benchmark, a service-level objective, or an availability figure. replacementMs runs from the deletion to the replacement reporting itself ready; recoveryMs runs from the deletion to a real completion coming back, stamped when that completion arrived.",
+    "recoveryMs": 21603,
+    "replacementMs": 13281
+  },
+  "tooling": {
+    "helm": "v3.19.0+g3d8990f",
+    "kubectl": "v1.34.3"
+  }
+}

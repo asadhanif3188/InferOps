@@ -1,0 +1,53 @@
+=== identity before: 2026-09-26T01:47:16.417Z
+bcad343133ba6fddfe38832a2694e71777cdd006
+--- status (porcelain, untracked=all) begin
+--- status end
+=== check: 2026-09-26T01:47:16.715Z
+experiment   inferops-local-serving-baseline (local-real-cpu)
+fixture      single-turn-fixed-v1; 1 messages
+request      POST /v1/chat/completions; model qwen3-1-7b-q8-0
+generation   maxOutputTokens=128 temperature=0.0 context=4096
+execution    warmup=3 measured=30 concurrency=1 maxDuration=900s
+success      30 successes, at most 0 failures, adapter real
+results      .cache/inferops/baseline/raw.jsonl and .cache/inferops/baseline/summary.json
+percentiles  nearest-rank; P50, P95, P99
+claim        descriptive local measurement; not a production benchmark
+execution    not started (offline experiment validation only)
+EXIT_check=0
+=== environment: 2026-09-26T01:47:19.582Z
+{
+  "accelerator": "none; CPU only",
+  "architecture": "AMD64",
+  "containerEngineVersion": "29.7.2",
+  "freeDiskBytes": 63422099456,
+  "imageReference": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+  "logicalCpus": 20,
+  "modelArtifactSha256": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+  "modelRepository": "Qwen/Qwen3-1.7B-GGUF",
+  "modelRevision": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+  "operatingSystem": "Windows",
+  "processorFamily": "AMD64",
+  "pythonVersion": "3.12.12",
+  "release": "11",
+  "runtimeSourceRevision": "70adb1b4cea5ee39f867792c78dc59320921eda7",
+  "totalMemoryBytes": 16836890624
+}
+EXIT_environment=0
+=== run: 2026-09-26T01:47:20.843Z
+raw          raw.jsonl; 33 request records
+summary      summary.json
+startup      modelLoadMs=221000 apiReadyMs=187
+requests     {'warmup': 3, 'measured': 30, 'successful': 30, 'failed': 0, 'outcomes': {'success': 30, 'refused': 0, 'transport-error': 0}}
+claim        local real runtime; descriptive, not a benchmark
+EXIT_run=0
+=== summarize: 2026-09-26T01:53:25.004Z
+summary      summary.json regenerated from 33 records
+requests     {'warmup': 3, 'measured': 30, 'successful': 30, 'failed': 0, 'outcomes': {'success': 30, 'refused': 0, 'transport-error': 0}}
+latency      {'p50Ms': 2703, 'p95Ms': 8860, 'p99Ms': 9375, 'minMs': 2219, 'maxMs': 9375, 'meanMs': 3756}
+claim        descriptive local measurement; not a benchmark
+EXIT_summarize=0
+=== identity after: 2026-09-26T01:53:30.955Z
+bcad343133ba6fddfe38832a2694e71777cdd006
+--- status (porcelain, untracked=all) begin
+--- status end
+DRIVER_EXIT=0

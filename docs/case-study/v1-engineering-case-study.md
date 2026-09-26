@@ -1,20 +1,24 @@
 # InferOps V1: an engineering case study
 
-Status: **draft**, written in `V1-S5-007-PR1` and verified in `V1-S5-007-PR2`, and not
-published. The README does not link here. The page was checked sentence by sentence
-against the evidence set whose digest is
-`1bf2a83ff0548a7d07e68fabdacd0d8b10c35d012b25c03b40bc469297fb5bec`, and that set is
-**not frozen**: five certified claims rest on records whose repository code nothing
-identifies, and `python -m tools.evidence_index --gate` exits 1 until each is closed.
-None of the findings in [the summary below](#at-a-glance-what-v1-investigated-and-what-it-found)
-rests on one of the five. The sections that do lean on them name them, and so does
-[the claims appendix](#appendix-the-claims-this-draft-relies-on).
+Status: **draft**, written in `V1-S5-007-PR1`, verified in `V1-S5-007-PR2`, and
+re-verified in `V1-S5-013-PR1` for what that change moved: the five claims it closed as
+release blockers, the counts, and the gate. It is not published, and the README does not
+link here; publishing it belongs to `V1-S5-013-PR2`. The page was checked against the
+evidence set whose digest is
+`1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`. For that set the release
+gate is complete and `python -m tools.evidence_index --gate` exits 0: the five blockers
+the completeness check raised were closed, four by a rerun at a named revision and the
+`kind` helper's by moving its claim to not claimed. That set is the **pre-publication
+freeze candidate**, not the final freeze: publishing this page changes the register,
+so `V1-S5-013-PR2` recomputes the digest and freezes that one. None of the findings in
+[the summary below](#at-a-glance-what-v1-investigated-and-what-it-found) rested on any
+of the five.
 
 > [!IMPORTANT]
 > **Every real serving result in this study is one provider, one host, one replica.**
 > Docker Desktop's Kubernetes (`docker-desktop`), one Windows workstation, CPU only,
 > one replica of each tier. The one `kind` result cited, the optional cluster helper's,
-> served no model and is a release blocker. No figure here is a capacity, a
+> served no model, and V1 does not claim it. No figure here is a capacity, a
 > service-level objective, an availability figure, or a benchmark, and none describes
 > serving on `kind`, Linux, macOS, a GPU, another model, or another runtime version.
 > The evidence levels `C0` to `C4` used below are [InferOps Evidence Levels](../testing/evidence-levels.md): **project-defined,
@@ -75,8 +79,8 @@ achieved anywhere else, and each is as bounded as the record behind it.
 - **Separating use from price.** Use was taken from committed samples by a tool, the only
   prices were synthetic by name, and this page quotes no amount of them.
 - **Binding a public claim to its evidence.** Every claim this page cites is a
-  register row with its limitation, and the gate that holds five claims as release
-  blockers is the one that holds this page as a draft.
+  register row with its limitation, and the gate that held five claims as release
+  blockers held this page as a draft until each was closed.
 
 **Evidence.** [The pod-recovery record's first attempt](../proof/serving/v1-s4-006-pr1-inference-pod-recovery.md#what-the-first-attempt-got-wrong-and-why-it-was-re-run)
 and [the unready-model record](../proof/serving/v1-s4-007-pr1-unready-model-recovery.md).
@@ -272,10 +276,11 @@ Three structural decisions carry most of the design:
   that therefore has to be a first-class error.
 - **Terraform owns what outlives a release; Helm owns the release.** The model cache
   claim and the namespace are prerequisites, so that a replaced pod reads the cached
-  artifact rather than repeating the download. That is the design's intent; the run
-  that showed the artifact surviving a replacement,
-  `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim`, is a
-  release blocker, because nothing identifies the code it ran.
+  artifact rather than repeating the download. The run that showed the artifact
+  surviving a replacement,
+  `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim`, was
+  repeated from a fresh clone at a named revision, and the byte count, SHA-256, inode,
+  and modification time were again unchanged across a different pod.
 
 **Evidence.** [The system architecture](../architecture/system-architecture.md),
 [ADR 0004](../architecture/decisions/ADR-0004-component-and-ownership-boundaries.md),
@@ -358,16 +363,20 @@ the operator's cluster survived — and keeps a ledger of every step. It complet
 attempt: the first two stopped on five defects of the repository, each fixed before
 the next attempt ran. No second engineer has repeated it.
 
-Three of the Kubernetes lifecycle claims are **release blockers** today: the Helm
-uninstall's clause that the operator's cluster, node, and storage class survive, the
-upgrade-and-rollback experiment, and the pod-replacement run that showed the model
-artifact surviving on the Terraform-owned claim. Each executed and was recorded, and
-in none does the record identify the repository code that ran. The same holds for the
-optional `kind` helper.
+Three of the Kubernetes lifecycle claims were **release blockers** until
+`V1-S5-013-PR1`: the Helm uninstall's clause that the operator's cluster, node, and
+storage class survive, the upgrade-and-rollback experiment, and the pod-replacement
+run that showed the model artifact surviving on the Terraform-owned claim. Each had
+executed and been recorded, and in none did the record identify the repository code
+that ran. Each was run again from a fresh clone of `main` at a named revision, with
+nothing uncommitted before or after, and each rerun supported its claim's statement;
+the rollback claim now quotes the rerun's timings. The optional `kind` helper was not
+run again, and its claim moved from certified to not claimed.
 
 **Evidence.** [Real-runtime certification](../proof/serving/v1-s2-004-c2-certification-result.md),
 [the Docker Desktop paved road](../proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md),
 [the upgrade and rollback experiment](../proof/environment/v1-s3-011-pr2-upgrade-rollback.md),
+[its rerun at a named revision](../proof/environment/v1-s5-013-pr1-upgrade-rollback.md),
 and [the clean-clone run](../proof/environment/v1-s5-001-pr2-clean-clone-run.md). Claims
 `the-selected-model-serves-a-real-completion-through-the-inferops-api`,
 `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating`,
@@ -402,25 +411,27 @@ behaviour, and a workload's origin — synthetic or not — does not by itself l
 level. Failure, composition, provider, and hardware are separate metadata, never a
 level.
 
-Today the register holds 59 claims: 42 certified, 7 planned, 1 deferred, and 9 not
-claimed. Behind them are 60 evidence records: 26 at `C0`, 8 at `C1`, 26 at `C2`, and
+Today the register holds 59 claims: 41 certified, 7 planned, 1 deferred, and 10 not
+claimed. Behind them are 64 evidence records: 26 at `C0`, 8 at `C1`, 30 at `C2`, and
 none at `C3` or `C4`. Nothing here is `C3`, because no experiment was run under a
 deliberately representative workload with stated criteria; nothing is `C4`, because
 there is no production operation to observe.
 
-**The pack is not frozen.** The completeness check that stands before a freeze read how
-every executed record identifies the code that ran. 16 of the 34 executed records name
-the revision that ran. Where a certified statement rests on a record that names no
-revision, or only a branch, a chart version label, or a revision dated after the run,
-and no other record supports it, the claim is a release blocker, and there are 5
-release blockers. Each names the run that would close it and the decision that could
-replace the run — a status decision, or for one of them a narrower statement. None of
-the five has been closed.
+**The pack is a freeze candidate.** The completeness check that stands before a freeze
+read how every executed record identifies the code that ran. Where a certified
+statement rested on a record that names no revision, or only a branch, a chart version
+label, or a revision dated after the run, and no other record supported it, the claim
+was a release blocker, and it found five. `V1-S5-013-PR1` closed all five: four by a
+rerun from a fresh clone at a named revision, each with a record of its own, and one
+by moving the `kind` helper's claim to not claimed. No older record was edited, and
+each stays cited for what it observed. Now 20 of the 38 executed records name the
+revision that ran, and no release blocker stands.
 
 **Evidence.** [InferOps Evidence Levels](../testing/evidence-levels.md),
 [ADR 0016](../architecture/decisions/ADR-0016-inferops-evidence-level-model.md),
-[the V1 evidence index](../proof/v1-evidence-index.md), and
-[the completeness check](../proof/testing/v1-s5-006-pr2-evidence-completeness.md).
+[the V1 evidence index](../proof/v1-evidence-index.md),
+[the completeness check](../proof/testing/v1-s5-006-pr2-evidence-completeness.md), and
+[the blocker closure](../proof/testing/v1-s5-013-pr1-blocker-closure.md).
 Claims `published-documents-link-only-to-things-that-exist`,
 `the-published-strategy-and-its-data-cannot-drift-apart`,
 `a-mock-result-can-never-certify-real-runtime-behaviour`,
@@ -730,10 +741,13 @@ measured is worth more than one nobody mentions.
   gate on the measured host; an alert that reaches somebody; an enforced network
   policy; a defended workload; a cluster or real-runtime lane in continuous
   integration; a published release; a portable platform someone can deploy for someone
-  else; a provider cost; and an authorisation statement in every certifying record.
-- **Certified, and blocked from a freeze:** the local serving baseline, the `kind`
-  helper, the Helm uninstall's survival clause, the upgrade and rollback, and the pod
-  replacement, until each is re-run at a named commit or its status is decided again.
+  else; a provider cost; an authorisation statement in every certifying record; and,
+  since `V1-S5-013-PR1`, the optional `kind` helper creating and removing a cluster
+  without residue, because its only run names no revision and it was not run again.
+- **Certified again at a named revision:** the local serving baseline, the Helm
+  uninstall's survival clause, the upgrade and rollback, and the pod replacement, each
+  a release blocker until `V1-S5-013-PR1` ran it again from a fresh clone. Each rerun
+  identifies its own code, not the earlier run's.
 
 Beyond the register: every real result is one provider and one host, each experiment
 ran once or twice, and no second engineer has followed the clean-clone journey. More
@@ -741,7 +755,8 @@ runs of the same setup would not widen any claim; they would be the same observa
 made more times.
 
 **Evidence.** [The proof dashboard's list of what V1 does not claim](../proof/dashboard.md#what-v1-does-not-claim)
-and [the release blockers](../proof/testing/v1-s5-006-pr2-evidence-completeness.md#the-release-blockers).
+[the release blockers](../proof/testing/v1-s5-006-pr2-evidence-completeness.md#the-release-blockers),
+and [how each was closed](../proof/testing/v1-s5-013-pr1-blocker-closure.md).
 Claims `the-platform-serves-a-workload-the-contract-describes`,
 `deployment-values-derive-only-from-a-validated-document`,
 `the-mock-serving-path-identifies-itself-as-a-mock`,
@@ -770,10 +785,8 @@ Claims `the-platform-serves-a-workload-the-contract-describes`,
 This section states evidence, not scope. Whether a second version proceeds, and what it
 contains, is a separate decision that has not been made, and nothing here assumes it.
 
-**Before anything new:** the five release blockers closed, each by a re-run from a
-fresh clone at a named commit recording `git rev-parse HEAD` and an empty
-`git status`, or by a status decision; the evidence pack frozen; and a first versioned
-release cut against it. A second version built on an unfrozen first one would inherit
+**Before anything new:** the evidence pack frozen, now that the five release blockers
+are closed, and a first versioned release cut against it. A second version built on an unfrozen first one would inherit
 claims nobody can tie to code.
 
 **Evidence that V1's shape holds beyond one setup:**
@@ -813,7 +826,7 @@ Claims `multi-replica-serving-is-certified`,
 ## Appendix: the claims this draft relies on
 
 Every claim this draft cites, with its status, the levels of the records behind it, and
-whether it is a release blocker, all as the register and the completeness ledger hold
+whether a release blocker stands on it, all as the register and the closure ledger hold
 them. A test derives each cell and fails if this table, or the sections citing a claim,
 disagree with them. A certified claim marked as a blocker may be read only with its
 blocker beside it.
@@ -835,13 +848,13 @@ blocker beside it.
 | `a-runtime-and-model-pair-was-selected-by-a-recorded-feasibility-procedure` | `certified` | `C2` | no |
 | `the-model-artifact-matches-its-published-hash` | `certified` | `C2` | no |
 | `the-selected-model-serves-a-real-completion-through-the-inferops-api` | `certified` | `C2` | no |
-| `a-local-serving-baseline-was-measured-under-a-method-registered-first` | `certified` | `C2` | **yes** |
+| `a-local-serving-baseline-was-measured-under-a-method-registered-first` | `certified` | `C2` | no |
 | `inferops-consumes-an-operator-owned-cluster-and-verifies-it-before-mutating` | `certified` | `C0`, `C2` | no |
-| `a-local-cluster-is-created-and-removed-without-residue` | `certified` | `C2` | **yes** |
+| `a-local-cluster-is-created-and-removed-without-residue` | `not-claimed` | `C2` | no |
 | `the-selected-runtime-serves-a-real-completion-in-a-cluster` | `certified` | `C1`, `C2` | no |
-| `a-helm-release-installs-and-uninstalls-without-residue` | `certified` | `C2` | **yes** |
-| `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | `certified` | `C2` | **yes** |
-| `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | `certified` | `C2` | **yes** |
+| `a-helm-release-installs-and-uninstalls-without-residue` | `certified` | `C2` | no |
+| `a-controlled-release-change-can-be-reversed-and-real-inference-restored` | `certified` | `C2` | no |
+| `the-model-artifact-survives-a-pod-replacement-on-a-terraform-owned-claim` | `certified` | `C2` | no |
 | `multi-replica-serving-is-certified` | `not-claimed` | `C0` | no |
 | `repeatable-llm-load-can-be-generated-from-a-versioned-profile` | `certified` | `C1`, `C2` | no |
 | `a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed` | `certified` | `C2` | no |

@@ -874,6 +874,11 @@ def test_the_matrix_lists_each_claim_under_the_status_the_data_gives_it(
     }
 
 
+def _is(count: int) -> str:
+    """The verb agrees with the count: "one is deferred", "two are deferred"."""
+    return "is" if count == 1 else "are"
+
+
 def test_the_matrix_publishes_the_claim_counts_its_own_data_produces(
     matrix_document: str,
 ) -> None:
@@ -886,7 +891,7 @@ def test_the_matrix_publishes_the_claim_counts_its_own_data_produces(
     expected = (
         f"{spelled(counts['certified']).capitalize()} of {spelled(len(CLAIMS))} "
         f"claims are certified today, {spelled(counts['planned'])} are commitments, "
-        f"and {spelled(counts['deferred'])} is deferred out of V1."
+        f"and {spelled(counts['deferred'])} {_is(counts['deferred'])} deferred out of V1."
     )
     assert expected in " ".join(matrix_document.split()), {
         "expected sentence": expected,
@@ -901,7 +906,7 @@ def test_the_readme_publishes_the_claim_counts_the_strategy_data_produces() -> N
     expected = (
         f"{spelled(counts['certified']).capitalize()} of {spelled(len(CLAIMS))} "
         f"public claims certified, {spelled(counts['planned'])} are commitments, "
-        f"and {spelled(counts['deferred'])} is deferred"
+        f"and {spelled(counts['deferred'])} {_is(counts['deferred'])} deferred"
     )
     assert expected in " ".join(readme_document().split()), {
         "expected phrase": expected,

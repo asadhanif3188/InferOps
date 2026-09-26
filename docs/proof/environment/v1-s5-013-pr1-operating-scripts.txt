@@ -1,0 +1,152 @@
+# The operating scripts that ran the V1-S5-013-PR1 reruns, committed as evidence.
+#
+# They are not repository code and nothing in the repository calls them. They were
+# written for these runs, outside the clone, and each one only sequences committed
+# workflows and tools or reads the cluster through the clone's own
+# scripts/environment/lib.sh. They are here so that the stamps, the revision and
+# status lines, and the cluster readings in the transcripts can be traced to the
+# commands that printed them, and repeated.
+#
+# Redacted before committing: the clone's absolute path is <clone> and the scratch
+# directory's is <scratch>, and a directory of host tools on PATH is <host bin>
+# (the pinned kubectl came first on PATH from <scratch>/bin). Nothing else was changed, so their own comments still
+# say they would never be committed: that was the intent when they were written, and
+# an independent review of this change found that the transcripts cannot be traced
+# or repeated without them, which is why they are here. The three files are
+# concatenated in the order they were used: the baseline driver, the cluster stage
+# driver, and the cluster-reading script the stage driver calls.
+
+# ===== run-b1-baseline.sh =====
+#!/usr/bin/env bash
+# b1 rerun driver: the local serving baseline, from the fresh clone at a named
+# revision. Scratch only; never committed.
+set -o pipefail
+SP="<scratch>"
+export PATH="<clone>/.venv/Scripts:$SP/bin:$PATH"
+cd <clone> || exit 9
+stamp() { date -u +%Y-%m-%dT%H:%M:%S.%3NZ; }
+echo "=== identity before: $(stamp)"
+git rev-parse HEAD
+echo "--- status (porcelain, untracked=all) begin"
+git status --porcelain --untracked-files=all
+echo "--- status end"
+for step in check environment; do
+  echo "=== ${step}: $(stamp)"
+  uv run --locked python -m tools.serving_baseline "${step}"
+  echo "EXIT_${step}=$?"
+done
+echo "=== run: $(stamp)"
+uv run --locked python -m tools.serving_baseline run --confirm-real-runtime
+echo "EXIT_run=$?"
+echo "=== summarize: $(stamp)"
+uv run --locked python -m tools.serving_baseline summarize
+echo "EXIT_summarize=$?"
+echo "=== identity after: $(stamp)"
+git rev-parse HEAD
+echo "--- status (porcelain, untracked=all) begin"
+git status --porcelain --untracked-files=all
+echo "--- status end"
+
+# ===== run-cluster-stage.sh =====
+#!/usr/bin/env bash
+# Cluster rerun driver, one stage per invocation, from the fresh clone at a named
+# revision. Scratch only; never committed. Usage: run-cluster-stage.sh STAGE
+set -o pipefail
+stage="${1:?stage}"
+SP="<scratch>"
+export PATH="<clone>/.venv/Scripts:$SP/bin:<host bin>:$PATH"
+export INFEROPS_PROVIDER=docker-desktop
+export INFEROPS_DISK_VOLUME=/d
+cd <clone> || exit 9
+VALUES=.artifacts/s5-013/real-values.merged.yaml
+stamp() { date -u +%Y-%m-%dT%H:%M:%S.%3NZ; }
+identity() {
+  echo "=== identity $1: $(stamp)"
+  git rev-parse HEAD
+  echo "--- status (porcelain, untracked=all) begin"
+  git status --porcelain --untracked-files=all
+  echo "--- status end"
+}
+echo "kubectl: $(kubectl version --client=true -o json | python -c 'import sys,json;print(json.load(sys.stdin)["clientVersion"]["gitVersion"])')"
+echo "helm: $(helm version --short)"
+echo "terraform: $(terraform version | head -1)"
+identity "before ${stage}"
+case "${stage}" in
+  prepare)
+    bash "$SP/probe-cluster.sh" before-any-cluster-work
+    mkdir -p .artifacts/s5-013
+    bash scripts/environment/api-image.sh build && echo "EXIT_api_build=0" || echo "EXIT_api_build=$?"
+    bash scripts/environment/api-image.sh load && echo "EXIT_api_load=0" || echo "EXIT_api_load=$?"
+    bash scripts/environment/api-image.sh values > .artifacts/s5-013/api-image-values.yaml; echo "EXIT_api_values=$?"
+    bash scripts/environment/model-seed-image.sh build && echo "EXIT_seed_build=0" || echo "EXIT_seed_build=$?"
+    bash scripts/environment/model-seed-image.sh load && echo "EXIT_seed_load=0" || echo "EXIT_seed_load=$?"
+    bash scripts/environment/model-seed-image.sh values > .artifacts/s5-013/model-seed-values.yaml; echo "EXIT_seed_values=$?"
+    python -m tools.clean_clone values --output "${VALUES}" \
+      charts/inferops-llm/ci/real-values.yaml .artifacts/s5-013/api-image-values.yaml .artifacts/s5-013/model-seed-values.yaml
+    echo "EXIT_values=$?"
+    cat .artifacts/s5-013/api-image-values.yaml .artifacts/s5-013/model-seed-values.yaml
+    bash scripts/environment/terraform-prerequisites.sh check; echo "EXIT_tf_check=$?"
+    bash scripts/environment/terraform-prerequisites.sh plan; echo "EXIT_tf_plan=$?"
+    bash scripts/environment/terraform-prerequisites.sh apply; echo "EXIT_tf_apply=$?"
+    bash "$SP/probe-cluster.sh" after-terraform-apply
+    ;;
+  pod-restart)
+    bash scripts/environment/kubernetes-pod-restart.sh run --values "${VALUES}" --confirm-real-kubernetes
+    echo "EXIT_pod_restart=$?"
+    ;;
+  upgrade-rollback)
+    bash scripts/environment/helm-upgrade-rollback.sh run --values "${VALUES}" --confirm-real-kubernetes
+    echo "EXIT_upgrade_rollback=$?"
+    ;;
+  lifecycle-and-cleanup)
+    bash "$SP/probe-cluster.sh" before-lifecycle
+    bash scripts/environment/helm-lifecycle.sh --values "${VALUES}"
+    echo "EXIT_helm_lifecycle=$?"
+    bash "$SP/probe-cluster.sh" after-helm-uninstall
+    bash scripts/environment/terraform-prerequisites.sh destroy --confirm
+    echo "EXIT_tf_destroy=$?"
+    bash "$SP/probe-cluster.sh" after-terraform-destroy
+    ;;
+  *) echo "unknown stage ${stage}"; exit 2 ;;
+esac
+identity "after ${stage}"
+
+# ===== probe-cluster.sh =====
+#!/usr/bin/env bash
+# Reads the verified target's survival facts, through the clone's own lib.sh
+# guard. Scratch only; never committed. Usage: probe-cluster.sh LABEL
+set -o pipefail
+label="${1:?label}"
+cd <clone> || exit 9
+# shellcheck disable=SC1091
+source scripts/environment/lib.sh
+inferops::resolve_target
+stamp() { date -u +%Y-%m-%dT%H:%M:%S.%3NZ; }
+echo "=== probe ${label}: $(stamp)"
+echo "target verified: provider=${INFEROPS_TARGET_PROVIDER} cluster=${INFEROPS_TARGET_CLUSTER_NAME} context=${INFEROPS_TARGET_CONTEXT}"
+echo "server version: ${INFEROPS_TARGET_SERVER_VERSION}"
+echo "kube-system uid: $(inferops::target_kubectl get namespace kube-system -o jsonpath='{.metadata.uid}')"
+echo "--- nodes (name ready kubelet)"
+inferops::target_kubectl get nodes \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.conditions[?(@.type=="Ready")].status}{" "}{.status.nodeInfo.kubeletVersion}{"\n"}{end}' | tr -d '\r'
+echo "--- node container on the engine"
+docker inspect "${INFEROPS_TARGET_NODE_CONTAINER}" --format '{{.Name}} {{.State.Status}} kind-cluster-label={{index .Config.Labels "io.x-k8s.kind.cluster"}}' 2>&1
+echo "--- storage classes (name provisioner default)"
+inferops::target_kubectl get storageclass \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.provisioner}{" "}{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}{" uid="}{.metadata.uid}{"\n"}{end}' | tr -d '\r'
+echo "--- namespaces"
+inferops::target_kubectl get namespaces -o jsonpath='{range .items[*]}{.metadata.name}{" uid="}{.metadata.uid}{"\n"}{end}' | tr -d '\r'
+echo "--- release namespace ${INFEROPS_RELEASE_NAMESPACE}"
+inferops::target_kubectl get namespace "${INFEROPS_RELEASE_NAMESPACE}" \
+  -o jsonpath='{.metadata.name}{" labels="}{.metadata.labels}{"\n"}' 2>&1 | tr -d '\r'
+echo "--- claims in ${INFEROPS_RELEASE_NAMESPACE}"
+inferops::target_kubectl get pvc -n "${INFEROPS_RELEASE_NAMESPACE}" \
+  -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.phase}{" "}{.spec.volumeName}{" uid="}{.metadata.uid}{"\n"}{end}' 2>&1 | tr -d '\r'
+echo "--- objects labelled ${INFEROPS_RELEASE_SELECTOR} in ${INFEROPS_RELEASE_NAMESPACE}"
+for kind in deployments replicasets services configmaps serviceaccounts pods networkpolicies jobs endpointslices roles rolebindings secrets; do
+  n="$(inferops::target_kubectl get "${kind}" -n "${INFEROPS_RELEASE_NAMESPACE}" -l "${INFEROPS_RELEASE_SELECTOR}" -o name 2>/dev/null | wc -l | tr -d ' ')"
+  echo "${kind} ${n}"
+done
+echo "--- helm releases in ${INFEROPS_RELEASE_NAMESPACE}"
+inferops::target_helm list -n "${INFEROPS_RELEASE_NAMESPACE}" -a -q 2>&1 | tr -d '\r'
+echo "=== probe ${label} end"

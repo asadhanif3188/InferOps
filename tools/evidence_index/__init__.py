@@ -3,7 +3,8 @@
 The index is generated from
 [the claim and evidence register](../../docs/testing/claim-evidence-matrix.v1alpha2.json),
 [the normalization ledger](../../docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json),
-and [the completeness ledger](../../docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json),
+[the completeness ledger](../../docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json),
+and [the closure ledger](../../docs/proof/testing/v1-s5-013-pr1-closure.v1alpha1.json),
 and it says nothing they do not. See
 [the index's own page](../../docs/proof/v1-evidence-index.md).
 """
@@ -11,6 +12,8 @@ and it says nothing they do not. See
 from __future__ import annotations
 
 from .core import (
+    BLOCKER_CLOSURES,
+    CLOSURE_PATH,
     CODE_IDENTITIES,
     CODE_REVISION_RELATIONS,
     COMPLETENESS_PATH,
@@ -31,6 +34,8 @@ from .core import (
     load_index,
     load_ledger,
     load_ledgers,
+    merged_identities,
+    open_blockers,
     recorded_date,
     release_gate,
     render_index,
@@ -39,6 +44,8 @@ from .core import (
 )
 
 __all__ = [
+    "BLOCKER_CLOSURES",
+    "CLOSURE_PATH",
     "CODE_IDENTITIES",
     "CODE_REVISION_RELATIONS",
     "COMPLETENESS_PATH",
@@ -59,6 +66,8 @@ __all__ = [
     "load_index",
     "load_ledger",
     "load_ledgers",
+    "merged_identities",
+    "open_blockers",
     "recorded_date",
     "release_gate",
     "render_index",
