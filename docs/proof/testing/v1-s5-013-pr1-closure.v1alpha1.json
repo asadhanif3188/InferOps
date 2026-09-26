@@ -80,7 +80,7 @@
             {
               "componentId": "qwen3-1-7b-q8-0",
               "role": "model",
-              "note": "Every record carries modelRef qwen3-1-7b-q8-0; the artifact's SHA-256 was checked against the pin before the run."
+              "note": "Every record carries modelRef qwen3-1-7b-q8-0; the same cached artifact was verified against the pin's byte count and SHA-256 by the seed-image build minutes after the run, in the preparation transcript."
             },
             {
               "componentId": "serving-baseline-cli",
@@ -217,14 +217,17 @@
           "docs/proof/serving/v1-s5-013-pr1-baseline-rerun.md",
           "docs/proof/serving/v1-s5-013-pr1-baseline-raw.jsonl",
           "docs/proof/serving/v1-s5-013-pr1-baseline-summary.json",
-          "docs/proof/serving/v1-s5-013-pr1-baseline-transcript.txt"
+          "docs/proof/serving/v1-s5-013-pr1-baseline-transcript.txt",
+          "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+          "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt"
         ],
         "limitations": [
           "One run on one host on one day, CPU only, concurrency one, and one request shape.",
           "The executed fixture is the rewritten one the 2026-09-03 run also used, not the two-message fixture first registered; the descriptor is unchanged since d604077.",
           "The periodic CPU sample lands between requests and does not capture the runtime's load.",
           "The 79 s margin against the load budget is one observation; the same host was 58.7 s over it in the attempt before the 2026-09-03 run.",
-          "It identifies its own code and does not recover what the 2026-09-03 run executed."
+          "It identifies its own code and does not recover what the 2026-09-03 run executed.",
+          "The copy of the model into the clone, its hash comparison in the operating shell, and the composition's teardown events were observed and not transcribed; the cached artifact's verification in the preparation transcript came minutes after the run."
         ],
         "doesNotEstablish": [
           "Concurrent serving, sustained load, GPU execution, Kubernetes, or any second host or model.",
@@ -417,7 +420,7 @@
           },
           {
             "resultId": "namespaces",
-            "statement": "After terraform destroy exactly the seven namespaces present before any work remained, each with its earlier UID, and inferops-release was NotFound."
+            "statement": "After terraform destroy the seven namespaces present before any work remained and inferops-release was NotFound; six are shown in the transcripts with their earlier UIDs, and the seventh, which belongs to unrelated work, was compared before its name and UID were redacted."
           },
           {
             "resultId": "code-identity",
@@ -427,12 +430,14 @@
         "evidenceRefs": [
           "docs/proof/environment/v1-s5-013-pr1-scoped-cleanup.md",
           "docs/proof/environment/v1-s5-013-pr1-scoped-cleanup-transcript.txt",
-          "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt"
+          "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+          "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt"
         ],
         "limitations": [
           "One provider, one host, one teardown on 2026-09-26; survival was checked immediately afterwards and nothing is known about days later.",
           "terraform destroy reclaims the model weights, so the next real run re-acquires them.",
-          "It identifies its own code and does not recover what the 2026-09-12 scoped cleanup executed."
+          "It identifies its own code and does not recover what the 2026-09-12 scoped cleanup executed.",
+          "The cluster readings were taken by an operating script that sources the committed lib.sh and is committed as evidence beside the transcripts, not by a repository workflow."
         ],
         "doesNotEstablish": [
           "That every InferOps object anywhere is removed, since the V1-S0-003 feasibility namespace survives with no owning teardown.",
@@ -606,7 +611,8 @@
           "docs/proof/environment/v1-s5-013-pr1-upgrade-rollback.md",
           "docs/proof/environment/v1-s5-013-pr1-upgrade-rollback.v1alpha1.json",
           "docs/proof/environment/v1-s5-013-pr1-upgrade-rollback-transcript.txt",
-          "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt"
+          "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+          "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt"
         ],
         "limitations": [
           "One provider, one host, one moment, one replica of each tier, and one injected fault, an artifact byte-count mismatch.",
@@ -642,6 +648,17 @@
       "before": "One provider, one host, one moment, one replica of each tier, and one injected fault — an artifact byte-count mismatch. Five attempts were made and four failed for reasons the record lists. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed record. Release blocker since V1-S5-006-PR2: the only record names no revision of this repository, and the chart and the rollback workflow it ran are identified by a chart version label that ten chart states have carried and by nothing else, so the V1 evidence pack is not frozen while this claim is certified on it.",
       "after": "One provider, one host, one replica of each tier, and one injected fault — an artifact byte-count mismatch — in each of two runs. On 2026-09-12 five attempts were made and four failed for reasons that record lists, and it measured 6,425, 1,512, and 7,983 ms for the three intervals on code nothing identifies; the statement's timings are the 2026-09-26 run's, one attempt at a named revision. The two runs are not a trend or a spread. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed records. Release blocker b4-upgrade-rollback-code-unidentified closed by V1-S5-013-PR1 with a rerun from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006, whose status was empty before the first step and after the last, which detected the fault, rolled the release back, and served a real completion again; the 2026-09-12 record stays cited for what it observed.",
       "reason": "The blocker is closed; the limitation names both runs and which identifies the code."
+    },
+    {
+      "changeId": "c14-upgrade-rollback-impact",
+      "findingId": "n04-executed-records-do-not-name-the-revision-that-ran",
+      "blockerId": "b4-upgrade-rollback-code-unidentified",
+      "operation": "set-claim-field",
+      "claimId": "a-controlled-release-change-can-be-reversed-and-real-inference-restored",
+      "field": "doesNotEstablish",
+      "before": "Anything about faults that were not injected, including a runtime that starts and answers wrongly; anything about a chart version change, a schema change, or a persisted-state migration; and nothing about behaviour under load, since caller impact was three readiness probes through one forward.",
+      "after": "Anything about faults that were not injected, including a runtime that starts and answers wrongly; anything about a chart version change, a schema change, or a persisted-state migration; and nothing about behaviour under load, since caller impact was three readiness probes in the 2026-09-12 run and four in the 2026-09-26 run, each through one forward.",
+      "reason": "The statement now quotes the 2026-09-26 run, whose failure window held four probes; the boundary names both runs' counts."
     },
     {
       "changeId": "c12-pod-restart-rerun-record",
@@ -795,7 +812,8 @@
           "docs/proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.md",
           "docs/proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json",
           "docs/proof/serving/v1-s5-013-pr1-kubernetes-pod-restart-transcript.txt",
-          "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt"
+          "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+          "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt"
         ],
         "limitations": [
           "One provider, one host, one pod deleted once on 2026-09-26, with one replica.",
@@ -854,7 +872,7 @@
     {
       "findingId": "c-f03-the-survival-probe-stops-at-an-absent-namespace",
       "source": "this-closure",
-      "observation": "The scratch script that read the cluster's survival facts sources the repository's lib.sh, which stops a script at a failed command, so when the release namespace was absent it printed nothing after that lookup. It happened on the first reading and the last.",
+      "observation": "The script that read the cluster's survival facts, written for these runs and committed as evidence in docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt, sources the repository's lib.sh, which stops a script at a failed command, so when the release namespace was absent it printed nothing after that lookup. It happened on the first reading and the last.",
       "resolution": "The scoped-cleanup record says which lines are absent and why. No statement rests on them: nothing can be inside a namespace that does not exist, and Terraform's output records the claim's destruction.",
       "recordIds": [
         "a-helm-release-installs-and-uninstalls-without-residue-c2-rerun"

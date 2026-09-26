@@ -83,6 +83,7 @@ __all__ = [
     "load_index",
     "load_ledger",
     "load_ledgers",
+    "merged_identities",
     "open_blockers",
     "recorded_date",
     "release_gate",
@@ -469,10 +470,12 @@ def open_blockers(
     Every blocker the completeness ledger raised must end in exactly one place: a
     disposition in the closure ledger, using one of the three closure mechanisms,
     or the closure ledger's own list of blockers still open. A blocker in neither,
-    in both, or disposed of twice raises, so a closure cannot make a blocker
-    disappear by leaving it out.
+    in both, or disposed of twice raises, and so does one the completeness ledger
+    never raised, so a closure cannot make a blocker disappear by leaving it out.
+    A disposition or an open blocker must also name the claim the blocker was
+    raised on, so a closure cannot close one blocker by pointing at another claim.
     """
-    raised = [blocker["blockerId"] for blocker in completeness["blockers"]]
+    raised = {blocker["blockerId"]: blocker for blocker in completeness["blockers"]}
     disposed = [row["blockerId"] for row in closure["blockerDispositions"]]
     still_open = [blocker["blockerId"] for blocker in closure["blockers"]]
     for row in closure["blockerDispositions"]:
@@ -480,16 +483,56 @@ def open_blockers(
             raise ValueError(
                 f"{row['blockerId']}: no closure mechanism {row['mechanism']!r}"
             )
+    for row in [*closure["blockerDispositions"], *closure["blockers"]]:
+        blocker = raised.get(row["blockerId"])
+        if blocker is not None and row.get("claimId") != blocker["claimId"]:
+            raise ValueError(
+                f"{row['blockerId']}: names claim {row.get('claimId')!r}, "
+                f"and the blocker was raised on {blocker['claimId']!r}"
+            )
     accounted = Counter(disposed + still_open)
     missing = sorted(set(raised) - set(accounted))
     twice = sorted(name for name, count in accounted.items() if count > 1)
-    unknown = sorted(set(disposed) - set(raised))
+    unknown = sorted(set(accounted) - set(raised))
     if missing or twice or unknown:
         raise ValueError(
             f"blockers without one disposition: missing {missing}, "
             f"accounted twice {twice}, never raised {unknown}"
         )
     return [dict(blocker) for blocker in closure["blockers"]]
+
+
+def merged_identities(
+    completeness: Mapping[str, Any], closure: Mapping[str, Any]
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Every record's code identity, and every claim's decision, across both ledgers.
+
+    A record's identity is read once, by the ledger that first read it: a closure
+    row for a record the completeness ledger already read raises rather than
+    overriding it. A claim's decision is the latest ledger's, and the closure may
+    re-decide only the claims the completeness ledger raised a blocker on; a
+    closure row for any other claim raises.
+    """
+    first = {row["recordId"]: dict(row) for row in completeness["codeIdentity"]}
+    reread = sorted({row["recordId"] for row in closure["codeIdentity"]} & set(first))
+    if reread:
+        raise ValueError(f"records read twice for their code identity: {reread}")
+    identities = {
+        **first,
+        **{row["recordId"]: dict(row) for row in closure["codeIdentity"]},
+    }
+    blocked = {blocker["claimId"] for blocker in completeness["blockers"]}
+    redecided = {row["claimId"] for row in closure["claimCodeIdentity"]}
+    if redecided - blocked:
+        raise ValueError(
+            f"claims re-decided that no blocker was raised on: {sorted(redecided - blocked)}"
+        )
+    claim_identity = {
+        row["claimId"]: dict(row)
+        for one in (completeness, closure)
+        for row in one["claimCodeIdentity"]
+    }
+    return identities, claim_identity
 
 
 def _record_entry(
@@ -636,6 +679,9 @@ def _summary(
             )
             for name in CODE_IDENTITIES
         },
+        # The completeness ledger's final states are its own, as it decided them;
+        # the two BLOCKER findings carried the blockers the closure counts below.
+        "findingsByFinalStateDecidedBy": completeness["releaseGate"]["storyId"],
         "findingsByFinalState": {
             name: sum(
                 1
@@ -682,19 +728,7 @@ def build_index(
     findings = _by_record(
         [finding for one in ledgers for finding in one["findings"]], "findingId"
     )
-    # A record's identity is read once, by the ledger that first read it; a claim's
-    # decision is the latest ledger's, because the closure re-decides the claims
-    # the completeness ledger blocked.
-    identities = {
-        row["recordId"]: row
-        for one in (completeness, closure)
-        for row in one["codeIdentity"]
-    }
-    claim_identity = {
-        row["claimId"]: row
-        for one in (completeness, closure)
-        for row in one["claimCodeIdentity"]
-    }
+    identities, claim_identity = merged_identities(completeness, closure)
     blockers: dict[str, list[str]] = {}
     for blocker in open_blockers(completeness, closure):
         blockers.setdefault(blocker["claimId"], []).append(blocker["blockerId"])

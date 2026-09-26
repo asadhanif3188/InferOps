@@ -42,7 +42,7 @@ ISO, NIST, regulatory, or industry certification standard.
 | Closed by re-anchoring to evidence that already existed | 0 |
 | Closed by a claim decision | 1 |
 | Blockers still open | 0 |
-| Register changes named in the ledger | 13 |
+| Register changes named in the ledger | 14 |
 | Evidence records added | 4 |
 | Claim statuses changed | 1 |
 | Claim statements changed | 1 |
@@ -78,7 +78,7 @@ authorised.
 
 ## The reruns
 
-**Authorisation.** The maintainer authorised, in the session that ran them, every
+**Authorisation.** The maintainer, who is the host owner the records name, authorised, in the session that ran them, every
 rerun this closure needed on the `docker-desktop` provider and none on `kind`: a real
 runtime and the pinned model on this host, Terraform prerequisites applied and
 destroyed, releases installed, upgraded, rolled back, and uninstalled, one serving pod
@@ -88,9 +88,14 @@ the pin.
 
 **One revision, named before anything ran.** Every rerun ran from one fresh clone of
 the public repository's `main` at `bcad343133ba6fddfe38832a2694e71777cdd006`, the tip
-of `main` when this change began. No implementation change was needed, so none was
-made, and nothing ran on uncommitted code. Before and after every stage the operating
-shell printed `git rev-parse HEAD` and `git status --porcelain --untracked-files=all`:
+of `main` when this change began. No repository code was changed, so every workflow,
+tool, chart, and Terraform file that ran is that revision's. Two pieces of scaffolding
+that ran were not repository code: the driver that printed each stage's stamps,
+revision, and status, and the script that took `b3`'s cluster readings, which sources
+the committed `lib.sh`. Both are committed as evidence in
+[the operating scripts](../environment/v1-s5-013-pr1-operating-scripts.txt), redacted
+of the clone's, the scratch directory's, and one host tool directory's paths. Before
+and after every stage the operating shell printed `git rev-parse HEAD` and `git status --porcelain --untracked-files=all`:
 the revision every time, and an empty status every time. Each stage's transcript is
 committed beside its record with those lines in it.
 
@@ -138,13 +143,15 @@ result: the helper did what its record says, once, on code nothing identifies.
   timings. It now quotes the rerun's, and its limitation names the earlier ones. The
   two runs are not a trend or a spread.
 - **Every other statement is unchanged**, because each rerun supports it as written.
+- **The rollback claim's boundary** names both runs' probe counts, three and four,
+  where it named the first run's alone.
 - **Four limitations** now say how their blocker was closed and which run identifies
   the code, and the `kind` claim's says why it is not claimed. The sentence
   `Release blocker since V1-S5-006-PR2` is gone from every claim, and a test holds that
   it may appear only on a blocker still open.
 - **Nothing under `docs/proof/` that existed before this change was edited**, except
-  the generated dashboard, the generated index and its page, and the proof README's
-  index of records.
+  the generated dashboard, the generated index and its page, and the proof README,
+  whose index of records and release-gate paragraph were updated.
 
 ## What this closure found
 
@@ -159,8 +166,9 @@ Three observations, each in the ledger's `findings`:
 - **The API image these reruns deployed names its source.** The completeness check
   recorded that the experiment API image names none; for the three Kubernetes reruns
   it is the named revision.
-- **The survival reading stops at an absent namespace.** The scratch script that read
-  the cluster sources the repository's `lib.sh`, which stops a script at a failed
+- **The survival reading stops at an absent namespace.** The script that read the
+  cluster, committed as evidence with the operating driver, sources the repository's
+  `lib.sh`, which stops a script at a failed
   command, so with the release namespace absent it printed nothing after that lookup.
   The scoped-cleanup record says which lines are missing and why; no statement rests
   on them.
@@ -187,10 +195,10 @@ has no disposition, has two, or is disposed of by a mechanism outside the three.
 [The V1 evidence index](../v1-evidence-index.md) is the manifest: for each of the 64
 records its level, claim, status, what executed and was substituted, the environment,
 every immutable identifier, the revision it names and its code identity, and for each
-of the **84 cited files** its path, SHA-256, and git blob name.
+of the **85 cited files** its path, SHA-256, and git blob name.
 
 **Freeze-candidate digest:**
-`53994a82a562d05e4b63ddb143080fe0110c9c9c8876d62d4f5672d072da3297`, the index's
+`1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`, the index's
 `evidenceSetSha256`, over the sorted lines `<sha256>  <path>` of every cited file.
 A test holds this page to the index's value. `V1-S5-013-PR2` must recompute it after
 its own register changes and freeze that value, not this one.
@@ -214,8 +222,37 @@ its own register changes and freeze that value, not this one.
 - **A revision is the record's word.** Each rerun's revision and empty status are
   printed in its transcript by the operating shell. That is stronger than a record
   written afterwards, and it is still a transcript this change committed.
+- **The clone is not transcribed.** It was made before the first transcript begins,
+  so no transcript shows the clone or its remote; each shows the revision it held.
+- **Some observations are not transcribed.** The baseline's hash comparison before
+  its run and its composition's teardown events were read in the operating shell; the
+  records say which, and where a later transcript shows the same fact.
 - **Host-local digests.** The API and seed images exist on one host and in no
   registry; their digests identify what ran, not something anyone else can fetch.
+
+## What the independent review found
+
+The first commit, `33e4465`, was read before push by two independent reviewers: one
+fact-checked every figure, UID, digest, count, and sentence against the transcripts,
+the tool-written records, the register, and the index, and one reviewed the gate code
+and the tests by mutating the ledgers in memory. Every count and figure they recomputed
+matched, and no private value was found. They found these, each corrected in the
+second commit:
+
+| Severity | What the first commit said or did | What was true, and the fix |
+|---|---|---|
+| High | `open_blockers` checked only blocker identifiers, so a disposition naming the wrong claim still produced `COMPLETE`; only a test bound to today's ledger noticed | It now refuses a disposition or an open blocker whose claim is not the one the blocker was raised on, and a blocker listed open that was never raised, and a test drives both mutations |
+| High | This page said nothing ran on uncommitted code | The operating driver and the cluster-reading script were not repository code, and `b3`'s survival table is what the reading script printed. Both are now committed as evidence and cited by every rerun record, and the page says which code is the named revision's and which is not |
+| Medium | A record read a second time for its code identity silently overrode the first reading, and the closure could re-decide a claim no blocker was raised on; "read once" was a comment | `merged_identities` refuses both, and a test holds that the closure re-decides exactly the blocked claims |
+| Medium | `--write` and `--check` crashed with a traceback on a ledger `--gate` rejected cleanly | Every mode now prints the same `MISMATCH` line and exits 1 |
+| Medium | The baseline record said the model's hash was checked before the run and its composition cleaned up, citing a transcript that shows neither | It says both were observed in the operating shell and not transcribed, and names the later transcript that verifies the same cached file |
+| Medium | The validation record said the cluster was returned to its starting state, and this page that nothing outside the release was touched | Two images stay imported in the node's container store; both pages say so |
+| Medium | The scoped-cleanup record said all seven namespaces kept their UIDs | The transcripts show six; the seventh, unrelated work, was compared before redaction, and the record and its register result say so |
+| Medium | The rollback claim's boundary still said caller impact was three probes | It names three and four, for the two runs; a fourteenth register change |
+| Medium | The index summary kept `BLOCKER: 2` beside a complete gate without saying whose states they are | A field names `V1-S5-006-PR2` as the ledger that decided them |
+| Low | The transcript test counted identity blocks without requiring a before and an after | It reads each block's side, requires a first `before` and a last `after`, and refuses a status section that never closes |
+| Low | The first commit's message said the node was unchanged by UID | No reading prints a node UID; the node was the same name, Ready, on the same kubelet. The message cannot be edited without rewriting history, so the correction is here |
+| Low | This page named the maintainer and the records the host owner as the authoriser; the proof README's edit was undersold; the test inventory still derived the case study's appendix from the completeness ledger alone | Harmonised and corrected |
 
 ## How to repeat it
 
@@ -227,12 +264,16 @@ python -m tools.evidence_index --gate
 
 The first two read files and the repository's history; the third prints the gate. None
 contacts anything else. To repeat a rerun itself, follow the procedure in its record
-from a fresh clone at `bcad343133ba6fddfe38832a2694e71777cdd006`.
+from a fresh clone at `bcad343133ba6fddfe38832a2694e71777cdd006`, with
+[the operating scripts](../environment/v1-s5-013-pr1-operating-scripts.txt), which also
+take `b3`'s cluster readings.
 
 ## Authorisation
 
 Required: **yes**, for the reruns, and granted by the maintainer in the session that
 ran them, for `docker-desktop` and the local runtime and not for `kind`. Writing this
 page, the ledger, the tests, and the generated surfaces needed none. No paid service
-was used, Docker Desktop was never reset or reconfigured, and nothing outside the
-InferOps release and its Terraform prerequisites was touched in the cluster.
+was used, and Docker Desktop was never reset or reconfigured. Apart from the InferOps
+releases and their Terraform prerequisites, which were removed, the only change to the
+cluster was the API and model seed images imported into the node's container store,
+which stay there, as the image scripts warn.

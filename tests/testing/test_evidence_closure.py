@@ -33,6 +33,7 @@ from tools.evidence_index import (
     INDEX_PATH,
     load_index,
     load_ledger,
+    merged_identities,
     open_blockers,
     release_gate,
     restore_migrated_register,
@@ -120,16 +121,59 @@ def test_every_blocker_raised_has_exactly_one_disposition_in_order() -> None:
             {"mechanism": "closed-by-assertion"}
         ),
         lambda ledger: ledger["blockers"].append(
-            {"blockerId": ledger["blockerDispositions"][0]["blockerId"]}
+            dict(ledger["blockerDispositions"][0])
+        ),
+        lambda ledger: ledger["blockerDispositions"][0].update(
+            {"claimId": "the-model-artifact-matches-its-published-hash"}
+        ),
+        lambda ledger: ledger["blockers"].append(
+            {"blockerId": "b9-never-raised", "claimId": "anything"}
         ),
     ],
-    ids=["dropped", "twice", "unknown-mechanism", "both-open-and-closed"],
+    ids=[
+        "dropped",
+        "twice",
+        "unknown-mechanism",
+        "both-open-and-closed",
+        "another-claim",
+        "never-raised-and-open",
+    ],
 )
 def test_a_closure_that_loses_or_doubles_a_blocker_is_refused(mutate: Any) -> None:
     ledger = copy.deepcopy(CLOSURE)
     mutate(ledger)
     with pytest.raises(ValueError):
         open_blockers(COMPLETENESS, ledger)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda ledger: ledger["codeIdentity"].append(
+            {**COMPLETENESS["codeIdentity"][0], "identity": "stated-revision"}
+        ),
+        lambda ledger: ledger["claimCodeIdentity"].append(
+            {
+                "claimId": "the-model-artifact-matches-its-published-hash",
+                "state": "identified",
+                "identifiedByRecordIds": [],
+                "note": "a claim no blocker was raised on",
+            }
+        ),
+    ],
+    ids=["a-record-read-twice", "a-claim-no-blocker-was-raised-on"],
+)
+def test_a_closure_that_overrides_an_earlier_reading_is_refused(mutate: Any) -> None:
+    ledger = copy.deepcopy(CLOSURE)
+    mutate(ledger)
+    with pytest.raises(ValueError):
+        merged_identities(COMPLETENESS, ledger)
+
+
+def test_the_closure_re_decides_exactly_the_blocked_claims() -> None:
+    assert {row["claimId"] for row in CLOSURE["claimCodeIdentity"]} == {
+        blocker["claimId"] for blocker in COMPLETENESS["blockers"]
+    }
 
 
 def test_the_stated_gate_is_the_one_the_closure_decides() -> None:
@@ -188,13 +232,19 @@ def test_the_run_revision_is_a_commit_this_history_holds() -> None:
     assert _git("merge-base", "--is-ancestor", REVISION, "HEAD") is not None
 
 
-def _identity_blocks(transcript: str) -> list[tuple[str, list[str]]]:
-    """Each `=== identity` block: the revision printed and the status lines."""
+def _identity_blocks(transcript: str) -> list[tuple[str, str, list[str]]]:
+    """Each `=== identity before|after` block: its side, the revision, the status.
+
+    A block whose status section never closes is refused rather than read to the
+    end of the file, so a transcript cut short cannot pass as an empty status.
+    """
     blocks = []
     lines = transcript.splitlines()
     for number, line in enumerate(lines):
         if not line.startswith("=== identity"):
             continue
+        side = line.split()[2].rstrip(":")
+        assert side in {"before", "after"}, line
         revision = lines[number + 1].strip()
         assert lines[number + 2].startswith("--- status"), line
         status = []
@@ -202,7 +252,9 @@ def _identity_blocks(transcript: str) -> list[tuple[str, list[str]]]:
             if following.startswith("--- status end"):
                 break
             status.append(following)
-        blocks.append((revision, status))
+        else:
+            raise AssertionError(f"{line}: the status section never closes")
+        blocks.append((side, revision, status))
     return blocks
 
 
@@ -212,10 +264,30 @@ def test_every_transcript_shows_the_revision_and_an_empty_status_both_sides(
 ) -> None:
     """What `V1-S5-006-PR2` said every rerun must record, read from the transcript."""
     blocks = _identity_blocks(read(path))
-    assert len(blocks) >= 2, path
-    for revision, status in blocks:
+    sides = [side for side, _, _ in blocks]
+    assert sides[0] == "before" and sides[-1] == "after", (path, sides)
+    assert sides.count("before") == sides.count("after"), (path, sides)
+    for _, revision, status in blocks:
         assert revision == REVISION, path
         assert status == [], (path, status)
+
+
+@pytest.mark.parametrize(
+    "transcript",
+    [
+        "=== identity after: t\nREV\n--- status begin\n--- status end\n" * 2,
+        "=== identity before: t\nREV\n--- status begin\n",
+    ],
+    ids=["no-before", "status-never-closes"],
+)
+def test_the_transcript_reader_refuses_a_one_sided_or_cut_transcript(
+    transcript: str,
+) -> None:
+    text = transcript.replace("REV", REVISION)
+    with pytest.raises(AssertionError):
+        blocks = _identity_blocks(text)
+        sides = [side for side, _, _ in blocks]
+        assert sides[0] == "before" and sides[-1] == "after"
 
 
 def test_every_rerun_disposition_names_the_records_it_added() -> None:

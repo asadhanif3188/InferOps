@@ -41,7 +41,7 @@ be an advertisement.
 >
 > **Since `V1-S5-013-PR1` the five blockers are closed, and the gate passes.** The
 > [closure ledger](../proof/testing/v1-s5-013-pr1-closure.v1alpha1.json) names its
-> thirteen register changes the same way. Four blocked claims each gained a record of a
+> fourteen register changes the same way. Four blocked claims each gained a record of a
 > rerun from a fresh clone of `main` at a named revision with nothing uncommitted — the
 > local baseline, the Helm uninstall and the cluster's survival, the upgrade rollback,
 > and the pod replacement — and the rollback claim's statement now quotes that run's

@@ -6,7 +6,7 @@
   "status": "draft",
   "verifiedIn": "V1-S5-013-PR1",
   "verifiedAgainst": {
-    "evidenceSetSha256": "53994a82a562d05e4b63ddb143080fe0110c9c9c8876d62d4f5672d072da3297",
+    "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
     "releaseGate": "complete",
     "releaseBlockers": 0,
     "note": "The digest, gate, and blocker count of the V1 evidence index when V1-S5-013-PR1 re-verified the page for what it moved. The set is the pre-publication freeze candidate; the page stays a draft until V1-S5-013-PR2 publishes it, and a test fails when the index moves from these values, so that the page is verified again rather than left behind."

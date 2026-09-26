@@ -37,6 +37,7 @@ execution, and it identifies its own code.
 | Model | revision `90862c4b9d2787eaed51d12237eafdfe7c5f6077`, `sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a` |
 | Helm, kubectl, Terraform | `v3.19.0+g3d8990f`, `v1.34.3`, `1.15.8` |
 | Transcripts | [the preparation](v1-s5-013-pr1-cluster-prepare-transcript.txt), which also holds the first cluster reading, and [this stage](v1-s5-013-pr1-scoped-cleanup-transcript.txt), each with the revision and the status before and after |
+| Operating scripts | [the driver and the cluster-reading script](v1-s5-013-pr1-operating-scripts.txt) that printed the stamps, the revision, the status, and the cluster readings in the transcripts: not repository code, committed as evidence so the transcripts can be traced and repeated |
 
 ## What was done
 
@@ -50,10 +51,14 @@ scripts/environment/terraform-prerequisites.sh destroy --confirm
 cluster reading (after Terraform)
 ```
 
-Every reading went through `inferops::resolve_target` in the clone's
-`scripts/environment/lib.sh`, which re-verified the provider before each one, and every
-`kubectl` call through `inferops::target_kubectl`, so no ambient context could redirect
-it.
+Every reading was taken by
+[a cluster-reading script](v1-s5-013-pr1-operating-scripts.txt) that sources the clone's
+`scripts/environment/lib.sh`, calls `inferops::resolve_target`, which re-verified the
+provider before each reading, and sends every `kubectl` call through
+`inferops::target_kubectl`, so no ambient context could redirect it. **The reading
+script is not repository code.** It was written for these runs and is committed as
+evidence, so the table below can be traced to the commands that printed it and
+repeated.
 
 ## Procedure
 
@@ -67,6 +72,10 @@ scripts/environment/helm-lifecycle.sh --values <merged values>
 scripts/environment/terraform-prerequisites.sh destroy --confirm
 git rev-parse HEAD && git status --porcelain --untracked-files=all
 ```
+
+The cluster readings are the reading script run with a label: before any cluster work,
+before the lifecycle, after the uninstall, and after the destroy. The stage driver that
+sequenced all of this is in the same file.
 
 ## 1. The release, and what its uninstall left
 
@@ -127,7 +136,7 @@ facts before any work and after each teardown step:
 | Node container on the engine | running | running | running |
 | Default storage class | `standard`, `rancher.io/local-path`, UID `97b761a3-…-c9366a13e249` | the same | the same |
 | Other storage class | `hostpath`, `rancher.io/local-path`, not default | the same | the same |
-| Namespaces | seven, none of them `inferops-release` | the same seven, and `inferops-release` | the same seven, each with the UID it had before any work |
+| Namespaces | seven, none of them `inferops-release` | the same seven, and `inferops-release` | the same seven; the six shown in the transcripts each with the UID it had before any work, and the seventh compared before its name and UID were redacted |
 
 The unchanged `kube-system` UID is what says this is the same cluster rather than a
 reset one. **Docker Desktop was never reset, disabled, or reconfigured**, and nothing

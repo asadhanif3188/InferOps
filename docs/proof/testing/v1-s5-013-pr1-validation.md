@@ -40,7 +40,7 @@ those records were written.
 | `python -m tools.evidence_index --check` | `OK`, the committed index is what the register and ledgers produce |
 | `python -m tools.proof_dashboard --check` | `OK`, the committed dashboard is what the register produces |
 | `uv run --locked ruff check .` | all checks passed |
-| `uv run --locked ruff format --check .` | 512 files already formatted |
+| `uv run --locked ruff format --check .` | 513 files already formatted |
 | `uv run --locked mypy` | no issues in 276 source files |
 | The ten evidence suites: closure, completeness, index, migration, claim matrix, dashboard, strategy, level rules, record model, and levels | all passed |
 | `tests/testing`, `tests/security`, and the decision-authority suite | all passed once this record existed; before it, only the two checks that require it failed |
@@ -52,8 +52,10 @@ blocker dispositions, the digest, and the strategy's split.
 ## How the reruns were kept apart from the checks
 
 No test suite ran while a rerun was measuring. The suites above were run only after the
-last rerun had finished and the cluster had been returned to its starting state, so no
-measured figure shares the host with a suite.
+last rerun had finished and its releases and prerequisites had been removed, so no
+measured figure shares the host with a suite. The cluster was not returned exactly to
+its starting state: the API and model seed images imported into the node stay there,
+as [the scoped-cleanup record](../environment/v1-s5-013-pr1-scoped-cleanup.md) says.
 
 ## Private-information review
 
@@ -64,8 +66,38 @@ transcripts were redacted mechanically before they were copied in, by rules thei
 header lists, and a test refuses a drive-letter, home-directory, temporary, scratch, or
 planning path in any file the closure cites.
 
+## The full default lane
+
+Run on the first commit, `33e4465`, with everything tracked, because the document-link
+suite collects only tracked files:
+
+```text
+uv run --locked python -m pytest -q
+15141 passed, 30 skipped, 14 deselected in 974.24s (0:16:14)
+```
+
+Started at `2026-09-26T02:38:26Z`, while the two independent reviewers were reading
+the same tree.
+
+## After the independent review
+
+The review's findings and fixes are listed in
+[the closure report](v1-s5-013-pr1-blocker-closure.md#what-the-independent-review-found).
+With every fix applied and staged, so that the document-link suite saw every new file,
+the gate, `--check` for the index and the dashboard, `ruff check`, `ruff format
+--check` (513 files), and `mypy` (276 source files) were clean again, and the full
+default lane gave:
+
+```text
+uv run --locked python -m pytest -q
+15156 passed, 30 skipped, 14 deselected in 553.40s (0:09:13)
+```
+
+Started at `2026-09-26T02:57:35Z`. The fifteen more than the first run are the
+review's new mutation tests and the link checks for the operating-scripts file. The
+only file changed after this run is this record, to add this paragraph; this record is
+cited by no evidence record, so the evidence-set digest is unchanged by it.
+
 ## What was not checked here
 
-- **The full default lane** is run on the committed tree, because the document-link
-  suite collects only tracked files; its result is added below after the first commit.
 - **Hosted continuous integration** has not run on this branch.

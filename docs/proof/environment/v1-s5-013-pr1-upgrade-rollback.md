@@ -41,6 +41,7 @@ INFEROPS_PROVIDER=docker-desktop \
 | Helm, kubectl | `v3.19.0+g3d8990f`, `v1.34.3` |
 | Record the tool wrote | [`v1-s5-013-pr1-upgrade-rollback.v1alpha1.json`](v1-s5-013-pr1-upgrade-rollback.v1alpha1.json), committed as the tool wrote it |
 | Transcripts | [the preparation](v1-s5-013-pr1-cluster-prepare-transcript.txt) and [this run](v1-s5-013-pr1-upgrade-rollback-transcript.txt), each with the revision and the status before and after |
+| Operating scripts | [the driver and the cluster-reading script](v1-s5-013-pr1-operating-scripts.txt) that printed the stamps, the revision, the status, and the cluster readings in the transcripts: not repository code, committed as evidence so the transcripts can be traced and repeated |
 
 ## Procedure
 

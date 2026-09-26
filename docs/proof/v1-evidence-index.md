@@ -56,7 +56,7 @@ that ran:
 | `unidentified` | 10 | Repository code executed and nothing the record cites identifies which; nine of these are under claims another record settles, four of those by a `V1-S5-013-PR1` rerun, and one is under the `kind` helper's claim, which is now not claimed |
 
 **The whole evidence set's digest is
-`53994a82a562d05e4b63ddb143080fe0110c9c9c8876d62d4f5672d072da3297`**, the index's
+`1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`**, the index's
 `evidenceSetSha256`: SHA-256 over the sorted lines `<sha256>  <path>` of every cited
 file. A release that quotes it pins the set as a whole.
 
@@ -98,7 +98,7 @@ version.
 - **64 evidence records** under 59 claims: 26 at `C0`, 8 at `C1`, 30 at `C2`, and none
   at `C3` or `C4`. Every one of the **41 certified claims** holds at least one record,
   and every record states its limitations and what it does not establish.
-- **84 distinct committed files** are cited, all under `docs/proof/`, each hashed and
+- **85 distinct committed files** are cited, all under `docs/proof/`, each hashed and
   each named by its git blob. Nine of them carry a correction recorded beside them
   rather than inside them.
 - **38 records executed their target behaviour, and 20 of them name the repository

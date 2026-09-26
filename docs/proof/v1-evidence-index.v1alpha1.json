@@ -49,7 +49,7 @@
     "recordsWithAClaimMaterialSubstitution": 8,
     "executedRecords": 38,
     "executedRecordsNamingTheRevisionThatRan": 20,
-    "evidenceFiles": 84,
+    "evidenceFiles": 85,
     "findingsByDisposition": {
       "corrected-authoritative-metadata": 7,
       "additive-historical-correction": 4,
@@ -65,6 +65,7 @@
       "no-repository-code": 4,
       "unidentified": 10
     },
+    "findingsByFinalStateDecidedBy": "V1-S5-006",
     "findingsByFinalState": {
       "RESOLVED": 11,
       "NARROWED": 10,
@@ -73,7 +74,7 @@
       "BLOCKER": 2
     },
     "completenessRegisterChanges": 12,
-    "closureRegisterChanges": 13,
+    "closureRegisterChanges": 14,
     "blockersRaised": 5,
     "blockersClosedBy": {
       "closed-by-rerun": 4,
@@ -82,7 +83,7 @@
     },
     "releaseBlockers": 0,
     "releaseGate": "complete",
-    "evidenceSetSha256": "53994a82a562d05e4b63ddb143080fe0110c9c9c8876d62d4f5672d072da3297"
+    "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a"
   },
   "claims": [
     {
@@ -592,7 +593,7 @@
       "assertsRealBehaviour": true,
       "statement": "A deliberately broken release revision was detected by an init container's non-zero exit 6,949 ms after the fault, rolled back in 1,986 ms, and served a real completion 11,053 ms after detection.",
       "limitation": "One provider, one host, one replica of each tier, and one injected fault — an artifact byte-count mismatch — in each of two runs. On 2026-09-12 five attempts were made and four failed for reasons that record lists, and it measured 6,425, 1,512, and 7,983 ms for the three intervals on code nothing identifies; the statement's timings are the 2026-09-26 run's, one attempt at a named revision. The two runs are not a trend or a spread. Detection and rollback were both performed by an operating script a person started. This claim is a recorded coverage gap in the test inventory: no pytest module proves it, the modules named here are adjacent to it, and what proves it is the executed records. Release blocker b4-upgrade-rollback-code-unidentified closed by V1-S5-013-PR1 with a rerun from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006, whose status was empty before the first step and after the last, which detected the fault, rolled the release back, and served a real completion again; the 2026-09-12 record stays cited for what it observed.",
-      "doesNotEstablish": "Anything about faults that were not injected, including a runtime that starts and answers wrongly; anything about a chart version change, a schema change, or a persisted-state migration; and nothing about behaviour under load, since caller impact was three readiness probes through one forward.",
+      "doesNotEstablish": "Anything about faults that were not injected, including a runtime that starts and answers wrongly; anything about a chart version change, a schema change, or a persisted-state migration; and nothing about behaviour under load, since caller impact was three readiness probes in the 2026-09-12 run and four in the 2026-09-26 run, each through one forward.",
       "claimMaterialComponents": [
         "inferops-llm-chart",
         "docker-desktop-cluster",
@@ -3877,7 +3878,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/16/evidenceRecords/1",
-      "registerEntrySha256": "a19e24cec1df7bc000732b98fa814b15932ea420671a36d503f0ace3e692d98b",
+      "registerEntrySha256": "b3f279fb70d5db6fd1fb76a46ed45f58c39f42659e5b8b9e24967c18b8a542e7",
       "summary": "On 2026-09-26 the registered baseline was executed again from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006, with nothing uncommitted before or after: the baseline tool composed the pinned runtime container and the InferOps API with the real adapter and sent three warm-up and thirty measured requests of the same fixed fixture at concurrency one. All five pre-registered thresholds were met.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -4043,7 +4044,8 @@
         "The executed fixture is the rewritten one the 2026-09-03 run also used, not the two-message fixture first registered; the descriptor is unchanged since d604077.",
         "The periodic CPU sample lands between requests and does not capture the runtime's load.",
         "The 79 s margin against the load budget is one observation; the same host was 58.7 s over it in the attempt before the 2026-09-03 run.",
-        "It identifies its own code and does not recover what the 2026-09-03 run executed."
+        "It identifies its own code and does not recover what the 2026-09-03 run executed.",
+        "The copy of the model into the clone, its hash comparison in the operating shell, and the composition's teardown events were observed and not transcribed; the cached artifact's verification in the preparation transcript came minutes after the run."
       ],
       "doesNotEstablish": [
         "Concurrent serving, sustained load, GPU execution, Kubernetes, or any second host or model.",
@@ -4052,8 +4054,8 @@
       "evidence": [
         {
           "path": "docs/proof/serving/v1-s5-013-pr1-baseline-rerun.md",
-          "sha256": "d60ba144676a1f55577bb66633c84308ee2b4c7b7e060b9d48eb9ba7bd544ad7",
-          "gitBlob": "3688bf9f2cf093287da6144083e80847714a4a08",
+          "sha256": "5fb9c17c41a89ca17f292fe255d003e44a8dbd8de5540caf2f18af48db08d2a6",
+          "gitBlob": "8670c76bd20828ab423520d70086daad9bd90008",
           "recordedDate": {
             "label": "Date captured",
             "value": "2026-09-26"
@@ -4081,6 +4083,22 @@
           "path": "docs/proof/serving/v1-s5-013-pr1-baseline-transcript.txt",
           "sha256": "364532a80b76001d7f78191109affd019866c3b836cf0b0c403e4c4ef367f484",
           "gitBlob": "04e09675ceb8bec37457b7cb2e8fcc66f8cd3e79",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
+          "sha256": "354e88a667da8e9e87afecaca2402f89201a3b0a14d6aeb52fbeb11e8f9bbb28",
+          "gitBlob": "b9323660b2f0252df0a8ef8878544d768e218987",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt",
+          "sha256": "8628b7eb7b3cce76a08d13a2fc6d8f311847c9a60292370787687304c086b61d",
+          "gitBlob": "1de17ba43e1846cdacca05a701c7e4079f5ae089",
           "recordedDate": null,
           "authorisationSection": null,
           "corrections": []
@@ -5311,7 +5329,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/22/evidenceRecords/2",
-      "registerEntrySha256": "13a6c16ec6d53cb00ca47c41a2da30698fabc5c02bfbac622020399524f64fda",
+      "registerEntrySha256": "a37466a56e294eb33ae68f1c735263e9487185e182276f4b6c08db3b54ad243a",
       "summary": "On 2026-09-26, from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006 with nothing uncommitted before or after, the lifecycle workflow installed, tested, upgraded, rolled back, and uninstalled a real release in Docker Desktop's cluster, leaving no release-labelled object while the Terraform namespace and claim survived; the cluster, its node, and its storage classes were unchanged after the uninstall and after the guarded terraform destroy.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -5446,7 +5464,7 @@
         },
         {
           "resultId": "namespaces",
-          "statement": "After terraform destroy exactly the seven namespaces present before any work remained, each with its earlier UID, and inferops-release was NotFound."
+          "statement": "After terraform destroy the seven namespaces present before any work remained and inferops-release was NotFound; six are shown in the transcripts with their earlier UIDs, and the seventh, which belongs to unrelated work, was compared before its name and UID were redacted."
         },
         {
           "resultId": "code-identity",
@@ -5456,7 +5474,8 @@
       "limitations": [
         "One provider, one host, one teardown on 2026-09-26; survival was checked immediately afterwards and nothing is known about days later.",
         "terraform destroy reclaims the model weights, so the next real run re-acquires them.",
-        "It identifies its own code and does not recover what the 2026-09-12 scoped cleanup executed."
+        "It identifies its own code and does not recover what the 2026-09-12 scoped cleanup executed.",
+        "The cluster readings were taken by an operating script that sources the committed lib.sh and is committed as evidence beside the transcripts, not by a repository workflow."
       ],
       "doesNotEstablish": [
         "That every InferOps object anywhere is removed, since the V1-S0-003 feasibility namespace survives with no owning teardown.",
@@ -5465,8 +5484,8 @@
       "evidence": [
         {
           "path": "docs/proof/environment/v1-s5-013-pr1-scoped-cleanup.md",
-          "sha256": "7ebdd47b1c714b0de382cef2de98fc7a3facaad2cb72dedeb268b4dcdc68ebc9",
-          "gitBlob": "bd98b81cadf08d067b2319cfc863db76f3420d06",
+          "sha256": "63e519b5dfd2b4e433d1f15d212ac2751f5128a3ee75f1b5851ae2bc1d3b4125",
+          "gitBlob": "de05b141476289012ed7e0a2982a6036697b8615",
           "recordedDate": {
             "label": "Date captured",
             "value": "2026-09-26"
@@ -5486,6 +5505,14 @@
           "path": "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
           "sha256": "354e88a667da8e9e87afecaca2402f89201a3b0a14d6aeb52fbeb11e8f9bbb28",
           "gitBlob": "b9323660b2f0252df0a8ef8878544d768e218987",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt",
+          "sha256": "8628b7eb7b3cce76a08d13a2fc6d8f311847c9a60292370787687304c086b61d",
+          "gitBlob": "1de17ba43e1846cdacca05a701c7e4079f5ae089",
           "recordedDate": null,
           "authorisationSection": null,
           "corrections": []
@@ -5655,7 +5682,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/23/evidenceRecords/1",
-      "registerEntrySha256": "9691900b7695e7837b044679af4a5e459d602642d28c9747a8bd85c2896dda4f",
+      "registerEntrySha256": "c0599d3017a9b4b262e547af0a29407cee2bf230306c596e43077dab79de737b",
       "summary": "On 2026-09-26, from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006 with nothing uncommitted before or after, a real release was upgraded with a controlled change, upgraded again with an injected byte-count fault, the failure was detected from the verify-model init container, the release was rolled back, and a real completion was served again.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -5813,8 +5840,8 @@
       "evidence": [
         {
           "path": "docs/proof/environment/v1-s5-013-pr1-upgrade-rollback.md",
-          "sha256": "e9b446150b73fa3bfac071bf8ab1f0f420c1b0c255ea86b84aec855fd10ec6c5",
-          "gitBlob": "2ffcd8aba462149005d0fdae8079185f956d5062",
+          "sha256": "7b47d4a20771a156fde49cf2f909f067a52869bfabedda4b8c20655637ca37b3",
+          "gitBlob": "be2e65f7108cf86c0d6aed840c272008e75301d6",
           "recordedDate": {
             "label": "Date captured",
             "value": "2026-09-26"
@@ -5842,6 +5869,14 @@
           "path": "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
           "sha256": "354e88a667da8e9e87afecaca2402f89201a3b0a14d6aeb52fbeb11e8f9bbb28",
           "gitBlob": "b9323660b2f0252df0a8ef8878544d768e218987",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt",
+          "sha256": "8628b7eb7b3cce76a08d13a2fc6d8f311847c9a60292370787687304c086b61d",
+          "gitBlob": "1de17ba43e1846cdacca05a701c7e4079f5ae089",
           "recordedDate": null,
           "authorisationSection": null,
           "corrections": []
@@ -6019,7 +6054,7 @@
       "evidenceLevel": "C2",
       "migrationState": "migrated",
       "registerPointer": "/claims/24/evidenceRecords/1",
-      "registerEntrySha256": "ce91b4675f617895264a78172c6fa1a40fa22f8157232dc0a41fd4055b4d9b86",
+      "registerEntrySha256": "a6d3cb4f835f80f583c99edc7a8b1789c82fb84b48a7a7d8b83c21c3cd00313c",
       "summary": "On 2026-09-26, from a fresh clone at bcad343133ba6fddfe38832a2694e71777cdd006 with nothing uncommitted before or after, one serving pod of a real release was deleted, the Deployment replaced it with a different pod against the same Terraform-owned claim, the in-cluster byte count, SHA-256, inode, and mtime were unchanged, no acquisition Job ran, and a real completion came back.",
       "execution": {
         "targetBehaviourExecuted": true,
@@ -6182,8 +6217,8 @@
       "evidence": [
         {
           "path": "docs/proof/serving/v1-s5-013-pr1-kubernetes-pod-restart.md",
-          "sha256": "f4578591a097f59874b5d2840727a2c576c2e72513301ad59ebac5dc91c3e832",
-          "gitBlob": "b04d4cfb2116b821b0f9e5c004c15a4bebc001be",
+          "sha256": "0effc67b820f075b3c7650a7b9460af5f80d914e2cf78a87c6d130fb2eab208a",
+          "gitBlob": "0c56b5e36fe7c3aa3afca8eb23551195bd4dd97c",
           "recordedDate": {
             "label": "Date captured",
             "value": "2026-09-26"
@@ -6211,6 +6246,14 @@
           "path": "docs/proof/environment/v1-s5-013-pr1-cluster-prepare-transcript.txt",
           "sha256": "354e88a667da8e9e87afecaca2402f89201a3b0a14d6aeb52fbeb11e8f9bbb28",
           "gitBlob": "b9323660b2f0252df0a8ef8878544d768e218987",
+          "recordedDate": null,
+          "authorisationSection": null,
+          "corrections": []
+        },
+        {
+          "path": "docs/proof/environment/v1-s5-013-pr1-operating-scripts.txt",
+          "sha256": "8628b7eb7b3cce76a08d13a2fc6d8f311847c9a60292370787687304c086b61d",
+          "gitBlob": "1de17ba43e1846cdacca05a701c7e4079f5ae089",
           "recordedDate": null,
           "authorisationSection": null,
           "corrections": []

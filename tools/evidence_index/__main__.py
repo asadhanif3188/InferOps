@@ -124,7 +124,13 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.gate:
         return _gate()
 
-    text = render_index(build_index())
+    try:
+        text = render_index(build_index())
+    except ValueError as error:
+        # The same refusal --gate reports, reported the same way rather than as a
+        # traceback: a ledger that loses a blocker or reads a record twice.
+        print(f"MISMATCH {error}")
+        return 1
 
     if arguments.print:
         # Bytes, so the output is comparable with the committed file on every

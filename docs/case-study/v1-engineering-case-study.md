@@ -5,7 +5,7 @@ re-verified in `V1-S5-013-PR1` for what that change moved: the five claims it cl
 release blockers, the counts, and the gate. It is not published, and the README does not
 link here; publishing it belongs to `V1-S5-013-PR2`. The page was checked against the
 evidence set whose digest is
-`53994a82a562d05e4b63ddb143080fe0110c9c9c8876d62d4f5672d072da3297`. For that set the release
+`1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`. For that set the release
 gate is complete and `python -m tools.evidence_index --gate` exits 0: the five blockers
 the completeness check raised were closed, four by a rerun at a named revision and the
 `kind` helper's by moving its claim to not claimed. That set is the **pre-publication

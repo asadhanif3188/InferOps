@@ -26,7 +26,8 @@ registered method, and it identifies its own code.
 | Runtime source revision | `70adb1b4cea5ee39f867792c78dc59320921eda7` |
 | Raw result file | [`v1-s5-013-pr1-baseline-raw.jsonl`](v1-s5-013-pr1-baseline-raw.jsonl), 8 127 bytes, SHA-256 `06adba2f043f5cd70824056239a9b9b88b7b5959cfc9333ed01f4653ff963bda` |
 | Summary file | [`v1-s5-013-pr1-baseline-summary.json`](v1-s5-013-pr1-baseline-summary.json), 2 098 bytes, SHA-256 `b4c95b9184f2e0fe163b7ed485e1ff15cbe42d1eef2ef18e1bbecc7081dea8c5` |
-| Transcript | [`v1-s5-013-pr1-baseline-transcript.txt`](v1-s5-013-pr1-baseline-transcript.txt): every command's output, the revision and the status before and after, and a UTC stamp before each step |
+| Transcript | [`v1-s5-013-pr1-baseline-transcript.txt`](v1-s5-013-pr1-baseline-transcript.txt): the output of every command in the procedure below, the revision and the status before and after, and a UTC stamp before each step |
+| Operating scripts | [the driver and the cluster-reading script](../environment/v1-s5-013-pr1-operating-scripts.txt) that printed the stamps, the revision, the status, and the cluster readings in the transcripts: not repository code, committed as evidence so the transcripts can be traced and repeated |
 
 **The descriptor is the one the 2026-09-03 run registered.** Its last change is
 `d604077`, the commit that corrected the fixture, and the 2026-09-03 record's hash of
@@ -35,9 +36,13 @@ Windows checkout's bytes rather than the committed ones. So the thresholds, the
 warm-up, the measured count, and the fixture are the same as that run's. The fixture
 is the rewritten one, not the one first registered, for the reason that record gives.
 
-**How the model reached the clone.** The verified artifact was copied from this host's
-workspace cache into the clone's ignored `.cache/inferops/models/` and its SHA-256
-checked against the pin before the run. Nothing was downloaded.
+**How the model reached the clone.** The artifact was copied from this host's
+workspace cache into the clone's ignored `.cache/inferops/models/`, and its SHA-256 was
+compared with the pin in the operating shell before the run; that copy and comparison
+are not in the transcript. The same cached file was verified again, by byte count and
+SHA-256, by the seed-image build minutes after the run, which
+[the preparation transcript](../environment/v1-s5-013-pr1-cluster-prepare-transcript.txt)
+records. Nothing was downloaded.
 
 ## Procedure
 
@@ -99,9 +104,12 @@ runs after a request has completed, so it reads the container between requests. 
 
 ## Cleanup
 
-The composition's own log records `composition.api.stopped` with `drained: true` and
+The composition's own log recorded `composition.api.stopped` with `drained: true` and
 then `composition.runtime.removed` with `removed: true`, and no `inferops-` container
-remained on the engine afterwards. The clone's status was still empty.
+remained on the engine afterwards. Both were read in the operating shell, from a log
+that is host state under an ignored path and from the engine, and neither reading is
+in the transcript. The clone's status, which the transcript does show, was still
+empty.
 
 ## Limitations
 

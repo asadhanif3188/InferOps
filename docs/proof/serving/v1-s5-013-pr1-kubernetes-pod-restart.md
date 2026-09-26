@@ -42,6 +42,7 @@ INFEROPS_PROVIDER=docker-desktop \
 | Helm, kubectl, Terraform | `v3.19.0+g3d8990f`, `v1.34.3`, `1.15.8` |
 | Record the tool wrote | [`v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json`](v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json), committed as the tool wrote it |
 | Transcripts | [the preparation](../environment/v1-s5-013-pr1-cluster-prepare-transcript.txt) — images built and imported, values merged, Terraform applied — and [this run](v1-s5-013-pr1-kubernetes-pod-restart-transcript.txt), each with the revision and the status before and after |
+| Operating scripts | [the driver and the cluster-reading script](../environment/v1-s5-013-pr1-operating-scripts.txt) that printed the stamps, the revision, the status, and the cluster readings in the transcripts: not repository code, committed as evidence so the transcripts can be traced and repeated |
 
 **The API image's source is known here.** The earlier Kubernetes runs deployed an API
 image whose building source tree no record names. This one was built from the clone
