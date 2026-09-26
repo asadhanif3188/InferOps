@@ -36,8 +36,21 @@ release gate that is current. The completeness ledger's blockers and gate stay a
 decided them, as history; the gate is read from the closure ledger, and it refuses
 a closure that leaves any of those blockers without a disposition.
 
-The three ledgers are applied in order, and undone in reverse, so the register's
-history since the migration is the three of them together.
+**The publication ledger** is
+`docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json`, the record of what
+`V1-S5-013-PR2` changed to publish the case study: its register changes in the same
+before-and-after form, the corrections it wrote beside dated records, and the freeze
+it declares. It raises and closes no blocker; the gate stays the closure ledger's.
+
+The four ledgers are applied in order, and undone in reverse, so the register's
+history since the migration is the four of them together.
+
+**Two digests.** `evidenceSetSha256` covers every file a record cites and nothing else,
+so a change to the register's wording or to a ledger does not move it.
+`evidencePackSha256` covers the same files together with the register and every
+ledger, which are everything the index is built from; it is the digest a freeze
+quotes. Neither covers the index itself, which states both, or any page that reads
+the register.
 
 **Content hashes** are SHA-256 over the committed content. A text file is hashed with
 CRLF normalised to LF, because the repository stores text with LF and a Windows
@@ -68,16 +81,19 @@ __all__ = [
     "COMPLETENESS_PATH",
     "DISPOSITIONS",
     "FINAL_STATES",
+    "FREEZE_DECISIONS",
     "INDEX_CONTRACT_VERSION",
     "INDEX_PATH",
     "LEDGER_PATH",
     "LEDGER_PATHS",
     "LEVEL_ORDER",
+    "PUBLICATION_PATH",
     "TEXT_SUFFIXES",
     "apply_register_changes",
     "build_index",
     "content_sha256",
     "entry_sha256",
+    "evidence_freeze",
     "evidence_set_sha256",
     "git_blob_id",
     "load_index",
@@ -85,6 +101,7 @@ __all__ = [
     "load_ledgers",
     "merged_identities",
     "open_blockers",
+    "pack_sources",
     "recorded_date",
     "release_gate",
     "render_index",
@@ -120,8 +137,16 @@ CLOSURE_PATH: Final = (
     REPO_ROOT / "docs" / "proof" / "testing" / "v1-s5-013-pr1-closure.v1alpha1.json"
 )
 
+#: What V1-S5-013-PR2 changed to publish the case study, and the freeze it declares.
+PUBLICATION_PATH: Final = (
+    REPO_ROOT / "docs" / "proof" / "testing" / "v1-s5-013-pr2-publication.v1alpha1.json"
+)
+
 #: Every ledger of register changes since the migration, in the order applied.
-LEDGER_PATHS: Final = (LEDGER_PATH, COMPLETENESS_PATH, CLOSURE_PATH)
+LEDGER_PATHS: Final = (LEDGER_PATH, COMPLETENESS_PATH, CLOSURE_PATH, PUBLICATION_PATH)
+
+#: The only freeze decisions a publication ledger may state.
+FREEZE_DECISIONS: Final = ("frozen", "not-frozen")
 
 INDEX_CONTRACT_VERSION: Final = "inferops.io/v1alpha1"
 
@@ -462,6 +487,42 @@ def release_gate(gate: Mapping[str, Any]) -> str:
     return "incomplete" if gate["blockers"] else "complete"
 
 
+def evidence_freeze(closure: Mapping[str, Any], publication: Mapping[str, Any]) -> str:
+    """The freeze the publication ledger declares, refused where the gate forbids it.
+
+    A ledger may declare ``frozen`` only over a complete gate: a freeze stated beside
+    an open blocker raises rather than being reported, as does a decision outside
+    the two this module knows.
+    """
+    decision = publication["freeze"]["decision"]
+    if decision not in FREEZE_DECISIONS:
+        raise ValueError(f"no freeze decision {decision!r}")
+    if decision == "frozen" and release_gate(closure) != "complete":
+        raise ValueError("the publication ledger declares a freeze over an open gate")
+    return str(decision)
+
+
+def pack_sources(
+    repo_root: Path = REPO_ROOT,
+    register_path: Path = REGISTER_PATH,
+    ledger_paths: Sequence[Path] = LEDGER_PATHS,
+) -> list[dict[str, str]]:
+    """The register and every ledger, each bound to its content like a cited file.
+
+    These are what the index is built from besides the cited files, so the evidence
+    pack digest covers them too: a change to a claim's wording, a status, or a
+    ledger's decision moves it, where it cannot move the evidence-set digest.
+    """
+    return [
+        {
+            "path": path.relative_to(repo_root).as_posix(),
+            "sha256": content_sha256(path),
+            "gitBlob": git_blob_id(path),
+        }
+        for path in (register_path, *ledger_paths)
+    ]
+
+
 def open_blockers(
     completeness: Mapping[str, Any], closure: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
@@ -627,6 +688,8 @@ def _summary(
     ledger: Mapping[str, Any],
     completeness: Mapping[str, Any],
     closure: Mapping[str, Any],
+    publication: Mapping[str, Any],
+    sources: Sequence[Mapping[str, str]],
 ) -> dict[str, Any]:
     cited = [item for record in records for item in record["evidence"]]
     files = {item["path"] for item in cited}
@@ -704,7 +767,11 @@ def _summary(
         },
         "releaseBlockers": len(open_blockers(completeness, closure)),
         "releaseGate": release_gate(closure),
+        "publicationRegisterChanges": len(publication["registerChanges"]),
+        "publicationCorrections": len(publication["recordCorrections"]),
+        "evidenceFreeze": evidence_freeze(closure, publication),
         "evidenceSetSha256": evidence_set_sha256(cited),
+        "evidencePackSha256": evidence_set_sha256([*cited, *sources]),
     }
 
 
@@ -713,10 +780,15 @@ def build_index(
     ledgers: Sequence[Mapping[str, Any]] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
-    """The evidence index the register and the three ledgers produce today."""
+    """The evidence index the register and the four ledgers produce today.
+
+    The pack sources are read from the committed files, not from the arguments: the
+    pack digest binds what is on disk, which is what a release ships.
+    """
     register = register if register is not None else load_register()
     ledgers = ledgers if ledgers is not None else load_ledgers()
-    ledger, completeness, closure = ledgers
+    ledger, completeness, closure, publication = ledgers
+    sources = pack_sources(repo_root)
     revisions = {
         entry["recordId"]: entry for one in ledgers for entry in one["codeRevisions"]
     }
@@ -788,10 +860,11 @@ def build_index(
             "to its content by SHA-256 and to its repository object by git blob "
             "name, with how the record identifies the repository code that ran and "
             "the blockers the completeness ledger raised, how the closure ledger "
-            "closed each, and the release gate the closure ledger's open blockers "
-            "decide. Generated by python -m tools.evidence_index --write from the "
-            "register, the normalization ledger, the completeness ledger, and the "
-            "closure ledger; it states nothing they do not."
+            "closed each, the release gate the closure ledger's open blockers "
+            "decide, and the freeze the publication ledger declares over it. "
+            "Generated by python -m tools.evidence_index --write from the register, "
+            "the normalization ledger, the completeness ledger, the closure ledger, "
+            "and the publication ledger; it states nothing they do not."
         ),
         "generatedBy": "python -m tools.evidence_index --write",
         "registerRef": REGISTER_PATH.relative_to(REPO_ROOT).as_posix(),
@@ -799,6 +872,7 @@ def build_index(
         "ledgerRef": LEDGER_PATH.relative_to(REPO_ROOT).as_posix(),
         "completenessRef": COMPLETENESS_PATH.relative_to(REPO_ROOT).as_posix(),
         "closureRef": CLOSURE_PATH.relative_to(REPO_ROOT).as_posix(),
+        "publicationRef": PUBLICATION_PATH.relative_to(REPO_ROOT).as_posix(),
         "documentRef": "docs/proof/v1-evidence-index.md",
         "specificationRef": "docs/testing/evidence-levels.md",
         "hashing": {
@@ -822,8 +896,16 @@ def build_index(
                 "evidenceSetSha256 is SHA-256 over the sorted, distinct lines "
                 "'<sha256>  <path>' of every cited file, each ending in LF."
             ),
+            "evidencePack": (
+                "evidencePackSha256 is SHA-256 over the same lines for every cited "
+                "file and every file in packSources: the register and each ledger. "
+                "It covers everything this index is built from, and not the index."
+            ),
         },
-        "summary": _summary(claims, records, ledger, completeness, closure),
+        "packSources": sources,
+        "summary": _summary(
+            claims, records, ledger, completeness, closure, publication, sources
+        ),
         "claims": claims,
         "records": records,
     }

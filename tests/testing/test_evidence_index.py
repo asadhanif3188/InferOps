@@ -29,12 +29,14 @@ from typing import Any
 import pytest
 
 from tools.evidence_index import (
+    CLOSURE_PATH,
     CODE_REVISION_RELATIONS,
     COMPLETENESS_PATH,
     DISPOSITIONS,
     INDEX_PATH,
     LEDGER_PATH,
     LEVEL_ORDER,
+    PUBLICATION_PATH,
     apply_register_changes,
     build_index,
     content_sha256,
@@ -60,9 +62,15 @@ pytestmark = pytest.mark.docs
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REGISTER = load_register()
 LEDGER = load_ledger()
-#: Both ledgers, in the order applied: `V1-S5-006-PR1`'s normalization and
-#: `V1-S5-006-PR2`'s completeness verification. Undoing the register takes both.
+#: Every ledger, in the order applied: `V1-S5-006-PR1`'s normalization,
+#: `V1-S5-006-PR2`'s completeness verification, `V1-S5-013-PR1`'s closure, and
+#: `V1-S5-013-PR2`'s publication. Undoing the register takes all four.
 LEDGERS = load_ledgers()
+#: The ledger that may move a status, read by its path rather than its position, so
+#: a later ledger appended after it cannot take its place in the checks below.
+CLOSURE = load_ledger(CLOSURE_PATH)
+#: Every correction written beside a historical record, by any ledger.
+CORRECTIONS = [item for ledger in LEDGERS for item in ledger["recordCorrections"]]
 INDEX = load_index()
 INDEX_PAGE = REPO_ROOT / "docs" / "proof" / "v1-evidence-index.md"
 REPORT_PATH = (
@@ -383,7 +391,7 @@ def test_the_index_page_states_the_counts_the_index_produces() -> None:
         f" more has a substitution recorded as immaterial",
     ):
         assert phrase in page, phrase
-    words = {9: "Nine"}
+    words = {9: "Nine", 11: "Eleven"}
     assert f"{words[len(corrected)]} of them carry a correction" in page
 
 
@@ -565,7 +573,7 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
     """
     migrated = restore_migrated_register(REGISTER, LEDGERS)
     before = {claim["claimId"]: claim for claim in migrated["claims"]}
-    closure = LEDGERS[-1]
+    closure = CLOSURE
     decided = {
         row["claimId"]: row
         for row in closure["blockerDispositions"]
@@ -601,7 +609,9 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         if change["operation"] != "add-record" and change["field"] == "status"
     }
     assert moved == set(decided)
-    for ledger in LEDGERS[:-1]:
+    for ledger in LEDGERS:
+        if ledger["$id"] == CLOSURE["$id"]:
+            continue
         assert not [
             change
             for change in ledger["registerChanges"]
@@ -614,7 +624,7 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
 
 @pytest.mark.parametrize(
     "correction",
-    LEDGER["recordCorrections"],
+    CORRECTIONS,
     ids=lambda correction: correction["correctionId"],
 )
 def test_every_corrected_record_is_unchanged_and_quoted_verbatim(
@@ -656,7 +666,7 @@ def test_every_correction_is_indexed_against_the_file_it_concerns() -> None:
         for item in entry["evidence"]
         for correction in item["corrections"]
     }
-    for correction in LEDGER["recordCorrections"]:
+    for correction in CORRECTIONS:
         assert (correction["path"], correction["correctionId"]) in indexed
 
 
@@ -764,7 +774,13 @@ def test_the_normalization_report_states_the_counts_the_ledger_produces() -> Non
 
 
 def test_the_ledger_and_the_index_name_no_private_path() -> None:
-    for path in (LEDGER_PATH, COMPLETENESS_PATH, INDEX_PATH):
+    for path in (
+        LEDGER_PATH,
+        COMPLETENESS_PATH,
+        CLOSURE_PATH,
+        PUBLICATION_PATH,
+        INDEX_PATH,
+    ):
         text = path.read_text(encoding="utf-8")
         # A drive letter not preceded by another letter, so `https://` is not one.
         # `planning` alone is an ordinary word in the register's statements; a path

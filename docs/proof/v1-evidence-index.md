@@ -6,7 +6,8 @@ by `python -m tools.evidence_index --write` from
 [the claim and evidence register](../testing/claim-evidence-matrix.v1alpha2.json),
 [the `V1-S5-006-PR1` normalization ledger](testing/v1-s5-006-pr1-normalization.v1alpha1.json),
 [the `V1-S5-006-PR2` completeness ledger](testing/v1-s5-006-pr2-completeness.v1alpha1.json),
-and [the `V1-S5-013-PR1` closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json).
+[the `V1-S5-013-PR1` closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json), and
+[the `V1-S5-013-PR2` publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json).
 It states nothing they do not, and
 [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py)
 regenerates it and fails on any difference.
@@ -41,9 +42,16 @@ observed. `python -m tools.evidence_index --gate` prints the decision and each
 blocker's closure, exits 0 now, and exits 1 if a blocker stands or if any blocker
 `V1-S5-006-PR2` raised is left without a disposition.
 
-**This evidence set is the pre-publication freeze candidate, not the final freeze.**
-`V1-S5-013-PR2` will change the register to publish the case study, so it must
-recompute the digest below and freeze that one before a release consumes it.
+**The evidence pack is frozen.** `V1-S5-013-PR2` changed the register to publish the
+case study, wrote four corrections beside dated records, and declared the freeze in
+[the publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json). The index
+derives the freeze rather than reading it: a ledger that declares `frozen` beside an
+open blocker is refused. `--gate` now also prints both digests below, and exits 1 if
+the committed index is not what the register and the ledgers produce, so a freeze is
+never read from a stale digest. The pre-publication freeze candidate that
+`V1-S5-013-PR1` named is superseded; [the publication report](testing/v1-s5-013-pr2-publication-and-freeze.md)
+compares the two. `V1-S5-008` may consume this freeze only if every other P0 story and
+release gate also passes.
 
 How the 38 records that executed their target behaviour identify the repository code
 that ran:
@@ -55,10 +63,22 @@ that ran:
 | `no-repository-code` | 4 | No repository code among the claim-material components that executed; the third-party ones are pinned |
 | `unidentified` | 10 | Repository code executed and nothing the record cites identifies which; nine of these are under claims another record settles, four of those by a `V1-S5-013-PR1` rerun, and one is under the `kind` helper's claim, which is now not claimed |
 
-**The whole evidence set's digest is
-`1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`**, the index's
-`evidenceSetSha256`: SHA-256 over the sorted lines `<sha256>  <path>` of every cited
-file. A release that quotes it pins the set as a whole.
+Two digests, both in the index's summary:
+
+- **The evidence set,
+  `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`**, the index's
+  `evidenceSetSha256`: SHA-256 over the sorted lines `<sha256>  <path>` of every cited
+  file. Publication changed no cited file, so it is the value `V1-S5-013-PR1` named.
+  It does not cover the register or the ledgers, so no change to a claim's wording, a
+  status, or a ledger's decision can move it.
+- **The evidence pack,
+  `4242e29fd853f655422a5344d30a576ee65c3ca6a04aab6d764ab25b74e83c6e`**, the index's
+  `evidencePackSha256`: the same lines for every cited file together with the register
+  and the four ledgers, which the index lists as `packSources`. That is everything the
+  index is built from, so any change to what V1 says about its evidence moves it. **It
+  is the digest a release quotes.** Neither covers the index itself, which states both,
+  or a page that reads the register, such as the README, the proof dashboard, or the
+  case study.
 
 ## What one entry holds
 
@@ -77,12 +97,14 @@ For each of the **64 evidence records** in the register:
 | `procedure`, `acceptanceCriteria`, `observationPeriod`, `results` | How to repeat it, what was registered and whether before the run, when it was observed, and what it found, failures included | The register |
 | `limitations`, `doesNotEstablish` | The record's own boundary | The register |
 | `evidence` | Every cited file: its path, its SHA-256, its git blob name, the date the file gives for itself and the words it uses for that date, whether it has an authorisation section, and any correction recorded beside it | Read from the file; corrections from the ledgers |
-| `findings` | The findings of either ledger that concern the record | The ledgers |
+| `findings` | The findings of any ledger that concern the record | The ledgers |
 
 Claim entries carry the statement, status, limitation, `doesNotEstablish`, the
 declared claim-material components, the levels the claim's records reached, the record
 identifiers, the claim's code-identity decision where one was needed, its open release
-blockers, and the blockers closed on it. A summary block carries the counts below and the gate.
+blockers, and the blockers closed on it. A summary block carries the counts below, the
+gate, the freeze, and both digests, and `packSources` binds the register and each
+ledger to its content by SHA-256 and git blob name, as a cited file is bound.
 
 **What an entry does not hold.** No record in this repository names an owner, so the
 index has no owner field and does not invent one. A date is taken only from a line the
@@ -99,7 +121,7 @@ version.
   at `C3` or `C4`. Every one of the **41 certified claims** holds at least one record,
   and every record states its limitations and what it does not establish.
 - **85 distinct committed files** are cited, all under `docs/proof/`, each hashed and
-  each named by its git blob. Nine of them carry a correction recorded beside them
+  each named by its git blob. Eleven of them carry a correction recorded beside them
   rather than inside them.
 - **38 records executed their target behaviour, and 20 of them name the repository
   revision that ran.** The other 18 name the base their working tree started from, a
@@ -134,7 +156,7 @@ python -m tools.evidence_index            # the summary counts
 python -m tools.evidence_index --print    # the whole index, written nowhere
 python -m tools.evidence_index --check    # compare the committed index; exit 1 on drift
 python -m tools.evidence_index --write    # regenerate it
-python -m tools.evidence_index --gate     # the release gate; exit 1 while a blocker stands or one is unaccounted for
+python -m tools.evidence_index --gate     # the release gate and the freeze; exit 1 while a blocker stands, one is unaccounted for, or the index is stale
 ```
 
 Every mode reads files. None contacts a cluster, a runtime, a model, or the network.
@@ -143,15 +165,16 @@ Every mode reads files. None contacts a cluster, a runtime, a model, or the netw
 
 - **That any record is right.** The index copies what the register says and hashes
   what the records are. Whether a level, a limitation, or a citation is the right one is
-  a reading, and [the closure report](testing/v1-s5-013-pr1-blocker-closure.md),
+  a reading, and [the publication report](testing/v1-s5-013-pr2-publication-and-freeze.md),
+  [the closure report](testing/v1-s5-013-pr1-blocker-closure.md),
   [the completeness report](testing/v1-s5-006-pr2-evidence-completeness.md),
   [the normalization report](testing/v1-s5-006-pr1-evidence-normalization.md), and
   [the migration report](testing/v1-s5-012-pr2-migration-report.md) are where the
   readings are.
-- **That the evidence is frozen for release.** The gate passing makes this set the
-  pre-publication freeze candidate; `V1-S5-013-PR2` recomputes and freezes the final
-  one. A hash binds a file to its content today; it says nothing about whether the
-  file should have said more.
+- **That the frozen evidence is right.** The freeze binds the pack's files to their
+  content; it says nothing about whether a file should have said more, and the
+  corrections beside dated records are what later reading found. No release exists:
+  a freeze is what `V1-S5-008` may quote, not a release.
 - **That a revision the index lists as stated is the tree that ran.** It is the record's
   own word, quoted, as a content pin is. The index distinguishes the words a record
   used; it cannot re-run a build to check them.

@@ -1,0 +1,500 @@
+{
+  "$id": "https://inferops.io/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 case study publication and evidence freeze, V1-S5-013-PR2",
+  "description": "What V1-S5-013-PR2 changed to publish the V1 engineering case study: every register change with its value before and after, the corrections written beside dated records rather than inside them, the findings each answers, and the freeze it declares over the release gate the closure ledger decides. It raises and closes no blocker, and it moves no status and no level.",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "priorLedgerRef": "docs/proof/testing/v1-s5-013-pr1-closure.v1alpha1.json",
+  "reportRef": "docs/proof/testing/v1-s5-013-pr2-publication-and-freeze.md",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "caseStudyRef": "docs/case-study/v1-engineering-case-study.md",
+  "registerChanges": [
+    {
+      "changeId": "p01-case-study-published-limitation",
+      "findingId": "p-f01-register-says-the-case-study-is-unwritten",
+      "operation": "set-register-field",
+      "field": "limitations",
+      "before": [
+        "This matrix is maintained by hand and checked by a suite. The suite establishes that a row's references resolve, that its status is not stronger than the strategy's, that every evidence record carries what its level requires and passes the evidence-level rules, and that every README entry point is governed. It cannot establish that a statement is true, that a limitation is complete, or that a record says what the row says it says. Those remain a reading, and the reading is the work.",
+        "Every real result cited here comes from one Windows host. Most are on the `docker-desktop` provider; the C2 certification, the serving baseline, and the lifecycle comparison are loopback compositions rather than Kubernetes results, the Sprint 1 closure run names no provider and its records say so, the feasibility trial ran inside the container desktop distribution's own cluster before the provider contract existed, and the cluster smoke is the only `kind` result in the table. None of them generalizes to another provider, another host, a GPU, or more than one replica.",
+        "The bounded performance, recovery, and cost figures quoted in these rows are published under ADR 0013 and ADR 0014 as observations of one declared local experiment. They are not capacity, service-level objectives, availability figures, error budgets, recovery-time objectives, benchmarks, or costs.",
+        "The statuses here are the repository's own. No outside party has reviewed a claim against its evidence. Since 2026-09-21 an internal authority is named — claim-evidence-sign-off sits with the repository-maintainer role under ADR 0015 — and that is accountability, not validation: the role has one holder, so author and signer are the same person, and merging a change that sets a status leaves the evidence underneath it exactly as strong as it was.",
+        "The `claim-evidence` template under docs/proof/templates/ has still produced no record. This matrix binds claims to evidence in a table, which is a weaker form than the one-claim-per-record document that template exists to enforce, and it does not raise that count.",
+        "A row's automated tests name modules rather than test functions. A module that protects a claim may protect several, and nothing here says which function would fail first if the claim stopped being true. Five rows name modules for a claim the inventory records as covered by none; those rows carry the gap in `recordedCoverageGaps` and in their limitation, and the modules they name are adjacent to the claim rather than proof of it.",
+        "Nine of the eleven continuous-integration gates have passed on the selected service and no log from those runs is promoted into a record. Every other check cited here was run by hand, on one host, by the author.",
+        "Twenty-two of the fifty-eight rows were corrected before the v1alpha1 form of this register was merged, and fourteen of those shared one shape: the row stated the repository's state today while citing a record that froze an earlier one — the security control counts, the ownership row counts, the gate counts, the template counts, the strategy-drift scope, and the claim that a release had been installed among them. Each was fixed by citing the later record as well, or by restating the figure the cited record actually holds; four more were misreadings of a record, and four could not be fixed by re-citing at all. Nothing in the suite would have caught any of them: they are exactly what the first limitation above describes, and they were found by an independent reader opening all forty-six cited records and comparing them with the rows citing them.",
+        "The case study this matrix is meant to govern has not been written. Its claims are expected to be drawn from these rows; until it exists, `readmeRefs` is the only surface binding a row to published text, and a future case-study claim with no row here would be caught by nothing.",
+        "The levels on the records are readings. V1-S5-012-PR2 read every record the v1alpha1 rows cited against the current definitions and wrote what executed, what was substituted, and where it ran; the validator checks that each record is consistent with its level and with its claim's declared claim-material components, and cannot check that the declaration, the representativeness, or the limitation is the right one. Those are review judgements, and the migration report lists every place the reading could have gone the other way."
+      ],
+      "after": [
+        "This matrix is maintained by hand and checked by a suite. The suite establishes that a row's references resolve, that its status is not stronger than the strategy's, that every evidence record carries what its level requires and passes the evidence-level rules, and that every README entry point is governed. It cannot establish that a statement is true, that a limitation is complete, or that a record says what the row says it says. Those remain a reading, and the reading is the work.",
+        "Every real result cited here comes from one Windows host. Most are on the `docker-desktop` provider; the C2 certification, the serving baseline, and the lifecycle comparison are loopback compositions rather than Kubernetes results, the Sprint 1 closure run names no provider and its records say so, the feasibility trial ran inside the container desktop distribution's own cluster before the provider contract existed, and the cluster smoke is the only `kind` result in the table. None of them generalizes to another provider, another host, a GPU, or more than one replica.",
+        "The bounded performance, recovery, and cost figures quoted in these rows are published under ADR 0013 and ADR 0014 as observations of one declared local experiment. They are not capacity, service-level objectives, availability figures, error budgets, recovery-time objectives, benchmarks, or costs.",
+        "The statuses here are the repository's own. No outside party has reviewed a claim against its evidence. Since 2026-09-21 an internal authority is named — claim-evidence-sign-off sits with the repository-maintainer role under ADR 0015 — and that is accountability, not validation: the role has one holder, so author and signer are the same person, and merging a change that sets a status leaves the evidence underneath it exactly as strong as it was.",
+        "The `claim-evidence` template under docs/proof/templates/ has still produced no record. This matrix binds claims to evidence in a table, which is a weaker form than the one-claim-per-record document that template exists to enforce, and it does not raise that count.",
+        "A row's automated tests name modules rather than test functions. A module that protects a claim may protect several, and nothing here says which function would fail first if the claim stopped being true. Five rows name modules for a claim the inventory records as covered by none; those rows carry the gap in `recordedCoverageGaps` and in their limitation, and the modules they name are adjacent to the claim rather than proof of it.",
+        "Nine of the eleven continuous-integration gates have passed on the selected service and no log from those runs is promoted into a record. Every other check cited here was run by hand, on one host, by the author.",
+        "Twenty-two of the fifty-eight rows were corrected before the v1alpha1 form of this register was merged, and fourteen of those shared one shape: the row stated the repository's state today while citing a record that froze an earlier one — the security control counts, the ownership row counts, the gate counts, the template counts, the strategy-drift scope, and the claim that a release had been installed among them. Each was fixed by citing the later record as well, or by restating the figure the cited record actually holds; four more were misreadings of a record, and four could not be fixed by re-citing at all. Nothing in the suite would have caught any of them: they are exactly what the first limitation above describes, and they were found by an independent reader opening all forty-six cited records and comparing them with the rows citing them.",
+        "The V1 engineering case study, docs/case-study/v1-engineering-case-study.md, is published and draws every claim it cites from these rows: tests/testing/test_case_study.py fails if it cites a claim that is not a row here, if a cell of its claims appendix disagrees with this register, or if a figure it quotes does not read back from the committed file it names. It adds no claim of its own, so its README entry point is listed under nonClaimSurfaces rather than bound by readmeRefs. Whether its prose says what these rows say is a reading, as it is for the README.",
+        "The levels on the records are readings. V1-S5-012-PR2 read every record the v1alpha1 rows cited against the current definitions and wrote what executed, what was substituted, and where it ran; the validator checks that each record is consistent with its level and with its claim's declared claim-material components, and cannot check that the declaration, the representativeness, or the limitation is the right one. Those are review judgements, and the migration report lists every place the reading could have gone the other way."
+      ],
+      "reason": "A draft has existed since V1-S5-007-PR1 and this change publishes it, so the limitation that said the case study had not been written, and that a case-study claim with no row would be caught by nothing, now says what binds the published page to these rows and what nothing checks."
+    },
+    {
+      "changeId": "p02-case-study-is-a-non-claim-surface",
+      "findingId": "p-f02-case-study-entry-point-is-ungoverned",
+      "operation": "set-register-field",
+      "field": "nonClaimSurfaces",
+      "before": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations, and a recorded gap: no private channel is published. The gap belongs to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the V1-S5-006-PR1 normalization ledger: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256. Every value is read from this file, from a cited file, or from the ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        }
+      ],
+      "after": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations, and a recorded gap: no private channel is published. The gap belongs to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the V1-S5-006-PR1 normalization ledger: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256. Every value is read from this file, from a cited file, or from the ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "reason": "The README now links the case study as an entry point, and every entry point is either a claim's surface or listed here with the reason it claims nothing. The page claims nothing of its own; no single row could govern it through readmeRefs."
+    },
+    {
+      "changeId": "p03-pod-loss-readiness-boundary",
+      "findingId": "p-f03-pod-loss-readiness-is-broader-than-the-samples",
+      "operation": "set-claim-field",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+      "field": "doesNotEstablish",
+      "before": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: for the whole outage the deleted pod went on reporting `Ready: True` while the Service had no ready endpoint at all.",
+      "after": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: at every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint at all. Those samples were taken 1.4 s to 28.6 s after the delete, before the caller-visible outage began, and no sample was taken inside the outage until the replacement's, so the run does not establish what either reported while the outage lasted.",
+      "reason": "The readiness samples that report the deleted pod Ready were all taken before the caller-visible outage began, so the claim's boundary may state the disagreement at those samples and not for the whole outage."
+    },
+    {
+      "changeId": "p04-pod-loss-readiness-result",
+      "findingId": "p-f03-pod-loss-readiness-is-broader-than-the-samples",
+      "operation": "set-record-field",
+      "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+      "recordId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2",
+      "field": "results",
+      "before": [
+        {
+          "resultId": "outage",
+          "statement": "The caller-visible outage, from the first unserved completion to the next served one, was 31960 ms."
+        },
+        {
+          "resultId": "refusals",
+          "statement": "40 of 41 requests dispatched during the outage returned 503 capability-unavailable with condition runtime-unreachable, in 20 to 83 ms each."
+        },
+        {
+          "resultId": "in-flight-failure",
+          "statement": "One request in flight at the delete hung and returned 500 internal-error with condition runtime-error-response; it is counted in the before window."
+        },
+        {
+          "resultId": "replacement-ready",
+          "statement": "The replacement pod reported its own Ready condition 33665 ms after the delete."
+        },
+        {
+          "resultId": "readiness-disagreement",
+          "statement": "For the whole outage the deleted pod went on reporting Ready: True while the runtime Service had zero ready endpoints."
+        },
+        {
+          "resultId": "no-intervention",
+          "statement": "No intervention occurred between the delete and the uninstall inside the workflow; this does not establish that nothing outside it intervened."
+        },
+        {
+          "resultId": "first-attempt-discarded",
+          "statement": "A first attempt produced negative intervals from a figure stamped at the wrong end; the code was corrected to the pre-registered definition and the experiment re-run."
+        }
+      ],
+      "after": [
+        {
+          "resultId": "outage",
+          "statement": "The caller-visible outage, from the first unserved completion to the next served one, was 31960 ms."
+        },
+        {
+          "resultId": "refusals",
+          "statement": "40 of 41 requests dispatched during the outage returned 503 capability-unavailable with condition runtime-unreachable, in 20 to 83 ms each."
+        },
+        {
+          "resultId": "in-flight-failure",
+          "statement": "One request in flight at the delete hung and returned 500 internal-error with condition runtime-error-response; it is counted in the before window."
+        },
+        {
+          "resultId": "replacement-ready",
+          "statement": "The replacement pod reported its own Ready condition 33665 ms after the delete."
+        },
+        {
+          "resultId": "readiness-disagreement",
+          "statement": "At every readiness sample before the replacement was observed Ready, taken 1.4 s to 28.6 s after the delete, one runtime pod reported Ready: True, by the record's reading the deleted one, while the runtime Service had zero ready endpoints."
+        },
+        {
+          "resultId": "no-intervention",
+          "statement": "No intervention occurred between the delete and the uninstall inside the workflow; this does not establish that nothing outside it intervened."
+        },
+        {
+          "resultId": "first-attempt-discarded",
+          "statement": "A first attempt produced negative intervals from a figure stamped at the wrong end; the code was corrected to the pre-registered definition and the experiment re-run."
+        }
+      ],
+      "reason": "The record's readiness-disagreement result said the same as the claim's boundary; it now names the samples it rests on and the record's reading of which pod was Ready, as the case study and the README already do."
+    }
+  ],
+  "recordCorrections": [
+    {
+      "correctionId": "rc10-pod-recovery-scrape-health",
+      "findingId": "p-f04-pod-recovery-scrape-health-contradicts-its-telemetry",
+      "path": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+      "sha256": "ee8b82d2ff055014d938216706523a7874ea38a4d381a577a53fe8011b9356ed",
+      "says": "The signals an operator would reach for first — scrape health and target availability — said the job was up throughout.",
+      "correction": "The record's own committed telemetry does not bear this out. Both series of the serving runtime's up expression, the deleted pod's and the replacement's, read 0 at the collector's steps 32.3 s and 47.3 s after the delete, so no target of the job read up at either step; and the serving runtime job's targets-up ratio read 0 at 47.3 s and 62.3 s, while the API job's stayed 1. All four readings fall inside the caller-visible outage, which ran from 31 764 ms to 63 724 ms after the delete. What the telemetry shows is scrape health lagging the loss by a scrape or more, not staying up. The same record's telemetry table, which says the up series never went to zero for the job and the ratio was unchanged, is read the same way.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+          "quote": "\"seriesId\": \"serving-runtime-scrape-up\""
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+          "quote": "1789549390.207, \"0\""
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+          "quote": "1789549405.207, \"0\""
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+          "quote": "1789549420.207, \"0\""
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+          "quote": "\"seriesId\": \"scrape-target-health-by-job\""
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "quote": "\"issuedEpochMs\": 1789549357895"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "quote": "\"firstUnservedCompletionEpochMs\": 1789549389659"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "quote": "\"serviceRestoredEpochMs\": 1789549421619"
+        }
+      ],
+      "stillUnknown": "What scrape health read between the collector's 15-second steps; the file keeps one reading per step."
+    },
+    {
+      "correctionId": "rc11-pod-recovery-readiness-samples",
+      "findingId": "p-f03-pod-loss-readiness-is-broader-than-the-samples",
+      "path": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+      "sha256": "ee8b82d2ff055014d938216706523a7874ea38a4d381a577a53fe8011b9356ed",
+      "says": "For the whole outage, one runtime pod was reporting `Ready: True`",
+      "correction": "The readiness samples that show one runtime pod Ready while the Service had no ready endpoint were started 1.4 s to 28.6 s after the delete, and each sample's reads had finished by 30.6 s, while the caller-visible outage began 31 764 ms after it; the next sample, started at 33.7 s, shows the replacement Ready with one endpoint. No sample was taken inside the outage before the replacement was observed Ready. What the record establishes is the disagreement at every readiness sample before the replacement was observed Ready, not for the whole outage, and that the Ready pod was the deleted one is the record's reading of a count.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+          "quote": "| 1.4 s – 28.6 s | both, the deleted one terminating | **1** | **0** |"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+          "quote": "| 33.7 s | the replacement only | 1 | 1 |"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "quote": "\"issuedEpochMs\": 1789549357895"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "quote": "\"firstUnservedCompletionEpochMs\": 1789549389659"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
+          "quote": "\"atEpochMs\": 1789549386501, \"readTookMs\": 1978"
+        },
+        {
+          "kind": "file",
+          "path": "scripts/environment/inference-pod-recovery.sh",
+          "quote": "printf '%s %s %s %s %s\\n' \"${sample_start}\" \"$((sample_end - sample_start))\""
+        }
+      ],
+      "stillUnknown": "What the deleted pod and the Service reported between 28.6 s and 33.7 s after the delete."
+    },
+    {
+      "correctionId": "rc12-unready-liveness-was-not-asked",
+      "findingId": "p-f05-unready-record-credits-a-liveness-probe-that-was-not-asked",
+      "path": "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+      "sha256": "ba18b6bafbaebbd989a8e6c8ae8d3ac675eb769834177cdad4d7d1934a5855ce",
+      "says": "**Liveness did not restart a healthy process.**",
+      "correction": "Kubernetes runs neither the liveness nor the readiness probe until a container's startup probe has succeeded, and the chart gives the runtime a startup probe on the model's health endpoint with a 600 000 ms budget, which the experiment's overlay does not change. The model never finished loading in the window, so that probe never succeeded and the TCP liveness probe was not asked. What kept the process from being restarted was the startup budget, of which the window used 179 755 ms. The observations stand: the socket answered, and the restart count was 0 at every sample.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/environment/kubernetes-troubleshooting.md",
+          "quote": "Until a startup probe succeeds the kubelet runs neither of the other two."
+        },
+        {
+          "kind": "file",
+          "path": "charts/inferops-llm/templates/runtime-deployment.yaml",
+          "quote": "so readiness and the startup gate ask it"
+        },
+        {
+          "kind": "file",
+          "path": "charts/inferops-llm/values.yaml",
+          "quote": "budgetMs: 600000"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md",
+          "quote": "of the runtime's own `runtime.probes.startup.budgetMs` of 600 000 ms"
+        },
+        {
+          "kind": "file",
+          "path": "deploy/serving/experiments/unready-model-values.v1.yaml",
+          "quote": "cpu: 10m"
+        }
+      ],
+      "stillUnknown": "Whether the kubelet would have restarted the process once the startup budget ran out; the window ended at 30.0% of it."
+    },
+    {
+      "correctionId": "rc13-clean-clone-intervention",
+      "findingId": "p-f06-clean-clone-run-says-nobody-intervened",
+      "path": "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+      "sha256": "e84581b4065d52dbb9c3c85059a0d5467380489553b8ba32dc545a02e454b0cc",
+      "says": "nobody intervened",
+      "correction": "The failure step's recovery record lists no intervention after the delete and says what that can establish: the operating script issues one mutating command after the delete, the uninstall that ends the run, so an empty list means nothing in the workflow intervened, and it does not establish that nothing outside it did. The sentence is to be read that way and no wider.",
+      "basis": [
+        {
+          "kind": "file",
+          "path": "docs/proof/environment/v1-s5-001-pr2-recovery-record.v1alpha1.json",
+          "quote": "\"interventionsAfterDeletion\": []"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/environment/v1-s5-001-pr2-recovery-record.v1alpha1.json",
+          "quote": "So an empty list here means nothing in this workflow intervened; it does not establish that nothing outside it did."
+        }
+      ],
+      "stillUnknown": "Whether anything outside the workflow acted on the cluster during the step; nothing recorded it."
+    }
+  ],
+  "findings": [
+    {
+      "findingId": "p-f01-register-says-the-case-study-is-unwritten",
+      "source": "v1-s5-007-pr2-validation",
+      "observation": "The register's limitations still said the case study had not been written, and that a case-study claim with no row here would be caught by nothing. A draft has existed since V1-S5-007-PR1, and tests/testing/test_case_study.py has held its citations to the register since then.",
+      "resolution": "The limitation is replaced, through this ledger, by one that says what binds the published page and what nothing checks.",
+      "resolvedBy": [
+        "p01-case-study-published-limitation"
+      ],
+      "recordIds": [],
+      "claimIds": []
+    },
+    {
+      "findingId": "p-f02-case-study-entry-point-is-ungoverned",
+      "source": "v1-s5-007-pr2-validation",
+      "observation": "Linking the case study from the README makes it an entry point, and the register requires every entry point to be a claim's readmeRefs or a surface listed as claiming nothing.",
+      "resolution": "The page is listed as a surface that claims nothing, with its reason.",
+      "resolvedBy": [
+        "p02-case-study-is-a-non-claim-surface"
+      ],
+      "recordIds": [],
+      "claimIds": []
+    },
+    {
+      "findingId": "p-f03-pod-loss-readiness-is-broader-than-the-samples",
+      "source": "v1-s5-007-pr2-validation",
+      "observation": "The pod-loss claim's boundary, its record's readiness result, the matrix, and the dated record said the deleted pod reported Ready: True for the whole outage. The readiness samples that show it were started 1.4 s to 28.6 s after the delete; the outage began 31 764 ms after it, and the next sample is the replacement's. V1-S5-007-PR2 narrowed the README, the runbook, and the case study and carried the register. Reading the samples against the outage again, this change found that none of them falls inside it: each sample is stamped when its reads start, and the last of them had finished by 30.6 s.",
+      "resolution": "The claim's boundary and the record's result are narrowed through this ledger, the matrix page with them, and a correction is written beside the dated record.",
+      "resolvedBy": [
+        "p03-pod-loss-readiness-boundary",
+        "p04-pod-loss-readiness-result",
+        "rc11-pod-recovery-readiness-samples"
+      ],
+      "recordIds": [
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2"
+      ],
+      "claimIds": [
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load"
+      ]
+    },
+    {
+      "findingId": "p-f04-pod-recovery-scrape-health-contradicts-its-telemetry",
+      "source": "v1-s5-007-pr2-validation",
+      "observation": "The pod-recovery record's narrative says scrape health and target availability said the job was up throughout, and its table that the up series never went to zero for the job. Its committed telemetry reads 0 for every up series of the serving runtime job at 32.3 s and 47.3 s after the delete, and 0 for that job's targets-up ratio at 47.3 s and 62.3 s.",
+      "resolution": "A correction beside the record; the record is not edited. The alert replay cites the same record and carries the same correction.",
+      "resolvedBy": [
+        "rc10-pod-recovery-scrape-health"
+      ],
+      "recordIds": [
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load-c2",
+        "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded-c0"
+      ],
+      "claimIds": [
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+        "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded"
+      ]
+    },
+    {
+      "findingId": "p-f05-unready-record-credits-a-liveness-probe-that-was-not-asked",
+      "source": "v1-s5-007-pr2-validation",
+      "observation": "The unready-model record credits the TCP liveness probe with not restarting a loading process. The chart's startup probe had not succeeded, and until it does Kubernetes asks neither liveness nor readiness; what held was the startup budget.",
+      "resolution": "A correction beside the record; the record is not edited, and no register field repeats the reading.",
+      "resolvedBy": [
+        "rc12-unready-liveness-was-not-asked"
+      ],
+      "recordIds": [
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator-c2"
+      ],
+      "claimIds": [
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator"
+      ]
+    },
+    {
+      "findingId": "p-f06-clean-clone-run-says-nobody-intervened",
+      "source": "v1-s5-007-pr2-validation",
+      "observation": "The clean-clone run says nobody intervened in its pod-loss step. Its recovery record establishes only that nothing in the workflow intervened, and says that it does not establish more.",
+      "resolution": "A correction beside the record; the record is not edited.",
+      "resolvedBy": [
+        "rc13-clean-clone-intervention"
+      ],
+      "recordIds": [
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone-c2"
+      ],
+      "claimIds": [
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+      ]
+    },
+    {
+      "findingId": "p-f07-the-evidence-set-digest-does-not-cover-the-register",
+      "source": "this-publication",
+      "observation": "V1-S5-007-PR2's validation record said a register edit moves the evidence-set digest, and the closure ledger that this change must recompute it after publishing. The digest is taken over the files the records cite and nothing else, so no register or ledger change can move it: with this ledger's four register changes applied it is still 1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a. A freeze quoting it alone would not bind a claim's wording, a status, or a ledger's decision.",
+      "resolution": "The index adds evidencePackSha256, over the cited files together with the register and every ledger, and lists those as packSources. The evidence-set digest keeps its meaning and its value; the pack digest is the one the freeze adds, and the case study is bound to both.",
+      "resolvedBy": [
+        "tools/evidence_index"
+      ],
+      "recordIds": [],
+      "claimIds": []
+    }
+  ],
+  "codeRevisions": [],
+  "freeze": {
+    "storyId": "V1-S5-013",
+    "decidedIn": "V1-S5-013-PR2",
+    "decision": "frozen",
+    "requires": "A complete release gate, which the closure ledger decides. The tool refuses a frozen decision beside an open blocker.",
+    "digests": "The frozen digests are the index's evidenceSetSha256 and evidencePackSha256. This ledger cannot state the pack digest, because it is one of the files that digest covers; python -m tools.evidence_index --gate prints both from the committed index after checking that the index is what the register and the ledgers produce.",
+    "supersedes": {
+      "decidedIn": "V1-S5-013-PR1",
+      "state": "pre-publication freeze candidate",
+      "baseRevision": "0e33a60fbd7890b62760ac7c63e1f7a6d05acf23",
+      "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
+      "evidencePackSha256": "39415d7ad20ff6f84aaaeabe87e022ebfa44f3639a82aa9bd3bc45eaf5523c1b",
+      "note": "V1-S5-013-PR1 named only the evidence-set digest. Its pack digest is computed with this change's tooling over the register and the three ledgers as they stood at the base revision, so the two states can be compared. The evidence-set digest did not move, because publication changed no cited file; the pack digest did, because the register changed and a fourth ledger was added."
+    },
+    "consumersUnblocked": [
+      "V1-S5-008"
+    ],
+    "consumerCondition": "V1-S5-008 may consume this freeze only if every other P0 story and release gate also passes. This ledger decides the evidence freeze and nothing else.",
+    "residualConditionsClosed": [
+      {
+        "storyId": "V1-S5-006",
+        "condition": "The evidence pack could not be frozen while five release blockers stood.",
+        "closedBy": "V1-S5-013-PR1 closed all five, and this ledger freezes the pack."
+      },
+      {
+        "storyId": "V1-S5-007",
+        "condition": "The verified case study stayed a draft while the pack was not frozen.",
+        "closedBy": "This change publishes it against the frozen pack and links it from the README."
+      }
+    ]
+  }
+}

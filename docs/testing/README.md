@@ -26,7 +26,9 @@ content hash and git blob of every file it cites. It also carries the release ga
 [the completeness check](../proof/testing/v1-s5-006-pr2-evidence-completeness.md) found
 five certified claims resting on code nothing identified, and
 [the blocker closure](../proof/testing/v1-s5-013-pr1-blocker-closure.md) closed all five,
-so the gate passes and the evidence is the pre-publication freeze candidate.
+so the gate passes; [the publication and freeze](../proof/testing/v1-s5-013-pr2-publication-and-freeze.md)
+then published [the V1 engineering case study](../case-study/v1-engineering-case-study.md),
+which cites only rows of the matrix, and froze the evidence pack.
 
 ## Documents
 
