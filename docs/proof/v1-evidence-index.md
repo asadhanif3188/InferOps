@@ -72,13 +72,14 @@ Two digests, both in the index's summary:
   It does not cover the register or the ledgers, so no change to a claim's wording, a
   status, or a ledger's decision can move it.
 - **The evidence pack,
-  `4242e29fd853f655422a5344d30a576ee65c3ca6a04aab6d764ab25b74e83c6e`**, the index's
+  `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2`**, the index's
   `evidencePackSha256`: the same lines for every cited file together with the register
-  and the four ledgers, which the index lists as `packSources`. That is everything the
-  index is built from, so any change to what V1 says about its evidence moves it. **It
-  is the digest a release quotes.** Neither covers the index itself, which states both,
-  or a page that reads the register, such as the README, the proof dashboard, or the
-  case study.
+  and the four ledgers of register changes, which the index lists as `packSources`.
+  Those are every input file the index is built from, so any change to the register or
+  to a ledger moves it. **It is the digest a release quotes.** Neither covers the index
+  itself, which states both, the code that builds it, or a page that reads the
+  register, such as the README, the proof dashboard, or the case study: an edit to one
+  of those moves neither digest.
 
 ## What one entry holds
 

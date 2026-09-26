@@ -5876,7 +5876,7 @@
       "notClaimedReason": null,
       "assertsRealBehaviour": true,
       "limitation": "One provider, one host, one single-replica release, one load profile, one pod lost once on 2026-09-16, as a bounded observation under ADR 0013. One replica is the cause of the outage. The forward is in every latency, and the readiness sampler takes 1.7 to 5.4 seconds to answer.",
-      "doesNotEstablish": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: at every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint at all. Those samples were taken 1.4 s to 28.6 s after the delete, before the caller-visible outage began, and no sample was taken inside the outage until the replacement's, so the run does not establish what either reported while the outage lasted.",
+      "doesNotEstablish": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: at every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint at all. Those samples were started 1.4 s to 28.6 s after the delete and had all finished before the caller-visible outage began; the next, started 33.7 s after the delete, shows the replacement Ready with one endpoint. So the run does not establish what either reported between 28.6 s and 33.7 s, the first seconds of the outage.",
       "claimMaterialComponents": [
         "llm-load-generator",
         "inferops-api",
@@ -9497,7 +9497,7 @@
     },
     {
       "path": "docs/proof/v1-evidence-index.md",
-      "reason": "A generated projection of this register and the V1-S5-006-PR1 normalization ledger: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256. Every value is read from this file, from a cited file, or from the ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+      "reason": "A generated projection of this register and the four ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, and the evidence set and evidence pack digests. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
     },
     {
       "path": "docs/testing/evidence-levels.md",

@@ -21,11 +21,14 @@ once versioned releases begin.
   before the outage began — and writes four corrections beside three dated records
   whose narratives say more than their own data: the pod-recovery record's scrape
   health and readiness, the unready-model record's liveness reasoning, and the
-  clean-clone run's "nobody intervened". No status, statement, level, or record moved.
+  clean-clone run's "nobody intervened". No status, statement, or level moved, and no
+  record was added or removed; one record's readiness result was narrowed.
   Publishing turned out not to move the evidence-set digest, which covers cited files
   only, so the index adds `evidencePackSha256`, over those files with the register and
-  every ledger; that is the digest a release quotes, and the case study is bound to
-  both. `python -m tools.evidence_index --gate` exits 0, prints the freeze and both
+  the four ledgers of register changes; that is the digest a release quotes, and the
+  case study is bound to both. An independent review of the first commit found an
+  overread correction, a boundary one sample too broad, stale surfaces, and tests that
+  checked less than they said; each is recorded and corrected in the report. `python -m tools.evidence_index --gate` exits 0, prints the freeze and both
   digests, and exits 1 if the committed index is stale or a ledger declares a freeze
   beside an open blocker. `V1-S5-008` may consume the freeze only if every other P0
   gate also passes. [The publication report](docs/proof/testing/v1-s5-013-pr2-publication-and-freeze.md)

@@ -300,9 +300,29 @@ def _status_line() -> str:
 def _readme_links_the_page() -> tuple[bool, bool]:
     """Whether the README links the page before its architecture, and in its table."""
     target = f"]({DATA['documentRef']})"
-    first_screen = README.split("\n## Architecture\n", 1)[0]
-    table = README.split("\n## Public entry points\n", 1)[-1]
+    visible = "\n".join(
+        line
+        for block in _unfenced(re.sub(r"<!--.*?-->", "", README, flags=re.DOTALL))
+        for line in block
+    )
+    for heading in ("\n## Architecture\n", "\n## Public entry points\n"):
+        assert visible.count(heading) == 1, f"the README lost {heading.strip()!r}"
+    first_screen = visible.split("\n## Architecture\n", 1)[0]
+    table = visible.split("\n## Public entry points\n", 1)[1]
     return target in first_screen, target in table
+
+
+def _unfenced(text: str) -> list[list[str]]:
+    """The text outside fenced blocks, as runs of lines, so a link in a fence is unseen."""
+    runs: list[list[str]] = [[]]
+    fenced = False
+    for line in text.splitlines():
+        if FENCE.match(line):
+            fenced = not fenced
+            runs.append([])
+        elif not fenced:
+            runs[-1].append(line)
+    return runs
 
 
 def test_the_case_study_is_published_exactly_when_the_evidence_is_frozen() -> None:

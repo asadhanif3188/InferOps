@@ -88,7 +88,7 @@ file, is the one a release quotes.
 | Toolchain | [`v1-s0-011-pr1-validation.md`](toolchain/v1-s0-011-pr1-validation.md) |
 | Scaffolding | [`v1-s1-006-pr1-validation.md`](scaffolding/v1-s1-006-pr1-validation.md), [`v1-s1-006-pr2-validation.md`](scaffolding/v1-s1-006-pr2-validation.md), and the [independent clean-checkout walkthrough](scaffolding/v1-s1-006-independent-walkthrough.md) |
 | Developer quick start | [`v1-s1-009-pr1-validation.md`](quickstart/v1-s1-009-pr1-validation.md) |
-| Case study | [the validation of the first draft of the V1 engineering case study](case-study/v1-s5-007-pr1-validation.md), written against an evidence pack that was not yet frozen, and [its verification against the evidence set as it then stood](case-study/v1-s5-007-pr2-validation.md), which kept it a draft; `V1-S5-013-PR1` re-verified it for the blockers it closed, and [`V1-S5-013-PR2` verified it against the frozen pack and published it](testing/v1-s5-013-pr2-publication-and-freeze.md). [The published case study](../case-study/v1-engineering-case-study.md) is not a record: it cites these records and adds no claim of its own |
+| Case study | [the validation of the first draft of the V1 engineering case study](case-study/v1-s5-007-pr1-validation.md), written before the evidence pack was frozen, and [its verification against the evidence set as it then stood](case-study/v1-s5-007-pr2-validation.md), which kept it a draft; `V1-S5-013-PR1` re-verified it for the blockers it closed, and [`V1-S5-013-PR2` verified it against the frozen pack and published it](testing/v1-s5-013-pr2-publication-and-freeze.md). [The published case study](../case-study/v1-engineering-case-study.md) is not a record: it cites these records and adds no claim of its own |
 
 ## Templates
 

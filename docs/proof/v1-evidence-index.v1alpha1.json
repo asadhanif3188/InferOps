@@ -18,13 +18,13 @@
     "registerEntries": "registerEntrySha256 is taken over the record's JSON with keys sorted, no insignificant whitespace, UTF-8.",
     "gitBlobs": "gitBlob is the object name git gives the committed content: SHA-1 over 'blob <length>' and a NUL byte followed by the content, text in its LF form. It is what git ls-files -s prints for the file.",
     "evidenceSet": "evidenceSetSha256 is SHA-256 over the sorted, distinct lines '<sha256>  <path>' of every cited file, each ending in LF.",
-    "evidencePack": "evidencePackSha256 is SHA-256 over the same lines for every cited file and every file in packSources: the register and each ledger. It covers everything this index is built from, and not the index."
+    "evidencePack": "evidencePackSha256 is SHA-256 over the same lines for every cited file and every file in packSources: the register and each ledger. It covers every input file this index is built from, not the index and not the code that builds it."
   },
   "packSources": [
     {
       "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
-      "sha256": "1d33c86c690d123a344116535c4b7d79dfcc3c817df6da164b8bd22086042aca",
-      "gitBlob": "1089a699b075982644f7108028f6e15efaf877d6"
+      "sha256": "42edda76016b90d5c067a01737bb583457fba6db3638885d109fcac2f5f6c272",
+      "gitBlob": "f03d315234732ec200f5a1447a51a180edccfed0"
     },
     {
       "path": "docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
@@ -43,8 +43,8 @@
     },
     {
       "path": "docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json",
-      "sha256": "54aa482bf35f5f8ed3a5491ba56b0cb0b69331018d8caabfa2fbaee662a3ae8f",
-      "gitBlob": "fc27b8cc00a852495b4f9d489fc64f271e389496"
+      "sha256": "66bd4c08a400602ef6d4a99d68bf0558368b62083ba4aab8bdd3ed052503333f",
+      "gitBlob": "80d9450792031ef613ee9748d4501fc26d1ce3cc"
     }
   ],
   "summary": {
@@ -116,7 +116,7 @@
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
     "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
-    "evidencePackSha256": "4242e29fd853f655422a5344d30a576ee65c3ca6a04aab6d764ab25b74e83c6e"
+    "evidencePackSha256": "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2"
   },
   "claims": [
     {
@@ -806,7 +806,7 @@
       "assertsRealBehaviour": true,
       "statement": "One serving pod deleted by name mid-load produced a 31,960 ms caller-visible outage in which 40 of 41 dispatched requests were refused with `capability-unavailable`, the replacement reported itself Ready 33,665 ms after the delete, and the workflow issued no mutating command between the delete and its closing uninstall.",
       "limitation": "One provider, one host, one single-replica release, one load profile, one pod lost once on 2026-09-16, as a bounded observation under ADR 0013. One replica is the cause of the outage. The forward is in every latency, and the readiness sampler takes 1.7 to 5.4 seconds to answer.",
-      "doesNotEstablish": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: at every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint at all. Those samples were taken 1.4 s to 28.6 s after the delete, before the caller-visible outage began, and no sample was taken inside the outage until the replacement's, so the run does not establish what either reported while the outage lasted.",
+      "doesNotEstablish": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: at every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint at all. Those samples were started 1.4 s to 28.6 s after the delete and had all finished before the caller-visible outage began; the next, started 33.7 s after the delete, shows the replacement Ready with one endpoint. So the run does not establish what either reported between 28.6 s and 33.7 s, the first seconds of the outage.",
       "claimMaterialComponents": [
         "llm-load-generator",
         "inferops-api",

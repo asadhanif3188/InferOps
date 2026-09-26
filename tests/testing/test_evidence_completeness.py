@@ -44,6 +44,7 @@ from tools.evidence_index import (
     COMPLETENESS_PATH,
     FINAL_STATES,
     INDEX_PATH,
+    PUBLICATION_PATH,
     evidence_set_sha256,
     git_blob_id,
     load_index,
@@ -62,6 +63,7 @@ REGISTER = load_register()
 NORMALIZATION = load_ledger()
 COMPLETENESS = load_ledger(COMPLETENESS_PATH)
 CLOSURE = load_ledger(CLOSURE_PATH)
+PUBLICATION = load_ledger(PUBLICATION_PATH)
 INDEX = load_index()
 REPORT_PATH = (
     REPO_ROOT / "docs" / "proof" / "testing" / "v1-s5-006-pr2-evidence-completeness.md"
@@ -80,8 +82,9 @@ EXECUTED = {
     if pair[1]["execution"]["targetBehaviourExecuted"]
 }
 
-#: The register as `V1-S5-006-PR2` left it, which is what its ledger decided about.
-AT_PR2 = restore_migrated_register(REGISTER, CLOSURE)
+#: The register as `V1-S5-006-PR2` left it, which is what its ledger decided about:
+#: the current one with the publication and then the closure undone.
+AT_PR2 = restore_migrated_register(REGISTER, [CLOSURE, PUBLICATION])
 CLAIMS_AT_PR2 = {claim["claimId"]: claim for claim in AT_PR2["claims"]}
 EXECUTED_AT_PR2 = {
     record["recordId"]

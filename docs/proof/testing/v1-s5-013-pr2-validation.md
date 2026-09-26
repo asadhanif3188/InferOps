@@ -78,6 +78,31 @@ The Helm and Terraform gates were not run: nothing under `charts/` or `infra/`
 changed. The default lane ran before this results table was written, which changed
 prose only.
 
+## After the independent review
+
+The review of the first commit, and every correction it led to, is in
+[the publication report](v1-s5-013-pr2-publication-and-freeze.md#what-the-independent-review-found).
+Before the second commit the ledger was rebuilt from the base register with the
+corrected wording, the index regenerated, and the pack digest carried to every page
+that quotes it; the evidence-set digest did not move. `tests/testing/test_evidence_publication.py`
+grew from 42 to 52 tests, and `test_evidence_completeness.py` now undoes the
+publication as well as the closure. Hiding the README's first link to the case study
+inside an HTML comment was confirmed to fail the strengthened README check.
+
+**Checks that skip without the base revision.** Six tests read the repository's
+objects at `0e33a60`: the register the ledger restores, each of the four corrected
+records' hashes, and the superseded pack digest. In a clone that does not hold that commit they
+skip rather than fail, and the continuous-integration job checks out shallowly, so
+there they skip. They ran in full on the local clone for both commits.
+
+Before the second commit, on the same host: `ruff format --check .` 516 files already
+formatted; `ruff check .` all checks passed; `python -m mypy` no issues in 277 source
+files; `pytest tests/testing tests/security -q` 7614 passed;
+`pytest tests/testing/test_evidence_publication.py -q` 52 passed; `--check` for the
+index and the dashboard both `OK`; `--gate` exit 0, quoted in the report; the default
+lane 15231 passed, 30 skipped, 14 deselected, in 12 min 39 s; and
+`git diff --cached --check` clean.
+
 ## Privacy and publicability
 
 The staged diff was searched for a drive-letter or home-directory path, a scratch

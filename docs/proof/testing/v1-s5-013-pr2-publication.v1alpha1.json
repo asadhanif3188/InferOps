@@ -122,7 +122,7 @@
         },
         {
           "path": "docs/proof/v1-evidence-index.md",
-          "reason": "A generated projection of this register and the V1-S5-006-PR1 normalization ledger: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256. Every value is read from this file, from a cited file, or from the ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+          "reason": "A generated projection of this register and the four ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, and the evidence set and evidence pack digests. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
         },
         {
           "path": "docs/testing/evidence-levels.md",
@@ -133,7 +133,7 @@
           "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
         }
       ],
-      "reason": "The README now links the case study as an entry point, and every entry point is either a claim's surface or listed here with the reason it claims nothing. The page claims nothing of its own; no single row could govern it through readmeRefs."
+      "reason": "The README now links the case study as an entry point, and every entry point is either a claim's surface or listed here with the reason it claims nothing. The page claims nothing of its own; no single row could govern it through readmeRefs. The evidence index's reason still described it as built from one ledger, and now names the four."
     },
     {
       "changeId": "p03-pod-loss-readiness-boundary",
@@ -142,7 +142,7 @@
       "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
       "field": "doesNotEstablish",
       "before": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: for the whole outage the deleted pod went on reporting `Ready: True` while the Service had no ready endpoint at all.",
-      "after": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: at every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint at all. Those samples were taken 1.4 s to 28.6 s after the delete, before the caller-visible outage began, and no sample was taken inside the outage until the replacement's, so the run does not establish what either reported while the outage lasted.",
+      "after": "An availability figure, a service-level objective, an error budget, or a benchmark. A deleted pod is not a lost node. The most useful thing the run recorded is a disagreement rather than a duration: at every readiness sample before the replacement was observed Ready, the deleted pod reported `Ready: True` while the Service had no ready endpoint at all. Those samples were started 1.4 s to 28.6 s after the delete and had all finished before the caller-visible outage began; the next, started 33.7 s after the delete, shows the replacement Ready with one endpoint. So the run does not establish what either reported between 28.6 s and 33.7 s, the first seconds of the outage.",
       "reason": "The readiness samples that report the deleted pod Ready were all taken before the caller-visible outage began, so the claim's boundary may state the disagreement at those samples and not for the whole outage."
     },
     {
@@ -222,7 +222,7 @@
       "path": "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
       "sha256": "ee8b82d2ff055014d938216706523a7874ea38a4d381a577a53fe8011b9356ed",
       "says": "The signals an operator would reach for first — scrape health and target availability — said the job was up throughout.",
-      "correction": "The record's own committed telemetry does not bear this out. Both series of the serving runtime's up expression, the deleted pod's and the replacement's, read 0 at the collector's steps 32.3 s and 47.3 s after the delete, so no target of the job read up at either step; and the serving runtime job's targets-up ratio read 0 at 47.3 s and 62.3 s, while the API job's stayed 1. All four readings fall inside the caller-visible outage, which ran from 31 764 ms to 63 724 ms after the delete. What the telemetry shows is scrape health lagging the loss by a scrape or more, not staying up. The same record's telemetry table, which says the up series never went to zero for the job and the ratio was unchanged, is read the same way.",
+      "correction": "The record's own committed telemetry does not bear this out. Both series of the serving runtime's up expression, the deleted pod's and the replacement's, read 0 at the collector's steps 32.3 s and 47.3 s after the delete, so no target of the job read up at either step; and the serving runtime job's targets-up ratio read 0 at 47.3 s and 62.3 s, while the API job's stayed 1. All four readings fall inside the caller-visible outage, which ran from 31 764 ms to 63 724 ms after the delete. So scrape health did not stay up: it read the job up at the two steps after the delete and first read it down at 32.3 s. The collector scrapes every 30 s and the file reads it at 15 s steps, each step showing the latest scrape, so the file cannot place the change more closely than that, and does not show how long scrape health lagged the loss. The same record's telemetry table, which says the up series never went to zero for the job and the ratio was unchanged, is read the same way.",
       "basis": [
         {
           "kind": "file",
@@ -263,9 +263,19 @@
           "kind": "file",
           "path": "docs/proof/serving/v1-s4-006-pr1-recovery-record.v1alpha1.json",
           "quote": "\"serviceRestoredEpochMs\": 1789549421619"
+        },
+        {
+          "kind": "file",
+          "path": "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+          "quote": "\"stepSeconds\": 15"
+        },
+        {
+          "kind": "file",
+          "path": "charts/inferops-llm/values.yaml",
+          "quote": "scrapeIntervalSeconds: 30"
         }
       ],
-      "stillUnknown": "What scrape health read between the collector's 15-second steps; the file keeps one reading per step."
+      "stillUnknown": "When, between the scrapes either side of 32.3 s, the deleted pod's target first failed: the file keeps one reading per 15-second query step, each the latest of scrapes 30 seconds apart."
     },
     {
       "correctionId": "rc11-pod-recovery-readiness-samples",
@@ -427,7 +437,7 @@
       "findingId": "p-f05-unready-record-credits-a-liveness-probe-that-was-not-asked",
       "source": "v1-s5-007-pr2-validation",
       "observation": "The unready-model record credits the TCP liveness probe with not restarting a loading process. The chart's startup probe had not succeeded, and until it does Kubernetes asks neither liveness nor readiness; what held was the startup budget.",
-      "resolution": "A correction beside the record; the record is not edited, and no register field repeats the reading.",
+      "resolution": "A correction beside the record; the record is not edited, and no register field repeats the reading. The serving page's sentence is narrowed. Two further places keep the reading and are not edited: the experiment's values overlay, whose comment is part of a file the record pins by digest, and a check's detail string in the tool that wrote the record.",
       "resolvedBy": [
         "rc12-unready-liveness-was-not-asked"
       ],
@@ -457,7 +467,7 @@
       "findingId": "p-f07-the-evidence-set-digest-does-not-cover-the-register",
       "source": "this-publication",
       "observation": "V1-S5-007-PR2's validation record said a register edit moves the evidence-set digest, and the closure ledger that this change must recompute it after publishing. The digest is taken over the files the records cite and nothing else, so no register or ledger change can move it: with this ledger's four register changes applied it is still 1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a. A freeze quoting it alone would not bind a claim's wording, a status, or a ledger's decision.",
-      "resolution": "The index adds evidencePackSha256, over the cited files together with the register and every ledger, and lists those as packSources. The evidence-set digest keeps its meaning and its value; the pack digest is the one the freeze adds, and the case study is bound to both.",
+      "resolution": "The index adds evidencePackSha256, over the cited files together with the register and every ledger of register changes since the migration, and lists those as packSources. The evidence-set digest keeps its meaning and its value; the pack digest is the one the freeze adds, and the case study is bound to both.",
       "resolvedBy": [
         "tools/evidence_index"
       ],

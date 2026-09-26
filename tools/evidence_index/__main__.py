@@ -104,6 +104,7 @@ def _gate() -> int:
             print(f"         {row['blockerId']}  {row['mechanism']}")
         if freeze == "frozen":
             return _frozen(publication["freeze"]["decidedIn"])
+        print("NOT FROZEN the publication ledger declares no freeze of the pack")
         return 0
     print(f"INCOMPLETE {story}: {len(still_open)} release blockers")
     for blocker in still_open:

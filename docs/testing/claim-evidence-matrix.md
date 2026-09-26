@@ -56,7 +56,8 @@ be an advertisement.
 > names its four register changes the same way: the limitation that said the case study
 > had not been written, the case study added as a surface that claims nothing, and the
 > pod-loss claim's boundary and its record's readiness result narrowed to the samples
-> they rest on. It also writes four corrections beside dated records rather than inside
+> they rest on; the evidence index's own non-claim reason now names the four ledgers it
+> is built from. It also writes four corrections beside dated records rather than inside
 > them. No status, statement, or level moved.
 > [The publication report](../proof/testing/v1-s5-013-pr2-publication-and-freeze.md)
 > gives each change its finding and states the frozen digests.
@@ -389,9 +390,9 @@ Both rows measure what a caller experienced, and both refuse to turn that into a
 figure about availability. The pod-loss run's most useful result is a
 disagreement rather than a duration: at every readiness sample before the
 replacement was observed Ready, the **deleted** pod reported `Ready: True` while the
-Service had no ready endpoint at all. Those samples were taken 1.4 s to 28.6 s after
-the delete, before the 31,960 ms outage began, and none was taken inside it until the
-replacement's, so the row does not say what either reported for the whole outage;
+Service had no ready endpoint at all. Those samples were started 1.4 s to 28.6 s after
+the delete and had finished before the 31,960 ms outage began, and the next, at 33.7 s,
+is the replacement's, so the row does not say what either reported in between;
 `V1-S5-013-PR2` narrowed the claim's boundary and its record's result to that, and a
 correction stands beside the dated record. One replica is the cause of the outage, and nothing here is an availability
 figure, a service-level objective, an error budget, or a recovery-time objective.
@@ -555,7 +556,7 @@ compare against and the exclusion list cannot quietly grow.
 | [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) | Interim conduct expectations, with a formal policy deferred. |
 | [LICENSE](../../LICENSE) | The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does. |
 | [docs/proof/dashboard.md](../proof/dashboard.md) | A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them. |
-| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the V1-S5-006-PR1 normalization ledger: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256. Every value is read from this file, from a cited file, or from the ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
+| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the four ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, and the evidence set and evidence pack digests. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
 | [docs/case-study/v1-engineering-case-study.md](../case-study/v1-engineering-case-study.md) | The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it. |
 | [docs/testing/evidence-levels.md](evidence-levels.md) | The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it. |
 

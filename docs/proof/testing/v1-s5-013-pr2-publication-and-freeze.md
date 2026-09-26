@@ -6,8 +6,8 @@ Date: 2026-09-26
 blockers and left the evidence as a pre-publication freeze candidate. This change
 published [the V1 engineering case study](../../case-study/v1-engineering-case-study.md),
 made the register changes publishing it required, wrote corrections beside three dated
-records whose narratives say more than their own data, reconciled every current surface,
-and froze the evidence pack.
+records whose narratives say more than their own data, reconciled the current surfaces
+that describe the publication or the freeze, and froze the evidence pack.
 
 **The decision: `V1-S5-013` is COMPLETE.** The release gate passes, the evidence pack is
 frozen, and the case study is published and linked from the README. `V1-S5-008` may
@@ -110,16 +110,16 @@ record and telemetry, so a correction cannot outlive the data it was read from.
   digest binds the cited files; a freeze quoting it alone would not bind a claim's
   wording, a status, or a ledger's decision. The index now also carries
   `evidencePackSha256`, over the cited files together with the register and every
-  ledger, and lists those as `packSources`. The evidence-set digest keeps its meaning
+  ledger of register changes since the migration, and lists those as `packSources`. The evidence-set digest keeps its meaning
   and its value.
 - **`p-f03-pod-loss-readiness-is-broader-than-the-samples`, sharpened.**
   `V1-S5-007-PR2` narrowed "for the whole outage" to "at every readiness sample before
   the replacement was observed Ready". Read against the outage again, none of those
   samples falls inside it: each is stamped when its reads start, as
   `scripts/environment/inference-pod-recovery.sh` writes them, and the last one's reads
-  had finished by 30.6 s, before the outage began at 31 764 ms. So the register now says
-  what the samples show and that the run does not establish what either reported while
-  the outage lasted.
+  had finished by 30.6 s, before the outage began at 31 764 ms; the next, at 33.7 s,
+  shows the replacement. So the register now says what the samples show and that the
+  run does not establish what either reported between 28.6 s and 33.7 s.
 - **Two README counts were stale.** It said nine things were not claimed; since
   `V1-S5-013-PR1` moved the `kind` helper there are ten. It said fourteen decision
   records; there are sixteen. Both are corrected. Neither is checked by a test.
@@ -163,7 +163,12 @@ test holds the README to linking the page if and only if it is published.
 | [Proof README](../README.md) | The gate paragraph, the testing and case-study rows |
 | [Testing README](../../testing/README.md), [evidence-record model](../../testing/evidence-record-model.md) | The freeze, and that publishing added no field to a record |
 | [Test inventory](../../testing/test-inventory.md) | The new module, and the case-study module no longer described as a draft |
+| [Unready-model serving page](../../serving/unready-model-recovery.md) | The sentence that tied the TCP liveness probe to the loading socket, narrowed as `rc12` reads it |
 | [Proof dashboard](../dashboard.md) | Unchanged: `python -m tools.proof_dashboard --check` passes, because nothing it renders moved |
+
+Two places keep the liveness reading `rc12` corrects and are deliberately not edited:
+the unready experiment's values overlay, whose comment is part of a file the dated
+record pins by digest, and a check's detail string in the tool that wrote that record.
 
 A test scans the current surfaces for wording that describes the publication or the
 freeze as still to come, and is shown to find the sentences it is for. Dated records
@@ -177,14 +182,17 @@ Both digests are in the index's summary, produced by `python -m tools.evidence_i
 |---|---|---|
 | Covers | Every file a record cites | Those files, the register, and the four ledgers |
 | Pre-publication candidate, at `0e33a60` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `39415d7ad20ff6f84aaaeabe87e022ebfa44f3639a82aa9bd3bc45eaf5523c1b` |
-| **Frozen, by this change** | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `4242e29fd853f655422a5344d30a576ee65c3ca6a04aab6d764ab25b74e83c6e` |
+| **Frozen, by this change** | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
 
 **The digest a release quotes is the evidence pack's.** The evidence set's did not move,
 because publication changed no cited file; the pack's did, because the register changed
 and a fourth ledger was added. `V1-S5-013-PR1` named only the set digest; its pack
 digest in the table is computed with this change's tooling over the register and the
 three ledgers as they stood at the base, and a test recomputes it from the repository's
-objects at that commit. The pre-publication candidate is superseded for release use.
+objects at that commit. That test, and the ones that compare the register and the
+corrected records with the base, skip in a clone that does not hold the commit, which
+includes the shallow checkout the continuous-integration job makes; they ran in full
+on the local clone. The pre-publication candidate is superseded for release use.
 
 The ledger does not state the frozen pack digest, because the ledger is one of the files
 it covers. `--gate` prints it from the committed index, after checking that the index is
@@ -203,7 +211,7 @@ COMPLETE V1-S5-013: no release blocker; 5 of 5 raised by V1-S5-006 closed; the e
          b5-pod-replacement-code-unidentified  closed-by-rerun
 FROZEN   V1-S5-013-PR2: the committed index is current
          evidence set   1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a
-         evidence pack  4242e29fd853f655422a5344d30a576ee65c3ca6a04aab6d764ab25b74e83c6e
+         evidence pack  652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2
 ```
 
 Exit status `0`. The gate was made stricter, not looser: it now also refuses a ledger
@@ -250,7 +258,32 @@ freeze is never read from a stale digest.
 
 ## What the independent review found
 
-Recorded in the second commit.
+The first commit, `b3c4985`, was read before push by two independent reviewers: one
+fact-checked every figure, digest, count, and sentence against the records, the raw
+telemetry and recovery record, the chart, and the registers at the base and at the
+commit, and recomputed both digests and the superseded one from the repository's
+objects; the other reviewed the tooling and the tests by mutating the ledgers and pages
+in memory and in a shallow clone. Every count, digest, and quote they recomputed
+matched, and no private value was found. They found these, each corrected in the second
+commit:
+
+| Severity | What the first commit said or did | What was true, and the fix |
+|---|---|---|
+| Medium | `rc10` said the telemetry shows scrape health "lagging the loss by a scrape or more", and the case study said so in three places | The collector scrapes every 30 s and the file reads it at 15 s steps, each the latest scrape, so a reading after the delete may come from a scrape before it; the file bounds the first zero at 32.3 s and shows no lag of any length. `rc10`, its `stillUnknown`, which called the query step the collector's, and the case study now say only what the readings show |
+| Medium | `test_no_status_statement_level_or_record_moved` compared the register with itself with the ledger undone, so a direct edit outside the ledger passed on both sides | It now requires the register with the ledger undone to equal the register committed at the base revision |
+| Medium | The base-revision checks skip in a clone without that commit, and the continuous-integration job checks out shallowly, so they skip there; nothing said so | The skip is stated in the validation record and beside the freeze below; the checks ran in full on the local clone |
+| Low | The pod-loss boundary said no sample was taken inside the outage "until the replacement's" and so nothing was established "while the outage lasted" | The replacement's sample, at 33.7 s, is inside the outage and establishes what it shows; the boundary is now the seconds between 28.6 s and 33.7 s |
+| Low | The evidence index's non-claim reason still said it was built from the normalization ledger alone | Rewritten through `p02` to name the four ledgers |
+| Low | The changelog said no record moved, and this page that every current surface was reconciled | One record's result was narrowed, and the changelog says so. The serving page for the unready model still tied the TCP liveness probe to the loading socket and is narrowed; the experiment's values overlay and a check's detail string in the tool that wrote the record keep the reading and are not edited, because the record pins the overlay by digest and the tool is what produced the record |
+| Low | The evidence index page said any change to what V1 says about its evidence moves the pack digest | Only a change to the register, a ledger, or a cited file does; the README, the dashboard, and the case study are outside it, and the page, the tool's docstring, and its hashing note now say so |
+| Low | The scrape-health and readiness re-derivations checked less than their corrections state, and one could read a missing reading as a zero | Each now asserts the exact zero readings, the API job's steady ratio, and that the sample after the disagreement no longer lists the deleted pod |
+| Low | The README check for a link before the architecture accepted one inside an HTML comment or a fence, and a renamed heading made it vacuous | Comments and fences are stripped, and a missing heading fails |
+| Low | The stale-wording scan missed seven trivial rewordings | Six patterns added, and six of those rewordings are now sentences a test requires the scan to find; one first-commit sentence of the proof index, "not yet frozen", was reworded |
+| Low | The test that the ledger states no digest it is covered by could not fail | Replaced by one that reads every pack source and cited file for the pack digest |
+| Low | `--gate` over a `not-frozen` ledger exited 0 and said nothing of the freeze; a ledger without a freeze block raised a traceback; a blocker listed in the publication ledger was ignored | The gate prints `NOT FROZEN`, which a test drives, and `evidence_freeze` refuses the other two, which the gate reports as a `MISMATCH`; a test drives each refusal |
+| Low | `pack_sources` read this checkout's files whatever root it was given | It reads each path under the root it is given, and a test changes one ledger under another root |
+| Low | `test_evidence_completeness.py` still undid only the closure to reach the register as `V1-S5-006-PR2` left it | It undoes the publication and then the closure |
+| Low | The first commit's message says no sample falls inside the outage | The replacement's sample does; the ledger's own wording was qualified. The message cannot be edited without rewriting history, so the correction is here |
 
 ## How to repeat it
 

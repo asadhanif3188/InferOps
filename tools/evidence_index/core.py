@@ -48,9 +48,9 @@ history since the migration is the four of them together.
 **Two digests.** `evidenceSetSha256` covers every file a record cites and nothing else,
 so a change to the register's wording or to a ledger does not move it.
 `evidencePackSha256` covers the same files together with the register and every
-ledger, which are everything the index is built from; it is the digest a freeze
-quotes. Neither covers the index itself, which states both, or any page that reads
-the register.
+ledger of register changes, which are every input file the index is built from; it
+is the digest a freeze quotes. Neither covers the index itself, which states both,
+the code that builds it, or any page that reads the register.
 
 **Content hashes** are SHA-256 over the committed content. A text file is hashed with
 CRLF normalised to LF, because the repository stores text with LF and a Windows
@@ -492,8 +492,14 @@ def evidence_freeze(closure: Mapping[str, Any], publication: Mapping[str, Any]) 
 
     A ledger may declare ``frozen`` only over a complete gate: a freeze stated beside
     an open blocker raises rather than being reported, as does a decision outside
-    the two this module knows.
+    the two this module knows, a ledger with no freeze to read, and a publication
+    ledger that raises or closes a blocker of its own, which is the closure ledger's
+    to do.
     """
+    if "freeze" not in publication:
+        raise ValueError("the publication ledger declares no freeze")
+    if publication.get("blockers") or publication.get("blockerDispositions"):
+        raise ValueError("the publication ledger raises or closes a blocker")
     decision = publication["freeze"]["decision"]
     if decision not in FREEZE_DECISIONS:
         raise ValueError(f"no freeze decision {decision!r}")
@@ -509,17 +515,23 @@ def pack_sources(
 ) -> list[dict[str, str]]:
     """The register and every ledger, each bound to its content like a cited file.
 
-    These are what the index is built from besides the cited files, so the evidence
-    pack digest covers them too: a change to a claim's wording, a status, or a
-    ledger's decision moves it, where it cannot move the evidence-set digest.
+    These are the input files the index is built from besides the cited files, so
+    the evidence pack digest covers them too: a change to a claim's wording, a
+    status, or a ledger's decision moves it, where it cannot move the evidence-set
+    digest. Each path is read under ``repo_root``, so another root reads its own
+    copies rather than this checkout's.
     """
+    relative = [
+        path.relative_to(REPO_ROOT) if path.is_absolute() else path
+        for path in (register_path, *ledger_paths)
+    ]
     return [
         {
-            "path": path.relative_to(repo_root).as_posix(),
-            "sha256": content_sha256(path),
-            "gitBlob": git_blob_id(path),
+            "path": path.as_posix(),
+            "sha256": content_sha256(repo_root / path),
+            "gitBlob": git_blob_id(repo_root / path),
         }
-        for path in (register_path, *ledger_paths)
+        for path in relative
     ]
 
 
@@ -899,7 +911,8 @@ def build_index(
             "evidencePack": (
                 "evidencePackSha256 is SHA-256 over the same lines for every cited "
                 "file and every file in packSources: the register and each ledger. "
-                "It covers everything this index is built from, and not the index."
+                "It covers every input file this index is built from, not the index "
+                "and not the code that builds it."
             ),
         },
         "packSources": sources,

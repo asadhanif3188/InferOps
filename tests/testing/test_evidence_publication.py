@@ -65,6 +65,7 @@ CASE_STUDY = PUBLICATION["caseStudyRef"]
 
 #: The register as `V1-S5-013-PR1` left it: the current one with this ledger undone.
 AT_PR1 = restore_migrated_register(REGISTER, PUBLICATION)
+REGISTER_REF = REGISTER_PATH.relative_to(REPO_ROOT).as_posix()
 CHANGES = PUBLICATION["registerChanges"]
 CORRECTIONS = PUBLICATION["recordCorrections"]
 FINDINGS = {finding["findingId"]: finding for finding in PUBLICATION["findings"]}
@@ -104,6 +105,12 @@ NOT_YET_PUBLISHED = (
     r"the readme does not link",
     r"\bis not published\b",
     r"final freeze follows",
+    r"\bnot yet (?:been )?(?:published|frozen|written)\b",
+    r"\b(?:is|remains|stays) unpublished\b",
+    r"\bremains? (?:a|the) (?:draft|\**pre-publication)",
+    r"\byet to be (?:written|published|frozen)\b",
+    r"\bfreeze will follow\b",
+    r"\bdoes(?:n't| not) link (?:here|to it|the case study)",
 )
 CURRENT_SURFACES = (
     "README.md",
@@ -169,21 +176,19 @@ def test_every_change_is_to_a_field_a_publication_may_change(
     assert len(change["reason"]) > 60, change["changeId"]
 
 
-def test_no_status_statement_level_or_record_moved() -> None:
-    """Publication narrowed wording and nothing else a claim carries."""
-    before = {claim["claimId"]: claim for claim in AT_PR1["claims"]}
-    for claim in REGISTER["claims"]:
-        was = before[claim["claimId"]]
-        for field in ("status", "statement", "limitation", "readmeRefs"):
-            assert claim.get(field) == was.get(field), (claim["claimId"], field)
-        assert [r["recordId"] for r in claim["evidenceRecords"]] == [
-            r["recordId"] for r in was["evidenceRecords"]
-        ]
-        for record, old in zip(
-            claim["evidenceRecords"], was["evidenceRecords"], strict=True
-        ):
-            for field in ("evidenceLevel", "evidenceRefs", "execution", "versions"):
-                assert record.get(field) == old.get(field), (record["recordId"], field)
+def test_undoing_the_ledger_gives_back_the_register_at_the_base_revision() -> None:
+    """Publication changed the register only through this ledger's four changes.
+
+    The first version of this test compared the register with itself with the ledger
+    undone, which a direct edit outside the ledger survives on both sides, so it
+    compared nothing the ledger does not already hold. The register the ledger
+    restores must instead equal, as parsed data, the one committed at the base
+    revision. Skipped in a clone without that revision, such as a shallow checkout.
+    """
+    base = _git_bytes(FREEZE["supersedes"]["baseRevision"], REGISTER_REF)
+    if base is None:
+        pytest.skip("the base revision is not in this clone")
+    assert json.loads(base.decode("utf-8")) == AT_PR1
 
 
 def test_every_finding_is_answered_and_every_answer_names_its_finding() -> None:
@@ -195,10 +200,9 @@ def test_every_finding_is_answered_and_every_answer_names_its_finding() -> None:
         assert finding["resolvedBy"], finding_id
         assert len(finding["observation"]) > 80, finding_id
         for answer in finding["resolvedBy"]:
-            assert answer in answers or (REPO_ROOT / answer).exists(), (
-                finding_id,
-                answer,
-            )
+            assert answer in answers or (
+                answer.strip(" ./") and (REPO_ROOT / answer).exists()
+            ), (finding_id, answer)
             named.add(answer)
         for record_id in finding["recordIds"]:
             assert any(
@@ -258,18 +262,22 @@ def test_the_readiness_disagreement_was_sampled_only_before_the_outage() -> None
 
     A sample is stamped when its reads start, so its reads end at the stamp plus the
     time they took; each such end must precede the outage, and the next sample must
-    be the replacement's, with an endpoint.
+    be the replacement's: the deleted pod no longer listed, and an endpoint ready.
     """
     _, outage_start, _ = _outage()
-    samples = json.loads(read(RECOVERY))["readinessSamples"]
+    record = json.loads(read(RECOVERY))
+    deleted = record["disruption"]["pod"]["name"]
+    samples = record["readinessSamples"]
     disagreeing = [
         sample
         for sample in samples
         if sample["runtimePodsReady"] >= 1 and sample["runtimeEndpointsReady"] == 0
     ]
     assert disagreeing
+    assert all(deleted in s["runtimePodNames"] for s in disagreeing)
     assert all(s["atEpochMs"] + s["readTookMs"] < outage_start for s in disagreeing)
     following = samples[samples.index(disagreeing[-1]) + 1]
+    assert deleted not in following["runtimePodNames"]
     assert following["runtimeEndpointsReady"] >= 1
 
 
@@ -279,38 +287,41 @@ def _series(series_id: str) -> list[dict[str, Any]]:
     return list(found["result"])
 
 
+def _seconds_after_delete(series_id: str, job: str) -> list[dict[float, str]]:
+    """Each of a job's series in a query, keyed by tenths of a second after the delete."""
+    delete, _, _ = _outage()
+    found = [
+        {round(float(t) - delete / 1000, 1): v for t, v in result["values"]}
+        for result in _series(series_id)
+        if result["labels"]["job"] == job
+    ]
+    assert found, f"no {series_id} series for {job}"
+    return found
+
+
 def test_scrape_health_fell_to_zero_for_the_runtime_job_inside_the_outage() -> None:
-    """Re-derived from the telemetry the scrape-health correction reads."""
-    _, start, end = _outage()
-    inside = [step for step in _series_steps() if start / 1000 <= step <= end / 1000]
-    assert inside
-    up = [
-        r
-        for r in _series("serving-runtime-scrape-up")
-        if r["labels"]["job"] == RUNTIME_JOB
-    ]
-    down_steps = [
-        step
-        for step in inside
-        if all(
-            dict((float(t), v) for t, v in r["values"]).get(step, "0") == "0"
-            for r in up
-        )
-    ]
-    assert down_steps, "no step inside the outage where every up series read 0"
-    ratio = next(
-        r
-        for r in _series("scrape-target-health-by-job")
-        if r["labels"]["job"] == RUNTIME_JOB
-    )
-    readings = {float(t): v for t, v in ratio["values"]}
-    assert any(readings.get(step) == "0" for step in inside)
+    """Re-derived: the exact readings the scrape-health correction states.
 
-
-def _series_steps() -> list[float]:
-    return sorted(
-        {float(t) for r in _series("serving-runtime-scrape-up") for t, _ in r["values"]}
+    Both up series of the runtime job read 0 at 32.3 s and 47.3 s after the delete,
+    that job's targets-up ratio read 0 at 47.3 s and 62.3 s and 1 at every other step,
+    the API job's ratio read 1 at every step, and all four zero readings fall inside
+    the outage. The first version of this test asked only that some step and some
+    reading were zero, and treated a missing reading as a zero.
+    """
+    delete, start, end = _outage()
+    up = _seconds_after_delete("serving-runtime-scrape-up", RUNTIME_JOB)
+    assert len(up) == 2
+    for series in up:
+        assert {step for step, value in series.items() if value == "0"} == {32.3, 47.3}
+    (runtime,) = _seconds_after_delete("scrape-target-health-by-job", RUNTIME_JOB)
+    assert {step for step, value in runtime.items() if value == "0"} == {47.3, 62.3}
+    api = _seconds_after_delete(
+        "scrape-target-health-by-job", "inferops-inferops-llm-platform-api"
     )
+    assert all(value == "1" for series in api for value in series.values())
+    outage = ((start - delete) / 1000, (end - delete) / 1000)
+    for step in (32.3, 47.3, 62.3):
+        assert outage[0] <= step <= outage[1], step
 
 
 # -------------------------------------------------------------------- freeze
@@ -341,8 +352,17 @@ def test_the_freeze_is_declared_over_a_complete_gate() -> None:
         lambda closure, publication: publication["freeze"].update(
             {"decision": "frozen-enough"}
         ),
+        lambda closure, publication: publication.pop("freeze"),
+        lambda closure, publication: publication.update(
+            {"blockers": copy.deepcopy(COMPLETENESS["blockers"][:1])}
+        ),
     ],
-    ids=["frozen-over-an-open-blocker", "unknown-decision"],
+    ids=[
+        "frozen-over-an-open-blocker",
+        "unknown-decision",
+        "no-freeze",
+        "a-blocker-in-the-publication-ledger",
+    ],
 )
 def test_a_freeze_the_gate_forbids_is_refused(mutate: Any) -> None:
     closure = copy.deepcopy(CLOSURE)
@@ -352,11 +372,21 @@ def test_a_freeze_the_gate_forbids_is_refused(mutate: Any) -> None:
         evidence_freeze(closure, publication)
 
 
-def test_the_ledger_states_no_digest_it_is_covered_by() -> None:
-    """The pack digest covers this ledger, so the ledger cannot state it."""
-    text = PUBLICATION_PATH.read_text(encoding="utf-8")
-    assert SUMMARY["evidencePackSha256"] not in text
-    assert FREEZE["supersedes"]["evidencePackSha256"] != SUMMARY["evidencePackSha256"]
+def test_no_file_the_pack_covers_states_the_pack_digest() -> None:
+    """The pack digest cannot sit inside a file it covers.
+
+    The first version of this test checked the ledger alone, which could not fail: a
+    file stating the digest of a pack that includes it is a fixed point. What can go
+    wrong is a consumer of the digest being made a cited file or a pack source, which
+    would make the digest unstable, and that is what this reads.
+    """
+    digest = SUMMARY["evidencePackSha256"]
+    covered = {item["path"] for item in INDEX["packSources"]} | {
+        item["path"] for record in INDEX["records"] for item in record["evidence"]
+    }
+    stating = sorted(path for path in covered if digest in read(path))
+    assert not stating, stating
+    assert FREEZE["supersedes"]["evidencePackSha256"] != digest
 
 
 def test_the_pack_covers_the_cited_files_the_register_and_every_ledger() -> None:
@@ -416,6 +446,39 @@ def test_the_gate_prints_the_freeze_with_the_index_digests(
     assert f"evidence pack  {SUMMARY['evidencePackSha256']}" in printed
 
 
+def test_the_gate_says_so_when_the_pack_is_not_frozen(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Exit 0 with a not-frozen ledger means a passing gate, and the output says which."""
+    unfrozen = copy.deepcopy(PUBLICATION)
+    unfrozen["freeze"]["decision"] = "not-frozen"
+    real = load_ledger
+
+    def load(path: Path) -> dict[str, Any]:
+        return unfrozen if path == PUBLICATION_PATH else real(path)
+
+    monkeypatch.setattr(index_cli, "load_ledger", load)
+    assert index_cli.main(["--gate"]) == 0
+    printed = capsys.readouterr().out
+    assert "NOT FROZEN" in printed
+    assert "FROZEN   " not in printed
+
+
+def test_the_pack_sources_of_another_root_are_read_under_it(tmp_path: Path) -> None:
+    for path in (REGISTER_PATH, *LEDGER_PATHS):
+        copied = tmp_path / path.relative_to(REPO_ROOT)
+        copied.parent.mkdir(parents=True, exist_ok=True)
+        copied.write_bytes(path.read_bytes())
+    ledger = tmp_path / PUBLICATION_PATH.relative_to(REPO_ROOT)
+    ledger.write_text(ledger.read_text(encoding="utf-8") + " ", encoding="utf-8")
+    sources = {item["path"]: item for item in pack_sources(tmp_path)}
+    original = {item["path"]: item for item in INDEX["packSources"]}
+    assert sources.keys() == original.keys()
+    changed = [path for path in sources if sources[path] != original[path]]
+    assert changed == [PUBLICATION_PATH.relative_to(REPO_ROOT).as_posix()]
+
+
 def test_the_gate_refuses_a_freeze_read_from_a_stale_index(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -452,6 +515,12 @@ def test_no_current_surface_describes_publication_as_still_to_come(path: str) ->
         "The case study this matrix is meant to govern has not been written.",
         "It is not published, and the README does not link here.",
         "The final freeze follows the case study's publication.",
+        "It remains the pre-publication freeze candidate.",
+        "The case study has not yet been published.",
+        "It remains a draft, and the README doesn't link here.",
+        "The page is unpublished until the freeze.",
+        "The freeze will follow the publication.",
+        "The case study has yet to be written.",
     ],
 )
 def test_the_stale_wording_scan_finds_what_it_is_for(sentence: str) -> None:
