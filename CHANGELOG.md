@@ -8,7 +8,23 @@ from `1.0.0`.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **The decision whether a second version should proceed: defer.** `V1-S5-009-PR1`
+  recorded [the decision](docs/governance/v2-investment-decision.md) from V1's frozen
+  evidence rather than from a plan. It cites eleven V1 findings and the register rows
+  behind each, asks of every problem they expose whether it is important, whether its
+  next experiment is feasible now, and whether it belongs in InferOps at all, compares
+  proceed, revise, and defer on the same fields, and places every claim V1 does not
+  certify. Three of its six entry gates are unmet — nothing yet deploys a workload from
+  its validated contract, nobody but the author has walked the road, and nobody
+  outside the repository has reviewed it — so no second version is opened and no scope
+  is named. The problem a later proposal has to start from is kept: keeping a caller
+  served, and an operator told the truth, when a serving pod is lost, which the only
+  host measured cannot test. [The data](docs/governance/v2-investment-decision.v1alpha1.json)
+  is held by `tests/testing/test_v2_investment_decision.py` to the register, the
+  evidence index, and the case study; the reasoning is checked by review only. No claim,
+  register row, ledger, or file in the frozen evidence pack changed.
 
 ## [1.0.0] - 2026-09-27
 

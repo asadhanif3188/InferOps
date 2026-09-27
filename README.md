@@ -387,6 +387,11 @@ intention reads as a capability:
   says nothing about maturity. It is prepared, with [its notes](docs/releases/v1.0.0.md) and
   [its checklist](docs/releases/v1.0.0-checklist.md), and its tag is created only after
   the post-merge checks pass; `git tag -l v1.0.0` says whether that has happened.
+- **No second version yet.** [The decision whether a second version should proceed](docs/governance/v2-investment-decision.md)
+  is to defer one: nothing yet deploys a workload from its validated contract, only the
+  author has walked the road, nobody outside the repository has reviewed it, and the
+  multi-replica profile the strongest open problem needs was refused on the only host
+  measured. It adds no claim, names no scope, and is reviewed by 2026-12-27.
 
 ## Public entry points
 
