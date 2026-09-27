@@ -1250,6 +1250,7 @@ workload is a workload source, never a substitution, so it cannot put a record a
 
 Follow the [interim conduct expectations](CODE_OF_CONDUCT.md). Do not open a public
 issue containing a vulnerability, credential, private data, or sensitive prompt or
-response. The [security policy](SECURITY.md) records why a dedicated private
-reporting channel is not yet published and treats that gap as a known governance
-limitation that must be resolved before accepting sensitive reports.
+response. Report a suspected vulnerability privately through GitHub private
+vulnerability reporting, as the [security policy](SECURITY.md) describes; it promises
+no response time. No private channel exists for a conduct report, which the
+[conduct expectations](CODE_OF_CONDUCT.md) record.

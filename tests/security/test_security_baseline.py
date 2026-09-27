@@ -1680,14 +1680,25 @@ def test_the_baseline_states_that_nothing_enforces_at_runtime() -> None:
     assert status["securityAssessmentsPerformed"] == 0
     assert status["penetrationTestsPerformed"] == 0
     assert status["vulnerabilityReportsReceived"] == 0
-    assert status["vulnerabilityReportsPossible"] is False
-    assert "not published" in status["privateReportingChannel"]
+    assert status["vulnerabilityReportsPossible"] is True
+    assert "GitHub private vulnerability reporting" in status["privateReportingChannel"]
 
 
-def test_the_reporting_policy_still_publishes_no_private_channel() -> None:
-    body = (REPO_ROOT / "SECURITY.md").read_text(encoding="utf-8")
-    assert "A dedicated private reporting channel is not yet published." in body
-    assert BASELINE["securityStatus"]["vulnerabilityReportsPossible"] is False
+def test_the_reporting_policy_names_its_channel_and_promises_no_response_time() -> None:
+    """`V1-S5-008-PR1` named the channel `v1.0.0` required, and nothing more.
+
+    Until then this test held the policy to publishing no private channel, which it
+    said had to be resolved before a versioned release. What replaced it is a setting
+    on the hosting service, so the test holds the policy to naming it and to not
+    promising the response a single-role project has never measured.
+    """
+    body = " ".join((REPO_ROOT / "SECURITY.md").read_text(encoding="utf-8").split())
+    assert "GitHub's private vulnerability reporting" in body
+    assert "A dedicated private reporting channel is not yet published." not in body
+    assert "What this channel does not promise: an acknowledgement window" in body
+    assert BASELINE["securityStatus"]["vulnerabilityReportsPossible"] is True
+    limitation_ids = {row["limitationId"] for row in LIMITATIONS}
+    assert "the-reporting-channel-promises-no-response" in limitation_ids
 
 
 def test_the_baseline_declares_a_limitation_for_every_gap_it_admits() -> None:

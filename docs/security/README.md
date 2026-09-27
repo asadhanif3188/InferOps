@@ -39,8 +39,9 @@ decisions are accepted; two are explicitly not made.
 | [The V1 security method](security-method.md) | How V1 approaches each security topic, with what is implemented and the test, gate, and record behind it kept apart from what is not and the register entry that carries it |
 | [`security-method.v1alpha1.json`](security-method.v1alpha1.json) | The authoritative form of the method, checked against the baseline, the claim register, and the workflow by [`tests/testing/test_published_methods.py`](../../tests/testing/test_published_methods.py) |
 
-Reporting a problem is [SECURITY.md](../../SECURITY.md), and it currently publishes
-no private channel — which is a gap in its own right, recorded as such.
+Reporting a problem is [SECURITY.md](../../SECURITY.md). Since `v1.0.0` it names
+GitHub private vulnerability reporting as the private channel; it promises no
+acknowledgement window or remediation timeline, and no report has been received.
 
 ## The one idea
 

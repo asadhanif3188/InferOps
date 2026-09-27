@@ -482,11 +482,11 @@ not do.
 - **It is not exhaustive.** A risk nobody thought of is a risk nobody registered, and
   the same limitation applies to it as to
   [the threat model's twenty-two threats](threat-model.md).
-- **It cannot be reported against privately.** There is no private vulnerability
-  reporting channel, which [SECURITY.md](../../SECURITY.md) records and
-  [the governance document](../governance/repository.md) carries as a blocker. A
-  reader who finds a real problem in any entry here has nowhere confidential to send
-  it, and that is the reason everything here is published rather than held.
+- **It was published before it could be reported against privately.** Until `v1.0.0`
+  there was no private vulnerability reporting channel, and that is the reason
+  everything here is published rather than held. [SECURITY.md](../../SECURITY.md) now
+  names GitHub private vulnerability reporting; it promises no response time, and a
+  risk reported through it is still carried here until a change reduces it.
 
 ## Related records
 

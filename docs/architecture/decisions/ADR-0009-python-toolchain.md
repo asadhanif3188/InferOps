@@ -121,6 +121,12 @@ repeated in `__init__.py`, because two places to change a version is one place t
 forget. No release has been made and [the release process](../../releases.md) is
 unchanged by this record.
 
+> **Note, 2026-09-27.** The paragraph above is this record's accepted text. The
+> value is now `1.0.0`: `V1-S5-008-PR1` set it when it prepared
+> [the `v1.0.0` release](../../releases/v1.0.0.md), in `pyproject.toml` and nowhere
+> else, so D1 is unchanged. The same change moved the development-status classifier
+> from `1 - Planning` to `3 - Alpha`, not to `5 - Production/Stable`.
+
 ### D2 — Dependency manager: `uv`
 
 **Accepted, and executed.** `uv` creates the project environment, resolves the

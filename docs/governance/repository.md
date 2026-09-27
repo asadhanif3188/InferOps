@@ -16,7 +16,7 @@ artifacts are added to the corresponding indexes.
 | Review | One approving maintainer review, passing applicable checks, resolved feedback | Accepted |
 | Commits | Conventional Commit-style subjects; focused history | Accepted |
 | Merge | Squash preferred; merge commit allowed for a meaningful maintained series | Accepted |
-| Conduct | Interim expectations; formal framework waits for a private reporting path | Accepted deferral |
+| Conduct | Interim expectations; formal framework waits for a tested private reporting and response path | Accepted deferral, revisited before `v1.0.0` and kept, as [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) records |
 | Development environment | Container runtime, local Kubernetes distribution, isolation, cleanup, and minimum host tier | [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md) accepted in part on executed proof from one Windows host |
 | Task runner | Rejected, as a decision | [ADR 0009](../architecture/decisions/ADR-0009-python-toolchain.md) D7 rejects one and supersedes [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md) D3; a test refuses a task-runner file |
 | Python packaging, dependencies, lint, and typing | Selected, and executed | [ADR 0009](../architecture/decisions/ADR-0009-python-toolchain.md) accepted on executed proof from one Windows host; it supersedes [ADR 0001](../architecture/decisions/ADR-0001-local-development-environment.md) D4 |
@@ -25,8 +25,8 @@ artifacts are added to the corresponding indexes.
 | Test, CI, and certification strategy | Test layers, lanes, markers, certification levels, and evidence retention | [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md) accepted in part; the strategy is machine-checked and three of its eleven test layers have no code |
 | Continuous-integration service and capable runner | Not selected | [ADR 0005](../architecture/decisions/ADR-0005-test-ci-and-certification-strategy.md) D6 records both as undecided; no workflow file exists and every lane is run by hand |
 | Runtime host for serving | Model and serving runtime selected in [ADR 0002](../architecture/decisions/ADR-0002-model-and-serving-runtime.md); no accelerator and no recommended hardware tier selected | Accepted in part; a real model has served completions on CPU, on one Windows host, locally and through a Helm release on `docker-desktop` |
-| V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; unexecuted |
-| Security reporting | Public reports prohibited; private intake channel not yet published | Accepted prohibition; channel blocked |
+| V1 release | Semantic versioning and the high-level gated process in [docs/releases.md](../releases.md) | Accepted process; prepared for `v1.0.0` with [notes](../releases/v1.0.0.md) and [a checklist](../releases/v1.0.0-checklist.md), and executed only when the tag exists |
+| Security reporting | Public reports prohibited; private intake through GitHub private vulnerability reporting | Accepted prohibition; the channel is named in [SECURITY.md](../../SECURITY.md) for `v1.0.0` and promises no response time |
 | Maintainers | Review required; the accountable unit is the `repository-maintainer` role, and no roster of people is published | [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) accepted; the role is the published unit, and a test refuses an unassigned decision owner |
 | Decision ownership and sign-off | Decision ownership, ADR acceptance and amendment, claim/evidence sign-off, and V1 release approval, all held by the `repository-maintainer` role | [ADR 0015](../architecture/decisions/ADR-0015-v1-decision-ownership-and-sign-off-authority.md) accepted; committed in [`decision-authority.v1alpha1.json`](decision-authority.v1alpha1.json) and machine-checked |
 

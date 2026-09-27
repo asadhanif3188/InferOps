@@ -822,6 +822,14 @@
       "note": "Deliberately no claim: it establishes that the page's citations, figures, and drawn figures agree with the files they come from, never that a sentence or a figure's arrangement says what its record says. It reads committed files only."
     },
     {
+      "module": "tests/testing/test_release.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The v1.0.0 release against the frozen evidence it is cut over: the version is the one pyproject.toml declares and uv.lock records, and the changelog's release section sits under an empty unreleased one with both link references; every release surface names the same tag; the release gate, the freeze, the deciding story, and both digests are the evidence index's, the case study was verified against the same pack, and no release file is inside the pack; every count the notes state is the index's and is recomputed from the register; every component identifier is carried by each file the data says pins it and is the value the evidence records name, with the one chart record that differs named; every figure the notes quote is a case-study figure with the same text and no other measurement appears in the notes; the notes lead with the problem and the findings, link the whole reading path in order, and deny production readiness; the composition's service.version is the release version and was 0.0.0 at the baseline rerun's revision; every surface the release leaves describing the repository before it still says what the notes say it says, and the register's release row is a tripwire; and every listed P0 merge carries its story, with none missing.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that the release's data, notes, and checklist agree with the files they quote, never that the notes' prose says what the records say, that a check only the hosting service can run has passed, or that the tag exists. It reads committed files and the repository's history; the checks that read history skip in a shallow clone."
+    },
+    {
       "module": "tests/testing/test_evidence_index.py",
       "layer": "documentation",
       "marker": "docs",
