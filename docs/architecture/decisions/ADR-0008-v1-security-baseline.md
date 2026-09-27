@@ -103,6 +103,13 @@ confidential report about any gap named here — a constraint that shapes what i
 responsible to publish, and the answer is everything, because a gap nobody can
 report privately is a gap that should at least be public.
 
+> **Note, 2026-09-27.** The paragraph above is this record's accepted text. For
+> `v1.0.0`, `V1-S5-008-PR1` changed [SECURITY.md](../../../SECURITY.md) to name GitHub
+> private vulnerability reporting as the private channel. It is a setting on the
+> hosting service, it read disabled when that change was written, and the release
+> checklist refuses the tag until it reads enabled. The decision to publish every gap
+> is unchanged.
+
 ## Decision criteria
 
 | Criterion | Why it matters |

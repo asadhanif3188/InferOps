@@ -22,7 +22,7 @@
     "penetrationTestsPerformed": 0,
     "vulnerabilityReportsReceived": 0,
     "vulnerabilityReportsPossible": false,
-    "privateReportingChannel": "not published. SECURITY.md records the gap and docs/governance/repository.md records it as a governance blocker; until it exists this project cannot accept a confidential report.",
+    "privateReportingChannel": "named but not enabled when last read. SECURITY.md names GitHub private vulnerability reporting for v1.0.0, since V1-S5-008-PR1. It is a setting on the hosting service, which no file here can record: on 2026-09-27 the service reported it disabled, so no confidential report was possible then, and the release checklist refuses the v1.0.0 tag until it reads enabled. It promises no acknowledgement window, remediation timeline, or backported fix, and it has received no report.",
     "note": "These counts are zero rather than absent. A missing count reads as an unmeasured one, and an unmeasured one reads as a positive by anybody skimming."
   },
   "actors": [
@@ -1859,8 +1859,8 @@
       "statement": "The reserved-vocabulary check reads every Markdown document committed here and the baseline data. A claim made in a word the list does not hold, in a file that is not Markdown, or anywhere outside this repository is not reached by it."
     },
     {
-      "limitationId": "no-reporting-channel",
-      "statement": "There is no private vulnerability reporting channel, so this project cannot accept a confidential report about any gap named here."
+      "limitationId": "the-reporting-channel-promises-no-response",
+      "statement": "The private vulnerability reporting channel SECURITY.md names for v1.0.0, GitHub private vulnerability reporting, is a hosting-service setting that no file here records, and it read disabled on 2026-09-27. Enabled, it promises no acknowledgement window, remediation timeline, or backported fix. It has never received or answered a report, so no response time has been measured, and everything in this baseline was published before any private channel existed."
     },
     {
       "limitationId": "the-workload-policy-reads-a-file",

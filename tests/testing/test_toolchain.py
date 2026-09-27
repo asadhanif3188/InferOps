@@ -223,10 +223,24 @@ def test_repository_tooling_and_tests_stay_outside_the_distribution() -> None:
 
 
 def test_the_version_is_declared_once() -> None:
-    """D1. The distribution version lives in one file, and it is not the package."""
-    assert PYPROJECT["project"]["version"] == "0.0.0"
+    """D1. The distribution version lives in one file, and it is not the package.
+
+    It was `0.0.0` until `V1-S5-008-PR1` prepared the `v1.0.0` release; the value
+    moved and the rule did not.
+    """
+    assert PYPROJECT["project"]["version"] == "1.0.0"
     body = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
     assert "__version__" not in body
+
+
+def test_the_classifier_does_not_call_the_release_production_ready() -> None:
+    """A 1.0.0 usually carries `Production/Stable`; this one's evidence does not."""
+    statuses = [
+        classifier
+        for classifier in PYPROJECT["project"]["classifiers"]
+        if classifier.startswith("Development Status ::")
+    ]
+    assert statuses == ["Development Status :: 3 - Alpha"], statuses
 
 
 def test_the_distribution_refuses_to_be_uploaded() -> None:

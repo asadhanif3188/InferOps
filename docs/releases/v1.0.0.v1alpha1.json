@@ -1,0 +1,633 @@
+{
+  "$id": "https://inferops.io/releases/v1.0.0.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "The InferOps v1.0.0 release, as the data a test holds it to",
+  "description": "What the v1.0.0 release is cut over and what it is not: the version, the revision it was prepared from, the release gate and the frozen evidence it quotes, the counts it states, the immutable component identifiers it names and the files that pin them, what it does not publish, the figures its notes quote and the case-study figure each one is, the P0 stories it depends on, and every surface that still describes the repository as it stood before the release. tests/testing/test_release.py reads this file against pyproject.toml, the evidence index, the register, the case study's data, and the pinning files, and fails when any of them disagrees.",
+  "version": "1.0.0",
+  "tag": "v1.0.0",
+  "preparedIn": "V1-S5-008-PR1",
+  "preparedOn": "2026-09-27",
+  "baseRevision": "742355b6d2ed8c82f2f17975d5038078685baf02",
+  "candidate": "The commit on main that merges V1-S5-008-PR1. It does not exist while this file is written, so no file in it can name it: the checklist names it after the merge, and the annotated tag records it.",
+  "processRef": "docs/releases.md",
+  "notesRef": "docs/releases/v1.0.0.md",
+  "checklistRef": "docs/releases/v1.0.0-checklist.md",
+  "changelogRef": "CHANGELOG.md",
+  "versionSourceRef": "pyproject.toml",
+  "approval": {
+    "authorityId": "v1-release-approval",
+    "heldBy": "repository-maintainer",
+    "authorityRef": "docs/governance/decision-authority.v1alpha1.json",
+    "exercisedBy": "Merging V1-S5-008-PR1 and then, only after every post-merge check in the checklist passes on the merge commit, creating the annotated tag at that commit. There is no approval file: the merge, the review, the tag, and the history are the whole mechanism."
+  },
+  "evidence": {
+    "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+    "indexPageRef": "docs/proof/v1-evidence-index.md",
+    "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+    "dashboardRef": "docs/proof/dashboard.md",
+    "caseStudyRef": "docs/case-study/v1-engineering-case-study.md",
+    "caseStudyDataRef": "docs/case-study/v1-engineering-case-study.v1alpha1.json",
+    "gateCommand": "uv run --locked python -m tools.evidence_index --gate",
+    "releaseGate": "complete",
+    "releaseBlockers": 0,
+    "blockersRaised": 5,
+    "evidenceFreeze": "frozen",
+    "freezeDecidedIn": "V1-S5-013-PR2",
+    "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
+    "evidencePackSha256": "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2",
+    "note": "The pack digest covers every file a record cites, the register, and its four ledgers, and is the one this release quotes. This release changes none of those files, so both digests are the ones V1-S5-013-PR2 froze; a test fails if either moves."
+  },
+  "counts": {
+    "claims": 59,
+    "claimsByStatus": {
+      "certified": 41,
+      "planned": 7,
+      "deferred": 1,
+      "not-claimed": 10
+    },
+    "records": 64,
+    "recordsByLevel": {
+      "C0": 26,
+      "C1": 8,
+      "C2": 30,
+      "C3": 0,
+      "C4": 0
+    },
+    "executedRecords": 38,
+    "executedRecordsNamingTheRevisionThatRan": 20
+  },
+  "components": [
+    {
+      "componentId": "runtime-image",
+      "what": "The llama.cpp server image ADR 0002 selected",
+      "value": "ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "identifierKind": "image-digest",
+      "evidenceComponentNames": [
+        "llama.cpp server",
+        "llama-cpp-server",
+        "llama.cpp server image"
+      ],
+      "pinnedIn": [
+        "src/inferops/adapters/llama_cpp/pins.py",
+        "charts/inferops-llm/values.yaml",
+        "deploy/serving/runtime/container-package.v1.json"
+      ],
+      "pinnedAs": "sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384",
+      "everyRecordAgrees": true,
+      "note": "Pulled from its registry by digest; InferOps does not build or publish it."
+    },
+    {
+      "componentId": "model-revision",
+      "what": "The Qwen/Qwen3-1.7B-GGUF repository revision",
+      "value": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "identifierKind": "model-revision",
+      "evidenceComponentNames": [
+        "Qwen3-1.7B-GGUF",
+        "qwen3-1-7b-q8-0",
+        "Qwen3-1.7B-Q8_0 repository"
+      ],
+      "pinnedIn": [
+        "src/inferops/adapters/llama_cpp/pins.py",
+        "deploy/serving/local/composition.v1.json"
+      ],
+      "pinnedAs": "90862c4b9d2787eaed51d12237eafdfe7c5f6077",
+      "everyRecordAgrees": true,
+      "note": "Downloaded by the operator's own consent; the release carries no model byte."
+    },
+    {
+      "componentId": "model-file-hash",
+      "what": "The SHA-256 of Qwen3-1.7B-Q8_0.gguf at that revision",
+      "value": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+      "identifierKind": "artifact-hash",
+      "evidenceComponentNames": [
+        "Qwen3-1.7B-Q8_0.gguf",
+        "qwen3-1-7b-q8-0"
+      ],
+      "pinnedIn": [
+        "src/inferops/adapters/llama_cpp/pins.py"
+      ],
+      "pinnedAs": "sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+      "everyRecordAgrees": true,
+      "note": "Records write it with and without the sha256: prefix; the hex is compared."
+    },
+    {
+      "componentId": "chart",
+      "what": "The inferops-llm Helm chart",
+      "value": "inferops-llm-0.3.0",
+      "identifierKind": "chart-version",
+      "evidenceComponentNames": [
+        "inferops-llm",
+        "inferops-llm-chart"
+      ],
+      "pinnedIn": [
+        "charts/inferops-llm/Chart.yaml"
+      ],
+      "pinnedAs": "version: 0.3.0",
+      "everyRecordAgrees": false,
+      "note": "One record, V1-S3-004's, names 0.2.0, the chart before V1-S3-007 added the collector; every other record naming the chart names 0.3.0. The chart's own version is not the platform version, and this release does not change it.",
+      "otherValuesInTheIndex": [
+        "0.2.0"
+      ]
+    },
+    {
+      "componentId": "collector-image",
+      "what": "The release-scoped Prometheus collector image",
+      "value": "prom/prometheus@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+      "identifierKind": "image-digest",
+      "evidenceComponentNames": [
+        "release-collector"
+      ],
+      "pinnedIn": [
+        "charts/inferops-llm/values.yaml"
+      ],
+      "pinnedAs": "sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996",
+      "everyRecordAgrees": true,
+      "note": "Pulled from its registry by digest."
+    }
+  ],
+  "notPublished": [
+    {
+      "artifact": "The InferOps API container image",
+      "reason": "Built from the checkout and loaded into the operator's cluster node; no registry holds one. The records name the digests of images built from earlier revisions, and an image built from the tagged tree will have another digest that no record has run."
+    },
+    {
+      "artifact": "The model-seed container image",
+      "reason": "Built and loaded the same way as the API image, with the same consequence for its digest."
+    },
+    {
+      "artifact": "The inferops Python distribution",
+      "reason": "Built locally and published to no index; the Private :: Do Not Upload classifier refuses an upload."
+    },
+    {
+      "artifact": "A packaged Helm chart",
+      "reason": "The chart is installed from the checkout; no chart repository or OCI registry holds it."
+    },
+    {
+      "artifact": "The model weights",
+      "reason": "Acquired by each operator from the pinned upstream revision and verified against the published hash."
+    }
+  ],
+  "differsFromWhatWasMeasured": [
+    {
+      "differenceId": "service-version-label",
+      "path": "deploy/serving/local/composition.v1.json",
+      "measured": "0.0.0",
+      "released": "1.0.0",
+      "what": "The service.version telemetry label the local composition gives the API.",
+      "why": "tools/local_composition refuses a composition whose INFEROPS_SERVICE_VERSION is not the version pyproject.toml declares, so the label moved with the version. At bcad343, the revision the V1-S5-013-PR1 baseline rerun ran, the composition set 0.0.0. The rerun's own records do not quote the label; records of earlier runs do, and quote 0.0.0. The chart leaves the label empty unless a values file sets it, and this release does not change that. No figure the release notes quote depends on the label's value."
+    },
+    {
+      "differenceId": "api-image-digest",
+      "path": "deploy/api/Dockerfile",
+      "measured": "The digests the records name, each of an image built from the revision that record ran",
+      "released": "Whatever digest an image built from the tagged tree has",
+      "what": "The InferOps API container image.",
+      "why": "The image is built from the checkout, and the tagged tree differs from every revision a record ran, if only in the version. No record ran an image built from it."
+    }
+  ],
+  "figures": [
+    {
+      "caseStudyFigureId": "completed-rate-range",
+      "quoted": "between 0.554 and 0.575 per second"
+    },
+    {
+      "caseStudyFigureId": "caller-visible-outage",
+      "quoted": "31 960 ms"
+    },
+    {
+      "caseStudyFigureId": "outage-refusals",
+      "quoted": "40 of the 41 requests"
+    },
+    {
+      "caseStudyFigureId": "second-run-caller-visible-outage",
+      "quoted": "2 832 ms"
+    },
+    {
+      "caseStudyFigureId": "unready-window",
+      "quoted": "179 755 ms"
+    },
+    {
+      "caseStudyFigureId": "clean-clone-steps",
+      "quoted": "18 steps"
+    },
+    {
+      "caseStudyFigureId": "clean-clone-wall-clock",
+      "quoted": "1 h 30 min 32 s"
+    },
+    {
+      "caseStudyFigureId": "use-over-reservation",
+      "quoted": "about 5.4 times"
+    }
+  ],
+  "p0Stories": [
+    {
+      "storyId": "V1-S0-001",
+      "mergedBy": [
+        "#1"
+      ]
+    },
+    {
+      "storyId": "V1-S0-002",
+      "mergedBy": [
+        "#2",
+        "#3"
+      ]
+    },
+    {
+      "storyId": "V1-S0-003",
+      "mergedBy": [
+        "#4",
+        "#5"
+      ]
+    },
+    {
+      "storyId": "V1-S0-004",
+      "mergedBy": [
+        "#6",
+        "#7",
+        "#8"
+      ]
+    },
+    {
+      "storyId": "V1-S0-005",
+      "mergedBy": [
+        "#9"
+      ]
+    },
+    {
+      "storyId": "V1-S0-006",
+      "mergedBy": [
+        "#10"
+      ]
+    },
+    {
+      "storyId": "V1-S0-007",
+      "mergedBy": [
+        "#11"
+      ]
+    },
+    {
+      "storyId": "V1-S0-008",
+      "mergedBy": [
+        "#12"
+      ]
+    },
+    {
+      "storyId": "V1-S0-009",
+      "mergedBy": [
+        "#13"
+      ]
+    },
+    {
+      "storyId": "V1-S0-010",
+      "mergedBy": [],
+      "note": "It changed no file in this repository, so no merge carries it."
+    },
+    {
+      "storyId": "V1-S0-011",
+      "mergedBy": [
+        "#14"
+      ]
+    },
+    {
+      "storyId": "V1-S0-012",
+      "mergedBy": [
+        "#15"
+      ]
+    },
+    {
+      "storyId": "V1-S1-001",
+      "mergedBy": [
+        "#16",
+        "#17"
+      ]
+    },
+    {
+      "storyId": "V1-S1-002",
+      "mergedBy": [
+        "#18",
+        "#19"
+      ]
+    },
+    {
+      "storyId": "V1-S1-003",
+      "mergedBy": [
+        "#20"
+      ]
+    },
+    {
+      "storyId": "V1-S1-004",
+      "mergedBy": [
+        "#21",
+        "#22"
+      ]
+    },
+    {
+      "storyId": "V1-S1-005",
+      "mergedBy": [
+        "#23",
+        "#24"
+      ]
+    },
+    {
+      "storyId": "V1-S1-006",
+      "mergedBy": [
+        "#25",
+        "#26"
+      ]
+    },
+    {
+      "storyId": "V1-S1-007",
+      "mergedBy": [
+        "#27"
+      ]
+    },
+    {
+      "storyId": "V1-S1-008",
+      "mergedBy": [],
+      "note": "Committed to main directly as 7c15b6e and bfe02c0, between #29 and #30, with no merge commit."
+    },
+    {
+      "storyId": "V1-S1-009",
+      "mergedBy": [
+        "#29"
+      ]
+    },
+    {
+      "storyId": "V1-S2-001",
+      "mergedBy": [
+        "#34"
+      ]
+    },
+    {
+      "storyId": "V1-S2-002",
+      "mergedBy": [
+        "#35",
+        "#36"
+      ]
+    },
+    {
+      "storyId": "V1-S2-003",
+      "mergedBy": [
+        "#37"
+      ]
+    },
+    {
+      "storyId": "V1-S2-004",
+      "mergedBy": [
+        "#38"
+      ]
+    },
+    {
+      "storyId": "V1-S2-005",
+      "mergedBy": [
+        "#39",
+        "#41"
+      ]
+    },
+    {
+      "storyId": "V1-S2-006",
+      "mergedBy": [
+        "#42"
+      ]
+    },
+    {
+      "storyId": "V1-S2-007",
+      "mergedBy": [
+        "#43"
+      ]
+    },
+    {
+      "storyId": "V1-S2-008",
+      "mergedBy": [
+        "#44"
+      ]
+    },
+    {
+      "storyId": "V1-S3-001",
+      "mergedBy": [
+        "#46"
+      ]
+    },
+    {
+      "storyId": "V1-S3-002",
+      "mergedBy": [
+        "#47",
+        "#48"
+      ]
+    },
+    {
+      "storyId": "V1-S3-003",
+      "mergedBy": [
+        "#49"
+      ]
+    },
+    {
+      "storyId": "V1-S3-004",
+      "mergedBy": [
+        "#50"
+      ]
+    },
+    {
+      "storyId": "V1-S3-005",
+      "mergedBy": [
+        "#51"
+      ]
+    },
+    {
+      "storyId": "V1-S3-006",
+      "mergedBy": [
+        "#52",
+        "#53"
+      ]
+    },
+    {
+      "storyId": "V1-S3-007",
+      "mergedBy": [
+        "#54",
+        "#55"
+      ]
+    },
+    {
+      "storyId": "V1-S3-008",
+      "mergedBy": [
+        "#56"
+      ]
+    },
+    {
+      "storyId": "V1-S3-009",
+      "mergedBy": [
+        "#57"
+      ]
+    },
+    {
+      "storyId": "V1-S3-010",
+      "mergedBy": [
+        "#59",
+        "#60"
+      ]
+    },
+    {
+      "storyId": "V1-S3-011",
+      "mergedBy": [
+        "#61",
+        "#62"
+      ]
+    },
+    {
+      "storyId": "V1-S4-001",
+      "mergedBy": [
+        "#64",
+        "#65"
+      ]
+    },
+    {
+      "storyId": "V1-S4-002",
+      "mergedBy": [
+        "#66",
+        "#67"
+      ]
+    },
+    {
+      "storyId": "V1-S4-003",
+      "mergedBy": [
+        "#68"
+      ]
+    },
+    {
+      "storyId": "V1-S4-004",
+      "mergedBy": [
+        "#69",
+        "#70"
+      ]
+    },
+    {
+      "storyId": "V1-S4-005",
+      "mergedBy": [
+        "#71",
+        "#72"
+      ]
+    },
+    {
+      "storyId": "V1-S4-006",
+      "mergedBy": [
+        "#73"
+      ]
+    },
+    {
+      "storyId": "V1-S4-007",
+      "mergedBy": [
+        "#74"
+      ]
+    },
+    {
+      "storyId": "V1-S4-008",
+      "mergedBy": [
+        "#75"
+      ]
+    },
+    {
+      "storyId": "V1-S4-009",
+      "mergedBy": [
+        "#76",
+        "#77"
+      ]
+    },
+    {
+      "storyId": "V1-S5-001",
+      "mergedBy": [
+        "#78",
+        "#79"
+      ]
+    },
+    {
+      "storyId": "V1-S5-002",
+      "mergedBy": [
+        "#80",
+        "#81"
+      ]
+    },
+    {
+      "storyId": "V1-S5-003",
+      "mergedBy": [
+        "#82"
+      ]
+    },
+    {
+      "storyId": "V1-S5-004",
+      "mergedBy": [
+        "#83",
+        "#84"
+      ]
+    },
+    {
+      "storyId": "V1-S5-005",
+      "mergedBy": [
+        "#85"
+      ]
+    },
+    {
+      "storyId": "V1-S5-006",
+      "mergedBy": [
+        "#90",
+        "#91"
+      ]
+    },
+    {
+      "storyId": "V1-S5-007",
+      "mergedBy": [
+        "#92",
+        "#93"
+      ]
+    },
+    {
+      "storyId": "V1-S5-011",
+      "mergedBy": [
+        "#86",
+        "#87"
+      ]
+    },
+    {
+      "storyId": "V1-S5-012",
+      "mergedBy": [
+        "#88",
+        "#89"
+      ]
+    },
+    {
+      "storyId": "V1-S5-013",
+      "mergedBy": [
+        "#94",
+        "#95"
+      ]
+    }
+  ],
+  "describesTheRepositoryBeforeTheRelease": [
+    {
+      "surfaceId": "register-release-row",
+      "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+      "pointer": "/claims/57",
+      "says": "The release process is documented and no release has been executed. The changelog holds unreleased changes only.",
+      "why": "The register is inside the frozen evidence pack. Moving a-v1-release-has-been-published out of not-claimed would change the register and so the pack digest this release quotes; the register cannot record the release it is cut over, as a ledger in the pack cannot state the pack's digest. The row is true of the repository as it was frozen, and moving it is work for a change after the tag, under a new ledger and a new pack digest."
+    },
+    {
+      "surfaceId": "dashboard-release-row",
+      "path": "docs/proof/dashboard.md",
+      "says": "The release process is documented and no release has been executed. The changelog holds unreleased changes only.",
+      "why": "The proof dashboard is generated from the register and a test regenerates it, so it states the register's row."
+    },
+    {
+      "surfaceId": "register-security-policy-reason",
+      "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+      "pointer": "/nonClaimSurfaces",
+      "says": "no private channel is published",
+      "why": "The same register, frozen before this release named GitHub private vulnerability reporting in SECURITY.md."
+    },
+    {
+      "surfaceId": "case-study-release-absent",
+      "path": "docs/case-study/v1-engineering-case-study.md",
+      "says": "a published release",
+      "why": "The case study lists a published release among what V1 does not have, and names a first release cut against the frozen pack as what comes before anything new. It is bound to both digests and verified in V1-S5-013-PR2; it is left as published."
+    }
+  ]
+}

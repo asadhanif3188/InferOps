@@ -17,7 +17,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "inferops"
-version = "0.0.0"
+version = "1.0.0"
 description = "A Kubernetes-native platform for operating LLM inference workloads."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -27,9 +27,16 @@ authors = [{ name = "InferOps contributors" }]
 keywords = ["kubernetes", "llm", "inference", "platform"]
 # The distribution is built and installed locally. It is not published to any
 # package index in V1, and this classifier is what refuses an upload that tried.
+#
+# `3 - Alpha` rather than the `5 - Production/Stable` a 1.0.0 usually carries, and
+# no longer `1 - Planning`: V1 has executed code behind it, and it is not a
+# production-ready platform - every real result is one provider, one host, CPU, one
+# replica, and deployment rendering is unbuilt. The version number marks packaged
+# repository state (docs/releases.md); this classifier is the part that describes
+# maturity, and it says what the evidence says.
 classifiers = [
     "Private :: Do Not Upload",
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3.12",
 ]
 # Empty on purpose. The distribution carries no runtime dependency because it

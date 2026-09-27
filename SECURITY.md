@@ -1,18 +1,26 @@
 # Security policy
 
-Status: reporting expectations documented; no private reporting channel published.
-A threat model and control baseline now exist and are linked below; neither changes
-anything in this policy.
+Status: reporting expectations documented; GitHub private vulnerability reporting is
+named as the private channel for `v1.0.0` in `V1-S5-008-PR1`. It is a setting on the
+hosting service, and on 2026-09-27, when this was written, that setting still read
+disabled. A threat model and control baseline exist and are linked below; neither
+changes anything in this policy.
 
-This repository contains governance documentation, local development apparatus,
-and one platform-domain package that is built locally and published to no index. It
-ships no service, container image, released package, or artifact, so there is no
-supported version to patch and no security fix to distribute.
+This repository contains governance documentation, local development apparatus, a
+chart and prerequisite layer, and one platform package that is built locally and
+published to no index. A release is an annotated tag and its source archives: it ships
+no container image, package, chart, or model, so a fix is distributed only as a later
+version of the source.
 
 ## Supported versions
 
-None. No versioned release exists. A supported-version table will be published with
-the first release that carries a security claim.
+| Version | Receives a fix |
+|---|---|
+| The latest release, `1.0.0` | A fix lands on `main` and in the next release cut from it, whatever its number. Nothing is backported to an earlier release, and no timeline is promised |
+| Earlier than `1.0.0` | Nothing was ever released below `1.0.0` |
+
+A supported version is one a fix will be released for. It is not a statement that the
+version is defended: [what is not defended](#scope-of-current-claims) is below.
 
 ## Reporting a vulnerability
 
@@ -21,15 +29,19 @@ vulnerability report, credential, private data, or a sensitive prompt or respons
 Public disclosure in this repository is the failure mode this policy exists to
 prevent.
 
-A dedicated private reporting channel is not yet published. Until one exists, this
-project cannot promise confidential intake, an acknowledgement window, a remediation
-timeline, or coordinated disclosure. That gap is a known governance blocker recorded
-in [docs/governance/repository.md](docs/governance/repository.md), and it must be
-resolved before the project accepts sensitive reports or publishes a versioned
-release.
+Report privately through GitHub's private vulnerability reporting for this repository:
+the **Security** tab, then **Report a vulnerability**. The report is visible to the
+repository's maintainers and to you, and not to the public. It needs a GitHub account,
+and it is the only private channel; no e-mail address is published. **If the Security
+tab shows no Report a vulnerability button, the channel is not enabled**: do not report
+publicly, and wait for it.
 
-If you believe you have found a security-relevant problem now, wait for the private
-channel rather than disclosing it publicly here.
+What this channel does not promise: an acknowledgement window, a remediation timeline,
+coordinated disclosure on a date, or a backported fix. One role maintains this
+repository, and the channel has not yet received or answered a report, so no response
+time has ever been measured. Whether it is enabled is a setting on the hosting service,
+which no file here can record; [the release checklist](docs/releases/v1.0.0-checklist.md)
+reads it and refuses the `v1.0.0` tag until it reads enabled.
 
 ## Scope of current claims
 

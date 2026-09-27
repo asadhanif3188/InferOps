@@ -3,12 +3,50 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project intends to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
-once versioned releases begin.
+and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
+from `1.0.0`.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.0.0] - 2026-09-27
+
+The first versioned release: everything V1 built, from the first governance document
+to the frozen evidence pack. [The release notes](docs/releases/v1.0.0.md) lead with what
+the evidence showed and what V1 does not establish; the entries below are the history,
+newest first. The date is the day the release was prepared; the annotated tag records
+the day it was cut, and is created only after the post-merge checks in
+[the release checklist](docs/releases/v1.0.0-checklist.md) pass.
+
 ### Added
+
+- **The `v1.0.0` release, prepared over the frozen evidence pack.** `V1-S5-008-PR1`
+  checked that every P0 story is merged and that `python -m tools.evidence_index --gate`
+  still exits 0 with the pack `FROZEN`, then set the version to `1.0.0` in
+  `pyproject.toml`, the one place it is declared, and moved the development-status
+  classifier from `1 - Planning` to `3 - Alpha` rather than to `5 - Production/Stable`.
+  The local composition's `service.version` label moved with it, because the composition
+  tool refuses one that is not the declared version; the first draft left it at `0.0.0`
+  and the suite refused to collect. It adds [release notes](docs/releases/v1.0.0.md) that lead with five bounded findings
+  and their limitations, [a checklist](docs/releases/v1.0.0-checklist.md) with the gates
+  passed before merge and the exact post-merge checks, tag, and release commands, and
+  [the data](docs/releases/v1.0.0.v1alpha1.json) both are held to by
+  `tests/testing/test_release.py`: the digests, the claim and record counts, the pinned
+  identifiers, and the measured figures are read back from the evidence index, the
+  register, the pinning files, and the case study's data; the notes' other counts and
+  descriptions are checked by review only. No file in the evidence pack changed, so the pack digest the
+  release quotes is `652e9051…`, the one `V1-S5-013-PR2` froze. The register inside that
+  pack still lists a published release as not claimed; the notes say why it is left so.
+  [SECURITY.md](SECURITY.md) now names GitHub private vulnerability reporting, the
+  channel it required before a versioned release; the setting read disabled when this
+  change was written, and the checklist refuses the tag until it reads enabled. The
+  interim conduct expectations were revisited and kept. An independent review of the
+  first commit found the channel described as enabled when it was not, a label said to
+  be quoted by no record when two records quote it, a test described as checking more
+  than it does, and a recommended repository description that overstated the register;
+  each is corrected and recorded in
+  [the validation record](docs/proof/testing/v1-s5-008-pr1-validation.md). No tag is created and nothing is published by this change.
 
 - **The V1 case study published, and the evidence pack frozen.** `V1-S5-013-PR2`
   published [the V1 engineering case study](docs/case-study/v1-engineering-case-study.md)
@@ -4306,3 +4344,6 @@ ADR 0001 is accepted only for what was executed, on one Windows host, one
 architecture, one point in time. Linux and macOS remain untested. No model, serving
 runtime, inference, benchmark, ingress, or load-balancing behaviour is proven by
 any entry above, and no V1 product capability or versioned release is included.
+
+[Unreleased]: https://github.com/asadhanif3188/InferOps/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/asadhanif3188/InferOps/releases/tag/v1.0.0
