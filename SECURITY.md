@@ -41,7 +41,7 @@ What this channel does not promise: an acknowledgement window, a remediation tim
 coordinated disclosure on a date, or a backported fix. One role maintains this
 repository, and the channel has not yet received or answered a report, so no response
 time has ever been measured. Whether it is enabled is a setting on the hosting service,
-which no file here can record: it read enabled on 2026-09-27, after `v1.0.0` was
+which no file here can pin; it read enabled on 2026-09-27, after `v1.0.0` was
 released, and its maintainer can change it.
 
 ## Scope of current claims

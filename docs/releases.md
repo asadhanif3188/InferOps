@@ -1,7 +1,8 @@
 # Release process
 
-Status: accepted high-level process; executed for the first time for `v1.0.0`,
-prepared in `V1-S5-008-PR1` and tagged and published on 2026-09-27.
+Status: accepted high-level process; used for the first time to cut `v1.0.0`, prepared
+in `V1-S5-008-PR1` and tagged and published on 2026-09-27. The maintainer's runs of the
+checks before the tag are not recorded.
 
 InferOps uses Semantic Versioning for public releases. A release number is
 evidence of packaged repository state, not by itself proof of runtime, performance,

@@ -73,7 +73,8 @@ evidence pack's, which covers the register and its ledgers as well as every cite
 file, is the one a release quotes.
 
 **`v1.0.0` was released over that pack on 2026-09-27.** [The record read after the
-release](releases/v1-s5-009-pr1-v1.0.0-publication.md) is the only record made since:
+release](releases/v1-s5-009-pr1-v1.0.0-publication.md) is the only evidence record the
+register has gained since:
 it read the tag, the published release, the candidate's hosted checks, and the private
 reporting setting, and the register certifies on it, at `C0`, that the release exists.
 It is not part of the pack the release was cut over. Adding it moved both digests of

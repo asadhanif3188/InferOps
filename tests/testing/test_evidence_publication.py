@@ -227,12 +227,17 @@ def test_every_finding_is_answered_and_every_answer_names_its_finding() -> None:
 
 
 def test_the_items_the_case_study_verification_carried_are_closed() -> None:
-    """The register edits `V1-S5-007-PR2` carried, read from the register itself."""
-    register = normalised(json.dumps(REGISTER, ensure_ascii=False)).lower()
-    assert "has not been written" not in register
-    surfaces = {row["path"]: row for row in REGISTER["nonClaimSurfaces"]}
-    assert CASE_STUDY in surfaces
-    assert len(surfaces[CASE_STUDY]["reason"]) > 60
+    """The register edits `V1-S5-007-PR2` carried, read from the register itself.
+
+    Read from the register as released and from the one on `main`: a change after the
+    release must not bring the phrase back either.
+    """
+    for held in (REGISTER, load_register()):
+        register = normalised(json.dumps(held, ensure_ascii=False)).lower()
+        assert "has not been written" not in register
+        surfaces = {row["path"]: row for row in held["nonClaimSurfaces"]}
+        assert CASE_STUDY in surfaces
+        assert len(surfaces[CASE_STUDY]["reason"]) > 60
     pod = next(claim for claim in REGISTER["claims"] if claim["claimId"] == POD_LOSS)
     carried = normalised(json.dumps(pod, ensure_ascii=False)).lower()
     assert "for the whole outage" not in carried

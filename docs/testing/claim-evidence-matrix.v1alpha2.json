@@ -9410,7 +9410,7 @@
       "status": "certified",
       "notClaimedReason": null,
       "assertsRealBehaviour": false,
-      "limitation": "One annotated tag and one published release, read once on 2026-09-27, after the release, by a record written after the evidence pack was frozen: that record is not part of the pack the release was cut over. The release is state on the hosting service, which its maintainer can edit or delete, and the record pins only the tag object. The tag and the source archives are all that is published; no image, package, chart, or model is. Semantic versioning is an intention from this release on, and no later release exists yet to hold it to.",
+      "limitation": "One annotated tag and one published release, read once on 2026-09-27, after the release, by a record written after the evidence pack was frozen: that record is not part of the pack the release was cut over. The release is state on the hosting service, which its maintainer can edit or delete, and the record pins only the tag object. No file is attached to the release, and the release notes state that no image, package, chart, or model is published; no package or image registry was read. Semantic versioning is an intention from this release on, and no later release exists yet to hold it to.",
       "doesNotEstablish": "That the release adds any evidence: every result it points to is a record in the pack it was cut over. Nor that anybody outside this repository has reviewed it, or that the checks the checklist runs before the tag were run in its order; the record ran two of them again at the tag, afterwards.",
       "evidenceRecords": [
         {
@@ -9473,10 +9473,19 @@
               "git cat-file -t v1.0.0",
               "git rev-parse v1.0.0",
               "git rev-parse 'v1.0.0^{commit}'",
+              "git cat-file -p v1.0.0 | sed -E 's/^tagger .* ([0-9]+ [+-][0-9]{4})$/tagger <omitted> \\1/'",
               "git log -1 --format='%H%n%P%n%s' 'v1.0.0^{commit}'",
               "git ls-remote origin refs/tags/v1.0.0 'refs/tags/v1.0.0^{}'",
+              "curl -s https://api.github.com/repos/asadhanif3188/InferOps/releases/tags/v1.0.0 | python -c \"import json,sys; d=json.load(sys.stdin); [print(k, json.dumps(d[k])) for k in ('id','name','tag_name','target_commitish','draft','prerelease','created_at','published_at','html_url')]; print('assets', len(d['assets'])); print('body:'); print(d['body'])\"",
+              "curl -s https://api.github.com/repos/asadhanif3188/InferOps/releases | python -c \"import json,sys; d=json.load(sys.stdin); print('releases', len(d), [r['tag_name'] for r in d])\"",
+              "curl -s 'https://api.github.com/repos/asadhanif3188/InferOps/actions/runs?head_sha=718ad2e0fac8ae70c6d053a2decb00e61ff3de39&per_page=20' | python -c \"import json,sys; d=json.load(sys.stdin); print('runs', d['total_count']); [print(r['id'], r['name'], r['path'], r['event'], r['head_branch'], r['head_sha'], r['run_attempt'], r['status'], r['conclusion'], r['run_started_at'], r['updated_at']) for r in d['workflow_runs']]\"",
+              "curl -s https://api.github.com/repos/asadhanif3188/InferOps/actions/runs/36305552023/jobs | python -c \"import json,sys; d=json.load(sys.stdin); print('jobs', d['total_count']); [print(j['conclusion'], '|', j['name']) for j in d['jobs']]\"",
               "curl -s https://api.github.com/repos/asadhanif3188/InferOps/private-vulnerability-reporting",
-              "uv run --locked --offline python -m tools.evidence_index --gate"
+              "curl -s https://api.github.com/repos/asadhanif3188/InferOps | python -c \"import json,sys; d=json.load(sys.stdin); [print(k, json.dumps(d[k])) for k in ('description','homepage','topics')]\"",
+              "git rev-parse HEAD",
+              "git status --porcelain --untracked-files=all | wc -l",
+              "uv run --locked --offline python -m tools.evidence_index --gate; echo \"exit $?\"",
+              "uv run --locked --offline python -m pytest tests/testing/test_release.py tests/testing/test_case_study.py tests/testing/test_evidence_publication.py -q -p no:cacheprovider | tail -1; echo \"exit ${PIPESTATUS[0]}\""
             ]
           },
           "results": [
@@ -9518,6 +9527,7 @@
           "doesNotEstablish": [
             "That the release adds any evidence: every result it points to is a record in the pack it was cut over, and this record measured nothing about the platform.",
             "That the source archives the hosting service makes from the tag hold the tag's tree; none was downloaded or compared.",
+            "That nothing but the tag and its source archives is published anywhere: no package or image registry was read.",
             "That the checks before the tag were run in the checklist's order, or that private reporting was enabled when the tag was created.",
             "That anybody outside this repository has reviewed the release."
           ]

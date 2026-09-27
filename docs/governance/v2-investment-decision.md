@@ -12,8 +12,8 @@ register and the evidence index.
 > [!IMPORTANT]
 > **No second version is opened, and this record names no scope for one.** It decides
 > whether V1's evidence justifies another version now, and what problem one would have
-> to prove. It adds no claim, moves no claim, and changes no file in the frozen
-> evidence pack. Every problem below is an engineering problem V1 measured or stated;
+> to prove. This record adds no claim, moves no claim, and changes no file in the
+> frozen evidence pack; the post-release ledger in the same change is separate. Every problem below is an engineering problem V1 measured or stated;
 > none is a statement about who would use the result or what it would be worth, and
 > nothing here measures either.
 
@@ -409,7 +409,8 @@ closed for one workload — are named in that section; the other three are added
 - **It does not open a second version, schedule one, or name its scope.** The revised
   problem statement says what a later proposal has to prove, not what it contains.
 - **It does not add or move a claim,** and it changes no file in the frozen evidence
-  pack, no register row, and no ledger.
+  pack, no register row, and no ledger. The post-release ledger in the same change moves
+  one row, the release's, and is not part of this record.
 - **It does not change an accepted decision.** ADR 0004, 0005, 0011, 0012, and 0013 are
   cited as they stand; a later version that needs one changed says so in its own record.
 - **It does not add an authority.** None of the four in

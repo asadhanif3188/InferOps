@@ -608,6 +608,20 @@ def test_every_listed_merge_carries_its_story_and_no_story_merge_is_missing() ->
     assert story_merges <= listed, sorted(story_merges - listed)
 
 
+def _git_show(spec: str) -> str | None:
+    try:
+        return subprocess.run(
+            ["git", "show", spec],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def _git_ok(*arguments: str) -> bool:
     try:
         return (
@@ -684,8 +698,19 @@ def test_what_the_release_data_observed_is_what_the_post_release_ledger_states()
 
 
 def test_the_notes_keep_what_was_released_and_add_one_section_after_it() -> None:
-    """Everything above the added section is the notes as they were released."""
+    """Everything but the note at the top and the added section is the notes as released.
+
+    Compared with the tagged file where the clone has the tag; without it, only the
+    headings and the added text are checked.
+    """
     raw = read(RELEASE["notesRef"])
+    tagged = _git_show(f"{RELEASE['tag']}:{RELEASE['notesRef']}")
+    if tagged is not None:
+        note = raw.index("\n> [!NOTE]\n> **After the release.**")
+        note_end = raw.index("\n\n", note + 1)
+        kept = raw[:note] + raw[note_end + 1 :]
+        kept = kept.split("\n## After the release\n", 1)[0]
+        assert kept == tagged.replace("\r\n", "\n")
     headings = [line for line in raw.splitlines() if line.startswith("## ")]
     assert headings[-1] == "## After the release"
     assert headings.count("## After the release") == 1

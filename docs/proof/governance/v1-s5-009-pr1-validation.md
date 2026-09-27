@@ -6,8 +6,8 @@ What this change checked before it was committed, and how. What it decided is in
 [the decision whether a second version should proceed](../../governance/v2-investment-decision.md);
 this page is about the checks run over the repository after that page was written.
 
-This change executed nothing against a host: no cluster, runtime, or model was
-contacted, and nothing was published. It reads the frozen evidence and adds none. Every
+The decision's commits executed nothing against a host: no cluster, runtime, or model
+was contacted, and nothing was published. They read the frozen evidence and add none. Every
 figure the decision quotes was already committed and declared by the case study.
 
 > [!NOTE]
@@ -250,9 +250,9 @@ as history, and left.
 | The register's reason for `SECURITY.md`, and for the evidence index | "no private channel is published"; "the four ledgers" | Current | No | Replaced through the same ledger |
 | The proof dashboard, the matrix, the evidence index and its page | The release not claimed; four ledgers; one pair of digests | Current, generated or bound | No | Regenerated; the index page states the released pair and the current pair |
 | Release notes | Prepared; the channel read disabled; surfaces left standing | The notes as released | True of the release | Kept word for word; a note at the top and one section after the release added |
-| Release checklist | Pre-merge status; gate 12 open; post-merge checks and tag not yet run | The checklist as used | True when written | Kept; a status line and a section 6 of what was observed after the tag added |
+| Release checklist | Pre-merge status; gate 12 open; post-merge checks and tag not yet run | The checklist as prepared | True when written | Kept, its status line included; a status line after the release and a section 6 of what was observed after the tag added |
 | Release process and governance table | Prepared, executed only when the tag exists | Current | No | Now released on 2026-09-27 |
-| Case study | A published release among what V1 does not have; a first release as the next step | Dated publication bound to the pack | True of the pack | Body kept; a note in section 12 says the release has been made since |
+| Case study | A published release among what V1 does not have; a first release as the next step | Dated publication bound to the pack | True of the pack | Body kept; a note in its reading guide says the release has been made since, and that its counts describe the pack |
 | The decision whether a second version should proceed | The release row is still not claimed and owed a change after the tag | Current, made in this change | No | Now reads the register as released, and says the row is certified on `main` |
 | ADR 0008's dated note | The channel read disabled | History | True when written | A second dated note added |
 
@@ -271,23 +271,27 @@ reads use the network, and no field for state a record cannot pin.
 
 The pack `v1.0.0` quotes is `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2`,
 over the set `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`. After
-the post-release ledger, `main` holds the set `5bda340846f0c4191a1a40b63d49f0a4565bc54f60421483fb978435fba6955e` and the pack
-`cd3b8dfb9059456443da6caebaf2d0b76f0e64eabbe2260202e6ae787bd00c8e`, which no release quotes. The index no longer states only one pair: it
+the post-release ledger, `main` holds the set `08d4868fcf4c320961d2937b5369dc9846ca4f0455e2f60375c1decfbdab23df` and the pack
+`b958a7244cb6aab924615ff099112435d1e3d527ea348b66ec7ae3e8fd1c8532`, which no release quotes. The index no longer states only one pair: it
 recomputes the released pair by undoing the post-release ledger and refuses a result
-that differs, and a test compares the undone register with the tagged one byte for
-byte. No cited file, earlier ledger, or dated record was edited, or the recomputation
-would fail.
+that differs, and the pair itself is written once in the tool and compared with the
+tag's message where the clone has the tag. A test compares the undone register with the
+tagged one byte for byte, also only where the clone has the tag: continuous integration
+checks out without tags, so there those two checks skip and the written pair is the
+fixed reference. No cited file, earlier ledger, or dated record was edited, or the
+recomputation would fail.
 
 ### Tests that had to change, and why
 
-Five modules held the register, the index's counts, or its digests to what the frozen
+Six modules held the register, the index's counts, or its digests to what the frozen
 pack said, and read them from the current register and summary. Each now reads the
 state it is about: the historical ledgers' modules, the case study's, the release's,
 and the decision's read the register as released and the released summary; the
 surfaces that are current read the current ones. Three tests were tripwires set to
 fire when this row moved: `test_release.py`'s and the decision's release-row checks,
-and the dashboard's count for its release group. Each fired, and each is replaced by a
-check of both states rather than deleted. The security baseline's and the release's
+and the dashboard's count for its release group. Each fired. The first two are replaced
+by checks of both states; the dashboard's reads the current state only, because the
+dashboard is current. The security baseline's and the release's
 reporting-setting checks moved with the reading, as their docstrings said they would.
 The index's rule that no ledger promotes a status gained one exception, for exactly
 this claim and exactly this ledger, on a record the same ledger adds.
@@ -313,6 +317,61 @@ collection in three modules, which undid the publication ledger from the current
 register and met the post-release change first; that is what led to reading each
 module's state explicitly. The next full run failed one test, the dashboard's release
 group count, which was a tripwire.
+
+### What the independent review of the reconciliation found
+
+Two reviewers read the reconciliation's commit independently: one checked every value
+against Git and the hosting service's API and every statement against the files, and
+the planning set for leakage; one reviewed the tooling and the tests and mutated them.
+Every release value, count, and digest was confirmed, the recomputed released counts
+equal the tagged index's, and nothing leaked. What they found, each corrected before
+the next commit:
+
+- **The released pair had no fixed reference where tests run without tags.** An earlier
+  ledger edited after the release, with every committed copy of the old digest
+  rewritten to the new one, passed every test a clone without tags runs. The pair is now
+  written once in the tool, `RELEASED_DIGESTS`, and a ledger that states another pair
+  for the tag is refused; a new test edits an earlier ledger in a copy of the tree and
+  requires the refusal. The commit message had said the index refuses a pair differing
+  from the digests themselves; until this change it compared only with the ledger.
+- **The index page's two rows were not tied to their labels.** Swapping them passed; the
+  test now reads each row whole, and the swap fails.
+- **The merged released summary fell back to current values** for four counts the
+  released pack did not state; it now states them.
+- **Two checks about the current register had moved onto the released one**; each now
+  reads both.
+- **Smaller test defects**: the refusal tests matched any error, one assertion could not
+  fail because text reading removes carriage returns, a docstring promised a comparison
+  with the tagged notes that nothing made, and the register's own rendering was checked
+  only against the tag. Each is fixed: the refusals match their messages, the transcript
+  is read as bytes, the notes are compared with the tag where the clone has it, and the
+  register is compared with its rendering in every clone.
+- **False or overstated wording.** The matrix page still gave the two surface reasons the
+  ledger replaced. The notes and the release data placed the case study's note "at its
+  top" when it was in section 12, and the case study's section 6 still stated the pack's
+  counts as today's; the note now sits in its reading guide and covers every such
+  statement. The dashboard attributed the release claim's new level to the migration
+  report; it now says a claim can gain a record through a later ledger. The checklist's
+  original status line had been reworded rather than kept, and is now kept verbatim; 2.1
+  was called verified when only the tagged commit is; 2.2, 2.3, and section 4 had no
+  row. The record said nothing but the tag and archives is published, where no registry
+  was read; listed seven of its sixteen commands; and called the security scan's
+  limitation the same mismatch when it states only a dependence on time. "Executed"
+  said more than the unrecorded pre-tag checks allow, "the only record made since"
+  missed this page, and the decision page's "moves no claim" needed the post-release
+  ledger set apart from it.
+
+### After the review of the reconciliation
+
+Before the next commit, on the same host, with every file staged: `ruff format --check .`
+525 files already formatted; `ruff check .` all checks passed; `python -m mypy` no issues
+in 280 source files; the post-release module 30 passed, none skipped; `--check` for the
+dashboard and the index both `OK`; `--gate` exit 0, `RELEASED` with `1d40b33f…` and
+`652e9051…` and `CURRENT` with the pair stated above; swapping the index page's two rows,
+which the review's mutation had passed, now fails the module; the default lane 15442
+passed, 30 skipped, 14 deselected, in 30 min 28 s; and `git diff --cached --check` clean.
+The release notes, the checklist, the case study, and ADR 0008 differ from the tag by
+added lines only.
 
 ### Left as history, and why
 

@@ -51,7 +51,7 @@ from `1.0.0`.
   release was cut over still lists it as not claimed. The register's reasons for
   `SECURITY.md` and the evidence index claiming nothing no longer describe the repository
   before the release. Both digests of the pack `main` holds moved, to evidence set
-  `5bda340846f0c4191a1a40b63d49f0a4565bc54f60421483fb978435fba6955e` and evidence pack `cd3b8dfb9059456443da6caebaf2d0b76f0e64eabbe2260202e6ae787bd00c8e`; no release quotes them, and the
+  `08d4868fcf4c320961d2937b5369dc9846ca4f0455e2f60375c1decfbdab23df` and evidence pack `b958a7244cb6aab924615ff099112435d1e3d527ea348b66ec7ae3e8fd1c8532`; no release quotes them, and the
   released pair is `1d40b33f…` and `652e9051…`, unchanged. The README, the proof
   dashboard, the matrix, the evidence index page, the release process, and the decision
   whether a second version should proceed say so, and the release notes, the checklist,

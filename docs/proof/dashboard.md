@@ -164,8 +164,10 @@ meanings ADR 0016 supersedes. Every claim still carries that value as
 history, and the levels on its records are the result of reading each
 record against the current definitions. 43 claims carried a level;
 11 claims now hold records at a level other than the one they
-carried, or hold a level where they carried none. They are listed here, and
-[the migration report](testing/v1-s5-012-pr2-migration-report.md) says why each one moved.
+carried, or hold a level where they carried none. They are listed here.
+[The migration report](testing/v1-s5-012-pr2-migration-report.md) says why each one it moved did;
+a claim that gained a record after the migration, through a later ledger, is
+listed too, and [the evidence index](v1-evidence-index.md) names the ledger.
 
 This table cannot show a status that moved, because a claim carries its
 superseded level and not its superseded status. The migration report lists
@@ -362,7 +364,7 @@ absence is not one status.
 
 | Claim | Status | Evidence records | Limitation |
 |---|---|---|---|
-| InferOps has published a versioned V1 release. | `certified` | `C0` · `repository-only` · [`releases/v1-s5-009-pr1-v1.0.0-publication.md`](releases/v1-s5-009-pr1-v1.0.0-publication.md), [`releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt`](releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt) | One annotated tag and one published release, read once on 2026-09-27, after the release, by a record written after the evidence pack was frozen: that record is not part of the pack the release was cut over. The release is state on the hosting service, which its maintainer can edit or delete, and the record pins only the tag object. The tag and the source archives are all that is published; no image, package, chart, or model is. Semantic versioning is an intention from this release on, and no later release exists yet to hold it to. |
+| InferOps has published a versioned V1 release. | `certified` | `C0` · `repository-only` · [`releases/v1-s5-009-pr1-v1.0.0-publication.md`](releases/v1-s5-009-pr1-v1.0.0-publication.md), [`releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt`](releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt) | One annotated tag and one published release, read once on 2026-09-27, after the release, by a record written after the evidence pack was frozen: that record is not part of the pack the release was cut over. The release is state on the hosting service, which its maintainer can edit or delete, and the record pins only the tag object. No file is attached to the release, and the release notes state that no image, package, chart, or model is published; no package or image registry was read. Semantic versioning is an intention from this release on, and no later release exists yet to hold it to. |
 | InferOps is a production-ready, portable inference platform someone can deploy for someone else. | `not-claimed` | none recorded | The evidence levels define `C3` and `C4` so the ceiling is visible rather than implied. No V1 record is above `C2`, and `C4` Operational Evidence is not reachable at all, because there is no organizational production to observe. |
 
 ### Ownership, tests, continuous integration, and evidence

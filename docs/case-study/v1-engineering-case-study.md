@@ -91,6 +91,17 @@ Claims `caller-visible-impact-of-losing-the-inference-pod-was-measured-under-loa
 
 ## How to read and check this page
 
+> [!NOTE]
+> **Since publication, `v1.0.0` has been released** over the pack this page is bound
+> to, on 2026-09-27. The page is left as published, and describes that pack: its counts
+> of claims and records "today", its list of what V1 does not have, which includes a
+> published release, and its first step before anything new, a release, are right about
+> the pack and no longer about `main`. On `main`, the register certifies that the
+> release exists, at `C0`, on
+> [a record read after the release](../proof/releases/v1-s5-009-pr1-v1.0.0-publication.md),
+> which is its only change, and a separate page records
+> [the decision whether a second version should proceed](../governance/v2-investment-decision.md).
+
 **The reader path.** [The README](../../README.md) says what V1 is and is not, and
 links here. This page interprets the evidence as one narrative. [The proof dashboard](../proof/dashboard.md)
 lists every claim with every evidence record behind it and is generated from
@@ -731,15 +742,6 @@ Claims `eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-de
 `a-cluster-or-real-runtime-lane-runs-in-continuous-integration`.
 
 ## 12. What V1 does not prove
-
-> [!NOTE]
-> **Since publication, `v1.0.0` has been released** over the pack this page is bound
-> to, on 2026-09-27. The page is left as published, and describes that pack: where it
-> lists a published release among what V1 does not have, and names a first release as
-> what comes before anything new, it is right about the pack and no longer about
-> `main`. On `main`, the register certifies that the release exists, at `C0`, on
-> [a record read after the release](../proof/releases/v1-s5-009-pr1-v1.0.0-publication.md),
-> and a separate page records [the decision whether a second version should proceed](../governance/v2-investment-decision.md).
 
 Every claim the register does not certify is listed here, because an absence somebody
 measured is worth more than one nobody mentions.

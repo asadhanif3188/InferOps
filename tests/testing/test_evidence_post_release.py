@@ -30,6 +30,7 @@ from tools.evidence_index import (
     LEDGER_PATHS,
     POST_RELEASE_PATH,
     PUBLICATION_PATH,
+    RELEASED_DIGESTS,
     RELEASED_LEDGER_PATHS,
     apply_register_changes,
     build_index,
@@ -161,6 +162,26 @@ def test_undoing_and_redoing_the_ledger_gives_the_register_back() -> None:
 # ----------------------------------------------------------- the released pack
 
 
+def test_the_ledger_states_the_pair_written_once_for_the_tag() -> None:
+    """The fixed reference a clone without tags still has.
+
+    Every other copy of the released pair is a committed file that a find-and-replace
+    would carry along; this one is in the tool, and the tool refuses a ledger that
+    differs from it.
+    """
+    quoted = RELEASED_DIGESTS[RELEASE["tag"]]
+    assert quoted == {
+        "evidenceSetSha256": RELEASE["evidenceSetSha256"],
+        "evidencePackSha256": RELEASE["evidencePackSha256"],
+    }
+
+
+def test_the_committed_register_is_its_own_rendering() -> None:
+    """What lets the undone register be bound to the bytes it had."""
+    committed = REGISTER_PATH.read_bytes().decode("utf-8").replace("\r\n", "\n")
+    assert render_register(REGISTER) == committed
+
+
 def test_the_released_pack_is_recomputed_and_is_the_one_the_release_quotes() -> None:
     released = SUMMARY["releasedPack"]
     recomputed = released_pack(REGISTER, load_ledgers())
@@ -181,14 +202,19 @@ def test_main_holds_another_pack_and_says_so() -> None:
     assert SUMMARY["evidencePackSha256"] != released["evidencePackSha256"]
     assert SUMMARY["evidenceSetSha256"] != released["evidenceSetSha256"]
     assert SUMMARY["postReleaseRegisterChanges"] == len(CHANGES)
-    page = normalised(read("docs/proof/v1-evidence-index.md"))
-    for digest in (
-        released["evidenceSetSha256"],
-        released["evidencePackSha256"],
-        SUMMARY["evidenceSetSha256"],
-        SUMMARY["evidencePackSha256"],
-    ):
-        assert f"`{digest}`" in page, digest
+    rows = {
+        line.split(" | ", 1)[0]: line
+        for line in read("docs/proof/v1-evidence-index.md").splitlines()
+        if line.startswith(("| **Released:**", "| **Current:**"))
+    }
+    (released_row,) = [row for label, row in rows.items() if "Released" in label]
+    (current_row,) = [row for label, row in rows.items() if "Current" in label]
+    assert released_row.endswith(
+        f"| `{released['evidenceSetSha256']}` | `{released['evidencePackSha256']}` |"
+    )
+    assert current_row.endswith(
+        f"| `{SUMMARY['evidenceSetSha256']}` | `{SUMMARY['evidencePackSha256']}` |"
+    )
 
 
 def test_the_released_counts_differ_from_main_by_the_one_record_and_claim() -> None:
@@ -225,6 +251,8 @@ def test_the_tag_is_the_object_the_ledger_names_on_the_commit_it_names() -> None
     annotation = _git("cat-file", "-p", RELEASE["tag"])
     assert annotation is not None
     assert f"Evidence pack sha256:{RELEASE['evidencePackSha256']}" in annotation
+    quoted = RELEASED_DIGESTS[RELEASE["tag"]]["evidencePackSha256"]
+    assert f"Evidence pack sha256:{quoted}" in annotation
 
 
 def _mutated(mutate: Any) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -242,6 +270,11 @@ def _state_another_digest(register: dict, ledgers: list) -> None:
     ledgers[-1]["release"]["evidencePackSha256"] = "0" * 64
 
 
+def _edit_an_earlier_ledger(register: dict, ledgers: list) -> None:
+    """Undoing still works; the earlier ledger is read from disk, so edit its text."""
+    ledgers[-2]["title"] += " Edited after the release."
+
+
 def _declare_a_freeze(register: dict, ledgers: list) -> None:
     ledgers[-1]["freeze"] = {"decision": "frozen"}
 
@@ -251,14 +284,40 @@ def _raise_a_blocker(register: dict, ledgers: list) -> None:
 
 
 @pytest.mark.parametrize(
-    "mutate",
-    [_edit_another_claim, _state_another_digest, _declare_a_freeze, _raise_a_blocker],
-    ids=lambda mutate: mutate.__name__.strip("_"),
+    ("mutate", "message"),
+    [
+        (_edit_another_claim, "and undoing it gives"),
+        (_state_another_digest, "and v1.0.0 quoted"),
+        (_declare_a_freeze, "declares a freeze"),
+        (_raise_a_blocker, "raises or closes a blocker"),
+    ],
+    ids=lambda value: value.__name__.strip("_") if callable(value) else "",
 )
-def test_a_released_pack_that_does_not_recompute_is_refused(mutate: Any) -> None:
+def test_a_released_pack_that_does_not_recompute_is_refused(
+    mutate: Any, message: str
+) -> None:
     register, ledgers = _mutated(mutate)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=message):
         build_index(register, ledgers)
+
+
+def test_an_earlier_ledger_edited_after_the_release_is_refused(tmp_path: Path) -> None:
+    """The pack sources are read from disk, so the edit is made to a copy of the tree."""
+    for path in (REGISTER_PATH, *LEDGER_PATHS):
+        copied = tmp_path / path.relative_to(REPO_ROOT)
+        copied.parent.mkdir(parents=True, exist_ok=True)
+        copied.write_bytes(path.read_bytes())
+    for record in INDEX["records"]:
+        for item in record["evidence"]:
+            copied = tmp_path / item["path"]
+            copied.parent.mkdir(parents=True, exist_ok=True)
+            copied.write_bytes((REPO_ROOT / item["path"]).read_bytes())
+    publication = tmp_path / PUBLICATION_PATH.relative_to(REPO_ROOT)
+    publication.write_text(
+        publication.read_text(encoding="utf-8") + " ", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="and undoing it gives"):
+        build_index(repo_root=tmp_path)
 
 
 def test_an_unchanged_register_and_ledgers_build_the_committed_index() -> None:
@@ -319,7 +378,9 @@ def test_the_record_says_what_it_read_and_that_it_is_not_in_the_released_pack() 
 
 
 def test_the_transcript_holds_every_value_the_record_states() -> None:
-    transcript = read(ADDED["evidenceRefs"][1])
+    raw = (REPO_ROOT / ADDED["evidenceRefs"][1]).read_bytes()
+    assert b"\r" not in raw.replace(b"\r\n", b"\n"), "a lone carriage return"
+    transcript = raw.decode("utf-8").replace("\r\n", "\n")
     for value in (
         f"object {RELEASE['commit']}",
         f"Evidence pack sha256:{RELEASE['evidencePackSha256']}",
@@ -335,7 +396,6 @@ def test_the_transcript_holds_every_value_the_record_states() -> None:
         f"         evidence pack  {RELEASE['evidencePackSha256']}",
     ):
         assert value in transcript, value
-    assert "\r" not in transcript
 
 
 def test_the_record_names_no_private_path_or_address() -> None:

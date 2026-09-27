@@ -665,7 +665,7 @@
         "surfaceId": "case-study-release-absent",
         "since": "left",
         "by": null,
-        "now": "The case study is bound to the pack the release was cut over and is left as published, with a note at its top that the release has since been made."
+        "now": "The case study is bound to the pack the release was cut over and is left as published, with a note in its reading guide that the release has since been made."
       }
     ]
   }

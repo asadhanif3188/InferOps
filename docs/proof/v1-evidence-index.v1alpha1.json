@@ -25,8 +25,8 @@
   "packSources": [
     {
       "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
-      "sha256": "d34aca3cc51400cf4956736baa837105dff813912a969753c1d4e395114b4680",
-      "gitBlob": "7ca798444d54dee868e02daf29d21ea8ef4ddad3"
+      "sha256": "04a82715043f3ea787947651e45fabdfd0393f385d2b87d2bff10d6106cefde3",
+      "gitBlob": "14a5944fd653990e231377d33b906d5fa6c8f623"
     },
     {
       "path": "docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
@@ -50,8 +50,8 @@
     },
     {
       "path": "docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json",
-      "sha256": "37618ff061ebfbce3d0f48f63ff653439b06acdf668d1fd31a0efd37fcdaed5f",
-      "gitBlob": "b462ec3cee029cc45c530463204a9e21a089baa8"
+      "sha256": "8fa0e2167d9e6d8f5525cea59d0fcb4fe635d2a77293659ead24b4642802eb48",
+      "gitBlob": "fd6fd6f56cda5b7b1f646d08f614be5736df715e"
     }
   ],
   "summary": {
@@ -123,8 +123,8 @@
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
     "postReleaseRegisterChanges": 7,
-    "evidenceSetSha256": "5bda340846f0c4191a1a40b63d49f0a4565bc54f60421483fb978435fba6955e",
-    "evidencePackSha256": "cd3b8dfb9059456443da6caebaf2d0b76f0e64eabbe2260202e6ae787bd00c8e",
+    "evidenceSetSha256": "08d4868fcf4c320961d2937b5369dc9846ca4f0455e2f60375c1decfbdab23df",
+    "evidencePackSha256": "b958a7244cb6aab924615ff099112435d1e3d527ea348b66ec7ae3e8fd1c8532",
     "releasedPack": {
       "tag": "v1.0.0",
       "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
@@ -155,6 +155,19 @@
         "unidentified": 10
       },
       "evidenceFiles": 85,
+      "recordsByEnvironment": {
+        "local-container": 4,
+        "local-kubernetes": 26,
+        "local-process": 10,
+        "repository-only": 24
+      },
+      "recordsByWorkloadSource": {
+        "none": 28,
+        "operator-issued": 31,
+        "synthetic": 5
+      },
+      "recordsWithASubstitution": 9,
+      "recordsWithAClaimMaterialSubstitution": 8,
       "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
       "evidencePackSha256": "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2"
     }
@@ -1355,7 +1368,7 @@
       "status": "certified",
       "assertsRealBehaviour": false,
       "statement": "InferOps has published a versioned V1 release.",
-      "limitation": "One annotated tag and one published release, read once on 2026-09-27, after the release, by a record written after the evidence pack was frozen: that record is not part of the pack the release was cut over. The release is state on the hosting service, which its maintainer can edit or delete, and the record pins only the tag object. The tag and the source archives are all that is published; no image, package, chart, or model is. Semantic versioning is an intention from this release on, and no later release exists yet to hold it to.",
+      "limitation": "One annotated tag and one published release, read once on 2026-09-27, after the release, by a record written after the evidence pack was frozen: that record is not part of the pack the release was cut over. The release is state on the hosting service, which its maintainer can edit or delete, and the record pins only the tag object. No file is attached to the release, and the release notes state that no image, package, chart, or model is published; no package or image registry was read. Semantic versioning is an intention from this release on, and no later release exists yet to hold it to.",
       "doesNotEstablish": "That the release adds any evidence: every result it points to is a record in the pack it was cut over. Nor that anybody outside this repository has reviewed it, or that the checks the checklist runs before the tag were run in its order; the record ran two of them again at the tag, afterwards.",
       "claimMaterialComponents": null,
       "levels": [
@@ -10454,7 +10467,7 @@
       "evidenceLevel": "C0",
       "migrationState": "migrated",
       "registerPointer": "/claims/57/evidenceRecords/0",
-      "registerEntrySha256": "2c2edf22be1846094825bfeaa26d2ef246ac63899b36118fa8950cb3691bd227",
+      "registerEntrySha256": "90d47adfc35f659be36600f922a1c219fc5e80fafdf92639daabf86c5e8188d7",
       "summary": "On 2026-09-27, after the release, git read the annotated tag v1.0.0 and the commit it points to in this repository and on the remote, unauthenticated reads of the hosting service's public API returned the published release on that tag, the checks run on its commit, and the private reporting setting, and the release gate and the three test modules the checklist names were run again in a worktree checked out at the tag.",
       "execution": {
         "targetBehaviourExecuted": false,
@@ -10513,10 +10526,19 @@
           "git cat-file -t v1.0.0",
           "git rev-parse v1.0.0",
           "git rev-parse 'v1.0.0^{commit}'",
+          "git cat-file -p v1.0.0 | sed -E 's/^tagger .* ([0-9]+ [+-][0-9]{4})$/tagger <omitted> \\1/'",
           "git log -1 --format='%H%n%P%n%s' 'v1.0.0^{commit}'",
           "git ls-remote origin refs/tags/v1.0.0 'refs/tags/v1.0.0^{}'",
+          "curl -s https://api.github.com/repos/asadhanif3188/InferOps/releases/tags/v1.0.0 | python -c \"import json,sys; d=json.load(sys.stdin); [print(k, json.dumps(d[k])) for k in ('id','name','tag_name','target_commitish','draft','prerelease','created_at','published_at','html_url')]; print('assets', len(d['assets'])); print('body:'); print(d['body'])\"",
+          "curl -s https://api.github.com/repos/asadhanif3188/InferOps/releases | python -c \"import json,sys; d=json.load(sys.stdin); print('releases', len(d), [r['tag_name'] for r in d])\"",
+          "curl -s 'https://api.github.com/repos/asadhanif3188/InferOps/actions/runs?head_sha=718ad2e0fac8ae70c6d053a2decb00e61ff3de39&per_page=20' | python -c \"import json,sys; d=json.load(sys.stdin); print('runs', d['total_count']); [print(r['id'], r['name'], r['path'], r['event'], r['head_branch'], r['head_sha'], r['run_attempt'], r['status'], r['conclusion'], r['run_started_at'], r['updated_at']) for r in d['workflow_runs']]\"",
+          "curl -s https://api.github.com/repos/asadhanif3188/InferOps/actions/runs/36305552023/jobs | python -c \"import json,sys; d=json.load(sys.stdin); print('jobs', d['total_count']); [print(j['conclusion'], '|', j['name']) for j in d['jobs']]\"",
           "curl -s https://api.github.com/repos/asadhanif3188/InferOps/private-vulnerability-reporting",
-          "uv run --locked --offline python -m tools.evidence_index --gate"
+          "curl -s https://api.github.com/repos/asadhanif3188/InferOps | python -c \"import json,sys; d=json.load(sys.stdin); [print(k, json.dumps(d[k])) for k in ('description','homepage','topics')]\"",
+          "git rev-parse HEAD",
+          "git status --porcelain --untracked-files=all | wc -l",
+          "uv run --locked --offline python -m tools.evidence_index --gate; echo \"exit $?\"",
+          "uv run --locked --offline python -m pytest tests/testing/test_release.py tests/testing/test_case_study.py tests/testing/test_evidence_publication.py -q -p no:cacheprovider | tail -1; echo \"exit ${PIPESTATUS[0]}\""
         ],
         "workflowRef": null,
         "scriptRefs": []
@@ -10558,14 +10580,15 @@
       "doesNotEstablish": [
         "That the release adds any evidence: every result it points to is a record in the pack it was cut over, and this record measured nothing about the platform.",
         "That the source archives the hosting service makes from the tag hold the tag's tree; none was downloaded or compared.",
+        "That nothing but the tag and its source archives is published anywhere: no package or image registry was read.",
         "That the checks before the tag were run in the checklist's order, or that private reporting was enabled when the tag was created.",
         "That anybody outside this repository has reviewed the release."
       ],
       "evidence": [
         {
           "path": "docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md",
-          "sha256": "492a4eb27ac53e90f9b4f33cd81559c59810a0cf1a599ce899c506cca4e8b401",
-          "gitBlob": "6190eda93b2f9d525daf1eb293790cea7b2bc786",
+          "sha256": "4a633f5d1f7e4a8bb081618f5853848ba2470fa207a28b443ec891b330b490e4",
+          "gitBlob": "9f845a8c9af83847a8900b534b82e8ad83a5fb6b",
           "recordedDate": {
             "label": "Date",
             "value": "2026-09-27"

@@ -66,9 +66,11 @@ to `main`. So the index also states the pack `v1.0.0` was cut over, recomputed r
 than copied: the post-release ledger's changes are undone, the register is rendered as
 it was, and both digests are taken over that register, the four ledgers before the
 post-release one, and the files that register cites, read from this checkout. A
-result that is not the pair the post-release ledger states raises, so a cited file,
-the register, or an earlier ledger edited after the release is caught here rather
-than carried into a digest nobody compares.
+result that is not the pair the post-release ledger states raises, and so does a
+ledger whose pair is not the one ``RELEASED_DIGESTS`` holds for the tag, which is
+written once and never derived. So a cited file, the register, or an earlier ledger
+edited after the release is caught here rather than carried into a digest nobody
+compares, even when every committed copy of the old digest is rewritten with it.
 
 **Content hashes** are SHA-256 over the committed content. A text file is hashed with
 CRLF normalised to LF, because the repository stores text with LF and a Windows
@@ -107,6 +109,7 @@ __all__ = [
     "LEVEL_ORDER",
     "POST_RELEASE_PATH",
     "PUBLICATION_PATH",
+    "RELEASED_DIGESTS",
     "RELEASED_LEDGER_PATHS",
     "TEXT_SUFFIXES",
     "apply_register_changes",
@@ -184,6 +187,22 @@ RELEASED_LEDGER_PATHS: Final = (
 
 #: Every ledger of register changes since the migration, in the order applied.
 LEDGER_PATHS: Final = (*RELEASED_LEDGER_PATHS, POST_RELEASE_PATH)
+
+#: The digests each release quoted, written here once and never derived. The
+#: annotated tag's message carries the pack digest; a test compares the two where the
+#: clone has the tag. A ledger that states another pair for the same tag is refused,
+#: so an earlier ledger edited after the release cannot be carried into a new pair by
+#: rewriting every committed copy of the old one.
+RELEASED_DIGESTS: Final = {
+    "v1.0.0": {
+        "evidenceSetSha256": (
+            "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a"
+        ),
+        "evidencePackSha256": (
+            "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2"
+        ),
+    },
+}
 
 #: The only freeze decisions a publication ledger may state.
 FREEZE_DECISIONS: Final = ("frozen", "not-frozen")
@@ -940,9 +959,10 @@ def released_pack(
     The post-release ledger, the last of ``ledgers``, is undone; the register that
     leaves is rendered as committed text; and both digests are taken over it, the
     ledgers before the post-release one, and the files it cites, read under
-    ``repo_root``. The result must be the pair the post-release ledger states, or
-    this raises: the released pack is identified by recomputing it, never by
-    copying the digests a ledger wrote.
+    ``repo_root``. The result must be the pair the post-release ledger states, and
+    that pair the one ``RELEASED_DIGESTS`` holds for the tag, or this raises: the
+    released pack is identified by recomputing it and comparing the result with a
+    value written once, never by copying the digests a ledger wrote.
     """
     *released_ledgers, post_release = ledgers
     if post_release.get("blockers") or post_release.get("blockerDispositions"):
@@ -963,7 +983,15 @@ def released_pack(
         "evidenceSetSha256": evidence_set_sha256(cited),
         "evidencePackSha256": evidence_set_sha256([*cited, *sources]),
     }
+    quoted = RELEASED_DIGESTS.get(release["tag"])
+    if quoted is None:
+        raise ValueError(f"no digests are recorded for the release {release['tag']}")
     for name, value in computed.items():
+        if release[name] != quoted[name]:
+            raise ValueError(
+                f"the post-release ledger states the released {name} "
+                f"{release[name]}, and {release['tag']} quoted {quoted[name]}"
+            )
         if release[name] != value:
             raise ValueError(
                 f"the post-release ledger states the released {name} "
@@ -995,6 +1023,26 @@ def released_pack(
             for name in CODE_IDENTITIES
         },
         "evidenceFiles": len({item["path"] for item in cited}),
+        "recordsByEnvironment": dict(
+            sorted(
+                Counter(
+                    record["environment"]["environmentId"] for record in records
+                ).items()
+            )
+        ),
+        "recordsByWorkloadSource": dict(
+            sorted(Counter(record["workload"]["source"] for record in records).items())
+        ),
+        "recordsWithASubstitution": sum(
+            1 for record in records if record["execution"]["substitutions"]
+        ),
+        "recordsWithAClaimMaterialSubstitution": sum(
+            1
+            for record in records
+            if any(
+                item["claimMaterial"] for item in record["execution"]["substitutions"]
+            )
+        ),
         **computed,
     }
 

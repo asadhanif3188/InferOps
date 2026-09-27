@@ -363,7 +363,11 @@ def test_the_readme_links_the_page_only_once_it_is_published() -> None:
     as a surface that claims nothing, because it adds no claim of its own.
     """
     first_screen, table = _readme_links_the_page()
-    surfaces = {row["path"] for row in REGISTER["nonClaimSurfaces"]}
+    # The README is current, so the register on `main` must list the page as well as
+    # the one the page is bound to.
+    surfaces = {row["path"] for row in REGISTER["nonClaimSurfaces"]} & {
+        row["path"] for row in _load(DATA["registerRef"])["nonClaimSurfaces"]
+    }
     if DATA["status"] == "published":
         assert first_screen, (
             "the README does not link the case study before its architecture"
