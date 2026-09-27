@@ -1,8 +1,10 @@
 # Security policy
 
-Status: reporting expectations documented; private reports go through GitHub private
-vulnerability reporting, named here for `v1.0.0` in `V1-S5-008-PR1`. A threat model and
-control baseline exist and are linked below; neither changes anything in this policy.
+Status: reporting expectations documented; GitHub private vulnerability reporting is
+named as the private channel for `v1.0.0` in `V1-S5-008-PR1`. It is a setting on the
+hosting service, and on 2026-09-27, when this was written, that setting still read
+disabled. A threat model and control baseline exist and are linked below; neither
+changes anything in this policy.
 
 This repository contains governance documentation, local development apparatus, a
 chart and prerequisite layer, and one platform package that is built locally and
@@ -14,7 +16,7 @@ version of the source.
 
 | Version | Receives a fix |
 |---|---|
-| `1.0.x` | A fix lands on `main` and in the next version cut from it. Nothing is backported, and no timeline is promised |
+| The latest release, `1.0.0` | A fix lands on `main` and in the next release cut from it, whatever its number. Nothing is backported to an earlier release, and no timeline is promised |
 | Earlier than `1.0.0` | Nothing was ever released below `1.0.0` |
 
 A supported version is one a fix will be released for. It is not a statement that the
@@ -30,14 +32,16 @@ prevent.
 Report privately through GitHub's private vulnerability reporting for this repository:
 the **Security** tab, then **Report a vulnerability**. The report is visible to the
 repository's maintainers and to you, and not to the public. It needs a GitHub account,
-and it is the only private channel; no e-mail address is published.
+and it is the only private channel; no e-mail address is published. **If the Security
+tab shows no Report a vulnerability button, the channel is not enabled**: do not report
+publicly, and wait for it.
 
 What this channel does not promise: an acknowledgement window, a remediation timeline,
 coordinated disclosure on a date, or a backported fix. One role maintains this
 repository, and the channel has not yet received or answered a report, so no response
-time has ever been measured. Enabling it is a setting on the hosting service rather than
-a file here; [the release checklist](docs/releases/v1.0.0-checklist.md) reads that setting
-before the `v1.0.0` tag is created.
+time has ever been measured. Whether it is enabled is a setting on the hosting service,
+which no file here can record; [the release checklist](docs/releases/v1.0.0-checklist.md)
+reads it and refuses the `v1.0.0` tag until it reads enabled.
 
 ## Scope of current claims
 

@@ -32,14 +32,21 @@ the day it was cut, and is created only after the post-merge checks in
   and their limitations, [a checklist](docs/releases/v1.0.0-checklist.md) with the gates
   passed before merge and the exact post-merge checks, tag, and release commands, and
   [the data](docs/releases/v1.0.0.v1alpha1.json) both are held to by
-  `tests/testing/test_release.py`: the digests, counts, component identifiers, and quoted
-  figures are read back from the evidence index, the register, the pinning files, and
-  the case study's data. No file in the evidence pack changed, so the pack digest the
+  `tests/testing/test_release.py`: the digests, the claim and record counts, the pinned
+  identifiers, and the measured figures are read back from the evidence index, the
+  register, the pinning files, and the case study's data; the notes' other counts and
+  descriptions are checked by review only. No file in the evidence pack changed, so the pack digest the
   release quotes is `652e9051…`, the one `V1-S5-013-PR2` froze. The register inside that
   pack still lists a published release as not claimed; the notes say why it is left so.
   [SECURITY.md](SECURITY.md) now names GitHub private vulnerability reporting, the
-  channel it required before a versioned release, and the interim conduct expectations
-  were revisited and kept. No tag is created and nothing is published by this change.
+  channel it required before a versioned release; the setting read disabled when this
+  change was written, and the checklist refuses the tag until it reads enabled. The
+  interim conduct expectations were revisited and kept. An independent review of the
+  first commit found the channel described as enabled when it was not, a label said to
+  be quoted by no record when two records quote it, a test described as checking more
+  than it does, and a recommended repository description that overstated the register;
+  each is corrected and recorded in
+  [the validation record](docs/proof/testing/v1-s5-008-pr1-validation.md). No tag is created and nothing is published by this change.
 
 - **The V1 case study published, and the evidence pack frozen.** `V1-S5-013-PR2`
   published [the V1 engineering case study](docs/case-study/v1-engineering-case-study.md)

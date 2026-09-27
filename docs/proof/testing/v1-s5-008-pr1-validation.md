@@ -30,8 +30,11 @@ notes quote was already committed and declared by the case study.
   `CODE_OF_CONDUCT.md` said the conduct deferral had to be revisited first. Both were
   put to the maintainer before any release file was written. The maintainer chose to
   enable GitHub private vulnerability reporting, and to revisit the conduct deferral
-  and keep it. The setting lives on the hosting service; it could not be read from this
-  host when the change was written, so the checklist reads it before the tag.
+  and keep it. The setting lives on the hosting service. It could not be read from this
+  host when the first commit was written; the independent review then read it
+  `{"enabled": false}` from the public API, and so did a read before the second commit.
+  Enabling it is the maintainer's act on the hosting service, and the checklist refuses
+  the tag until it reads enabled.
 
 ## What changed
 
@@ -101,7 +104,7 @@ On 2026-09-27, on one Windows host, before the first commit:
 | Command | Result |
 |---|---|
 | `uv lock --offline` | Resolved 23 packages; `inferops` `0.0.0` to `1.0.0`, and nothing else |
-| `ruff format --check .` | 519 files already formatted, after one reformat of `test_release.py` |
+| `ruff format --check .` | 519 files already formatted, after one reformat of `test_release.py`; the validation record and one more file were written after that run, and the tree at the first commit holds 520 |
 | `ruff check .` | All checks passed |
 | `python -m mypy` | No issues in 278 source files |
 | `pytest tests/testing/test_release.py -q -rs` | 40 passed, none skipped |
@@ -118,6 +121,65 @@ The hosted `checks` workflow runs on the pull request and is not quoted here; th
 checklist requires it again on the merge commit. The default lane ran before two
 sentences of the release notes were reworded, which changed prose only, and
 `test_release.py` passed again afterwards.
+
+## What the independent review found
+
+Two reviewers read the first commit independently: one checked every public statement
+the change makes against the files it rests on, and one reviewed the tests and the
+configuration. The second found nothing above a note: three of `test_release.py`'s
+checks read the repository's history, and a shallow checkout, as the hosted workflow
+makes, skips them rather than running them. The first found four false statements and
+ten weaker ones, and every one was corrected before the second commit.
+
+**What the first draft got wrong.**
+
+- **The reporting channel was described as enabled when it was not.** The checklist
+  marked the gate "enabled by the maintainer; verified again before the tag", the
+  security baseline set `vulnerabilityReportsPossible` to true, and `SECURITY.md` sent
+  a reporter to a button that did not exist. The public API read `{"enabled": false}`.
+  The gate is now open, the baseline states that dated reading and `false`, `SECURITY.md`
+  says what a reporter does while the button is missing, and a test holds the notes,
+  the checklist, and the baseline to the same reading.
+- **"No committed record quotes the label's value" was false.** Two records of earlier
+  runs quote `service.version` `0.0.0`. The notes and the data now say the baseline
+  rerun's records do not quote it and earlier records do.
+- **The notes said a test checks every count and figure on them.** It checked the
+  claim, record, and level counts in digits and the measured figures, and none of the
+  counts written in words. The notes, the checklist, the README, and the changelog now
+  say which counts are tested and which are review only, and the one derived count in
+  words, the uncertified claims, is now tested.
+- **The recommended repository description said the register binds every claim to a
+  record.** Fourteen uncertified claims hold none. It now says the register names the
+  evidence behind each certified claim.
+
+**Weaker findings, each corrected.** The notes listed "the mock declares itself" among
+what the release contains, and the claim it paraphrases is `planned`. They called a chart
+version label and a distribution version immutable, and the chart's templates changed
+after `0.3.0` was set, so those two now sit in their own table as labels. ADR 0009's note
+said the version was set in `pyproject.toml` "and nowhere else", when the same change
+also set it in the lock and the composition. The release was called "stable" beside an
+`Alpha` classifier. ADR 0008's accepted text still described `SECURITY.md` as publishing
+no channel and now carries a dated note. The checklist said every gate was checked when
+gate 12 was not. The clean-clone finding dropped "of wall clock, across three
+invocations" and that the author was an AI coding agent. Gate 1 read as proven by the
+repository when the set of P0 stories is the project's plan and is not published here.
+The governance table still said no workflow file existed, although the release relies
+on the hosted lane. The post-merge commands printed nothing on failure and did not stop.
+Smaller notes were taken too: the approval wording against ADR 0015, a squash merge's
+subject, `gh api --jq`, the supported-version row, "since `v1.0.0`" before the tag,
+the collector image's licence, the Helm and Terraform gates, links that resolve only
+after the tag, and a changelog check that would have refused the next change's entry.
+
+## After the independent review
+
+Before the second commit, on the same host: `ruff format --check .` 520 files already
+formatted; `ruff check .` all checks passed; `python -m mypy` no issues in 278 source
+files; `pytest tests/testing/test_release.py -q -rs` 43 passed, none skipped; the
+release, security-baseline, link, inventory, and decision-authority suites 2272 passed;
+`--check` for the dashboard and the index both `OK`; `--gate` exit 0 with both digests
+unchanged; the default lane 15290 passed, 30 skipped, 14 deselected, in 21 min 34 s; and
+`git diff --cached --check` clean. The public API still read the reporting setting
+`{"enabled": false}`.
 
 ## Privacy and publicability
 

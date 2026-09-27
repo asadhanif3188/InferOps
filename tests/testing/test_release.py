@@ -84,16 +84,14 @@ def test_the_version_is_the_one_pyproject_declares_and_the_lock_records() -> Non
     assert inferops["version"] == RELEASE["version"]
 
 
-def test_the_changelog_has_the_release_section_under_an_empty_unreleased_one() -> None:
+def test_the_changelog_has_one_release_section_under_the_unreleased_one() -> None:
+    """Entries after the release belong under `[Unreleased]`, so none is refused there."""
     changelog = read(RELEASE["changelogRef"])
     unreleased = changelog.index("\n## [Unreleased]\n")
-    released = changelog.index(
-        f"\n## [{RELEASE['version']}] - {RELEASE['preparedOn']}\n"
-    )
-    assert unreleased < released
-    between = changelog[unreleased:released]
-    assert "\n### " not in between, "an entry landed above the release section"
-    assert changelog.count("\n## [") == 2, "a second release section appeared"
+    heading = f"\n## [{RELEASE['version']}] - {RELEASE['preparedOn']}\n"
+    assert changelog.count(heading) == 1
+    assert unreleased < changelog.index(heading)
+    assert changelog.count(f"\n## [{RELEASE['version']}]") == 1
     for reference in (
         f"[Unreleased]: https://github.com/asadhanif3188/InferOps/compare/{RELEASE['tag']}...HEAD",
         f"[{RELEASE['version']}]: https://github.com/asadhanif3188/InferOps/releases/tag/{RELEASE['tag']}",
@@ -175,6 +173,32 @@ def test_the_counts_are_the_index_s_and_the_register_s() -> None:
         counts["executedRecordsNamingTheRevisionThatRan"]
         == SUMMARY["executedRecordsNamingTheRevisionThatRan"]
     )
+
+
+NUMBER_WORDS = {
+    1: "one",
+    2: "two",
+    3: "three",
+    4: "four",
+    5: "five",
+    6: "six",
+    7: "seven",
+    8: "eight",
+    9: "nine",
+    10: "ten",
+    11: "eleven",
+    12: "twelve",
+}
+
+
+def test_the_notes_count_the_uncertified_claims_in_words_from_the_data() -> None:
+    """The one count in words the notes derive; the review found it unchecked."""
+    status = RELEASE["counts"]["claimsByStatus"]
+    assert (
+        f"{NUMBER_WORDS[status['planned']].capitalize()} claims are `planned`, "
+        f"{NUMBER_WORDS[status['deferred']]} is `deferred`, and "
+        f"{NUMBER_WORDS[status['not-claimed']]} are `not-claimed`"
+    ) in NOTES
 
 
 def test_the_notes_state_the_counts_the_data_holds() -> None:
@@ -529,3 +553,27 @@ def test_the_story_committed_without_a_merge_is_on_main() -> None:
         assert _git_ok("merge-base", "--is-ancestor", commit, "HEAD"), commit
     (row,) = [row for row in RELEASE["p0Stories"] if row["storyId"] == "V1-S1-008"]
     assert all(commit in row["note"] for commit in commits)
+
+
+# ---------------------------------------------------- the private reporting path
+
+
+def test_every_surface_states_the_reporting_setting_as_the_baseline_reads_it() -> None:
+    """The first draft called the setting enabled; the hosting service read it disabled.
+
+    A file cannot record a hosting-service setting, so the baseline states a dated
+    reading, and the checklist's gate and the notes must agree with it. When the
+    setting is read enabled, the baseline, this test, and both surfaces change together.
+    """
+    baseline = json.loads(read("docs/security/security-baseline.v1alpha1.json"))
+    assert baseline["securityStatus"]["vulnerabilityReportsPossible"] is False
+    assert "Open: named, not yet enabled" in CHECKLIST
+    assert "it read disabled" in NOTES
+    assert (
+        'test "$(gh api repos/asadhanif3188/InferOps/private-vulnerability-reporting'
+        ' --jq .enabled)" = true'
+    ) in CHECKLIST
+
+
+def test_the_notes_say_nobody_outside_the_repository_reviewed_the_release() -> None:
+    assert "Nobody outside this repository has reviewed a claim, a" in NOTES

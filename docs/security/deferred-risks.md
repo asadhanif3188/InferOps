@@ -482,11 +482,12 @@ not do.
 - **It is not exhaustive.** A risk nobody thought of is a risk nobody registered, and
   the same limitation applies to it as to
   [the threat model's twenty-two threats](threat-model.md).
-- **It was published before it could be reported against privately.** Until `v1.0.0`
-  there was no private vulnerability reporting channel, and that is the reason
-  everything here is published rather than held. [SECURITY.md](../../SECURITY.md) now
-  names GitHub private vulnerability reporting; it promises no response time, and a
-  risk reported through it is still carried here until a change reduces it.
+- **It was published before it could be reported against privately.** No private
+  vulnerability reporting channel existed when it was written, and that is the reason
+  everything here is published rather than held. For `v1.0.0`,
+  [SECURITY.md](../../SECURITY.md) names GitHub private vulnerability reporting, a
+  hosting-service setting that read disabled on 2026-09-27; it promises no response
+  time, and a risk reported through it is still carried here until a change reduces it.
 
 ## Related records
 

@@ -174,7 +174,7 @@
       "measured": "0.0.0",
       "released": "1.0.0",
       "what": "The service.version telemetry label the local composition gives the API.",
-      "why": "tools/local_composition refuses a composition whose INFEROPS_SERVICE_VERSION is not the version pyproject.toml declares, so the label moved with the version. At bcad343, the revision the V1-S5-013-PR1 baseline rerun ran, the composition set 0.0.0; no committed record quotes the label's value. The chart leaves the label empty unless a values file sets it, and this release does not change that. No figure the release notes quote depends on the label's value."
+      "why": "tools/local_composition refuses a composition whose INFEROPS_SERVICE_VERSION is not the version pyproject.toml declares, so the label moved with the version. At bcad343, the revision the V1-S5-013-PR1 baseline rerun ran, the composition set 0.0.0. The rerun's own records do not quote the label; records of earlier runs do, and quote 0.0.0. The chart leaves the label empty unless a values file sets it, and this release does not change that. No figure the release notes quote depends on the label's value."
     },
     {
       "differenceId": "api-image-digest",

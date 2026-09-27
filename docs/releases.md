@@ -9,14 +9,18 @@ security, or production fitness.
 
 ## Version policy
 
-- `v1.0.0` is the first stable project release.
+- `v1.0.0` is the first versioned release. Under Semantic Versioning, `1.0.0` fixes
+  the public interfaces a later breaking change is measured against; it says nothing
+  about maturity, which the package's `3 - Alpha` classifier states.
 - Pre-release identifiers such as `-alpha.1` or `-rc.1` may identify review builds.
-- Breaking changes after a stable release increment the major version.
+- Breaking changes after `1.0.0` increment the major version.
 - Compatible features increment the minor version; compatible fixes increment the
   patch version.
 - The version is declared once, in `pyproject.toml`
-  ([ADR 0009](architecture/decisions/ADR-0009-python-toolchain.md) D1). The workload
-  contract and the Helm chart keep versions of their own.
+  ([ADR 0009](architecture/decisions/ADR-0009-python-toolchain.md) D1). `uv.lock`
+  records it, and the local composition repeats it as `service.version` under a check
+  that refuses a mismatch. The workload contract and the Helm chart keep versions of
+  their own.
 
 ## Releases
 
@@ -27,7 +31,9 @@ security, or production fitness.
 A release is cut over a frozen evidence pack and changes nothing inside it. The claim
 and evidence register is part of that pack, so it describes the repository as it was
 frozen, before the release; [the `v1.0.0` notes](releases/v1.0.0.md#where-the-frozen-evidence-still-describes-the-repository-before-this-release)
-list every surface that still does.
+list every surface inside the pack, or bound to it, that still does. A decision record's
+accepted text is history too, and carries a dated note where the release changed what it
+describes.
 
 ## High-level release checklist
 
