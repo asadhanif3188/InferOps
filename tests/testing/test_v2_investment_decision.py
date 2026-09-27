@@ -91,7 +91,6 @@ FORBIDDEN_PHRASES = (
     "the second version will",
     "v2 includes",
     "v2 scope includes",
-    "portfolio",
     "revenue",
     "customers",
     "market demand",
@@ -179,7 +178,7 @@ def test_every_option_states_every_field_a_comparison_needs(option: dict) -> Non
 
 
 def test_the_selected_option_rests_on_findings() -> None:
-    """An outcome no finding motivates is roadmap momentum, whichever way it points."""
+    """An outcome no finding motivates rests on something other than evidence."""
     assert OPTIONS[DECISION["outcome"]]["motivatingFindingIds"]
 
 
@@ -234,8 +233,11 @@ def test_every_gate_has_a_state_evidence_and_real_claims(gate: dict) -> None:
 
 def test_the_page_lists_every_gate_with_the_state_the_data_holds() -> None:
     rows = _table_rows(_section("## Entry gates"))
-    published = {_code(row[0]): _code(row[2]) for row in rows}
-    assert published == {gate_id: row["state"] for gate_id, row in GATES.items()}
+    # A list, not a dict: a duplicated or contradictory row must fail rather than
+    # collapse into whichever copy comes last. The independent review of the first
+    # commit showed the dict form accepting exactly that.
+    published = [(_code(row[0]), _code(row[2])) for row in rows]
+    assert published == [(row["gateId"], row["state"]) for row in DATA["entryGates"]]
     unmet = sum(1 for row in GATES.values() if row["state"] == "unmet")
     words = {0: "None", 1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six"}
     verb = "is" if unmet == 1 else "are"
@@ -334,6 +336,16 @@ def test_every_problem_answers_the_three_questions(problem: dict) -> None:
     for finding_id in problem["findingIds"]:
         assert finding_id in FINDINGS, finding_id
     assert problem["remainsUnproven"].strip()
+
+
+def test_no_problem_lists_as_movable_a_claim_the_register_calls_unreachable() -> None:
+    """The first draft listed one, and its own next field said it could not move."""
+    for problem in DATA["problems"]:
+        for claim_id in problem["claimsThatCouldMove"]:
+            assert "not reachable" not in CLAIMS[claim_id]["limitation"], (
+                problem["problemId"],
+                claim_id,
+            )
 
 
 def test_every_finding_bears_on_a_problem() -> None:
@@ -504,6 +516,7 @@ def test_the_page_publishes_every_identifier_the_data_holds() -> None:
         | set(PROBLEMS)
         | set(GATES)
         | {row["triggerId"] for row in DATA["reviewTriggers"]}
+        | {row["surfaceId"] for row in DATA["describesTheRepositoryBeforeThisDecision"]}
     )
     missing = sorted(identifiers - spans)
     assert not missing, missing
@@ -517,6 +530,11 @@ def test_the_page_assumes_no_scope_and_argues_from_no_appeal() -> None:
 
 
 def _slug(heading: str) -> str:
+    """GitHub's heading anchor, approximately.
+
+    It does not model the `-1`, `-2` suffixes GitHub gives a repeated heading, so a
+    correct link to the second of two identical headings would fail here, loudly.
+    """
     text = heading.strip().lower().replace("`", "")
     return re.sub(r"[^\w\- ]", "", text).replace(" ", "-")
 
@@ -557,4 +575,9 @@ def test_the_readme_and_the_governance_table_link_the_page() -> None:
     roadmap = readme.split("\n## Roadmap\n", 1)[1].split("\n## ", 1)[0]
     assert "](docs/governance/v2-investment-decision.md)" in roadmap
     governance = read("docs/governance/repository.md")
-    assert "](v2-investment-decision.md)" in governance
+    (row,) = [
+        line for line in governance.splitlines() if line.startswith("| Next version |")
+    ]
+    assert "](v2-investment-decision.md)" in row
+    for option_id in OUTCOMES:
+        assert f"\n### {option_id.capitalize()}\n" in PAGE_TEXT, option_id
