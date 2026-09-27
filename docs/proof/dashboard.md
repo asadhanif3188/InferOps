@@ -16,7 +16,7 @@ which is asked of a Prometheus and shows nothing when nothing is running. This
 page reads committed files, says the same thing on every machine, and does not
 change when a cluster does.
 
-**Certified: 41 of 59 claims.** The remaining 18 are the rows worth
+**Certified: 42 of 59 claims.** The remaining 17 are the rows worth
 reading, and they are listed in full under [what V1 does not
 claim](#what-v1-does-not-claim) rather than summarised away. Every number on
 this page is counted from the register at render time; there is no field
@@ -25,7 +25,7 @@ anywhere in this tool that a count could be typed into.
 > [!IMPORTANT]
 > **A claim's status and an evidence level are different things.** The status
 > says whether this project publishes a property at all. A level belongs to
-> one evidence record — 64 of them sit behind these claims — and
+> one evidence record — 65 of them sit behind these claims — and
 > says only how that record was obtained. The levels `C0` to `C4` are
 > [InferOps Evidence Levels](../testing/evidence-levels.md): **project-defined,
 > and not an ISO, NIST, regulatory, or industry certification standard.** Nobody
@@ -78,7 +78,7 @@ provider certifies that provider alone.
 | [Security boundary](#security-boundary) | 3 | 1 | 0 | 2 | `C0` | `docker-desktop` |
 | [Multi-replica serving](#multi-replica-serving) | 0 | 0 | 0 | 1 | — | `docker-desktop` |
 | [Contracts, scaffolding, and the safe quick start](#contracts-scaffolding-and-the-safe-quick-start) | 5 | 3 | 0 | 0 | `C2` | none named |
-| [Release and production use](#release-and-production-use) | 0 | 0 | 0 | 2 | — | none named |
+| [Release and production use](#release-and-production-use) | 1 | 0 | 0 | 1 | `C0` | none named |
 | [Ownership, tests, continuous integration, and evidence](#ownership-tests-continuous-integration-and-evidence) | 5 | 0 | 0 | 2 | `C0` | none named |
 
 ## Where V1 stands
@@ -88,10 +88,10 @@ between a promise, a decision, and a measured absence.
 
 | Status | Claims | May be published as a capability | What it means |
 |---|---|---|---|
-| `certified` | 41 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
+| `certified` | 42 | yes | An executed record under docs/proof/ supports the statement at the level named, inside the boundary its limitation states. |
 | `planned` | 7 | no | V1 intends it and nothing has proven it. It may be published only as an intention, and it may cite no evidence record. |
 | `deferred` | 1 | no | Out of V1 scope by an accepted decision. It may not be published as a capability at all, and it may cite no evidence record. |
-| `not-claimed` | 10 | no | A reader would reasonably expect it and V1 states that it does not have it. It may cite the record that measured the absence, because an absence somebody measured is worth more than one nobody mentions. |
+| `not-claimed` | 9 | no | A reader would reasonably expect it and V1 states that it does not have it. It may cite the record that measured the absence, because an absence somebody measured is worth more than one nobody mentions. |
 
 ### The levels the evidence records reached
 
@@ -105,7 +105,7 @@ record at that level.
 
 | Evidence level | Records | Certified claims holding one | Defined as |
 |---|---|---|---|
-| `C0` | 26 | 22 | [Static Evidence](../testing/evidence-levels.md#c0--static-evidence) |
+| `C0` | 27 | 23 | [Static Evidence](../testing/evidence-levels.md#c0--static-evidence) |
 | `C1` | 8 | 5 | [Substituted Execution Evidence](../testing/evidence-levels.md#c1--substituted-execution-evidence) |
 | `C2` | 30 | 20 | [Runtime Evidence](../testing/evidence-levels.md#c2--runtime-evidence) |
 | `C3` | 0 | 0 | [Representative Evidence](../testing/evidence-levels.md#c3--representative-evidence) |
@@ -132,7 +132,7 @@ interchangeable, so the environment is counted per record.
 | `local-kubernetes` | `kind` | `cpu` | 1 |
 | `local-kubernetes` | `unrecorded` | `cpu` | 3 |
 | `local-process` | `not-applicable` | `cpu` | 10 |
-| `repository-only` | `not-applicable` | `not-applicable` | 24 |
+| `repository-only` | `not-applicable` | `not-applicable` | 25 |
 
 ### Which provider the real results came from
 
@@ -163,9 +163,11 @@ Until `V1-S5-012-PR2` the register stored one level per claim, under
 meanings ADR 0016 supersedes. Every claim still carries that value as
 history, and the levels on its records are the result of reading each
 record against the current definitions. 43 claims carried a level;
-10 claims now hold records at a level other than the one they
-carried, or hold a level where they carried none. They are listed here, and
-[the migration report](testing/v1-s5-012-pr2-migration-report.md) says why each one moved.
+11 claims now hold records at a level other than the one they
+carried, or hold a level where they carried none. They are listed here.
+[The migration report](testing/v1-s5-012-pr2-migration-report.md) says why each one it moved did;
+a claim that gained a record after the migration, through a later ledger, is
+listed too, and [the evidence index](v1-evidence-index.md) names the ledger.
 
 This table cannot show a status that moved, because a claim carries its
 superseded level and not its superseded status. The migration report lists
@@ -183,6 +185,7 @@ every status the migration changed, with the measurement that required it.
 | A versioned load profile with a warm-up, rising concurrency levels, duration and request bounds, a client deadline above the API's, and a fixed response classification generates repeatable load and a raw record set whose accounting is checked on read. | `certified` | `C2` | `C1`, `C2` |
 | A real Prometheus parsed and evaluated all 30 panel expressions in nine states and refused none, and a real Grafana imported the generated JSON and rendered all 29 panels. | `certified` | `C2` | `C0`, `C2` |
 | The NetworkPolicy objects the chart renders restrict traffic in the clusters this project runs on. | `not-claimed` | none | `C1` |
+| InferOps has published a versioned V1 release. | `certified` | none | `C0` |
 
 ## The capabilities
 
@@ -357,11 +360,11 @@ absence is not one status.
 
 *Is there a release, and can somebody else run this in production?*
 
-**Tally:** 2 `not-claimed`.
+**Tally:** 1 `certified`, 1 `not-claimed`.
 
 | Claim | Status | Evidence records | Limitation |
 |---|---|---|---|
-| InferOps has published a versioned V1 release. | `not-claimed` | none recorded | Semantic versioning is an intention that begins when versioned releases begin. |
+| InferOps has published a versioned V1 release. | `certified` | `C0` · `repository-only` · [`releases/v1-s5-009-pr1-v1.0.0-publication.md`](releases/v1-s5-009-pr1-v1.0.0-publication.md), [`releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt`](releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt) | One annotated tag and one published release, read once on 2026-09-27, after the release, by a record written after the evidence pack was frozen: that record is not part of the pack the release was cut over. The release is state on the hosting service, which its maintainer can edit or delete, and the record pins only the tag object. No file is attached to the release, and the release notes state that no image, package, chart, or model is published; no package or image registry was read. Semantic versioning is an intention from this release on, and no later release exists yet to hold it to. |
 | InferOps is a production-ready, portable inference platform someone can deploy for someone else. | `not-claimed` | none recorded | The evidence levels define `C3` and `C4` so the ceiling is visible rather than implied. No V1 record is above `C2`, and `C4` Operational Evidence is not reachable at all, because there is no organizational production to observe. |
 
 ### Ownership, tests, continuous integration, and evidence
@@ -382,7 +385,7 @@ absence is not one status.
 
 ## What V1 does not claim
 
-18 claims, derived from the register rather than listed here: a
+17 claims, derived from the register rather than listed here: a
 claim that stops being certified joins this table without anybody adding it.
 That is deliberate. A page that can only be complete about its successes is
 an advertisement. A record beside a claim here is the measurement of an
@@ -407,7 +410,6 @@ weaker form of the capability.
 | A deployed InferOps workload is authenticated, authorized, isolated, and defended. | `not-claimed` | Nothing in this repository authenticates a caller, authorises a request, or admits a pod. There is no admission control, no gateway, and no multi-tenancy. Twelve risks are carried rather than reduced and ten of them block production use. | none recorded |
 | A continuous-integration lane installs a release into a cluster or executes a real model. | `not-claimed` | No workflow for a cluster lane is committed, only the rules one must satisfy. No runner is labelled capable and no hosted runner is authorized to hold the pinned model artifact; ADR 0005 D6 leaves that half open on purpose. | none recorded |
 | Evidence that certifies a claim is committed under `docs/proof/`, carries classification, provenance, environment, method, results, limitations, and authorisation, and is produced by a reviewed change rather than by a job. | `not-claimed` | Measured in V1-S5-012-PR2: of the 52 Markdown records cited by the claims the v1alpha1 register held as certified, 20 contain no statement about authorisation of any kind, so the sentence that every certifying record carries one is not true of the records committed. The templates require the section; the records produced before them, and several since, do not have it. Nothing checks that a record was produced by a reviewed change rather than by a job. | `C0` · `repository-only` · [`telemetry/v1-s0-007-pr1-validation.md`](telemetry/v1-s0-007-pr1-validation.md)<br>`C0` · `repository-only` · [`testing/v1-s5-012-pr2-migration-report.md`](testing/v1-s5-012-pr2-migration-report.md) |
-| InferOps has published a versioned V1 release. | `not-claimed` | The release process is documented and no release has been executed. The changelog holds unreleased changes only. | none recorded |
 | InferOps is a production-ready, portable inference platform someone can deploy for someone else. | `not-claimed` | `production-experience` is unreachable from this repository: there is no organizational production to draw it from, and public-cloud execution is not production operation. Every executed result is one Windows host, one provider, CPU, one replica of each tier, started by hand under explicit authorization against a cluster the operator already owns. | none recorded |
 
 ## What this page is not

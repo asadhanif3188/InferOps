@@ -1,0 +1,844 @@
+{
+  "$id": "https://inferops.io/governance/v2-investment-decision.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Whether a second version of InferOps should proceed, as the data a test holds it to",
+  "description": "The proceed, revise, or defer decision on a second version, made from V1's frozen evidence: the frozen evidence it rests on, the V1 findings it cites and the register rows behind each, the problems those findings expose with three separate questions answered for each, the options compared, the entry gates and their state, where every claim V1 does not certify is placed, the review date and triggers, and the published surface that still describes the repository before the decision. tests/testing/test_v2_investment_decision.py reads this file against the register, the evidence index, the case study's data, and the document, and fails when any of them disagrees. It holds the decision's references and consistency, never whether the reasoning is sound.",
+  "documentRef": "docs/governance/v2-investment-decision.md",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "caseStudyRef": "docs/case-study/v1-engineering-case-study.md",
+  "caseStudyDataRef": "docs/case-study/v1-engineering-case-study.v1alpha1.json",
+  "boundariesRef": "docs/architecture/project-boundaries.md",
+  "evidenceLevelsRef": "docs/testing/evidence-levels.md",
+  "authorityRef": "docs/governance/decision-authority.v1alpha1.json",
+  "decision": {
+    "decisionId": "v2-investment-decision",
+    "outcome": "defer",
+    "decidedIn": "V1-S5-009-PR1",
+    "decidedOn": "2026-09-27",
+    "reviewBy": "2026-12-27",
+    "acceptedBy": {
+      "roleId": "repository-maintainer",
+      "act": "Merging the change that carries this record. There is no other approval artifact.",
+      "authorityRegisterCovers": false,
+      "note": "None of the four authorities in the decision-authority register is a decision about whether to open a new version: they cover architecture decisions, claim sign-off, and V1 release approval. The role that can merge is the one that accepts this record, and this record does not add an authority or change one."
+    },
+    "summary": "Open no second version now. Nothing yet deploys a workload from its validated contract, only its author has completed the clean-clone journey, and nobody outside the repository has reviewed a claim, a record, or the release; the caller-visible outage a lost pod caused, whose record names one replica as the cause, has not been tested with a second replica, because the only host measured refused the multi-replica profile at its capacity gate on 2026-09-12. The next InferOps work, if any, is finishing V1's own claims inside its contract."
+  },
+  "evidenceBasis": {
+    "evidenceFreeze": "frozen",
+    "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
+    "evidencePackSha256": "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2",
+    "claims": 59,
+    "claimsByStatus": {
+      "certified": 41,
+      "deferred": 1,
+      "not-claimed": 10,
+      "planned": 7
+    },
+    "records": 64,
+    "recordsByLevel": {
+      "C0": 26,
+      "C1": 8,
+      "C2": 30,
+      "C3": 0,
+      "C4": 0
+    },
+    "note": "The pack v1.0.0 was cut over, read as released: the evidence index recomputes these digests by undoing the post-release ledger, and the counts are that register's. The pack on main has moved since, by that ledger alone."
+  },
+  "release": {
+    "tag": "v1.0.0",
+    "tagCommit": "718ad2e0fac8ae70c6d053a2decb00e61ff3de39",
+    "notesRef": "docs/releases/v1.0.0.md",
+    "registerClaimId": "a-v1-release-has-been-published",
+    "registerStatus": "not-claimed",
+    "note": "The annotated tag exists on the merge of V1-S5-008-PR1, and the hosting service published a release on it. The register inside the frozen pack lists the release row as not claimed; the post-release ledger in the same change certifies it on main, at C0, on a record read after the release. This record reads the pack the release was cut over, so its register is the released one.",
+    "registerStatusOnMain": "certified",
+    "movedBy": "r01-release-status",
+    "recordRef": "docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md"
+  },
+  "findings": [
+    {
+      "findingId": "more-callers-bought-waiting",
+      "finding": "From concurrency 1 to 4, completed requests stayed between 0.554 and 0.575 per second while median latency rose; whether the single slot or the processor held the rate was not tested.",
+      "claims": [
+        {
+          "claimId": "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+          "status": "certified",
+          "recordLevels": [
+            "C2"
+          ]
+        },
+        {
+          "claimId": "sustained-throughput-and-capacity-under-load",
+          "status": "deferred",
+          "recordLevels": []
+        }
+      ],
+      "recordRefs": [
+        "docs/proof/serving/v1-s4-004-pr2-performance-findings.md"
+      ]
+    },
+    {
+      "findingId": "one-replica-is-the-outage",
+      "finding": "Losing the only serving pod under load caused a 31 960 ms caller-visible outage in which 40 of the 41 requests were refused; a second run's outage was 2 832 ms, and the record says one replica is the cause and says nothing about what a second would change.",
+      "claims": [
+        {
+          "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+          "status": "certified",
+          "recordLevels": [
+            "C2"
+          ]
+        }
+      ],
+      "recordRefs": [
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md"
+      ]
+    },
+    {
+      "findingId": "readiness-and-scrape-health-disagreed-with-the-service",
+      "finding": "At every readiness sample before the replacement was observed Ready, one runtime pod, by the record's reading the deleted one, reported Ready while the Service had no ready endpoint, and the committed telemetry still read the deleted pod up after the delete. Registered series are emitted by nothing, the collector keeps nothing past a release, and no alert has been evaluated by a Prometheus in a release or delivered.",
+      "claims": [
+        {
+          "claimId": "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+          "status": "certified",
+          "recordLevels": [
+            "C2"
+          ]
+        },
+        {
+          "claimId": "a-release-scoped-collector-scrapes-both-inferops-jobs-on-the-reference-provider",
+          "status": "certified",
+          "recordLevels": [
+            "C2"
+          ]
+        },
+        {
+          "claimId": "the-v1-alerts-were-replayed-over-the-telemetry-three-real-experiments-recorded",
+          "status": "certified",
+          "recordLevels": [
+            "C0"
+          ]
+        },
+        {
+          "claimId": "an-alert-reaches-somebody",
+          "status": "not-claimed",
+          "recordLevels": []
+        }
+      ],
+      "recordRefs": [
+        "docs/proof/serving/v1-s4-006-pr1-inference-pod-recovery.md",
+        "docs/proof/serving/v1-s4-006-pr1-telemetry.v1alpha1.json",
+        "docs/proof/telemetry/v1-s4-008-pr1-alert-validation.md"
+      ]
+    },
+    {
+      "findingId": "the-topology-decided-the-error",
+      "finding": "A model held from finishing its load stayed alive and unready for 179 755 ms without a restart, and no caller met model-not-ready, because the runtime's Service never held an address; the canonical-error claims stay planned.",
+      "claims": [
+        {
+          "claimId": "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+          "status": "certified",
+          "recordLevels": [
+            "C2"
+          ]
+        },
+        {
+          "claimId": "a-model-that-is-not-ready-is-a-canonical-error",
+          "status": "planned",
+          "recordLevels": []
+        },
+        {
+          "claimId": "an-unreachable-runtime-is-a-canonical-error",
+          "status": "planned",
+          "recordLevels": []
+        }
+      ],
+      "recordRefs": [
+        "docs/proof/serving/v1-s4-007-pr1-unready-model-recovery.md"
+      ]
+    },
+    {
+      "findingId": "the-road-stops-before-deployment",
+      "finding": "Nothing turns a validated contract into release values; a values file is written by hand, and the two claims that would close the self-service loop are planned and hold no record.",
+      "claims": [
+        {
+          "claimId": "the-platform-serves-a-workload-the-contract-describes",
+          "status": "planned",
+          "recordLevels": []
+        },
+        {
+          "claimId": "deployment-values-derive-only-from-a-validated-document",
+          "status": "planned",
+          "recordLevels": []
+        }
+      ],
+      "recordRefs": []
+    },
+    {
+      "findingId": "only-the-author-has-walked-the-road",
+      "finding": "The whole path completed from a fresh clone once, on its third attempt, by the change's author, an AI coding agent; no second engineer has repeated it. The scaffold walkthrough was followed by a reviewer other than its author, an independent AI reviewer rather than a human.",
+      "claims": [
+        {
+          "claimId": "a-reviewer-can-reproduce-v1-from-a-clean-clone",
+          "status": "certified",
+          "recordLevels": [
+            "C2"
+          ]
+        },
+        {
+          "claimId": "a-workload-scaffold-is-generated-without-overwriting-anything",
+          "status": "certified",
+          "recordLevels": [
+            "C2"
+          ]
+        }
+      ],
+      "recordRefs": [
+        "docs/proof/environment/v1-s5-001-pr2-clean-clone-run.md",
+        "docs/proof/scaffolding/v1-s1-006-independent-walkthrough.md"
+      ]
+    },
+    {
+      "findingId": "multi-replica-refused-at-the-capacity-gate",
+      "finding": "On 2026-09-12 the multi-replica profile was refused at its capacity gate on the only host measured, before anything was installed, with the difference held by unrelated workloads; the gate was not weakened, the replica count was not reduced to fit, and nothing has measured the host against it since.",
+      "claims": [
+        {
+          "claimId": "multi-replica-serving-is-certified",
+          "status": "not-claimed",
+          "recordLevels": [
+            "C0"
+          ]
+        }
+      ],
+      "recordRefs": [
+        "docs/proof/environment/v1-s3-011-pr1-docker-desktop-paved-road.md"
+      ]
+    },
+    {
+      "findingId": "use-and-reservation-diverged",
+      "finding": "In the first load run the request path used about 5.4 times the processor time it reserved while most of its memory reservation sat idle; the only prices are synthetic and nothing has been paid for.",
+      "claims": [
+        {
+          "claimId": "the-cost-method-was-applied-to-use-taken-from-a-measured-run",
+          "status": "certified",
+          "recordLevels": [
+            "C0"
+          ]
+        },
+        {
+          "claimId": "what-running-an-inference-workload-costs-on-a-provider",
+          "status": "not-claimed",
+          "recordLevels": []
+        }
+      ],
+      "recordRefs": [
+        "docs/proof/cost/v1-s4-005-pr2-cost-baseline.md"
+      ]
+    },
+    {
+      "findingId": "nothing-is-defended",
+      "finding": "No caller is authenticated or authorized and nothing is rate-limited; one experiment measured that the local cluster's network plugin enforces none of the rendered policy, and ten of the twelve carried risks block production use.",
+      "claims": [
+        {
+          "claimId": "a-deployed-inferops-workload-is-defended",
+          "status": "not-claimed",
+          "recordLevels": []
+        },
+        {
+          "claimId": "the-rendered-network-policy-is-enforced-by-the-cluster",
+          "status": "not-claimed",
+          "recordLevels": [
+            "C1"
+          ]
+        }
+      ],
+      "recordRefs": [
+        "docs/proof/security/v1-s3-004-pr1-network-policy-enforcement.md"
+      ]
+    },
+    {
+      "findingId": "nothing-real-runs-in-continuous-integration",
+      "finding": "The one automated lane runs no cluster and no model; the rules for a real lane are published, no workflow for one is committed, and no runner is selected to hold the pinned model.",
+      "claims": [
+        {
+          "claimId": "a-cluster-or-real-runtime-lane-runs-in-continuous-integration",
+          "status": "not-claimed",
+          "recordLevels": []
+        }
+      ],
+      "recordRefs": []
+    },
+    {
+      "findingId": "every-result-is-one-setup",
+      "finding": "Every real result a certified claim rests on is one provider, docker-desktop, one Windows host, CPU only, one replica of each tier; the one kind run, of the optional helper, served no model, names no revision, and is not claimed. No record is above C2, nothing is C3 because no workload was declared representative before a run, and nothing can be C4 because there is no production operation to observe.",
+      "claims": [
+        {
+          "claimId": "inferops-is-a-portable-production-platform",
+          "status": "not-claimed",
+          "recordLevels": []
+        },
+        {
+          "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+          "status": "not-claimed",
+          "recordLevels": [
+            "C2"
+          ]
+        }
+      ],
+      "recordRefs": []
+    }
+  ],
+  "problems": [
+    {
+      "problemId": "the-self-service-road-is-open",
+      "problem": "A workload owner can write and validate a contract, but nothing deploys what it describes; the paved road's own promise stops at a hand-written values file.",
+      "findingIds": [
+        "the-road-stops-before-deployment"
+      ],
+      "important": {
+        "answer": "yes",
+        "reason": "It is the one step that makes the contract more than validated paper, and the case study calls it the most important unbuilt component in V1."
+      },
+      "feasibleNow": {
+        "answer": "yes",
+        "reason": "Expected to be feasible and not yet tried: rendering release values from a validated v1alpha1 document and serving from them should need the existing host, the existing chart, and no paid resource, and the claims that would move are already written."
+      },
+      "belongs": {
+        "answer": "inferops-v1-completion",
+        "reason": "It finishes a claim V1 already states, inside the v1alpha1 contract, and changes no boundary rule."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document"
+      ],
+      "remainsUnproven": "Any host or provider but the one measured, any workload shape the contract does not define, and anything about a generated workload a second person deployed."
+    },
+    {
+      "problemId": "v1-planned-claims-hold-no-record",
+      "problem": "Five more claims V1 states as planned have no record: the mock's self-identification, the two canonical errors, redaction in a real run, and no credential or model artifact in public history.",
+      "findingIds": [
+        "the-topology-decided-the-error"
+      ],
+      "important": {
+        "answer": "partly",
+        "reason": "Each is narrower than the road, but each is a promise V1 already publishes, and the unready-model run showed that one of them may not be reachable as written through the deployed topology."
+      },
+      "feasibleNow": {
+        "answer": "yes",
+        "reason": "Expected to be feasible on the existing host and not yet tried. A run may show that the model-not-ready claim cannot be met through the deployed topology, and restating it would then be the result."
+      },
+      "belongs": {
+        "answer": "inferops-v1-completion",
+        "reason": "They are V1's own planned claims, inside the v1alpha1 contract."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "a-model-that-is-not-ready-is-a-canonical-error",
+        "an-unreachable-runtime-is-a-canonical-error",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric",
+        "no-credential-or-model-artifact-enters-public-history"
+      ],
+      "remainsUnproven": "Whether any of them holds on another host or provider; a history scan is a static reading and reaches C0, not C2."
+    },
+    {
+      "problemId": "one-replica-is-the-outage",
+      "problem": "Whether a caller can be kept served while one of several serving pods is lost. V1 measured the outage losing the only pod caused, and never ran more than one.",
+      "findingIds": [
+        "one-replica-is-the-outage",
+        "multi-replica-refused-at-the-capacity-gate"
+      ],
+      "important": {
+        "answer": "yes",
+        "reason": "It is the caller-visible outage a lost pod caused, and its record names one replica as the cause."
+      },
+      "feasibleNow": {
+        "answer": "no",
+        "reason": "Not on the only host measured, as it last read: on 2026-09-12 it was refused at the multi-replica capacity gate, with the difference held by workloads that are not this project's to remove, and nothing has re-measured it. Another host means other hardware or a paid provider, and neither is authorized or budgeted."
+      },
+      "belongs": {
+        "answer": "split",
+        "reason": "Running the multi-replica profile and its certification workflow, which V1 already ships, on a host that passes the gate is evidence about V1. Losing one of several replicas under load and measuring what a caller meets is an experiment no V1 descriptor registers, so it is a later version's. It leaves this project the moment it becomes making the runtime answer more requests, which boundary rule 3 places elsewhere."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [
+        "multi-replica-serving-is-certified"
+      ],
+      "remainsUnproven": "A lost node, capacity, an availability figure, and any provider the experiment did not run on. C3 only if a representative intent and criteria are declared before the run."
+    },
+    {
+      "problemId": "signals-an-operator-cannot-trust",
+      "problem": "Which signal tells an operator the truth during a failure, and whether it reaches anybody. Pod readiness at every sample before the replacement was Ready, and scrape health after the delete, described the lost pod rather than what callers could reach, and no alert is evaluated in a release or delivered.",
+      "findingIds": [
+        "readiness-and-scrape-health-disagreed-with-the-service"
+      ],
+      "important": {
+        "answer": "yes",
+        "reason": "An operator who trusted pod readiness in the seconds before the outage was wrong, and a rule nobody evaluates tells nobody."
+      },
+      "feasibleNow": {
+        "answer": "partly",
+        "reason": "Partly, and not yet tried. Evaluating the rules inside a release and delivering to a local receiver should need no new host; some registered series nothing emits need sources this distribution does not have, and the restart count needs a cluster add-on the chart does not own. A durable store and alert routing are unowned and deferred out of V1 by ADR 0004 D7, so taking them on changes an accepted decision."
+      },
+      "belongs": {
+        "answer": "split",
+        "reason": "Emitting series V1's own catalog registers, where a source exists in this distribution, is V1 completion. Evaluating, delivering, and keeping InferOps's own signals is a later version, because ADR 0004 D7 defers it. A telemetry backend other systems' telemetry flows into is a capability a workload declares through spec.integrations, which boundary rule 1 says this project does not provide."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [
+        "an-alert-reaches-somebody"
+      ],
+      "remainsUnproven": "That an alert is acted on, or that a signal is right on a provider or topology not run."
+    },
+    {
+      "problemId": "what-held-the-rate-was-not-tested",
+      "problem": "Whether the single slot or the processor held the completed rate flat, which decides whether this setup's figure says anything about another.",
+      "findingIds": [
+        "more-callers-bought-waiting"
+      ],
+      "important": {
+        "answer": "partly",
+        "reason": "It is the question the load result left open, but answering it for one release does not make any figure portable."
+      },
+      "feasibleNow": {
+        "answer": "partly",
+        "reason": "Not yet tried. A bounded rerun with processor throttling sampled and a varied or uncached prompt mix needs the existing host and is permitted by ADR 0013 as a bounded observation; more than one slot needs more memory on a host already short for the multi-replica profile, so that part may not fit."
+      },
+      "belongs": {
+        "answer": "split",
+        "reason": "Naming what limited one declared release is a bounded observation this project may publish under ADR 0013. Raising throughput, batching, or capacity is work on the runtime's own behaviour, which boundary rule 3 places elsewhere, and sustained capacity stays deferred."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [],
+      "remainsUnproven": "Capacity, a benchmark, and any other runtime, model, host, or provider. No claim moves: sustained throughput and capacity stay deferred."
+    },
+    {
+      "problemId": "one-setup-one-author",
+      "problem": "Whether the road works for anybody else, anywhere else. Every real result is one provider, one host, and one author, and the optional kind helper's only run names no revision.",
+      "findingIds": [
+        "only-the-author-has-walked-the-road",
+        "every-result-is-one-setup"
+      ],
+      "important": {
+        "answer": "yes",
+        "reason": "A reference path only its author has followed, on one machine, is not yet shown to be a reference for anybody."
+      },
+      "feasibleNow": {
+        "answer": "partly",
+        "reason": "A second person's run is not something the author can produce. Running on kind needs an install the maintainer declined for the release, and a non-Windows host needs other hardware."
+      },
+      "belongs": {
+        "answer": "split",
+        "reason": "A second person completing the published journey on the reference provider is evidence about V1 as released. Runs on kind and on a non-Windows host are what the case study lists as evidence that V1's shape holds beyond one setup: ADR 0011 D2 names kind as a supported provider, but no V1 run certifies it and no V1 claim promises a non-Windows host, so both are a later version's."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [
+        "a-local-cluster-is-created-and-removed-without-residue"
+      ],
+      "remainsUnproven": "Each new record certifies only its own host and provider; neither is read across to the other."
+    },
+    {
+      "problemId": "the-platform-is-not-defended",
+      "problem": "Whether anything in the platform refuses what it should: no caller is authenticated, nothing is rate-limited, no pod property is enforced, and the rendered network policy was measured inert on the local plugin.",
+      "findingIds": [
+        "nothing-is-defended"
+      ],
+      "important": {
+        "answer": "yes",
+        "reason": "Every real run has been loopback-only, on one host, started by hand, and nothing supports exposing the platform further while ten carried risks block production use."
+      },
+      "feasibleNow": {
+        "answer": "partly",
+        "reason": "Partly, and not yet tried. The network-policy record names two routes to an enforcing plugin, kind or a feature gate on the reference provider's plugin, and says either is a change to an accepted environment decision; kind needs an install the maintainer declined. No record covers pod admission. Caller identity and per-caller limits need a decision about where identity lives before anything is built."
+      },
+      "belongs": {
+        "answer": "split",
+        "reason": "Enforcing policy and admitting pods for the platform's own releases belongs here, in a later version. Boundary rule 2 places a component in front of several providers elsewhere and does not settle who authenticates a single-provider API's own callers; that is an ADR 0004 question this record does not answer."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [
+        "the-rendered-network-policy-is-enforced-by-the-cluster"
+      ],
+      "remainsUnproven": "That a deployed workload is defended, which no single record reaches, and enforcement on any plugin not run."
+    },
+    {
+      "problemId": "nothing-real-runs-in-continuous-integration",
+      "problem": "Every real result was produced by hand, because no lane can install a release or load a model.",
+      "findingIds": [
+        "nothing-real-runs-in-continuous-integration"
+      ],
+      "important": {
+        "answer": "partly",
+        "reason": "Without it a regression in real serving is found only when somebody runs it by hand."
+      },
+      "feasibleNow": {
+        "answer": "no",
+        "reason": "It needs a runner authorized to hold the pinned model artifact, and ADR 0005 D6 and ADR 0012 leave that runner unselected."
+      },
+      "belongs": {
+        "answer": "inferops-later-version",
+        "reason": "It is this project's own delivery, and it waits on the runner decision."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [
+        "a-cluster-or-real-runtime-lane-runs-in-continuous-integration"
+      ],
+      "remainsUnproven": "Anything the lane does not run, on any runner it does not run on."
+    },
+    {
+      "problemId": "no-real-price",
+      "problem": "What running the workload costs on a provider. Every price in V1 is synthetic, and the finding that survived them is about use, not price.",
+      "findingIds": [
+        "use-and-reservation-diverged"
+      ],
+      "important": {
+        "answer": "partly",
+        "reason": "The useful cost finding, that reservation and use diverged in opposite directions, needed no price at all."
+      },
+      "feasibleNow": {
+        "answer": "no",
+        "reason": "Nothing has ever been paid for, no provider account exists, and an account and a budget would need authorization."
+      },
+      "belongs": {
+        "answer": "split",
+        "reason": "An actual-basis record for InferOps's own release belongs here: the method exists and is tested. Accelerator economics is work on the hardware the runtime is given, which boundary rule 3 places elsewhere."
+      },
+      "expectedLevel": "C2",
+      "claimsThatCouldMove": [
+        "what-running-an-inference-workload-costs-on-a-provider"
+      ],
+      "remainsUnproven": "Any cost but the one provider, window, and rate card read; paying a provider is not production operation."
+    },
+    {
+      "problemId": "no-representative-evidence",
+      "problem": "Whether any result represents intended use. Nothing is C3, because no workload or infrastructure was declared representative, with criteria, before a run.",
+      "findingIds": [
+        "every-result-is-one-setup"
+      ],
+      "important": {
+        "answer": "partly",
+        "reason": "It is the only way to change a level rather than repeat one, and a higher level is not better evidence for every claim."
+      },
+      "feasibleNow": {
+        "answer": "partly",
+        "reason": "V1 declared no intended use beyond a contributor's own machine, so the first step is a decision about what to represent, not a run."
+      },
+      "belongs": {
+        "answer": "inferops-later-version",
+        "reason": "Declaring an intended use widens what V1 is for, which is a decision for a version rather than a completion of this one."
+      },
+      "expectedLevel": "C3",
+      "claimsThatCouldMove": [],
+      "remainsUnproven": "Behaviour outside the declared distribution, and anything C4 would say. No claim moves: the one it bears on, inferops-is-a-portable-production-platform, needs production operation this project does not have, which C3 cannot supply."
+    }
+  ],
+  "entryGates": [
+    {
+      "gateId": "a-release-is-cut-over-the-frozen-pack",
+      "gate": "A first versioned release is cut over the frozen evidence pack.",
+      "state": "met",
+      "evidence": "The annotated tag v1.0.0 exists on the merge of V1-S5-008-PR1, and the hosting service published a release on it. The register inside the pack lists a published release as not claimed; the post-release ledger has since certified it on main, at C0, on a record read after the release.",
+      "claimIds": [
+        "a-v1-release-has-been-published"
+      ]
+    },
+    {
+      "gateId": "the-road-has-been-run-under-failure",
+      "gate": "The road V1 built has been run for real, including under failures caused on purpose.",
+      "state": "met",
+      "evidence": "C2 records for the load matrix, the pod loss, the unready model, and the clean-clone run.",
+      "claimIds": [
+        "a-bounded-local-performance-matrix-was-measured-and-a-degradation-point-observed",
+        "caller-visible-impact-of-losing-the-inference-pod-was-measured-under-load",
+        "an-unready-model-was-held-unready-and-recovered-by-an-operator",
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+      ]
+    },
+    {
+      "gateId": "the-road-is-closed-for-one-workload",
+      "gate": "One workload is served from its validated contract alone, so a second version would widen a road that exists.",
+      "state": "unmet",
+      "evidence": "Both claims are planned and hold no record; release values are written by hand.",
+      "claimIds": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document"
+      ]
+    },
+    {
+      "gateId": "a-second-person-has-reproduced-v1",
+      "gate": "Somebody other than the author has completed the clean-clone journey from its own page.",
+      "state": "unmet",
+      "evidence": "The claim's limitation: one run, by the change's author; no second engineer has repeated it.",
+      "claimIds": [
+        "a-reviewer-can-reproduce-v1-from-a-clean-clone"
+      ]
+    },
+    {
+      "gateId": "someone-outside-the-repository-has-reviewed-v1",
+      "gate": "Somebody outside the repository has reviewed a claim, a record, or the release, and what they find is weighed here.",
+      "state": "unmet",
+      "evidence": "The release notes state that nobody outside this repository has reviewed a claim, a record, or the release, and the register that no outside party has reviewed a claim against its evidence; every approval is the repository-maintainer role's, which has one holder.",
+      "claimIds": []
+    },
+    {
+      "gateId": "this-record-is-merged",
+      "gate": "This comparison of proceed, revise, and defer is merged with its evidence.",
+      "state": "met-on-merge",
+      "evidence": "This record, once the change carrying it is merged.",
+      "claimIds": []
+    }
+  ],
+  "options": [
+    {
+      "optionId": "proceed",
+      "selected": false,
+      "summary": "Open a second version now, take V1's road as complete for one workload, and widen what it supports.",
+      "problemAddressed": "Widening what the road supports before it is closed for one workload.",
+      "motivatingFindingIds": [],
+      "motivation": "No V1 finding motivates widening. The contract's refusal of what it does not define records a choice, not a measured need.",
+      "expectedEvidence": "C2 for whatever is added, on the same host and provider: new claims that are still one setup.",
+      "prerequisites": "Every unmet entry gate, including a road that deploys one workload from its contract.",
+      "costsAndRisks": "It builds on a deployment step written by hand, and every result would again be one host, one provider, one replica, close to the kind of evidence the case study says would not justify a second version.",
+      "claimsThatCouldStrengthen": [],
+      "remainsUnproven": "Everything the pod-loss, capacity-gate, telemetry, and security findings left open, and the self-service road itself.",
+      "overlap": "Widening crosses no boundary rule by itself, and nothing it adds answers a V1 finding.",
+      "why": "Refused: three entry gates are unmet, and its problem is not one V1's evidence exposed."
+    },
+    {
+      "optionId": "revise",
+      "selected": false,
+      "summary": "Open a second version now, with its problem restated from V1's evidence: keeping a caller served, and an operator told the truth, while a serving pod is lost.",
+      "problemAddressed": "The one-replica outage and the signals that misdescribed it, together.",
+      "motivatingFindingIds": [
+        "one-replica-is-the-outage",
+        "readiness-and-scrape-health-disagreed-with-the-service",
+        "multi-replica-refused-at-the-capacity-gate"
+      ],
+      "motivation": "The outage losing the only pod caused, the disagreement between pod readiness and the Service before it, and the gate that stopped a second replica being tried.",
+      "expectedEvidence": "C2 on a host that passes the capacity gate, certifying only that host; C3 only if a representative intent and acceptance criteria are declared before the run.",
+      "prerequisites": "A host that passes the multi-replica capacity gate, authorized and budgeted if it is paid for; a registered experiment for losing one of several replicas under load; an amendment to ADR 0004 D7 for alert delivery and a durable store; and every unmet entry gate.",
+      "costsAndRisks": "Hardware or provider spend that is not authorized, and drift: redundancy turns into autoscaling and throughput, which boundary rule 3 places elsewhere.",
+      "claimsThatCouldStrengthen": [
+        "multi-replica-serving-is-certified",
+        "an-alert-reaches-somebody"
+      ],
+      "remainsUnproven": "A lost node, capacity, an availability figure, production operation, and any provider not run.",
+      "overlap": "Deeper serving work, if it widens from redundancy to throughput or autoscaling; a telemetry backend for other systems, if it widens from InferOps's own signals.",
+      "why": "Not now: its problem is the right one, but three entry gates are unmet and the host it needs is not available. It is kept as the problem statement a later proposal starts from."
+    },
+    {
+      "optionId": "defer",
+      "selected": true,
+      "summary": "Open no second version now. The next InferOps work, if any, finishes V1's own claims inside the v1alpha1 contract; the revised problem statement is held for the review.",
+      "problemAddressed": "The self-service road and V1's other planned claims, and a second person completing the journey.",
+      "motivatingFindingIds": [
+        "the-road-stops-before-deployment",
+        "the-topology-decided-the-error",
+        "only-the-author-has-walked-the-road"
+      ],
+      "motivation": "V1 publishes seven planned claims and a road that stops before deployment, and only its author has completed the clean-clone journey.",
+      "expectedEvidence": "C2 on the existing host for claims V1 already states: new claims reaching a record, not repeats of the same one.",
+      "prerequisites": "Expected to be none beyond the existing host for the planned claims, not yet tried. A second person's run and an outside review cannot be produced by the author, and are waited for, not scheduled.",
+      "costsAndRisks": "The outage a lost pod caused stays untested with a second replica until the review, and a reviewer may reasonably weigh it above closing the road first.",
+      "claimsThatCouldStrengthen": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document",
+        "the-mock-serving-path-identifies-itself-as-a-mock",
+        "a-model-that-is-not-ready-is-a-canonical-error",
+        "an-unreachable-runtime-is-a-canonical-error",
+        "no-prompt-response-or-secret-reaches-a-log-or-a-metric",
+        "no-credential-or-model-artifact-enters-public-history"
+      ],
+      "remainsUnproven": "Everything the one-replica, signal, rate-limit, security, lane, price, and representative problems name.",
+      "overlap": "None: all of it is inside V1's boundary and contract.",
+      "why": "Selected: it is the only option no unmet gate refuses, and it answers findings V1 published."
+    }
+  ],
+  "uncertifiedClaims": [
+    {
+      "claimId": "the-platform-serves-a-workload-the-contract-describes",
+      "status": "planned",
+      "placedIn": [
+        "the-self-service-road-is-open",
+        "the-road-is-closed-for-one-workload"
+      ]
+    },
+    {
+      "claimId": "deployment-values-derive-only-from-a-validated-document",
+      "status": "planned",
+      "placedIn": [
+        "the-self-service-road-is-open",
+        "the-road-is-closed-for-one-workload"
+      ]
+    },
+    {
+      "claimId": "the-mock-serving-path-identifies-itself-as-a-mock",
+      "status": "planned",
+      "placedIn": [
+        "v1-planned-claims-hold-no-record"
+      ]
+    },
+    {
+      "claimId": "a-model-that-is-not-ready-is-a-canonical-error",
+      "status": "planned",
+      "placedIn": [
+        "v1-planned-claims-hold-no-record"
+      ]
+    },
+    {
+      "claimId": "an-unreachable-runtime-is-a-canonical-error",
+      "status": "planned",
+      "placedIn": [
+        "v1-planned-claims-hold-no-record"
+      ]
+    },
+    {
+      "claimId": "no-prompt-response-or-secret-reaches-a-log-or-a-metric",
+      "status": "planned",
+      "placedIn": [
+        "v1-planned-claims-hold-no-record"
+      ]
+    },
+    {
+      "claimId": "no-credential-or-model-artifact-enters-public-history",
+      "status": "planned",
+      "placedIn": [
+        "v1-planned-claims-hold-no-record"
+      ]
+    },
+    {
+      "claimId": "sustained-throughput-and-capacity-under-load",
+      "status": "deferred",
+      "placedIn": [
+        "what-held-the-rate-was-not-tested"
+      ]
+    },
+    {
+      "claimId": "a-local-cluster-is-created-and-removed-without-residue",
+      "status": "not-claimed",
+      "placedIn": [
+        "one-setup-one-author"
+      ]
+    },
+    {
+      "claimId": "multi-replica-serving-is-certified",
+      "status": "not-claimed",
+      "placedIn": [
+        "one-replica-is-the-outage"
+      ]
+    },
+    {
+      "claimId": "an-alert-reaches-somebody",
+      "status": "not-claimed",
+      "placedIn": [
+        "signals-an-operator-cannot-trust"
+      ]
+    },
+    {
+      "claimId": "what-running-an-inference-workload-costs-on-a-provider",
+      "status": "not-claimed",
+      "placedIn": [
+        "no-real-price"
+      ]
+    },
+    {
+      "claimId": "the-rendered-network-policy-is-enforced-by-the-cluster",
+      "status": "not-claimed",
+      "placedIn": [
+        "the-platform-is-not-defended"
+      ]
+    },
+    {
+      "claimId": "a-deployed-inferops-workload-is-defended",
+      "status": "not-claimed",
+      "placedIn": [
+        "the-platform-is-not-defended"
+      ]
+    },
+    {
+      "claimId": "a-cluster-or-real-runtime-lane-runs-in-continuous-integration",
+      "status": "not-claimed",
+      "placedIn": [
+        "nothing-real-runs-in-continuous-integration"
+      ]
+    },
+    {
+      "claimId": "every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary",
+      "status": "not-claimed",
+      "placedIn": [],
+      "whyNotPlaced": "It is about how V1's records were written, and neither motivates nor blocks a second version. Closing it means new records, because the frozen ones are not edited."
+    },
+    {
+      "claimId": "a-v1-release-has-been-published",
+      "status": "not-claimed",
+      "placedIn": [
+        "a-release-is-cut-over-the-frozen-pack"
+      ]
+    },
+    {
+      "claimId": "inferops-is-a-portable-production-platform",
+      "status": "not-claimed",
+      "placedIn": [
+        "no-representative-evidence"
+      ]
+    }
+  ],
+  "reviewTriggers": [
+    {
+      "triggerId": "the-review-date",
+      "trigger": "The review date arrives."
+    },
+    {
+      "triggerId": "the-road-closes",
+      "trigger": "Both planned contract claims are certified, so one workload is served from its contract alone."
+    },
+    {
+      "triggerId": "somebody-else-walks-the-road",
+      "trigger": "A second person completes the clean-clone journey, or somebody outside the repository reviews a claim, a record, or the release."
+    },
+    {
+      "triggerId": "a-capable-host-is-available",
+      "trigger": "A host that passes the multi-replica capacity gate, or an authorized budget for one, becomes available."
+    },
+    {
+      "triggerId": "outside-feedback-names-a-need",
+      "trigger": "Feedback from outside the repository names a need this record does not list."
+    }
+  ],
+  "figures": [
+    {
+      "quoted": "between 0.554 and 0.575 per second",
+      "caseStudyFigureId": "completed-rate-range"
+    },
+    {
+      "quoted": "31 960 ms",
+      "caseStudyFigureId": "caller-visible-outage"
+    },
+    {
+      "quoted": "40 of the 41 requests",
+      "caseStudyFigureId": "outage-refusals"
+    },
+    {
+      "quoted": "2 832 ms",
+      "caseStudyFigureId": "second-run-caller-visible-outage"
+    },
+    {
+      "quoted": "179 755 ms",
+      "caseStudyFigureId": "unready-window"
+    },
+    {
+      "quoted": "about 5.4 times",
+      "caseStudyFigureId": "use-over-reservation"
+    }
+  ],
+  "describesTheRepositoryBeforeThisDecision": [
+    {
+      "surfaceId": "case-study-second-version-section",
+      "path": "docs/case-study/v1-engineering-case-study.md",
+      "says": "Whether a second version proceeds, and what it contains, is a separate decision that has not been made, and nothing here assumes it.",
+      "why": "The case study is bound to the frozen evidence digests and stays as published. This record is that separate decision."
+    }
+  ]
+}

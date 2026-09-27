@@ -53,8 +53,9 @@ cited file bound to its content by SHA-256 and to its git blob. It is generated 
 `python -m tools.evidence_index` from the register,
 [the normalization ledger](testing/v1-s5-006-pr1-normalization.v1alpha1.json),
 [the completeness ledger](testing/v1-s5-006-pr2-completeness.v1alpha1.json),
-[the closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json), and
-[the publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json), and a
+[the closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json),
+[the publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json), and
+[the post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json), and a
 test regenerates it. Where a record here was found to say something its own evidence
 contradicts, the correction is in a ledger, beside the record, and the record is
 unchanged — the index lists each correction against the file it concerns.
@@ -71,11 +72,22 @@ the pack. `python -m tools.evidence_index --gate` exits 0 and prints both digest
 evidence pack's, which covers the register and its ledgers as well as every cited
 file, is the one a release quotes.
 
+**`v1.0.0` was released over that pack on 2026-09-27.** [The record read after the
+release](releases/v1-s5-009-pr1-v1.0.0-publication.md) is the only evidence record the
+register has gained since:
+it read the tag, the published release, the candidate's hosted checks, and the private
+reporting setting, and the register certifies on it, at `C0`, that the release exists.
+It is not part of the pack the release was cut over. Adding it moved both digests of
+the pack `main` holds; the gate prints the released pair, recomputed by undoing
+[the post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json), and the
+current pair beside it.
+
 ## Records
 
 | Area | Records |
 |---|---|
-| Governance | [`v1-s0-001-pr1.md`](governance/v1-s0-001-pr1.md) |
+| Releases | [The `v1.0.0` publication, read after the release](releases/v1-s5-009-pr1-v1.0.0-publication.md), with [its transcript](releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt). Post-release evidence, not part of the pack the release was cut over |
+| Governance | [`v1-s0-001-pr1.md`](governance/v1-s0-001-pr1.md), and [the validation of the decision whether a second version should proceed](governance/v1-s5-009-pr1-validation.md). The decision itself is [its page](../governance/v2-investment-decision.md), which is not a record: it cites the frozen pack and changes nothing in it |
 | Environment | [host inventory](environment/v1-s0-002-pr1-host-inventory.md), [cluster smoke](environment/v1-s0-002-pr2-cluster-smoke.md), the [cluster lifecycle result](environment/v1-s3-001-pr1-cluster-lifecycle.md), the [Docker Desktop paved road](environment/v1-s3-011-pr1-docker-desktop-paved-road.md), the [upgrade and rollback experiment](environment/v1-s3-011-pr2-upgrade-rollback.md), the [scoped cleanup and cluster-survival result](environment/v1-s3-011-pr2-scoped-cleanup.md), the [upgrade and rollback rerun at a named revision](environment/v1-s5-013-pr1-upgrade-rollback.md) with [its record](environment/v1-s5-013-pr1-upgrade-rollback.v1alpha1.json), the [scoped cleanup rerun at a named revision](environment/v1-s5-013-pr1-scoped-cleanup.md), the transcripts of [their preparation](environment/v1-s5-013-pr1-cluster-prepare-transcript.txt), [the rollback](environment/v1-s5-013-pr1-upgrade-rollback-transcript.txt), and [the cleanup](environment/v1-s5-013-pr1-scoped-cleanup-transcript.txt), the [Sprint 3 completion review](environment/sprint-3-completion-review.md), the [clean-clone workflow's validation](environment/v1-s5-001-pr1-validation.md), the [operator runbook's validation and drills](environment/v1-s5-005-pr1-validation.md), and the change-validation records beside them |
 | Serving | [runtime feasibility](serving/v1-s0-003-pr2-runtime-feasibility.md), [Sprint 1 real-runtime closure](serving/v1-s1-real-runtime-closure.md), [`v1-s0-012-pr1-validation.md`](serving/v1-s0-012-pr1-validation.md), [Sprint 1 completion remediation](serving/sprint-1-completion-remediation-validation.md), [`v1-s2-002-pr2-validation.md`](serving/v1-s2-002-pr2-validation.md), [`v1-s2-003-pr1-validation.md`](serving/v1-s2-003-pr1-validation.md), [`v1-s2-004-pr1-validation.md`](serving/v1-s2-004-pr1-validation.md), the [executed local baseline experiment](serving/v1-s2-005-local-baseline-experiment.md) with its [raw results](serving/v1-s2-005-baseline-raw-results.md), and [its rerun at a named revision](serving/v1-s5-013-pr1-baseline-rerun.md) with [raw results](serving/v1-s5-013-pr1-baseline-raw.jsonl), [a summary](serving/v1-s5-013-pr1-baseline-summary.json), and [a transcript](serving/v1-s5-013-pr1-baseline-transcript.txt), the [measured cold and warm start comparison](serving/v1-s2-007-pr1-cold-warm-start.md) with its [real cache miss observation](serving/v1-s2-007-cache-miss-observation.md), the [measured restart and reload comparison](serving/v1-s3-003-pr1-restart-reload.md), the [Kubernetes pod-restart persistence result](serving/v1-s3-003-pr2-kubernetes-pod-restart.md) and [its rerun at a named revision](serving/v1-s5-013-pr1-kubernetes-pod-restart.md) with [its record](serving/v1-s5-013-pr1-kubernetes-pod-restart.v1alpha1.json) and [transcript](serving/v1-s5-013-pr1-kubernetes-pod-restart-transcript.txt), the [C2 real-runtime certification result](serving/v1-s2-004-c2-certification-result.md), [`v1-s2-008-pr1-validation.md`](serving/v1-s2-008-pr1-validation.md), the [Sprint 2 completion review](serving/sprint-2-completion-review.md), the [synthetic load rehearsal](serving/v1-s4-003-pr1-rehearsal-raw.jsonl) with [its summary](serving/v1-s4-003-pr1-rehearsal-summary.json) and [`v1-s4-003-pr1-validation.md`](serving/v1-s4-003-pr1-validation.md), the [performance scenario matrix executed on `docker-desktop`](serving/v1-s4-004-pr1-validation.md) with [its record](serving/v1-s4-004-pr1-performance-record.v1alpha1.json), the [performance findings for that run](serving/v1-s4-004-pr2-performance-findings.md) with [their derived figures](serving/v1-s4-004-pr2-findings.v1alpha1.json) and [`v1-s4-004-pr2-validation.md`](serving/v1-s4-004-pr2-validation.md), the [inference pod lost under load](serving/v1-s4-006-pr1-inference-pod-recovery.md) with [its record](serving/v1-s4-006-pr1-recovery-record.v1alpha1.json) and [`v1-s4-006-pr1-validation.md`](serving/v1-s4-006-pr1-validation.md), the [model that did not become ready](serving/v1-s4-007-pr1-unready-model-recovery.md) with [its record](serving/v1-s4-007-pr1-unready-model-record.v1alpha1.json) and [`v1-s4-007-pr1-validation.md`](serving/v1-s4-007-pr1-validation.md), and the change-validation records beside them |
 | Contracts | [`v1-s0-004-pr1-validation.md`](contracts/v1-s0-004-pr1-validation.md), [`v1-s0-004-pr2-validation.md`](contracts/v1-s0-004-pr2-validation.md) |

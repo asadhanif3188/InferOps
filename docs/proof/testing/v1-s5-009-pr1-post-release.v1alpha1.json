@@ -1,0 +1,349 @@
+{
+  "$id": "https://inferops.io/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "V1 post-release register changes, V1-S5-009-PR1",
+  "description": "What V1-S5-009-PR1 changed in the register after v1.0.0 was released over the frozen evidence pack: every register change with its value before and after, the findings each answers, and the release it observed, with the two digests of the pack that release was cut over. This ledger is not part of that pack, so it can state the pack's digests; the evidence index recomputes them by undoing this ledger and refuses a pair that differs. It raises and closes no blocker, declares no freeze, and edits no dated record.",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "priorLedgerRef": "docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json",
+  "reportRef": "docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "release": {
+    "tag": "v1.0.0",
+    "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
+    "commit": "718ad2e0fac8ae70c6d053a2decb00e61ff3de39",
+    "releaseId": 397583133,
+    "publishedAt": "2026-09-27T09:22:34Z",
+    "freezeDecidedIn": "V1-S5-013-PR2",
+    "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
+    "evidencePackSha256": "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2",
+    "note": "The pack v1.0.0 was cut over: the register as it stood before this ledger, the four ledgers before it, and the files that register cites. The annotated tag's message quotes the pack digest. A register change after the release moves the digests of the pack on main, which no release quotes."
+  },
+  "registerChanges": [
+    {
+      "changeId": "r01-release-status",
+      "findingId": "r-f01-the-register-says-no-release-was-executed",
+      "operation": "set-claim-field",
+      "claimId": "a-v1-release-has-been-published",
+      "field": "status",
+      "before": "not-claimed",
+      "after": "certified",
+      "reason": "v1.0.0 has been tagged and published, and the record added below read both after the release."
+    },
+    {
+      "changeId": "r02-release-not-claimed-reason",
+      "findingId": "r-f01-the-register-says-no-release-was-executed",
+      "operation": "set-claim-field",
+      "claimId": "a-v1-release-has-been-published",
+      "field": "notClaimedReason",
+      "before": "The release process is documented and no release has been executed. The changelog holds unreleased changes only.",
+      "after": null,
+      "reason": "A certified claim gives no reason for not being claimed."
+    },
+    {
+      "changeId": "r03-release-limitation",
+      "findingId": "r-f01-the-register-says-no-release-was-executed",
+      "operation": "set-claim-field",
+      "claimId": "a-v1-release-has-been-published",
+      "field": "limitation",
+      "before": "Semantic versioning is an intention that begins when versioned releases begin.",
+      "after": "One annotated tag and one published release, read once on 2026-09-27, after the release, by a record written after the evidence pack was frozen: that record is not part of the pack the release was cut over. The release is state on the hosting service, which its maintainer can edit or delete, and the record pins only the tag object. No file is attached to the release, and the release notes state that no image, package, chart, or model is published; no package or image registry was read. Semantic versioning is an intention from this release on, and no later release exists yet to hold it to.",
+      "reason": "The old limitation described an intention that begins with a release; this one says what the record read, when, and what it cannot pin."
+    },
+    {
+      "changeId": "r04-release-does-not-establish",
+      "findingId": "r-f01-the-register-says-no-release-was-executed",
+      "operation": "set-claim-field",
+      "claimId": "a-v1-release-has-been-published",
+      "field": "doesNotEstablish",
+      "before": "Anything. It is stated so that a documented process is not read as a shipped artifact.",
+      "after": "That the release adds any evidence: every result it points to is a record in the pack it was cut over. Nor that anybody outside this repository has reviewed it, or that the checks the checklist runs before the tag were run in its order; the record ran two of them again at the tag, afterwards.",
+      "reason": "The old boundary said the row established nothing, which was true while nothing was released."
+    },
+    {
+      "changeId": "r05-release-test",
+      "findingId": "r-f01-the-register-says-no-release-was-executed",
+      "operation": "set-claim-field",
+      "claimId": "a-v1-release-has-been-published",
+      "field": "automatedTestRefs",
+      "before": [],
+      "after": [
+        "tests/testing/test_evidence_post_release.py"
+      ],
+      "reason": "The module that holds this ledger, the record, and the released pack to each other, and reads the tag where the clone has it."
+    },
+    {
+      "changeId": "r06-release-record",
+      "findingId": "r-f01-the-register-says-no-release-was-executed",
+      "operation": "add-record",
+      "claimId": "a-v1-release-has-been-published",
+      "position": 0,
+      "record": {
+        "recordId": "a-v1-release-has-been-published-c0",
+        "claimId": "a-v1-release-has-been-published",
+        "migrationState": "migrated",
+        "evidenceLevel": "C0",
+        "summary": "On 2026-09-27, after the release, git read the annotated tag v1.0.0 and the commit it points to in this repository and on the remote, unauthenticated reads of the hosting service's public API returned the published release on that tag, the checks run on its commit, and the private reporting setting, and the release gate and the three test modules the checklist names were run again in a worktree checked out at the tag.",
+        "execution": {
+          "targetBehaviourExecuted": false,
+          "executedComponents": [
+            {
+              "componentId": "git",
+              "role": "tool",
+              "note": "git cat-file, rev-parse, log, and ls-remote, reading the tag object, the commit it points to, and the remote's refs."
+            },
+            {
+              "componentId": "hosting-service-public-api",
+              "role": "tool",
+              "note": "Unauthenticated GET requests, made with curl, for the release on the tag, the list of releases, the workflow runs on the tagged commit and one run's jobs, the private vulnerability-reporting setting, and the repository's metadata."
+            },
+            {
+              "componentId": "evidence-index-gate",
+              "role": "validator",
+              "note": "python -m tools.evidence_index --gate and tests/testing/test_release.py, test_case_study.py, and test_evidence_publication.py, run in a separate worktree checked out at the tag, clean before and after."
+            }
+          ],
+          "substitutions": []
+        },
+        "workload": {
+          "source": "none",
+          "description": "No workload was issued. The inputs were git objects and the hosting service's answers to read requests, each read once."
+        },
+        "environment": {
+          "environmentId": "repository-only",
+          "provider": "not-applicable",
+          "hardwareClass": "not-applicable",
+          "note": "One Windows 11 workstation, in Git Bash, with network access to the hosting service's public API, on 2026-09-27. The register has no environment for a read of a hosting service; repository-only is the nearest, and this note says what was actually read. No cluster, runtime, or model was contacted."
+        },
+        "versions": [
+          {
+            "component": "v1-0-0-tag",
+            "kind": "artifact-hash",
+            "value": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04"
+          },
+          {
+            "component": "v1-0-0-tagged-commit",
+            "kind": "commit",
+            "value": "718ad2e0fac8ae70c6d053a2decb00e61ff3de39"
+          },
+          {
+            "component": "inferops",
+            "kind": "package-version",
+            "value": "1.0.0"
+          }
+        ],
+        "versionsRecordedIn": "docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md",
+        "procedure": {
+          "commands": [
+            "git cat-file -t v1.0.0",
+            "git rev-parse v1.0.0",
+            "git rev-parse 'v1.0.0^{commit}'",
+            "git cat-file -p v1.0.0 | sed -E 's/^tagger .* ([0-9]+ [+-][0-9]{4})$/tagger <omitted> \\1/'",
+            "git log -1 --format='%H%n%P%n%s' 'v1.0.0^{commit}'",
+            "git ls-remote origin refs/tags/v1.0.0 'refs/tags/v1.0.0^{}'",
+            "curl -s https://api.github.com/repos/asadhanif3188/InferOps/releases/tags/v1.0.0 | python -c \"import json,sys; d=json.load(sys.stdin); [print(k, json.dumps(d[k])) for k in ('id','name','tag_name','target_commitish','draft','prerelease','created_at','published_at','html_url')]; print('assets', len(d['assets'])); print('body:'); print(d['body'])\"",
+            "curl -s https://api.github.com/repos/asadhanif3188/InferOps/releases | python -c \"import json,sys; d=json.load(sys.stdin); print('releases', len(d), [r['tag_name'] for r in d])\"",
+            "curl -s 'https://api.github.com/repos/asadhanif3188/InferOps/actions/runs?head_sha=718ad2e0fac8ae70c6d053a2decb00e61ff3de39&per_page=20' | python -c \"import json,sys; d=json.load(sys.stdin); print('runs', d['total_count']); [print(r['id'], r['name'], r['path'], r['event'], r['head_branch'], r['head_sha'], r['run_attempt'], r['status'], r['conclusion'], r['run_started_at'], r['updated_at']) for r in d['workflow_runs']]\"",
+            "curl -s https://api.github.com/repos/asadhanif3188/InferOps/actions/runs/36305552023/jobs | python -c \"import json,sys; d=json.load(sys.stdin); print('jobs', d['total_count']); [print(j['conclusion'], '|', j['name']) for j in d['jobs']]\"",
+            "curl -s https://api.github.com/repos/asadhanif3188/InferOps/private-vulnerability-reporting",
+            "curl -s https://api.github.com/repos/asadhanif3188/InferOps | python -c \"import json,sys; d=json.load(sys.stdin); [print(k, json.dumps(d[k])) for k in ('description','homepage','topics')]\"",
+            "git rev-parse HEAD",
+            "git status --porcelain --untracked-files=all | wc -l",
+            "uv run --locked --offline python -m tools.evidence_index --gate; echo \"exit $?\"",
+            "uv run --locked --offline python -m pytest tests/testing/test_release.py tests/testing/test_case_study.py tests/testing/test_evidence_publication.py -q -p no:cacheprovider | tail -1; echo \"exit ${PIPESTATUS[0]}\""
+          ]
+        },
+        "results": [
+          {
+            "resultId": "an-annotated-tag-on-the-candidate",
+            "statement": "v1.0.0 is an annotated tag, object 17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04, on 718ad2e0fac8ae70c6d053a2decb00e61ff3de39, the merge of V1-S5-008-PR1, and the remote holds the same tag object and the same commit."
+          },
+          {
+            "resultId": "the-annotation-carries-the-frozen-pack",
+            "statement": "Its annotation carries the evidence pack digest 652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2 and the path of the release notes."
+          },
+          {
+            "resultId": "one-published-release-on-the-tag",
+            "statement": "The hosting service returned one release, 397583133, named InferOps v1.0.0 on the tag, neither a draft nor a prerelease, published 2026-09-27T09:22:34Z, with no file attached, and no other release."
+          },
+          {
+            "resultId": "the-candidate-s-hosted-checks-passed",
+            "statement": "The only checks run on the tagged commit, run 36305552023, concluded success in all eleven jobs at 2026-09-27T08:17:52Z, before the tag."
+          },
+          {
+            "resultId": "private-reporting-reads-enabled",
+            "statement": "The private vulnerability-reporting setting read enabled after the release; the service does not report when it was enabled."
+          },
+          {
+            "resultId": "the-tagged-tree-passes-the-gate",
+            "statement": "At the tag, run after it was created, the gate exited 0 with the frozen evidence set and pack digests and the three modules of check 2.5 passed, 283 tests."
+          }
+        ],
+        "evidenceRefs": [
+          "docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md",
+          "docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt"
+        ],
+        "limitations": [
+          "One reading, at one moment: every hosting-service value is what an unauthenticated read returned between 10:59:44 and 10:59:54 UTC on 2026-09-27, and the release and the setting are state its maintainer can edit or delete.",
+          "The gate and the release checks were run at the tag after it was created, so they show what the tagged tree does and not that they were run before the tag.",
+          "The record was written after the evidence pack was frozen and is not part of the pack v1.0.0 was cut over.",
+          "The register has no environment or evidence class for a read of a hosting service: repository-only and the local-static class are the nearest, and local-static excludes the network these reads used."
+        ],
+        "doesNotEstablish": [
+          "That the release adds any evidence: every result it points to is a record in the pack it was cut over, and this record measured nothing about the platform.",
+          "That the source archives the hosting service makes from the tag hold the tag's tree; none was downloaded or compared.",
+          "That nothing but the tag and its source archives is published anywhere: no package or image registry was read.",
+          "That the checks before the tag were run in the checklist's order, or that private reporting was enabled when the tag was created.",
+          "That anybody outside this repository has reviewed the release."
+        ]
+      },
+      "reason": "The record of the tag, the release, the candidate's checks, and the setting, read after the release."
+    },
+    {
+      "changeId": "r07-surface-reasons",
+      "findingId": "r-f02-two-surface-reasons-describe-the-repository-before-the-release",
+      "operation": "set-register-field",
+      "field": "nonClaimSurfaces",
+      "before": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations, and a recorded gap: no private channel is published. The gap belongs to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the four ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, and the evidence set and evidence pack digests. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "after": [
+        {
+          "path": "CONTRIBUTING.md",
+          "reason": "Contribution and review convention. It states how a change is validated and how evidence is labelled, and asserts no capability."
+        },
+        {
+          "path": "docs/governance/repository.md",
+          "reason": "Repository governance for this skeleton. It describes how the repository is run rather than what the software does."
+        },
+        {
+          "path": "docs/architecture/README.md",
+          "reason": "The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above."
+        },
+        {
+          "path": "docs/architecture/decisions/ADR-0009-python-toolchain.md",
+          "reason": "A toolchain decision. It is a condition every other result is read under rather than a published capability."
+        },
+        {
+          "path": "SECURITY.md",
+          "reason": "Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above."
+        },
+        {
+          "path": "CODE_OF_CONDUCT.md",
+          "reason": "Interim conduct expectations, with a formal policy deferred."
+        },
+        {
+          "path": "LICENSE",
+          "reason": "The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does."
+        },
+        {
+          "path": "docs/proof/dashboard.md",
+          "reason": "A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them."
+        },
+        {
+          "path": "docs/proof/v1-evidence-index.md",
+          "reason": "A generated projection of this register and the five ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the post-release ledger. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own."
+        },
+        {
+          "path": "docs/testing/evidence-levels.md",
+          "reason": "The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it."
+        },
+        {
+          "path": "docs/case-study/v1-engineering-case-study.md",
+          "reason": "The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it."
+        }
+      ],
+      "reason": "The reason SECURITY.md claims nothing said no private channel is published, and the evidence index's said four ledgers; both described the repository before the release."
+    }
+  ],
+  "recordCorrections": [],
+  "findings": [
+    {
+      "findingId": "r-f01-the-register-says-no-release-was-executed",
+      "source": "this-change",
+      "observation": "The register listed a-v1-release-has-been-published as not claimed, because no release had been executed and the changelog held unreleased changes only, and the release notes listed that row as one the frozen pack could not update. v1.0.0 has since been tagged on the merge of V1-S5-008-PR1 and published on the hosting service.",
+      "resolution": "The claim is certified at C0 on a record read after the release, which says it is not part of the pack the release was cut over. That pack keeps the row as it was, and this ledger states its digests.",
+      "resolvedBy": [
+        "r01-release-status",
+        "r02-release-not-claimed-reason",
+        "r03-release-limitation",
+        "r04-release-does-not-establish",
+        "r05-release-test",
+        "r06-release-record"
+      ],
+      "recordIds": [
+        "a-v1-release-has-been-published-c0"
+      ],
+      "claimIds": [
+        "a-v1-release-has-been-published"
+      ]
+    },
+    {
+      "findingId": "r-f02-two-surface-reasons-describe-the-repository-before-the-release",
+      "source": "this-change",
+      "observation": "Two of the register's surfaces that claim nothing gave reasons that described the repository before the release: SECURITY.md's said no private channel is published, and the evidence index's named four ledgers of register changes.",
+      "resolution": "Both reasons are replaced; neither surface claims anything.",
+      "resolvedBy": [
+        "r07-surface-reasons"
+      ],
+      "recordIds": [],
+      "claimIds": []
+    },
+    {
+      "findingId": "r-f03-the-model-has-no-environment-for-a-hosting-service",
+      "source": "this-change",
+      "observation": "The register's environments and evidence classes have no value for a read of a hosting service, and no field for state a record cannot pin, such as a published release or a repository setting.",
+      "resolution": "Recorded, not changed. The record uses repository-only with a note, names the class mismatch in its limitations, and carries the mutable state in its limitations; a later change to the evidence model may add a value for it.",
+      "resolvedBy": [],
+      "recordIds": [
+        "a-v1-release-has-been-published-c0"
+      ],
+      "claimIds": [
+        "a-v1-release-has-been-published"
+      ]
+    }
+  ],
+  "codeRevisions": []
+}

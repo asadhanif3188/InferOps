@@ -963,7 +963,13 @@ def test_no_group_without_a_certified_row_shows_a_level() -> None:
         if not any(row["status"] == "certified" for row in shown):
             assert rows[capability.name][5] == "—", capability.capability_id
     assert rows["Multi-replica serving"][1] == "0"
-    assert rows["Release and production use"][1] == "0"
+    # Since `V1-S5-009-PR1` the release itself is certified, at `C0`, on a record read
+    # after it; running this in production is still not claimed.
+    assert rows["Release and production use"][1] == "1"
+    assert BY_ID["a-v1-release-has-been-published"]["status"] == "certified"
+    assert (
+        BY_ID["inferops-is-a-portable-production-platform"]["status"] == "not-claimed"
+    )
 
 
 def test_every_link_the_page_makes_to_itself_lands_on_a_heading() -> None:

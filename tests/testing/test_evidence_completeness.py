@@ -44,6 +44,7 @@ from tools.evidence_index import (
     COMPLETENESS_PATH,
     FINAL_STATES,
     INDEX_PATH,
+    POST_RELEASE_PATH,
     PUBLICATION_PATH,
     evidence_set_sha256,
     git_blob_id,
@@ -51,6 +52,7 @@ from tools.evidence_index import (
     load_ledger,
     open_blockers,
     release_gate,
+    released_register,
     restore_migrated_register,
 )
 from tools.evidence_index.__main__ import main as index_main
@@ -59,7 +61,10 @@ from tools.evidence_model import REGISTER_PATH, load_register
 pytestmark = pytest.mark.docs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-REGISTER = load_register()
+#: The register as the `v1.0.0` pack holds it: the current one with the post-release
+#: ledger undone. What this ledger decided is history the released pack carries; the
+#: change after the release is held by `test_evidence_post_release.py`.
+REGISTER = released_register(load_register(), load_ledger(POST_RELEASE_PATH))
 NORMALIZATION = load_ledger()
 COMPLETENESS = load_ledger(COMPLETENESS_PATH)
 CLOSURE = load_ledger(CLOSURE_PATH)
@@ -667,7 +672,8 @@ def test_the_readme_states_the_record_count_the_register_holds() -> None:
     `V1-S5-006-PR1` moved the register to 57 records and this change to 60; the
     README's matrix row still said 57 until this change's own sweep found it.
     """
-    records = sum(len(claim["evidenceRecords"]) for claim in REGISTER["claims"])
+    current = load_register()
+    records = sum(len(claim["evidenceRecords"]) for claim in current["claims"])
     stated = re.findall(r"\b(\d+) evidence records\b", read("README.md"))
     assert stated, "the README states no record count"
     assert set(stated) == {str(records)}, stated

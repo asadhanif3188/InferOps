@@ -1,9 +1,10 @@
 # Security policy
 
-Status: reporting expectations documented; GitHub private vulnerability reporting is
+Status: reporting expectations documented; GitHub private vulnerability reporting was
 named as the private channel for `v1.0.0` in `V1-S5-008-PR1`. It is a setting on the
-hosting service, and on 2026-09-27, when this was written, that setting still read
-disabled. A threat model and control baseline exist and are linked below; neither
+hosting service: on 2026-09-27 it read disabled while that change was written, and it
+read enabled when [the record made after the release](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md) read it, later the
+same day. A threat model and control baseline exist and are linked below; neither
 changes anything in this policy.
 
 This repository contains governance documentation, local development apparatus, a
@@ -40,8 +41,8 @@ What this channel does not promise: an acknowledgement window, a remediation tim
 coordinated disclosure on a date, or a backported fix. One role maintains this
 repository, and the channel has not yet received or answered a report, so no response
 time has ever been measured. Whether it is enabled is a setting on the hosting service,
-which no file here can record; [the release checklist](docs/releases/v1.0.0-checklist.md)
-reads it and refuses the `v1.0.0` tag until it reads enabled.
+which no file here can pin; it read enabled on 2026-09-27, after `v1.0.0` was
+released, and its maintainer can change it.
 
 ## Scope of current claims
 

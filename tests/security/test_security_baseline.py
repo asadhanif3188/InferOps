@@ -1680,7 +1680,7 @@ def test_the_baseline_states_that_nothing_enforces_at_runtime() -> None:
     assert status["securityAssessmentsPerformed"] == 0
     assert status["penetrationTestsPerformed"] == 0
     assert status["vulnerabilityReportsReceived"] == 0
-    assert status["vulnerabilityReportsPossible"] is False
+    assert status["vulnerabilityReportsPossible"] is True
     assert "GitHub private vulnerability reporting" in status["privateReportingChannel"]
 
 
@@ -1696,6 +1696,9 @@ def test_the_reporting_policy_names_its_channel_and_promises_no_response_time() 
     promising the response a single-role project has never measured; and it holds the
     baseline to the reading it states. When the setting is read enabled, the reading,
     the flag, and this test change together.
+
+    `V1-S5-009-PR1` read it enabled after the release, in a record of its own, and
+    changed the three together. The earlier reading stays, dated, beside the new one.
     """
     body = " ".join((REPO_ROOT / "SECURITY.md").read_text(encoding="utf-8").split())
     assert "GitHub's private vulnerability reporting" in body
@@ -1703,11 +1706,13 @@ def test_the_reporting_policy_names_its_channel_and_promises_no_response_time() 
     assert "What this channel does not promise: an acknowledgement window" in body
     assert "the channel is not enabled**: do not report publicly" in body
     status = BASELINE["securityStatus"]
-    assert status["vulnerabilityReportsPossible"] is False
-    assert (
-        "on 2026-09-27 the service reported it disabled"
-        in status["privateReportingChannel"]
-    )
+    assert status["vulnerabilityReportsPossible"] is True
+    channel = status["privateReportingChannel"]
+    assert channel.startswith("named, and enabled when last read.")
+    assert "on 2026-09-27 the service reported it disabled" in channel
+    assert "and enabled when V1-S5-009-PR1 read it after the v1.0.0 release" in channel
+    assert "it read enabled on 2026-09-27, after `v1.0.0` was released" in body
+    assert "refuses the `v1.0.0` tag until it reads enabled" not in body
     limitation_ids = {row["limitationId"] for row in LIMITATIONS}
     assert "the-reporting-channel-promises-no-response" in limitation_ids
 

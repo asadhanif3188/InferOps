@@ -21,8 +21,8 @@
     "securityAssessmentsPerformed": 0,
     "penetrationTestsPerformed": 0,
     "vulnerabilityReportsReceived": 0,
-    "vulnerabilityReportsPossible": false,
-    "privateReportingChannel": "named but not enabled when last read. SECURITY.md names GitHub private vulnerability reporting for v1.0.0, since V1-S5-008-PR1. It is a setting on the hosting service, which no file here can record: on 2026-09-27 the service reported it disabled, so no confidential report was possible then, and the release checklist refuses the v1.0.0 tag until it reads enabled. It promises no acknowledgement window, remediation timeline, or backported fix, and it has received no report.",
+    "vulnerabilityReportsPossible": true,
+    "privateReportingChannel": "named, and enabled when last read. SECURITY.md names GitHub private vulnerability reporting, since V1-S5-008-PR1. It is a setting on the hosting service, which no file here can record: on 2026-09-27 the service reported it disabled while V1-S5-008-PR1 was written, and enabled when V1-S5-009-PR1 read it after the v1.0.0 release, so a confidential report was possible then. Its maintainer can change it. It promises no acknowledgement window, remediation timeline, or backported fix, and it has received no report.",
     "note": "These counts are zero rather than absent. A missing count reads as an unmeasured one, and an unmeasured one reads as a positive by anybody skimming."
   },
   "actors": [
@@ -1860,7 +1860,7 @@
     },
     {
       "limitationId": "the-reporting-channel-promises-no-response",
-      "statement": "The private vulnerability reporting channel SECURITY.md names for v1.0.0, GitHub private vulnerability reporting, is a hosting-service setting that no file here records, and it read disabled on 2026-09-27. Enabled, it promises no acknowledgement window, remediation timeline, or backported fix. It has never received or answered a report, so no response time has been measured, and everything in this baseline was published before any private channel existed."
+      "statement": "The private vulnerability reporting channel SECURITY.md names, GitHub private vulnerability reporting, is a hosting-service setting that no file here records: it read disabled on 2026-09-27 while v1.0.0 was prepared, and enabled after the release, the same day. Enabled, it promises no acknowledgement window, remediation timeline, or backported fix. It has never received or answered a report, so no response time has been measured, and everything in this baseline was published before any private channel existed."
     },
     {
       "limitationId": "the-workload-policy-reads-a-file",

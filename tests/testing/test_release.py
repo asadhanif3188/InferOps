@@ -14,6 +14,12 @@ What it does not establish is that the release notes' prose says what the record
 say, that a gate which only the hosting service can run has passed, or that the tag
 exists. The first is a reading, and the other two are post-merge checks in the
 checklist.
+
+Since `V1-S5-009-PR1` the release exists, and a post-release ledger has moved the
+register. The release is still held to the pack it was cut over, which the evidence
+index recomputes by undoing that ledger, and the surfaces the notes left standing are
+held to what has happened to each since. The post-release ledger and its record are
+`test_evidence_post_release.py`'s.
 """
 
 from __future__ import annotations
@@ -27,7 +33,13 @@ from typing import Any
 
 import pytest
 
-from tools.evidence_index import PUBLICATION_PATH, load_index, load_ledger
+from tools.evidence_index import (
+    POST_RELEASE_PATH,
+    PUBLICATION_PATH,
+    load_index,
+    load_ledger,
+    released_register,
+)
 from tools.evidence_model import load_register
 
 pytestmark = pytest.mark.docs
@@ -37,9 +49,15 @@ RELEASE_PATH = REPO_ROOT / "docs" / "releases" / "v1.0.0.v1alpha1.json"
 RELEASE: dict[str, Any] = json.loads(RELEASE_PATH.read_text(encoding="utf-8"))
 EVIDENCE = RELEASE["evidence"]
 INDEX = load_index()
-SUMMARY = INDEX["summary"]
-REGISTER = load_register()
+#: The index's summary for the pack the release was cut over: the counts and digests
+#: it recomputes with the post-release ledger undone, over everything else it states.
+SUMMARY = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
+CURRENT_REGISTER = load_register()
+POST_RELEASE = load_ledger(POST_RELEASE_PATH)
+#: The register as the release holds it.
+REGISTER = released_register(CURRENT_REGISTER, POST_RELEASE)
 PUBLICATION = load_ledger(PUBLICATION_PATH)
+AFTER = RELEASE["afterTheRelease"]
 CASE_STUDY_DATA = json.loads(
     (REPO_ROOT / EVIDENCE["caseStudyDataRef"]).read_text(encoding="utf-8")
 )
@@ -124,6 +142,15 @@ def test_the_release_is_cut_over_the_frozen_pack_the_index_states() -> None:
     assert PUBLICATION["freeze"]["decidedIn"] == EVIDENCE["freezeDecidedIn"]
     assert SUMMARY["evidenceSetSha256"] == EVIDENCE["evidenceSetSha256"]
     assert SUMMARY["evidencePackSha256"] == EVIDENCE["evidencePackSha256"]
+
+
+def test_the_released_pack_is_not_the_one_main_holds_now() -> None:
+    """A post-release change moves the current pack; the release keeps its own."""
+    current = INDEX["summary"]
+    assert current["evidencePackSha256"] != EVIDENCE["evidencePackSha256"]
+    assert current["releasedPack"]["tag"] == RELEASE["tag"]
+    assert current["releasedPack"]["commit"] == AFTER["commit"]
+    assert current["releasedPack"]["tagObject"] == AFTER["tagObject"]
 
 
 def test_the_case_study_was_verified_against_the_same_pack() -> None:
@@ -389,8 +416,15 @@ def _surface(surface_id: str) -> dict:
     return row
 
 
-def test_the_register_still_lists_the_release_as_not_claimed() -> None:
-    """A tripwire. When a later change moves this row, the notes' section must go too."""
+def test_the_released_register_lists_the_release_as_not_claimed_and_main_has_moved_it() -> (
+    None
+):
+    """The tripwire this module set fired, as it was meant to, in `V1-S5-009-PR1`.
+
+    The register inside the pack still says what the notes say it says; the register on
+    `main` has moved the row through the post-release ledger, and the notes' section
+    after the release says so.
+    """
     surface = _surface("register-release-row")
     index = int(surface["pointer"].rsplit("/", 1)[1])
     claim = REGISTER["claims"][index]
@@ -398,20 +432,61 @@ def test_the_register_still_lists_the_release_as_not_claimed() -> None:
     assert claim["status"] == "not-claimed"
     assert claim["notClaimedReason"] == surface["says"]
     assert "`a-v1-release-has-been-published`" in NOTES
+    now = CURRENT_REGISTER["claims"][index]
+    assert now["claimId"] == claim["claimId"]
+    assert now["status"] == "certified"
+    assert now["notClaimedReason"] is None
+    assert [record["evidenceLevel"] for record in now["evidenceRecords"]] == ["C0"]
+    assert "is now certified on `main`, at `C0`" in NOTES
 
 
-def test_every_surface_left_standing_still_says_what_the_notes_say_it_says() -> None:
-    for surface in RELEASE["describesTheRepositoryBeforeTheRelease"]:
-        if surface["surfaceId"] == "register-release-row":
-            continue
-        if surface["surfaceId"] == "register-security-policy-reason":
-            (row,) = [
-                r for r in REGISTER["nonClaimSurfaces"] if r["path"] == "SECURITY.md"
-            ]
-            text = row["reason"]
+def _moved(surface_id: str) -> dict:
+    (row,) = [row for row in AFTER["surfaces"] if row["surfaceId"] == surface_id]
+    return row
+
+
+def test_every_surface_the_notes_left_standing_is_accounted_for_after_the_release() -> (
+    None
+):
+    """Each surface the notes named is either moved, by a named change, or left."""
+    named = [
+        row["surfaceId"] for row in RELEASE["describesTheRepositoryBeforeTheRelease"]
+    ]
+    assert [row["surfaceId"] for row in AFTER["surfaces"]] == named
+    changes = {change["changeId"] for change in POST_RELEASE["registerChanges"]}
+    for row in AFTER["surfaces"]:
+        assert row["since"] in ("moved", "left"), row["surfaceId"]
+        if row["since"] == "moved":
+            assert row["by"] in changes, row["surfaceId"]
         else:
-            text = read(surface["path"])
-        assert surface["says"] in normalised(text), surface["surfaceId"]
+            assert row["by"] is None, row["surfaceId"]
+
+
+def test_every_surface_says_what_the_release_says_it_said_and_what_it_says_now() -> (
+    None
+):
+    """The released state still says it; the current state says it where it was left."""
+    for surface in RELEASE["describesTheRepositoryBeforeTheRelease"]:
+        surface_id = surface["surfaceId"]
+        moved = _moved(surface_id)["since"] == "moved"
+        if surface_id == "register-release-row":
+            continue
+        if surface_id == "register-security-policy-reason":
+            for register, expected in ((REGISTER, True), (CURRENT_REGISTER, not moved)):
+                (row,) = [
+                    r
+                    for r in register["nonClaimSurfaces"]
+                    if r["path"] == "SECURITY.md"
+                ]
+                assert (surface["says"] in row["reason"]) is expected, surface_id
+            continue
+        text = normalised(read(surface["path"]))
+        assert (surface["says"] in text) is not moved, surface_id
+
+
+def test_the_case_study_says_the_release_has_been_made_since() -> None:
+    page = normalised(read(EVIDENCE["caseStudyRef"]))
+    assert "**Since publication, `v1.0.0` has been released** over the pack" in page
 
 
 def test_the_notes_explain_every_surface_left_standing() -> None:
@@ -533,6 +608,20 @@ def test_every_listed_merge_carries_its_story_and_no_story_merge_is_missing() ->
     assert story_merges <= listed, sorted(story_merges - listed)
 
 
+def _git_show(spec: str) -> str | None:
+    try:
+        return subprocess.run(
+            ["git", "show", spec],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def _git_ok(*arguments: str) -> bool:
     try:
         return (
@@ -564,11 +653,21 @@ def test_every_surface_states_the_reporting_setting_as_the_baseline_reads_it() -
     A file cannot record a hosting-service setting, so the baseline states a dated
     reading, and the checklist's gate and the notes must agree with it. When the
     setting is read enabled, the baseline, this test, and both surfaces change together.
+
+    `V1-S5-009-PR1` read it enabled after the release. The notes and the checklist keep
+    the reading they were released with, and each says, after the release, what was
+    read then; neither says when the setting was enabled, because nothing records it.
     """
     baseline = json.loads(read("docs/security/security-baseline.v1alpha1.json"))
-    assert baseline["securityStatus"]["vulnerabilityReportsPossible"] is False
+    assert baseline["securityStatus"]["vulnerabilityReportsPossible"] is True
+    assert AFTER["privateReportingReadEnabled"] is True
     assert "Open: named, not yet enabled" in CHECKLIST
+    assert "**Reads enabled, after the release**" in CHECKLIST
     assert "it read disabled" in NOTES
+    assert (
+        "Private vulnerability reporting read enabled when the record read it" in NOTES
+    )
+    assert "when it was enabled is not recorded" in NOTES
     assert (
         'test "$(gh api repos/asadhanif3188/InferOps/private-vulnerability-reporting'
         ' --jq .enabled)" = true'
@@ -577,3 +676,64 @@ def test_every_surface_states_the_reporting_setting_as_the_baseline_reads_it() -
 
 def test_the_notes_say_nobody_outside_the_repository_reviewed_the_release() -> None:
     assert "Nobody outside this repository has reviewed a claim, a" in NOTES
+
+
+# ------------------------------------------------------------- after the release
+
+
+def test_what_the_release_data_observed_is_what_the_post_release_ledger_states() -> (
+    None
+):
+    release = POST_RELEASE["release"]
+    for key in ("tagObject", "commit", "releaseId", "publishedAt"):
+        assert AFTER[key] == release[key], key
+    assert release["tag"] == RELEASE["tag"]
+    assert release["evidencePackSha256"] == EVIDENCE["evidencePackSha256"]
+    assert release["evidenceSetSha256"] == EVIDENCE["evidenceSetSha256"]
+    assert (
+        AFTER["postReleaseLedgerRef"]
+        == POST_RELEASE_PATH.relative_to(REPO_ROOT).as_posix()
+    )
+    assert AFTER["recordRef"] == POST_RELEASE["reportRef"]
+
+
+def test_the_notes_keep_what_was_released_and_add_one_section_after_it() -> None:
+    """Everything but the note at the top and the added section is the notes as released.
+
+    Compared with the tagged file where the clone has the tag; without it, only the
+    headings and the added text are checked.
+    """
+    raw = read(RELEASE["notesRef"])
+    tagged = _git_show(f"{RELEASE['tag']}:{RELEASE['notesRef']}")
+    if tagged is not None:
+        note = raw.index("\n> [!NOTE]\n> **After the release.**")
+        note_end = raw.index("\n\n", note + 1)
+        kept = raw[:note] + raw[note_end + 1 :]
+        kept = kept.split("\n## After the release\n", 1)[0]
+        assert kept == tagged.replace("\r\n", "\n")
+    headings = [line for line in raw.splitlines() if line.startswith("## ")]
+    assert headings[-1] == "## After the release"
+    assert headings.count("## After the release") == 1
+    assert "> **After the release.** `v1.0.0` was tagged on `718ad2e`" in raw
+    section = NOTES.split("## After the release", 1)[1]
+    for phrase in (
+        f"`{AFTER['commit'][:7]}`",
+        f"`{AFTER['tagObject'][:7]}`",
+        "the register inside that pack still lists the row as not claimed",
+        "recomputes it by undoing the post-release ledger",
+    ):
+        assert phrase in section, phrase
+
+
+def test_the_checklist_records_what_was_observed_after_the_tag() -> None:
+    raw = read(RELEASE["checklistRef"])
+    headings = [line for line in raw.splitlines() if line.startswith("## ")]
+    assert headings[-1] == "## 6. After the release: what was observed"
+    section = CHECKLIST.split("## 6. After the release: what was observed", 1)[1]
+    for phrase in (
+        AFTER["commit"],
+        AFTER["tagObject"],
+        f"Run `{AFTER['candidateChecksRunId']}`",
+        "does not show that check 2.6 passed before the tag",
+    ):
+        assert phrase in section, phrase

@@ -2,8 +2,8 @@
 
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json).
-It holds 59 claims: 41 certified, 7 planned,
-1 deferred, and 10 not claimed, supported by 64 evidence records. The not-claimed
+It holds 59 claims: 42 certified, 7 planned,
+1 deferred, and 9 not claimed, supported by 65 evidence records. The not-claimed
 group is the point of the document. A register that listed only what worked would
 be an advertisement.
 
@@ -61,6 +61,14 @@ be an advertisement.
 > them. No status, statement, or level moved.
 > [The publication report](../proof/testing/v1-s5-013-pr2-publication-and-freeze.md)
 > gives each change its finding and states the frozen digests.
+>
+> **Since `V1-S5-009-PR1`, after `v1.0.0` was released, a fifth ledger has moved one
+> status.** [The post-release ledger](../proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json)
+> certifies `a-v1-release-has-been-published` at `C0` on
+> [a record read after the release](../proof/releases/v1-s5-009-pr1-v1.0.0-publication.md),
+> and replaces the reasons `SECURITY.md` and the evidence index claim nothing. The pack
+> the release was cut over still lists the claim as not claimed; the evidence index
+> recomputes that pack by undoing the ledger.
 
 Each row binds one claim this project intends to publish to the implementation
 behind it, the test modules that would fail if it stopped being true, the
@@ -488,7 +496,7 @@ network plugin, and it stays here rather than being hidden.
 | `the-default-lane-cannot-execute-a-real-model` | certified | `C0` `the-default-lane-cannot-execute-a-real-model-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md), [v1-s4-001-pr2-validation.md](../proof/testing/v1-s4-001-pr2-validation.md) | 2 module(s) |
 | `the-published-strategy-and-its-data-cannot-drift-apart` | certified | `C0` `the-published-strategy-and-its-data-cannot-drift-apart-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md), [v1-s1-007-pr1-validation.md](../proof/testing/v1-s1-007-pr1-validation.md), [v1-s4-001-pr1-validation.md](../proof/testing/v1-s4-001-pr1-validation.md), [v1-s4-009-pr1-validation.md](../proof/testing/v1-s4-009-pr1-validation.md) | 4 module(s) |
 | `a-cluster-or-real-runtime-lane-runs-in-continuous-integration` | not-claimed | none | 0 module(s) |
-| `a-v1-release-has-been-published` | not-claimed | none | 0 module(s) |
+| `a-v1-release-has-been-published` | certified | `C0` `a-v1-release-has-been-published-c0` — repository-only — [v1-s5-009-pr1-v1.0.0-publication.md](../proof/releases/v1-s5-009-pr1-v1.0.0-publication.md), [v1-s5-009-pr1-v1.0.0-publication-transcript.txt](../proof/releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt) | 1 module(s) |
 | `inferops-is-a-portable-production-platform` | not-claimed | none | 0 module(s) |
 
 Five of these nine certify properties of this repository's own discipline, which is
@@ -512,7 +520,7 @@ arguing about it later.
 
 ## What V1 does not claim
 
-10 rows carry `not-claimed`. They are collected here because a reader looking
+9 rows carry `not-claimed`. They are collected here because a reader looking
 for what is missing should not have to read eleven tables to find it.
 
 | Claim | Why it is not claimed | Evidence records |
@@ -524,7 +532,6 @@ for what is missing should not have to read eleven tables to find it.
 | `a-deployed-inferops-workload-is-defended` | Nothing in this repository authenticates a caller, authorises a request, or admits a pod. There is no admission control, no gateway, and no multi-tenancy. Twelve risks are carried rather than reduced and ten of them block production use. | none |
 | `a-cluster-or-real-runtime-lane-runs-in-continuous-integration` | No workflow for a cluster lane is committed, only the rules one must satisfy. No runner is labelled capable and no hosted runner is authorized to hold the pinned model artifact; ADR 0005 D6 leaves that half open on purpose. | none |
 | `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary` | Measured in V1-S5-012-PR2: of the 52 Markdown records cited by the claims the v1alpha1 register held as certified, 20 contain no statement about authorisation of any kind, so the sentence that every certifying record carries one is not true of the records committed. The templates require the section; the records produced before them, and several since, do not have it. Nothing checks that a record was produced by a reviewed change rather than by a job. | `C0` `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary-c0` — repository-only — [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md)<br>`C0` `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary-c0-measured-absence` — repository-only — [v1-s5-012-pr2-migration-report.md](../proof/testing/v1-s5-012-pr2-migration-report.md) |
-| `a-v1-release-has-been-published` | The release process is documented and no release has been executed. The changelog holds unreleased changes only. | none |
 | `inferops-is-a-portable-production-platform` | `production-experience` is unreachable from this repository: there is no organizational production to draw it from, and public-cloud execution is not production operation. Every executed result is one Windows host, one provider, CPU, one replica of each tier, started by hand under explicit authorization against a cluster the operator already owns. | none |
 
 Four of them hold a record. `a-local-cluster-is-created-and-removed-without-residue`
@@ -552,11 +559,11 @@ compare against and the exclusion list cannot quietly grow.
 | [docs/governance/repository.md](../governance/repository.md) | Repository governance for this skeleton. It describes how the repository is run rather than what the software does. |
 | [docs/architecture/README.md](../architecture/README.md) | The index of accepted decisions. Each ADR is a decision; the capabilities they enable are claimed by the rows above. |
 | [docs/architecture/decisions/ADR-0009-python-toolchain.md](../architecture/decisions/ADR-0009-python-toolchain.md) | A toolchain decision. It is a condition every other result is read under rather than a published capability. |
-| [SECURITY.md](../../SECURITY.md) | Reporting expectations, and a recorded gap: no private channel is published. The gap belongs to the security rows above. |
+| [SECURITY.md](../../SECURITY.md) | Reporting expectations and the private channel: GitHub private vulnerability reporting, which read enabled on 2026-09-27, after the v1.0.0 release. The channel promises no response time and has received no report, and a reporting setting defends nothing; the gaps belong to the security rows above. |
 | [CODE_OF_CONDUCT.md](../../CODE_OF_CONDUCT.md) | Interim conduct expectations, with a formal policy deferred. |
 | [LICENSE](../../LICENSE) | The MIT licence text. It grants permission and disclaims warranty, which is a legal statement rather than a claim about what this software does. |
 | [docs/proof/dashboard.md](../proof/dashboard.md) | A generated projection of this register. Every status, evidence record, level, environment, provider, substitution, file, and limitation it shows is read from this file when the page is rendered, the register's own evidence-level rules are run again before it renders, and a test regenerates the page and fails if the two disagree. It asserts no capability of its own; the rows above assert all of them. |
-| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the four ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, and the evidence set and evidence pack digests. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
+| [docs/proof/v1-evidence-index.md](../proof/v1-evidence-index.md) | A generated projection of this register and the five ledgers of register changes since the migration: one entry per evidence record, with the identifiers it pins, the repository revision it names and how that revision relates to what ran, and every cited file bound to its content by SHA-256, with the release gate, the freeze, the evidence set and evidence pack digests, and the pack v1.0.0 was cut over, recomputed by undoing the post-release ledger. Every value is read from this file, from a cited file, or from a ledger, a test regenerates the index and fails if they disagree, and it asserts no capability of its own. |
 | [docs/case-study/v1-engineering-case-study.md](../case-study/v1-engineering-case-study.md) | The V1 engineering case study. It reads the claims these rows hold as one narrative and adds none of its own: every claim it cites is a row here, its claims appendix is derived from this register by tests/testing/test_case_study.py, and a cited claim that changes status, level, or blocker state fails that suite until the page changes with it. |
 | [docs/testing/evidence-levels.md](evidence-levels.md) | The definition of the evidence levels every record here is classified under. It is vocabulary, project-defined and not an external standard, and it asserts no capability of the system; a level is reached by a record, not by the page that defines it. |
 

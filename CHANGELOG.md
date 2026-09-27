@@ -8,7 +8,61 @@ from `1.0.0`.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **The decision whether a second version should proceed: defer.** `V1-S5-009-PR1`
+  recorded [the decision](docs/governance/v2-investment-decision.md) from V1's frozen
+  evidence. It cites eleven V1 findings and the register rows
+  behind each, asks of every problem they expose whether it is important, whether its
+  next experiment is feasible now, and whether it belongs in InferOps at all, compares
+  proceed, revise, and defer on the same fields, and places every claim V1 does not
+  certify. Three of its six entry gates are unmet — nothing yet deploys a workload from
+  its validated contract, only its author has completed the clean-clone journey, and
+  nobody outside the repository has reviewed a claim, a record, or the release — so no
+  second version is opened and no scope is named. The problem a later proposal has to
+  start from is kept: keeping a caller served, and an operator told the truth, while a
+  serving pod is lost, which needs a second replica the only host measured refused at
+  its capacity gate on 2026-09-12. Two independent reviews of the first commit found five
+  false statements, thirteen weaker ones, a claim listed as movable that its own next
+  field said could not move, a table check that accepted a duplicated row, and phrasing
+  carried over from unpublished planning; each is corrected and recorded in
+  [the validation record](docs/proof/governance/v1-s5-009-pr1-validation.md). [The data](docs/governance/v2-investment-decision.v1alpha1.json)
+  is held by `tests/testing/test_v2_investment_decision.py` to the register, the
+  evidence index, and the case study; the reasoning is checked by review only. The
+  decision itself changed no claim, register row, ledger, or file in the frozen evidence
+  pack, and it reads the pack as released; the change after the release below is
+  separate.
+- **The `v1.0.0` release, read after it was made.** `V1-S5-009-PR1` read the annotated
+  tag, the release published on it, the only hosted checks run on its commit, and the
+  private reporting setting, and ran the gate and the release checks again at the tag,
+  in [a record made after the release](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md)
+  with its transcript. A fifth ledger of register changes,
+  [the post-release ledger](docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json),
+  states the pack the release was cut over, and the evidence index now recomputes that
+  pack by undoing the ledger and refuses a pair that differs; `--gate` prints the
+  released pair and the current one. `tests/testing/test_evidence_post_release.py` holds
+  the ledger, the record, the released pack, and, where the clone has it, the tag to each
+  other.
+
+### Changed
+
+- **`a-v1-release-has-been-published` is certified, at `C0`, on `main`.** Through the
+  post-release ledger, on the record above; its statement is unchanged, and the pack the
+  release was cut over still lists it as not claimed. The register's reasons for
+  `SECURITY.md` and the evidence index claiming nothing no longer describe the repository
+  before the release. Both digests of the pack `main` holds moved, to evidence set
+  `08d4868fcf4c320961d2937b5369dc9846ca4f0455e2f60375c1decfbdab23df` and evidence pack `b958a7244cb6aab924615ff099112435d1e3d527ea348b66ec7ae3e8fd1c8532`; no release quotes them, and the
+  released pair is `1d40b33f…` and `652e9051…`, unchanged. The README, the proof
+  dashboard, the matrix, the evidence index page, the release process, and the decision
+  whether a second version should proceed say so, and the release notes, the checklist,
+  and the case study keep what they said at the release and add what has happened since.
+- **Private vulnerability reporting read enabled after the release.** The security
+  baseline's flag and dated reading, `SECURITY.md`, and the pages that describe the
+  channel now say so; when it was enabled is not recorded, so nothing says it was enabled
+  before the tag. The earlier reading is kept, dated, beside the new one.
+- **The evidence model cannot yet represent a read of a hosting service.** Recorded, not
+  changed: the new record uses the `repository-only` environment with a note, and names
+  the evidence-class mismatch in its limitations.
 
 ## [1.0.0] - 2026-09-27
 

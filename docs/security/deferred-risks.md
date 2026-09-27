@@ -484,10 +484,11 @@ not do.
   [the threat model's twenty-two threats](threat-model.md).
 - **It was published before it could be reported against privately.** No private
   vulnerability reporting channel existed when it was written, and that is the reason
-  everything here is published rather than held. For `v1.0.0`,
+  everything here is published rather than held. Since `v1.0.0`,
   [SECURITY.md](../../SECURITY.md) names GitHub private vulnerability reporting, a
-  hosting-service setting that read disabled on 2026-09-27; it promises no response
-  time, and a risk reported through it is still carried here until a change reduces it.
+  hosting-service setting that read disabled on 2026-09-27 while the release was
+  prepared and enabled after it; it promises no response time, and a risk reported
+  through it is still carried here until a change reduces it.
 
 ## Related records
 

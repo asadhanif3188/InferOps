@@ -1,0 +1,130 @@
+# Reads of the v1.0.0 tag and release, V1-S5-009-PR1.
+# Git Bash on one Windows host, from the repository root, unauthenticated reads of the
+# hosting service's public API. The tagger's name and e-mail address are replaced.
+# Line endings are normalised to LF here: the service returns the release body with
+# CRLF line endings, and Python on Windows writes CRLF.
+
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-09-27T10:59:44Z
+
+$ git cat-file -t v1.0.0
+tag
+
+$ git rev-parse v1.0.0
+17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04
+
+$ git rev-parse 'v1.0.0^{commit}'
+718ad2e0fac8ae70c6d053a2decb00e61ff3de39
+
+$ git cat-file -p v1.0.0 | sed -E 's/^tagger .* ([0-9]+ [+-][0-9]{4})$/tagger <omitted> \1/'
+object 718ad2e0fac8ae70c6d053a2decb00e61ff3de39
+type commit
+tag v1.0.0
+tagger <omitted> 1790500862 +0500
+
+InferOps v1.0.0
+
+Evidence pack sha256:652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2
+
+Release notes: docs/releases/v1.0.0.md
+
+$ git log -1 --format='%H%n%P%n%s' 'v1.0.0^{commit}'
+718ad2e0fac8ae70c6d053a2decb00e61ff3de39
+742355b6d2ed8c82f2f17975d5038078685baf02 fc7b50f2806d1ffd89022a31574e8355c93206c5
+Merge pull request #96 from asadhanif3188/release/v1-s5-008-v1.0.0
+
+$ git ls-remote origin refs/tags/v1.0.0 'refs/tags/v1.0.0^{}'
+17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04	refs/tags/v1.0.0
+718ad2e0fac8ae70c6d053a2decb00e61ff3de39	refs/tags/v1.0.0^{}
+
+$ curl -s https://api.github.com/repos/asadhanif3188/InferOps/releases/tags/v1.0.0 | python -c "import json,sys; d=json.load(sys.stdin); [print(k, json.dumps(d[k])) for k in ('id','name','tag_name','target_commitish','draft','prerelease','created_at','published_at','html_url')]; print('assets', len(d['assets'])); print('body:'); print(d['body'])"
+id 397583133
+name "InferOps v1.0.0"
+tag_name "v1.0.0"
+target_commitish "main"
+draft false
+prerelease false
+created_at "2026-09-27T09:21:02Z"
+published_at "2026-09-27T09:22:34Z"
+html_url "https://github.com/asadhanif3188/InferOps/releases/tag/v1.0.0"
+assets 0
+body:
+The first versioned release of InferOps.
+
+The notes, the frozen evidence it is cut over, and every limitation are in:
+
+docs/releases/v1.0.0.md
+
+Evidence pack sha256:
+652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2
+
+Every real result is one provider, one Windows host, CPU only, one replica.
+
+InferOps is not a production-ready platform.
+
+No image, package, chart, or model is published.
+
+$ curl -s https://api.github.com/repos/asadhanif3188/InferOps/releases | python -c "import json,sys; d=json.load(sys.stdin); print('releases', len(d), [r['tag_name'] for r in d])"
+releases 1 ['v1.0.0']
+
+$ curl -s 'https://api.github.com/repos/asadhanif3188/InferOps/actions/runs?head_sha=718ad2e0fac8ae70c6d053a2decb00e61ff3de39&per_page=20' | python -c "import json,sys; d=json.load(sys.stdin); print('runs', d['total_count']); [print(r['id'], r['name'], r['path'], r['event'], r['head_branch'], r['head_sha'], r['run_attempt'], r['status'], r['conclusion'], r['run_started_at'], r['updated_at']) for r in d['workflow_runs']]"
+runs 1
+36305552023 checks .github/workflows/checks.yml push main 718ad2e0fac8ae70c6d053a2decb00e61ff3de39 1 completed success 2026-09-27T08:14:05Z 2026-09-27T08:17:52Z
+
+$ curl -s https://api.github.com/repos/asadhanif3188/InferOps/actions/runs/36305552023/jobs | python -c "import json,sys; d=json.load(sys.stdin); print('jobs', d['total_count']); [print(j['conclusion'], '|', j['name']) for j in d['jobs']]"
+jobs 11
+success | documentation links and whitespace
+success | Helm chart and rendered manifests
+success | API container image
+success | format, lint, and types
+success | default-lane test suite
+success | Terraform format, validation, and lint
+success | expected-failure controls
+success | secret scan
+success | distribution build
+success | software bill of materials
+success | dependency and image vulnerability scan
+
+$ curl -s https://api.github.com/repos/asadhanif3188/InferOps/private-vulnerability-reporting
+{
+  "enabled": true
+}
+
+$ curl -s https://api.github.com/repos/asadhanif3188/InferOps | python -c "import json,sys; d=json.load(sys.stdin); [print(k, json.dumps(d[k])) for k in ('description','homepage','topics')]"
+description null
+homepage null
+topics []
+
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-09-27T10:59:54Z
+
+# Checks 2.4 and 2.5 of the release checklist, run again after the tag, in a separate
+# worktree of this repository checked out at v1.0.0, with uv against its local cache.
+
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-09-27T11:00:05Z
+
+$ git rev-parse HEAD
+718ad2e0fac8ae70c6d053a2decb00e61ff3de39
+
+$ git status --porcelain --untracked-files=all | wc -l
+0
+
+$ uv run --locked --offline python -m tools.evidence_index --gate; echo "exit $?"
+COMPLETE V1-S5-013: no release blocker; 5 of 5 raised by V1-S5-006 closed; the evidence pack may be frozen
+         b1-local-baseline-code-unidentified  closed-by-rerun
+         b2-kind-helper-code-unidentified  closed-by-claim-decision
+         b3-helm-uninstall-survival-clause-code-unidentified  closed-by-rerun
+         b4-upgrade-rollback-code-unidentified  closed-by-rerun
+         b5-pod-replacement-code-unidentified  closed-by-rerun
+FROZEN   V1-S5-013-PR2: the committed index is current
+         evidence set   1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a
+         evidence pack  652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2
+exit 0
+
+$ uv run --locked --offline python -m pytest tests/testing/test_release.py tests/testing/test_case_study.py tests/testing/test_evidence_publication.py -q -p no:cacheprovider | tail -1; echo "exit ${PIPESTATUS[0]}"
+283 passed in 3.61s
+exit 0
+
+$ git status --porcelain --untracked-files=all | wc -l
+0
