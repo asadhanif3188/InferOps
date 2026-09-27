@@ -37,24 +37,27 @@ than the outcome.
 
 ## What it rests on
 
-The evidence pack frozen by `V1-S5-013-PR2`, and, for the release gate, the `v1.0.0`
-tag and its notes:
+The evidence pack frozen by `V1-S5-013-PR2`, which `v1.0.0` was cut over, and, for
+the release gate, the tag, its notes, and [the record read after the release](../proof/releases/v1-s5-009-pr1-v1.0.0-publication.md):
 
 | Digest | SHA-256 |
 |---|---|
 | Evidence pack | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
 | Evidence set | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` |
 
-Counted from the register: 59 claims, of which 41 are certified, 7 planned,
+Counted from the register as released: 59 claims, of which 41 are certified, 7 planned,
 1 deferred, and 10 not claimed, behind 64 evidence records, of which 26 are `C0`,
 8 are `C1`, 30 are `C2`, and none is `C3` or `C4`. The levels are those of
 [InferOps Evidence Levels](../testing/evidence-levels.md): project-defined, not an
 external certification standard, and not a maturity score.
 
 The annotated tag `v1.0.0` exists on `718ad2e`, the merge of `V1-S5-008-PR1`, with
-[its release notes](../releases/v1.0.0.md). The register inside the frozen pack still
-lists `a-v1-release-has-been-published` as not claimed; moving that row is a change
-after the tag, under a new ledger, and this record does not make it.
+[its release notes](../releases/v1.0.0.md), and the hosting service published a release
+on it. The register inside the frozen pack lists `a-v1-release-has-been-published` as not claimed.
+The post-release ledger in the same change certifies that row on `main`, at `C0`, on a
+record read after the release, and so moves the pack `main` holds. This record reads the
+pack the release was cut over: its digests above are that pack's, and so is every status
+it quotes.
 
 ## What V1 found that bears on it
 
@@ -314,7 +317,7 @@ A second version opens only when every gate is met. Three are unmet today.
 
 | Gate | Condition | State | Evidence |
 |---|---|---|---|
-| `a-release-is-cut-over-the-frozen-pack` | A first versioned release is cut over the frozen pack | `met` | The tag `v1.0.0`; the register's release row is still not claimed and is owed a change after the tag |
+| `a-release-is-cut-over-the-frozen-pack` | A first versioned release is cut over the frozen pack | `met` | The tag `v1.0.0` and the release published on it; the release row, not claimed in the pack, is certified on `main` since the post-release ledger |
 | `the-road-has-been-run-under-failure` | The road V1 built has been run for real, including under failures caused on purpose | `met` | `C2` records for the load matrix, the pod loss, the unready model, and the clean-clone run |
 | `the-road-is-closed-for-one-workload` | One workload is served from its validated contract alone | `unmet` | Both contract claims are planned and hold no record |
 | `a-second-person-has-reproduced-v1` | Somebody other than the author has completed the clean-clone journey | `unmet` | One run, by the change's author; no second engineer has repeated it |
@@ -347,6 +350,9 @@ weigh, so none is cited.
 | `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary` | not-claimed | nowhere: it is about how V1's records were written, and neither motivates nor blocks a second version |
 | `a-v1-release-has-been-published` | not-claimed | `a-release-is-cut-over-the-frozen-pack` |
 | `inferops-is-a-portable-production-platform` | not-claimed | `no-representative-evidence` |
+
+The table reads the register as released. `a-v1-release-has-been-published` has been
+certified on `main` since; it sits in the release gate, which is met either way.
 
 ## What would not justify a second version
 
@@ -432,8 +438,8 @@ closed for one workload — are named in that section; the other three are added
   reads back, and no other number written beside a unit of time, a percentage, a unit of
   memory, or a rate appears on this page;
 - the review date follows the decision and is no more than six months after it;
-- the case study still says what this page says it says, and the register's release
-  row is still not claimed while the tag is named;
+- the case study still says what this page says it says, and the register as released
+  lists the release row as not claimed while the register on `main` certifies it;
 - this page publishes every finding, problem, gate, option, trigger, and surface
   identifier the data holds, every fragment it links resolves to a heading, and the
   README's roadmap and the governance table's row link it.

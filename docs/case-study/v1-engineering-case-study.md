@@ -732,6 +732,15 @@ Claims `eleven-default-lane-gates-are-committed-and-mapped-to-the-claims-they-de
 
 ## 12. What V1 does not prove
 
+> [!NOTE]
+> **Since publication, `v1.0.0` has been released** over the pack this page is bound
+> to, on 2026-09-27. The page is left as published, and describes that pack: where it
+> lists a published release among what V1 does not have, and names a first release as
+> what comes before anything new, it is right about the pack and no longer about
+> `main`. On `main`, the register certifies that the release exists, at `C0`, on
+> [a record read after the release](../proof/releases/v1-s5-009-pr1-v1.0.0-publication.md),
+> and a separate page records [the decision whether a second version should proceed](../governance/v2-investment-decision.md).
+
 Every claim the register does not certify is listed here, because an absence somebody
 measured is worth more than one nobody mentions.
 

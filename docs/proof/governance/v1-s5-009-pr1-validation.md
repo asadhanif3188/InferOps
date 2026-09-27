@@ -10,6 +10,13 @@ This change executed nothing against a host: no cluster, runtime, or model was
 contacted, and nothing was published. It reads the frozen evidence and adds none. Every
 figure the decision quotes was already committed and declared by the case study.
 
+> [!NOTE]
+> Everything down to [the post-release reconciliation](#the-post-release-reconciliation)
+> is about the decision, the first two commits of this change, which touched no file in
+> the evidence pack. The same change then recorded the `v1.0.0` release after it was
+> made, which did move the register and add a ledger; that section says what it checked,
+> and what it read from the hosting service.
+
 ## Eligibility, checked before anything was written
 
 - **The gate and the freeze.** On `main` at `718ad2e`, `python -m tools.evidence_index
@@ -200,3 +207,125 @@ planning document or any other project. None is present. The decision describes 
 work belongs by the boundary rules this repository already publishes, and names no
 other project. No model artifact, generated render, built distribution, or machine
 state is added.
+
+## The post-release reconciliation
+
+After the decision's two commits, the same change reconciled the current-facing
+surfaces of `main` with the `v1.0.0` release that had been made in the meantime. It is
+subordinate to the decision and changes nothing the decision concludes. What it read
+from Git and the hosting service is in
+[its own record](../releases/v1-s5-009-pr1-v1.0.0-publication.md), which is evidence;
+this section is about how the repository was checked around it.
+
+### Verified before anything was edited
+
+Each value was read, not taken from the request that asked for this work:
+
+- **The tag.** `git cat-file -t v1.0.0` printed `tag`; the tag object is
+  `17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04`, it points to
+  `718ad2e0fac8ae70c6d053a2decb00e61ff3de39`, the merge of `V1-S5-008-PR1`, its message
+  quotes the pack digest `652e9051…`, and the remote holds the same object.
+- **The release.** The hosting service's public API returned one release,
+  `InferOps v1.0.0`, on the tag, neither draft nor prerelease, published
+  2026-09-27T09:22:34Z, with no file attached.
+- **The candidate's checks.** One `checks` run exists for `718ad2e`, and it passed in all
+  eleven jobs before the tag.
+- **Private reporting.** The API read `{"enabled": true}`; it does not say since when.
+- **The frozen digests at the tag.** In a worktree at `v1.0.0`, `--gate` printed the set
+  `1d40b33f…` and the pack `652e9051…`, and checks 2.4 and 2.5 passed.
+
+### The audit
+
+A search of the current surfaces for wording that described the release as still to
+come, the private channel as disabled, or a published release as absent. Dated records
+under `docs/proof/`, the dated changelog sections, and an ADR's accepted text were read
+as history, and left.
+
+| Surface | What it said | Historical or current-facing | Still true | Action |
+|---|---|---|---|---|
+| README, lead paragraph | `v1.0.0` "is prepared … and tagged only after its post-merge checks pass" | Current | No | Now says it is the first versioned release, cut over the frozen pack and published |
+| README, counts, limitations, roadmap, entry-point rows | 41 certified, 10 not claimed, 64 records; a published release not claimed; the tag created only after the checks | Current | No | Counts and wording follow the register; the release row says it is certified only on `main`, on a record after the release |
+| `SECURITY.md` and the security README, baseline, deferred risks, `CONTRIBUTING.md` | The channel read disabled; the checklist refuses the tag until it reads enabled | Current, with a dated reading | The dated reading is; the current state is not | The dated reading kept beside the one after the release; the baseline's flag moved to true |
+| The register's release row | Not claimed: "no release has been executed" | Current on `main`; history in the pack | Not on `main` | Moved through the post-release ledger, at `C0`, on the new record |
+| The register's reason for `SECURITY.md`, and for the evidence index | "no private channel is published"; "the four ledgers" | Current | No | Replaced through the same ledger |
+| The proof dashboard, the matrix, the evidence index and its page | The release not claimed; four ledgers; one pair of digests | Current, generated or bound | No | Regenerated; the index page states the released pair and the current pair |
+| Release notes | Prepared; the channel read disabled; surfaces left standing | The notes as released | True of the release | Kept word for word; a note at the top and one section after the release added |
+| Release checklist | Pre-merge status; gate 12 open; post-merge checks and tag not yet run | The checklist as used | True when written | Kept; a status line and a section 6 of what was observed after the tag added |
+| Release process and governance table | Prepared, executed only when the tag exists | Current | No | Now released on 2026-09-27 |
+| Case study | A published release among what V1 does not have; a first release as the next step | Dated publication bound to the pack | True of the pack | Body kept; a note in section 12 says the release has been made since |
+| The decision whether a second version should proceed | The release row is still not claimed and owed a change after the tag | Current, made in this change | No | Now reads the register as released, and says the row is certified on `main` |
+| ADR 0008's dated note | The channel read disabled | History | True when written | A second dated note added |
+
+### The claim decision
+
+`C0` is **static evidence: artifacts inspected without executing the target
+behaviour**. A release is an artifact that either exists or does not, and the record
+inspected it; it executed nothing of InferOps. The register already holds a `C0` record
+made with a tool that read something outside the repository, the security scan's, and
+says so in its limitation. So the model permits `C0` here, and permits nothing higher:
+`C1` and `C2` are about behaviour executing. What it cannot represent is recorded as a
+finding and not changed: no environment for a hosting service, no evidence class whose
+reads use the network, and no field for state a record cannot pin.
+
+### Which pack is which
+
+The pack `v1.0.0` quotes is `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2`,
+over the set `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`. After
+the post-release ledger, `main` holds the set `5bda340846f0c4191a1a40b63d49f0a4565bc54f60421483fb978435fba6955e` and the pack
+`cd3b8dfb9059456443da6caebaf2d0b76f0e64eabbe2260202e6ae787bd00c8e`, which no release quotes. The index no longer states only one pair: it
+recomputes the released pair by undoing the post-release ledger and refuses a result
+that differs, and a test compares the undone register with the tagged one byte for
+byte. No cited file, earlier ledger, or dated record was edited, or the recomputation
+would fail.
+
+### Tests that had to change, and why
+
+Five modules held the register, the index's counts, or its digests to what the frozen
+pack said, and read them from the current register and summary. Each now reads the
+state it is about: the historical ledgers' modules, the case study's, the release's,
+and the decision's read the register as released and the released summary; the
+surfaces that are current read the current ones. Three tests were tripwires set to
+fire when this row moved: `test_release.py`'s and the decision's release-row checks,
+and the dashboard's count for its release group. Each fired, and each is replaced by a
+check of both states rather than deleted. The security baseline's and the release's
+reporting-setting checks moved with the reading, as their docstrings said they would.
+The index's rule that no ledger promotes a status gained one exception, for exactly
+this claim and exactly this ledger, on a record the same ledger adds.
+
+### Results
+
+On 2026-09-27, on the same Windows host, with every file staged:
+
+| Command | Result |
+|---|---|
+| `ruff format --check .` | 525 files already formatted |
+| `ruff check .` | All checks passed, after one fix it applied to the new module's comparison order |
+| `python -m mypy` | No issues in 280 source files |
+| `pytest tests/testing/test_evidence_post_release.py -q -rs` | 27 passed, none skipped: this clone holds the tag, so the two checks that read it ran |
+| `pytest tests/testing tests/security tests/architecture -q` | 10723 passed, 3 skipped, and 1 failed, the dashboard's release-group count, a tripwire; after it was replaced the default lane below ran them all again |
+| `python -m tools.proof_dashboard --check` and `python -m tools.evidence_index --check` | Both `OK` |
+| `python -m tools.evidence_index --gate` | Exit 0: `FROZEN V1-S5-013-PR2`, then `RELEASED v1.0.0` with the set `1d40b33f…` and the pack `652e9051…`, then `CURRENT` with the pair above |
+| `pytest -q`, the default lane | 15438 passed, 30 skipped, 14 deselected, in 24 min 5 s |
+| `git diff --cached --check` | Clean, after one blank line at the end of the transcript was removed |
+
+The first run of the documentation suites after the register moved failed at
+collection in three modules, which undid the publication ledger from the current
+register and met the post-release change first; that is what led to reading each
+module's state explicitly. The next full run failed one test, the dashboard's release
+group count, which was a tripwire.
+
+### Left as history, and why
+
+The release notes and the checklist above their added sections, the case study's body,
+the dated reports and records under `docs/proof/`, the changelog's `1.0.0` section, and
+the accepted text of ADR 0008 and ADR 0009 describe the repository when they were
+written, and are true of it. Rewriting them would make the frozen pack look as if it had
+known about its own release.
+
+### Privacy
+
+The tagger's name and address are replaced in the transcript, and the new files were
+searched for a drive-letter or home-directory path, a scratch directory, and an address;
+none is present. The repository's public identifiers, its owner's account name in its
+URL and in the merge commit's subject, are the ones the hosting service already
+publishes.

@@ -5,7 +5,8 @@ The index is generated from
 [the normalization ledger](../../docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json),
 [the completeness ledger](../../docs/proof/testing/v1-s5-006-pr2-completeness.v1alpha1.json),
 [the closure ledger](../../docs/proof/testing/v1-s5-013-pr1-closure.v1alpha1.json),
-and [the publication ledger](../../docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json),
+[the publication ledger](../../docs/proof/testing/v1-s5-013-pr2-publication.v1alpha1.json),
+and [the post-release ledger](../../docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json),
 and it says nothing they do not. See
 [the index's own page](../../docs/proof/v1-evidence-index.md).
 """
@@ -26,7 +27,9 @@ from .core import (
     LEDGER_PATH,
     LEDGER_PATHS,
     LEVEL_ORDER,
+    POST_RELEASE_PATH,
     PUBLICATION_PATH,
+    RELEASED_LEDGER_PATHS,
     TEXT_SUFFIXES,
     apply_register_changes,
     build_index,
@@ -43,7 +46,10 @@ from .core import (
     pack_sources,
     recorded_date,
     release_gate,
+    released_pack,
+    released_register,
     render_index,
+    render_register,
     restore_migrated_register,
     states_authorisation,
 )
@@ -62,7 +68,9 @@ __all__ = [
     "LEDGER_PATH",
     "LEDGER_PATHS",
     "LEVEL_ORDER",
+    "POST_RELEASE_PATH",
     "PUBLICATION_PATH",
+    "RELEASED_LEDGER_PATHS",
     "TEXT_SUFFIXES",
     "apply_register_changes",
     "build_index",
@@ -79,7 +87,10 @@ __all__ = [
     "pack_sources",
     "recorded_date",
     "release_gate",
+    "released_pack",
+    "released_register",
     "render_index",
+    "render_register",
     "restore_migrated_register",
     "states_authorisation",
 ]

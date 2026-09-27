@@ -14,9 +14,11 @@ touches a file, and it writes that one file. ``--gate`` prints the release gate 
 closure ledger decides, one line per blocker, and exits 1 while any blocker stands or
 while any blocker the completeness ledger raised has no disposition, so the evidence
 pack cannot be treated as frozen by a script that checks an exit code. Where the
-publication ledger declares the pack frozen, it also prints both digests, read from
-the committed index, and exits 1 if that index is not what the register and the
-ledgers produce, so a freeze is never reported from a stale digest.
+publication ledger declares the pack frozen, it also prints two pairs of digests, read
+from the committed index, and exits 1 if that index is not what the register and the
+ledgers produce, so a freeze is never reported from a stale digest: the pack `v1.0.0`
+was cut over, which the index recomputes by undoing the post-release ledger, and the
+pack this checkout holds now, which no release quotes.
 
 **Every mode reads files.** None contacts a cluster, a runtime, a model, or the
 network. See docs/proof/v1-evidence-index.md.
@@ -131,7 +133,18 @@ def _frozen(decided_in: str) -> int:
         )
         return 1
     summary = json.loads(produced)["summary"]
+    released = summary["releasedPack"]
     print(f"FROZEN   {decided_in}: the committed index is current")
+    print(
+        f"RELEASED {released['tag']} at {released['commit']}: the frozen pack it was "
+        "cut over, recomputed by undoing the post-release ledger"
+    )
+    print(f"         evidence set   {released['evidenceSetSha256']}")
+    print(f"         evidence pack  {released['evidencePackSha256']}")
+    print(
+        f"CURRENT  after {summary['postReleaseRegisterChanges']} post-release "
+        "register changes; no release quotes these"
+    )
     print(f"         evidence set   {summary['evidenceSetSha256']}")
     print(f"         evidence pack  {summary['evidencePackSha256']}")
     return 0
@@ -142,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m tools.evidence_index",
         description=(
             "Print, check, or regenerate the V1 evidence index from the claim and "
-            "evidence register and its four ledgers, or report the release gate."
+            "evidence register and its five ledgers, or report the release gate."
         ),
     )
     group = parser.add_mutually_exclusive_group()

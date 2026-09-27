@@ -629,5 +629,44 @@
       "says": "a published release",
       "why": "The case study lists a published release among what V1 does not have, and names a first release cut against the frozen pack as what comes before anything new. It is bound to both digests and verified in V1-S5-013-PR2; it is left as published."
     }
-  ]
+  ],
+  "afterTheRelease": {
+    "observedIn": "V1-S5-009-PR1",
+    "observedOn": "2026-09-27",
+    "recordRef": "docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md",
+    "postReleaseLedgerRef": "docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json",
+    "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
+    "commit": "718ad2e0fac8ae70c6d053a2decb00e61ff3de39",
+    "releaseId": 397583133,
+    "publishedAt": "2026-09-27T09:22:34Z",
+    "candidateChecksRunId": 36305552023,
+    "privateReportingReadEnabled": true,
+    "note": "Added on main after the tag. Everything else in this file is the data the release was prepared with, unchanged. The release still quotes the evidence block above; the digests of the pack main holds have moved since, and summary.releasedPack in the evidence index recomputes the released pair.",
+    "surfaces": [
+      {
+        "surfaceId": "register-release-row",
+        "since": "moved",
+        "by": "r01-release-status",
+        "now": "certified"
+      },
+      {
+        "surfaceId": "dashboard-release-row",
+        "since": "moved",
+        "by": "r01-release-status",
+        "now": "The dashboard is regenerated from the register and lists the claim as certified."
+      },
+      {
+        "surfaceId": "register-security-policy-reason",
+        "since": "moved",
+        "by": "r07-surface-reasons",
+        "now": "The reason names GitHub private vulnerability reporting and the reading after the release."
+      },
+      {
+        "surfaceId": "case-study-release-absent",
+        "since": "left",
+        "by": null,
+        "now": "The case study is bound to the pack the release was cut over and is left as published, with a note at its top that the release has since been made."
+      }
+    ]
+  }
 }

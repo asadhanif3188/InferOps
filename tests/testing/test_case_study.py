@@ -54,7 +54,12 @@ from typing import Any
 
 import pytest
 
-from tools.evidence_index import open_blockers
+from tools.evidence_index import (
+    POST_RELEASE_PATH,
+    load_ledger,
+    open_blockers,
+    released_register,
+)
 
 pytestmark = pytest.mark.docs
 
@@ -171,8 +176,14 @@ def normalised(text: str) -> str:
 
 DATA = _load(DATA_PATH)
 DOCUMENT = _read(DATA["documentRef"])
-REGISTER = _load(DATA["registerRef"])
+#: The register as the `v1.0.0` pack holds it, which is the pack this page is bound
+#: to: the current one with the post-release ledger undone. The release that ledger
+#: records came after the page was published, and a note on the page says so.
+REGISTER = released_register(_load(DATA["registerRef"]), load_ledger(POST_RELEASE_PATH))
 INDEX = _load(DATA["indexRef"])
+#: The index's summary for the same pack: the counts and digests it recomputes with the
+#: post-release ledger undone, over everything else it states.
+AS_RELEASED = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
 COMPLETENESS = _load(DATA["completenessRef"])
 CLOSURE = _load(DATA["closureRef"])
 PUBLICATION = _load(DATA["publicationRef"])
@@ -331,7 +342,7 @@ def test_the_case_study_is_published_exactly_when_the_evidence_is_frozen() -> No
     The freeze is the index's, which derives it from the closure ledger's gate and the
     publication ledger's decision and refuses a freeze beside an open blocker.
     """
-    summary = INDEX["summary"]
+    summary = AS_RELEASED
     assert GATE["decision"].lower() == summary["releaseGate"]
     frozen = summary["evidenceFreeze"] == "frozen"
     if frozen:
@@ -371,7 +382,7 @@ def test_the_status_paragraph_counts_the_blockers_and_names_the_gate() -> None:
     frozen it says so, says the gate exits 0, and says the pre-publication candidate
     is superseded, so a passing gate cannot be read as an earlier state.
     """
-    summary = INDEX["summary"]
+    summary = AS_RELEASED
     blockers = summary["releaseBlockers"]
     status = normalised(DOCUMENT.split("\n## ", 1)[0])
     if blockers:
@@ -396,7 +407,7 @@ def test_the_page_names_the_evidence_set_it_was_verified_against() -> None:
     verified against. The pack digest covers the register and every ledger, so a
     change to a claim's wording moves it where the set digest would not.
     """
-    summary = INDEX["summary"]
+    summary = AS_RELEASED
     verified = DATA["verifiedAgainst"]
     assert verified["evidenceSetSha256"] == summary["evidenceSetSha256"]
     assert verified["evidencePackSha256"] == summary["evidencePackSha256"]
@@ -851,7 +862,7 @@ def test_no_reader_surface_says_nobody_intervened_in_the_pod_loss(surface: str) 
 
 
 def test_the_claim_counts_the_page_states_are_the_registers() -> None:
-    summary = INDEX["summary"]
+    summary = AS_RELEASED
     by_status = {
         status: 0 for status in ("certified", "planned", "deferred", "not-claimed")
     }
@@ -871,7 +882,7 @@ def test_the_record_counts_the_page_states_are_the_registers() -> None:
     for claim in CLAIMS.values():
         for record in claim.get("evidenceRecords", []):
             by_level[record["evidenceLevel"]] += 1
-    assert by_level == INDEX["summary"]["recordsByLevel"]
+    assert by_level == AS_RELEASED["recordsByLevel"]
     assert by_level["C3"] == by_level["C4"] == 0, (
         "a C3 or C4 record exists; the page's sentence about them must be rewritten"
     )
@@ -884,7 +895,7 @@ def test_the_record_counts_the_page_states_are_the_registers() -> None:
 
 
 def test_the_code_identity_counts_the_page_states_are_the_indexs() -> None:
-    summary = INDEX["summary"]
+    summary = AS_RELEASED
     body = normalised(DOCUMENT)
     assert (
         f"{summary['executedRecordsNamingTheRevisionThatRan']} of the "

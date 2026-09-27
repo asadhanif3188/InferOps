@@ -18,10 +18,10 @@ been held with a model that never became ready, and had its measured use costed
 under a published method. Each result is one bounded observation on one host, and
 each is published beside the limitation that travels with it.
 
-`v1.0.0`, the first versioned release, is prepared over the frozen evidence pack and
-tagged only after its post-merge checks pass. [Its release notes](docs/releases/v1.0.0.md)
-lead with what the evidence showed and what it does not establish; the release number
-adds no evidence of its own.
+`v1.0.0` is the first versioned InferOps release, cut over the frozen V1 evidence pack
+and published on 2026-09-27. [Its release notes](docs/releases/v1.0.0.md) lead with what
+the evidence showed and what it does not establish; the release number adds no evidence
+of its own.
 
 ## What V1 proves
 
@@ -51,7 +51,7 @@ the limitation beside each, before the architecture, the decisions, and what V1 
 not prove. It adds no claim of its own, and it is bound to the frozen evidence pack.
 
 The full picture is [the V1 proof dashboard](docs/proof/dashboard.md): 59 claims,
-41 certified, 7 planned, 1 deferred, and 10 that V1 states it does not have, each
+42 certified, 7 planned, 1 deferred, and 9 that V1 states it does not have, each
 with every evidence record behind it — at its own level, with where it ran and what
 it substituted — and the limitation that travels with the claim. It opens with
 one row per capability and a five-minute reading order, and every row above is
@@ -330,7 +330,7 @@ consent. The API's redaction rules keep prompts, responses, and secrets out of
 metrics and logs by construction, and a real run proving that is still `planned`.
 The register is [the deferred-risk list](docs/security/deferred-risks.md), and
 [SECURITY.md](SECURITY.md) names GitHub private vulnerability reporting as the private
-channel for a report, says what to do while it is not enabled, and promises no response
+channel for a report, which read enabled after the release, and promises no response
 time.
 
 ## Limitations
@@ -353,9 +353,10 @@ time.
 - **Deployment rendering is unbuilt.** A validated contract does not yet produce
   release values; the serving-a-described-workload claim is `planned`.
 - **A release adds no evidence.** `v1.0.0` is cut over the frozen evidence pack and
-  changes nothing in it, so the register inside that pack still lists a published
-  release as not claimed; [the release notes](docs/releases/v1.0.0.md#where-the-frozen-evidence-still-describes-the-repository-before-this-release)
-  say why it is left so.
+  changes nothing in it. The register on `main` now certifies, at `C0`, only that the
+  release exists, on [a record read after it](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md);
+  that record is not part of the pack the release quotes, and it measures nothing about
+  the platform.
 - **Continuous integration runs the default lane only.** No lane installs a
   release into a cluster or executes a real model; that is listed as not claimed.
 - **Reading is not checking.** The tests hold the register to its references,
@@ -375,18 +376,20 @@ intention reads as a capability:
   absence of any credential or model artifact from public history.
 - **Deferred.** [Sustained throughput and capacity under load](docs/testing/claim-evidence-matrix.md#load-and-performance)
   is out of V1 by an accepted decision.
-- **Not claimed.** [Ten things a reader would expect](docs/proof/dashboard.md#what-v1-does-not-claim),
+- **Not claimed.** [Nine things a reader would expect](docs/proof/dashboard.md#what-v1-does-not-claim),
   stated as absent rather than omitted, including a delivered alert, an enforced
-  network policy, a defended workload, a cluster lane in CI, a published release,
-  portability as a production platform, an authorisation statement in every
+  network policy, a defended workload, a cluster lane in CI, portability as a
+  production platform, an authorisation statement in every
   certifying record — which the evidence migration measured and moved out of the
   certified column — and the optional `kind` helper, whose only run names no
   revision.
 - **Release.** [The release process](docs/releases.md) names `v1.0.0` as the first
   versioned release, which fixes the interfaces later versions are measured against and
-  says nothing about maturity. It is prepared, with [its notes](docs/releases/v1.0.0.md) and
-  [its checklist](docs/releases/v1.0.0-checklist.md), and its tag is created only after
-  the post-merge checks pass; `git tag -l v1.0.0` says whether that has happened.
+  says nothing about maturity. It was tagged and published on 2026-09-27, after the
+  hosted checks passed on the candidate commit; [its notes](docs/releases/v1.0.0.md),
+  [its checklist](docs/releases/v1.0.0-checklist.md), and
+  [the record read after the release](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md)
+  say what that does and does not establish.
 - **No second version yet.** [The decision whether a second version should proceed](docs/governance/v2-investment-decision.md)
   is to defer one: nothing yet deploys a workload from its validated contract, only its
   author has completed the clean-clone journey, nobody outside the repository has
@@ -437,7 +440,7 @@ intention reads as a capability:
 | Evidence levels | [docs/testing/evidence-levels.md](docs/testing/evidence-levels.md) | The single definition of `C0` Static to `C4` Operational: how one evidence record was obtained, attached to the record rather than to a claim, and project-defined rather than an external certification standard. Every record in the register is classified under it and held to it by a validator; no V1 record is above `C2` |
 | Certification levels | [docs/testing/certification.md](docs/testing/certification.md) | Accepted definition of the evidence classes and the ceiling each places on a test layer; a mock stops at C1, and a simulated environment is the only thing the `synthetic` class still covers. It no longer defines what a level means |
 | Claim and test matrix | [docs/testing/claim-test-matrix.md](docs/testing/claim-test-matrix.md) | Fifteen of twenty-four public claims certified, seven are commitments, and two are deferred |
-| Claim and evidence matrix | [docs/testing/claim-evidence-matrix.md](docs/testing/claim-evidence-matrix.md) | Every claim V1 intends to publish, bound to its implementation, the test modules that would fail if it stopped being true, the gates that run them, every evidence record behind it at its own level, and the limitation that travels with it. 59 claims: 41 certified, 7 planned, 1 deferred, and 10 not claimed, and 64 evidence records. Since `V1-S5-012-PR2` the register is `v1alpha2`, migrated by reading every cited record against the current definitions, and [the migration report](docs/proof/testing/v1-s5-012-pr2-migration-report.md) says what changed and why; `V1-S5-006-PR1` then answered every finding that audit left open, and [its report](docs/proof/testing/v1-s5-006-pr1-evidence-normalization.md) names every register change with its value before and after; `V1-S5-006-PR2` then checked the evidence for a freeze, and [its report](docs/proof/testing/v1-s5-006-pr2-evidence-completeness.md) held five certified claims as release blockers, because the code their only supporting record ran was identified by nothing; `V1-S5-013-PR1` closed all five, four with a rerun at a named revision and one by moving the `kind` helper's claim to not claimed, and [its report](docs/proof/testing/v1-s5-013-pr1-blocker-closure.md) says how; `V1-S5-013-PR2` then published the case study, narrowed the pod-loss claim's boundary to the readiness samples it rests on, and froze the evidence pack, and [its report](docs/proof/testing/v1-s5-013-pr2-publication-and-freeze.md) names every register change with its value before and after. Every public entry point in the table you are reading is either claimed by a row there or listed, with a reason, as a surface that claims nothing, and a test refuses an entry point that neither list accounts for |
+| Claim and evidence matrix | [docs/testing/claim-evidence-matrix.md](docs/testing/claim-evidence-matrix.md) | Every claim V1 intends to publish, bound to its implementation, the test modules that would fail if it stopped being true, the gates that run them, every evidence record behind it at its own level, and the limitation that travels with it. 59 claims: 42 certified, 7 planned, 1 deferred, and 9 not claimed, and 65 evidence records. Since `V1-S5-012-PR2` the register is `v1alpha2`, migrated by reading every cited record against the current definitions, and [the migration report](docs/proof/testing/v1-s5-012-pr2-migration-report.md) says what changed and why; `V1-S5-006-PR1` then answered every finding that audit left open, and [its report](docs/proof/testing/v1-s5-006-pr1-evidence-normalization.md) names every register change with its value before and after; `V1-S5-006-PR2` then checked the evidence for a freeze, and [its report](docs/proof/testing/v1-s5-006-pr2-evidence-completeness.md) held five certified claims as release blockers, because the code their only supporting record ran was identified by nothing; `V1-S5-013-PR1` closed all five, four with a rerun at a named revision and one by moving the `kind` helper's claim to not claimed, and [its report](docs/proof/testing/v1-s5-013-pr1-blocker-closure.md) says how; `V1-S5-013-PR2` then published the case study, narrowed the pod-loss claim's boundary to the readiness samples it rests on, and froze the evidence pack, and [its report](docs/proof/testing/v1-s5-013-pr2-publication-and-freeze.md) names every register change with its value before and after; after `v1.0.0` was released over that pack, `V1-S5-009-PR1` certified that the release exists, at `C0`, through a fifth ledger, and [its record](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md) says what it read. Every public entry point in the table you are reading is either claimed by a row there or listed, with a reason, as a surface that claims nothing, and a test refuses an entry point that neither list accounts for |
 | Telemetry and evidence | [docs/telemetry/README.md](docs/telemetry/README.md) | The API emits eight catalog metrics and structured request logs, and a release-scoped collector has scraped both InferOps jobs on `docker-desktop`; its series are ephemeral, no component emits a span, and no durable store, dashboard server, or alert routing path exists; [a dashboard definition](docs/telemetry/inference-operations-dashboard.md) is checked and was validated once on `docker-desktop` in a throwaway Grafana that no server runs. [The V1 observability method](docs/telemetry/observability-method.md) walks attributes, logs, metrics, collection, the dashboard, alerts, and retention with what is implemented kept apart from what is not, and a test resolves every test, gate, and record it names |
 | The V1 alerts | [docs/telemetry/inference-alerts.md](docs/telemetry/inference-alerts.md) | Six alerts, each with an owner, a severity, a caller impact, an evidence query, an action and a runbook section; five conditions deferred because nothing emits the signal, and eight refused with the rule that refuses each. No threshold is a figure this project measured. Five of the six replayed over the telemetry three real experiments recorded: one fires, over one capture, and every silence has a reason the record carries. The pinned collector's own promtool loads both rendered rule files. Nothing evaluates or routes any of it -- no receiver, no routing tree, nobody on the other end |
 | Redaction rules | [docs/telemetry/redaction.md](docs/telemetry/redaction.md) | Accepted and enforced at the API's metric-declaration and structured-record sinks; content capture is disabled and has no policy that could enable it |
@@ -447,10 +450,10 @@ intention reads as a capability:
 | Deferred security risks | [docs/security/deferred-risks.md](docs/security/deferred-risks.md) | Twelve risks and six accepted exceptions; ten of the twelve block production use |
 | V1 engineering case study | [docs/case-study/v1-engineering-case-study.md](docs/case-study/v1-engineering-case-study.md) | Published in `V1-S5-013-PR2`, against the frozen evidence pack. It opens with the problems V1 investigated, what was measured, and the limitation beside each, then walks the architecture, the decisions, the experiments, telemetry, cost as a method, the security boundary, what V1 does not prove, and what evidence would justify a second version. It cites only register rows and adds no claim of its own, so the register lists it as a surface that claims nothing; a test holds its citations, its claims appendix, every figure it quotes, and both evidence digests to the register and the evidence index. Whether its prose says what its records say is a reading, checked by review |
 | V1 proof dashboard | [docs/proof/dashboard.md](docs/proof/dashboard.md) | One generated page over the claim and evidence matrix: the certified, planned, deferred, and not-claimed counts, a one-row-per-capability overview, fourteen capability groups that between them show every claim with every evidence record behind it — its level, the environment and provider it ran on, anything it substituted, and its files — and its limitation, and every claim V1 does not certify listed in full. It is produced by `python -m tools.proof_dashboard` and a test regenerates it, so it cannot state a status the register does not. It answers what has been proven; Grafana answers what is happening now |
-| V1 evidence index | [docs/proof/v1-evidence-index.md](docs/proof/v1-evidence-index.md) | The V1 evidence manifest: one entry per evidence record in the claim and evidence register — what executed, what was substituted, the workload source, the environment and provider, every immutable identifier the record pins, the repository revision it names and how the record identifies the code that ran, and every cited file bound to its content by SHA-256 and to its git blob. Generated by `python -m tools.evidence_index` from the register and its four ledgers, and regenerated by a test, so it cannot state what they do not. It shows that 20 of the 38 records that executed their target behaviour name the revision that ran, and that the release gate is complete: 0 release blockers stand, the 5 that `V1-S5-006-PR2` raised having each been closed. `V1-S5-013-PR2` then froze the evidence pack, and `--gate` prints both digests from the committed index: the evidence set, over every cited file, and the evidence pack, over those files with the register and its ledgers. The pack digest is the one a release quotes |
+| V1 evidence index | [docs/proof/v1-evidence-index.md](docs/proof/v1-evidence-index.md) | The V1 evidence manifest: one entry per evidence record in the claim and evidence register — what executed, what was substituted, the workload source, the environment and provider, every immutable identifier the record pins, the repository revision it names and how the record identifies the code that ran, and every cited file bound to its content by SHA-256 and to its git blob. Generated by `python -m tools.evidence_index` from the register and its five ledgers, and regenerated by a test, so it cannot state what they do not. It shows that 20 of the 38 records that executed their target behaviour name the revision that ran, and that the release gate is complete: 0 release blockers stand, the 5 that `V1-S5-006-PR2` raised having each been closed. `V1-S5-013-PR2` then froze the evidence pack, and `v1.0.0` quotes its digest. `--gate` prints two pairs of digests from the committed index: the pack `v1.0.0` was cut over, recomputed by undoing the post-release ledger, and the pack `main` holds after it, which no release quotes |
 | Evidence records and templates | [docs/proof/README.md](docs/proof/README.md) | Four templates published, two of which have produced records, and no Sprint 3 record declares one; the full record index is in [docs/proof/README.md](docs/proof/README.md) |
-| Release process | [docs/releases.md](docs/releases.md) | Process documented, and prepared for `v1.0.0`: [release notes](docs/releases/v1.0.0.md) that lead with what the evidence showed and what it does not establish, and [a checklist](docs/releases/v1.0.0-checklist.md) with the gates passed before merge and the exact post-merge checks and tag commands. A test holds the notes' digests, claim and record counts, pinned identifiers, and measured figures to the frozen evidence; their other counts and descriptions are checked by review only. The tag is created only after merge |
-| Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; GitHub private vulnerability reporting is named as the private channel, a setting on the hosting service that read disabled when `v1.0.0` was prepared and that the release checklist requires enabled before the tag. No acknowledgement window, remediation timeline, or backported fix is promised |
+| Release process | [docs/releases.md](docs/releases.md) | Process documented, and `v1.0.0` released on 2026-09-27: [release notes](docs/releases/v1.0.0.md) that lead with what the evidence showed and what it does not establish, and [a checklist](docs/releases/v1.0.0-checklist.md) with the gates passed before merge, the post-merge checks and tag commands, and what was observed after the tag. A test holds the notes' digests, claim and record counts, pinned identifiers, and measured figures to the frozen evidence the release was cut over; their other counts and descriptions are checked by review only |
+| Security reporting | [SECURITY.md](SECURITY.md) | Expectations documented; GitHub private vulnerability reporting is the private channel, a setting on the hosting service that read disabled when `v1.0.0` was prepared and enabled when it was read after the release. No acknowledgement window, remediation timeline, or backported fix is promised |
 | Changes | [CHANGELOG.md](CHANGELOG.md) | `1.0.0`, everything V1 built, and unreleased changes since |
 | License | [LICENSE](LICENSE) | MIT |
 | Conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Interim expectations; formal policy deferred |

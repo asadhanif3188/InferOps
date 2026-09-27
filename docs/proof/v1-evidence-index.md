@@ -6,8 +6,9 @@ by `python -m tools.evidence_index --write` from
 [the claim and evidence register](../testing/claim-evidence-matrix.v1alpha2.json),
 [the `V1-S5-006-PR1` normalization ledger](testing/v1-s5-006-pr1-normalization.v1alpha1.json),
 [the `V1-S5-006-PR2` completeness ledger](testing/v1-s5-006-pr2-completeness.v1alpha1.json),
-[the `V1-S5-013-PR1` closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json), and
-[the `V1-S5-013-PR2` publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json).
+[the `V1-S5-013-PR1` closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json),
+[the `V1-S5-013-PR2` publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json),
+and [the `V1-S5-009-PR1` post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json).
 It states nothing they do not, and
 [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py)
 regenerates it and fails on any difference.
@@ -50,8 +51,16 @@ open blocker is refused. `--gate` now also prints both digests below, and exits 
 the committed index is not what the register and the ledgers produce, so a freeze is
 never read from a stale digest. The pre-publication freeze candidate that
 `V1-S5-013-PR1` named is superseded; [the publication report](testing/v1-s5-013-pr2-publication-and-freeze.md)
-compares the two. `V1-S5-008` may consume this freeze only if every other P0 story and
-release gate also passes.
+compares the two.
+
+**`v1.0.0` was released over the frozen pack, and the register has moved since.** The
+annotated tag `v1.0.0` points to `718ad2e`, the merge of `V1-S5-008-PR1`, and its
+message quotes the frozen pack's digest. After the release, `V1-S5-009-PR1` moved one
+claim, `a-v1-release-has-been-published`, from not claimed to certified on
+[a record read after the release](releases/v1-s5-009-pr1-v1.0.0-publication.md), through
+the post-release ledger. That moves both digests of the pack `main` holds, and it is
+expected: the released pack is the frozen one, and the index recomputes it, by undoing
+the post-release ledger, rather than copying it. `--gate` prints both pairs.
 
 How the 38 records that executed their target behaviour identify the repository code
 that ran:
@@ -63,27 +72,38 @@ that ran:
 | `no-repository-code` | 4 | No repository code among the claim-material components that executed; the third-party ones are pinned |
 | `unidentified` | 10 | Repository code executed and nothing the record cites identifies which; nine of these are under claims another record settles, four of those by a `V1-S5-013-PR1` rerun, and one is under the `kind` helper's claim, which is now not claimed |
 
-Two digests, both in the index's summary:
+Two digests, each stated twice in the index's summary: for the pack `v1.0.0` was cut
+over, and for the pack this checkout holds.
 
-- **The evidence set,
-  `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a`**, the index's
-  `evidenceSetSha256`: SHA-256 over the sorted lines `<sha256>  <path>` of every cited
-  file. Publication changed no cited file, so it is the value `V1-S5-013-PR1` named.
-  It does not cover the register or the ledgers, so no change to a claim's wording, a
-  status, or a ledger's decision can move it.
-- **The evidence pack,
-  `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2`**, the index's
-  `evidencePackSha256`: the same lines for every cited file together with the register
-  and the four ledgers of register changes, which the index lists as `packSources`.
-  Those are every input file the index is built from, so any change to the register or
-  to a ledger moves it. **It is the digest a release quotes.** Neither covers the index
-  itself, which states both, the code that builds it, or a page that reads the
-  register, such as the README, the proof dashboard, or the case study: an edit to one
-  of those moves neither digest.
+- **The evidence set**, `evidenceSetSha256`: SHA-256 over the sorted lines
+  `<sha256>  <path>` of every cited file. It does not cover the register or the
+  ledgers, so no change to a claim's wording, a status, or a ledger's decision can move
+  it; a new cited file does.
+- **The evidence pack**, `evidencePackSha256`: the same lines for every cited file
+  together with the register and every ledger of register changes, which the index
+  lists as `packSources`. Those are every input file the index is built from, so any
+  change to the register or to a ledger moves it. **It is the digest a release
+  quotes.** Neither covers the index itself, which states both, the code that builds
+  it, or a page that reads the register, such as the README, the proof dashboard, or
+  the case study: an edit to one of those moves neither digest.
+
+| Pack | Evidence set | Evidence pack |
+|---|---|---|
+| **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
+| **Current:** `main` after the post-release ledger, which no release quotes | `5bda340846f0c4191a1a40b63d49f0a4565bc54f60421483fb978435fba6955e` | `cd3b8dfb9059456443da6caebaf2d0b76f0e64eabbe2260202e6ae787bd00c8e` |
+
+The released pair is not read from a ledger. The index undoes the post-release
+ledger's changes, renders the register as it was, and takes both digests over that
+register, the four ledgers before the post-release one, and the files that register
+cites, read from this checkout; the post-release ledger states the pair, and the index
+refuses a result that differs. So a cited file, the register, or an earlier ledger
+edited after the release fails here, and so does a post-release ledger that
+misdescribes what it changed. The undone register is the tagged one byte for byte,
+which a test checks where the clone holds the tag.
 
 ## What one entry holds
 
-For each of the **64 evidence records** in the register:
+For each of the **65 evidence records** in the register:
 
 | Field | What it says | Where it comes from |
 |---|---|---|
@@ -104,8 +124,9 @@ Claim entries carry the statement, status, limitation, `doesNotEstablish`, the
 declared claim-material components, the levels the claim's records reached, the record
 identifiers, the claim's code-identity decision where one was needed, its open release
 blockers, and the blockers closed on it. A summary block carries the counts below, the
-gate, the freeze, and both digests, and `packSources` binds the register and each
-ledger to its content by SHA-256 and git blob name, as a cited file is bound.
+gate, the freeze, both digests, and the released pack with its own counts and digests,
+and `packSources` binds the register and each ledger to its content by SHA-256 and git
+blob name, as a cited file is bound.
 
 **What an entry does not hold.** No record in this repository names an owner, so the
 index has no owner field and does not invent one. A date is taken only from a line the
@@ -118,10 +139,12 @@ version.
 
 ## What the index shows today
 
-- **64 evidence records** under 59 claims: 26 at `C0`, 8 at `C1`, 30 at `C2`, and none
-  at `C3` or `C4`. Every one of the **41 certified claims** holds at least one record,
-  and every record states its limitations and what it does not establish.
-- **85 distinct committed files** are cited, all under `docs/proof/`, each hashed and
+- **65 evidence records** under 59 claims: 27 at `C0`, 8 at `C1`, 30 at `C2`, and none
+  at `C3` or `C4`. Every one of the **42 certified claims** holds at least one record,
+  and every record states its limitations and what it does not establish. The pack
+  `v1.0.0` was cut over held 64 records and 41 certified claims; the difference is the
+  release's own record, at `C0`, added after it.
+- **87 distinct committed files** are cited, all under `docs/proof/`, each hashed and
   each named by its git blob. Eleven of them carry a correction recorded beside them
   rather than inside them.
 - **38 records executed their target behaviour, and 20 of them name the repository
@@ -157,7 +180,7 @@ python -m tools.evidence_index            # the summary counts
 python -m tools.evidence_index --print    # the whole index, written nowhere
 python -m tools.evidence_index --check    # compare the committed index; exit 1 on drift
 python -m tools.evidence_index --write    # regenerate it
-python -m tools.evidence_index --gate     # the release gate and the freeze; exit 1 while a blocker stands, one is unaccounted for, or the index is stale
+python -m tools.evidence_index --gate     # the release gate, the freeze, the released pack, and the current one; exit 1 while a blocker stands, one is unaccounted for, or the index is stale
 ```
 
 Every mode reads files. None contacts a cluster, a runtime, a model, or the network.
@@ -174,8 +197,9 @@ Every mode reads files. None contacts a cluster, a runtime, a model, or the netw
   readings are.
 - **That the frozen evidence is right.** The freeze binds the pack's files to their
   content; it says nothing about whether a file should have said more, and the
-  corrections beside dated records are what later reading found. No release exists:
-  a freeze is what `V1-S5-008` may quote, not a release.
+  corrections beside dated records are what later reading found. A release adds
+  nothing to it: `v1.0.0` quotes the frozen pack, and the post-release record says
+  only that the release exists.
 - **That a revision the index lists as stated is the tree that ran.** It is the record's
   own word, quoted, as a content pin is. The index distinguishes the words a record
   used; it cannot re-run a build to check them.

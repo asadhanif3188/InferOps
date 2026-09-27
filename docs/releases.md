@@ -1,7 +1,7 @@
 # Release process
 
-Status: accepted high-level process; prepared for the first time for `v1.0.0` in
-`V1-S5-008-PR1`, and executed only when the `v1.0.0` tag exists.
+Status: accepted high-level process; executed for the first time for `v1.0.0`,
+prepared in `V1-S5-008-PR1` and tagged and published on 2026-09-27.
 
 InferOps uses Semantic Versioning for public releases. A release number is
 evidence of packaged repository state, not by itself proof of runtime, performance,
@@ -26,7 +26,7 @@ security, or production fitness.
 
 | Version | Notes | Checklist | Data | State |
 |---|---|---|---|---|
-| `v1.0.0` | [Release notes](releases/v1.0.0.md) | [Checklist](releases/v1.0.0-checklist.md) | [`v1.0.0.v1alpha1.json`](releases/v1.0.0.v1alpha1.json) | Prepared from `742355b` over the evidence pack frozen by `V1-S5-013-PR2`. Cut only when the tag exists: `git tag -l v1.0.0` prints it, or it has not been |
+| `v1.0.0` | [Release notes](releases/v1.0.0.md) | [Checklist](releases/v1.0.0-checklist.md) | [`v1.0.0.v1alpha1.json`](releases/v1.0.0.v1alpha1.json) | Released on 2026-09-27: an annotated tag on `718ad2e`, prepared from `742355b` over the evidence pack frozen by `V1-S5-013-PR2`. [What was read after the release](proof/releases/v1-s5-009-pr1-v1.0.0-publication.md) |
 
 A release is cut over a frozen evidence pack and changes nothing inside it. The claim
 and evidence register is part of that pack, so it describes the repository as it was
@@ -34,6 +34,12 @@ frozen, before the release; [the `v1.0.0` notes](releases/v1.0.0.md#where-the-fr
 list every surface inside the pack, or bound to it, that still does. A decision record's
 accepted text is history too, and carries a dated note where the release changed what it
 describes.
+
+A change after the release may move the register, as `V1-S5-009-PR1` did through
+[a post-release ledger](proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json) to
+record the release itself. That moves the digests of the pack `main` holds, which no
+release quotes; the pack a release quotes stays the one it was cut over, and the
+evidence index recomputes it from `main` by undoing the ledgers after it.
 
 ## High-level release checklist
 

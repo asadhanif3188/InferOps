@@ -37,7 +37,9 @@ from tools.evidence_index import (
     FREEZE_DECISIONS,
     INDEX_PATH,
     LEDGER_PATHS,
+    POST_RELEASE_PATH,
     PUBLICATION_PATH,
+    RELEASED_LEDGER_PATHS,
     content_sha256,
     evidence_freeze,
     evidence_set_sha256,
@@ -46,6 +48,7 @@ from tools.evidence_index import (
     open_blockers,
     pack_sources,
     release_gate,
+    released_register,
     restore_migrated_register,
 )
 from tools.evidence_model import REGISTER_PATH, load_register
@@ -53,12 +56,18 @@ from tools.evidence_model import REGISTER_PATH, load_register
 pytestmark = pytest.mark.docs
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-REGISTER = load_register()
+#: The register as the `v1.0.0` pack holds it: the current one with the post-release
+#: ledger undone. What this ledger decided is history the released pack carries; the
+#: change after the release is held by `test_evidence_post_release.py`.
+REGISTER = released_register(load_register(), load_ledger(POST_RELEASE_PATH))
 COMPLETENESS = load_ledger(COMPLETENESS_PATH)
 CLOSURE = load_ledger(CLOSURE_PATH)
 PUBLICATION = load_ledger(PUBLICATION_PATH)
 INDEX = load_index()
 SUMMARY = INDEX["summary"]
+#: The index's summary as the `v1.0.0` pack stood: the counts and digests the index
+#: recomputes with the post-release ledger undone, over everything else it states.
+AS_RELEASED = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
 FREEZE = PUBLICATION["freeze"]
 REPORT_PATH = REPO_ROOT / PUBLICATION["reportRef"]
 CASE_STUDY = PUBLICATION["caseStudyRef"]
@@ -163,7 +172,8 @@ def test_the_ledger_names_what_it_publishes_and_where_its_report_is() -> None:
     assert (
         PUBLICATION["priorLedgerRef"] == CLOSURE_PATH.relative_to(REPO_ROOT).as_posix()
     )
-    assert LEDGER_PATHS[-1] == PUBLICATION_PATH
+    assert RELEASED_LEDGER_PATHS[-1] == PUBLICATION_PATH
+    assert LEDGER_PATHS[: len(RELEASED_LEDGER_PATHS)] == RELEASED_LEDGER_PATHS
 
 
 @pytest.mark.parametrize("change", CHANGES, ids=lambda change: change["changeId"])
@@ -417,7 +427,7 @@ def test_the_superseded_candidate_is_the_one_pr1_named_and_recomputes() -> None:
     """The set digest did not move; the pack digest PR1's tree gives is the ledger's."""
     superseded = FREEZE["supersedes"]
     assert superseded["decidedIn"] == "V1-S5-013-PR1"
-    assert superseded["evidenceSetSha256"] == SUMMARY["evidenceSetSha256"]
+    assert superseded["evidenceSetSha256"] == AS_RELEASED["evidenceSetSha256"]
     base = superseded["baseRevision"]
     index_at_base = _git_bytes(base, "docs/proof/v1-evidence-index.v1alpha1.json")
     if index_at_base is None:
@@ -426,7 +436,7 @@ def test_the_superseded_candidate_is_the_one_pr1_named_and_recomputes() -> None:
     assert at_base["summary"]["evidenceSetSha256"] == superseded["evidenceSetSha256"]
     cited = [item for record in at_base["records"] for item in record["evidence"]]
     sources = []
-    for path in (REGISTER_PATH, *LEDGER_PATHS[:-1]):
+    for path in (REGISTER_PATH, *RELEASED_LEDGER_PATHS[:-1]):
         relative = path.relative_to(REPO_ROOT).as_posix()
         data = _git_bytes(base, relative)
         assert data is not None, relative
@@ -441,9 +451,21 @@ def test_the_gate_prints_the_freeze_with_the_index_digests(
     code = index_cli.main(["--gate"])
     printed = capsys.readouterr().out
     assert code == 0
-    assert f"FROZEN   {FREEZE['decidedIn']}: the committed index is current" in printed
-    assert f"evidence set   {SUMMARY['evidenceSetSha256']}" in printed
-    assert f"evidence pack  {SUMMARY['evidencePackSha256']}" in printed
+    lines = printed.splitlines()
+    frozen = lines.index(
+        f"FROZEN   {FREEZE['decidedIn']}: the committed index is current"
+    )
+    released, current = SUMMARY["releasedPack"], SUMMARY
+    assert lines[frozen + 1].startswith(f"RELEASED {released['tag']} at ")
+    assert lines[frozen + 2 : frozen + 4] == [
+        f"         evidence set   {released['evidenceSetSha256']}",
+        f"         evidence pack  {released['evidencePackSha256']}",
+    ]
+    assert lines[frozen + 4].startswith("CURRENT  ")
+    assert lines[frozen + 5 : frozen + 7] == [
+        f"         evidence set   {current['evidenceSetSha256']}",
+        f"         evidence pack  {current['evidencePackSha256']}",
+    ]
 
 
 def test_the_gate_says_so_when_the_pack_is_not_frozen(
@@ -547,20 +569,20 @@ def test_the_report_states_what_the_ledger_and_the_index_produce() -> None:
         "Claim statements changed": 0,
         "Record levels changed": 0,
         "Evidence records added or removed": 0,
-        "Release blockers open": SUMMARY["releaseBlockers"],
+        "Release blockers open": AS_RELEASED["releaseBlockers"],
     }
     for label, count in expected.items():
         assert _table(report, label) == str(count), (label, count)
-    statuses = SUMMARY["claimsByStatus"]
-    levels = SUMMARY["recordsByLevel"]
+    statuses = AS_RELEASED["claimsByStatus"]
+    levels = AS_RELEASED["recordsByLevel"]
     for phrase in (
-        f"**{SUMMARY['claims']} claims** — {statuses['certified']} certified, "
+        f"**{AS_RELEASED['claims']} claims** — {statuses['certified']} certified, "
         f"{statuses['planned']} planned, {statuses['deferred']} deferred, "
         f"{statuses['not-claimed']} not claimed",
-        f"**{SUMMARY['records']} evidence records** — {levels['C0']} at `C0`, "
+        f"**{AS_RELEASED['records']} evidence records** — {levels['C0']} at `C0`, "
         f"{levels['C1']} at `C1`, {levels['C2']} at `C2`, none at `C3` or `C4`",
-        f"`{SUMMARY['evidenceSetSha256']}`",
-        f"`{SUMMARY['evidencePackSha256']}`",
+        f"`{AS_RELEASED['evidenceSetSha256']}`",
+        f"`{AS_RELEASED['evidencePackSha256']}`",
         f"`{FREEZE['supersedes']['evidencePackSha256']}`",
     ):
         assert phrase in flat, phrase
@@ -572,9 +594,21 @@ def test_the_report_states_what_the_ledger_and_the_index_produce() -> None:
 
 
 def test_the_report_quotes_the_gate_it_ran(capsys: pytest.CaptureFixture[str]) -> None:
+    """The report is dated, and quotes the gate as it printed at the freeze.
+
+    Since `V1-S5-009-PR1` the gate prints, after the freeze, the pack `v1.0.0` was cut
+    over, recomputed by undoing the post-release ledger, and then the pack this
+    checkout holds. The freeze printed the first pair, so that is the pair the report
+    must still quote.
+    """
     index_cli.main(["--gate"])
-    printed = capsys.readouterr().out.strip()
-    assert printed in REPORT_PATH.read_text(encoding="utf-8")
+    printed = capsys.readouterr().out.strip().splitlines()
+    frozen = next(
+        number for number, line in enumerate(printed) if line.startswith("FROZEN   ")
+    )
+    assert printed[frozen + 1].startswith("RELEASED ")
+    as_frozen = [*printed[: frozen + 1], *printed[frozen + 2 : frozen + 4]]
+    assert "\n".join(as_frozen) in REPORT_PATH.read_text(encoding="utf-8")
 
 
 def test_the_publication_files_name_no_private_path() -> None:

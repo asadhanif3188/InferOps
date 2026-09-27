@@ -110,6 +110,11 @@ report privately is a gap that should at least be public.
 > checklist refuses the tag until it reads enabled. The decision to publish every gap
 > is unchanged.
 
+> **Note, 2026-09-27, after the release.** `V1-S5-009-PR1` read the setting enabled
+> after `v1.0.0` was released, in
+> [a record of its own](../../proof/releases/v1-s5-009-pr1-v1.0.0-publication.md). When
+> it was enabled is not recorded. The decision to publish every gap is unchanged.
+
 ## Decision criteria
 
 | Criterion | Why it matters |

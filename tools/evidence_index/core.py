@@ -42,8 +42,16 @@ a closure that leaves any of those blockers without a disposition.
 before-and-after form, the corrections it wrote beside dated records, and the freeze
 it declares. It raises and closes no blocker; the gate stays the closure ledger's.
 
-The four ledgers are applied in order, and undone in reverse, so the register's
-history since the migration is the four of them together.
+**The post-release ledger** is
+`docs/proof/testing/v1-s5-009-pr1-post-release.v1alpha1.json`, the record of what
+`V1-S5-009-PR1` changed in the register after `v1.0.0` was released over the frozen
+pack: its register changes in the same before-and-after form, and the release it
+observed, with the two digests of the pack that release was cut over. It raises and
+closes no blocker and declares no freeze.
+
+The five ledgers are applied in order, and undone in reverse, so the register's
+history since the migration is the five of them together. The first four are the ones
+the `v1.0.0` pack covers.
 
 **Two digests.** `evidenceSetSha256` covers every file a record cites and nothing else,
 so a change to the register's wording or to a ledger does not move it.
@@ -51,6 +59,16 @@ so a change to the register's wording or to a ledger does not move it.
 ledger of register changes, which are every input file the index is built from; it
 is the digest a freeze quotes. Neither covers the index itself, which states both,
 the code that builds it, or any page that reads the register.
+
+**The released pack.** A register change after the release moves the current pack
+digest, and that is expected: the digest a release quoted belongs to the release, not
+to `main`. So the index also states the pack `v1.0.0` was cut over, recomputed rather
+than copied: the post-release ledger's changes are undone, the register is rendered as
+it was, and both digests are taken over that register, the four ledgers before the
+post-release one, and the files that register cites, read from this checkout. A
+result that is not the pair the post-release ledger states raises, so a cited file,
+the register, or an earlier ledger edited after the release is caught here rather
+than carried into a digest nobody compares.
 
 **Content hashes** are SHA-256 over the committed content. A text file is hashed with
 CRLF normalised to LF, because the repository stores text with LF and a Windows
@@ -87,7 +105,9 @@ __all__ = [
     "LEDGER_PATH",
     "LEDGER_PATHS",
     "LEVEL_ORDER",
+    "POST_RELEASE_PATH",
     "PUBLICATION_PATH",
+    "RELEASED_LEDGER_PATHS",
     "TEXT_SUFFIXES",
     "apply_register_changes",
     "build_index",
@@ -104,7 +124,10 @@ __all__ = [
     "pack_sources",
     "recorded_date",
     "release_gate",
+    "released_pack",
+    "released_register",
     "render_index",
+    "render_register",
     "restore_migrated_register",
     "states_authorisation",
 ]
@@ -142,8 +165,25 @@ PUBLICATION_PATH: Final = (
     REPO_ROOT / "docs" / "proof" / "testing" / "v1-s5-013-pr2-publication.v1alpha1.json"
 )
 
+#: What V1-S5-009-PR1 changed after v1.0.0 was released, and the pack it was cut over.
+POST_RELEASE_PATH: Final = (
+    REPO_ROOT
+    / "docs"
+    / "proof"
+    / "testing"
+    / "v1-s5-009-pr1-post-release.v1alpha1.json"
+)
+
+#: The ledgers the v1.0.0 evidence pack covers, in the order applied.
+RELEASED_LEDGER_PATHS: Final = (
+    LEDGER_PATH,
+    COMPLETENESS_PATH,
+    CLOSURE_PATH,
+    PUBLICATION_PATH,
+)
+
 #: Every ledger of register changes since the migration, in the order applied.
-LEDGER_PATHS: Final = (LEDGER_PATH, COMPLETENESS_PATH, CLOSURE_PATH, PUBLICATION_PATH)
+LEDGER_PATHS: Final = (*RELEASED_LEDGER_PATHS, POST_RELEASE_PATH)
 
 #: The only freeze decisions a publication ledger may state.
 FREEZE_DECISIONS: Final = ("frozen", "not-frozen")
@@ -242,6 +282,11 @@ def _committed_bytes(path: Path) -> bytes:
     return data
 
 
+def _blob_id(data: bytes) -> str:
+    header = f"blob {len(data)}\0".encode("ascii")
+    return hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
+
+
 def content_sha256(path: Path) -> str:
     """SHA-256 of a committed file's content, text normalised to LF."""
     return hashlib.sha256(_committed_bytes(path)).hexdigest()
@@ -256,9 +301,7 @@ def git_blob_id(path: Path) -> str:
     this content, which lets a release commit be checked against the index without
     trusting a checkout.
     """
-    data = _committed_bytes(path)
-    header = f"blob {len(data)}\0".encode("ascii")
-    return hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
+    return _blob_id(_committed_bytes(path))
 
 
 def evidence_set_sha256(files: Iterable[Mapping[str, str]]) -> str:
@@ -512,6 +555,7 @@ def pack_sources(
     repo_root: Path = REPO_ROOT,
     register_path: Path = REGISTER_PATH,
     ledger_paths: Sequence[Path] = LEDGER_PATHS,
+    register_text: str | None = None,
 ) -> list[dict[str, str]]:
     """The register and every ledger, each bound to its content like a cited file.
 
@@ -519,20 +563,48 @@ def pack_sources(
     the evidence pack digest covers them too: a change to a claim's wording, a
     status, or a ledger's decision moves it, where it cannot move the evidence-set
     digest. Each path is read under ``repo_root``, so another root reads its own
-    copies rather than this checkout's.
+    copies rather than this checkout's. Given ``register_text``, the register is
+    bound to that text instead of the file: the released register exists on no path
+    of this checkout, and this is how it is bound.
     """
     relative = [
         path.relative_to(REPO_ROOT) if path.is_absolute() else path
         for path in (register_path, *ledger_paths)
     ]
-    return [
+    sources = [
         {
             "path": path.as_posix(),
             "sha256": content_sha256(repo_root / path),
             "gitBlob": git_blob_id(repo_root / path),
         }
-        for path in relative
+        for path in relative[1:]
     ]
+    if register_text is None:
+        data = _committed_bytes(repo_root / relative[0])
+    else:
+        data = register_text.encode("utf-8")
+    register_source = {
+        "path": relative[0].as_posix(),
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "gitBlob": _blob_id(data),
+    }
+    return [register_source, *sources]
+
+
+def render_register(register: Mapping[str, Any]) -> str:
+    """The committed text of a register: two-space JSON, UTF-8, LF, one final newline.
+
+    The committed register is exactly this rendering of itself, which a test holds;
+    that is what lets a register rebuilt in memory be bound to the bytes it had.
+    """
+    return json.dumps(register, indent=2, ensure_ascii=False) + "\n"
+
+
+def released_register(
+    register: Mapping[str, Any], post_release: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The register the v1.0.0 pack holds: the post-release ledger's changes undone."""
+    return restore_migrated_register(register, post_release)
 
 
 def open_blockers(
@@ -701,7 +773,9 @@ def _summary(
     completeness: Mapping[str, Any],
     closure: Mapping[str, Any],
     publication: Mapping[str, Any],
+    post_release: Mapping[str, Any],
     sources: Sequence[Mapping[str, str]],
+    released: Mapping[str, Any],
 ) -> dict[str, Any]:
     cited = [item for record in records for item in record["evidence"]]
     files = {item["path"] for item in cited}
@@ -782,25 +856,20 @@ def _summary(
         "publicationRegisterChanges": len(publication["registerChanges"]),
         "publicationCorrections": len(publication["recordCorrections"]),
         "evidenceFreeze": evidence_freeze(closure, publication),
+        "postReleaseRegisterChanges": len(post_release["registerChanges"]),
         "evidenceSetSha256": evidence_set_sha256(cited),
         "evidencePackSha256": evidence_set_sha256([*cited, *sources]),
+        "releasedPack": dict(released),
     }
 
 
-def build_index(
-    register: Mapping[str, Any] | None = None,
-    ledgers: Sequence[Mapping[str, Any]] | None = None,
-    repo_root: Path = REPO_ROOT,
-) -> dict[str, Any]:
-    """The evidence index the register and the four ledgers produce today.
-
-    The pack sources are read from the committed files, not from the arguments: the
-    pack digest binds what is on disk, which is what a release ships.
-    """
-    register = register if register is not None else load_register()
-    ledgers = ledgers if ledgers is not None else load_ledgers()
-    ledger, completeness, closure, publication = ledgers
-    sources = pack_sources(repo_root)
+def _entries(
+    register: Mapping[str, Any],
+    ledgers: Sequence[Mapping[str, Any]],
+    repo_root: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """One entry per claim and one per record, read with the ledgers given."""
+    completeness, closure = ledgers[1], ledgers[2]
     revisions = {
         entry["recordId"]: entry for one in ledgers for entry in one["codeRevisions"]
     }
@@ -858,6 +927,96 @@ def build_index(
                     identities,
                 )
             )
+    return claims, records
+
+
+def released_pack(
+    register: Mapping[str, Any],
+    ledgers: Sequence[Mapping[str, Any]],
+    repo_root: Path = REPO_ROOT,
+) -> dict[str, Any]:
+    """The pack v1.0.0 was cut over, recomputed from this checkout and checked.
+
+    The post-release ledger, the last of ``ledgers``, is undone; the register that
+    leaves is rendered as committed text; and both digests are taken over it, the
+    ledgers before the post-release one, and the files it cites, read under
+    ``repo_root``. The result must be the pair the post-release ledger states, or
+    this raises: the released pack is identified by recomputing it, never by
+    copying the digests a ledger wrote.
+    """
+    *released_ledgers, post_release = ledgers
+    if post_release.get("blockers") or post_release.get("blockerDispositions"):
+        raise ValueError("the post-release ledger raises or closes a blocker")
+    if "freeze" in post_release:
+        raise ValueError("the post-release ledger declares a freeze")
+    as_released = released_register(register, post_release)
+    sources = pack_sources(
+        repo_root,
+        ledger_paths=RELEASED_LEDGER_PATHS,
+        register_text=render_register(as_released),
+    )
+    claims, records = _entries(as_released, released_ledgers, repo_root)
+    cited = [item for record in records for item in record["evidence"]]
+    executed = [record for record in records if record["codeRevision"] is not None]
+    release = post_release["release"]
+    computed = {
+        "evidenceSetSha256": evidence_set_sha256(cited),
+        "evidencePackSha256": evidence_set_sha256([*cited, *sources]),
+    }
+    for name, value in computed.items():
+        if release[name] != value:
+            raise ValueError(
+                f"the post-release ledger states the released {name} "
+                f"{release[name]}, and undoing it gives {value}"
+            )
+    return {
+        "tag": release["tag"],
+        "tagObject": release["tagObject"],
+        "commit": release["commit"],
+        "freezeDecidedIn": release["freezeDecidedIn"],
+        "undoneLedger": POST_RELEASE_PATH.relative_to(REPO_ROOT).as_posix(),
+        "claims": len(claims),
+        "claimsByStatus": dict(
+            sorted(Counter(row["status"] for row in claims).items())
+        ),
+        "records": len(records),
+        "recordsByLevel": {
+            level: sum(1 for record in records if record["evidenceLevel"] == level)
+            for level in LEVEL_ORDER
+        },
+        "executedRecords": len(executed),
+        "executedRecordsNamingTheRevisionThatRan": sum(
+            1 for record in executed if record["codeRevision"]["statedRevision"]
+        ),
+        "executedRecordsByCodeIdentity": {
+            name: sum(
+                1 for record in executed if record["codeIdentity"]["identity"] == name
+            )
+            for name in CODE_IDENTITIES
+        },
+        "evidenceFiles": len({item["path"] for item in cited}),
+        **computed,
+    }
+
+
+def build_index(
+    register: Mapping[str, Any] | None = None,
+    ledgers: Sequence[Mapping[str, Any]] | None = None,
+    repo_root: Path = REPO_ROOT,
+) -> dict[str, Any]:
+    """The evidence index the register and the five ledgers produce today.
+
+    The pack sources are read from the committed files, not from the arguments: the
+    pack digest binds what is on disk, which is what a release ships. The released
+    pack is recomputed from the arguments and the files, and raises if it is not
+    the one the post-release ledger states.
+    """
+    register = register if register is not None else load_register()
+    ledgers = ledgers if ledgers is not None else load_ledgers()
+    ledger, completeness, closure, publication, post_release = ledgers
+    sources = pack_sources(repo_root)
+    claims, records = _entries(register, ledgers, repo_root)
+    released = released_pack(register, ledgers, repo_root)
 
     return {
         "$id": "https://inferops.io/proof/v1-evidence-index.v1alpha1.json",
@@ -873,10 +1032,12 @@ def build_index(
             "name, with how the record identifies the repository code that ran and "
             "the blockers the completeness ledger raised, how the closure ledger "
             "closed each, the release gate the closure ledger's open blockers "
-            "decide, and the freeze the publication ledger declares over it. "
-            "Generated by python -m tools.evidence_index --write from the register, "
-            "the normalization ledger, the completeness ledger, the closure ledger, "
-            "and the publication ledger; it states nothing they do not."
+            "decide, the freeze the publication ledger declares over it, and the "
+            "pack v1.0.0 was cut over, recomputed by undoing the post-release "
+            "ledger. Generated by python -m tools.evidence_index --write from the "
+            "register, the normalization ledger, the completeness ledger, the "
+            "closure ledger, the publication ledger, and the post-release ledger; "
+            "it states nothing they do not."
         ),
         "generatedBy": "python -m tools.evidence_index --write",
         "registerRef": REGISTER_PATH.relative_to(REPO_ROOT).as_posix(),
@@ -885,6 +1046,7 @@ def build_index(
         "completenessRef": COMPLETENESS_PATH.relative_to(REPO_ROOT).as_posix(),
         "closureRef": CLOSURE_PATH.relative_to(REPO_ROOT).as_posix(),
         "publicationRef": PUBLICATION_PATH.relative_to(REPO_ROOT).as_posix(),
+        "postReleaseRef": POST_RELEASE_PATH.relative_to(REPO_ROOT).as_posix(),
         "documentRef": "docs/proof/v1-evidence-index.md",
         "specificationRef": "docs/testing/evidence-levels.md",
         "hashing": {
@@ -914,10 +1076,25 @@ def build_index(
                 "It covers every input file this index is built from, not the index "
                 "and not the code that builds it."
             ),
+            "releasedPack": (
+                "summary.releasedPack is the pack v1.0.0 was cut over: the same two "
+                "digests taken over the register with the post-release ledger's "
+                "changes undone, rendered as committed text, the four ledgers before "
+                "the post-release one, and the files that register cites. The index "
+                "refuses a result that is not the pair the post-release ledger states."
+            ),
         },
         "packSources": sources,
         "summary": _summary(
-            claims, records, ledger, completeness, closure, publication, sources
+            claims,
+            records,
+            ledger,
+            completeness,
+            closure,
+            publication,
+            post_release,
+            sources,
+            released,
         ),
         "claims": claims,
         "records": records,

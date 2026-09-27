@@ -36,6 +36,7 @@ from tools.evidence_index import (
     INDEX_PATH,
     LEDGER_PATH,
     LEVEL_ORDER,
+    POST_RELEASE_PATH,
     PUBLICATION_PATH,
     apply_register_changes,
     build_index,
@@ -63,12 +64,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REGISTER = load_register()
 LEDGER = load_ledger()
 #: Every ledger, in the order applied: `V1-S5-006-PR1`'s normalization,
-#: `V1-S5-006-PR2`'s completeness verification, `V1-S5-013-PR1`'s closure, and
-#: `V1-S5-013-PR2`'s publication. Undoing the register takes all four.
+#: `V1-S5-006-PR2`'s completeness verification, `V1-S5-013-PR1`'s closure,
+#: `V1-S5-013-PR2`'s publication, and `V1-S5-009-PR1`'s post-release changes.
+#: Undoing the register takes all five.
 LEDGERS = load_ledgers()
-#: The ledger that may move a status, read by its path rather than its position, so
-#: a later ledger appended after it cannot take its place in the checks below.
+#: The two ledgers that may move a status, read by their paths rather than their
+#: positions, so a later ledger appended after them cannot take their place below.
 CLOSURE = load_ledger(CLOSURE_PATH)
+POST_RELEASE = load_ledger(POST_RELEASE_PATH)
+#: The one claim the post-release ledger may move, and the only way it may move it.
+RELEASE_CLAIM = "a-v1-release-has-been-published"
 #: Every correction written beside a historical record, by any ledger.
 CORRECTIONS = [item for ledger in LEDGERS for item in ledger["recordCorrections"]]
 INDEX = load_index()
@@ -567,9 +572,12 @@ def test_every_date_time_and_identifier_in_an_added_record_is_in_a_file_it_cites
 def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
     """Normalization and verification may narrow, correct, and add; not promote.
 
-    The closure ledger is the one exception, and only downwards: a blocker closed by a
-    claim decision may move its claim's status, to exactly the status its disposition
-    names, and to a status that ranks lower. No ledger moves any record's level.
+    Two ledgers are exceptions. The closure ledger moves only downwards: a blocker
+    closed by a claim decision may move its claim's status, to exactly the status its
+    disposition names, and to a status that ranks lower. The post-release ledger moves
+    one claim upwards, `a-v1-release-has-been-published` from not claimed to certified,
+    and only on a record it adds itself, because the release it states did not exist
+    when the pack was frozen. No ledger moves any record's level.
     """
     migrated = restore_migrated_register(REGISTER, LEDGERS)
     before = {claim["claimId"]: claim for claim in migrated["claims"]}
@@ -579,6 +587,11 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         for row in closure["blockerDispositions"]
         if row["mechanism"] == "closed-by-claim-decision"
     }
+    added_after_the_release = {
+        change["record"]["recordId"]
+        for change in POST_RELEASE["registerChanges"]
+        if change["operation"] == "add-record"
+    }
     rank = {row["statusId"]: row["rank"] for row in REGISTER["claimStatuses"]}
     for claim in REGISTER["claims"]:
         was = before[claim["claimId"]]["status"]
@@ -586,6 +599,11 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
             row = decided[claim["claimId"]]
             assert (was, claim["status"]) == (row["statusBefore"], row["statusAfter"])
             assert rank[claim["status"]] < rank[was], claim["claimId"]
+        elif claim["claimId"] == RELEASE_CLAIM:
+            assert (was, claim["status"]) == ("not-claimed", "certified")
+            assert [
+                record["recordId"] for record in claim["evidenceRecords"]
+            ] == sorted(added_after_the_release)
         else:
             assert claim["status"] == was, claim["claimId"]
         levels = {
@@ -608,9 +626,14 @@ def test_no_change_moved_a_status_or_an_existing_records_level() -> None:
         for change in ledger["registerChanges"]
         if change["operation"] != "add-record" and change["field"] == "status"
     }
-    assert moved == set(decided)
+    assert moved == {*decided, RELEASE_CLAIM}
+    assert [
+        change["claimId"]
+        for change in POST_RELEASE["registerChanges"]
+        if change["operation"] != "add-record" and change["field"] == "status"
+    ] == [RELEASE_CLAIM]
     for ledger in LEDGERS:
-        if ledger["$id"] == CLOSURE["$id"]:
+        if ledger["$id"] in (CLOSURE["$id"], POST_RELEASE["$id"]):
             continue
         assert not [
             change

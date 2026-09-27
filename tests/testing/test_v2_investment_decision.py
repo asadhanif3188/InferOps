@@ -26,7 +26,12 @@ from typing import Any
 
 import pytest
 
-from tools.evidence_index import load_index
+from tools.evidence_index import (
+    POST_RELEASE_PATH,
+    load_index,
+    load_ledger,
+    released_register,
+)
 from tools.evidence_model import load_register
 
 pytestmark = pytest.mark.docs
@@ -38,8 +43,11 @@ DECISION_PATH = (
 DATA: dict[str, Any] = json.loads(DECISION_PATH.read_text(encoding="utf-8"))
 DECISION = DATA["decision"]
 INDEX = load_index()
-SUMMARY = INDEX["summary"]
-REGISTER = load_register()
+#: The decision reads the pack `v1.0.0` was cut over: the counts and digests the index
+#: recomputes with the post-release ledger undone, and the register as released.
+SUMMARY = {**INDEX["summary"], **INDEX["summary"]["releasedPack"]}
+CURRENT_REGISTER = load_register()
+REGISTER = released_register(CURRENT_REGISTER, load_ledger(POST_RELEASE_PATH))
 CLAIMS = {claim["claimId"]: claim for claim in REGISTER["claims"]}
 CASE_STUDY_DATA = json.loads(
     (REPO_ROOT / DATA["caseStudyDataRef"]).read_text(encoding="utf-8")
@@ -461,12 +469,26 @@ def test_no_measurement_on_the_page_lacks_a_declared_figure() -> None:
 # ------------------------------------------------------------ the release state
 
 
-def test_the_register_still_lists_the_release_as_not_claimed() -> None:
-    """A tripwire. When a change after the tag moves this row, the page moves with it."""
+def test_the_release_row_is_not_claimed_as_released_and_certified_on_main() -> None:
+    """The tripwire this module set fired in the same change, as it was meant to.
+
+    The row is read twice: in the register as released, which this record reads, and
+    on `main`, where the post-release ledger moved it. The page says both.
+    """
     release = DATA["release"]
     claim = CLAIMS[release["registerClaimId"]]
     assert claim["status"] == release["registerStatus"] == "not-claimed"
+    (now,) = [
+        row
+        for row in CURRENT_REGISTER["claims"]
+        if row["claimId"] == release["registerClaimId"]
+    ]
+    assert now["status"] == release["registerStatusOnMain"] == "certified"
+    ledger = load_ledger(POST_RELEASE_PATH)
+    assert release["movedBy"] in {c["changeId"] for c in ledger["registerChanges"]}
+    assert release["recordRef"] == ledger["reportRef"]
     assert f"`{release['registerClaimId']}` as not claimed" in PAGE
+    assert "certifies that row on `main`, at `C0`" in PAGE
     assert f"`{release['tag']}` exists on `{release['tagCommit'][:7]}`" in PAGE
 
 

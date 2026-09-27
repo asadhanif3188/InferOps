@@ -2,8 +2,8 @@
 
 Status: **published register**, and the authoritative form is
 [`claim-evidence-matrix.v1alpha2.json`](claim-evidence-matrix.v1alpha2.json).
-It holds 59 claims: 41 certified, 7 planned,
-1 deferred, and 10 not claimed, supported by 64 evidence records. The not-claimed
+It holds 59 claims: 42 certified, 7 planned,
+1 deferred, and 9 not claimed, supported by 65 evidence records. The not-claimed
 group is the point of the document. A register that listed only what worked would
 be an advertisement.
 
@@ -488,7 +488,7 @@ network plugin, and it stays here rather than being hidden.
 | `the-default-lane-cannot-execute-a-real-model` | certified | `C0` `the-default-lane-cannot-execute-a-real-model-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md), [v1-s4-001-pr2-validation.md](../proof/testing/v1-s4-001-pr2-validation.md) | 2 module(s) |
 | `the-published-strategy-and-its-data-cannot-drift-apart` | certified | `C0` `the-published-strategy-and-its-data-cannot-drift-apart-c0` — repository-only — [v1-s0-006-pr1-validation.md](../proof/testing/v1-s0-006-pr1-validation.md), [v1-s1-007-pr1-validation.md](../proof/testing/v1-s1-007-pr1-validation.md), [v1-s4-001-pr1-validation.md](../proof/testing/v1-s4-001-pr1-validation.md), [v1-s4-009-pr1-validation.md](../proof/testing/v1-s4-009-pr1-validation.md) | 4 module(s) |
 | `a-cluster-or-real-runtime-lane-runs-in-continuous-integration` | not-claimed | none | 0 module(s) |
-| `a-v1-release-has-been-published` | not-claimed | none | 0 module(s) |
+| `a-v1-release-has-been-published` | certified | `C0` `a-v1-release-has-been-published-c0` — repository-only — [v1-s5-009-pr1-v1.0.0-publication.md](../proof/releases/v1-s5-009-pr1-v1.0.0-publication.md), [v1-s5-009-pr1-v1.0.0-publication-transcript.txt](../proof/releases/v1-s5-009-pr1-v1.0.0-publication-transcript.txt) | 1 module(s) |
 | `inferops-is-a-portable-production-platform` | not-claimed | none | 0 module(s) |
 
 Five of these nine certify properties of this repository's own discipline, which is
@@ -512,7 +512,7 @@ arguing about it later.
 
 ## What V1 does not claim
 
-10 rows carry `not-claimed`. They are collected here because a reader looking
+9 rows carry `not-claimed`. They are collected here because a reader looking
 for what is missing should not have to read eleven tables to find it.
 
 | Claim | Why it is not claimed | Evidence records |
@@ -524,7 +524,6 @@ for what is missing should not have to read eleven tables to find it.
 | `a-deployed-inferops-workload-is-defended` | Nothing in this repository authenticates a caller, authorises a request, or admits a pod. There is no admission control, no gateway, and no multi-tenancy. Twelve risks are carried rather than reduced and ten of them block production use. | none |
 | `a-cluster-or-real-runtime-lane-runs-in-continuous-integration` | No workflow for a cluster lane is committed, only the rules one must satisfy. No runner is labelled capable and no hosted runner is authorized to hold the pinned model artifact; ADR 0005 D6 leaves that half open on purpose. | none |
 | `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary` | Measured in V1-S5-012-PR2: of the 52 Markdown records cited by the claims the v1alpha1 register held as certified, 20 contain no statement about authorisation of any kind, so the sentence that every certifying record carries one is not true of the records committed. The templates require the section; the records produced before them, and several since, do not have it. Nothing checks that a record was produced by a reviewed change rather than by a job. | `C0` `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary-c0` — repository-only — [v1-s0-007-pr1-validation.md](../proof/telemetry/v1-s0-007-pr1-validation.md)<br>`C0` `every-certifying-record-lives-under-docs-proof-and-declares-its-own-boundary-c0-measured-absence` — repository-only — [v1-s5-012-pr2-migration-report.md](../proof/testing/v1-s5-012-pr2-migration-report.md) |
-| `a-v1-release-has-been-published` | The release process is documented and no release has been executed. The changelog holds unreleased changes only. | none |
 | `inferops-is-a-portable-production-platform` | `production-experience` is unreachable from this repository: there is no organizational production to draw it from, and public-cloud execution is not production operation. Every executed result is one Windows host, one provider, CPU, one replica of each tier, started by hand under explicit authorization against a cluster the operator already owns. | none |
 
 Four of them hold a record. `a-local-cluster-is-created-and-removed-without-residue`

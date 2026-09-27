@@ -43,7 +43,8 @@
       "C2": 30,
       "C3": 0,
       "C4": 0
-    }
+    },
+    "note": "The pack v1.0.0 was cut over, read as released: the evidence index recomputes these digests by undoing the post-release ledger, and the counts are that register's. The pack on main has moved since, by that ledger alone."
   },
   "release": {
     "tag": "v1.0.0",
@@ -51,7 +52,10 @@
     "notesRef": "docs/releases/v1.0.0.md",
     "registerClaimId": "a-v1-release-has-been-published",
     "registerStatus": "not-claimed",
-    "note": "The annotated tag exists on the merge of V1-S5-008-PR1. The register is inside the frozen pack, so its release row still says no release has been executed; moving it is a change after the tag, under a new ledger, and this record does not make it."
+    "note": "The annotated tag exists on the merge of V1-S5-008-PR1, and the hosting service published a release on it. The register inside the frozen pack lists the release row as not claimed; the post-release ledger in the same change certifies it on main, at C0, on a record read after the release. This record reads the pack the release was cut over, so its register is the released one.",
+    "registerStatusOnMain": "certified",
+    "movedBy": "r01-release-status",
+    "recordRef": "docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md"
   },
   "findings": [
     {
@@ -535,7 +539,7 @@
       "gateId": "a-release-is-cut-over-the-frozen-pack",
       "gate": "A first versioned release is cut over the frozen evidence pack.",
       "state": "met",
-      "evidence": "The annotated tag v1.0.0 exists on the merge of V1-S5-008-PR1. The register inside the pack still lists a published release as not claimed, and moving that row is owed as a change after the tag.",
+      "evidence": "The annotated tag v1.0.0 exists on the merge of V1-S5-008-PR1, and the hosting service published a release on it. The register inside the pack lists a published release as not claimed; the post-release ledger has since certified it on main, at C0, on a record read after the release.",
       "claimIds": [
         "a-v1-release-has-been-published"
       ]
