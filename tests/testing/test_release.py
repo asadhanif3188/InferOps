@@ -555,10 +555,10 @@ def test_the_notes_state_every_difference_from_what_was_measured() -> None:
 # ------------------------------------------------------------- the P0 stories
 
 
-def _merge_subjects() -> list[str] | None:
+def _merge_subjects(revision: str) -> list[str] | None:
     try:
         output = subprocess.run(
-            ["git", "log", "--merges", "--format=%s", "HEAD"],
+            ["git", "log", "--merges", "--format=%s", revision],
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,
@@ -581,8 +581,14 @@ def test_every_p0_story_is_listed_once() -> None:
 
 
 def test_every_listed_merge_carries_its_story_and_no_story_merge_is_missing() -> None:
-    """Reads the repository's history; a shallow clone, as in continuous integration, skips."""
-    subjects = _merge_subjects()
+    """Reads the repository's history; a shallow clone, as in continuous integration, skips.
+
+    It reads the merges the released commit contains, not `HEAD`'s. Until
+    `V2-S0-001-PR1` it read `HEAD`, so the first story merged after the release,
+    `V1-S5-009-PR1`'s, failed it on every full clone of `main`; continuous
+    integration never saw it, because it skips there.
+    """
+    subjects = _merge_subjects(RELEASE["afterTheRelease"]["commit"])
     if subjects is None or len(subjects) < 90:
         pytest.skip("the merge history is not in this clone")
     branches = {}

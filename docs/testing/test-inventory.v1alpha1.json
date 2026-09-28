@@ -846,6 +846,14 @@
       "note": "Deliberately no strategy claim: the claim it holds is a register row with no strategy claim behind it, and the module establishes that the ledger, the record, the released pack, and the tag agree, never that the release is still published as the record read it or that the private reporting setting still reads enabled, which are state on the hosting service. It reads committed files and, where the clone has it, the release tag; the checks that read the tag skip in a clone without tags."
     },
     {
+      "module": "tests/testing/test_v2_authorization.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The decision that opens a second version against the record it supersedes: the earlier record's data is unchanged since it merged and its page differs only by the one note the data holds, under its title; the outcome, dates, and identity stated for the earlier record are that record's, and this one is decided after it and before its review date; every earlier review trigger is listed once, in order, with the date and contract triggers following from the dates and the register; every earlier entry gate is classified once, in order, with its earlier state and a treatment from a closed vocabulary, and none unmet then is called met; every quoted prerequisite is the revise option's words; the one moved placement is the earlier record's own problem, gate, and claims, still planned; the thesis cites only the earlier record's findings and its problem statement; every quotation on the page is the earlier page's; the digests are the released pack's, no decision file is in the pack, the data moves no claim, and no ledger names the change; every non-goal cites a boundary that exists; the page publishes every identifier, resolves every fragment, and uses no measurement or forbidden phrase; and the README's roadmap and the governance table's row link both records.",
+      "claims": [],
+      "note": "Deliberately no claim: it establishes that the supersession edits no earlier record, leaves out or reclassifies no gate as met, and agrees with the earlier record, the register, and the evidence index, never that the thesis is right, that moving the rendering is wise, that a gate is treated rightly, or that opening now is the right call. It reads committed files only."
+    },
+    {
       "module": "tests/testing/test_evidence_index.py",
       "layer": "documentation",
       "marker": "docs",

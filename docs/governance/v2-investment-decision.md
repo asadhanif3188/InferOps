@@ -1,5 +1,8 @@
 # Whether a second version should proceed
 
+> [!IMPORTANT]
+> **Superseded on 2026-09-28.** [The decision to open a second version](v2-authorization.md), made in `V2-S0-001-PR1`, replaces this record's outcome: a second version is open for implementation. Nothing below is edited. It is this record as decided on 2026-09-27, and its findings, problems, and boundaries stand except where the newer record says otherwise.
+
 Status: **decided: defer**, in `V1-S5-009-PR1` on 2026-09-27. Review by **2026-12-27**,
 or sooner when [a trigger below](#review) fires. The decision takes effect when the
 `repository-maintainer` role merges the change that carries it; the merge is the whole
