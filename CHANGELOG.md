@@ -10,6 +10,36 @@ from `1.0.0`.
 
 ### Added
 
+- **A second version is opened for implementation.** `V2-S0-001-PR1` recorded
+  [the decision to open it](docs/governance/v2-authorization.md), which supersedes the
+  outcome of the defer decision below without editing it: that record's data is
+  unchanged, and its page gains one dated note at its top. The thesis is caller-visible
+  reliability under failure and change, starting from the problem statement the defer
+  decision kept under `revise` and adding release change, which V1 exercised only
+  without load: it rolled back a release with an injected fault twice, with readiness
+  probes as the only callers.
+  Contract-to-deployment rendering moves out of finishing V1 and becomes the new
+  version's first capability. Nothing was measured between the two decisions and none of
+  the earlier review triggers fired; the change is one of judgment on two points the
+  earlier record named as open to rejection. Its three unmet entry gates are still unmet
+  and are classified, not closed: the road closed for one workload becomes a target, and
+  the outside review of V1 and a second person's reproduction are deferred. Separately,
+  the new version's release waits on a condition of its own — a person outside the
+  repository reviewing its central claim and evidence — which meets no V1 gate,
+  certifies nothing, and raises no level; and the host that refused the
+  multi-replica profile on 2026-09-12 blocks every experiment that needs more than one
+  serving replica. It implements nothing, adds no evidence, moves no claim, changes no file in
+  the evidence pack, and amends no accepted ADR. [The data](docs/governance/v2-authorization.v1alpha1.json)
+  is held by `tests/testing/test_v2_authorization.py` to the earlier record, the register,
+  and the evidence index; the reasoning is checked by review only. Two independent
+  reviews of the first commit found four false statements — among them that V1 never
+  rolled a bad release back, which the test itself required — three test defects that
+  let a page-only edit, a curly-quoted misquotation, or an extra table through, and six
+  weaker statements; each is corrected and recorded in
+  [the validation record](docs/proof/governance/v2-s0-001-pr1-validation.md). A final
+  review before merge found the outside review of V1 still treated as a target that a
+  review of V2 would meet, and the page saying it changed no accepted decision while
+  superseding one's outcome; both are corrected and recorded there.
 - **The decision whether a second version should proceed: defer.** `V1-S5-009-PR1`
   recorded [the decision](docs/governance/v2-investment-decision.md) from V1's frozen
   evidence. It cites eleven V1 findings and the register rows

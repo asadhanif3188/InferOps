@@ -1,0 +1,287 @@
+{
+  "$id": "https://inferops.io/governance/v2-authorization.v1alpha1.json",
+  "contractVersion": "inferops.io/v1alpha1",
+  "title": "Opening a second version of InferOps for implementation, as the data a test holds it to",
+  "description": "The decision that opens a second version for implementation and supersedes the outcome of the V1-S5-009-PR1 defer decision without editing it: the earlier record it supersedes and the hashes that show it is unedited, the earlier record's review triggers and whether each fired, the thesis the version is opened under and the V1 findings it starts from, the one placement it moves, how each of the earlier record's entry gates and the revise option's prerequisites is treated now, the separate review condition the version's release waits on, what the version does not take on, and when this decision is looked at again. It authorizes implementation only: it implements nothing, adds no evidence, and moves no claim.",
+  "documentRef": "docs/governance/v2-authorization.md",
+  "priorDecisionRef": "docs/governance/v2-investment-decision.md",
+  "priorDecisionDataRef": "docs/governance/v2-investment-decision.v1alpha1.json",
+  "registerRef": "docs/testing/claim-evidence-matrix.v1alpha2.json",
+  "indexRef": "docs/proof/v1-evidence-index.v1alpha1.json",
+  "boundariesRef": "docs/architecture/project-boundaries.md",
+  "evidenceLevelsRef": "docs/testing/evidence-levels.md",
+  "authorityRef": "docs/governance/decision-authority.v1alpha1.json",
+  "validationRef": "docs/proof/governance/v2-s0-001-pr1-validation.md",
+  "decision": {
+    "decisionId": "v2-authorization",
+    "outcome": "open",
+    "authorizes": "implementation",
+    "decidedIn": "V2-S0-001-PR1",
+    "decidedOn": "2026-09-28",
+    "acceptedBy": {
+      "roleId": "repository-maintainer",
+      "act": "Merging the change that carries this record. There is no other approval artifact.",
+      "authorityRegisterCovers": false,
+      "note": "None of the four authorities in the decision-authority register is a decision about whether to open a new version, as the earlier record also found. The role that can merge is the one that accepts this record, and this record does not add an authority or change one."
+    },
+    "summary": "Open a second version for implementation under one thesis, caller-visible reliability under failure and change. Contract-to-deployment rendering moves into it as its first capability, and the three entry gates the earlier record found unmet stop being preconditions for opening: each is kept, still unmet, and classified as a target or a deferred item, and the version's release waits on a review of its own, which meets none of them. Nothing new has been measured since the earlier record; this is a change of judgment on two points that record named as open to rejection."
+  },
+  "priorDecision": {
+    "decisionId": "v2-investment-decision",
+    "decidedIn": "V1-S5-009-PR1",
+    "decidedOn": "2026-09-27",
+    "outcome": "defer",
+    "reviewBy": "2026-12-27",
+    "relation": "supersedes",
+    "adoptsProblemStatementOf": "revise",
+    "replaced": [
+      {
+        "part": "outcome",
+        "before": "defer",
+        "after": "open"
+      },
+      {
+        "part": "placement of the-self-service-road-is-open",
+        "before": "inferops-v1-completion",
+        "after": "v2"
+      },
+      {
+        "part": "the unmet entry gates",
+        "before": "preconditions for opening a version",
+        "after": "kept visible and unmet, each classified with a treatment: one a V2 target, two deferred"
+      }
+    ],
+    "kept": "Every finding; the three answers given for every other problem, and for the-self-service-road-is-open the first two; every other placement; the boundary rules as cited; what would not justify a second version; and the placement of every uncertified claim.",
+    "dataSha256": "9b9038c601d1eca40a17d6ff002191ef09375b5cbb5cbc9955ec063a4f0b75f7",
+    "pageSha256WithoutNote": "3dc23011703313c5d67b9133a15b61584c1914b5c13403757fe271b19766fce8",
+    "noteAdded": "> [!IMPORTANT]\n> **Superseded on 2026-09-28.** [The decision to open a second version](v2-authorization.md), made in `V2-S0-001-PR1`, replaces this record's outcome: a second version is open for implementation. Nothing below is edited. It is this record as decided on 2026-09-27, and its findings, problems, and boundaries stand except where the newer record says otherwise.\n\n",
+    "triggers": [
+      {
+        "triggerId": "the-review-date",
+        "fired": false,
+        "reading": "The review date is 2026-12-27; this record is taken before it, on the maintainer's initiative."
+      },
+      {
+        "triggerId": "the-road-closes",
+        "fired": false,
+        "reading": "Both contract claims are planned and hold no record."
+      },
+      {
+        "triggerId": "somebody-else-walks-the-road",
+        "fired": false,
+        "reading": "Nobody else has completed the clean-clone journey, and nobody outside the repository has reviewed a claim, a record, or the release."
+      },
+      {
+        "triggerId": "a-capable-host-is-available",
+        "fired": false,
+        "reading": "Nothing has run the multi-replica capacity gate again since 2026-09-12, and no paid host is authorized."
+      },
+      {
+        "triggerId": "outside-feedback-names-a-need",
+        "fired": false,
+        "reading": "No feedback from outside the repository exists."
+      }
+    ]
+  },
+  "evidenceBasis": {
+    "pack": "released",
+    "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
+    "evidencePackSha256": "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2",
+    "note": "The same pack the earlier record read: the one v1.0.0 was cut over. Since the earlier record merged, no experiment has run and no record has been added; the post-release record and ledger it reads came in the same change as it. This record adds no evidence and reads no new result."
+  },
+  "thesis": {
+    "name": "caller-visible reliability under failure and change",
+    "statement": "whether InferOps can keep a caller served, and tell an operator the truth, while a serving pod is lost or a workload's release fails or changes",
+    "priorStatement": "keeping a caller served, and an operator told the truth, while a serving pod is lost",
+    "added": "Release change: a workload release that fails, is rolled back, or drifts from what was declared. V1 rolled back a release with an injected fault twice, by an operating script a person started, with readiness probes as its only callers; it never measured what a caller under load meets during a bad release, a rollout, or a rollback, or any drift. Widening the thesis to that is this record's judgment, not a V1 result.",
+    "motivatingFindingIds": [
+      "one-replica-is-the-outage",
+      "readiness-and-scrape-health-disagreed-with-the-service",
+      "multi-replica-refused-at-the-capacity-gate",
+      "the-topology-decided-the-error",
+      "the-road-stops-before-deployment"
+    ],
+    "relatedClaimIds": [
+      "a-controlled-release-change-can-be-reversed-and-real-inference-restored"
+    ]
+  },
+  "scopeMoves": [
+    {
+      "moveId": "contract-to-deployment-rendering-moves-into-v2",
+      "problemId": "the-self-service-road-is-open",
+      "from": "inferops-v1-completion",
+      "to": "v2",
+      "gateId": "the-road-is-closed-for-one-workload",
+      "claimIds": [
+        "the-platform-serves-a-workload-the-contract-describes",
+        "deployment-values-derive-only-from-a-validated-document"
+      ],
+      "reason": "Every V2 experiment deploys the serving path it measures, so a hand-written values file would sit under every result; rendering is the front of V2's road rather than a task before it. It is also expected to need input the v1alpha1 contract does not carry, which by the earlier record's own definitions is a later version's work. Doing it once, as V2's first step, avoids doing it twice.",
+      "consequence": "Both claims stay planned and move only on records a later change adds; the v1alpha1 contract is not changed by this record; no other placement moves."
+    }
+  ],
+  "gateTreatments": [
+    "met",
+    "v2-target",
+    "deferred",
+    "blocker"
+  ],
+  "priorGates": [
+    {
+      "gateId": "a-release-is-cut-over-the-frozen-pack",
+      "priorState": "met",
+      "treatment": "met",
+      "how": "Stays met: the tag v1.0.0 and the release published on it."
+    },
+    {
+      "gateId": "the-road-has-been-run-under-failure",
+      "priorState": "met",
+      "treatment": "met",
+      "how": "Stays met: the C2 records the earlier record lists."
+    },
+    {
+      "gateId": "the-road-is-closed-for-one-workload",
+      "priorState": "unmet",
+      "treatment": "v2-target",
+      "how": "V2's first capability. It is met when both contract claims are certified on records, not when a renderer exists."
+    },
+    {
+      "gateId": "a-second-person-has-reproduced-v1",
+      "priorState": "unmet",
+      "treatment": "deferred",
+      "how": "Waited for, not scheduled: the author cannot produce it, and a V2 release does not wait on it. A reproduction of V2 would not meet this gate, which is about V1."
+    },
+    {
+      "gateId": "someone-outside-the-repository-has-reviewed-v1",
+      "priorState": "unmet",
+      "treatment": "deferred",
+      "how": "Waited for, not scheduled: it asks for a review of V1, which stays unmet, and V2 does not claim to meet it. A review of V2 would not meet this gate, and V2 has its own review condition, which is not this gate's treatment."
+    },
+    {
+      "gateId": "this-record-is-merged",
+      "priorState": "met-on-merge",
+      "treatment": "met",
+      "how": "The earlier record was merged with its evidence."
+    }
+  ],
+  "priorPrerequisites": [
+    {
+      "prerequisiteId": "a-host-that-passes-the-capacity-gate",
+      "quoted": "A host that passes the multi-replica capacity gate, authorized and budgeted if it is paid for",
+      "treatment": "blocker",
+      "blocks": "every experiment that needs more than one serving replica",
+      "how": "Blocks every experiment that needs more than one serving replica, including the one that loses one of them; opening the version and the rendering do not wait on it. The only host measured refused the multi-replica profile on 2026-09-12, and nothing has run the gate again since. It is run again before any such experiment; if it refuses, a paid host is used only after an explicit authorization that declares a budget, a time limit, and a cleanup, none of which exists today. The gate is not weakened to fit a host."
+    },
+    {
+      "prerequisiteId": "a-registered-replica-loss-experiment",
+      "quoted": "a registered experiment for losing one of several replicas under load",
+      "treatment": "v2-target",
+      "blocks": "",
+      "how": "Registered, with its criteria frozen, before any run whose result bears on the thesis. A run before that is a rehearsal and certifies nothing."
+    },
+    {
+      "prerequisiteId": "an-amendment-to-adr-0004-d7",
+      "quoted": "an amendment to ADR 0004 D7 for alert delivery and a durable store",
+      "treatment": "deferred",
+      "blocks": "",
+      "how": "The version opened here does not need alert routing or a durable store to test its thesis; a V2 change that does amends D7 in its own record first. an-alert-reaches-somebody stays not claimed."
+    }
+  ],
+  "v2ReleaseConditions": [
+    {
+      "conditionId": "a-person-outside-the-repository-has-reviewed-v2",
+      "state": "unmet",
+      "requiredBefore": "v2-release",
+      "requires": [
+        "a-human-reviewer-not-an-ai-reviewer",
+        "a-reviewer-outside-this-repository-and-its-implementation",
+        "the-central-v2-claim-reviewed",
+        "the-evidence-it-rests-on-reviewed",
+        "the-findings-recorded",
+        "no-blocking-finding-open-at-release"
+      ],
+      "doesNot": [
+        "meet-a-v1-gate",
+        "certify-anything",
+        "endorse-anything",
+        "raise-an-evidence-level",
+        "evidence-production-operation"
+      ],
+      "notTheTreatmentOf": "someone-outside-the-repository-has-reviewed-v1",
+      "condition": "No V2 release until a person outside this repository and its implementation, not an AI reviewer, has reviewed V2's central claim and the evidence it rests on, what they found is recorded, and no finding they raised that blocks the release is open.",
+      "limits": "It is a condition of V2's release, not certification or an endorsement. It raises no record's level: it produces neither C3 nor C4, and it is no evidence of production operation. Met, it does not meet someone-outside-the-repository-has-reviewed-v1, which asks for a review of V1 and stays unmet."
+    }
+  ],
+  "nonGoals": [
+    {
+      "nonGoalId": "a-second-workload-shape",
+      "nonGoal": "A second workload shape, asynchronous or batch.",
+      "boundary": "this-record"
+    },
+    {
+      "nonGoalId": "anything-in-front-of-several-providers",
+      "nonGoal": "Anything in front of several providers: a gateway or provider routing.",
+      "boundary": "rule-2"
+    },
+    {
+      "nonGoalId": "the-runtime-s-own-behaviour",
+      "nonGoal": "The runtime's own behaviour: throughput, batching, capacity, accelerator scheduling or optimization, and hardware given in proportion to demand.",
+      "boundary": "rule-3"
+    },
+    {
+      "nonGoalId": "routing-or-shedding-by-load",
+      "nonGoal": "Routing requests by what the runtime is doing, or admitting and shedding load by caller.",
+      "boundary": "this-record"
+    },
+    {
+      "nonGoalId": "a-telemetry-backend-or-cost-management",
+      "nonGoal": "A telemetry backend other systems' telemetry flows into, or cost management beyond what reliability costs.",
+      "boundary": "rule-1"
+    },
+    {
+      "nonGoalId": "agent-runtimes-and-tool-protocols",
+      "nonGoal": "Agent runtimes and tool protocols.",
+      "boundary": "this-record"
+    },
+    {
+      "nonGoalId": "several-clusters-or-a-mesh",
+      "nonGoal": "Several clusters, zones, or regions, and a service mesh.",
+      "boundary": "this-record"
+    },
+    {
+      "nonGoalId": "remediation-without-a-person",
+      "nonGoal": "Changing desired state, or rolling back, without a person approving it.",
+      "boundary": "this-record"
+    }
+  ],
+  "reopenTriggers": [
+    {
+      "triggerId": "the-capacity-gate-refuses-and-no-host-is-authorized",
+      "trigger": "The host is refused at the multi-replica capacity gate and no paid host is authorized, so the redundancy half of the thesis cannot be tested."
+    },
+    {
+      "triggerId": "a-change-leaves-the-thesis",
+      "trigger": "A proposed V2 change serves no part of the thesis or crosses a line this record draws."
+    },
+    {
+      "triggerId": "outside-review-disputes-the-thesis",
+      "trigger": "Somebody outside the repository shows the thesis, or a gate's treatment here, to be wrong."
+    }
+  ],
+  "describesTheRepositoryBeforeThisDecision": [
+    {
+      "surfaceId": "case-study-second-version-section",
+      "path": "docs/case-study/v1-engineering-case-study.md",
+      "says": "Whether a second version proceeds, and what it contains, is a separate decision that has not been made, and nothing here assumes it.",
+      "why": "The case study is bound to the frozen evidence digests and stays as published. The earlier record made that decision, and this record superseded its outcome."
+    },
+    {
+      "surfaceId": "case-study-reading-guide-note",
+      "path": "docs/case-study/v1-engineering-case-study.md",
+      "says": "a separate page records [the decision whether a second version should proceed](../governance/v2-investment-decision.md).",
+      "why": "The note is part of the case study as published. The page it links now carries a note pointing to this record."
+    }
+  ],
+  "claimsMoved": [],
+  "adrsAmended": []
+}

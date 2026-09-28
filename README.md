@@ -390,12 +390,23 @@ intention reads as a capability:
   [its checklist](docs/releases/v1.0.0-checklist.md), and
   [the record read after the release](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md)
   say what that does and does not establish.
-- **No second version yet.** [The decision whether a second version should proceed](docs/governance/v2-investment-decision.md)
-  is to defer one: nothing yet deploys a workload from its validated contract, only its
-  author has completed the clean-clone journey, nobody outside the repository has
-  reviewed a claim, a record, or the release, and the multi-replica profile a second
-  replica would need was refused at its capacity gate on the only host measured, on
-  2026-09-12. It adds no claim, names no scope, and is reviewed by 2026-12-27.
+- **A second version is open for implementation, and nothing in it is built yet.**
+  [The decision to open it](docs/governance/v2-authorization.md), made in
+  `V2-S0-001-PR1` on 2026-09-28, supersedes the outcome of
+  [the decision whether a second version should proceed](docs/governance/v2-investment-decision.md),
+  which deferred one a day earlier and is kept as it was decided. Its thesis is
+  caller-visible reliability under failure and change, and it moves contract-to-deployment
+  rendering into the new version. Nothing new was measured between the two: the three
+  entry gates the earlier record found unmet are still unmet — nothing yet deploys a
+  workload from its validated contract, only its author has completed the clean-clone
+  journey, and nobody outside the repository has reviewed a claim, a record, or the
+  release — and each is classified there: deploying from the contract becomes a target
+  of the new version, and the other two are deferred. Separately, the new version is not
+  released until a person outside the repository has reviewed its central claim and the
+  evidence it rests on, which would not meet the gate about V1. The multi-replica
+  profile a second replica would need was refused at its capacity gate on the only
+  host measured, on 2026-09-12, and that blocks every experiment needing more than one
+  serving replica until the gate passes. The decision adds no claim and moves none.
 
 ## Public entry points
 
