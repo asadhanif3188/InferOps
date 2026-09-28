@@ -5,10 +5,12 @@ outcome of `V1-S5-009-PR1`'s defer decision. The failures this module exists to
 prevent are the ones that let a supersession rewrite history or say more than it
 may: the earlier record edited rather than superseded; a trigger or a gate of the
 earlier record left out, reordered, or restated with another state; an unmet gate
-quietly called met; a moved placement that is not the earlier record's own; a
-quotation the earlier record never wrote; a digest that is not the released pack's;
-a claim moved by a record that says it moves none; and a current surface that still
-says only that the version is deferred.
+quietly called met; a gate that asks something of V1 turned into a V2 target, as if
+a V2 result could meet it; V2's own review condition folded into an earlier gate, or allowed to
+certify, endorse, or raise a level; a moved placement that is not the earlier
+record's own; a quotation the earlier record never wrote; a digest that is not the
+released pack's; a claim moved or an ADR amended by a record that says it does
+neither; and a current surface that still says only that the version is deferred.
 
 What it does not establish is that the thesis is the right one, that moving the
 rendering is wise, that a gate is treated rightly, or that opening now is the right
@@ -58,6 +60,26 @@ PRIOR_GATES = {row["gateId"]: row for row in PRIOR_DATA["entryGates"]}
 PRIOR_OPTIONS = {row["optionId"]: row for row in PRIOR_DATA["options"]}
 
 TREATMENTS = ("met", "v2-target", "deferred", "blocker")
+REVIEW_GATE = "someone-outside-the-repository-has-reviewed-v1"
+#: What V2's review condition must require, and what it must say it does not do. The
+#: final pre-merge review found the earlier gate above treated as a V2 target that a
+#: review of V2 would meet; the condition is now its own entry, held to these.
+REVIEW_REQUIRES = {
+    "a-human-reviewer-not-an-ai-reviewer",
+    "a-reviewer-outside-this-repository-and-its-implementation",
+    "the-central-v2-claim-reviewed",
+    "the-evidence-it-rests-on-reviewed",
+    "the-findings-recorded",
+    "no-blocking-finding-open-at-release",
+}
+REVIEW_DOES_NOT = {
+    "meet-a-v1-gate",
+    "certify-anything",
+    "endorse-anything",
+    "raise-an-evidence-level",
+    "evidence-production-operation",
+}
+ADR_DIR = REPO_ROOT / "docs" / "architecture" / "decisions"
 BOUNDARIES = {
     "rule-1": "1-a-capability-a-contract-can-name-is-not-a-capability-this-project-provides",
     "rule-2": "2-standing-between-a-caller-and-a-choice-of-providers-is-not-this-projects-job",
@@ -358,6 +380,94 @@ def test_every_prerequisite_is_quoted_from_the_revise_option() -> None:
             assert f"Blocks {row['blocks']}" in row["how"], row["prerequisiteId"]
 
 
+# ---------------------------------------------- V2's review, apart from V1's gate
+
+
+def test_the_v1_review_gate_stays_unmet_and_is_deferred() -> None:
+    """A review of V2 cannot meet a gate that asks for a review of V1. The first two
+    commits called this gate a V2 target while saying it stays unmet."""
+    (row,) = [gate for gate in DATA["priorGates"] if gate["gateId"] == REVIEW_GATE]
+    assert row["priorState"] == "unmet"
+    assert row["treatment"] == "deferred"
+
+
+def test_no_gate_that_asks_something_of_v1_is_a_v2_target() -> None:
+    """A target is what V2 must reach; a gate about V1 is not V2's to reach."""
+    about_v1 = [gate for gate in DATA["priorGates"] if gate["gateId"].endswith("-v1")]
+    assert {gate["gateId"] for gate in about_v1} >= {REVIEW_GATE}
+    for gate in about_v1:
+        assert gate["treatment"] != "v2-target", gate["gateId"]
+
+
+def test_v2_s_review_condition_is_its_own_entry_and_meets_no_v1_gate() -> None:
+    gate_ids = {gate["gateId"] for gate in DATA["priorGates"]}
+    targets = {
+        gate["gateId"]
+        for gate in DATA["priorGates"]
+        if gate["treatment"] == "v2-target"
+    }
+    (condition,) = DATA["v2ReleaseConditions"]
+    assert condition["conditionId"] not in gate_ids
+    assert condition["notTheTreatmentOf"] == REVIEW_GATE
+    assert condition["notTheTreatmentOf"] not in targets
+    assert "meet-a-v1-gate" in condition["doesNot"]
+
+
+def test_v2_s_review_condition_requires_a_person_the_evidence_and_no_open_blocker() -> (
+    None
+):
+    (condition,) = DATA["v2ReleaseConditions"]
+    assert condition["requiredBefore"] == "v2-release"
+    # A future condition: nothing yet claims a review happened.
+    assert condition["state"] == "unmet"
+    missing = sorted(REVIEW_REQUIRES - set(condition["requires"]))
+    assert not missing, missing
+
+
+def test_v2_s_review_condition_certifies_nothing_and_raises_no_level() -> None:
+    """Not certification, not an endorsement, not C3 or C4, not production evidence."""
+    (condition,) = DATA["v2ReleaseConditions"]
+    missing = sorted(REVIEW_DOES_NOT - set(condition["doesNot"]))
+    assert not missing, missing
+    assert "neither C3 nor C4" in condition["limits"]
+    assert condition["notTheTreatmentOf"] in condition["limits"]
+
+
+def test_the_page_states_the_review_condition_and_its_limits_as_the_data_does() -> None:
+    section = normalised(_section("## The review V2's release waits on"))
+    prose = section.replace("`", "")
+    assert not _tables(_section("## The review V2's release waits on"))
+    for condition in DATA["v2ReleaseConditions"]:
+        assert (
+            f"`{condition['conditionId']}` is a condition of V2's release, and it is "
+            f"`{condition['state']}`."
+        ) in section
+        assert condition["condition"] in prose, condition["conditionId"]
+        assert condition["limits"] in prose, condition["conditionId"]
+
+
+# ------------------------------------------------------------------- the ADRs
+
+
+def test_the_decision_amends_no_adr_and_is_not_one() -> None:
+    """It supersedes an earlier decision's outcome; it edits no accepted ADR."""
+    assert DATA["adrsAmended"] == []
+    assert not (REPO_ROOT / DATA["documentRef"]).is_relative_to(ADR_DIR)
+    adrs = sorted(ADR_DIR.glob("ADR-*.md"))
+    assert adrs
+    for path in adrs:
+        assert DECISION["decidedIn"] not in path.read_text(encoding="utf-8"), path.name
+    section = _section("## What this record does not do")
+    assert "It does not change an accepted decision" not in normalised(section)
+    assert (
+        "**It does not amend any accepted ADR or edit the earlier decision in place.**"
+        in (normalised(section))
+    )
+    numbers = {path.name.split("-")[1] for path in adrs}
+    named = set(re.findall(r"\b(00\d\d)\b", section))
+    assert named and named <= numbers, sorted(named - numbers)
+
+
 # ------------------------------------------------------- the moved placement
 
 
@@ -490,6 +600,7 @@ def test_the_page_publishes_every_identifier_the_data_holds() -> None:
         | {row["triggerId"] for row in DATA["reopenTriggers"]}
         | set(DATA["gateTreatments"])
         | {row["surfaceId"] for row in DATA["describesTheRepositoryBeforeThisDecision"]}
+        | {row["conditionId"] for row in DATA["v2ReleaseConditions"]}
     )
     missing = sorted(identifiers - spans)
     assert not missing, missing
@@ -562,6 +673,10 @@ def test_the_readme_and_the_governance_table_say_the_version_is_open() -> None:
     # claim moved while the data moves none.
     assert DATA["claimsMoved"] == []
     assert "The decision adds no claim and moves none." in normalised(roadmap)
+    # Both once said two unmet gates "become conditions of the new version's release";
+    # the V1 review gate is deferred, and V2's review is a condition of its own.
+    for surface in (normalised(roadmap), row):
+        assert "two become conditions" not in surface
 
 
 def test_every_surface_left_standing_still_says_what_the_page_says_it_says() -> None:

@@ -29,8 +29,10 @@ Two things change from the earlier record, and nothing else does:
    earlier record placed it in finishing V1; [the reason it moves](#contract-to-deployment-rendering-moves-into-v2)
    is below.
 2. **The unmet entry gates stop being preconditions for opening.** All three are
-   still unmet. Each is kept, and [classified below](#the-earlier-records-entry-gates-and-how-each-is-treated)
-   as a V2 target, a deferred item, or a blocker; none is reported as met.
+   still unmet. Each is kept, and [classified below](#the-earlier-records-entry-gates-and-how-each-is-treated):
+   one becomes a V2 target and two are deferred; none is reported as met. Separately,
+   [V2's release waits on a review of its own](#the-review-v2s-release-waits-on); that
+   review, when it happens, meets none of the three.
 
 This is a change of judgment, not of evidence, and the next section says so.
 
@@ -75,7 +77,7 @@ each as open to rejection:
   the work that does not depend on them. The third, a road closed for one workload, is
   work V2 needs as its own first step. The earlier record stated its gates "so that a
   reader can reject them rather than the outcome"; this record rejects them as
-  preconditions and keeps them as conditions.
+  preconditions and keeps them visible, each with its treatment.
 
 The earlier record's rule that no option opening a version is selected while a gate is
 unmet holds that record's outcome to that record's gates. Its test is unchanged and
@@ -173,7 +175,7 @@ is met, not the opening.
 | `the-road-has-been-run-under-failure` | `met` | `met` | Stays met: the `C2` records the earlier record lists |
 | `the-road-is-closed-for-one-workload` | `unmet` | `v2-target` | V2's first capability. It is met when both contract claims are certified on records, not when a renderer exists |
 | `a-second-person-has-reproduced-v1` | `unmet` | `deferred` | Waited for, not scheduled: the author cannot produce it, and a V2 release does not wait on it. A reproduction of V2 would not meet this gate, which is about V1 |
-| `someone-outside-the-repository-has-reviewed-v1` | `unmet` | `v2-target` | Reframed as a condition of V2's release: no V2 release until a person outside this repository, not an AI reviewer, has reviewed V2's central claim and the evidence it rests on, what they found is recorded, and no finding they raised that blocks the release is open. The gate as written, a review of V1, stays unmet |
+| `someone-outside-the-repository-has-reviewed-v1` | `unmet` | `deferred` | Waited for, not scheduled: it asks for a review of V1, which stays unmet, and V2 does not claim to meet it. A review of V2 would not meet this gate, and V2 has its own review condition, which is not this gate's treatment |
 | `this-record-is-merged` | `met-on-merge` | `met` | The earlier record was merged with its evidence |
 
 Three of the six were unmet when the earlier record was decided, and all three are unmet
@@ -189,6 +191,21 @@ Each is treated the same way:
 | `an-amendment-to-adr-0004-d7` | an amendment to ADR 0004 D7 for alert delivery and a durable store | `deferred` | The version opened here does not need alert routing or a durable store to test its thesis; a V2 change that does amends D7 in its own record first. `an-alert-reaches-somebody` stays not claimed |
 
 The option's last prerequisite, every unmet entry gate, is the first table.
+
+## The review V2's release waits on
+
+`a-person-outside-the-repository-has-reviewed-v2` is a condition of V2's release, and
+it is `unmet`. No V2 release until a person outside this repository and its
+implementation, not an AI reviewer, has reviewed V2's central claim and the evidence it
+rests on, what they found is recorded, and no finding they raised that blocks the
+release is open.
+
+It is a separate condition, not a treatment of an earlier gate, and the earlier gate
+it most resembles is deferred above. It is a condition of V2's release, not
+certification or an endorsement. It raises no record's level: it produces neither
+`C3` nor `C4`, and it is no evidence of production operation. Met, it does not meet
+`someone-outside-the-repository-has-reviewed-v1`, which asks for a review of V1 and
+stays unmet.
 
 ## What V2 does not take on
 
@@ -261,16 +278,18 @@ as the earlier record left it, so neither is edited:
 
 - **It implements nothing.** It builds no capability, adds no evidence, moves no claim,
   and changes no register row, ledger, or file in the evidence pack.
-- **It does not edit the earlier record.** That record's data is byte for byte as it
-  merged, and its page differs only by a dated note at its top that points here.
-- **It does not change an accepted decision.** ADR 0004, including D7, and ADR 0005,
-  0011, 0012, and 0013 stand as they are; a V2 change that needs one changed records
-  that change first.
+- **It does not amend any accepted ADR or edit the earlier decision in place.** It
+  supersedes that decision's outcome from the date of this record on. The earlier
+  record stays as it was decided: its data is byte for byte as it merged, and its page
+  differs only by a dated note at its top that points here. ADR 0004, including D7, and
+  ADR 0005, 0011, 0012, and 0013 stand as they are; a V2 change that needs one changed
+  records that change first.
 - **It does not add an authority.** None of the four in
   [the decision-authority register](decision-authority.md) is a decision to open a
   version, as the earlier record also found.
 - **It does not call a gate met.** The three unmet gates are unmet, and two stay so
-  until somebody other than the author acts.
+  until somebody other than the author acts. A review of V2, when there is one, can meet
+  V2's release condition and none of them.
 - **It does not name another project.** "Elsewhere" is a boundary, as in
   [the project boundaries](../architecture/project-boundaries.md), not a plan.
 - **It does not authorize spending or publishing.** Paid infrastructure, a model other
@@ -296,6 +315,13 @@ as the earlier record left it, so neither is edited:
   says what the data says, with no extra table beside them;
 - every quoted prerequisite is in the earlier `revise` option's words, and a blocker
   names what it blocks;
+- the earlier gate that asks for a review of V1 is `deferred`, not a V2 target; V2's
+  review condition is a separate entry, unmet, that requires a person, not an AI
+  reviewer, outside the repository and its implementation, the central claim and its
+  evidence, recorded findings, and no blocking finding open at release, and that says
+  it meets no V1 gate, certifies and endorses nothing, raises no level, and is no
+  evidence of production operation; the page states it and its limits as the data does;
+- the data amends no ADR, and no ADR names this change;
 - the moved placement is the earlier record's own, with the same problem, gate, and
   claims, and both claims are still planned in the pack this record reads;
 - every finding the thesis cites is one of the earlier record's, its earlier problem

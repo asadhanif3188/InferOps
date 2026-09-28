@@ -2,7 +2,7 @@
   "$id": "https://inferops.io/governance/v2-authorization.v1alpha1.json",
   "contractVersion": "inferops.io/v1alpha1",
   "title": "Opening a second version of InferOps for implementation, as the data a test holds it to",
-  "description": "The decision that opens a second version for implementation and supersedes the outcome of the V1-S5-009-PR1 defer decision without editing it: the earlier record it supersedes and the hashes that show it is unedited, the earlier record's review triggers and whether each fired, the thesis the version is opened under and the V1 findings it starts from, the one placement it moves, how each of the earlier record's entry gates and the revise option's prerequisites is treated now, what the version does not take on, and when this decision is looked at again. It authorizes implementation only: it implements nothing, adds no evidence, and moves no claim.",
+  "description": "The decision that opens a second version for implementation and supersedes the outcome of the V1-S5-009-PR1 defer decision without editing it: the earlier record it supersedes and the hashes that show it is unedited, the earlier record's review triggers and whether each fired, the thesis the version is opened under and the V1 findings it starts from, the one placement it moves, how each of the earlier record's entry gates and the revise option's prerequisites is treated now, the separate review condition the version's release waits on, what the version does not take on, and when this decision is looked at again. It authorizes implementation only: it implements nothing, adds no evidence, and moves no claim.",
   "documentRef": "docs/governance/v2-authorization.md",
   "priorDecisionRef": "docs/governance/v2-investment-decision.md",
   "priorDecisionDataRef": "docs/governance/v2-investment-decision.v1alpha1.json",
@@ -24,7 +24,7 @@
       "authorityRegisterCovers": false,
       "note": "None of the four authorities in the decision-authority register is a decision about whether to open a new version, as the earlier record also found. The role that can merge is the one that accepts this record, and this record does not add an authority or change one."
     },
-    "summary": "Open a second version for implementation under one thesis, caller-visible reliability under failure and change. Contract-to-deployment rendering moves into it as its first capability, and the three entry gates the earlier record found unmet stop being preconditions for opening: each is kept, still unmet, and classified as a target, a deferred item, or a blocker. Nothing new has been measured since the earlier record; this is a change of judgment on two points that record named as open to rejection."
+    "summary": "Open a second version for implementation under one thesis, caller-visible reliability under failure and change. Contract-to-deployment rendering moves into it as its first capability, and the three entry gates the earlier record found unmet stop being preconditions for opening: each is kept, still unmet, and classified as a target or a deferred item, and the version's release waits on a review of its own, which meets none of them. Nothing new has been measured since the earlier record; this is a change of judgment on two points that record named as open to rejection."
   },
   "priorDecision": {
     "decisionId": "v2-investment-decision",
@@ -48,7 +48,7 @@
       {
         "part": "the unmet entry gates",
         "before": "preconditions for opening a version",
-        "after": "conditions classified as a V2 target, a deferred item, or a blocker"
+        "after": "kept visible and unmet, each classified with a treatment: one a V2 target, two deferred"
       }
     ],
     "kept": "Every finding; the three answers given for every other problem, and for the-self-service-road-is-open the first two; every other placement; the boundary rules as cited; what would not justify a second version; and the placement of every uncertified claim.",
@@ -154,8 +154,8 @@
     {
       "gateId": "someone-outside-the-repository-has-reviewed-v1",
       "priorState": "unmet",
-      "treatment": "v2-target",
-      "how": "Reframed as a condition of V2's release: no V2 release until a person outside this repository, not an AI reviewer, has reviewed V2's central claim and the evidence it rests on, what they found is recorded, and no finding they raised that blocks the release is open. The gate as written, a review of V1, stays unmet."
+      "treatment": "deferred",
+      "how": "Waited for, not scheduled: it asks for a review of V1, which stays unmet, and V2 does not claim to meet it. A review of V2 would not meet this gate, and V2 has its own review condition, which is not this gate's treatment."
     },
     {
       "gateId": "this-record-is-merged",
@@ -185,6 +185,31 @@
       "treatment": "deferred",
       "blocks": "",
       "how": "The version opened here does not need alert routing or a durable store to test its thesis; a V2 change that does amends D7 in its own record first. an-alert-reaches-somebody stays not claimed."
+    }
+  ],
+  "v2ReleaseConditions": [
+    {
+      "conditionId": "a-person-outside-the-repository-has-reviewed-v2",
+      "state": "unmet",
+      "requiredBefore": "v2-release",
+      "requires": [
+        "a-human-reviewer-not-an-ai-reviewer",
+        "a-reviewer-outside-this-repository-and-its-implementation",
+        "the-central-v2-claim-reviewed",
+        "the-evidence-it-rests-on-reviewed",
+        "the-findings-recorded",
+        "no-blocking-finding-open-at-release"
+      ],
+      "doesNot": [
+        "meet-a-v1-gate",
+        "certify-anything",
+        "endorse-anything",
+        "raise-an-evidence-level",
+        "evidence-production-operation"
+      ],
+      "notTheTreatmentOf": "someone-outside-the-repository-has-reviewed-v1",
+      "condition": "No V2 release until a person outside this repository and its implementation, not an AI reviewer, has reviewed V2's central claim and the evidence it rests on, what they found is recorded, and no finding they raised that blocks the release is open.",
+      "limits": "It is a condition of V2's release, not certification or an endorsement. It raises no record's level: it produces neither C3 nor C4, and it is no evidence of production operation. Met, it does not meet someone-outside-the-repository-has-reviewed-v1, which asks for a review of V1 and stays unmet."
     }
   ],
   "nonGoals": [
@@ -257,5 +282,6 @@
       "why": "The note is part of the case study as published. The page it links now carries a note pointing to this record."
     }
   ],
-  "claimsMoved": []
+  "claimsMoved": [],
+  "adrsAmended": []
 }

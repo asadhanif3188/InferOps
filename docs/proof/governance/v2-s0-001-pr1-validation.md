@@ -254,3 +254,115 @@ private planning document, and a later story's identifier. None is present. The 
 where work stops by the boundary rules this repository already publishes, and names no
 other project. No model artifact, generated render, built distribution, or machine state
 is added.
+
+## Final pre-merge governance correction
+
+A review of the whole pull request before merge, at `bf4c7d8`, found two statements
+that were not what the record means. Both are corrected in a third commit. Nothing
+above is rewritten: it records the first two commits as they were checked.
+
+**The earlier gate that asks for a review of V1 was treated as a V2 target.** The data
+and the page gave `someone-outside-the-repository-has-reviewed-v1` the prior state
+`unmet` and the treatment `v2-target`, and the same row said "the gate as written, a
+review of V1, stays unmet". Those conflict. A target is something V2 must reach, and a
+review of V2 cannot meet a gate that asks for a review of V1. The gate keeps the prior
+state `unmet`, and its treatment is now `deferred`: waited for, not scheduled, not met
+by anything V2 does. The review V2's release waits on is now its own entry,
+`a-person-outside-the-repository-has-reviewed-v2`, under `v2ReleaseConditions` in the
+data and in its own section of the page. It is `unmet`. It requires all of the following:
+
+- a person, not an AI reviewer, outside this repository and its implementation;
+- a review of V2's central claim and the evidence it rests on;
+- the findings recorded;
+- no blocking finding open at release.
+
+It says it meets no V1 gate, certifies and endorses nothing, raises no record's level
+(neither `C3` nor `C4`), and is no evidence of production operation. It names the earlier
+gate as the one it is not the treatment of. The README's roadmap, the governance
+table's row, and the changelog said two unmet gates "become conditions of the new
+version's release". They now say one gate becomes a target and two are deferred, and
+that V2's release separately waits on its own review.
+
+**The page said "It does not change an accepted decision."** It does supersede the
+outcome of an accepted decision. What stays true is narrower, and the bullet now says
+it: "It does not amend any accepted ADR or edit the earlier decision in place". The
+earlier decision's outcome is superseded from this record's date on, and that record
+stays as it was decided. The data gains `adrsAmended`, empty. The changelog said the
+change "changes no accepted decision" and now says it amends no accepted ADR.
+
+**What the module now checks.** Seven tests are added:
+
+- the review gate is `unmet` and `deferred`;
+- no gate whose identifier ends in `-v1` is a V2 target;
+- the review condition is not a gate of the earlier record, names the review gate as
+  the one it is not the treatment of, and says it meets no V1 gate;
+- it is unmet, required before V2's release, and requires each of the six things above;
+- it says it does none of the five things above;
+- the page states the condition and its limits as the data does;
+- the data amends no ADR, no ADR names this change, the old sentence is gone and the
+  new one present, and every ADR number the section names exists.
+
+The README and governance-row check also refuses the old wording.
+
+The same uncommitted script applied sixteen new corruptions, fifty-one in all, one at
+a time. All fifty-one were refused, and the files were restored after each. The new
+sixteen:
+
+- the review gate set back to `v2-target` in the data alone, and in the page and the
+  data together;
+- one requirement dropped from the condition: the open-blocker requirement, and
+  separately the human reviewer;
+- `certify-anything` or `meet-a-v1-gate` dropped from what the condition does not do;
+- the condition said met;
+- the condition pointed at the road gate, or renamed to the V1 gate;
+- the page dropping "not an AI reviewer", or saying the review produces `C3`;
+- an ADR listed as amended, or an ADR naming this change;
+- the old ADR sentence restored;
+- the README or the governance row collapsing the gates again.
+
+The one set back in the data alone is caught first by the check that the page's table
+is the data's. The same change in both files is caught by the check written for it.
+
+**An independent review of the staged correction** found nothing blocking. It raised
+five points of polish, all taken:
+
+- two lines to rewrap;
+- a "which" whose antecedent was unclear;
+- the data's `replaced` entry calling the gates "conditions" beside the new release
+  condition;
+- a compressed sentence in the module's docstring.
+
+**What did not change.** No claim, status, or level; no register row, ledger, record, or
+other file in the evidence pack; no ADR; the earlier record's data and page; the thesis,
+the non-goals, the rendering move, and the evidence-level section; and nothing that
+executes. This is a correction of how the record describes a gate. It promotes no result
+and adds no evidence.
+
+On the same host, from Git Bash, with every file staged:
+
+| Command | Result |
+|---|---|
+| `ruff format --check .` | 528 files already formatted, after one reformat of the module |
+| `ruff check .` | All checks passed |
+| `python -m mypy` | No issues in 281 source files |
+| The decision's, the earlier decision's, the inventory's, and the release's modules, `-rs` | 1173 passed, none skipped |
+| `pytest tests/testing tests/security tests/architecture -q` | 10784 passed, 6 skipped, in 10 min 0 s |
+| `python -m tools.proof_dashboard --check` | `OK` |
+| `python -m tools.evidence_index --check` | `OK` |
+| `python -m tools.evidence_index --gate` | Exit 0: `RELEASED v1.0.0` at `718ad2e` with the set `1d40b33f…` and the pack `652e9051…`, and `CURRENT` with the set `08d4868f…` and the pack `b958a724…`: unchanged |
+| `pytest -q`, the default lane | See below |
+| `git diff --cached --check` | Clean |
+| `git diff main -- docs/governance/v2-investment-decision.v1alpha1.json` | Empty |
+| `git diff --name-only main -- docs/architecture/decisions` | Empty |
+
+The broad run and a first default-lane run (15498 passed, 33 skipped, 14 deselected)
+both came before the review's polish and this section. The default lane was run again
+after both; its result is in the next line.
+
+The second default-lane run passed 15498, skipped 33, and deselected 14, in 10 min
+3 s. The seven added tests are the difference from the 15491 before this correction.
+The 33 skips are this host's, as above. The 14 deselected are the lanes that need a
+cluster, a runtime, or a model, which a change to a governance record does not
+exercise. Replacing this paragraph's placeholder was the last edit to the record.
+After it, the decision's and the three related modules passed again, and
+`git diff --cached --check` stayed clean.
