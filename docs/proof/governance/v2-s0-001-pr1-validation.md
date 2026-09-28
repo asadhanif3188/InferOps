@@ -21,19 +21,22 @@ contacted, nothing was provisioned, and nothing was published. It reads the pack
 - **What the pack covers.** Every file a record cites, the register, and its five
   ledgers. None of the files this change touches is among them, so all three pairs of
   digests could stay where they were, and did.
-- **What the earlier record allows.** It says a review "either confirms this record with
-  a dated note or replaces it with a new decision; it does not edit the reasoning above
-  in place". This change is a new decision, and the earlier page gains only a dated
-  note at its top. None of its five review triggers had fired, and the new page says so.
+- **What the earlier record provides for.** It does not provide for a decision before
+  its review date or one of its triggers, and none of its five triggers had fired; the
+  new page says so, and that it is taken on the maintainer's initiative. It follows the
+  form the earlier record sets for a review, which "either confirms this record with a
+  dated note or replaces it with a new decision; it does not edit the reasoning above in
+  place": a new decision, with only a dated note added at the earlier page's top.
 
 ## What changed
 
 - **The decision.** `docs/governance/v2-authorization.md` and the data it is held to,
   `v2-authorization.v1alpha1.json`: the earlier record, with hashes of its data and of
-  its page without the note; its five triggers, none fired; the thesis and the five
-  earlier findings it starts from; one moved placement; the six earlier gates and three
-  of the `revise` option's prerequisites, each with a treatment; eight things the
-  version does not take on; three reasons to look at the decision again.
+  its page without the note; its five triggers, none fired; the thesis, the five
+  earlier findings it starts from, and the one V1 claim about release change; one moved
+  placement; the six earlier gates and three of the `revise` option's prerequisites,
+  each with a treatment; eight things the version does not take on; three reasons to
+  look at the decision again; and two passages of the case study left standing.
 - **The earlier decision.** Its page gains a dated note under its title, three added
   lines. Its data and its test are unchanged.
 - **Current surfaces.** The README's roadmap bullet and the governance table's
@@ -56,7 +59,7 @@ contacted, nothing was provisioned, and nothing was published. It reads the pack
 | The story asks that | Answered in |
 |---|---|
 | A governed decision explicitly revisits, revises, or supersedes the defer outcome | The page's status line and "The decision": it supersedes the outcome and edits none of the earlier record; the test holds the earlier data to its hash and the earlier page to its hash without the note |
-| The decision names caller-visible reliability under failure or change as the thesis | "The thesis", which also says the release-change half rests on no V1 result |
+| The decision names caller-visible reliability under failure or change as the thesis | "The thesis", which also says what V1 did and did not measure of release change |
 | Contract-to-deployment rendering is moved into V2, and the reason is documented | "Contract-to-deployment rendering moves into V2", with three reasons and what does not change |
 | Still-unmet gates stay visible and are classified as targets, deferred items, or blockers | "The earlier record's entry gates, and how each is treated": six gates and three prerequisites; the test refuses a gate unmet then and called met now |
 | No V1 evidence, tag, release, or historical decision is rewritten | No file in the pack changed, and the gate printed the same three pairs of digests before and after; the earlier record's data is byte for byte as merged; no release file changed; the one edit to a V1 test is to a check's history range, not to what it compares |
@@ -71,11 +74,8 @@ story.
 - **The test's own parser.** Its table reader dropped every table, because it tested
   for a table row before skipping the separator line; and a phrase check missed a
   sentence wrapped inside a blockquote. Both were fixed before any result below.
-- **Wording in the test that pointed at unpublished planning.** The first list of
-  forbidden phrases named words about who the work is for and where it might run. A
-  list of words to refuse says what someone might have written, so it is cut to the
-  overclaim and appeal words the earlier record's test refuses, and review carries the
-  rest.
+- **The test's list of forbidden phrases** was cut to the overclaim and appeal words the
+  earlier record's test refuses.
 - **Mutations.** Twenty-six deliberate corruptions of the data, the page, the earlier
   record, the README, and the governance table were applied one at a time by a script
   kept outside the repository, and the module was run after each with `-x`: the earlier
@@ -105,7 +105,7 @@ lock is unchanged.
 uv run --locked --offline ruff format --check .
 uv run --locked --offline ruff check .
 uv run --locked --offline python -m mypy
-uv run --locked --offline python -m pytest tests/testing/test_v2_authorization.py tests/testing/test_v2_investment_decision.py tests/testing/test_test_inventory.py -q -rs
+uv run --locked --offline python -m pytest tests/testing/test_v2_authorization.py tests/testing/test_v2_investment_decision.py tests/testing/test_test_inventory.py tests/testing/test_release.py -q -rs
 uv run --locked --offline python -m pytest tests/testing tests/security tests/architecture -q
 uv run --locked --offline python -m tools.proof_dashboard --check
 uv run --locked --offline python -m tools.evidence_index --check
@@ -145,12 +145,112 @@ The Helm and Terraform gates were not run: nothing under `charts/` or `infra/` c
 No cluster, runtime, or model lane was run, because nothing that executes changed. The
 hosted `checks` workflow runs on the pull request and is not quoted here.
 
+## What the independent review found
+
+Two reviewers read the first commit independently: one checked every public statement
+against the files it rests on, and the private planning set for leakage and for fidelity
+to the story; one reviewed the test module, the release module's change, and the data's
+logic, and mutated them. They found four false statements, three test defects, two
+checks weaker than they needed to be, six weaker statements, two lines that said more
+about the private planning than they needed to, and notes. Each was corrected before the
+second commit, or is answered below.
+
+**What the first draft got wrong.**
+
+- **It said V1 never deployed a bad release or rolled one back, and its test required
+  the sentence.** The register certifies
+  `a-controlled-release-change-can-be-reversed-and-real-inference-restored` at `C2` on
+  two runs, each rolling back a release with an injected fault. The thesis now says what
+  V1 measured — a rollback run by a script a person started, with readiness probes as
+  the only callers — and what it did not: a caller under load during a bad release, a
+  rollout, or a rollback, and any drift. The page even contradicted itself, saying
+  elsewhere that V1 already rolls releases back through Helm. The data now cites the
+  claim, and the test checks it is certified and that the page states its level and its
+  run count.
+- **It said nothing was added between the two records except the post-release ledger,
+  "which moved only the release row".** The ledger and its record came in the same change
+  as the earlier record, which cites both, and the ledger also adds a record and changes a
+  register-level surface reason. Both sentences now say that nothing has been added since
+  the earlier record merged.
+- **Its data said every problem's three answers were kept**, while moving the third
+  answer for one of them. It now says so.
+- **The validation record's commands did not produce the result it quoted:** the release
+  module was in the result and not in the command. It is now in both.
+
+**Test defects.**
+
+- **The page's "How" cells were never compared with the data.** Changing them on the page
+  alone passed, while the page said its tables say what the data says. Every column is
+  now compared.
+- **The quotation check matched only straight quotes.** A fabricated passage in curly
+  quotes passed. Both kinds are now matched, and the earlier page is normalised the same
+  way.
+- **The trigger check read only the first table in its section,** so a contradicting table
+  inserted beside it passed. The section must now hold exactly its two tables.
+
+**Checks weaker than they needed to be.** A note on the earlier page edited the same way in
+the page and the data — the reviewer's example added that a gate was satisfied by the note
+alone — passed every check, because the hash is taken after removing whatever the data
+holds; the note's text is now pinned in the module itself. The README's sentence that the
+decision moves no claim could be rewritten to say one moved; the module now requires it.
+
+**Weaker statements, each corrected.** The capacity blocker was said to block the
+replica-loss experiment "and nothing else"; it blocks every experiment needing more than
+one serving replica. The outside-review condition allowed any reviewer outside the
+repository and a review of the claim or its evidence; it now requires a person, not an AI
+reviewer, the claim and its evidence, and no open finding that blocks the release. This
+record said the earlier record allows a decision like it; the earlier record does not
+provide for a decision before its review date, and this record says it follows only the
+form a review takes. "Nothing has re-measured the host" was broader than true — later
+records read the node's capacity — and now says nothing has run the multi-replica capacity
+gate again. The judgment that the one-replica outage is the problem V1 exposed most clearly
+is now stated as this record's, beside the case study's different emphasis, and the
+earlier record's "its problem is the right one" is quoted with its "but". The README, the
+governance row, and the changelog called the unmet gates targets, deferred items, or
+blockers, when no gate is a blocker; the host prerequisite is, and they now say which is
+which. The second person's run was "sought", which nothing shows; it is now "waited for",
+the earlier record's words.
+
+**The leak.** Two lines of this record described what the forbidden-phrase list and the
+privacy search had been looking for, which said more about the private planning than the
+check needed. Both are cut to what was checked.
+
+**Notes, answered.** The non-goal on remediation now names changing desired state or rolling
+back without a person's approval, and says bringing running state back to an approved state
+is not excluded. "A service mesh by default" loses its qualifier. The runtime non-goal cites
+boundary rule 3 for hardware given in proportion to demand, its own words, and says drifting
+into autoscaling leaves the thesis. The case study's two passages that predate this record
+are listed, with a tripwire, as the earlier record listed one. "Every quotation" in the
+machine-checked list now says which passages the check reads. The story's wider traceability
+stays with its private planning and is not published; the table above traces its
+acceptance criteria only.
+
+**Not changed.** The check that no ledger names this change can only fire if an old ledger
+is edited; it is kept, and the pack test beside it is the stronger guard. The mutation
+script stays uncommitted, so its counts rest on this record.
+
+## After the independent review
+
+Before the second commit, on the same host, with every file staged: `ruff format --check .`
+528 files already formatted; `ruff check .` all checks passed; `python -m mypy` no issues
+in 281 source files; the decision's, the earlier decision's, the inventory's, and the
+release's modules 1166 passed, none skipped; `--check` for the dashboard and the index both
+`OK`; `--gate` exit 0 with all three pairs of digests unchanged; thirty-five corruptions,
+the first twenty-six and nine for what the review found — a "How" cell changed on the page
+alone, for a gate and for a prerequisite; a fabricated passage in curly quotes; a
+contradicting table beside the triggers; the note extended in the page and the data
+together; the README saying a claim moved; the release claim's run count wrong; the V1
+rollback denied again; and a standing surface dropped from the page — each refused, and
+the files restored after each; the default lane 15491 passed, 33 skipped, 14 deselected, in
+9 min 0 s; and `git diff --cached --check` clean. One sentence of the page was reworded
+after the lane, to say the case study is V1's rather than the earlier record's; the
+decision's module passed again afterwards.
+
 ## Privacy and publicability
 
 The staged diff's added lines were searched for a drive-letter or home-directory path, a
 scratch directory, an e-mail address, a credential-shaped string, the name of any
-private planning document, a later story's identifier, and the names of tools,
-providers, or prices the change does not need. None is present. The decision describes
+private planning document, and a later story's identifier. None is present. The decision describes
 where work stops by the boundary rules this repository already publishes, and names no
 other project. No model artifact, generated render, built distribution, or machine state
 is added.

@@ -51,7 +51,7 @@
         "after": "conditions classified as a V2 target, a deferred item, or a blocker"
       }
     ],
-    "kept": "Every finding, the three answers given for every problem, every other placement, the boundary rules as cited, what would not justify a second version, and the placement of every uncertified claim.",
+    "kept": "Every finding; the three answers given for every other problem, and for the-self-service-road-is-open the first two; every other placement; the boundary rules as cited; what would not justify a second version; and the placement of every uncertified claim.",
     "dataSha256": "9b9038c601d1eca40a17d6ff002191ef09375b5cbb5cbc9955ec063a4f0b75f7",
     "pageSha256WithoutNote": "3dc23011703313c5d67b9133a15b61584c1914b5c13403757fe271b19766fce8",
     "noteAdded": "> [!IMPORTANT]\n> **Superseded on 2026-09-28.** [The decision to open a second version](v2-authorization.md), made in `V2-S0-001-PR1`, replaces this record's outcome: a second version is open for implementation. Nothing below is edited. It is this record as decided on 2026-09-27, and its findings, problems, and boundaries stand except where the newer record says otherwise.\n\n",
@@ -74,7 +74,7 @@
       {
         "triggerId": "a-capable-host-is-available",
         "fired": false,
-        "reading": "Nothing has re-measured the host since 2026-09-12, and no paid host is authorized."
+        "reading": "Nothing has run the multi-replica capacity gate again since 2026-09-12, and no paid host is authorized."
       },
       {
         "triggerId": "outside-feedback-names-a-need",
@@ -87,19 +87,22 @@
     "pack": "released",
     "evidenceSetSha256": "1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a",
     "evidencePackSha256": "652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2",
-    "note": "The same pack the earlier record read: the one v1.0.0 was cut over. Between the two records nothing was added except the post-release ledger, which moved only the release row. This record adds no evidence and reads no new result."
+    "note": "The same pack the earlier record read: the one v1.0.0 was cut over. Since the earlier record merged, no experiment has run and no record has been added; the post-release record and ledger it reads came in the same change as it. This record adds no evidence and reads no new result."
   },
   "thesis": {
     "name": "caller-visible reliability under failure and change",
     "statement": "whether InferOps can keep a caller served, and tell an operator the truth, while a serving pod is lost or a workload's release fails or changes",
     "priorStatement": "keeping a caller served, and an operator told the truth, while a serving pod is lost",
-    "added": "Release change: a workload release that fails, is rolled back, or drifts from what was declared. V1 measured none of it, so this half rests on judgment, not on a V1 result.",
+    "added": "Release change: a workload release that fails, is rolled back, or drifts from what was declared. V1 rolled back a release with an injected fault twice, by an operating script a person started, with readiness probes as its only callers; it never measured what a caller under load meets during a bad release, a rollout, or a rollback, or any drift. Widening the thesis to that is this record's judgment, not a V1 result.",
     "motivatingFindingIds": [
       "one-replica-is-the-outage",
       "readiness-and-scrape-health-disagreed-with-the-service",
       "multi-replica-refused-at-the-capacity-gate",
       "the-topology-decided-the-error",
       "the-road-stops-before-deployment"
+    ],
+    "relatedClaimIds": [
+      "a-controlled-release-change-can-be-reversed-and-real-inference-restored"
     ]
   },
   "scopeMoves": [
@@ -146,13 +149,13 @@
       "gateId": "a-second-person-has-reproduced-v1",
       "priorState": "unmet",
       "treatment": "deferred",
-      "how": "Sought, not scheduled: the author cannot produce it, and a V2 release does not wait on it. A reproduction of V2 would not meet this gate, which is about V1."
+      "how": "Waited for, not scheduled: the author cannot produce it, and a V2 release does not wait on it. A reproduction of V2 would not meet this gate, which is about V1."
     },
     {
       "gateId": "someone-outside-the-repository-has-reviewed-v1",
       "priorState": "unmet",
       "treatment": "v2-target",
-      "how": "Reframed as a condition of V2's release: no V2 release until somebody outside this repository has reviewed V2's central claim or the evidence it rests on, and what they found is recorded. The gate as written, a review of V1, stays unmet."
+      "how": "Reframed as a condition of V2's release: no V2 release until a person outside this repository, not an AI reviewer, has reviewed V2's central claim and the evidence it rests on, what they found is recorded, and no finding they raised that blocks the release is open. The gate as written, a review of V1, stays unmet."
     },
     {
       "gateId": "this-record-is-merged",
@@ -166,8 +169,8 @@
       "prerequisiteId": "a-host-that-passes-the-capacity-gate",
       "quoted": "A host that passes the multi-replica capacity gate, authorized and budgeted if it is paid for",
       "treatment": "blocker",
-      "blocks": "the experiment that loses one of several serving replicas",
-      "how": "Blocks that experiment and nothing else. The only host measured refused the multi-replica profile on 2026-09-12 and has not been re-measured. It is measured again before that experiment; if it is refused, a paid host is used only after an explicit authorization that declares a budget, a time limit, and a cleanup, none of which exists today. The gate is not weakened to fit a host."
+      "blocks": "every experiment that needs more than one serving replica",
+      "how": "Blocks every experiment that needs more than one serving replica, including the one that loses one of them; opening the version and the rendering do not wait on it. The only host measured refused the multi-replica profile on 2026-09-12, and nothing has run the gate again since. It is run again before any such experiment; if it refuses, a paid host is used only after an explicit authorization that declares a budget, a time limit, and a cleanup, none of which exists today. The gate is not weakened to fit a host."
     },
     {
       "prerequisiteId": "a-registered-replica-loss-experiment",
@@ -197,7 +200,7 @@
     },
     {
       "nonGoalId": "the-runtime-s-own-behaviour",
-      "nonGoal": "The runtime's own behaviour: throughput, batching, capacity, accelerator scheduling or optimization, and hardware or replicas given in proportion to demand.",
+      "nonGoal": "The runtime's own behaviour: throughput, batching, capacity, accelerator scheduling or optimization, and hardware given in proportion to demand.",
       "boundary": "rule-3"
     },
     {
@@ -217,12 +220,12 @@
     },
     {
       "nonGoalId": "several-clusters-or-a-mesh",
-      "nonGoal": "Several clusters, zones, or regions, and a service mesh by default.",
+      "nonGoal": "Several clusters, zones, or regions, and a service mesh.",
       "boundary": "this-record"
     },
     {
       "nonGoalId": "remediation-without-a-person",
-      "nonGoal": "Remediation that acts without a person approving it.",
+      "nonGoal": "Changing desired state, or rolling back, without a person approving it.",
       "boundary": "this-record"
     }
   ],
@@ -238,6 +241,20 @@
     {
       "triggerId": "outside-review-disputes-the-thesis",
       "trigger": "Somebody outside the repository shows the thesis, or a gate's treatment here, to be wrong."
+    }
+  ],
+  "describesTheRepositoryBeforeThisDecision": [
+    {
+      "surfaceId": "case-study-second-version-section",
+      "path": "docs/case-study/v1-engineering-case-study.md",
+      "says": "Whether a second version proceeds, and what it contains, is a separate decision that has not been made, and nothing here assumes it.",
+      "why": "The case study is bound to the frozen evidence digests and stays as published. The earlier record made that decision, and this record superseded its outcome."
+    },
+    {
+      "surfaceId": "case-study-reading-guide-note",
+      "path": "docs/case-study/v1-engineering-case-study.md",
+      "says": "a separate page records [the decision whether a second version should proceed](../governance/v2-investment-decision.md).",
+      "why": "The note is part of the case study as published. The page it links now carries a note pointing to this record."
     }
   ],
   "claimsMoved": []

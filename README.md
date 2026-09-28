@@ -400,10 +400,11 @@ intention reads as a capability:
   entry gates the earlier record found unmet are still unmet — nothing yet deploys a
   workload from its validated contract, only its author has completed the clean-clone
   journey, and nobody outside the repository has reviewed a claim, a record, or the
-  release — and each is classified there as a target, a deferred item, or a blocker. The
-  multi-replica profile a second replica would need was refused at its capacity gate on
-  the only host measured, on 2026-09-12, and that blocks the experiment that needs it.
-  The decision adds no claim and moves none.
+  release — and each is classified there: two become conditions of the new version's
+  release, and the second person's run is deferred. The multi-replica profile a second
+  replica would need was refused at its capacity gate on the only host measured, on
+  2026-09-12, and that blocks every experiment needing more than one serving replica
+  until the gate passes. The decision adds no claim and moves none.
 
 ## Public entry points
 

@@ -72,7 +72,14 @@ MEASUREMENT = re.compile(
 )
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
 LINK = re.compile(r"\]\(([^)\s]+)\)")
-QUOTATION = re.compile(r'"([^"]{20,})"')
+#: A passage in straight or curly double quotes. The independent review of the first
+#: commit showed a fabricated passage in curly quotes passing a straight-only pattern.
+QUOTATION = re.compile(r"[\"“]([^\"“”]{20,})[\"”]")
+
+#: The note added to the earlier page, pinned here rather than only in the data. A
+#: note edited the same way in the page and the data kept every other check green in
+#: the independent review; changing it now means changing this module too.
+NOTE_SHA256 = "07de225e1992dba92583d5bb558265f97a35d2343e871185d23aa194a29e9bf8"
 
 #: Wording that would overclaim what a second version establishes, or argue from an
 #: appeal rather than from evidence, as the earlier record's list does.
@@ -126,6 +133,11 @@ def _tables(section: str) -> list[list[list[str]]]:
             continue
         current.append(row)
     return tables
+
+
+def _prose(cell: str) -> str:
+    """A table cell as the data writes it, without the page's code spans."""
+    return cell.replace("`", "")
 
 
 def _code(cell: str) -> str:
@@ -188,6 +200,7 @@ def test_the_note_points_here_and_says_what_it_supersedes() -> None:
     assert f"]({target})" in note
     assert f"`{DECISION['decidedIn']}`" in note
     assert "Nothing below is edited." in note
+    assert hashlib.sha256(note.encode("utf-8")).hexdigest() == NOTE_SHA256
 
 
 def test_what_the_data_says_of_the_earlier_record_is_that_record_s() -> None:
@@ -262,7 +275,11 @@ def test_the_triggers_that_can_be_read_from_data_agree_with_it() -> None:
 
 
 def test_the_page_lists_every_trigger_with_the_data_s_reading() -> None:
-    (rows,) = _tables(_section("## Why now, when nothing new has been measured"))[:1]
+    tables = _tables(_section("## Why now, when nothing new has been measured"))
+    # The trigger table and the digest table, and nothing else: the first commit read
+    # only the first table, and a contradicting one beside it passed the review.
+    assert len(tables) == 2, len(tables)
+    rows = tables[0]
     assert [_code(row[0]) for row in rows] == [
         row["triggerId"] for row in PRIOR["triggers"]
     ]
@@ -308,8 +325,12 @@ def test_the_road_gate_is_a_target_until_its_claims_are_certified() -> None:
 def test_the_page_tabulates_every_gate_and_counts_the_unmet_ones() -> None:
     section = _section("## The earlier record's entry gates, and how each is treated")
     gates, prerequisites = _tables(section)
-    assert [(_code(row[0]), _code(row[1]), _code(row[2])) for row in gates] == [
-        (row["gateId"], row["priorState"], row["treatment"])
+    # Every column, the prose included: the first commit compared three of four, and
+    # the review changed the page's "How" cells alone without a failure.
+    assert [
+        (_code(row[0]), _code(row[1]), _code(row[2]), _prose(row[3])) for row in gates
+    ] == [
+        (row["gateId"], row["priorState"], row["treatment"], row["how"].rstrip("."))
         for row in DATA["priorGates"]
     ]
     unmet = sum(1 for row in DATA["priorGates"] if row["priorState"] == "unmet")
@@ -318,8 +339,10 @@ def test_the_page_tabulates_every_gate_and_counts_the_unmet_ones() -> None:
     assert (
         f"{words[unmet]} of the {total} were unmet when the earlier record was decided"
     ) in normalised(section)
-    assert [(_code(row[0]), row[1], _code(row[2])) for row in prerequisites] == [
-        (row["prerequisiteId"], row["quoted"], row["treatment"])
+    assert [
+        (_code(row[0]), row[1], _code(row[2]), _prose(row[3])) for row in prerequisites
+    ] == [
+        (row["prerequisiteId"], row["quoted"], row["treatment"], row["how"].rstrip("."))
         for row in DATA["priorPrerequisites"]
     ]
 
@@ -332,6 +355,7 @@ def test_every_prerequisite_is_quoted_from_the_revise_option() -> None:
         assert row["treatment"] != "met", row["prerequisiteId"]
         if row["treatment"] == "blocker":
             assert row["blocks"].strip(), "a blocker names the work it blocks"
+            assert f"Blocks {row['blocks']}" in row["how"], row["prerequisiteId"]
 
 
 # ------------------------------------------------------- the moved placement
@@ -374,9 +398,21 @@ def test_the_thesis_starts_from_the_earlier_record_s_findings_and_words() -> Non
     assert f"{thesis['name']}** — {thesis['statement']}." in PAGE
 
 
-def test_the_page_says_the_added_half_rests_on_no_v1_result() -> None:
+def test_the_page_says_what_v1_did_and_did_not_measure_of_release_change() -> None:
+    """The first commit said V1 never rolled a bad release back. It had, twice."""
     section = normalised(_section("## The thesis"))
-    assert "that addition is this record's judgment, not a V1 result" in section
+    for claim_id in DATA["thesis"]["relatedClaimIds"]:
+        assert CLAIMS[claim_id]["status"] == "certified", claim_id
+        levels = sorted(
+            {row["evidenceLevel"] for row in CLAIMS[claim_id]["evidenceRecords"]}
+        )
+        count = len(CLAIMS[claim_id]["evidenceRecords"])
+        assert f"`{claim_id}` is certified at `{'`, `'.join(levels)}`" in section
+        assert f"on {['no', 'one', 'two', 'three'][count]} runs" in section, claim_id
+    assert "What V1 never measured is what a caller under load meets" in section
+    assert "Widening the thesis to that is this record's judgment, not a V1 result" in (
+        section
+    )
     for finding_id in DATA["thesis"]["motivatingFindingIds"]:
         assert f"`{finding_id}`" in section, finding_id
 
@@ -384,7 +420,7 @@ def test_the_page_says_the_added_half_rests_on_no_v1_result() -> None:
 def test_every_quotation_on_the_page_is_the_earlier_page_s_words() -> None:
     """A supersession that misquotes what it supersedes argues with a record that
     does not exist."""
-    earlier = normalised(PRIOR_PAGE_TEXT)
+    earlier = normalised(PRIOR_PAGE_TEXT).replace("“", '"').replace("”", '"')
     quotations = QUOTATION.findall(PAGE)
     assert len(quotations) >= 5
     for quoted in quotations:
@@ -453,6 +489,7 @@ def test_the_page_publishes_every_identifier_the_data_holds() -> None:
         | {row["nonGoalId"] for row in DATA["nonGoals"]}
         | {row["triggerId"] for row in DATA["reopenTriggers"]}
         | set(DATA["gateTreatments"])
+        | {row["surfaceId"] for row in DATA["describesTheRepositoryBeforeThisDecision"]}
     )
     missing = sorted(identifiers - spans)
     assert not missing, missing
@@ -521,6 +558,23 @@ def test_the_readme_and_the_governance_table_say_the_version_is_open() -> None:
     assert "](v2-authorization.md)" in row
     assert "](v2-investment-decision.md)" in row
     assert "[Deferred]" not in row
+    # The roadmap's prose is the README's claim about this record; it may not say a
+    # claim moved while the data moves none.
+    assert DATA["claimsMoved"] == []
+    assert "The decision adds no claim and moves none." in normalised(roadmap)
+
+
+def test_every_surface_left_standing_still_says_what_the_page_says_it_says() -> None:
+    """A tripwire. If the case study is re-published, this section must change too."""
+    section = _section(
+        "## Where the published evidence still describes the repository "
+        "before this decision"
+    )
+    for surface in DATA["describesTheRepositoryBeforeThisDecision"]:
+        assert surface["says"] in normalised(read(surface["path"])), surface[
+            "surfaceId"
+        ]
+        assert f"`{surface['surfaceId']}`" in section, surface["surfaceId"]
 
 
 def test_the_validation_record_links_the_page() -> None:

@@ -36,16 +36,16 @@ This is a change of judgment, not of evidence, and the next section says so.
 
 ## Why now, when nothing new has been measured
 
-The earlier record was decided one day before this one. Between them no experiment
-ran, no record was added except the post-release ledger's reading of the release, and
-none of the earlier record's review triggers fired:
+The earlier record was decided one day before this one. Since it merged, no experiment
+has run and no record has been added; the post-release record and ledger it reads came
+in the same change as it. None of its review triggers fired:
 
 | Trigger | Fired | Reading |
 |---|---|---|
 | `the-review-date` | no | The review date is 2026-12-27; this record is taken before it, on the maintainer's initiative |
 | `the-road-closes` | no | Both contract claims are planned and hold no record |
 | `somebody-else-walks-the-road` | no | Nobody else has completed the clean-clone journey, and nobody outside the repository has reviewed a claim, a record, or the release |
-| `a-capable-host-is-available` | no | Nothing has re-measured the host since 2026-09-12, and no paid host is authorized |
+| `a-capable-host-is-available` | no | Nothing has run the multi-replica capacity gate again since 2026-09-12, and no paid host is authorized |
 | `outside-feedback-names-a-need` | no | No feedback from outside the repository exists |
 
 So this record does not say the earlier one misread its evidence. It reads the same
@@ -62,9 +62,13 @@ each as open to rejection:
 - **The trade-off.** Deferring leaves the one-replica outage untested with a second
   replica, and the earlier record said "a reviewer may reasonably weigh it above
   closing the road first. That is the trade-off in this record most open to
-  rejection." This record weighs it that way. The outage a lost pod caused, and the
-  signals that misdescribed it, are the problem V1's evidence exposed most clearly, and
-  the earlier record's own `revise` option said "its problem is the right one".
+  rejection." This record weighs it that way. It judges the outage a lost pod caused,
+  and the signals that misdescribed it, to be the problem V1's evidence exposed most
+  clearly; the earlier record does not rank its problems, and V1's case study calls the
+  self-service road the most important unbuilt component. The earlier record's own
+  `revise` option said "its problem is the right one, but three entry gates are unmet
+  and the host it needs is not available": the gates are answered below, and the host
+  is a blocker for the experiments that need it, not for opening.
 - **The gates as preconditions.** Two of the three unmet gates wait on other people,
   and the earlier record said they "cannot be met by more work from the author". As
   preconditions they would hold the version for as long as nobody else acts, including
@@ -90,11 +94,15 @@ workload's release fails or changes.
 It starts from the problem statement the earlier record kept for a later proposal,
 under `revise`: "keeping a caller served, and an operator told the truth, while a
 serving pod is lost". It adds one thing, **release change** — a workload release that
-fails, is rolled back, or drifts from what was declared — and that addition is this
-record's judgment, not a V1 result. V1 never deployed a bad release, rolled one back,
-or measured drift. The nearest finding is `the-topology-decided-the-error`, a model held
-unready that stayed so until an operator acted. The first V2 results on release change
-will be the first evidence either way.
+fails, is rolled back, or drifts from what was declared. V1 touched it without load:
+`a-controlled-release-change-can-be-reversed-and-real-inference-restored` is certified
+at `C2` on two runs, in each of which a release with an injected fault was detected and
+rolled back by an operating script a person started, and real inference was served
+again, with readiness probes as its only callers. What V1 never measured is what a
+caller under load meets while a release fails, rolls out, or is rolled back, or any
+drift between declared and running state. Widening the thesis to that is this record's
+judgment, not a V1 result, and the first V2 results on it will be the first evidence
+either way.
 
 The earlier record's findings it starts from:
 
@@ -164,8 +172,8 @@ is met, not the opening.
 | `a-release-is-cut-over-the-frozen-pack` | `met` | `met` | Stays met: the tag `v1.0.0` and the release published on it |
 | `the-road-has-been-run-under-failure` | `met` | `met` | Stays met: the `C2` records the earlier record lists |
 | `the-road-is-closed-for-one-workload` | `unmet` | `v2-target` | V2's first capability. It is met when both contract claims are certified on records, not when a renderer exists |
-| `a-second-person-has-reproduced-v1` | `unmet` | `deferred` | Sought, not scheduled: the author cannot produce it, and a V2 release does not wait on it. A reproduction of V2 would not meet this gate, which is about V1 |
-| `someone-outside-the-repository-has-reviewed-v1` | `unmet` | `v2-target` | Reframed as a condition of V2's release: no V2 release until somebody outside this repository has reviewed V2's central claim or the evidence it rests on, and what they found is recorded. The gate as written, a review of V1, stays unmet |
+| `a-second-person-has-reproduced-v1` | `unmet` | `deferred` | Waited for, not scheduled: the author cannot produce it, and a V2 release does not wait on it. A reproduction of V2 would not meet this gate, which is about V1 |
+| `someone-outside-the-repository-has-reviewed-v1` | `unmet` | `v2-target` | Reframed as a condition of V2's release: no V2 release until a person outside this repository, not an AI reviewer, has reviewed V2's central claim and the evidence it rests on, what they found is recorded, and no finding they raised that blocks the release is open. The gate as written, a review of V1, stays unmet |
 | `this-record-is-merged` | `met-on-merge` | `met` | The earlier record was merged with its evidence |
 
 Three of the six were unmet when the earlier record was decided, and all three are unmet
@@ -176,7 +184,7 @@ Each is treated the same way:
 
 | Prerequisite | The earlier record's words | Treatment | How |
 |---|---|---|---|
-| `a-host-that-passes-the-capacity-gate` | A host that passes the multi-replica capacity gate, authorized and budgeted if it is paid for | `blocker` | Blocks the experiment that loses one of several serving replicas, and nothing else. The only host measured refused the multi-replica profile on 2026-09-12 and has not been re-measured. It is measured again before that experiment; if it is refused, a paid host is used only after an explicit authorization that declares a budget, a time limit, and a cleanup, none of which exists today. The gate is not weakened to fit a host |
+| `a-host-that-passes-the-capacity-gate` | A host that passes the multi-replica capacity gate, authorized and budgeted if it is paid for | `blocker` | Blocks every experiment that needs more than one serving replica, including the one that loses one of them; opening the version and the rendering do not wait on it. The only host measured refused the multi-replica profile on 2026-09-12, and nothing has run the gate again since. It is run again before any such experiment; if it refuses, a paid host is used only after an explicit authorization that declares a budget, a time limit, and a cleanup, none of which exists today. The gate is not weakened to fit a host |
 | `a-registered-replica-loss-experiment` | a registered experiment for losing one of several replicas under load | `v2-target` | Registered, with its criteria frozen, before any run whose result bears on the thesis. A run before that is a rehearsal and certifies nothing |
 | `an-amendment-to-adr-0004-d7` | an amendment to ADR 0004 D7 for alert delivery and a durable store | `deferred` | The version opened here does not need alert routing or a durable store to test its thesis; a V2 change that does amends D7 in its own record first. `an-alert-reaches-somebody` stays not claimed |
 
@@ -191,12 +199,12 @@ one, before any implementation that needs it.
 |---|---|---|
 | `a-second-workload-shape` | A second workload shape, asynchronous or batch | A queue, retries, and results delivered later would be a second thesis. Deferred, not rejected: it enters only if a registered experiment cannot be answered without it |
 | `anything-in-front-of-several-providers` | Anything in front of several providers: a gateway or provider routing | [Boundary rule 2](../architecture/project-boundaries.md#2-standing-between-a-caller-and-a-choice-of-providers-is-not-this-projects-job) |
-| `the-runtime-s-own-behaviour` | The runtime's own behaviour: throughput, batching, capacity, accelerator scheduling or optimization, and hardware or replicas given in proportion to demand | [Boundary rule 3](../architecture/project-boundaries.md#3-making-one-runtime-work-is-not-the-same-as-engineering-the-runtime). Redundancy for a lost pod is not capacity, and a change that drifts from one to the other leaves the thesis |
+| `the-runtime-s-own-behaviour` | The runtime's own behaviour: throughput, batching, capacity, accelerator scheduling or optimization, and hardware given in proportion to demand | [Boundary rule 3](../architecture/project-boundaries.md#3-making-one-runtime-work-is-not-the-same-as-engineering-the-runtime). Redundancy for a lost pod is not capacity, and a change that drifts from one into autoscaling leaves the thesis |
 | `routing-or-shedding-by-load` | Routing requests by what the runtime is doing, or admitting and shedding load by caller | This record: neither answers what a caller meets when a pod is lost or a release changes |
 | `a-telemetry-backend-or-cost-management` | A telemetry backend other systems' telemetry flows into, or cost management beyond what reliability costs | [Boundary rule 1](../architecture/project-boundaries.md#1-a-capability-a-contract-can-name-is-not-a-capability-this-project-provides), for the backend. Cost is reported only as what redundancy and release control cost, beside what they bought |
 | `agent-runtimes-and-tool-protocols` | Agent runtimes and tool protocols | This record: no part of the thesis |
-| `several-clusters-or-a-mesh` | Several clusters, zones, or regions, and a service mesh by default | This record: one cluster at a time. A lost node or zone is not tested and not claimed |
-| `remediation-without-a-person` | Remediation that acts without a person approving it | This record: a rollback or a reversal is a change a person approves |
+| `several-clusters-or-a-mesh` | Several clusters, zones, or regions, and a service mesh | This record: one cluster at a time. A lost node or zone is not tested and not claimed |
+| `remediation-without-a-person` | Changing desired state, or rolling back, without a person approving it | This record: a rollback or a reversal is a change a person approves. Bringing running state back to a state a person approved is not excluded |
 
 Rolling a workload's release from one revision to the next, and back, is the platform
 releasing its own workload, which V1 already does through Helm. It is not the runtime
@@ -237,6 +245,18 @@ external certification standard, and not a maturity score.
 
 Nothing automated fires on any of them; holding to them is the maintainer's.
 
+## Where the published evidence still describes the repository before this decision
+
+Two passages of [the case study](../case-study/v1-engineering-case-study.md) predate this
+record. The case study is bound to the frozen evidence digests and stays as published,
+as the earlier record left it, so neither is edited:
+
+- `case-study-second-version-section` — its section on what would justify a second
+  version says whether one proceeds "is a separate decision that has not been made". The
+  earlier record made it, and this one superseded its outcome.
+- `case-study-reading-guide-note` — its note on what changed after the release links
+  only the earlier record. That record now carries a note pointing here.
+
 ## What this record does not do
 
 - **It implements nothing.** It builds no capability, adds no evidence, moves no claim,
@@ -262,7 +282,9 @@ Nothing automated fires on any of them; holding to them is the maintainer's.
 `tests/testing/test_v2_authorization.py` establishes that:
 
 - the earlier record's data is unchanged since it merged, and its page is unchanged
-  apart from exactly the note this data holds, once, directly under its title;
+  apart from exactly the note this data holds, once, directly under its title; and that
+  note's text is the one the module itself pins, so it cannot say more by being edited
+  in both files together;
 - the outcome, dates, and identity the data states for the earlier record are that
   record's, this record is decided after it and before its review date, and the page
   states the outcome, the dates, and the supersession;
@@ -270,20 +292,27 @@ Nothing automated fires on any of them; holding to them is the maintainer's.
   trigger's state follows from the dates, and the contract trigger's from the register;
 - every gate of the earlier record is classified once, in its order, with its earlier
   state and a treatment from the closed vocabulary; no gate unmet then is called met;
-  and the page's tables and count say what the data says;
-- every quoted prerequisite is in the earlier `revise` option's words;
+  and every cell of the page's gate, prerequisite, and trigger tables, and its count,
+  says what the data says, with no extra table beside them;
+- every quoted prerequisite is in the earlier `revise` option's words, and a blocker
+  names what it blocks;
 - the moved placement is the earlier record's own, with the same problem, gate, and
   claims, and both claims are still planned in the pack this record reads;
-- every finding the thesis cites is one of the earlier record's, and its earlier
-  problem statement is that record's;
-- every quotation on this page is a verbatim passage of the earlier page;
+- every finding the thesis cites is one of the earlier record's, its earlier problem
+  statement is that record's, and the V1 claim it cites on release change is certified
+  in the pack this record reads;
+- every passage of twenty characters or more in straight or curly double quotes is a
+  verbatim passage of the earlier page;
 - the digests are the released pack's, no file of this decision is inside the evidence
   pack, the data moves no claim, and no ledger names this change;
 - the page publishes every identifier the data holds, resolves every fragment it links,
   quotes no measurement, and uses none of a set of phrases that would overclaim or
   argue from an appeal rather than from evidence;
 - the README's roadmap and the governance table's row link this page and the earlier
-  one, and the role that accepts it exists with no authority added.
+  one, and the roadmap still says the decision adds and moves no claim;
+- every passage of the case study this page lists as left standing still says what this
+  page says it says;
+- the role that accepts it exists with no authority added.
 
 What it does not establish: that the thesis is the right one, that moving the rendering
 is wise, that a gate is treated rightly, or that opening now is the right call. The
