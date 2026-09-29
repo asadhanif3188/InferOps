@@ -103,7 +103,10 @@ A release's identifier is **derived, never minted.** The rule:
 > whitespace, non-ASCII characters written as themselves, and encoded as UTF-8.
 
 That serialisation is the canonical JSON form the [evidence index](../../tools/evidence_index/core.py)
-already hashes register entries in, reused rather than invented. What the rule gives:
+already hashes register entries in, reused rather than invented. Every value it covers is a
+string, and every string a release can hold is ASCII by its pattern, so the non-ASCII clause
+cannot be reached today; it is stated so that a later version with a wider pattern inherits
+one serialisation rather than choosing one. What the rule gives:
 
 - **The same inputs give the same identifier**, on any host and on every render, so two
   renders can be compared by identifier before their values are compared by digest.

@@ -131,20 +131,26 @@ one. So is every rule in the document's
 
 ## Checks that the new tests are not decorative
 
-Nine edits were made to the schema, the release suite was run against each, and the
-schema was restored byte for byte. Each edit was caught:
+Nine edits were made to the schema before the first commit, and two more after the
+independent review; the release suite was run against each, and the schema was restored
+byte for byte. Every edit was caught. The first commit's table named each edit only
+loosely, which let the reviewer reproduce a different edit and get a different count;
+[the review section](#what-the-independent-review-found) says what happened. Each row now
+states the edit exactly, and all eleven were run again at the same time:
 
-| Edit | Result |
+| Edit, exactly as made | Result, of 160 |
 |---|---|
-| Add an optional `metadata.generatedAt` string | 16 failed |
-| Open the `output` object | 1 failed |
-| Accept uppercase hexadecimal in every digest | 1 failed |
-| Accept an abbreviated revision of 7 to 40 characters | 1 failed |
-| Accept a UUID-shaped release identifier | 3 failed |
-| Add `prod` to the environment vocabulary | 2 failed |
-| Add a required `status` block at the top level | 42 failed |
-| Accept uppercase in a semantic version, as the contract does | 4 failed |
-| Accept a values path with directories and dots | 2 failed |
+| Add an optional `metadata.generatedAt`, `{"type": "string", "pattern": "^.+$"}` — a pattern that accepts every timestamp and credential shape | 16 failed |
+| The same field with no pattern, `{"type": "string"}` — the reviewer's variant | 5 failed |
+| Remove `additionalProperties: false` from the `output` object | 1 failed |
+| Digest pattern `^[0-9a-fA-F]{64}$` | 1 failed |
+| Revision pattern `^[0-9a-f]{7,40}$` | 1 failed |
+| Release identifier pattern `^[0-9a-f-]{32,64}$` | 3 failed |
+| Add `prod` to the binding reference's environment vocabulary | 2 failed |
+| Add a top-level `status`, `{"type": "object", "additionalProperties": false, "properties": {}}`, and require it | 42 failed |
+| Add an optional top-level `status`, `{"type": "object"}` — a second variant after the review | 4 failed |
+| Put `A-Z` back into the semantic version's pre-release and build classes, as the contract has them | 4 failed |
+| Values path pattern `^[a-z0-9./-]+\.yaml$` | 2 failed |
 
 ## Commands
 
@@ -191,6 +197,45 @@ This section was written after the full run, which is the only edit the change r
 afterwards. The suites that read this page — the document links and the security
 baseline's reserved terms — were run again over it: `python -B -m pytest tests/testing
 tests/security -q -p no:cacheprovider` passed.
+
+## What the independent review found
+
+A reviewer read the first commit, `f5016a5`, against the code and the change's brief, reran
+the release, binding, inventory, and link suites (1,559 passed), recounted the fixtures, the
+thirty-one expected findings, the 160 tests, the 35 changed files, the thirteen leaf fields,
+the four gap fields, and the six-then-seven suites using synthetic credential values; checked
+every invalid fixture's header against the manifest by hand; recomputed both valid fixtures'
+release identifiers from the document's prose without the test's helper, and got the
+committed values; confirmed the semantic version pattern is the contract's with `a-zA-Z`
+replaced and a bound added, and nothing else; and grepped the diff for local paths, private
+names, emails, and later story identifiers, finding none. It found no critical or high
+defect in the schema, validator, fixtures, or tests, and no statement elsewhere in the
+repository that the change made false. It reported:
+
+- **A mutation row that did not reproduce.** The row "Add an optional `metadata.generatedAt`
+  string — 16 failed" gave 5 failed when the reviewer added `{"type": "string"}`. Both
+  numbers are right for their edits: the committed run's field carried the pattern `^.+$`,
+  which also accepts every timestamp and credential shape, so the timestamp and
+  excluded-shape tests fail too; the row did not say so. The reviewer also reproduced 41
+  rather than 42 for the `status` row with an edit of its own. Both committed counts were
+  reproduced exactly with the edits as first made, and the reviewer's field variant gives 5;
+  the table now states every edit exactly, and includes the reviewer's field variant and a
+  second `status` variant. This was a defect in the record, not in the tests: an evidence
+  row that cannot be reproduced from its own words is not evidence.
+- **A clause that nothing can reach.** The derivation rule says non-ASCII characters are
+  written as themselves, and every string a release can hold is ASCII by its pattern. The
+  clause is kept, because it fixes the serialisation a later version with a wider pattern
+  would inherit, and the document now says it is unreachable today.
+
+## After the independent review
+
+- The mutation table above, restated edit by edit, with the reviewer's variant and a second
+  `status` variant added, and all eleven rows run again.
+- One sentence in [the release document](../../contracts/rendered-workload-release.md#release-identity)
+  saying the non-ASCII clause cannot be reached today.
+- The release suite, the link suite, and the security baseline were run again over both
+  edited documents, and `gitleaks dir` over each: the results are in the fix commit's own
+  message rather than here, because this record is part of what they check.
 
 ## Privacy and publicability
 
