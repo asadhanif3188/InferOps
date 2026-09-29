@@ -19,6 +19,7 @@ that know nothing about how a workload is deployed or served.
 This includes:
 - Workload contract domain model (V1-S1-001)
 - Serving adapter interface (V1-S1-002)
+- EnvironmentBinding domain model and selection (V2-S1-001)
 """
 
 from __future__ import annotations

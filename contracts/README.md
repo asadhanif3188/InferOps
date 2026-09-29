@@ -15,10 +15,12 @@ which of its rules are not yet enforced lives under
 | Runtime and model compatibility matrix | `v1alpha1` | [`workload/compatibility/runtime-model-compatibility.v1alpha1.json`](workload/compatibility/runtime-model-compatibility.v1alpha1.json) |
 
 The platform domain reads a WorkloadContract into typed objects; nothing in this
-repository deploys, serves, or admits a workload from one. Nothing reads an
-EnvironmentBinding at all yet: its schema and fixtures are published ahead of the
-renderer that will consume them, and say so. A published schema is a
-commitment about what will be accepted, not evidence that anything accepts it.
+repository deploys, serves, or admits a workload from one. The platform domain
+also reads an EnvironmentBinding, refuses bindings that conflict with each other, and
+selects the one that serves a contract; nothing renders one, and its schema and
+fixtures are published ahead of the renderer that will consume them, and say so. A
+published schema is a commitment about what will be accepted, not evidence that
+anything accepts it.
 
 ## Layout
 

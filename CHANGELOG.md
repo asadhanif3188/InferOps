@@ -10,6 +10,22 @@ from `1.0.0`.
 
 ### Added
 
+- **The EnvironmentBinding in the platform domain.** `V2-S1-001-PR2` added
+  `inferops.domain.environment`: a parser that reads a binding into frozen typed
+  objects and refuses exactly what the published schema refuses, with the canonical
+  code on every refusal; and the rules that need more than one document, which a
+  schema cannot apply — two bindings with the same identity, two whose GitOps
+  destinations are one directory or one inside the other, and a selection for a
+  WorkloadContract that finds no binding, finds several and was given no name, or is
+  given the name of a binding in another environment. Each is a published rule
+  identifier under the existing `contract-invalid` code; no canonical code was added.
+  Selection reads only the contract's `spec.environment` and returns a supplied binding
+  unchanged; it never picks one by order and merges nothing. The WorkloadContract, its
+  domain, the binding schema, its fixtures, and the offline validator's verdicts are
+  unchanged. No renderer consumes a binding, no claim moves, and every check is static
+  (`C0`). [The validation record](docs/proof/contracts/v2-s1-001-pr2-validation.md)
+  says what was run.
+
 - **EnvironmentBinding `v1alpha1`, the second version's first contract.**
   `V2-S1-001-PR1` published [its schema](contracts/environment/environment-binding.v1alpha1.schema.json)
   and [document](docs/contracts/environment-binding.md): the facts one environment

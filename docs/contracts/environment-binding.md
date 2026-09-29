@@ -1,11 +1,13 @@
 # EnvironmentBinding v1alpha1
 
-Status: **published schema**, at `v1alpha1` maturity, added by `V2-S1-001-PR1`. The
-schema, its identifier, its compatibility rules, its ownership boundary with the
-WorkloadContract, and its valid and invalid fixtures are published here and validated
-on every change. **Nothing reads a binding yet**: no renderer, domain object,
-controller, or script in this repository consumes one, and publishing the schema is
-not evidence that anything will accept it.
+Status: **published schema**, at `v1alpha1` maturity, added by `V2-S1-001-PR1`, and
+**read by the platform domain** since `V2-S1-001-PR2`. The schema, its identifier, its
+compatibility rules, its ownership boundary with the WorkloadContract, and its valid and
+invalid fixtures are published here and validated on every change. The domain parses a
+binding into typed objects, refuses bindings that conflict with each other, and selects
+the one binding that serves a WorkloadContract. **Nothing uses what it selects**: no
+renderer, controller, or script in this repository turns a binding into release values,
+and a selection is not evidence that anything will.
 
 | Property | Value |
 |---|---|
@@ -18,6 +20,7 @@ not evidence that anything will accept it.
 | Wire form | JSON |
 | Unknown fields | Rejected |
 | Validator | [`tools/contract_validation/environment_binding.py`](../../tools/contract_validation/environment_binding.py), structural only |
+| Domain | [`src/inferops/domain/environment/`](../../src/inferops/domain/environment/__init__.py): typed objects, parsing, the set rules, and selection |
 | Fixtures | [`contracts/environment/examples/`](../../contracts/environment/examples/README.md) |
 | Tooling decision | [ADR 0003](../architecture/decisions/ADR-0003-workload-contract-schema-tooling.md), applied unchanged |
 
@@ -103,7 +106,7 @@ under a contract's `spec`, other than `environment`.
 | `apiVersion` + `kind` | Name the schema. `apiVersion` alone does not: the WorkloadContract and the EnvironmentBinding share `inferops.io/v1alpha1`, and each is versioned independently of the other |
 | `metadata.name` | `binding_id`. A lowercase DNS label, stable, and unique among the bindings of one environment. Renaming a binding makes a different binding |
 | `metadata.owner` | `owner_id` of the team that owns the environment's facts — the platform side of the boundary, not the workload's owner |
-| `spec.environment` + `metadata.name` | Identify one binding. Two bindings may serve one environment, as the two fixtures do |
+| `spec.environment` + `metadata.name` | Identify one binding. Two bindings may serve one environment, as the two fixtures do; two with the same pair are refused together, under [`binding-identity-duplicated`](#rules-across-bindings-and-selection) |
 
 A binding carries **no revision field**. A number maintained by hand beside the content
 can disagree with the content, and nothing could tell which is right. A binding's
@@ -220,9 +223,12 @@ to apply to yet.
 
 ## Rejection and canonical errors
 
-A binding is refused through the canonical error model the WorkloadContract uses: the
-same two codes, the same structural rule identifiers, the same field locations, and the
-same messages. No code and no rule identifier was added for it.
+A single binding document is refused through the canonical error model the
+WorkloadContract uses: the same two codes, the same structural rule identifiers, the same
+field locations, and the same messages. No code and no rule identifier was added for a
+single document. The five rules that compare several documents,
+[further down](#rules-across-bindings-and-selection), have identifiers of their own and the
+same `contract-invalid` code; the table below is the single-document one.
 
 | Rule | Code | Layer | Refuses, for a binding |
 |---|---|---|---|
@@ -235,32 +241,73 @@ same messages. No code and no rule identifier was added for it.
 | `value-wrong-type` | `contract-invalid` | Structural | A value of the wrong JSON type — a replica count written as a string |
 | `contract-structure-invalid` | `contract-invalid` | Structural | A structural constraint with no more specific rule. Reaching it means the translation table needs a row |
 
-Every rule is structural, so **a consumer validating against the bare schema file
-reaches the same verdict as the published validator** on every committed fixture. That
-is true of this schema and not of the WorkloadContract, and it is true only because the
-binding has no semantic layer yet.
+Every rule for a single document is structural, so **a consumer validating one binding
+against the bare schema file reaches the same verdict as the published validator** on
+every committed fixture, and so does the domain parser. That is true of this schema and
+not of the WorkloadContract, and it is true only because a single binding has no semantic
+layer. The rules in the next section need more than one document, and no schema can
+apply them.
 
 Seven of the eight rules have an invalid fixture demonstrating them. The eighth,
 `contract-structure-invalid`, is the fallback for a keyword the translation table does
 not map, and a fixture pinning it would pin a defect. A test asserts that it is the only
 rule without one.
 
+### Rules across bindings, and selection
+
+Added by `V2-S1-001-PR2`. [The platform domain](../../src/inferops/domain/environment/selection.py)
+applies these to the set of bindings supplied together, and a selection among them for one
+WorkloadContract. No canonical code was added: each maps to `contract-invalid`, the code
+an offline check concludes when the documents it was given cannot be used as given, and
+none is retryable. No identifier is one the offline validator already uses.
+
+| Rule | Code | Refuses |
+|---|---|---|
+| `binding-identity-duplicated` | `contract-invalid` | Two bindings declare the same `spec.environment` and `metadata.name`. Which one a selection by name returned would be decided by list order |
+| `binding-destination-overlaps` | `contract-invalid` | Two bindings declare the same `gitops.destinationPath`, or one inside the other, compared directory by directory and across environments. Desired state generated for one would be written over or inside the other's |
+| `binding-not-found` | `contract-invalid` | No binding serves the contract's environment, or no binding has the name asked for |
+| `binding-selection-ambiguous` | `contract-invalid` | More than one binding serves the contract's environment and none was named |
+| `binding-environment-mismatch` | `contract-invalid` | The binding named for a contract serves a different environment from the contract's |
+
+**The selection rule.** A WorkloadContract's `spec.environment` selects a binding. When
+exactly one binding supplied serves that environment, it is the one. When more than one
+does, the caller names one, because the contract has no field to name it with and the
+domain will not choose: first, last, or any other order is a precedence rule nobody wrote
+down. A named binding must serve the contract's environment; a name found only under
+another environment is refused, not followed. So adding a second binding to an
+environment turns a selection that used to need no name into a refusal until one is given
+— the choice is surfaced rather than made. A set with any conflict is not selected from at
+all, even for a binding outside the conflict, and the refusal carries every conflict at
+once.
+
+**Selection merges nothing.** It returns one of the bindings supplied, as the same object,
+and reads one member of the contract, `spec.environment`. The contract's scaling,
+resources, model, and every other field are neither read nor copied, and nothing in a
+binding could hold them. Combining the two into release input is a renderer's, and no
+renderer exists.
+
+**Where a refusal points.** A single document's refusal is located inside it, `$.spec…`.
+A refusal about several documents names the document by its role first: `contract` for the
+WorkloadContract, `bindings[i]` for the i-th binding supplied (the later of a conflicting
+pair, with the earlier one's position in the message), and `selection` for the caller's own
+request. No refusal repeats a binding's name, path, or any other value from a document.
+
+Not applied, because nothing in this repository has decided it: a rule relating
+`clusterProvider` to `environment`. Both providers are local ones and the vocabulary
+admits `production`; no record says which environments a local provider may serve, so the
+domain does not guess.
+
 ### Rules that are not applied yet
 
-Each of these needs something a single binding document does not contain, and nothing
-applies any of them today. They are stated so that nobody reads the schema as more than
-it is.
+Each of these needs something no document here contains, and nothing applies any of them
+today. They are stated so that nobody reads the schema or the domain as more than they
+are.
 
 | Rule | Why it is not applied | What it needs |
 |---|---|---|
-| A contract whose environment has no binding is refused | Needs a contract and the set of bindings together | A component that reads both, which does not exist |
-| Two bindings with the same environment and name are refused | Needs every binding at once, not one document | The same |
-| A contract whose environment has more than one binding selects one explicitly | How a binding is selected when several serve one environment is not decided | A selection rule, then the component above |
-| A binding value shaped like a lowercase credential is refused | The binding has no semantic layer; see [Secrets](#secrets) | A semantic rule, which is a conditionally compatible change |
+| A binding value shaped like a lowercase credential is refused | A single binding has no semantic layer; see [Secrets](#secrets) | A semantic rule, which is a conditionally compatible change |
 | The selected cluster, namespace, and claim exist | A document check cannot see a cluster | The provider contract's verification, at run time, as today |
-
-Parsing a binding into typed platform objects is also not done: no domain object exists
-for one, and no part of `src/inferops/` knows the artifact is there.
+| Release values are derived from a contract and the binding selected for it | No renderer exists | The renderer, which will consume a selected binding rather than choose one |
 
 ## Fixtures
 
@@ -275,16 +322,32 @@ evidence that the environment it describes was ever run with it.
 ## Validation
 
 ```sh
-python -m pytest tests/contracts/test_environment_binding_v1alpha1.py -q
+python -m pytest tests/contracts/test_environment_binding_v1alpha1.py tests/domain/test_environment_binding_domain.py -q
 ```
 
-A document that is not a committed fixture can be checked from Python:
+A document that is not a committed fixture can be checked from Python, for every
+structural reason at once:
 
 ```python
 import yaml
 from tools.contract_validation.environment_binding import validate
 
 findings = validate(yaml.safe_load(open("binding.yaml", encoding="utf-8")))
+```
+
+or read into the platform's objects, which stops at the first reason, and then checked
+against other bindings and a contract:
+
+```python
+from inferops.domain.environment import (
+    parse_environment_binding,
+    select_environment_binding,
+    validate_environment_bindings,
+)
+
+binding = parse_environment_binding(document)
+refusals = validate_environment_bindings([binding, *others])
+chosen = select_environment_binding(contract, [binding, *others], binding_name=name)
 ```
 
 `python -m tools.contract_validation` validates WorkloadContract documents only and will
@@ -305,15 +368,29 @@ that the rule matrix above names every rule the binding can cite; and that the
 WorkloadContract's own fixtures are refused as bindings and binding fixtures as
 contracts, so neither schema can accept the other's documents.
 
+The domain suite checks that every vocabulary, pattern, length, bound, and field list the
+parser applies is the schema's; that every valid fixture parses and rebuilds to itself,
+and every invalid one is refused with the manifest's code at a field the manifest names or
+at the object holding it; that no attribute or wire name in a binding's tree is one a
+contract's `spec` tree uses, other than `environment`, which is the contract's own type,
+and that a binding carrying workload intent is refused whole; that selection returns a
+supplied binding unchanged, leaves the contract unchanged, and reads only its
+environment; that each rule in [the table above](#rules-across-bindings-and-selection)
+refuses the case it names and not its near neighbours, with every reason at once, sorted,
+final, and without a document value; that raw documents cannot take the supported path;
+that the table is the code's and adds no canonical code; and that the package imports
+nothing outside the standard library.
+
 Every check is static. A pass is `C0` under
 [the evidence levels](../testing/evidence-levels.md): it establishes what the committed
 files say about each other and nothing about a running system.
 
 ## What this contract does not do
 
-- **It deploys nothing and is read by nothing.** No renderer exists, and nothing turns a
-  binding and a contract into release values. The values file a release is installed
-  with is still written by hand.
+- **It deploys nothing, and what reads it renders nothing.** The platform domain parses a
+  binding and selects one for a contract; no renderer exists, and nothing turns a binding
+  and a contract into release values. The values file a release is installed with is
+  still written by hand.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about an environment.** A valid binding is a well-formed

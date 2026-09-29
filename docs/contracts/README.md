@@ -1,8 +1,9 @@
 # Contracts
 
 Status: one contract accepted and one schema published, both at alpha maturity. The
-platform domain reads a WorkloadContract into typed objects; nothing deploys, serves, or
-admits a workload from one, and nothing reads an EnvironmentBinding yet.
+platform domain reads a WorkloadContract and an EnvironmentBinding into typed objects and
+selects the binding that serves a contract; nothing deploys, serves, or admits a workload
+from either, and nothing renders one.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under
@@ -12,7 +13,7 @@ means, how it is versioned, which rules are enforced, and which are not.
 | Contract | Version | Status | Document |
 |---|---|---|---|
 | WorkloadContract | `v1alpha1` | Accepted; parsed by [the workload domain model](../domain/workload-domain-model.md), and no runtime consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
-| EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; no domain object, renderer, or other consumer exists | [EnvironmentBinding v1alpha1](environment-binding.md) |
+| EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; no renderer or other consumer exists | [EnvironmentBinding v1alpha1](environment-binding.md) |
 
 A published schema is a commitment about what will be accepted. It is not evidence
 that anything accepts it, and it certifies no runtime behaviour.
@@ -37,7 +38,8 @@ The EnvironmentBinding is the one schema published before its consumer, and the
 exception is deliberate rather than a lapse in the rule above. The renderer that will
 read it is the second version's first capability, and it is built against the binding,
 so the binding's shape and its boundary with the WorkloadContract have to be fixed and
-tested first. Its document says, in its status line, that nothing reads one.
+tested first. Its document says, in its status line, that the domain reads one and
+nothing renders one.
 
 A **cost record** is the one of those whose shape is now written down. [The cost
 method](../cost/cost-method.md) publishes the fields a record would carry, as part
