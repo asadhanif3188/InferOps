@@ -783,7 +783,12 @@ def test_the_document_publishes_every_binding_rule_with_its_code():
 
 
 def test_the_binding_package_imports_only_the_standard_library_and_itself():
-    """No Kubernetes, Helm, Argo, or file-system dependency, and no `tools`."""
+    """Every absolute import is the standard library, and none is `os` or `pathlib`.
+
+    Relative imports stay inside `inferops.domain` by construction. This rules out a
+    Kubernetes, Helm, or Argo client and the repository's `tools` package; it does
+    not rule out the built-in `open`, which no module in the package calls.
+    """
     for path in sorted(PACKAGE_DIR.glob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):

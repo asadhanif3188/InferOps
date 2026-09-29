@@ -167,9 +167,10 @@ covering this page were run after it was written; their results are below.
 | `git diff --cached --check main` | Exit 0, no output |
 | `gitleaks dir <path> --config .gitleaks.toml --redact`, for each of the 22 files that differ from `main`, including this page and the schema suite whose anchor moved after the first scan | Exit 0 for every file: no leaks found |
 
-A first full run was stopped after about two minutes, before it finished, because the
-schema suite's anchor sentence was edited while it ran; its tests were collected against
-the old text. The run above started after every edit, with everything staged. It counts
+A first full run was stopped before it finished, because the schema suite's anchor
+sentence was edited while it ran; its tests were collected against the old text. (The
+first commit's version of this page said it was stopped "after about two minutes"; it
+was not timed, and the review pass removed the figure.) The run above started after every edit, with everything staged. It counts
 125 more passes than the previous change's run: 100 are the new domain suite, and the
 other 25 come from suites that parametrize over tracked files, documents, and inventory
 entries, which this change adds to. That split is by subtraction; the 25 were not
@@ -185,6 +186,48 @@ kubeconform, the Terraform and tflint checks, the expected-failure controls, the
 build, and the image build — were not run locally: this change touches no chart,
 Terraform configuration, manifest, or workflow, and its one packaged addition is a
 standard-library Python subpackage the default lane imports and type-checks.
+
+## What the independent review found
+
+A reviewer read the first commit, `60cc830`, against the code and the schema; reran the
+two binding suites (209 passed, 100 and 109 by collection), the inventory, link, and
+dependency-boundary suites (1,405 passed), and the domain, contract, scaffolding,
+testing, security, and architecture directories (12,059 passed, 31 skipped, none
+failed, every skip a documented host or fixture-layering one); reran `ruff check` and
+mypy (clean, 291 source files); recounted the 22 changed files, the six `unit` modules,
+the fifty-one modules without a claim, and the five rules against the document's table;
+checked that no WorkloadContract file changed; read every refusal site for an
+interpolated document value; swept the repository for statements this change made stale;
+and grepped the diff for local paths, host and user names, and later story identifiers.
+It found no critical, high, or medium defect, and two low ones:
+
+- **A line-wrap slip** in `contracts/README.md`: two sentences joined onto one
+  104-character line in a paragraph wrapped near 85.
+- **The mutation table is not re-verifiable from the commit**, like the ruff and mypy
+  counts before it. The reviewer did not rerun the mutations, since it was asked not to
+  modify files, and instead read the tests it would rest on and found none vacuous.
+
+It also noted that the new suite's import check reads only absolute imports; the
+architecture suite's boundary check covers the whole package, so nothing is unchecked.
+The two stale-sounding sentences it found are in the previous change's dated record and
+changelog entry, which this project does not rewrite.
+
+## After the independent review
+
+- `contracts/README.md` is rewrapped.
+- Rereading the page against the reviewer's notes found two statements of this change's
+  own that said more than was measured. The first full run was described as stopped
+  "after about two minutes", a figure nobody timed; it is removed above. The import
+  check's docstring promised "no file-system dependency" while checking only for `os`
+  and `pathlib` imports; it now says what it checks.
+- The mutation table was not rerun; it stands as recorded, with the reviewer's reading as
+  the corroboration it has.
+- After these edits: `ruff format --check` (542 files already formatted) and `ruff check`
+  clean; the two binding suites with the link, inventory, and security suites, 2,381
+  passed; `gitleaks dir` over each of the three files this pass changed and
+  `gitleaks git . --config .gitleaks.toml --redact` over the full history including
+  `60cc830`, no leaks found; `git diff --cached --check`, no output. The full default lane
+  was not rerun for a rewrap, a docstring, and this page.
 
 ## Privacy and publicability
 

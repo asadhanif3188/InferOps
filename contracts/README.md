@@ -18,8 +18,9 @@ The platform domain reads a WorkloadContract into typed objects; nothing in this
 repository deploys, serves, or admits a workload from one. The platform domain
 also reads an EnvironmentBinding, refuses bindings that conflict with each other, and
 selects the one that serves a contract; nothing renders one, and its schema and
-fixtures are published ahead of the renderer that will consume them, and say so. A published schema is a
-commitment about what will be accepted, not evidence that anything accepts it.
+fixtures are published ahead of the renderer that will consume them, and say so. A
+published schema is a commitment about what will be accepted, not evidence that
+anything accepts it.
 
 ## Layout
 
