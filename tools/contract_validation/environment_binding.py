@@ -11,12 +11,12 @@ canonical error model the WorkloadContract uses: the same codes, the same rule
 identifiers, the same rule that a message never repeats a value read out of the
 document. It adds no rule of its own. Rules that need a second document - whether
 a contract's environment has a binding, whether two bindings claim the same
-identity - have no document to read here and are not applied by anything yet;
-the contract document lists them as pending rather than implying otherwise.
+identity or destination - have no document to read here. The platform domain in
+``inferops.domain.environment`` applies them, under the rule identifiers the
+contract document publishes for them; this module does not.
 
 Offline and deterministic, like its sibling: no network, no cluster, no clock, no
-randomness. Nothing in the platform reads a binding, and validating one deploys
-nothing.
+randomness. Validating a binding deploys nothing.
 """
 
 from __future__ import annotations

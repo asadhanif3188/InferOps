@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **EnvironmentBinding `v1alpha1`, rules across bindings** — five rule identifiers the
+  platform domain applies to bindings supplied together and to a selection among them
+  for one WorkloadContract: `binding-identity-duplicated`,
+  `binding-destination-overlaps`, `binding-not-found`, `binding-selection-ambiguous`,
+  and `binding-environment-mismatch`, each under the existing `contract-invalid` code.
+  The schema, its fixtures, and every single-document verdict are unchanged.
+  Compatibility classification: **conditionally compatible** — every binding that was
+  valid alone is still valid alone, and a set of bindings can now be refused where
+  nothing used to read one.
+
 - **EnvironmentBinding `v1alpha1`** — a second schema, versioned independently of
   the WorkloadContract although both use `inferops.io/v1alpha1`: `apiVersion` and
   `kind` together name a schema. It carries the facts one environment supplies to a

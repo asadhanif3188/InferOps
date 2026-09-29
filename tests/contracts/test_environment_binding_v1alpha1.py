@@ -556,7 +556,7 @@ def test_no_finding_quotes_a_value_from_the_document(path: Path):
 
 def test_the_rule_matrix_is_every_rule_a_binding_can_cite():
     """Every structural rule, and no semantic one: the binding has no such layer."""
-    rows = published_table("No code and no rule identifier was added for it.")
+    rows = published_table("the table below is the single-document one.")
     published = {backticked(row[0]): (backticked(row[1]), row[2]) for row in rows}
     structural = {
         identifier: (rule.code, "Structural")
