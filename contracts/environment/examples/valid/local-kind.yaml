@@ -1,0 +1,31 @@
+# The same local environment on the other supported provider. Two bindings may
+# serve one environment, and they differ here only in the provider and the GitOps
+# destination: the namespace and the claim are what the environment scripts and
+# the prerequisite layer create on either provider.
+#
+# This is a contract example, not evidence about kind. The provider contract
+# forbids reading one provider's results across to the other, and nothing here
+# has been run on either.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: local-kind
+  owner: platform-operations-demo
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: kind
+    namespace: inferops-release
+
+  modelCache:
+    class: existing-claim
+    claimName: inferops-model-cache
+
+  platform:
+    apiReplicas: 1
+
+  gitops:
+    destinationPath: gitops/environments/local-kind

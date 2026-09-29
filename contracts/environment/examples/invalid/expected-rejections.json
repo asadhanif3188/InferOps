@@ -1,0 +1,174 @@
+{
+  "title": "Expected rejections for the EnvironmentBinding v1alpha1 invalid fixtures",
+  "description": "Every file under this directory must be refused, and must be refused for exactly the reasons recorded here. The test suite compares this manifest with the validator's output field by field, so a change that alters a canonical error code, a rule identifier, or a field location fails the build instead of quietly changing what consumers are told.",
+  "layers": {
+    "structural": "The published JSON Schema alone refuses the document. Any draft 2020-12 validator in any language reaches the same conclusion. Every binding rule is structural today: the binding has no semantic layer, and the rules that would need one are listed as pending in the contract document."
+  },
+  "fixtures": {
+    "api-replicas-not-an-integer.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-wrong-type",
+          "field": "$.spec.platform.apiReplicas"
+        }
+      ]
+    },
+    "api-replicas-out-of-range.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-out-of-range",
+          "field": "$.spec.platform.apiReplicas"
+        }
+      ]
+    },
+    "gitops-path-outside-the-repository.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.spec.gitops.destinationPath"
+        }
+      ]
+    },
+    "malformed-identifiers.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.name"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.owner"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.spec.destination.namespace"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.spec.modelCache.claimName"
+        }
+      ]
+    },
+    "missing-required-values.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.metadata.owner"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.spec.destination.namespace"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.spec.platform"
+        }
+      ]
+    },
+    "not-an-environment-binding.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.kind"
+        }
+      ]
+    },
+    "secret-value-in-a-field.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.spec.destination.token"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.spec.gitops.credentials"
+        }
+      ]
+    },
+    "secret-value-in-an-identifier.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.spec.gitops.destinationPath"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.spec.modelCache.claimName"
+        }
+      ]
+    },
+    "unsupported-api-version.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "version-unsupported",
+          "rule": "contract-version-unsupported",
+          "field": "$.apiVersion"
+        }
+      ]
+    },
+    "unsupported-vocabulary.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.spec.destination.clusterProvider"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.spec.environment"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.spec.modelCache.class"
+        }
+      ]
+    },
+    "workload-intent-in-binding.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.spec.model"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.spec.platform.runtimeReplicas"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.spec.scaling"
+        }
+      ]
+    }
+  }
+}

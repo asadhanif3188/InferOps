@@ -1,0 +1,31 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: kind names another contract.
+#
+# apiVersion alone does not name a schema - the WorkloadContract and the
+# EnvironmentBinding share inferops.io/v1alpha1 - so the pair does. A binding
+# body labelled as a workload contract is refused on kind rather than read as
+# whichever of the two a consumer happened to expect.
+apiVersion: inferops.io/v1alpha1
+kind: WorkloadContract
+
+metadata:
+  name: local-docker-desktop
+  owner: platform-operations-demo
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: docker-desktop
+    namespace: inferops-release
+
+  modelCache:
+    class: existing-claim
+    claimName: inferops-model-cache
+
+  platform:
+    apiReplicas: 1
+
+  gitops:
+    destinationPath: gitops/environments/local-docker-desktop

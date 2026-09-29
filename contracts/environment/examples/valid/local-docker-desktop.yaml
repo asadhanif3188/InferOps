@@ -1,0 +1,31 @@
+# The facts the V1 reference environment supplies to a release: the Docker Desktop
+# provider, the namespace the release lifecycle installs into, the model cache
+# claim the prerequisite layer creates, and one platform API replica. Each value is
+# copied from the record that owns it, and a test compares them, so a drift between
+# this fixture and the environment it describes fails the build.
+#
+# This is a contract example. Nothing in this repository reads a binding yet, and
+# the GitOps destination below is a declared location, not a directory that exists.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: local-docker-desktop
+  owner: platform-operations-demo
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: docker-desktop
+    namespace: inferops-release
+
+  modelCache:
+    class: existing-claim
+    claimName: inferops-model-cache
+
+  platform:
+    apiReplicas: 1
+
+  gitops:
+    destinationPath: gitops/environments/local-docker-desktop

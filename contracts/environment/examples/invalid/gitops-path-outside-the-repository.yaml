@@ -1,0 +1,31 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: a GitOps destination that climbs out of the repository.
+#
+# The destination is repository-relative and written as lowercase segments, so
+# parent traversal, an absolute path, and a drive letter all fall outside the
+# pattern. A binding can therefore never carry a filesystem path from somebody's
+# machine into a generated artifact.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: local-docker-desktop
+  owner: platform-operations-demo
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: docker-desktop
+    namespace: inferops-release
+
+  modelCache:
+    class: existing-claim
+    claimName: inferops-model-cache
+
+  platform:
+    apiReplicas: 1
+
+  gitops:
+    destinationPath: ../../gitops/environments/local-docker-desktop

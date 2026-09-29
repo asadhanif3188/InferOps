@@ -1,0 +1,30 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: the platform API replica count is a string.
+#
+# The quotes make it one. This is the fixture that reaches value-wrong-type, which
+# the WorkloadContract's fixtures do not: apiReplicas is an integer with bounds and
+# no pattern, so a type error is the only constraint a string can fail here.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: local-docker-desktop
+  owner: platform-operations-demo
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: docker-desktop
+    namespace: inferops-release
+
+  modelCache:
+    class: existing-claim
+    claimName: inferops-model-cache
+
+  platform:
+    apiReplicas: "2"
+
+  gitops:
+    destinationPath: gitops/environments/local-docker-desktop
