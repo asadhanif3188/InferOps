@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inferops.io/contracts/release/rendered-workload-release.v1alpha1.schema.json",
+  "title": "RenderedWorkloadRelease v1alpha1",
+  "description": "The provenance of one rendered workload release: which workload and version it is, the digest of the WorkloadContract and of the EnvironmentBinding it was rendered from, the revisions of the renderer and of the platform defaults that rendered it, a release identifier derived from those, and the file name and digest of the Helm values it produced. It is a repository document written beside the values it describes, not a Kubernetes resource: no custom resource definition, controller, or cluster ever reads one. It references its inputs and its output by digest and carries none of their content. This schema is structural only: rules that compare a release with the documents it names, including how its release identifier is derived, are stated in docs/contracts/rendered-workload-release.md and are not enforced here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "source", "output"],
+  "properties": {
+    "apiVersion": {
+      "description": "Contract group and maturity version. Together with kind it names this schema; a breaking change requires a new value here, never a redefinition of this one.",
+      "const": "inferops.io/v1alpha1"
+    },
+    "kind": {
+      "const": "RenderedWorkloadRelease"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "output": {
+      "$ref": "#/$defs/output"
+    }
+  },
+  "$defs": {
+    "dnsLabel": {
+      "description": "A DNS-safe stable identifier, lowercase, the same pattern and bound as the WorkloadContract's and the EnvironmentBinding's identifiers. Uppercase letters, underscores, dots, and whitespace are not accepted, which also excludes most of the shapes a pasted credential takes.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    },
+    "lowercaseSemanticVersion": {
+      "description": "A semantic version whose pre-release and build identifiers are lowercase. It is the WorkloadContract's semantic version pattern with uppercase letters removed and a length bound added, so it is narrower than what a contract accepts: a contract version such as 1.0.0-RC.1 cannot be recorded by this version of the release. The narrowing keeps uppercase credential shapes out of provenance; relaxing it later is a compatible change.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-z-][0-9a-z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-z-][0-9a-z-]*))*))?(?:\\+([0-9a-z-]+(?:\\.[0-9a-z-]+)*))?$"
+    },
+    "digestPinnedImageReference": {
+      "description": "An OCI image reference pinned by digest, exactly as the WorkloadContract accepts one. A tag alone is a movable label and is not accepted.",
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$"
+    },
+    "sha256": {
+      "description": "A SHA-256 digest as 64 lowercase hexadecimal characters, with no algorithm prefix: the field name states the algorithm. Uppercase hexadecimal, a sha256: prefix, and any other length are refused, so one digest has exactly one spelling and two releases can be compared as text.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitRevision": {
+      "description": "A full Git commit identifier, 40 lowercase hexadecimal characters. A branch or tag name is refused because either can be moved to another commit, and an abbreviated identifier is refused because it can become ambiguous as history grows; a release must name one commit for as long as it exists.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "releaseId": {
+      "description": "release_id. The SHA-256, as 64 lowercase hexadecimal characters, of this release's own metadata.workloadId, metadata.workloadVersion, and source block, in the canonical JSON form the contract document defines. The same inputs therefore give the same identifier on every render, and any change to an input gives a different one. The schema checks the form only: that the value is the one the rule gives is not enforced here, so a random 64-character value passes this pattern. A random UUID does not.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "valuesFileName": {
+      "description": "The name of a file in the same directory as the release document, lowercase, in dot-separated DNS-label segments, ending in .yaml. It has no directory part, so it cannot point outside the release's own directory, into a personal filesystem path, or at another release's values.",
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\.yaml$"
+    },
+    "metadata": {
+      "description": "Which workload this is a release of, and which release.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workloadId", "workloadVersion", "releaseId"],
+      "properties": {
+        "workloadId": {
+          "description": "workload_id: the WorkloadContract's metadata.name, copied.",
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "workloadVersion": {
+          "description": "workload_version: the WorkloadContract's metadata.version, copied. Either a lowercase semantic version or an image reference pinned by digest.",
+          "oneOf": [
+            { "$ref": "#/$defs/lowercaseSemanticVersion" },
+            { "$ref": "#/$defs/digestPinnedImageReference" }
+          ]
+        },
+        "releaseId": {
+          "$ref": "#/$defs/releaseId"
+        }
+      }
+    },
+    "source": {
+      "description": "Every input the release was rendered from, each named by an immutable identity. Every member is required: a release that leaves an input out cannot be traced back to it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "environmentBinding", "renderer", "platformDefaults"],
+      "properties": {
+        "contract": { "$ref": "#/$defs/contractReference" },
+        "environmentBinding": { "$ref": "#/$defs/environmentBindingReference" },
+        "renderer": { "$ref": "#/$defs/renderer" },
+        "platformDefaults": { "$ref": "#/$defs/platformDefaults" }
+      }
+    },
+    "contractReference": {
+      "description": "The WorkloadContract the release was rendered from, by version and digest. Its content is not copied here.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apiVersion", "sha256"],
+      "properties": {
+        "apiVersion": {
+          "description": "The contract's apiVersion: the WorkloadContract versions this release version can record.",
+          "enum": ["inferops.io/v1alpha1"]
+        },
+        "sha256": {
+          "description": "The digest of the contract document. How the document is canonicalised before it is hashed is not decided by this schema.",
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "environmentBindingReference": {
+      "description": "The EnvironmentBinding the release was rendered with: its identity, which is its environment and its name, and the digest of its content, because a binding carries no revision field. Its content is not copied here.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apiVersion", "environment", "name", "sha256"],
+      "properties": {
+        "apiVersion": {
+          "description": "The binding's apiVersion: the EnvironmentBinding versions this release version can record.",
+          "enum": ["inferops.io/v1alpha1"]
+        },
+        "environment": {
+          "description": "The binding's spec.environment, from the same controlled vocabulary as the WorkloadContract's and the EnvironmentBinding's.",
+          "enum": ["ci", "local", "dev", "staging", "production"]
+        },
+        "name": {
+          "description": "The binding's metadata.name, its binding_id.",
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "sha256": {
+          "description": "The digest of the binding document. How the document is canonicalised before it is hashed is not decided by this schema.",
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "renderer": {
+      "description": "The renderer that produced the release, by the repository revision it ran from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision"],
+      "properties": {
+        "revision": { "$ref": "#/$defs/gitRevision" }
+      }
+    },
+    "platformDefaults": {
+      "description": "The platform defaults the renderer applied, by the repository revision they were read at.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision"],
+      "properties": {
+        "revision": { "$ref": "#/$defs/gitRevision" }
+      }
+    },
+    "output": {
+      "description": "What the release produced, referenced rather than carried.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["helmValues"],
+      "properties": {
+        "helmValues": { "$ref": "#/$defs/helmValues" }
+      }
+    },
+    "helmValues": {
+      "description": "The generated Helm values file, by name and digest. The values themselves are never written into the release document.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/valuesFileName" },
+        "sha256": {
+          "description": "The digest of the values file. How it is computed is not decided by this schema.",
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

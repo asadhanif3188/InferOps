@@ -10,6 +10,35 @@ from `1.0.0`.
 
 ### Added
 
+- **RenderedWorkloadRelease `v1alpha1`, the provenance of a rendered release.**
+  `V2-S1-002-PR1` published [its schema](contracts/release/rendered-workload-release.v1alpha1.schema.json)
+  and [document](docs/contracts/rendered-workload-release.md): a repository document,
+  not a Kubernetes custom resource, that names the workload and version a release is
+  of, the version and digest of the WorkloadContract and of the EnvironmentBinding it
+  was rendered from, the full commit revisions of the renderer and of the platform
+  defaults, a release identifier, and the file name and digest of the generated Helm
+  values — each by identity, none by content. Every object is closed and every member
+  required, every string is a pattern or a vocabulary, there is no field for a
+  timestamp, and a digest or revision has exactly one accepted spelling. The release
+  identifier is derived, never minted: the SHA-256 of the release's workload identity
+  and `source` block in the canonical JSON form the evidence index already uses, so
+  the same inputs give the same identifier and the output is not part of it. The
+  schema refuses a UUID and checks the form only; both valid fixtures carry the
+  derived identifier and a test recomputes it, and another asserts that an underived
+  identifier still passes. The workload identifier, version forms, recordable source
+  versions, and environment vocabulary are held to the other two schemas; the semantic
+  version is the contract's without uppercase, and the cost of that narrowing is
+  measured. Two valid fixtures name committed contract and binding fixtures with
+  placeholder digests; fifteen invalid fixtures are refused with exactly the published
+  canonical code, rule, and field, through the existing error model — no code and no
+  rule identifier was added. Rules that need a second document or a semantic layer are
+  listed as not applied, and the lowercase credential shapes the patterns cannot
+  exclude are measured and asserted to still pass. Nothing produces or reads a
+  release, no digest is checked, no claim moves, and the WorkloadContract and
+  EnvironmentBinding schemas, fixtures, and verdicts are unchanged. Every check is
+  static (`C0`). [The validation record](docs/proof/contracts/v2-s1-002-pr1-validation.md)
+  says what was run.
+
 - **The EnvironmentBinding in the platform domain.** `V2-S1-001-PR2` added
   `inferops.domain.environment`: a parser that reads a binding into frozen typed
   objects and refuses exactly what the published schema refuses, with the canonical

@@ -10,6 +10,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **RenderedWorkloadRelease `v1alpha1`** — a third schema, versioned independently of
+  the other two although all three use `inferops.io/v1alpha1`. It records the
+  provenance of one rendered release: the workload identifier and version, a release
+  identifier, the version and digest of the WorkloadContract and of the
+  EnvironmentBinding it was rendered from — the binding by its environment and name
+  too — the full commit revisions of the renderer and of the platform defaults, and
+  the file name and digest of the generated Helm values. It references each by
+  identity and carries none of their content. Every object is closed and every member
+  required; digests are 64 lowercase hexadecimal characters, revisions 40, and there
+  is no field for a timestamp. The release identifier is the SHA-256 of the release's
+  workload identity and `source` block in canonical JSON; the schema checks its form
+  only. It is a repository document, not a Kubernetes custom resource. Two valid and
+  fifteen invalid fixtures under `release/examples/`, each invalid one with its
+  expected code, rule, and field in `expected-rejections.json`. Every rule is
+  structural; no code and no rule identifier was added. Nothing produces or reads a
+  release yet. Compatibility classification for the WorkloadContract and the
+  EnvironmentBinding: **compatible** — their schemas, fixtures, and verdicts are
+  unchanged.
+
 - **EnvironmentBinding `v1alpha1`, rules across bindings** — five rule identifiers the
   platform domain applies to bindings supplied together and to a selection among them
   for one WorkloadContract: `binding-identity-duplicated`,

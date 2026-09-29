@@ -1,0 +1,40 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: three inputs named by labels that can move.
+#
+# metadata.workloadVersion           latest, which is no version
+# source.renderer.revision           main, a branch
+# source.platformDefaults.revision   an abbreviated commit identifier
+#
+# A release must name one input for as long as it exists. A branch and a tag move,
+# and an abbreviated identifier can become ambiguous as history grows. The version
+# is refused by both of its alternatives at once, so its rule is
+# value-not-permitted rather than value-malformed.
+#
+# The abbreviated identifier is a fixed string, not a commit in this repository.
+apiVersion: inferops.io/v1alpha1
+kind: RenderedWorkloadRelease
+
+metadata:
+  workloadId: support-assistant
+  workloadVersion: latest
+  releaseId: c10f8012e8cf166e6d2ddb91d4b23a209ba26910fff8970c4cb5bb39a6a6d230
+
+source:
+  contract:
+    apiVersion: inferops.io/v1alpha1
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+  environmentBinding:
+    apiVersion: inferops.io/v1alpha1
+    environment: local
+    name: local-docker-desktop
+    sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+  renderer:
+    revision: main
+  platformDefaults:
+    revision: "a1b2c3d"
+
+output:
+  helmValues:
+    path: values.generated.yaml
+    sha256: "3333333333333333333333333333333333333333333333333333333333333333"

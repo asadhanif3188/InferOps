@@ -1,9 +1,9 @@
 # Contracts
 
-Status: one contract accepted and one schema published, both at alpha maturity. The
+Status: one contract accepted and two schemas published, all at alpha maturity. The
 platform domain reads a WorkloadContract and an EnvironmentBinding into typed objects and
 selects the binding that serves a contract; nothing deploys, serves, or admits a workload
-from either, and nothing renders one.
+from either, and nothing renders one. Nothing produces or reads a RenderedWorkloadRelease.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under
@@ -14,6 +14,7 @@ means, how it is versioned, which rules are enforced, and which are not.
 |---|---|---|---|
 | WorkloadContract | `v1alpha1` | Accepted; parsed by [the workload domain model](../domain/workload-domain-model.md), and no runtime consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
 | EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; no renderer or other consumer exists | [EnvironmentBinding v1alpha1](environment-binding.md) |
+| RenderedWorkloadRelease | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; a repository document, not a cluster resource; no renderer produces one and nothing reads one | [RenderedWorkloadRelease v1alpha1](rendered-workload-release.md) |
 
 A published schema is a commitment about what will be accepted. It is not evidence
 that anything accepts it, and it certifies no runtime behaviour.
@@ -34,12 +35,13 @@ No capability descriptor, runtime descriptor, model-access API, evaluation resul
 cost record, or policy decision exists. Each will be added when the capability
 behind it exists rather than in advance.
 
-The EnvironmentBinding is the one schema published before its consumer, and the
-exception is deliberate rather than a lapse in the rule above. The renderer that will
-read it is the second version's first capability, and it is built against the binding,
-so the binding's shape and its boundary with the WorkloadContract have to be fixed and
-tested first. Its document says, in its status line, that the domain reads one and
-nothing renders one.
+The EnvironmentBinding and the RenderedWorkloadRelease are the two schemas published
+before their consumer, and the exception is deliberate rather than a lapse in the rule
+above. The renderer is the second version's first capability: it reads a binding and
+writes a release, and it is built against both, so their shapes, the binding's boundary
+with the WorkloadContract, and the release's rule for its own identifier have to be fixed
+and tested first. Each document says, in its status line, what reads it and that nothing
+renders one.
 
 A **cost record** is the one of those whose shape is now written down. [The cost
 method](../cost/cost-method.md) publishes the fields a record would carry, as part

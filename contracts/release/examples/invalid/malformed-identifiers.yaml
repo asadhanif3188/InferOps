@@ -1,0 +1,35 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: two identifiers that are not DNS labels.
+#
+# metadata.workloadId              uppercase and an underscore
+# source.environmentBinding.name   a dot
+#
+# Both identifiers are copied from a document whose own schema would refuse these
+# values, so a release carrying them was not rendered from a valid document.
+apiVersion: inferops.io/v1alpha1
+kind: RenderedWorkloadRelease
+
+metadata:
+  workloadId: Support_Assistant
+  workloadVersion: 0.1.0
+  releaseId: c10f8012e8cf166e6d2ddb91d4b23a209ba26910fff8970c4cb5bb39a6a6d230
+
+source:
+  contract:
+    apiVersion: inferops.io/v1alpha1
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+  environmentBinding:
+    apiVersion: inferops.io/v1alpha1
+    environment: local
+    name: local.docker-desktop
+    sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+  renderer:
+    revision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  platformDefaults:
+    revision: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+output:
+  helmValues:
+    path: values.generated.yaml
+    sha256: "3333333333333333333333333333333333333333333333333333333333333333"

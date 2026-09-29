@@ -371,6 +371,14 @@
       "note": "Deliberately no claim: no renderer consumes a selected binding, so `deployment-values-derive-only-from-a-validated-document` stays planned. It establishes that the domain and the committed schema, fixtures, and document agree and that the domain's refusals are the published ones, never that an environment a binding describes exists or that any release used one. It reads committed files only."
     },
     {
+      "module": "tests/contracts/test_rendered_workload_release_v1alpha1.py",
+      "layer": "contract-and-schema",
+      "marker": "contract",
+      "protects": "The RenderedWorkloadRelease schema and its fixtures: that every object is closed, every member required, every string in every accepted form a pattern or a vocabulary, the top level has no spec or status, and no property is named for a time; that no chart, manifest, or infrastructure file mentions the kind; that the workload identifier, binding name, digest-pinned version, recordable source versions, and environment vocabulary are the WorkloadContract's and the EnvironmentBinding's own, and the semantic version is the contract's without uppercase, with the cost of that narrowing measured; that the published field table is the schema; that no other contract's fixture is a release and no release is another contract; that each valid fixture validates, is JSON-representable, is named after its workload and binding, holds no secret-shaped field name, names a committed contract and binding fixture serving one environment, carries the release identifier the published rule derives, and has placeholder digests; that every invalid fixture is refused with exactly the published code, rule, and field, by the bare schema as well as the validator, repeatably, and without quoting a document value; that the rule matrix is every structural rule and only the fallback lacks a fixture; and that timestamps, UUIDs, and the excluded credential shapes are refused in every field while an underived release identifier and the lowercase credential shapes still pass where the document says they do, with the WorkloadContract heuristic's reach over each placement measured.",
+      "claims": [],
+      "note": "Deliberately no claim: nothing produces or reads a release, so no published claim rests on it, and `deployment-values-derive-only-from-a-validated-document` stays planned until a renderer derives values from a validated document. It establishes that the committed schema, fixtures, and documents agree with each other and with the schemas a release names, never that a release was rendered, that any digest in one is the digest of what it names, or that anything was installed. It reads committed files only."
+    },
+    {
       "module": "tests/contracts/test_platform_contract_regression.py",
       "layer": "contract-and-schema",
       "marker": "contract",

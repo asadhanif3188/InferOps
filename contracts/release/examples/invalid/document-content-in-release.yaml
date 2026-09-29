@@ -1,0 +1,43 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: carrying the documents a release is meant only to reference.
+#
+# source.environmentBinding.spec   the binding's facts, copied in beside its digest
+# output.helmValues.content        the generated values, copied in beside their digest
+#
+# Provenance names each input and output by an immutable identity and carries none
+# of their content. A copy beside a digest can disagree with the digest, and nothing
+# could tell which one a reader should believe.
+apiVersion: inferops.io/v1alpha1
+kind: RenderedWorkloadRelease
+
+metadata:
+  workloadId: support-assistant
+  workloadVersion: 0.1.0
+  releaseId: c10f8012e8cf166e6d2ddb91d4b23a209ba26910fff8970c4cb5bb39a6a6d230
+
+source:
+  contract:
+    apiVersion: inferops.io/v1alpha1
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+  environmentBinding:
+    apiVersion: inferops.io/v1alpha1
+    environment: local
+    name: local-docker-desktop
+    sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+    spec:
+      destination:
+        clusterProvider: docker-desktop
+        namespace: inferops-release
+  renderer:
+    revision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  platformDefaults:
+    revision: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+output:
+  helmValues:
+    path: values.generated.yaml
+    sha256: "3333333333333333333333333333333333333333333333333333333333333333"
+    content:
+      api:
+        replicaCount: 1

@@ -9,6 +9,7 @@ which of its rules are not yet enforced lives under
 |---|---|---|---|
 | WorkloadContract | `v1alpha1` | [`workload/workload-contract.v1alpha1.schema.json`](workload/workload-contract.v1alpha1.schema.json) | [WorkloadContract v1alpha1](../docs/contracts/workload-contract.md) |
 | EnvironmentBinding | `v1alpha1` | [`environment/environment-binding.v1alpha1.schema.json`](environment/environment-binding.v1alpha1.schema.json) | [EnvironmentBinding v1alpha1](../docs/contracts/environment-binding.md) |
+| RenderedWorkloadRelease | `v1alpha1` | [`release/rendered-workload-release.v1alpha1.schema.json`](release/rendered-workload-release.v1alpha1.schema.json) | [RenderedWorkloadRelease v1alpha1](../docs/contracts/rendered-workload-release.md) |
 
 | Supporting data | Version | File |
 |---|---|---|
@@ -18,9 +19,10 @@ The platform domain reads a WorkloadContract into typed objects; nothing in this
 repository deploys, serves, or admits a workload from one. The platform domain
 also reads an EnvironmentBinding, refuses bindings that conflict with each other, and
 selects the one that serves a contract; nothing renders one, and its schema and
-fixtures are published ahead of the renderer that will consume them, and say so. A
-published schema is a commitment about what will be accepted, not evidence that
-anything accepts it.
+fixtures are published ahead of the renderer that will consume them, and say so.
+Nothing produces or reads a RenderedWorkloadRelease: its schema and fixtures are
+published ahead of the renderer that will write one. A published schema is a
+commitment about what will be accepted, not evidence that anything accepts it.
 
 ## Layout
 
@@ -41,12 +43,24 @@ contracts/
         |-- valid/               bindings that must validate
         +-- invalid/             bindings that must be refused, plus the refusal
                                  each one must produce
++-- release/
+    |-- rendered-workload-release.v1alpha1.schema.json
+    +-- examples/
+        |-- valid/               releases that must validate
+        +-- invalid/             releases that must be refused, plus the refusal
+                                 each one must produce
 ```
 
 An EnvironmentBinding carries the facts one environment supplies to a release
 that are not workload intent, and has no field a WorkloadContract owns. Every rule
 it has is structural, so the bare schema refuses everything the published
 validator does.
+
+A RenderedWorkloadRelease records where one rendered release came from — the
+workload, the digests of the contract and binding, the renderer and platform-defaults
+revisions, a derived release identifier, and the digest of the generated values — and
+carries none of their content. It is a repository document, not a cluster resource.
+Every rule it has is structural too.
 
 The rules a schema cannot express — comparing two sibling values, consulting the
 compatibility matrix, judging whether a locator is a pasted credential — live in
