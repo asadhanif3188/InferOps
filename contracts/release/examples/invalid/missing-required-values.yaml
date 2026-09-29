@@ -1,0 +1,32 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: three required values left out.
+#
+# metadata.releaseId         no release identity
+# source.renderer            no record of what rendered it
+# output.helmValues.sha256   a values file named but not pinned
+#
+# A release that leaves an input or an output unpinned cannot be traced back to it,
+# so every member of every block is required.
+apiVersion: inferops.io/v1alpha1
+kind: RenderedWorkloadRelease
+
+metadata:
+  workloadId: support-assistant
+  workloadVersion: 0.1.0
+
+source:
+  contract:
+    apiVersion: inferops.io/v1alpha1
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+  environmentBinding:
+    apiVersion: inferops.io/v1alpha1
+    environment: local
+    name: local-docker-desktop
+    sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+  platformDefaults:
+    revision: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+output:
+  helmValues:
+    path: values.generated.yaml

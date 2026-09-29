@@ -1,0 +1,37 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: three values outside their controlled vocabularies.
+#
+# source.contract.apiVersion             a WorkloadContract version that does not exist
+# source.environmentBinding.apiVersion   an EnvironmentBinding version that does not exist
+# source.environmentBinding.environment  prod, which is not an environment name
+#
+# The release's own version is supported, so an unknown source version is a value
+# this release version cannot record - value-not-permitted - not a release version
+# the validator does not implement.
+apiVersion: inferops.io/v1alpha1
+kind: RenderedWorkloadRelease
+
+metadata:
+  workloadId: support-assistant
+  workloadVersion: 0.1.0
+  releaseId: c10f8012e8cf166e6d2ddb91d4b23a209ba26910fff8970c4cb5bb39a6a6d230
+
+source:
+  contract:
+    apiVersion: inferops.io/v1beta1
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+  environmentBinding:
+    apiVersion: inferops.io/v2alpha1
+    environment: prod
+    name: local-docker-desktop
+    sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+  renderer:
+    revision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  platformDefaults:
+    revision: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+output:
+  helmValues:
+    path: values.generated.yaml
+    sha256: "3333333333333333333333333333333333333333333333333333333333333333"

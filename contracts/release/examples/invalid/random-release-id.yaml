@@ -1,0 +1,37 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: a release identifier generated at random.
+#
+# metadata.releaseId is a version 4 UUID, the identifier a renderer that minted a
+# fresh ID on every run would write. Its shape is outside the pattern, so the schema
+# refuses it. That is a constraint on shape, not a proof of derivation: a random
+# value of 64 lowercase hexadecimal characters has the right shape and passes, and
+# the contract document says which change is to refuse it.
+#
+# The UUID is a fixed string chosen for this file; it identifies nothing.
+apiVersion: inferops.io/v1alpha1
+kind: RenderedWorkloadRelease
+
+metadata:
+  workloadId: support-assistant
+  workloadVersion: 0.1.0
+  releaseId: 3f2c9a1e-7b4d-4e8a-9c61-0d5e2f8a4b17
+
+source:
+  contract:
+    apiVersion: inferops.io/v1alpha1
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+  environmentBinding:
+    apiVersion: inferops.io/v1alpha1
+    environment: local
+    name: local-docker-desktop
+    sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+  renderer:
+    revision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  platformDefaults:
+    revision: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+output:
+  helmValues:
+    path: values.generated.yaml
+    sha256: "3333333333333333333333333333333333333333333333333333333333333333"

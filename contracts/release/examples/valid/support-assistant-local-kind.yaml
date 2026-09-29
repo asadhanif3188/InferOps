@@ -1,0 +1,37 @@
+# The same contract rendered with the committed local-kind EnvironmentBinding
+# fixture. Only the binding differs from the docker-desktop example - its name and
+# the digest of its content - and so the release ID differs too, and so does the
+# digest of the values it would produce.
+#
+# As in the other example, the identities are real and the digests and revisions
+# are repeated characters that name nothing. The release ID is the one the
+# published rule derives from the values above it.
+#
+# This is a contract example, not evidence about kind. Nothing was rendered,
+# installed, or run with it.
+apiVersion: inferops.io/v1alpha1
+kind: RenderedWorkloadRelease
+
+metadata:
+  workloadId: support-assistant
+  workloadVersion: 0.1.0
+  releaseId: 0fcaa1961411a58a8f101c8a09b8496cc509d7330cf0b3212d2b3d3bb77748a9
+
+source:
+  contract:
+    apiVersion: inferops.io/v1alpha1
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+  environmentBinding:
+    apiVersion: inferops.io/v1alpha1
+    environment: local
+    name: local-kind
+    sha256: "4444444444444444444444444444444444444444444444444444444444444444"
+  renderer:
+    revision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  platformDefaults:
+    revision: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+output:
+  helmValues:
+    path: values.generated.yaml
+    sha256: "5555555555555555555555555555555555555555555555555555555555555555"

@@ -1,0 +1,239 @@
+{
+  "title": "Expected rejections for the RenderedWorkloadRelease v1alpha1 invalid fixtures",
+  "description": "Every file under this directory must be refused, and must be refused for exactly the reasons recorded here. The test suite compares this manifest with the validator's output field by field, so a change that alters a canonical error code, a rule identifier, or a field location fails the build instead of quietly changing what consumers are told.",
+  "layers": {
+    "structural": "The published JSON Schema alone refuses the document. Any draft 2020-12 validator in any language reaches the same conclusion. Every release rule is structural today: the release has no semantic layer, and the rules that would need one, or a second document, are listed as not applied in the contract document."
+  },
+  "fixtures": {
+    "document-content-in-release.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.output.helmValues.content"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.source.environmentBinding.spec"
+        }
+      ]
+    },
+    "identifier-too-long.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-out-of-range",
+          "field": "$.metadata.workloadId"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-out-of-range",
+          "field": "$.source.environmentBinding.name"
+        }
+      ]
+    },
+    "malformed-digests.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.output.helmValues.sha256"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.source.contract.sha256"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.source.environmentBinding.sha256"
+        }
+      ]
+    },
+    "malformed-identifiers.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.workloadId"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.source.environmentBinding.name"
+        }
+      ]
+    },
+    "missing-required-values.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.metadata.releaseId"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.output.helmValues.sha256"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-required",
+          "field": "$.source.renderer"
+        }
+      ]
+    },
+    "mutable-revisions.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.metadata.workloadVersion"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.source.platformDefaults.revision"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.source.renderer.revision"
+        }
+      ]
+    },
+    "not-a-rendered-release.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.kind"
+        }
+      ]
+    },
+    "random-release-id.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.releaseId"
+        }
+      ]
+    },
+    "secret-value-in-a-field.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.output.helmValues.credentials"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.source.renderer.token"
+        }
+      ]
+    },
+    "secret-value-in-an-identifier.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.metadata.workloadId"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.metadata.workloadVersion"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.source.environmentBinding.name"
+        }
+      ]
+    },
+    "uncontrolled-timestamp.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.evidence"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "field-unknown",
+          "field": "$.metadata.generatedAt"
+        }
+      ]
+    },
+    "unsupported-api-version.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "version-unsupported",
+          "rule": "contract-version-unsupported",
+          "field": "$.apiVersion"
+        }
+      ]
+    },
+    "unsupported-vocabulary.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.source.contract.apiVersion"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.source.environmentBinding.apiVersion"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-not-permitted",
+          "field": "$.source.environmentBinding.environment"
+        }
+      ]
+    },
+    "values-outside-the-release.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-malformed",
+          "field": "$.output.helmValues.path"
+        }
+      ]
+    },
+    "wrong-json-types.yaml": {
+      "layer": "structural",
+      "expected": [
+        {
+          "code": "contract-invalid",
+          "rule": "value-wrong-type",
+          "field": "$.source.contract.sha256"
+        },
+        {
+          "code": "contract-invalid",
+          "rule": "value-wrong-type",
+          "field": "$.source.renderer.revision"
+        }
+      ]
+    }
+  }
+}

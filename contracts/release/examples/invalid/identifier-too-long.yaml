@@ -1,0 +1,34 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: two identifiers of 64 characters, one more than a DNS label allows.
+#
+# metadata.workloadId
+# source.environmentBinding.name
+#
+# Each is otherwise well formed, so the only rule either breaks is the length bound.
+apiVersion: inferops.io/v1alpha1
+kind: RenderedWorkloadRelease
+
+metadata:
+  workloadId: support-assistant-support-assistant-support-assistant-0123456789
+  workloadVersion: 0.1.0
+  releaseId: c10f8012e8cf166e6d2ddb91d4b23a209ba26910fff8970c4cb5bb39a6a6d230
+
+source:
+  contract:
+    apiVersion: inferops.io/v1alpha1
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+  environmentBinding:
+    apiVersion: inferops.io/v1alpha1
+    environment: local
+    name: local-docker-desktop-local-docker-desktop-local-docker-desktop-0
+    sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+  renderer:
+    revision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  platformDefaults:
+    revision: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+output:
+  helmValues:
+    path: values.generated.yaml
+    sha256: "3333333333333333333333333333333333333333333333333333333333333333"

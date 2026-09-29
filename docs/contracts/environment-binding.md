@@ -110,9 +110,10 @@ under a contract's `spec`, other than `environment`.
 
 A binding carries **no revision field**. A number maintained by hand beside the content
 can disagree with the content, and nothing could tell which is right. A binding's
-content is identified by a digest of the document instead; how that digest is computed
-and where it is recorded belongs to the release provenance artifact, which does not
-exist yet, and is not decided here.
+content is identified by a digest of the document instead. Where that digest is recorded
+is decided by [the release provenance artifact](rendered-workload-release.md#what-a-release-records),
+added by `V2-S1-002-PR1`: a release records a binding's environment, name, and digest.
+How the digest is computed is decided by neither document yet.
 
 ## Structure
 
