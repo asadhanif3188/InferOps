@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inferops.io/contracts/environment/environment-binding.v1alpha1.schema.json",
+  "title": "EnvironmentBinding v1alpha1",
+  "description": "The facts one environment supplies to a workload release that are not the workload's intent: which cluster provider and namespace a release goes to, which model cache claim it mounts, how many replicas the platform API runs, and where generated desired state for the environment is written. It carries no field a WorkloadContract owns, so it has nowhere to override one. This schema is structural only: rules that compare a binding with another document are stated in docs/contracts/environment-binding.md and are not enforced here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {
+      "description": "Contract group and maturity version. Together with kind it names this schema; a breaking change requires a new value here, never a redefinition of this one.",
+      "const": "inferops.io/v1alpha1"
+    },
+    "kind": {
+      "const": "EnvironmentBinding"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "spec": {
+      "$ref": "#/$defs/spec"
+    }
+  },
+  "$defs": {
+    "dnsLabel": {
+      "description": "A DNS-safe stable identifier, lowercase. Uppercase letters, underscores, dots, and whitespace are not accepted, which also excludes most of the shapes a pasted credential takes.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    },
+    "releaseNamespace": {
+      "description": "A namespace a release installs into. It must carry the inferops- prefix the chart's namespace check enforces, and it must already exist: the prerequisite layer creates it, and neither a binding nor a release does.",
+      "type": "string",
+      "maxLength": 63,
+      "pattern": "^inferops-[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    },
+    "lowercaseRepositoryPath": {
+      "description": "A directory relative to the repository root, written as lowercase DNS-label segments. Absolute paths, parent traversal, drive letters, dots, and uppercase are all outside the pattern, so a binding cannot carry a personal filesystem path.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(/[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "owner"],
+      "properties": {
+        "name": {
+          "description": "binding_id. Stable, DNS-safe, and unique among the bindings of one environment. Renaming a binding makes a different binding.",
+          "$ref": "#/$defs/dnsLabel"
+        },
+        "owner": {
+          "description": "owner_id of the team that owns this environment's facts. It is the platform side of the boundary, not the workload's owner.",
+          "$ref": "#/$defs/dnsLabel"
+        }
+      }
+    },
+    "spec": {
+      "description": "Environment facts only. Every member is required: a binding that leaves one out would leave the renderer to guess it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment", "destination", "modelCache", "platform", "gitops"],
+      "properties": {
+        "environment": {
+          "description": "The environment this binding supplies facts for, from the same controlled vocabulary as WorkloadContract spec.environment. It is the one value the two documents share: the key a contract's environment is matched on, not a second copy of it. Permitting a value is not a statement that such an environment exists.",
+          "enum": ["ci", "local", "dev", "staging", "production"]
+        },
+        "destination": { "$ref": "#/$defs/destination" },
+        "modelCache": { "$ref": "#/$defs/modelCache" },
+        "platform": { "$ref": "#/$defs/platform" },
+        "gitops": { "$ref": "#/$defs/gitops" }
+      }
+    },
+    "destination": {
+      "description": "Where a release for this environment goes. The binding states a selection; it does not verify that the cluster exists, which the provider contract's verification does before anything is mutated.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clusterProvider", "namespace"],
+      "properties": {
+        "clusterProvider": {
+          "description": "The local cluster provider, from the providers the local cluster provider contract supports. No cluster address, context, or credential is recorded here, and the object is closed so none can be.",
+          "enum": ["kind", "docker-desktop"]
+        },
+        "namespace": { "$ref": "#/$defs/releaseNamespace" }
+      }
+    },
+    "modelCache": {
+      "description": "The model cache a release in this environment mounts. The claim belongs to the prerequisite layer; a binding references it, which is not owning it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "claimName"],
+      "properties": {
+        "class": {
+          "description": "How the cache is provided. existing-claim is a PersistentVolumeClaim that already exists when the release is installed, mounted read only and never created by the release. The storage class behind the claim is the prerequisite layer's input, not a binding field.",
+          "enum": ["existing-claim"]
+        },
+        "claimName": {
+          "description": "The name of the existing claim.",
+          "$ref": "#/$defs/dnsLabel"
+        }
+      }
+    },
+    "platform": {
+      "description": "Settings for platform-owned components in this environment. The serving runtime's replica count is not here: it is workload intent, and WorkloadContract spec.scaling owns it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["apiReplicas"],
+      "properties": {
+        "apiReplicas": {
+          "description": "Replicas of the platform API tier, within the bounds the chart's values schema accepts.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        }
+      }
+    },
+    "gitops": {
+      "description": "Where generated desired state for this environment is to be written. A declared destination, not a statement that anything is there or that anything reconciles it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["destinationPath"],
+      "properties": {
+        "destinationPath": { "$ref": "#/$defs/lowercaseRepositoryPath" }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: four identifiers malformed at once.
+#
+#   metadata.name                  uppercase and an underscore
+#   metadata.owner                 whitespace
+#   spec.destination.namespace     no inferops- prefix, which the chart's
+#                                  namespace check and the isolation rule require
+#   spec.modelCache.claimName      uppercase
+#
+# One document, four findings, sorted by field: a refusal names every fault it
+# found rather than the first one.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: Local_Docker_Desktop
+  owner: platform operations
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: docker-desktop
+    namespace: platform-release
+
+  modelCache:
+    class: existing-claim
+    claimName: InferOps-Model-Cache
+
+  platform:
+    apiReplicas: 1
+
+  gitops:
+    destinationPath: gitops/environments/local-docker-desktop

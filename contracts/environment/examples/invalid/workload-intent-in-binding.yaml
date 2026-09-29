@@ -1,0 +1,47 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: a binding that tries to set workload intent.
+#
+#   spec.scaling                   the serving replica range, which
+#                                  WorkloadContract spec.scaling owns
+#   spec.model                     the model selection, which WorkloadContract
+#                                  spec.model owns
+#   spec.platform.runtimeReplicas  the serving runtime's replica count, written
+#                                  under the platform block where it looks like a
+#                                  platform setting; it is the same workload value
+#
+# This is the override the binding exists to make impossible, and the schema
+# refuses it by having nowhere to put it: every object is closed and none defines
+# a field a WorkloadContract owns. Nothing is overridden, merged, or ignored - the
+# whole document is refused.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: local-docker-desktop
+  owner: platform-operations-demo
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: docker-desktop
+    namespace: inferops-release
+
+  modelCache:
+    class: existing-claim
+    claimName: inferops-model-cache
+
+  platform:
+    apiReplicas: 1
+    runtimeReplicas: 2
+
+  gitops:
+    destinationPath: gitops/environments/local-docker-desktop
+
+  scaling:
+    minimumReplicas: 2
+    maximumReplicas: 2
+
+  model:
+    modelRef: qwen3-1-7b-q8-0

@@ -1,0 +1,31 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: zero platform API replicas.
+#
+# The bounds are the ones the chart's values schema accepts for the API tier, one
+# to sixteen, and a test holds the two schemas to the same bounds. A binding that
+# accepted a value the chart refuses would move the refusal from review time to
+# install time.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: local-docker-desktop
+  owner: platform-operations-demo
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: docker-desktop
+    namespace: inferops-release
+
+  modelCache:
+    class: existing-claim
+    claimName: inferops-model-cache
+
+  platform:
+    apiReplicas: 0
+
+  gitops:
+    destinationPath: gitops/environments/local-docker-desktop

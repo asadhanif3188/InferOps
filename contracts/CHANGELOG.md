@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **EnvironmentBinding `v1alpha1`** — a second schema, versioned independently of
+  the WorkloadContract although both use `inferops.io/v1alpha1`: `apiVersion` and
+  `kind` together name a schema. It carries the facts one environment supplies to a
+  release that are not workload intent — the cluster provider and namespace a
+  release goes to, the existing model cache claim it mounts, the platform API's
+  replica count, and where generated desired state is to be written — and has no
+  field a WorkloadContract owns, so a binding has nowhere to override one. Every
+  object is closed and every member required, and every string is a lowercase
+  identifier, a lowercase path, or a vocabulary value. Two valid and eleven invalid
+  fixtures under `environment/examples/`, each invalid one with its expected code,
+  rule, and field in `expected-rejections.json`. Every rule is structural. Nothing
+  reads a binding yet. Compatibility classification for the WorkloadContract:
+  **compatible** — its schema, fixtures, and verdicts are unchanged.
+
 - **WorkloadContract `v1alpha1`** — the first machine-readable public contract.
   Covers workload identity, owner, profile, environment, model and runtime
   reference, resources, replica bounds, platform integrations, security

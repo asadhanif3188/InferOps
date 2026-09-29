@@ -4,12 +4,15 @@ This document explains which credential patterns are intentionally used as test 
 
 ## Test Fixtures
 
-The following credentials are **synthetic test data**. They authenticate against nothing and exist only to test shape detection and redaction. Four test suites use them:
+The following credentials are **synthetic test data**. They authenticate against nothing and exist only to test shape detection and redaction. Five test suites use them:
 
 - `tests/contracts/test_workload_contract_validation.py` — validates that the workload contract validation logic correctly rejects credential-like locators;
 - `tests/domain/test_workload_domain.py` — uses `AKIAIOSFODNN7EXAMPLE` and the zero-padded `ghp_` value to assert that a domain refusal does **not** repeat a value read out of the document;
 - `tests/adapters/test_llama_server_settings.py` — uses the zero-padded `ghp_` value inside a URL's userinfo to assert that a runtime endpoint carrying a credential is refused and that the refusal does **not** repeat it;
-- `tests/scaffolding/test_workload_template_parameters.py` — uses `AKIAIOSFODNN7EXAMPLE` to assert that a workload-template refusal does **not** repeat the value it refused.
+- `tests/scaffolding/test_workload_template_parameters.py` — uses `AKIAIOSFODNN7EXAMPLE` to assert that a workload-template refusal does **not** repeat the value it refused;
+- `tests/contracts/test_environment_binding_v1alpha1.py` — uses the AWS placeholder, the zero-padded `ghp_`, `github_pat_`, `hf_`, `sk-`, `glpat-`, and `xoxb-` values, a zero-padded GitLab deploy token `gldt-00000000000000000000`, the JWT header, and the bare synthetic segment `Zx4Kq9TbLm2Rd7Wf1Hs3Nv8Yc6Ej0Pa`, to assert which credential shapes an EnvironmentBinding's patterns refuse and which lowercase ones they still accept. The `gldt-` value appears nowhere else and has no pattern rule; it is covered only because the module sits under the exempted `tests/contracts/` path.
+
+Two EnvironmentBinding invalid fixtures, outside both exempted paths, also carry synthetic values: `contracts/environment/examples/invalid/secret-value-in-a-field.yaml` carries the JWT header, which its pattern rule covers, and `contracts/environment/examples/invalid/secret-value-in-an-identifier.yaml` carries `AKIAIOSFODNN7EXAMPLE`, which its pattern rule covers, and the synthetic segment under a `gitops/environments/` prefix, which **no rule covers** — the pattern rule is anchored to the `inferops/telemetry/` prefix. No rule was added for it: gitleaks 8.30.1 with this configuration reports no finding in either file, so there is no finding to exempt. If a later scanner version flags it, the right change is a pattern for that exact string, not a path exemption for the directory.
 
 ### AWS Keys
 - `AKIAIOSFODNN7EXAMPLE` — Official example key published in [AWS documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html)

@@ -1,0 +1,36 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: three values outside their controlled vocabularies.
+#
+#   spec.environment               not an environment WorkloadContract names, so no
+#                                  contract could ever select this binding
+#   spec.destination.clusterProvider
+#                                  not a provider the local cluster provider
+#                                  contract supports
+#   spec.modelCache.class          a cache nothing in this repository provides
+#
+# minikube and host-path are used because each is a real thing a binding author
+# might reach for, and neither is supported. Neither value is a plan.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: local-docker-desktop
+  owner: platform-operations-demo
+
+spec:
+  environment: qa
+
+  destination:
+    clusterProvider: minikube
+    namespace: inferops-release
+
+  modelCache:
+    class: host-path
+    claimName: inferops-model-cache
+
+  platform:
+    apiReplicas: 1
+
+  gitops:
+    destinationPath: gitops/environments/local-docker-desktop

@@ -10,6 +10,29 @@ from `1.0.0`.
 
 ### Added
 
+- **EnvironmentBinding `v1alpha1`, the second version's first contract.**
+  `V2-S1-001-PR1` published [its schema](contracts/environment/environment-binding.v1alpha1.schema.json)
+  and [document](docs/contracts/environment-binding.md): the facts one environment
+  supplies to a workload release that are not the workload's intent — the cluster
+  provider and namespace, the existing model cache claim, the platform API's replica
+  count, and a GitOps destination path. It defines no field the WorkloadContract owns,
+  so a binding cannot override one; a test reads both schemas and fails if any
+  property under a binding's `spec` is also defined under a contract's, other than the
+  shared `environment` key, whose two vocabularies it holds equal. Two valid fixtures,
+  for the reference provider and for `kind`, copy their namespace, claim, provider, and
+  replica bounds from the records that own them, and a test holds them there. Eleven
+  invalid fixtures are refused with exactly the published canonical code, rule, and
+  field, through the WorkloadContract's error model unchanged — no code and no rule
+  identifier was added. The offline validator gained a structural-only module for
+  bindings, and the WorkloadContract's schema-to-finding translation now takes the
+  schema as an argument so both contracts share it; its output for every WorkloadContract
+  document is unchanged, which that contract's own suites confirm. Every binding rule is structural; the rules that need a second document or
+  a semantic layer are listed as not applied, and the lowercase credential shapes the
+  patterns cannot exclude are measured and asserted to still pass. Nothing reads a
+  binding: no domain object, renderer, or script consumes one, no claim moves, and the
+  WorkloadContract is unchanged. Every check is static (`C0`). [The validation
+  record](docs/proof/contracts/v2-s1-001-pr1-validation.md) says what was run.
+
 - **A second version is opened for implementation.** `V2-S0-001-PR1` recorded
   [the decision to open it](docs/governance/v2-authorization.md), which supersedes the
   outcome of the defer decision below without editing it: that record's data is

@@ -1,0 +1,26 @@
+# INVALID FIXTURE. This document must never validate.
+#
+# Refused for: three required values are absent - the binding's owner, the
+# release namespace, and the platform block.
+#
+# Every member of a binding is required. A binding that leaves a fact out leaves
+# a renderer to supply it from somewhere else, which is the silent default this
+# artifact exists to replace.
+apiVersion: inferops.io/v1alpha1
+kind: EnvironmentBinding
+
+metadata:
+  name: local-docker-desktop
+
+spec:
+  environment: local
+
+  destination:
+    clusterProvider: docker-desktop
+
+  modelCache:
+    class: existing-claim
+    claimName: inferops-model-cache
+
+  gitops:
+    destinationPath: gitops/environments/local-docker-desktop

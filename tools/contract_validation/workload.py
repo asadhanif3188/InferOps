@@ -31,6 +31,7 @@ import json
 import math
 import re
 from collections import Counter
+from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -120,10 +121,6 @@ def load_schema() -> dict[str, Any]:
 def load_compatibility_matrix() -> dict[str, Any]:
     """The published runtime and model matrix, parsed, copied per caller."""
     return copy.deepcopy(_cached_compatibility_matrix())
-
-
-def _validator() -> Draft202012Validator:
-    return Draft202012Validator(load_schema())
 
 
 # --------------------------------------------------------------------------
@@ -253,14 +250,24 @@ def _rule_for(error: ValidationError) -> str:
     return _KEYWORD_RULES.get(keyword, "contract-structure-invalid")
 
 
-def structural_findings(document: Any) -> list[Finding]:
-    """Findings from the published schema, translated into canonical rules."""
+def findings_against(schema: dict[str, Any], document: Any) -> list[Finding]:
+    """Findings from any published schema, translated into canonical rules.
+
+    The translation - which rule a keyword maps to, what a message may say, which
+    field it names - is a property of the canonical error model rather than of one
+    contract, so every schema in the contract package is refused through it.
+    """
     findings: list[Finding] = []
-    for error in _validator().iter_errors(document):
+    for error in Draft202012Validator(schema).iter_errors(document):
         rule = _rule_for(error)
         message = _safe_message(error)
         findings.extend(finding(rule, field, message) for field in _fields_for(error))
     return findings
+
+
+def structural_findings(document: Any) -> list[Finding]:
+    """Findings from the published schema, translated into canonical rules."""
+    return findings_against(load_schema(), document)
 
 
 # --------------------------------------------------------------------------
@@ -563,8 +570,12 @@ def validate(document: Any) -> list[Finding]:
     review and comparable in a test. Identical findings are collapsed, because a
     reason given twice is not two reasons.
     """
-    found = {*structural_findings(document), *semantic_findings(document)}
-    return sorted(found, key=_sort_key)
+    return ordered([*structural_findings(document), *semantic_findings(document)])
+
+
+def ordered(findings: Iterable[Finding]) -> list[Finding]:
+    """Collapse identical findings and sort the rest, the way validate() does."""
+    return sorted(set(findings), key=_sort_key)
 
 
 def is_valid(document: Any) -> bool:

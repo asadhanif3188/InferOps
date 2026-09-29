@@ -8,13 +8,16 @@ which of its rules are not yet enforced lives under
 | Contract | Version | Schema | Documentation |
 |---|---|---|---|
 | WorkloadContract | `v1alpha1` | [`workload/workload-contract.v1alpha1.schema.json`](workload/workload-contract.v1alpha1.schema.json) | [WorkloadContract v1alpha1](../docs/contracts/workload-contract.md) |
+| EnvironmentBinding | `v1alpha1` | [`environment/environment-binding.v1alpha1.schema.json`](environment/environment-binding.v1alpha1.schema.json) | [EnvironmentBinding v1alpha1](../docs/contracts/environment-binding.md) |
 
 | Supporting data | Version | File |
 |---|---|---|
 | Runtime and model compatibility matrix | `v1alpha1` | [`workload/compatibility/runtime-model-compatibility.v1alpha1.json`](workload/compatibility/runtime-model-compatibility.v1alpha1.json) |
 
-The platform domain reads a contract into typed objects; nothing in this
-repository deploys, serves, or admits a workload from one. A published schema is a
+The platform domain reads a WorkloadContract into typed objects; nothing in this
+repository deploys, serves, or admits a workload from one. Nothing reads an
+EnvironmentBinding at all yet: its schema and fixtures are published ahead of the
+renderer that will consume them, and say so. A published schema is a
 commitment about what will be accepted, not evidence that anything accepts it.
 
 ## Layout
@@ -30,7 +33,18 @@ contracts/
     |   +-- invalid/             fixtures that must be refused, plus the refusal each
     |                            one must produce
     +-- fixtures/                deterministic payloads referenced by contracts
++-- environment/
+    |-- environment-binding.v1alpha1.schema.json
+    +-- examples/
+        |-- valid/               bindings that must validate
+        +-- invalid/             bindings that must be refused, plus the refusal
+                                 each one must produce
 ```
+
+An EnvironmentBinding carries the facts one environment supplies to a release
+that are not workload intent, and has no field a WorkloadContract owns. Every rule
+it has is structural, so the bare schema refuses everything the published
+validator does.
 
 The rules a schema cannot express — comparing two sibling values, consulting the
 compatibility matrix, judging whether a locator is a pasted credential — live in
@@ -67,7 +81,7 @@ present. They will be added when the capability behind each exists, not in advan
 python -m pytest tests/contracts -q
 ```
 
-To validate a document that is not a committed fixture:
+To validate a WorkloadContract document that is not a committed fixture:
 
 ```sh
 python -m tools.contract_validation path/to/workload.yaml
