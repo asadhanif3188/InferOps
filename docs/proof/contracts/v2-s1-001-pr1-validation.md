@@ -134,7 +134,7 @@ change staged, so that suites reading `git ls-files` saw the new files.
 | `python -B -m pytest tests/contracts/test_environment_binding_v1alpha1.py -q -p no:cacheprovider` | 109 passed |
 | `python -B -m pytest tests/contracts tests/domain tests/scaffolding tests/testing tests/security tests/serving -q -rs -p no:cacheprovider` | 10,058 passed, 27 skipped, 2 failed — the two links to this page, before it existed |
 | `python -B -m tools.evidence_index --gate` | Exit 0; the six digests above, unchanged |
-| `gitleaks dir <path> --config .gitleaks.toml --redact`, for each of the 29 staged files, with gitleaks 8.30.1 (the version the workflow pins; the Windows archive's SHA-256 checked against the release's checksum list) | No leaks found in any |
+| `gitleaks dir <path> --config .gitleaks.toml --redact`, for each of the 28 files staged before this page existed, with gitleaks 8.30.1 (the version the workflow pins; the Windows archive's SHA-256 checked against the release's checksum list) | No leaks found in any. This row said "29 staged files" in the first commit; the scan ran before this page was written, and the commit's twenty-ninth file is this page. [The rerun after the review](#after-the-independent-review) covers every file |
 
 The full default lane, the proof dashboard and evidence index checks, and `git diff --check`
 were run after this page was written; [their results](#results-after-this-page-was-written)
@@ -160,6 +160,40 @@ render tests inside the suite ran rather than skipped. The workflow's separate g
 the package build, and the image build — were not run locally: this change touches no
 chart, Terraform configuration, manifest, workflow, or packaged source outside the offline
 validator, and those gates run on the hosted workflow.
+
+## What the independent review found
+
+A reviewer read the first commit, `75879b9`, against the code, reran the binding suite,
+the WorkloadContract's schema suite, and the inventory suite, reproduced all five rows of
+the mutation table on a scratch copy of the schema, recounted the fixtures, the
+twenty-two expected findings, the modules in the contract layer, and the changed files,
+checked every invalid fixture's header against the manifest by hand, confirmed the
+removed `_validator()` helper had no other caller, and grepped the diff for local paths,
+private names, and later story identifiers. It found no critical or high defect, and one
+medium one:
+
+- **The secret-scanning allowlist document was stale.** It said four test suites use
+  the synthetic credential values and named them; the binding suite is a fifth, and it
+  uses one value the document did not list, a zero-padded GitLab deploy token. Two
+  binding fixtures outside both exempted directories also carry synthetic values, and one
+  of them — the mixed-case synthetic segment, under a `gitops/environments/` prefix — is
+  covered by no pattern rule, because the existing rule is anchored to another prefix.
+
+Separately, while acting on that, the first commit's own record was found to overstate
+its secret scan: it said the scan covered 29 staged files, and it covered 28, because this
+page was the twenty-ninth and did not exist yet. The row now says so.
+
+## After the independent review
+
+- `.github/secret-scanning-allowlist.md` names the fifth suite and the values it uses,
+  says the `gldt-` value is covered only by the `tests/contracts/` path exemption, and
+  names both fixtures, including the one value no rule covers and why none was added: the
+  pinned scanner reports nothing to exempt. No rule and no path was added to
+  `.gitleaks.toml`.
+- `gitleaks dir` over each of the 30 files that differ from `d8e3998` after this change,
+  including this page and the allowlist document: no leaks found in any.
+- `gitleaks git . --config .gitleaks.toml --redact`, the workflow's own command over the
+  full history including `75879b9`: no leaks found.
 
 ## Privacy and publicability
 
