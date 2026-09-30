@@ -493,7 +493,9 @@ handshake retransmission, in the `openssl` and `libssl3t64` packages at
 `3.0.13-0ubuntu3.12` in the pinned runtime image. It is fixed in `3.0.13-0ubuntu3.16`.
 The image guard accepts this one identifier, in this one image, and nothing else: every
 other `HIGH` or `CRITICAL` finding still blocks, and the finding stays in the scan
-output, marked as suppressed.
+output, marked as suppressed. The entry names the identifier, not the packages, so it
+would accept the same identifier in any package of the image; in this image only these
+two carry it, and the binding to the digest keeps that true.
 
 **Residual risk.** The vulnerable code ships and is not called. The only two files
 under `/app` that link OpenSSL create their contexts from `TLS_client_method` and

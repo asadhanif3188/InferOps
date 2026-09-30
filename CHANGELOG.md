@@ -183,11 +183,14 @@ from `1.0.0`.
   accepted finding stays in the scan output. It refuses, before scanning, a missing file,
   an entry that is not one finding identifier with an expiry, and an image exception
   assessed against any image but the pinned one. The expiry is the review deadline and
-  Trivy enforces it: on 2026-10-30 the finding blocks again. A baseline exception may now
+  Trivy enforces it: on 2026-10-30 the finding blocks again. Each guard logs what it
+  accepts and when that ends, and its refusal names the ignore file instead of saying no
+  exception is recorded. A baseline exception may now
   carry a `scanFinding` naming the finding, image, owner and deadline, and
   [a new suite](tests/security/test_vulnerability_scan_exceptions.py) holds the ignore
   files and the baseline to each other and runs the guards against a stub. The two scan
-  controls' text no longer says no continuous-integration service is selected.
+  controls, `docs/prerequisites.md` and the claim and test matrix no longer say no
+  continuous-integration service runs the scans.
 
 ## [1.0.0] - 2026-09-27
 

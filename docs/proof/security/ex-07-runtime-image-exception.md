@@ -20,7 +20,9 @@ is `EX-07` in [the deferred-risk register](../../security/deferred-risks.md) and
 **What this record does not establish.** It does not establish that the finding is
 unexploitable in every configuration of this image: the argument covers the committed
 runtime arguments and the files under `/app`, and a different entrypoint or argument
-list is outside it. It does not establish that the image is free of any other finding
+list is outside it. Files elsewhere in the image were not enumerated: the server's load
+closure outside `/app` is named below and, apart from `libssl.so.3`, was not read. It
+does not establish that the image is free of any other finding
 tomorrow; the database changes daily and a finding published after this assessment
 blocks like any other. It verifies no build signature or attestation; `DR-08` still
 carries that gap.
@@ -87,6 +89,7 @@ with `pyelftools`. The package versions were read from the image's own
 | OpenSSL method functions they import | `TLS_client_method` and `TLS_server_method`, and nothing else ending in `method` |
 | DTLS functions they import | None. `libssl.so.3` exports `DTLS_method`, `DTLS_client_method`, `DTLS_server_method` and the `DTLSv1_2_*` variants, so the vulnerable code is present; nothing under `/app` imports any of them |
 | A DTLS function looked up by name instead | None. Neither file imports `dlsym`, and neither contains the string `DTLS`; the only case-insensitive match is `get_mbedtls_verify_callback`, a cpp-httplib symbol for a different TLS library |
+| What the server loads from outside `/app` | Following `DT_NEEDED` from the executable and from the 14 CPU back-ends ggml chooses among at run time: `libssl.so.3` and `libcrypto.so.3`, the C and C++ runtimes (`libc.so.6`, `libm.so.6`, `ld-linux-x86-64.so.2`, `libstdc++.so.6`, `libgcc_s.so.1`) and OpenMP (`libgomp.so.1`). Those six runtime libraries were not read. No other file is named by the closure; what glibc itself may load while running, such as name-service modules, was not considered |
 | Whether the TLS paths run at all | Not in the committed configuration. `TLS_server_method` serves HTTPS only when `--ssl-key-file` and `--ssl-cert-file` are passed, and the committed runtime arguments pass neither; `TLS_client_method` fetches a model over the network, and the committed arguments load a mounted file |
 
 A DTLS connection needs an `SSL_CTX` created from a DTLS method; a context made from
@@ -108,9 +111,9 @@ needs its own reading, which is why the exception is bound to the digest.
 | Accepted on | 2026-09-30 |
 | Owner | `security`, the evidence owner of both scan controls |
 | Compensating control | `pin-image-by-digest`: the bytes the argument was read from are the only bytes the platform names |
-| Review deadline | **2026-10-30**, enforced: the ignore entry carries `exp:2026-10-30`, after which Trivy stops suppressing it and the gate blocks again |
+| Review deadline | **2026-10-30**, enforced: the ignore entry carries `exp:2026-10-30`, and from that date Trivy stops suppressing it and the gate blocks again. The last day it is accepted is 2026-10-29. The guard logs the date on every scan, and its refusal names the ignore file rather than saying no exception is recorded |
 | Bound to | the pinned digest above, enforced twice: the image guard refuses to scan when the runtime contract pins any other image while the ignore file accepts a finding, and a test fails in the same case |
-| Scope | this one identifier, in the runtime image's ignore file only. The dependency scan has its own file, which accepts nothing |
+| Scope | this one identifier, in the runtime image's ignore file only. The entry names the identifier, not the packages, so it would accept the same identifier in any package of the image; in this image only `openssl` and `libssl3t64` carry it, and the digest binding keeps that true. The dependency scan has its own file, which accepts nothing |
 
 ## How the guard reads it
 
@@ -131,12 +134,14 @@ Observed with Trivy `0.74.0` against the pinned image, with the database above:
 | Comments only | `1` | The finding blocks |
 | The same entry with CRLF line endings | `0` | As the first row |
 | A path that does not exist | Fatal error | Trivy stops before scanning, which the guard now refuses first, with its own message |
+| Through the committed script, in a scratch copy with the entry set to `exp:2026-09-30`, the day of the run | `1` | The guard logged "not accepting CVE-2026-84782: its entry in scripts/security/runtime-image.trivyignore expired on 2026-09-30" and refused with "no unexpired entry … accepts" |
 
 Run end to end through the committed scripts, from Git Bash, against the real Trivy
 and the pinned image:
 
 ```text
 [inferops-security] scanning ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384 for CRITICAL,HIGH findings
+[inferops-security] accepting CVE-2026-84782 as listed in scripts/security/runtime-image.trivyignore; it blocks again from 2026-10-30
 [inferops-security] no CRITICAL,HIGH finding in the pinned runtime image outside the accepted exceptions in scripts/security/runtime-image.trivyignore
 [inferops-security] scanning uv.lock (including the test and checks groups) for CRITICAL,HIGH findings
 [inferops-security] no CRITICAL,HIGH finding in uv.lock outside the accepted exceptions in scripts/security/dependencies.trivyignore
@@ -167,7 +172,7 @@ instead.
 
 | File | Change |
 |---|---|
-| `scripts/security/lib.sh` | Each guard hands Trivy its own ignore file and `--show-suppressed`; a new `accepted_findings_file` refuses a missing file, a malformed entry, and an image exception assessed against another image |
+| `scripts/security/lib.sh` | Each guard hands Trivy its own ignore file and `--show-suppressed`; a new `accepted_findings_file` refuses a missing file, a malformed entry, and an image exception assessed against any image but the pinned one; after the review, each guard logs what it accepts and until when, and its refusal names the ignore file |
 | `scripts/security/runtime-image.trivyignore` | New: the assessed image and `CVE-2026-84782 exp:2026-10-30` under `# EX-07` |
 | `scripts/security/dependencies.trivyignore` | New: accepts nothing |
 | `scripts/security/scan-runtime-image.sh`, `scan-dependencies.sh` | The success line names the ignore file instead of claiming no finding |
@@ -175,11 +180,12 @@ instead.
 | `docs/security/deferred-risks.md` | `EX-07`'s row and section; the count |
 | `docs/security/control-matrix.md` | How a scan exception is recorded and read; the correction below |
 | `docs/security/security-method.md` and its data | `EX-07` carried as an exception, and the exception mechanism as an implemented item |
-| `tests/security/test_vulnerability_scan_exceptions.py` | New, 24 tests |
+| `tests/security/test_vulnerability_scan_exceptions.py` | New, 24 tests at the first commit and 29 after the review |
 | `tests/security/test_security_baseline.py` | An exception may carry `scanFinding`; `seven` added to the number words |
 | The README, `SECURITY.md`, the architecture index, ADR 0008 | "six" exceptions become "seven" |
 | The test inventory and its data, `tests/testing/test_test_inventory.py` | The new module, with no claim and its reason |
 | `docs/proof/README.md`, `CHANGELOG.md` | This record, and a `Security` entry |
+| `docs/prerequisites.md`, `docs/testing/claim-test-matrix.md` | After the review: no longer say no continuous-integration service runs the scans |
 
 **A correction, made in place.** The control matrix said the scan guards block on a
 finding "with no recorded exception", and both scan controls said a guard refuses
@@ -191,22 +197,26 @@ make those sentences true; the matrix says what it said before.
 ## Mutation check
 
 Each defect was applied to the committed file alone, the new module was run, and the
-file was restored byte for byte. Every defect fails at least one test.
+file was restored byte for byte. Every defect fails at least one test. This is the
+final suite; the first commit's 24 tests caught the eight rows on the first commit's code and the four on its data too.
 
-| Defect | Failed of 24 |
+| Defect | Failed of 29 |
 |---|---|
 | The image guard stops passing `--ignorefile` | 2 |
 | The image guard stops passing `--show-suppressed` | 1 |
-| The image guard stops passing the pinned image to the check | 1 |
+| The image guard stops passing the pinned image to the check | 4 |
 | The expiry becomes optional | 1 |
 | A carriage return is no longer stripped | 1 |
 | A missing ignore file is not checked | 2 |
 | A Trivy failure is swallowed | 1 |
 | The dependency guard stops passing `--ignorefile` | 1 |
+| The image guard's refusal says "no recorded exception" again | 1 |
+| The expiry is compared the wrong way round | 2 |
+| The image guard stops logging what it accepts | 2 |
 | The ignore entry's expiry moves off the review deadline | 1 |
 | The ignore entry sits under another exception's comment | 1 |
-| The `assessed-image` line names another digest | 3 |
-| The runtime pin moves | 3 |
+| The `assessed-image` line names another digest | 6 |
+| The runtime pin moves | 6 |
 
 ## What was caught before the first commit
 
@@ -231,6 +241,24 @@ file was restored byte for byte. Every defect fails at least one test.
   `test_the_document_counts_the_modules_that_defend_no_claim_correctly` caught in the
   second full lane.
 
+## What the independent review found
+
+A second reviewer read the first commit, tried to make the guard accept more than this
+one finding for this one digest, and found no way. Its six findings were all accepted.
+
+| Finding | Severity | What the first commit had | What was done |
+|---|---|---|---|
+| The red run on the review deadline would say the opposite of what is true | medium | When the entry expires the finding blocks again, and the guard's refusal read "carries a finding with no recorded exception" while the exception is still recorded, only expired. The deadline was written everywhere except where a red job shows it. The same message had already misreported a vulnerability-database download failure as a finding | The refusal now names the ignore file and says "no unexpired entry … accepts, or Trivy could not finish the scan", and each guard logs every entry and whether it is still accepted — "it blocks again from" the date, or "expired on" it, compared in UTC as Trivy compares. Tests pin both, with dates far either side of any run so they read no clock, and three mutation rows fail without them |
+| Two live documents still said no continuous-integration service runs the scans | medium | `docs/prerequisites.md` said so, and said nothing pins Trivy although the workflow installs `0.74.0` through a pinned action. `docs/testing/claim-test-matrix.md` said the same and that `gitleaks` had never been installed. The first commit corrected the same claim in the two scan controls and left these | Both corrected in place, each saying what it said before |
+| The suppression is scoped to the identifier, not the two packages | low | The ignore file said an entry covers every package; the register and this record said "this one identifier" without that qualifier | The register, the baseline's residual risk, and this record's scope row now say it, and why the digest binding keeps it to these two packages |
+| The reachability argument stopped at `/app` | low | It did not say what outside `/app` the server loads, or that nothing there was read | The server's load closure outside `/app` is now named, and what was not read, including anything glibc loads on its own, is stated in the reachability table and in what this record does not establish |
+| Three ways an `assessed-image` line can be wrong were untested | low | Only a mismatched digest was pinned by a test. No line, the same line twice, and the pin beside another image were refused by the guard but not tested | Three parametrized cases added |
+| The test sandbox's `PATH` held only the stub and the directory `bash` came from | low | A `bash` installed outside the system directories would have left `env`, `sed` and `grep` unreachable | `/usr/bin` and `/bin` are appended when they exist |
+
+The reviewer also confirmed, with the real Trivy, that an entry stops suppressing on its
+expiry date itself, not the day after; the exception table above now says the last day
+it is accepted is 2026-10-29.
+
 ## Validation
 
 Run from Git Bash with `PYTHONDONTWRITEBYTECODE=1`.
@@ -241,12 +269,13 @@ Run from Git Bash with `PYTHONDONTWRITEBYTECODE=1`.
 | `ruff check .` | All checks passed |
 | `mypy` | No issues in 294 source files |
 | `shellcheck -x -P SCRIPTDIR scripts/security/*.sh` | Clean |
-| `pytest tests/security/test_vulnerability_scan_exceptions.py` | 24 passed, none skipped |
-| Full default lane, second run | 15,961 passed, 1 failed, 33 skipped, 14 deselected, in 18 min 46 s. The failure was the inventory sentence above |
-| `pytest tests/testing/ tests/security/`, after that fix | 7,965 passed |
-| `scripts/security/scan-runtime-image.sh`, `scan-dependencies.sh`, real Trivy | Both exit `0`; the accepted finding is in the scan output |
+| `pytest tests/security/test_vulnerability_scan_exceptions.py` | 29 passed, none skipped |
+| Full default lane, before the first commit | 15,961 passed, 1 failed, 33 skipped, 14 deselected, in 18 min 46 s. The failure was the inventory sentence above; after the fix, `pytest tests/testing/ tests/security/` passed 7,965 |
+| Full default lane, after the review fixes | 15,968 passed, 33 skipped, 14 deselected, none failed, in 13 min 11 s |
+| `scripts/security/scan-runtime-image.sh`, `scan-dependencies.sh`, real Trivy | Both exit `0`; the accepted finding is logged with its date and kept in the scan output |
+| The same image script with the entry expired, in a scratch copy | Exit `1`, with the expired entry named |
 | `python -m tools.evidence_index --gate` | Exit `0`; released pair `1d40b33f…` and `652e9051…`, current pair `08d4868f…` and `b958a724…`, unchanged |
-| `gitleaks` `8.30.1` over every changed and new file, with the committed configuration | No leaks found |
+| `gitleaks` `8.30.1` over every file this change adds or modifies, with the committed configuration | No leaks found |
 | `git diff --check` | Clean |
 
 Not run: `helm lint`, kubeconform, Terraform and TFLint, the package build and the image

@@ -125,6 +125,26 @@ inferops::security::accepted_findings_file() {
   printf '%s' "${path}"
 }
 
+# Names every finding an ignore file lists, and whether Trivy will still accept
+# it: an entry stops suppressing from the start of its expiry date, UTC, and the
+# finding blocks again. A scan that starts failing on that date has then already
+# said why. The entries were checked by accepted_findings_file before this reads
+# them.
+#
+# Usage: log_accepted_findings RELATIVE_PATH
+inferops::security::log_accepted_findings() {
+  local id expiry today
+  today="$(date -u +%Y-%m-%d)"
+  while read -r id expiry; do
+    expiry="${expiry#exp:}"
+    if [[ "${today}" < "${expiry}" ]]; then
+      inferops::security::log "accepting ${id} as listed in $1; it blocks again from ${expiry}"
+    else
+      inferops::security::log "not accepting ${id}: its entry in $1 expired on ${expiry}; re-assess it or remove it"
+    fi
+  done < <(sed -e 's/\r$//' -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "${INFEROPS_SECURITY_ROOT}/$1")
+}
+
 # --- Guards -------------------------------------------------------------
 
 # Scans the pinned runtime image for known vulnerabilities and refuses to
@@ -142,6 +162,7 @@ inferops::security::assert_runtime_image_has_no_blocking_vulnerabilities() {
   accepted="$(inferops::security::accepted_findings_file "${INFEROPS_RUNTIME_IMAGE_ACCEPTED_FINDINGS_REL}" "${image}")"
   mkdir -p "${INFEROPS_SECURITY_ARTIFACT_DIR}"
   inferops::security::log "scanning ${image} for ${severity} findings"
+  inferops::security::log_accepted_findings "${INFEROPS_RUNTIME_IMAGE_ACCEPTED_FINDINGS_REL}"
   trivy image \
     --scanners vuln \
     --severity "${severity}" \
@@ -151,7 +172,7 @@ inferops::security::assert_runtime_image_has_no_blocking_vulnerabilities() {
     --format json \
     --output "${INFEROPS_SECURITY_ARTIFACT_DIR}/runtime-image-scan.json" \
     "${image}" ||
-    inferops::security::fail "${image} carries a ${severity} finding with no recorded exception; see ${INFEROPS_SECURITY_ARTIFACT_DIR}/runtime-image-scan.json"
+    inferops::security::fail "${image} carries a ${severity} finding that no unexpired entry in ${INFEROPS_RUNTIME_IMAGE_ACCEPTED_FINDINGS_REL} accepts, or Trivy could not finish the scan; see ${INFEROPS_SECURITY_ARTIFACT_DIR}/runtime-image-scan.json and the output above"
 }
 
 # Scans the committed dependency lockfile, including the `test` and `checks`
@@ -165,6 +186,7 @@ inferops::security::assert_dependencies_have_no_blocking_vulnerabilities() {
   accepted="$(inferops::security::accepted_findings_file "${INFEROPS_DEPENDENCY_ACCEPTED_FINDINGS_REL}")"
   mkdir -p "${INFEROPS_SECURITY_ARTIFACT_DIR}"
   inferops::security::log "scanning uv.lock (including the test and checks groups) for ${severity} findings"
+  inferops::security::log_accepted_findings "${INFEROPS_DEPENDENCY_ACCEPTED_FINDINGS_REL}"
   (
     cd "${INFEROPS_SECURITY_ROOT}" && trivy fs \
       --scanners vuln \
@@ -177,5 +199,5 @@ inferops::security::assert_dependencies_have_no_blocking_vulnerabilities() {
       --output "${INFEROPS_SECURITY_ARTIFACT_DIR}/dependency-scan.json" \
       .
   ) ||
-    inferops::security::fail "uv.lock carries a ${severity} finding with no recorded exception; see ${INFEROPS_SECURITY_ARTIFACT_DIR}/dependency-scan.json"
+    inferops::security::fail "uv.lock carries a ${severity} finding that no unexpired entry in ${INFEROPS_DEPENDENCY_ACCEPTED_FINDINGS_REL} accepts, or Trivy could not finish the scan; see ${INFEROPS_SECURITY_ARTIFACT_DIR}/dependency-scan.json and the output above"
 }

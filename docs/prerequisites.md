@@ -102,10 +102,14 @@ Running them needs:
 
 | Tool | Version | Notes |
 |---|---|---|
-| Trivy | `0.74.0` was used | A single binary, installed by the contributor. Not pinned by anything in this repository, the way `shellcheck` and `kubeconform` are not |
+| Trivy | `0.74.0` was used | A single binary, installed by the contributor. The workflow installs `0.74.0` through a pinned action; nothing pins a contributor's copy, the way `shellcheck` and `kubeconform` are not |
 
-No continuous-integration service runs either scan; both are run by hand, the same
-way every check in this repository is.
+Both also run as the `dependency-and-image-scan` gate of
+[the default-lane workflow](../.github/workflows/checks.yml), on every pull request and
+every push to `main` and on no schedule, through the same scripts a contributor runs by
+hand. Each reads the findings it accepts from a committed ignore file beside it; the
+[control matrix](security/control-matrix.md) says how one is recorded. (Until 2026-09-30
+this said no continuous-integration service ran either scan.)
 
 ## Serving and model prerequisites
 
