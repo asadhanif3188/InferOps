@@ -19,8 +19,12 @@ environment it names.
 and version are the committed synchronous WorkloadContract fixture's, and its binding
 reference is a committed EnvironmentBinding fixture's identity; a test holds all three
 there. Every digest and revision is a single repeated character — well formed, naming
-nothing — because no renderer exists to produce the values a release would pin, and
-how a contract or a binding document is hashed is not decided yet. Each release ID is
+nothing — because no renderer exists to produce the values a release would pin. How a
+contract or a binding is hashed is now [decided](../../../docs/contracts/rendered-workload-release.md#canonical-form-and-source-digests),
+and the fixtures were deliberately not changed to carry real digests: beside the
+documents they name, the platform domain refuses each for exactly its two placeholder
+digests, and a test asserts that, so neither can be read as the record of a render.
+Each release ID is
 the one [the published derivation rule](../../../docs/contracts/rendered-workload-release.md#release-identity)
 gives for the values above it, and a test recomputes it. A fixture's file name is its
 workload ID and its binding's name.
@@ -34,9 +38,10 @@ by field on every run.
 
 Every rejection below is **structural**: the published JSON Schema alone refuses the
 document, so any draft 2020-12 validator in any language reaches the same verdict. The
-release has no semantic layer, and
-[the contract document](../../../docs/contracts/rendered-workload-release.md#rules-that-are-not-applied-yet)
-lists the rules that would need one or a second document.
+rules that need a recomputation or a second document are the platform domain's, not the
+schema's, and have no fixture here;
+[the contract document](../../../docs/contracts/rendered-workload-release.md#provenance-rules-the-platform-domain-applies)
+lists them, and the rules nothing applies yet.
 
 | Fixture | Refused for |
 |---|---|

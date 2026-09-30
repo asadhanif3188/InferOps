@@ -2,7 +2,7 @@
   "title": "Expected rejections for the RenderedWorkloadRelease v1alpha1 invalid fixtures",
   "description": "Every file under this directory must be refused, and must be refused for exactly the reasons recorded here. The test suite compares this manifest with the validator's output field by field, so a change that alters a canonical error code, a rule identifier, or a field location fails the build instead of quietly changing what consumers are told.",
   "layers": {
-    "structural": "The published JSON Schema alone refuses the document. Any draft 2020-12 validator in any language reaches the same conclusion. Every release rule is structural today: the release has no semantic layer, and the rules that would need one, or a second document, are listed as not applied in the contract document."
+    "structural": "The published JSON Schema alone refuses the document. Any draft 2020-12 validator in any language reaches the same conclusion. Every rule the offline validator applies to a release is structural. The rules that need a recomputation or a second document are the platform domain's, have no fixture here, and are listed in the contract document with the rules nothing applies yet."
   },
   "fixtures": {
     "document-content-in-release.yaml": {

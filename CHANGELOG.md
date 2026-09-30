@@ -10,6 +10,30 @@ from `1.0.0`.
 
 ### Added
 
+- **The RenderedWorkloadRelease in the platform domain, with its canonical form and
+  provenance rules.** `V2-S1-002-PR2` added `inferops.domain.release`: a parser that reads
+  a release into frozen typed objects and refuses exactly what the published schema
+  refuses, with no attribute that has a default or could hold content, a time, or free
+  text; the canonical JSON form a release and its source documents are hashed in — the
+  evidence index's serialisation, held byte for byte, refusing floats, dates, oversized
+  integers, and anything else with no single JSON spelling; the contract and binding
+  digests a release records, decided here as the digest of each document's parsed value,
+  so comments and formatting do not move one and any value does; and the release
+  identifier's derivation. Seven rules the domain applies and the schema does not:
+  an identifier that is not derived and a value with a part that begins with a published
+  credential prefix are refused on one release, and a release that disagrees with the
+  contract or binding it names — identity, version, digest, or environment — is refused
+  beside them. Mutation tests change every identity member, every output member,
+  thirteen contract values, and six binding values, and assert each moves exactly the
+  result it should; the package names no clock or random module and no route to import
+  one, a test makes fourteen named clock and random functions fail while the domain
+  computes, and another gets the same digests from two interpreters under two hash
+  seeds. The schema, the offline validator's verdicts, the fixtures, the
+  WorkloadContract, and the EnvironmentBinding are unchanged; how the values file is
+  hashed is not decided; nothing produces a release, no claim moves, and every check is
+  static (`C0`). [The validation record](docs/proof/contracts/v2-s1-002-pr2-validation.md)
+  says what was run.
+
 - **RenderedWorkloadRelease `v1alpha1`, the provenance of a rendered release.**
   `V2-S1-002-PR1` published [its schema](contracts/release/rendered-workload-release.v1alpha1.schema.json)
   and [document](docs/contracts/rendered-workload-release.md): a repository document,

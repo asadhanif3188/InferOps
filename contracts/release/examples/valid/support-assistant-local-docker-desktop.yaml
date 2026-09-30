@@ -6,7 +6,9 @@
 # and version, and local / local-docker-desktop is the binding fixture's identity.
 # The digests and revisions are NOT: each is a repeated character, well formed and
 # naming nothing, because no renderer exists to produce the values this release
-# would describe and the way a contract or a binding is hashed is not decided yet.
+# would describe. How a contract or a binding is hashed is decided in the contract
+# document; these placeholders were kept on purpose, so that beside the documents
+# it names the platform domain refuses this release for exactly its two digests.
 # The release ID is the one the published rule derives from the values above it.
 #
 # This is a contract example. Nothing was rendered, installed, or run with it.

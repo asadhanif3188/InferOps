@@ -14,10 +14,12 @@ structural.
 This module applies that schema and translates each failure through the same
 canonical error model the WorkloadContract uses: the same codes, the same rule
 identifiers, the same rule that a message never repeats a value read out of the
-document. It adds no rule of its own. Rules that need a second document - whether
-a digest is the digest of the document it names, whether the release identifier is
-the one its inputs derive, whether the contract and the binding it names agree -
-have no document to read here, and nothing in this repository applies them yet.
+document. It adds no rule of its own. Rules that need a recomputation or a second
+document - whether the release identifier is the one its inputs derive, whether a
+source digest is the digest of the document it names, whether the contract and the
+binding it names agree - are not applied here. The platform domain applies them,
+in ``inferops.domain.release``, so that this module stays what a consumer holding
+only the schema file can reproduce.
 
 Offline and deterministic, like its siblings: no network, no cluster, no clock, no
 randomness. Validating a release renders and deploys nothing.
