@@ -148,9 +148,9 @@ class MalformedReleaseError(ReleaseError):
 class ReleaseRefusal(ReleaseError):
     """One published rule refused a release, or a release beside its sources.
 
-    The field names the document by its role - ``release`` for the release, and
-    ``contract`` or ``binding`` for a source it was compared with - and then the
-    path inside it.
+    The field names the document by its role - ``release`` for the release, or
+    ``contract`` for the one refusal that is about the contract beside the binding
+    rather than about the release - and then the path inside it.
     """
 
     def __init__(

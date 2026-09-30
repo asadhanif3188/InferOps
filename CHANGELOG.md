@@ -25,7 +25,8 @@ from `1.0.0`.
   contract or binding it names — identity, version, digest, or environment — is refused
   beside them. Mutation tests change every identity member, every output member,
   thirteen contract values, and six binding values, and assert each moves exactly the
-  result it should; a test makes every clock and random source fail while the domain
+  result it should; the package names no clock or random module and no route to import
+  one, a test makes fourteen named clock and random functions fail while the domain
   computes, and another gets the same digests from two interpreters under two hash
   seeds. The schema, the offline validator's verdicts, the fixtures, the
   WorkloadContract, and the EnvironmentBinding are unchanged; how the values file is

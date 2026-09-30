@@ -25,8 +25,9 @@ some way of its own:
 - a **mapping key that is not a string**, and a string UTF-8 cannot encode.
 
 Nothing is normalised: two strings that differ only in Unicode normalisation are
-two values. Every string a release can hold is ASCII by its pattern, so that can
-only matter for the text of a contract.
+two values. Every string the release domain accepts is ASCII - its version pattern
+reads ``\\d`` as ``[0-9]`` - so that can only matter for the text of a contract.
+A refusal's location is a path of member names; it never carries a value.
 
 **How a source document is hashed - decided here.** A release records the digest
 of the WorkloadContract and of the EnvironmentBinding it was rendered from. That
@@ -116,7 +117,8 @@ def canonical_json(value: object) -> bytes:
 
     Raises:
         CanonicalFormError: the value, or something inside it, has no canonical
-            JSON form. The error names where, never what.
+            JSON form. The error names where, as a path of member names, and
+            never the value.
     """
     _check(value, "$")
     text = json.dumps(

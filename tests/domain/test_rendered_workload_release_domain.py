@@ -41,6 +41,7 @@ import os
 import random
 import re
 import secrets
+import string
 import subprocess
 import sys
 import time
@@ -619,6 +620,23 @@ def test_a_parse_refusal_carries_the_request_context():
     assert refused.value.as_dict()["requestId"] == "req-1"
 
 
+def test_a_version_with_a_non_ascii_digit_is_refused_by_the_domain_only():
+    """Measured: JSON Schema reads `\\d` as [0-9]; Python's `re` reads any digit.
+
+    The domain compiles its version pattern with `re.ASCII` and refuses the value.
+    The offline validator applies the schema's pattern through Python's `re` and
+    accepts it - a consumer in another language would refuse it. The day the
+    validator agrees, this has to change.
+    """
+    document = load(VALID_DIR / "support-assistant-local-kind.yaml")
+    document["metadata"]["workloadVersion"] = "1٣.0.0"
+    rederive(document)
+    assert validate_release_tool(document) == []
+    with pytest.raises(MalformedReleaseError) as refused:
+        parse_rendered_workload_release(document)
+    assert refused.value.field == "$.metadata.workloadVersion"
+
+
 # --------------------------------------------------------------------------
 # 2. The canonical form is stable
 # --------------------------------------------------------------------------
@@ -687,6 +705,8 @@ def test_a_value_with_no_single_json_spelling_is_refused(value: Any, location: s
 
 
 def test_the_exact_integer_bounds_are_accepted():
+    # Pinned as a literal, so an off-by-one in the constant is a failure here.
+    assert LARGEST_EXACT_INTEGER == 9007199254740991
     assert canonical_json([LARGEST_EXACT_INTEGER, -LARGEST_EXACT_INTEGER]) == (
         f"[{LARGEST_EXACT_INTEGER},-{LARGEST_EXACT_INTEGER}]".encode()
     )
@@ -748,6 +768,13 @@ def test_a_contract_digest_is_the_canonical_digest_of_the_committed_document(nam
     """The parsed object loses nothing, so the digest names what the file says."""
     document = contract_document(name)
     digest = contract_digest(parse_workload_contract(document))
+    assert str(digest) == entry_sha256(document)
+
+
+@pytest.mark.parametrize("name", ["local-kind", "local-docker-desktop"])
+def test_a_binding_digest_is_the_canonical_digest_of_the_committed_document(name):
+    document = binding_document(name)
+    digest = binding_digest(parse_environment_binding(document))
     assert str(digest) == entry_sha256(document)
 
 
@@ -1159,7 +1186,15 @@ LOWERCASE_SHAPES = ["sk-0000", "glpat-0000", "gldt-0000", "xoxb-0000"]
 #: first kind; the release rule sees both.
 PLACEMENTS: dict[str, list[str]] = {
     "metadata.workloadId": ["{}", "support-{}"],
-    "metadata.workloadVersion": ["0.1.0-{}", "0.1.0-rc.{}", "0.1.0+{}"],
+    "metadata.workloadVersion": [
+        "0.1.0-{}",
+        "0.1.0-rc.{}",
+        "0.1.0+{}",
+        # The digest-pinned image reference form: a path segment, and a part of
+        # one behind the `_` its pattern admits.
+        "registry.example/org/{}@sha256:" + "0" * 64,
+        "registry.example/org/app_{}@sha256:" + "0" * 64,
+    ],
     "source.environmentBinding.name": ["{}", "local-{}"],
     "output.helmValues.path": ["{}.yaml", "values.{}.yaml"],
 }
@@ -1184,6 +1219,27 @@ def test_a_lowercase_credential_shape_is_refused_wherever_it_sits(
     assert template.format(shape) not in json.dumps([r.as_dict() for r in refusals])
 
 
+@pytest.mark.parametrize("prefix", ["ghp_", "hf_", "npm_", "sk_live_", "doo_v1_"])
+@pytest.mark.parametrize(
+    "template",
+    [
+        "registry.example/org/{}0000@sha256:" + "0" * 64,
+        "registry.example/org/app_{}0000@sha256:" + "0" * 64,
+    ],
+)
+def test_an_underscore_shape_in_an_image_reference_passes_the_schema_only(
+    template: str, prefix: str
+):
+    """Measured: the image reference's path admits `_`, so the schema takes these."""
+    document = load(VALID_DIR / "support-assistant-local-docker-desktop.yaml")
+    document["metadata"]["workloadVersion"] = template.format(prefix)
+    rederive(document)
+    assert validate_release_tool(document) == [], "the schema accepts it"
+    assert rules_of(check_rendered_workload_release(parsed(document))) == [
+        ("release-value-credential-shaped", "release.metadata.workloadVersion")
+    ]
+
+
 def reachable(field: str, value: str) -> bool:
     document = load(VALID_DIR / "support-assistant-local-docker-desktop.yaml")
     set_path(document, field, value)
@@ -1205,11 +1261,29 @@ def test_every_published_prefix_a_field_can_hold_is_refused_there():
                     continue
                 reached.add(prefix)
                 assert is_credential_shaped(value), (field, value)
-    # The lowercase prefixes built from letters, digits, and a hyphen or dot.
+    # Every lowercase prefix: those built from letters, digits, and a hyphen or a
+    # dot reach several fields; those with an underscore reach only the image
+    # reference form of the workload version.
     assert reached == {
+        "doo_v1_",
+        "dop_v1_",
+        "ghp_",
+        "ghr_",
+        "ghs_",
+        "ghu_",
+        "gho_",
+        "github_pat_",
         "gldt-",
         "glpat-",
+        "hf_",
+        "npm_",
+        "pk_live_",
+        "rk_live_",
+        "shpat_",
+        "shpss_",
         "sk-",
+        "sk_live_",
+        "sk_test_",
         "xoxa-",
         "xoxb-",
         "xoxp-",
@@ -1217,6 +1291,8 @@ def test_every_published_prefix_a_field_can_hold_is_refused_there():
         "xoxs-",
         "ya29.",
     }
+    assert len(reached) == 25
+    assert reached == {p for p in _CREDENTIAL_PREFIXES if p == p.lower()}
 
 
 def test_no_published_prefix_fits_a_hexadecimal_field():
@@ -1234,10 +1310,28 @@ def test_the_positions_are_every_separator_an_accepted_form_admits():
         "sk-0",
         "0",
     )
+    # Which punctuation some accepted form admits, found by asking each form's
+    # own type rather than by reading its pattern.
+    digest = "0" * 64
+    candidates = [
+        (DnsLabel, "a{}b"),
+        (LowercaseSemanticVersion, "0{}1{}0"),
+        (LowercaseSemanticVersion, "0.1.0{}a"),
+        (LowercaseSemanticVersion, "0.1.0-a{}b"),
+        (ValuesFileName, "a{}b.yaml"),
+        (ImageReference, "reg.io/a{}b@sha256:" + digest),
+        (ImageReference, "reg.io{}a/b@sha256:" + digest),
+        (ImageReference, "reg.io{}5000/a/b@sha256:" + digest),
+        (ImageReference, "reg.io/a/b{}sha256:" + digest),
+    ]
     admitted = set()
-    for definition in ("dnsLabel", "lowercaseSemanticVersion", "valuesFileName"):
-        admitted |= set(re.findall(r"[-.+/@:]", defs(definition)["pattern"]))
-    admitted |= set("/@:.")  # a digest-pinned image reference's separators
+    for character in string.punctuation:
+        for kind, template in candidates:
+            try:
+                kind(template.replace("{}", character))
+            except InvalidValueError:
+                continue
+            admitted.add(character)
     assert admitted == set(PART_SEPARATORS)
 
 
@@ -1338,6 +1432,15 @@ def test_refusals_are_sorted_and_carry_the_request_context():
     assert [r.field for r in refusals] == sorted(r.field for r in refusals)
     assert all(r.context == context for r in refusals)
     assert refusals[0].as_dict()["requestId"] == "req-2"
+    # The single-release rules carry it too, each of them.
+    both = load(valid_paths()[0])
+    both["metadata"]["workloadId"] = "sk-0000"
+    alone = check_rendered_workload_release(parsed(both), context=context)
+    assert {r.rule_id for r in alone} == {
+        "release-id-not-derived",
+        "release-value-credential-shaped",
+    }
+    assert all(r.context == context for r in alone)
 
 
 def test_no_canonical_code_was_added():
@@ -1413,3 +1516,21 @@ def test_the_release_package_imports_only_the_standard_library_and_itself():
                     root,
                 )
             assert roots.isdisjoint(forbidden), (path.name, roots)
+
+
+def test_the_release_package_cannot_import_anything_at_run_time():
+    """The import test reads static imports only; this closes the dynamic route.
+
+    No module in the package names `__import__`, `importlib`, `builtins`, `eval`,
+    or `exec`, so the clock and random modules the import test forbids cannot be
+    reached any other way. Together with the patched-clock test this is what the
+    document's "reads no clock and no random source" rests on.
+    """
+    dynamic = {"__import__", "importlib", "builtins", "eval", "exec"}
+    for path in sorted(PACKAGE_DIR.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+        attributes = {
+            node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)
+        }
+        assert (names | attributes).isdisjoint(dynamic), path.name

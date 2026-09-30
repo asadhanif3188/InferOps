@@ -31,11 +31,15 @@ from ..workload.values import ConstrainedString, ImageReference
 # The schema's own patterns, character for character, compared by a test.
 SHA256_HEX_PATTERN: Final = re.compile(r"^[0-9a-f]{64}$")
 GIT_REVISION_PATTERN: Final = re.compile(r"^[0-9a-f]{40}$")
+# Compiled with re.ASCII, so `\d` is `[0-9]` as JSON Schema's ECMA-262 dialect
+# reads it. Python's default reads `\d` as any Unicode digit, which is how the
+# offline validator reads the schema's copy; the difference is measured by a test.
 LOWERCASE_SEMANTIC_VERSION_PATTERN: Final = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
     r"(?:-((?:0|[1-9]\d*|\d*[a-z-][0-9a-z-]*)"
     r"(?:\.(?:0|[1-9]\d*|\d*[a-z-][0-9a-z-]*))*))?"
-    r"(?:\+([0-9a-z-]+(?:\.[0-9a-z-]+)*))?$"
+    r"(?:\+([0-9a-z-]+(?:\.[0-9a-z-]+)*))?$",
+    re.ASCII,
 )
 VALUES_FILE_NAME_PATTERN: Final = re.compile(
     r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\.yaml$"

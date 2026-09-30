@@ -108,9 +108,12 @@ A release's identifier is **derived, never minted.** The rule:
 
 That serialisation is the canonical JSON form the [evidence index](../../tools/evidence_index/core.py)
 already hashes register entries in, reused rather than invented. Every value it covers is a
-string, and every string a release can hold is ASCII by its pattern, so the non-ASCII clause
-cannot be reached today; it is stated so that a later version with a wider pattern inherits
-one serialisation rather than choosing one. What the rule gives:
+string, and every string the platform domain accepts in a release is ASCII, so the non-ASCII
+clause cannot be reached through it; it is stated so that a later version with a wider
+pattern inherits one serialisation rather than choosing one. (The schema's version pattern
+uses `\d`, which JSON Schema reads as `[0-9]` and Python's `re` reads as any Unicode digit, so
+the offline validator accepts a version with a non-ASCII digit that the domain refuses; a
+test measures that difference.) What the rule gives:
 
 - **The same inputs give the same identifier**, on any host and on every render, so two
   renders can be compared by identifier before their values are compared by digest.
@@ -280,9 +283,13 @@ schema refuses the shape of a UUID and does not recompute the rule; the platform
 does.
 
 **Computing provenance reads no clock and no random source.** The domain package imports
-none of `time`, `datetime`, `random`, `secrets`, `uuid`, or `os`, and a test holds that. A
-second test replaces every clock and random function those modules offer with one that
-fails, then records a release, checks it, and verifies it against its sources; a third
+none of `time`, `datetime`, `random`, `secrets`, `uuid`, or `os`, and names none of
+`__import__`, `importlib`, `builtins`, `eval`, or `exec`, so it cannot reach one at run time
+either; two tests hold that. A third replaces fourteen named clock and random functions —
+among them `time.time`, `uuid.uuid4`, `os.urandom`, and `random.random` — with one that
+fails, then records a release, checks it, and verifies it against its sources. That test
+alone would not notice a function it does not name, such as `datetime.now`; the import
+tests are what rule those out. A fourth
 computes every digest and identifier for the committed fixtures in two fresh interpreters
 under two different hash seeds and requires one answer. The canonical form of each valid
 fixture, and of its identity, is searched for a date, a time of day, and a UUID, and holds
@@ -300,10 +307,11 @@ Two things make that structural rather than a promise:
    demonstrates.
 2. **Every string is a lowercase identifier, a lowercase version, a lowercase file name,
    lowercase hexadecimal of a fixed length, or a member of a closed vocabulary.** There is
-   no free-text field, not even a description, so uppercase letters, underscores,
-   whitespace, and assignment characters are refused wherever a string can be written.
-   That excludes most of the shapes a pasted credential takes — an AWS key identifier, a
-   GitHub or Hugging Face token, a JSON Web Token, an opaque mixed-case string, and any of
+   no free-text field, not even a description, so uppercase letters, whitespace, and
+   assignment characters are refused wherever a string can be written, and underscores
+   everywhere except inside a digest-pinned image reference's path. That excludes most of
+   the shapes a pasted credential takes — an AWS key identifier, a JSON Web Token, an
+   opaque mixed-case string, a GitHub or Hugging Face token as a whole value, and any of
    those behind a version's pre-release separator — as
    [`invalid/secret-value-in-an-identifier.yaml`](../../contracts/release/examples/invalid/secret-value-in-an-identifier.yaml)
    demonstrates.
@@ -316,18 +324,27 @@ accepted by the schema in `metadata.workloadId`, `source.environmentBinding.name
 `metadata.workloadVersion`. The WorkloadContract's credential heuristic tests for a
 published prefix at the start of a value, so it would catch one that begins an identifier
 or a file name and would miss one behind a version's `-`. **The schema and the offline
-validator apply neither half**, and a test asserts every one of those outcomes.
+validator apply neither half**, and a test asserts every one of those outcomes. The same
+holds for a workload version in its other form, a digest-pinned image reference: its path
+admits lowercase letters, digits, `.`, `_`, and `-`, so a lowercase token in a format that
+begins `ghp_`, `hf_`, `npm_`, `sk_live_`, or any other lowercase published prefix can be
+written as a segment of it. `V2-S1-002-PR1`'s version of this section said underscores were
+refused wherever a string can be written; that was true of every field except that one, and
+was corrected when this change found it.
 
 **The platform domain refuses them**, under `release-value-credential-shaped`. It applies
 the WorkloadContract heuristic's published prefixes, unchanged, at the start of each of
-those four values *and after every separator in it* — `-`, `.`, `+`, `/`, `@`, and `:`,
-which are every separator any accepted form admits — so a token behind a version's
-pre-release or build separator, or after an identifier's hyphen, is seen as well as one
-that begins a value. Nine published prefixes can be written in some release field at all
-(`gldt-`, `glpat-`, `sk-`, the five `xox?-` forms, and `ya29.`); a test places each in every
-position and asserts the rule refuses it, and that no committed contract, binding, or
-values name is mistaken for one. Every prefix contains a character outside `0-9a-f`, so no
-hexadecimal field can hold one.
+those four values *and after every separator in it* — `-`, `_`, `.`, `+`, `/`, `@`, and `:`,
+which are every punctuation character any accepted form admits, and a test finds that set
+by asking each form's own type — so a token behind a version's pre-release or build
+separator, inside an image reference's path, or after an identifier's hyphen, is seen as
+well as one that begins a value. Every lowercase published prefix — twenty-five of the
+heuristic's forty — can be written in some release field: the nine built from letters,
+digits, a hyphen, or a dot (`gldt-`, `glpat-`, `sk-`, the five `xox?-` forms, and `ya29.`) in
+several, and the sixteen with an underscore only inside an image reference's path. A test
+places each in every position and asserts the rule refuses it, and that no committed
+contract, binding, or values name is mistaken for one. Every prefix contains a character
+outside `0-9a-f`, so no hexadecimal field can hold one.
 
 **What the rule costs, and what it still misses.** A value with a part that begins `sk-` is
 refused even when nobody meant a credential: a WorkloadContract named `sk-demo` or
@@ -428,6 +445,12 @@ rule. A refusal's field names the document by its role — `release` or `contrac
 path inside it, and never repeats a value. These rules are not in the offline validator's
 rule table: that table is what a bare-schema consumer can reproduce, and these need either
 a recomputation or a second document.
+
+Two of the comparisons cannot fire today, and the rules are stated for when they can: a
+release can record exactly one contract version and one binding version, and the domain
+reads exactly those, so the two `apiVersion` halves of `release-contract-mismatch` and
+`release-binding-mismatch` have nothing to disagree about until a second version exists
+on either side. A test asserts that each list has one member.
 
 **What a source change moves.** A test changes each member of a release's workload
 identity and `source` that can change, one at a time, and asserts each moves the release

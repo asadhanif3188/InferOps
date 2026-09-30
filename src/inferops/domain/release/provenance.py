@@ -14,9 +14,9 @@ rules that decide that, and it is the only place they are applied.
   file name begins, or has a part that begins, with a prefix a credential issuer
   publishes as the start of its tokens. The prefixes are the WorkloadContract's
   heuristic's, applied unchanged; what is new is *where*: at the start of the
-  value and after every ``-``, ``.``, ``+``, ``/``, ``@``, and ``:`` in it, so a
-  token behind a version's pre-release separator is seen as well as one that
-  begins a name.
+  value and after every ``-``, ``_``, ``.``, ``+``, ``/``, ``@``, and ``:`` in it,
+  so a token behind a version's pre-release separator, or inside a digest-pinned
+  image reference's path, is seen as well as one that begins a name.
 
 **Five rules beside the documents a release names** -
 :func:`verify_release_sources`, given the parsed WorkloadContract and
@@ -59,21 +59,17 @@ from .errors import ReleaseRefusal
 from .release import RenderedWorkloadRelease
 
 #: The characters after which a credential could begin inside a release value.
-#: Every separator any accepted form of an identifier, a version, or a file name
-#: admits, and nothing else: the patterns admit no other punctuation.
-PART_SEPARATORS: Final = "-.+/@:"
+#: Every punctuation character any accepted form of an identifier, a version, or a
+#: file name admits - the digest-pinned image reference's ``_`` included - and a
+#: test derives the same set from the schema's patterns.
+PART_SEPARATORS: Final = "-_.+/@:"
 
 _SEPARATOR = re.compile(f"[{re.escape(PART_SEPARATORS)}]")
-_DIGIT_RUN = re.compile(r"(\d+)")
 
 
-def _sort_key(refusal: ReleaseRefusal) -> tuple[object, ...]:
-    """Order refusals by field, reading list indices as numbers rather than text."""
-    parts = tuple(
-        int(part) if part.isdigit() else part
-        for part in _DIGIT_RUN.split(refusal.field)
-    )
-    return (parts, refusal.rule_id, refusal.reason)
+def _sort_key(refusal: ReleaseRefusal) -> tuple[str, str, str]:
+    """Order refusals by field, then rule. No release field path has a list index."""
+    return (refusal.field, refusal.rule_id, refusal.reason)
 
 
 def _require_release(release: object) -> None:
