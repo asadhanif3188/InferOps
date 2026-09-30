@@ -205,7 +205,7 @@ control is counted as an enforced one.
 
 It establishes **nothing about whether anything running is defended**. Twenty-nine of
 its thirty-eight controls are enforced by something and nine are not; twelve risks are
-carried rather than reduced, ten of them blocking production use; six exceptions are
+carried rather than reduced, ten of them blocking production use; seven exceptions are
 recorded with a compensating control each; and the pod-security properties hold over
 five YAML files and two committed renders, read as files — a release has since been
 installed from those renders and no check here reads a pod that resulted. A secret

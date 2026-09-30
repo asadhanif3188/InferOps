@@ -208,6 +208,11 @@ REQUIRED_EXCEPTION_FIELDS = (
     "deferredRiskRef",
 )
 
+# The one field an exception may add: an exception a vulnerability scanner acts
+# on names the finding, the image, and the deadline the scanner enforces.
+# tests/security/test_vulnerability_scan_exceptions.py checks what it holds.
+OPTIONAL_EXCEPTION_FIELDS = ("scanFinding",)
+
 REQUIRED_PROHIBITION_FIELDS = ("ruleId", "statement", "enforcedBy", "testRef")
 
 REQUIRED_TERM_FIELDS = ("term", "whyReserved")
@@ -596,7 +601,7 @@ def test_every_deferred_risk_declares_every_required_field(row: dict) -> None:
 
 @pytest.mark.parametrize("row", EXCEPTIONS, ids=lambda row: row["exceptionId"])
 def test_every_exception_declares_every_required_field(row: dict) -> None:
-    assert set(row) == set(REQUIRED_EXCEPTION_FIELDS)
+    assert set(row) - set(OPTIONAL_EXCEPTION_FIELDS) == set(REQUIRED_EXCEPTION_FIELDS)
     assert PREFIXED_ID.match(row["exceptionId"])
 
 
@@ -1422,6 +1427,7 @@ NUMBER_WORDS = {
     4: "four",
     5: "five",
     6: "six",
+    7: "seven",
     8: "eight",
     10: "ten",
     11: "eleven",

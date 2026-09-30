@@ -338,7 +338,7 @@ publish.
 
 ## D11 — An exception is argued, not absorbed
 
-Six exceptions are recorded. Each names where it was accepted, the compensating
+Seven exceptions are recorded. Each names where it was accepted, the compensating
 control that makes it tolerable, what remains undefended anyway, and the condition
 under which it should be revisited. A test refuses an exception missing any of them
 and refuses one whose compensating control is not a control this baseline declares.
@@ -448,7 +448,7 @@ can commit to without deciding who does it.
   held over every manifest here before this change, by convention. A convention is
   enforced by memory; this is now enforced by a suite.
 - **The register is long and it is meant to be.** Twelve deferred risks, ten of them
-  blocking production use, and six accepted exceptions. A shorter register at this
+  blocking production use, and seven accepted exceptions. A shorter register at this
   stage of a project would mean less enumeration, not less risk.
 - **One new public claim, at the narrowest level that is honest.** The claim and test
   matrix gains `a-security-control-cannot-claim-enforcement-it-does-not-have`,

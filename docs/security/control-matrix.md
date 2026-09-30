@@ -189,10 +189,26 @@ An exception against a specific finding is recorded the same way every other
 exception in this baseline is: a new row in `exceptions`, naming the compensating
 control, the residual risk, and when it should be revisited — the four fields
 [`test_every_exception_names_a_compensating_control_and_a_residual_risk`](../../tests/security/test_security_baseline.py)
-already requires of every exception here. No exception exists as of this record: the
-scans in [the validation record](../proof/security/v1-s2-006-pr1-validation.md) found
-no `CRITICAL` or `HIGH` finding in either the pinned runtime image or the committed
-dependency lockfile.
+already requires of every exception here. A scan exception also carries a
+`scanFinding` naming the finding, the image it was assessed against, an owner, and a
+review deadline, and its identifier goes in the scan's committed ignore file,
+[`runtime-image.trivyignore`](../../scripts/security/runtime-image.trivyignore) or
+[`dependencies.trivyignore`](../../scripts/security/dependencies.trivyignore), with the
+deadline as its expiry. The guard hands that file to Trivy and keeps a suppressed
+finding in the scan output. Before it does, it refuses a missing file, an entry that is
+not one identifier and an expiry, and an image exception assessed against any image but
+the pinned one; [a test](../../tests/security/test_vulnerability_scan_exceptions.py)
+holds the ignore files and the baseline to each other in both directions.
+
+One scan exception exists: `EX-07`, `CVE-2026-84782` in the pinned runtime image, until
+2026-10-30. [Its assessment](../proof/security/ex-07-runtime-image-exception.md) records
+why it is accepted rather than fixed.
+
+This paragraph said until 2026-09-30 that no exception existed, which was true, and the
+description of the two scanners above said they block on a finding "with no recorded
+exception", which was not: the guards consulted no exception at all, so a row recorded here would have been
+argued and ignored, and the gate would have kept blocking. Both scan controls' statements
+said the same thing. The ignore files are what made them true.
 
 What this policy does not do: it does not publish a vulnerability count, a severity
 distribution, or a scan score as a durable figure — `no-vulnerability-figure-is-published`

@@ -111,12 +111,14 @@ An image scanner and a dependency auditor **have** each been run once, by hand,
 against the pinned runtime image and the committed dependency lockfile, and recorded
 with two CycloneDX SBOMs in
 [the supply-chain evidence](../proof/security/v1-s2-006-pr1-validation.md). That is
-one Trivy database version, on one day, on one host. Neither scan runs continuously,
-because no continuous-integration service is selected; a scanner is a detector rather
-than a proof of absence; and neither result is cited by any certified claim in the
-table above. A secret scanner is still absent: `gitleaks` is configured in this
-repository but is not installed on the host that ran these checks, so every record
-that mentions it reports it as not run.
+one Trivy database version, on one day, on one host. Both scans also run as a gate on
+every change, as the paragraph above says, and on no schedule; a scanner is a detector
+rather than a proof of absence; and neither result is cited by any certified claim in
+the table above. A secret scanner has since been run and recorded too, by
+`V1-S4-001-PR1`, and runs as the `secret-scan` gate. (Until 2026-09-30 this paragraph
+said neither scan ran continuously because no continuous-integration service was
+selected, and that `gitleaks` had not been installed on the host that ran these checks;
+ADR 0012 selected the service on 2026-09-12.)
 
 The telemetry row is narrow in the same way, and its wording is exact for a
 reason. A prompt, a response, a provider error body, and a secret have **no**

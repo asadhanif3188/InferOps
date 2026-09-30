@@ -2,7 +2,7 @@
 
 Status: **accepted register**, in
 [ADR 0008](../architecture/decisions/ADR-0008-v1-security-baseline.md). Twelve risks
-V1 carries rather than reduces, and six weaknesses it accepts with a compensating
+V1 carries rather than reduces, and seven weaknesses it accepts with a compensating
 control. Ten of the twelve block production use.
 
 This is the document that makes the rest of the security baseline honest. A control
@@ -333,11 +333,19 @@ present cannot be demonstrated in operation.
 
 ## Accepted exceptions
 
-Six weaknesses this project accepts rather than fixes. Each names where it was
+Seven weaknesses this project accepts rather than fixes. Each names where it was
 accepted, the compensating control that makes it tolerable, what remains undefended
 anyway, and the condition under which it should be revisited. A test refuses an
 exception missing any of them, and refuses one whose compensating control is not a
 control the baseline declares.
+
+One of them, `EX-07`, is the only one whose revisit a tool enforces. A
+vulnerability-scan exception names the finding, the image it was assessed against, an
+owner and a review deadline, and the scan guard reads it from a committed ignore file:
+the deadline is an expiry the scanner enforces, and the guard refuses to apply the
+exception to any image but the one it was assessed against. The other six are
+revisited when their condition is met, which nothing checks — `EX-03`'s allowlist is
+read by the secret scanner too, and nothing makes it narrow.
 
 | ID | Exception | Compensating control | Register entry |
 |---|---|---|---|
@@ -347,6 +355,7 @@ control the baseline declares.
 | EX-04 | The pod-security properties are enforced over apparatus, not over a serving path | `run-as-non-root` | DR-05 |
 | EX-05 | The local network plugin was measured not to enforce the rendered network policy | `least-exposure-no-manifest-publishes-a-service` | DR-04 |
 | EX-06 | The Docker Desktop identity guard is satisfied by a kind cluster the operator named `desktop` | `refuse-to-act-on-a-cluster-this-project-did-not-create` | — |
+| EX-07 | The pinned runtime image carries an OpenSSL build with CVE-2026-84782, and the image guard accepts it until 2026-10-30 | `pin-image-by-digest` | — |
 
 ### EX-01 — The transport is not authenticated
 
@@ -472,6 +481,40 @@ so it is written down rather than guessed at.
 API proxy that distinguishes its cluster from any other kind cluster, or when the
 scripts act on a cluster somebody other than the contributor owns, which V1 does
 not do.
+
+### EX-07 — The runtime image ships a vulnerable OpenSSL it never calls
+
+Accepted in
+[the EX-07 assessment](../proof/security/ex-07-runtime-image-exception.md), on
+2026-09-30. Owner: `security`.
+
+**What is accepted.** `CVE-2026-84782`, a `HIGH` out-of-bounds read in OpenSSL's DTLS
+handshake retransmission, in the `openssl` and `libssl3t64` packages at
+`3.0.13-0ubuntu3.12` in the pinned runtime image. It is fixed in `3.0.13-0ubuntu3.16`.
+The image guard accepts this one identifier, in this one image, and nothing else: every
+other `HIGH` or `CRITICAL` finding still blocks, and the finding stays in the scan
+output, marked as suppressed. The entry names the identifier, not the packages, so it
+would accept the same identifier in any package of the image; in this image only these
+two carry it, and the binding to the digest keeps that true.
+
+**Residual risk.** The vulnerable code ships and is not called. The only two files
+under `/app` that link OpenSSL create their contexts from `TLS_client_method` and
+`TLS_server_method` and import no DTLS function, and the committed runtime arguments
+serve plain HTTP from a mounted model file, so even their TLS paths are idle. That was
+read from the binaries' dynamic imports, not observed in a running process. The image
+also ships the `openssl` command-line tool, which can speak DTLS; anyone able to run it
+inside the container already executes code there.
+
+**Why not the fix.** A patched upstream build exists and scanned clean on 2026-09-30.
+Moving the pin to it means re-measuring the evidence recorded on this image and writing
+the refresh procedure ADR 0002 asks for, which is more than a change unblocking a gate
+should carry. The assessment names the candidate.
+
+**Revisit when** the runtime pin moves, or on **2026-10-30**, whichever comes first.
+Neither depends on anyone remembering: the ignore entry expires on that date and the
+finding blocks again, and while the entry stands the image guard refuses to scan any
+image but the one it was assessed against, so a rotated pin has to re-assess it or
+drop it.
 
 ## What this register does not do
 

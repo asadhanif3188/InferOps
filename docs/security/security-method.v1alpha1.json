@@ -697,7 +697,7 @@
       "implemented": [
         {
           "itemId": "every-exception-names-a-compensating-control",
-          "statement": "Six weaknesses are accepted rather than fixed, and each names where it was accepted, a compensating control the baseline declares, the residual risk, and when to revisit it.",
+          "statement": "Seven weaknesses are accepted rather than fixed, and each names where it was accepted, a compensating control the baseline declares, the residual risk, and when to revisit it.",
           "controlIds": [],
           "claimIds": [
             "a-security-control-cannot-claim-enforcement-it-does-not-have"
@@ -714,6 +714,30 @@
             {
               "kind": "record",
               "ref": "docs/proof/security/v1-s0-009-pr1-validation.md"
+            }
+          ],
+          "evidenceLabel": "local-static"
+        },
+        {
+          "itemId": "a-scan-exception-is-bound-to-its-image-and-expires",
+          "statement": "A vulnerability-scan exception is read by the scan guard from a committed ignore file with its review deadline as an expiry the scanner enforces, and the guard refuses it for any image but the one it was assessed against.",
+          "controlIds": [
+            "scan-the-pinned-runtime-image-for-known-vulnerabilities",
+            "scan-python-dependencies-for-known-vulnerabilities"
+          ],
+          "claimIds": [],
+          "evidence": [
+            {
+              "kind": "test",
+              "ref": "tests/security/test_vulnerability_scan_exceptions.py::test_every_accepted_finding_is_an_exception_and_every_scan_exception_is_accepted"
+            },
+            {
+              "kind": "test",
+              "ref": "tests/security/test_vulnerability_scan_exceptions.py::test_the_image_guard_refuses_an_exception_assessed_against_another_image"
+            },
+            {
+              "kind": "record",
+              "ref": "docs/proof/security/ex-07-runtime-image-exception.md"
             }
           ],
           "evidenceLabel": "local-static"
@@ -738,7 +762,8 @@
             "EX-03",
             "EX-04",
             "EX-05",
-            "EX-06"
+            "EX-06",
+            "EX-07"
           ],
           "notClaimed": "No exception is described as closed, and none is cited as a control in its own right."
         }

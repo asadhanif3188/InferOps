@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are fifty-two, and they are listed in their own section rather than
+empty list. There are fifty-three, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -165,7 +165,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Forty-seven modules. Committed machine-readable data checked against the documents
+Forty-eight modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -250,6 +250,11 @@ because what it defends is a security document's claim about itself, and its
 evidence class is the same either way. It still reads files: it installs nothing and
 contacts no cluster.
 
+`tests/security/test_vulnerability_scan_exceptions.py` sits here for the same reason
+and runs something: it sources the committed scan library with a recording stub in
+place of Trivy, to see what each guard hands the scanner and what it refuses before
+calling it. No vulnerability database is read and no image is scanned.
+
 ### `real-runtime-smoke` — [`tests/realruntime/`](../../tests/realruntime/)
 
 Two modules, both deselected by default and **neither has ever been run against a
@@ -260,7 +265,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Fifty-two suites protect something no row of the claim matrix names. (This sentence
+Fifty-three suites protect something no row of the claim matrix names. (This sentence
 said twenty-four while the table below held twenty-five rows; `V1-S4-003-PR1` added
 the twenty-sixth row and corrected it. `V1-S4-004-PR1` added the twenty-seventh and
 first left this sentence at twenty-six; its review corrected it. `V1-S4-004-PR2` added
@@ -269,7 +274,7 @@ the twenty-eighth, and `V1-S4-006-PR1` the twenty-ninth. It drifted again: by
 change added the thirty-second and thirty-third and corrected it. `V1-S5-003-PR1` added the
 thirty-fourth, and `V1-S5-004-PR1` the thirty-fifth. It drifted once more: the table held
 thirty-nine rows while this sentence said thirty-four, until `V1-S5-012-PR2` added the fortieth
-and corrected it, `V1-S5-006-PR1` added the forty-first, `V1-S5-006-PR2` the forty-second, `V1-S5-007-PR1` the forty-third, `V1-S5-013-PR1` the forty-fourth, `V1-S5-013-PR2` the forty-fifth, `V1-S5-008-PR1` the forty-sixth, `V1-S5-009-PR1` the forty-seventh and the forty-eighth, `V2-S0-001-PR1` the forty-ninth, `V2-S1-001-PR1` the fiftieth, `V2-S1-001-PR2` the fifty-first, and `V2-S1-002-PR1` the fifty-second. The machine-checked count is the one in the opening section.) Each carries its
+and corrected it, `V1-S5-006-PR1` added the forty-first, `V1-S5-006-PR2` the forty-second, `V1-S5-007-PR1` the forty-third, `V1-S5-013-PR1` the forty-fourth, `V1-S5-013-PR2` the forty-fifth, `V1-S5-008-PR1` the forty-sixth, `V1-S5-009-PR1` the forty-seventh and the forty-eighth, `V2-S0-001-PR1` the forty-ninth, `V2-S1-001-PR1` the fiftieth, `V2-S1-001-PR2` the fifty-first, and `V2-S1-002-PR1` the fifty-second, and the change accepting `EX-07` the fifty-third. The machine-checked count is the one in the opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -327,6 +332,7 @@ matrix is complete needs to see them together.
 | [`tests/architecture/test_clean_clone_workflow.py`](../../tests/architecture/test_clean_clone_workflow.py) | The clean-clone orchestrator, run in a sandbox against recording stubs: the checklist's order, each workflow handed its own consent, a certification run refused before it writes anything, a preparation run recording what it was not authorized to run, resumption that re-verifies the cluster -- by provider, name, and `kube-system` UID, so a cluster reset under its name is refused -- and a cleanup that removes only what the run created and proves the cluster survived. The claim that a reviewer can reproduce V1 from a clean clone is planned in the claim and evidence register and needs a real run; every answer here comes from a stub |
 | [`tests/architecture/test_clean_clone_ledger.py`](../../tests/architecture/test_clean_clone_ledger.py) | The rules of the clean-clone ledger: when a step may be recorded as not run, the order steps may pass in, intervals, resumption, manual actions without host paths, and which complete run certifies anything. It establishes what a record may say, never that a run said it |
 | [`tests/architecture/test_telemetry_collector.py`](../../tests/architecture/test_telemetry_collector.py) | The collector `ADR 0004` `D7` was amended to allow: owned but still `planned`, off by default, reading the scrape ConfigMap rather than a second copy of it, projecting an expiring token instead of automounting one, and storing series in a bounded `emptyDir`. Its one executable check runs the pinned collector's own `promtool` over the committed render, which establishes that the configuration loads and nothing about whether anything was collected |
+| [`tests/security/test_vulnerability_scan_exceptions.py`](../../tests/security/test_vulnerability_scan_exceptions.py) | The accepted vulnerability-scan findings against the exceptions that argue them: each committed ignore entry is one finding with an expiry equal to its exception's review deadline, an image exception is bound to the pinned digest, and the committed guards hand Trivy their ignore file and refuse a missing file, a malformed entry, or an exception assessed against another image before scanning. Deliberately no claim: a scan result is dated to its run, and no published claim rests on one |
 
 The two API-surface rows are the interesting pair. The matrix's drift claim,
 `the-published-strategy-and-its-data-cannot-drift-apart`, is written about the
