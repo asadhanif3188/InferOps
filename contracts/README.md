@@ -20,9 +20,12 @@ repository deploys, serves, or admits a workload from one. The platform domain
 also reads an EnvironmentBinding, refuses bindings that conflict with each other, and
 selects the one that serves a contract; nothing renders one, and its schema and
 fixtures are published ahead of the renderer that will consume them, and say so.
-Nothing produces or reads a RenderedWorkloadRelease: its schema and fixtures are
-published ahead of the renderer that will write one. A published schema is a
-commitment about what will be accepted, not evidence that anything accepts it.
+The platform domain reads a RenderedWorkloadRelease too, computes the digests and the
+identifier one should record, and refuses one whose identifier is not derived, whose
+values look like a credential, or that disagrees with the contract and binding it
+names. Nothing produces a release: its schema and fixtures are published ahead of the
+renderer that will write one. A published schema is a commitment about what will be
+accepted, not evidence that anything accepts it.
 
 ## Layout
 
@@ -60,7 +63,9 @@ A RenderedWorkloadRelease records where one rendered release came from — the
 workload, the digests of the contract and binding, the renderer and platform-defaults
 revisions, a derived release identifier, and the digest of the generated values — and
 carries none of their content. It is a repository document, not a cluster resource.
-Every rule it has is structural too.
+Every rule its schema and validator apply is structural too; the rules that need a
+recomputation or a second document are the platform domain's, have no fixture file
+here, and are each provoked by a test instead.
 
 The rules a schema cannot express — comparing two sibling values, consulting the
 compatibility matrix, judging whether a locator is a pasted credential — live in

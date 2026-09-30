@@ -20,6 +20,8 @@ This includes:
 - Workload contract domain model (V1-S1-001)
 - Serving adapter interface (V1-S1-002)
 - EnvironmentBinding domain model and selection (V2-S1-001)
+- RenderedWorkloadRelease domain model, canonical form, and provenance rules
+  (V2-S1-002)
 """
 
 from __future__ import annotations

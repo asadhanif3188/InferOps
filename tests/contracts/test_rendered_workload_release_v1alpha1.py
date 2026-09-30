@@ -21,7 +21,8 @@ not catch:
    validator, and never quote a value from the document.
 5. **The gaps are measured.** A random identifier of the right shape and the
    lowercase credential shapes the patterns cannot exclude are asserted to still
-   pass, so closing either is a visible change.
+   pass the schema, so closing either there is a visible change. The platform
+   domain refuses both, and its own suite asserts that.
 """
 
 from __future__ import annotations
@@ -630,9 +631,9 @@ def test_no_finding_quotes_a_value_from_the_document(path: Path):
 
 
 def test_the_rule_matrix_is_every_rule_a_release_can_cite():
-    """Every structural rule, and no semantic one: the release has no such layer."""
+    """Every structural rule, and no semantic one: the validator has no such layer."""
     rows = published_table(
-        "The table below is every rule a release can be refused under."
+        "The table below is every rule the offline validator can refuse a release under."
     )
     published = {backticked(row[0]): (backticked(row[1]), row[2]) for row in rows}
     structural = {
@@ -686,7 +687,8 @@ def test_a_random_uuid_is_not_a_release_id():
 
 
 def test_a_release_id_that_was_not_derived_still_passes():
-    """The documented gap: shape is checked, derivation is not. Closing it comes here."""
+    """The schema's documented gap: it checks shape, not derivation. The platform
+    domain checks derivation; closing the gap in the schema would come here."""
     document = load_document(VALID_DIR / "support-assistant-local-kind.yaml")
     underived = "0123456789abcdef" * 4
     assert underived != derived_release_id(document)
@@ -743,7 +745,8 @@ GAP_PLACEMENTS: dict[str, tuple[str, bool]] = {
 @pytest.mark.parametrize("shape", LOWERCASE_SHAPES, ids=lambda s: s[:8])
 @pytest.mark.parametrize("field", sorted(GAP_PLACEMENTS))
 def test_the_documented_gap_is_a_gap(field: str, shape: str):
-    """The release has no semantic layer, so these pass. Closing it comes here."""
+    """The schema has no semantic layer, so these pass it; the platform domain refuses
+    them. Closing the gap in the schema would come here."""
     template, heuristic_sees_it = GAP_PLACEMENTS[field]
     document = load_document(VALID_DIR / "support-assistant-local-docker-desktop.yaml")
     value = template.format(shape)

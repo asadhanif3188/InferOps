@@ -3,9 +3,12 @@
 Status: **published schema**, at `v1alpha1` maturity, added by `V2-S1-002-PR1`. The
 schema, its identifier, its compatibility rules, the rule that derives a release's
 identifier, and its valid and invalid fixtures are published here and validated on every
-change. **Nothing produces or reads a release**: no renderer exists in this repository,
-no values file has been generated, and neither fixture describes a release that was
-rendered, installed, or run.
+change. `V2-S1-002-PR2` added the platform domain that reads a release, the canonical form
+a release and its source documents are hashed in, and [seven provenance
+rules](#provenance-rules-the-platform-domain-applies) the domain applies and the schema
+does not. **Nothing produces a release**: no renderer exists in this repository, no values
+file has been generated, and neither fixture describes a release that was rendered,
+installed, or run.
 
 | Property | Value |
 |---|---|
@@ -18,6 +21,7 @@ rendered, installed, or run.
 | Wire form | JSON |
 | Unknown fields | Rejected |
 | Validator | [`tools/contract_validation/rendered_workload_release.py`](../../tools/contract_validation/rendered_workload_release.py), structural only |
+| Platform domain | [`src/inferops/domain/release/`](../../src/inferops/domain/release/__init__.py): typed parsing, the canonical form and digests, and the provenance rules |
 | Fixtures | [`contracts/release/examples/`](../../contracts/release/examples/README.md) |
 | Tooling decision | [ADR 0003](../architecture/decisions/ADR-0003-workload-contract-schema-tooling.md), applied unchanged |
 
@@ -120,15 +124,17 @@ one serialisation rather than choosing one. What the rule gives:
 - **The identifier is not part of its own input**, so the rule has no fixed point to
   solve.
 
-**The schema checks the identifier's form, not its derivation.** The pattern accepts 64
-lowercase hexadecimal characters and nothing else, so a UUID — the identifier a renderer
-minting a fresh one per run would write — is refused, as
+**The schema checks the identifier's form; the platform domain checks its derivation.**
+The pattern accepts 64 lowercase hexadecimal characters and nothing else, so a UUID — the
+identifier a renderer minting a fresh one per run would write — is refused, as
 [`invalid/random-release-id.yaml`](../../contracts/release/examples/invalid/random-release-id.yaml)
 demonstrates. A random value of the right length is not: it has the shape of a digest,
-and only recomputing the rule can tell it apart. Nothing in this repository recomputes
-it yet. Both valid fixtures carry the identifier the rule gives, and a test recomputes
-it for each; another test asserts that an identifier that was not derived still passes
-the validator, so the day a change enforces the rule it has to say so there.
+and only recomputing the rule can tell it apart. The platform domain recomputes it and
+refuses a release whose identifier differs, under `release-id-not-derived`; the schema and
+the offline validator do not, and a test asserts both halves, so a bare-schema consumer is
+told exactly what it is not checking. Both valid fixtures carry the identifier the rule
+gives, and the domain's derivation and a copy of the rule written out from this section's
+words agree on each.
 
 ## Digests and revisions
 
@@ -151,12 +157,54 @@ demonstrates. The renderer and the platform defaults each have a revision of the
 because they can change independently: the same renderer can read an edited defaults
 file, and the same defaults can be read by a changed renderer.
 
-**Not decided here: how a document is hashed.** A release says where each digest is
-recorded and what form it takes. It does not say how a contract or a binding is
-canonicalised before hashing — whether YAML comments, key order, or formatting move the
-digest — or how a values file is written before its bytes are hashed. Those belong to the
-code that produces the digests, and none exists yet. Until it does, a digest in a release
-is a well-formed claim that nothing checks.
+## Canonical form and source digests
+
+`V2-S1-002-PR1` left open how a document is hashed. `V2-S1-002-PR2` decided it for the
+two source documents, and wrote the code that applies it in
+[`inferops.domain.release.canonical`](../../src/inferops/domain/release/canonical.py).
+
+**The canonical form of a value** is its JSON text with keys sorted, no insignificant
+whitespace, non-ASCII characters written as themselves, encoded as UTF-8 — the release
+identifier's serialisation above, and the evidence index's, which a test holds byte for
+byte. It is only canonical if another serialiser can reproduce it, so it **refuses**,
+rather than writes some way of its own:
+
+- a **float**: its text differs between serialisers, and `2.0` and `2` are one value to
+  JSON Schema and two to a byte comparison. No document hashed here holds one — the
+  contract and binding schemas declare integers only, and their parsers read an integral
+  `2.0` as `2` before anything is hashed;
+- an **integer beyond ±(2⁵³ − 1)**, which a reader holding numbers as doubles cannot
+  represent exactly;
+- a **date, a time, or any other value JSON has no type for**. An unquoted `2026-09-30` in
+  YAML loads as a date; it is refused, not written as text, so a timestamp cannot enter a
+  canonical form by an accident of quoting;
+- a member name that is not a string, and a string UTF-8 cannot encode.
+
+Nothing is normalised: two strings differing only in Unicode normalisation are two values.
+A refusal names where the value is and never what it is. A pinned value's canonical bytes
+and digest are held by a test, so a change to the serialisation — which would change every
+identifier and digest ever recorded — fails there rather than going unnoticed.
+
+**A source document's digest is the digest of its value, not its bytes.**
+`source.contract.sha256` is the SHA-256 of the canonical form of the WorkloadContract *as
+the platform domain reads it*, and `source.environmentBinding.sha256` likewise for the
+binding. The digest is taken of the parsed object, so a document that does not parse has
+no digest, and:
+
+- YAML comments, key order, indentation, blank lines, flow or block style, and an integral
+  `2.0` written for `2` **do not move it**, and a test holds that for every committed
+  contract and binding fixture;
+- **any change to any value does**, and a test changes thirteen contract values and six
+  binding values, one at a time, and asserts each moves the digest, the release
+  identifier, and the verdict — see [Provenance rules](#provenance-rules-the-platform-domain-applies).
+
+The domain parses without loss, so for every committed fixture the digest equals the
+canonical digest of the loaded file, and a test holds that too.
+
+**Not decided here: how the values file is hashed.** `output.helmValues.sha256` has its
+form and no rule yet. The file does not exist until a renderer writes one, and whether its
+digest names its bytes or its value belongs to the story that writes it. Until then a
+values digest in a release is a well-formed claim that nothing checks.
 
 ## Structure
 
@@ -228,7 +276,17 @@ copied from the WorkloadContract, not one a renderer adds, so it is the same on 
 render of that contract.
 
 **A release identifier is never random**, by the [rule above](#release-identity). The
-schema refuses the shape of a UUID and does not recompute the rule.
+schema refuses the shape of a UUID and does not recompute the rule; the platform domain
+does.
+
+**Computing provenance reads no clock and no random source.** The domain package imports
+none of `time`, `datetime`, `random`, `secrets`, `uuid`, or `os`, and a test holds that. A
+second test replaces every clock and random function those modules offer with one that
+fails, then records a release, checks it, and verifies it against its sources; a third
+computes every digest and identifier for the committed fixtures in two fresh interpreters
+under two different hash seeds and requires one answer. The canonical form of each valid
+fixture, and of its identity, is searched for a date, a time of day, and a UUID, and holds
+none.
 
 ## Secrets
 
@@ -250,22 +308,38 @@ Two things make that structural rather than a promise:
    [`invalid/secret-value-in-an-identifier.yaml`](../../contracts/release/examples/invalid/secret-value-in-an-identifier.yaml)
    demonstrates.
 
-**What that does not catch, measured rather than hedged.** A credential written only in
-lowercase letters, digits, and hyphens has the shape of a name. Tokens in formats that
+**What the schema does not catch, measured rather than hedged.** A credential written only
+in lowercase letters, digits, and hyphens has the shape of a name. Tokens in formats that
 begin `sk-`, `glpat-`, `gldt-`, or `xoxb-` and continue in lowercase and digits are
 accepted by the schema in `metadata.workloadId`, `source.environmentBinding.name`, and
 `output.helmValues.path` (before its `.yaml`), and as the pre-release part of
 `metadata.workloadVersion`. The WorkloadContract's credential heuristic tests for a
 published prefix at the start of a value, so it would catch one that begins an identifier
-or a file name and would miss one behind a version's `-`; **the release applies neither
-half**, because it has no semantic layer. A test asserts every one of those outcomes, so
-the day a change closes the gap it has to say so there.
+or a file name and would miss one behind a version's `-`. **The schema and the offline
+validator apply neither half**, and a test asserts every one of those outcomes.
 
-The six hexadecimal fields refuse every one of those shapes. They cannot refuse a
+**The platform domain refuses them**, under `release-value-credential-shaped`. It applies
+the WorkloadContract heuristic's published prefixes, unchanged, at the start of each of
+those four values *and after every separator in it* — `-`, `.`, `+`, `/`, `@`, and `:`,
+which are every separator any accepted form admits — so a token behind a version's
+pre-release or build separator, or after an identifier's hyphen, is seen as well as one
+that begins a value. Nine published prefixes can be written in some release field at all
+(`gldt-`, `glpat-`, `sk-`, the five `xox?-` forms, and `ya29.`); a test places each in every
+position and asserts the rule refuses it, and that no committed contract, binding, or
+values name is mistaken for one. Every prefix contains a character outside `0-9a-f`, so no
+hexadecimal field can hold one.
+
+**What the rule costs, and what it still misses.** A value with a part that begins `sk-` is
+refused even when nobody meant a credential: a WorkloadContract named `sk-demo` or
+`task-sk-demo` is valid, and no release of it can be recorded; a test measures both. A
+lowercase token with no published prefix still has the shape of a name, and the
+heuristic's other branch needs mixed case, which no release string can hold — so a token
+like that passes, and a test asserts it does. The six hexadecimal fields cannot refuse a
 credential that is itself lowercase hexadecimal of the same length: such a value has
-exactly a digest's or a revision's shape, and no check on one document can tell the two
-apart. Until something recomputes the digests a release states, a release is reviewed
-like any other file for what the schema cannot see.
+exactly a digest's or a revision's shape. The two source digests are now checked when a
+caller supplies the documents they name, which catches such a value there; the values
+digest and the two revisions are not, and a release is reviewed like any other file for
+what they could hide.
 
 A refusal never repeats a value from the document, in its message or its field location.
 That is the canonical error model's rule and the release inherits it unchanged.
@@ -285,7 +359,10 @@ WorkloadContract's, applied to this schema:
   schema accepts, including recomputing the release identifier or applying a credential
   heuristic; changing a canonical code, rule identifier, or field location for an
   existing rejection. A previously valid release stays valid unless a committed valid
-  fixture says otherwise, but what a consumer is told moves.
+  fixture says otherwise, but what a consumer is told moves. `V2-S1-002-PR2` made changes
+  of this class, and only in the platform domain: it recomputes the release identifier
+  and applies a credential rule, and neither committed valid fixture is refused by either.
+  The schema and the offline validator's verdicts did not move.
 - **Breaking** — adding a required field; removing or renaming a field; removing an enum
   value; narrowing a pattern or a bound so that a committed valid fixture fails; changing
   the derivation rule, because every existing identifier would then name a different
@@ -302,7 +379,7 @@ to apply to yet.
 
 A release is refused through the canonical error model the WorkloadContract uses: the
 same two codes, the same structural rule identifiers, the same field locations, and the
-same messages. No code and no rule identifier was added. The table below is every rule a release can be refused under.
+same messages. The offline validator added no code and no rule identifier. The table below is every rule the offline validator can refuse a release under.
 
 | Rule | Code | Layer | Refuses, for a release |
 |---|---|---|---|
@@ -315,30 +392,75 @@ same messages. No code and no rule identifier was added. The table below is ever
 | `value-wrong-type` | `contract-invalid` | Structural | A value of the wrong JSON type — an unquoted digest YAML read as a number, a revision written as a list |
 | `contract-structure-invalid` | `contract-invalid` | Structural | A structural constraint with no more specific rule. Reaching it means the translation table needs a row |
 
-Every rule is structural, so **a consumer validating a release against the bare schema
-file reaches the same verdict as the published validator** on every committed fixture.
-That is true only because a release has no semantic layer; the rules in the next section
-would need one.
+Every rule in that table is structural, so **a consumer validating a release against the
+bare schema file reaches the same verdict as the published validator** on every committed
+fixture. Neither applies the rules in the next section, which the platform domain applies
+and a test holds apart from the validator's.
 
 Seven of the eight rules have an invalid fixture demonstrating them. The eighth,
 `contract-structure-invalid`, is the fallback for a keyword the translation table does
 not map, and a fixture pinning it would pin a defect. A test asserts that it is the only
 rule without one.
 
+### Provenance rules the platform domain applies
+
+A release the schema accepts can still say something false. [The platform
+domain](../../src/inferops/domain/release/provenance.py) decides that with two functions:
+`check_rendered_workload_release`, which judges one parsed release, and
+`verify_release_sources`, which compares a parsed release with the parsed WorkloadContract
+and EnvironmentBinding it names. Each returns every refusal at once, sorted, and raises
+none; each refuses a raw document with a `TypeError`, because a rule applied to a document
+nobody parsed is applied to an unknown shape. The table below is every rule the platform domain applies to a release.
+
+| Rule | Code | Applied by | Refuses |
+|---|---|---|---|
+| `release-id-not-derived` | `contract-invalid` | One release | `metadata.releaseId` is not the identifier [the derivation rule](#release-identity) gives for the release's own workload identity and `source` |
+| `release-value-credential-shaped` | `contract-invalid` | One release | The workload identifier, workload version, binding name, or values file name has a part that begins with a published credential prefix; see [Secrets](#secrets) |
+| `release-contract-mismatch` | `contract-invalid` | Release and sources | The workload identifier, workload version, or contract version is not the contract's `metadata.name`, `metadata.version`, or `apiVersion` |
+| `release-contract-digest-mismatch` | `contract-invalid` | Release and sources | `source.contract.sha256` is not [the contract's digest](#canonical-form-and-source-digests): the contract changed after the release was recorded, or it is another contract |
+| `release-binding-mismatch` | `contract-invalid` | Release and sources | The binding version, environment, or name is not the binding's `apiVersion`, `spec.environment`, or `metadata.name` |
+| `release-binding-digest-mismatch` | `contract-invalid` | Release and sources | `source.environmentBinding.sha256` is not the binding's digest |
+| `release-environment-mismatch` | `contract-invalid` | Release and sources | The contract and the binding serve different environments, so no release can have been rendered from the two together |
+
+No canonical code was added, and no identifier is one the offline validator or the binding
+domain already uses; a test holds both, holds this table to the code, and provokes every
+rule. A refusal's field names the document by its role — `release` or `contract` — and the
+path inside it, and never repeats a value. These rules are not in the offline validator's
+rule table: that table is what a bare-schema consumer can reproduce, and these need either
+a recomputation or a second document.
+
+**What a source change moves.** A test changes each member of a release's workload
+identity and `source` that can change, one at a time, and asserts each moves the release
+identifier and that the recorded one is then refused as `release-id-not-derived`; it
+changes each member of `output` and asserts the release's canonical form moves and its
+identifier does not. It then changes thirteen claim-relevant contract values — owner,
+description, model reference, runtime profile, CPU, memory, maximum replicas, whether
+telemetry is required, data classification, cost centre, runtime image, model revision,
+and model artifact digest — and six binding values —
+owner, provider, namespace, model cache claim, API replicas, and GitOps destination — one
+at a time. Each moves the document's digest and the release identifier, a release recorded
+before the change is refused against the changed document with exactly one
+`release-contract-digest-mismatch` or `release-binding-digest-mismatch`, and a release
+recorded after it verifies.
+
+**Neither committed valid fixture is a record of the documents it names.** Their digests
+are placeholders, so each passes `check_rendered_workload_release` and is refused by
+`verify_release_sources` with exactly the two digest rules — which a test asserts, so the
+fixtures cannot be read as the record of a render.
+
 ### Rules that are not applied yet
 
-Each of these needs a second document, a semantic layer, or code that does not exist, and
-nothing applies any of them today. They are stated so that nobody reads the schema as
-more than it is.
+Each of these needs a file, a repository, or code that does not exist, and nothing
+applies any of them today. They are stated so that nobody reads the domain as more than it
+is.
 
 | Rule | Why it is not applied | What it needs |
 |---|---|---|
-| `metadata.releaseId` is the value [the derivation rule](#release-identity) gives | The schema checks form, not derivation | Code that recomputes the rule, which is a conditionally compatible change |
-| Each `sha256` is the digest of the document or file it names | How each is hashed is not decided, and a release alone has nothing to hash | The canonicalisation and digest code, and the documents themselves |
-| The workload identifier and version are the named contract's | A single release has no contract to read | The contract the digest names |
-| The named contract's environment is the named binding's | A single release has neither document to read | Both documents; the binding's domain already refuses a selection across environments |
+| `output.helmValues.sha256` is the digest of the values file it names | How a values file is hashed is not decided, and no values file exists | The code that writes values, and the rule for hashing them |
 | The values file exists beside the release | A document check cannot see a directory | The renderer's output check |
-| A release value shaped like a lowercase credential is refused | A release has no semantic layer; see [Secrets](#secrets) | A semantic rule, which is a conditionally compatible change |
+| The renderer and platform-defaults revisions name commits that exist | A document check has no repository | A check against the repository the release is committed in |
+| A lowercase credential with no published prefix is refused | It has the shape of a name, and the heuristic's other branch needs mixed case; see [Secrets](#secrets) | A rule no one has written; a test asserts the gap |
+| A release committed to the repository matches what its sources derive today | Nothing commits a release | The generated-artifact drift check |
 
 ## Fixtures
 
@@ -354,7 +476,7 @@ or run.
 ## Validation
 
 ```sh
-python -m pytest tests/contracts/test_rendered_workload_release_v1alpha1.py -q
+python -m pytest tests/contracts/test_rendered_workload_release_v1alpha1.py tests/domain/test_rendered_workload_release_domain.py -q
 ```
 
 A document that is not a committed fixture can be checked from Python, for every
@@ -365,6 +487,25 @@ import yaml
 from tools.contract_validation.rendered_workload_release import validate
 
 findings = validate(yaml.safe_load(open("release.yaml", encoding="utf-8")))
+```
+
+and, once it parses, judged and compared with the documents it names:
+
+```python
+from inferops.domain.environment import parse_environment_binding
+from inferops.domain.release import (
+    check_rendered_workload_release,
+    parse_rendered_workload_release,
+    verify_release_sources,
+)
+from inferops.domain.workload import parse_workload_contract
+
+release = parse_rendered_workload_release(release_document)
+refusals = check_rendered_workload_release(release) + verify_release_sources(
+    release,
+    parse_workload_contract(contract_document),
+    parse_environment_binding(binding_document),
+)
 ```
 
 `python -m tools.contract_validation` validates WorkloadContract documents only and will
@@ -390,7 +531,23 @@ code, rule, and field, by the bare schema as well as the validator, repeatably, 
 without quoting a document value; that the rule matrix above is every structural rule and
 only the fallback lacks a fixture; and that timestamps, UUIDs, and the excluded credential
 shapes are refused in every field while an underived identifier and the lowercase
-credential shapes still pass where this document says they do.
+credential shapes still pass the schema where this document says they do.
+
+The domain suite, `tests/domain/test_rendered_workload_release_domain.py`, reads only files
+in this repository too. It checks that every field list, pattern, bound, vocabulary, and
+recordable version the domain applies is the schema's; that the parser and the validator
+agree on every committed fixture, no member of a release can be omitted, and no refusal
+quotes a value or an undefined field's name; that no attribute of the typed release has a
+default or could hold content, a time, or free text; that the canonical form is the
+evidence index's byte for byte, a pinned value keeps its pinned digest, key order and YAML
+formatting do not move a source digest, the same answers come out of two interpreters under
+two hash seeds, and every value with no single JSON spelling is refused; that computing
+provenance reads no clock and no random source; that every identity change moves the
+identifier, every output change moves only the release, and every contract and binding
+change is caught by the digest rule for that document; that the credential rule refuses
+every reachable prefix in every position, mistakes no committed name for one, and has the
+cost and the gap this document states; and that the rule table above is the code's and
+every rule refuses something.
 
 Every check is static. A pass is `C0` under
 [the evidence levels](../testing/evidence-levels.md): it establishes what the committed
@@ -401,8 +558,12 @@ files say about each other and nothing about a running system.
 - **It renders nothing, and nothing produces it.** No renderer exists. The values file a
   release is installed with is still written by hand, and no release document exists for
   it.
-- **It checks no digest.** A digest in a release is well formed, and nothing confirms it
-  is the digest of what it names.
+- **It checks a source digest only when it is given the source.** The platform domain
+  confirms the contract and binding digests against documents a caller supplies. Nothing
+  finds those documents for a release, nothing confirms the values digest, and nothing
+  checks that the two revisions exist.
+- **It reads provenance, and derives none from a render.** The domain computes the digests
+  and the identifier a release should record; no component records one.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about a deployment.** A valid release is a well-formed statement

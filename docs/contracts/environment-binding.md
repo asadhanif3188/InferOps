@@ -113,7 +113,10 @@ can disagree with the content, and nothing could tell which is right. A binding'
 content is identified by a digest of the document instead. Where that digest is recorded
 is decided by [the release provenance artifact](rendered-workload-release.md#what-a-release-records),
 added by `V2-S1-002-PR1`: a release records a binding's environment, name, and digest.
-How the digest is computed is decided by neither document yet.
+How the digest is computed is decided there too, by `V2-S1-002-PR2`: it is the SHA-256 of
+the [canonical form](rendered-workload-release.md#canonical-form-and-source-digests) of
+the binding as the platform domain reads it, so comments and formatting do not move it
+and any value does. This document and the binding's schema were not otherwise changed.
 
 ## Structure
 

@@ -10,6 +10,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **RenderedWorkloadRelease `v1alpha1`, provenance rules and source digests** — how a
+  release's source documents are hashed is decided: `source.contract.sha256` and
+  `source.environmentBinding.sha256` are the SHA-256 of the canonical JSON form — keys
+  sorted, compact, UTF-8, the release identifier's own serialisation — of the document as
+  the platform domain reads it, so formatting does not move a digest and any value does.
+  The canonical form refuses floats, dates, integers beyond ±(2⁵³ − 1), non-string member
+  names, and strings UTF-8 cannot encode. How the values file is hashed is still not
+  decided. Seven rule identifiers the platform domain applies and the schema does not, all
+  under the existing `contract-invalid` code: `release-id-not-derived` and
+  `release-value-credential-shaped` on one release, and `release-contract-mismatch`,
+  `release-contract-digest-mismatch`, `release-binding-mismatch`,
+  `release-binding-digest-mismatch`, and `release-environment-mismatch` beside the
+  documents it names. Compatibility classification: **conditionally compatible** for a
+  consumer of the domain — it now refuses releases the schema accepts, and neither
+  committed valid fixture is refused by a single-release rule; **compatible** for a
+  consumer of the schema or the offline validator, whose verdicts, fixtures, and
+  expected refusals are unchanged. The WorkloadContract and the EnvironmentBinding are
+  unchanged.
+
 - **RenderedWorkloadRelease `v1alpha1`** — a third schema, versioned independently of
   the other two although all three use `inferops.io/v1alpha1`. It records the
   provenance of one rendered release: the workload identifier and version, a release
