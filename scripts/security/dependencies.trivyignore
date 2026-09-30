@@ -1,0 +1,12 @@
+# Findings in uv.lock that are accepted rather than fixed.
+#
+# Passed to Trivy by scripts/security/lib.sh. One finding identifier per line,
+# followed by exp:YYYY-MM-DD, under a comment naming the exception that argues
+# it. Every identifier here is an accepted exception in
+# docs/security/security-baseline.v1alpha1.json and
+# docs/security/deferred-risks.md, and tests/security/ refuses an identifier no
+# exception names and an exception naming one that is not here.
+#
+# None is accepted. The file exists so that the guard and the baseline read the
+# same list, and the guard refuses to scan without it, so deleting it cannot
+# quietly change what blocks.

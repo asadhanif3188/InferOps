@@ -45,7 +45,9 @@ nothing about a deployment. It adds no record to the evidence pack and moves no 
   one anchor sentence in the schema suite, `tests/contracts/test_rendered_workload_release_v1alpha1.py`,
   were corrected because they said the release has no semantic layer; its 160 tests and
   what they assert are otherwise unchanged. One number word was added to the inventory
-  suite.
+  suite. It was `fifty-three` when this change was written; the change accepting `EX-07`
+  reached `main` first with its own fifty-third module, so merging `main` made this one
+  the fifty-fourth and added `fifty-four`.
 - **Unchanged:** the release schema, the value of every release fixture and every
   expected refusal, the offline validator's verdicts (its module docstring, one fixture's
   header comment, and the manifest's description of its one layer were corrected), and

@@ -1,0 +1,23 @@
+# Findings in the pinned runtime image that are accepted rather than fixed.
+#
+# Passed to Trivy by scripts/security/lib.sh. One finding identifier per line,
+# followed by exp:YYYY-MM-DD, under a comment naming the exception that argues
+# it. Every identifier here is an accepted exception in
+# docs/security/security-baseline.v1alpha1.json and
+# docs/security/deferred-risks.md, and tests/security/ refuses an identifier no
+# exception names, an exception naming one that is not here, and an expiry that
+# is not the exception's review deadline.
+#
+# Each finding was assessed against the image named below and no other. The
+# guard refuses to scan when the runtime contract pins a different image, so a
+# rotated pin cannot inherit an exception argued for the old bytes.
+#
+# assessed-image: ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384
+#
+# On its expiry date Trivy stops suppressing an entry and the finding blocks
+# again. An entry suppresses its finding for every package in the image it is
+# reported against, and the scan output still records it, under
+# ExperimentalModifiedFindings, because the guard passes --show-suppressed.
+
+# EX-07: OpenSSL DTLS retransmission out-of-bounds read, in openssl and libssl3t64.
+CVE-2026-84782 exp:2026-10-30
