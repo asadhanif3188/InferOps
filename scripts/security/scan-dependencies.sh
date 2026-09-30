@@ -21,4 +21,4 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 inferops::security::assert_dependencies_have_no_blocking_vulnerabilities "$@"
-inferops::security::log "no ${1:-${INFEROPS_SCAN_BLOCKING_SEVERITY}} finding in uv.lock"
+inferops::security::log "no ${1:-${INFEROPS_SCAN_BLOCKING_SEVERITY}} finding in uv.lock outside the accepted exceptions in ${INFEROPS_DEPENDENCY_ACCEPTED_FINDINGS_REL}"

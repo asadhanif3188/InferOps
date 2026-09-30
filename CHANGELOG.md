@@ -162,6 +162,33 @@ from `1.0.0`.
   changed: the new record uses the `repository-only` environment with a note, and names
   the evidence-class mismatch in its limitations.
 
+### Security
+
+- **`CVE-2026-84782` in the pinned runtime image is accepted as `EX-07`, until
+  2026-10-30.** The vulnerability database gained a `HIGH` out-of-bounds read in
+  OpenSSL's DTLS handshake retransmission on 2026-09-29, in the `openssl` and
+  `libssl3t64` packages the pinned llama.cpp image carries at `3.0.13-0ubuntu3.12`, and
+  the image scan gate began failing on every branch. The vulnerable code ships and is not
+  called: the two files in the image that link OpenSSL import only the stream-TLS method
+  functions and no DTLS function, and the committed arguments serve plain HTTP.
+  [The assessment](docs/proof/security/ex-07-runtime-image-exception.md) records that
+  reading, the residual risk, and why the pin was not moved: a patched upstream build
+  exists and scanned clean, and adopting it means re-measuring the twenty-three evidence
+  records measured on this image and writing the refresh procedure ADR 0002 asks for. The
+  exception is owned by `security` and bound to this image digest.
+- **The two scan guards now honour recorded exceptions, which they said they did and did
+  not.** Both scan controls said a guard blocks on a finding "not recorded as an accepted
+  exception", and neither consulted one, so an argued exception would have been ignored.
+  Each guard now hands Trivy its own committed ignore file and `--show-suppressed`, so an
+  accepted finding stays in the scan output. It refuses, before scanning, a missing file,
+  an entry that is not one finding identifier with an expiry, and an image exception
+  assessed against any image but the pinned one. The expiry is the review deadline and
+  Trivy enforces it: on 2026-10-30 the finding blocks again. A baseline exception may now
+  carry a `scanFinding` naming the finding, image, owner and deadline, and
+  [a new suite](tests/security/test_vulnerability_scan_exceptions.py) holds the ignore
+  files and the baseline to each other and runs the guards against a stub. The two scan
+  controls' text no longer says no continuous-integration service is selected.
+
 ## [1.0.0] - 2026-09-27
 
 The first versioned release: everything V1 built, from the first governance document

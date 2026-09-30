@@ -204,7 +204,7 @@ rests on a hosted run.
 
 ## 7. Accepted exceptions
 
-Six weaknesses are accepted rather than fixed. Each names where it was accepted, a
+Seven weaknesses are accepted rather than fixed. Each names where it was accepted, a
 compensating control the baseline declares, the residual risk, and when to revisit it,
 and the four are enforced by a test.
 
@@ -213,6 +213,7 @@ and the four are enforced by a test.
 | What | Controls and claim | Verified by | Record | Label |
 |---|---|---|---|---|
 | Every exception names a compensating control, a residual risk, and a revisit condition, and each is published under its own heading | claim `a-security-control-cannot-claim-enforcement-it-does-not-have` | `test_every_exception_names_a_compensating_control_and_a_residual_risk`, `test_the_exceptions_are_published_where_a_reader_will_find_them` | [v1-s0-009-pr1](../proof/security/v1-s0-009-pr1-validation.md) | `local-static` |
+| A vulnerability-scan exception is read by the scan guard from a committed ignore file, expires on its review deadline, and is refused for any image but the one it was assessed against | `scan-the-pinned-runtime-image-for-known-vulnerabilities`, `scan-python-dependencies-for-known-vulnerabilities` | `test_every_accepted_finding_is_an_exception_and_every_scan_exception_is_accepted`, `test_the_image_guard_refuses_an_exception_assessed_against_another_image` | [EX-07 assessment](../proof/security/ex-07-runtime-image-exception.md) | `local-static` |
 
 **Not implemented**
 
@@ -224,7 +225,8 @@ and the four are enforced by a test.
 | EX-04: the pod-security properties are properties of files, not of pods | DR-05 | — |
 | EX-05: the local network plugin was measured to ignore the rendered policy | DR-04 | — |
 | EX-06: Docker Desktop's guard cannot tell its own `kind` cluster from one the operator named `desktop` | — | — |
-| **All six** | | No exception is described as closed, and none is cited as a control in its own right |
+| EX-07: the pinned runtime image carries an OpenSSL build with `CVE-2026-84782`, accepted until 2026-10-30 because nothing in the serving path calls the vulnerable DTLS code | — | — |
+| **All seven** | | No exception is described as closed, and none is cited as a control in its own right |
 
 EX-03 set its own revisit condition — a recorded scanner run — and V1-S4-001-PR1 met it
 without narrowing the allowlist. That is recorded as a gap in
