@@ -504,6 +504,113 @@ def test_a_reference_built_around_bare_strings_is_refused(
         )
 
 
+class _UncheckedValuesFileName(ValuesFileName):
+    """A subclass that skips the check its parent makes. In-process code can."""
+
+    def __post_init__(self) -> None:
+        pass
+
+
+class _UncheckedGitRevision(GitRevision):
+    def __post_init__(self) -> None:
+        pass
+
+
+def _overwritten(value: Any, text: str) -> Any:
+    """A frozen constrained value with its text replaced after it was checked."""
+    object.__setattr__(value, "value", text)
+    return value
+
+
+def _forged_binding_name(context: RenderContext) -> RenderContext:
+    """The context with its recorded binding name overwritten, as above."""
+    _overwritten(context.sources.environment_binding.name, "Not A Name")
+    return context
+
+
+@pytest.mark.parametrize(
+    ("make", "field"),
+    [
+        (
+            lambda c: (
+                c,
+                RENDERER,
+                HelmValuesReference(
+                    _UncheckedValuesFileName("has spaces and SECRET text.yaml"),
+                    Sha256Hex("5" * 64),
+                ),
+            ),
+            "output.helmValues.path",
+        ),
+        (
+            lambda c: (
+                c,
+                RendererReference(_UncheckedGitRevision("my-secret-token")),
+                HELM_VALUES,
+            ),
+            "source.renderer.revision",
+        ),
+        (
+            lambda c: (
+                c,
+                RENDERER,
+                HelmValuesReference(
+                    _overwritten(ValuesFileName("values.generated.yaml"), "Free text"),
+                    Sha256Hex("5" * 64),
+                ),
+            ),
+            "output.helmValues.path",
+        ),
+        (
+            lambda c: (_forged_binding_name(c), RENDERER, HELM_VALUES),
+            "source.environmentBinding.name",
+        ),
+    ],
+    ids=[
+        "unchecked-subclass-path",
+        "unchecked-subclass-revision",
+        "setattr-path",
+        "setattr-source",
+    ],
+)
+def test_a_value_that_skipped_its_check_is_refused_when_read_back(make, field: str):
+    """Found by the independent review: `isinstance` alone let these through.
+
+    Each value is of the right type and was never checked, or was changed after
+    it was. The release is read back from its plain JSON form by the published
+    parser, which checks every string again, so each is refused, at its field,
+    without being quoted.
+    """
+    context, renderer, helm_values = make(context_for(*inputs("synchronous-llm-local")))
+    with pytest.raises(ReleaseNotRecordedError) as caught:
+        record_release(context, renderer=renderer, helm_values=helm_values)
+    (refused,) = caught.value.refusals
+    assert isinstance(refused, MalformedReleaseError)
+    assert refused.field == f"$.{field}"
+    assert "SECRET" not in json.dumps(caught.value.as_dict())
+    assert "my-secret-token" not in str(caught.value)
+
+
+def test_a_context_forged_with_the_private_sentinel_is_recorded():
+    """Measured, not closed: the guard on a context stops accidents, not intent.
+
+    A caller that imports the render package's private sentinel can build a
+    context holding any well-formed values, and a release is recorded from it.
+    The documents state this as outside the guarantee; the render suite records
+    the same limit for the context itself.
+    """
+    context = context_for(*inputs("synchronous-llm-local"))
+    fields = tuple(
+        RenderField(entry.name, entry.layer, entry.source, "forged-name")
+        if entry.name == "workload.id"
+        else entry
+        for entry in context.fields
+    )
+    forged = RenderContext(fields, context.sources, normalization_module._ISSUED)
+    release = record_release(forged, renderer=RENDERER, helm_values=HELM_VALUES)
+    assert str(release.metadata.workload_id) == "forged-name"
+
+
 @pytest.mark.parametrize("name", ["contract", "validated"])
 def test_a_contract_is_not_a_render_context(name: str):
     workload, _ = inputs("synchronous-llm-local")
@@ -521,34 +628,69 @@ def record_release_body() -> ast.FunctionDef:
     )
 
 
-def test_the_function_reaches_the_context_only_through_the_allowlist():
-    """A tripwire on the body: one attribute, and one reader, and nothing else.
+def context_uses(body: ast.FunctionDef) -> list[str]:
+    """How the body uses ``render_context``, one entry per occurrence of the name.
 
-    ``render_context.sources`` is the typed identity of every input; every other
-    read goes through ``_public_context_value``, which consults both policy
-    tables. A change that read ``render_context.value``, ``.entry``, ``.fields``,
-    ``.owned_by``, or ``.as_document`` here would fail this test.
+    An occurrence is described by what directly encloses it, so an alias, a
+    keyword argument, a ``getattr``, or a second attribute after ``sources`` each
+    shows up as an entry the allowlist does not hold.
     """
+    parents = {
+        child: node for node in ast.walk(body) for child in ast.iter_child_nodes(node)
+    }
+    uses: list[str] = []
+    for node in ast.walk(body):
+        if not (isinstance(node, ast.Name) and node.id == "render_context"):
+            continue
+        parent = parents[node]
+        if isinstance(parent, ast.Attribute):
+            grandparent = parents[parent]
+            follow = grandparent.attr if isinstance(grandparent, ast.Attribute) else "-"
+            uses.append(f"attribute:{parent.attr}.{follow}")
+        elif (
+            isinstance(parent, ast.Call)
+            and isinstance(parent.func, ast.Name)
+            and node in parent.args
+        ):
+            uses.append(f"argument:{parent.func.id}")
+        else:
+            uses.append(f"other:{type(parent).__name__}")
+    return sorted(uses)
+
+
+def test_the_function_reaches_the_context_only_through_the_allowlist():
+    """A tripwire on the body, against the obvious edits.
+
+    Every occurrence of ``render_context`` must be the ``isinstance`` guard, an
+    argument to ``_public_context_value`` - which consults both policy tables -
+    or ``render_context.sources.release_source``. Reading ``.value``, ``.entry``,
+    ``.fields``, ``.owned_by``, or ``.as_document``, another attribute of the
+    sources, an alias, a keyword argument, or a ``getattr`` fails it. Code that
+    hides a read behind another function is beyond what a syntax check sees.
+    """
+    assert context_uses(record_release_body()) == [
+        "argument:_public_context_value",
+        "argument:_public_context_value",
+        "argument:isinstance",
+        "attribute:sources.release_source",
+    ]
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        "alias = render_context\nalias.value('workload.owner')",
+        "getattr(render_context, 'value')('workload.owner')",
+        "_public_context_value(render_context=render_context, field='x')",
+        "render_context.sources.contract",
+        "render_context.value('workload.owner')",
+    ],
+)
+def test_the_tripwire_sees_each_evasion_it_names(edit: str):
+    """Each evasion, added to the real body, changes what the tripwire reports."""
     body = record_release_body()
-    attributes = {
-        node.attr
-        for node in ast.walk(body)
-        if isinstance(node, ast.Attribute)
-        and isinstance(node.value, ast.Name)
-        and node.value.id == "render_context"
-    }
-    assert attributes == {"sources"}
-    callers = {
-        node.func.id
-        for node in ast.walk(body)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and any(
-            isinstance(arg, ast.Name) and arg.id == "render_context"
-            for arg in node.args
-        )
-    }
-    assert callers == {"isinstance", "_public_context_value"}
+    body.body.extend(ast.parse(edit).body)
+    assert context_uses(body) != context_uses(record_release_body())
 
 
 # --------------------------------------------------------------------------
@@ -1011,8 +1153,18 @@ def test_the_document_publishes_every_render_value_with_its_class_and_reason():
 def test_the_document_states_the_limit_and_the_separate_scanning_control():
     text = RELEASE_DOC.read_text(encoding="utf-8")
     section = text[text.index("## Provenance input trust") : text.index("## Secrets")]
-    assert "cannot be proven" in section
-    assert "secret scanning" in section
+    # Each statement this change owes, by a phrase that carries its meaning.
+    for phrase in (
+        "cannot be proven\nnon-secret by syntax alone",  # the limitation itself
+        "public **by policy**",  # the assumption it rests on
+        "digest-pinned image reference",  # the widest public field, named
+        "a hexadecimal string of that length",  # the supplied hex fields
+        "**This is not repository secret scanning.**",  # the separate control
+        "`.gitleaks.toml`",  # where that control lives
+        "private sentinel",  # the in-process limit
+        "On the supported path",  # the qualifier on "cannot enter"
+    ):
+        assert phrase in section, phrase
     # The absolute sentence the section used to open with survives only as quoted
     # history, never again as a bold claim.
     assert (

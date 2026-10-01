@@ -14,14 +14,17 @@ policy, and this module is where that policy is written down and applied:
   environment fact - and each says why. A field the render context does not hold
   at all, such as a contract's description or annotations, cannot be read here.
 - :func:`record_release` is **the supported construction path**. It takes a
-  :class:`~.normalization.RenderContext`, which only a validated contract, typed
-  defaults, and a selected binding produce, and two typed references - the
+  :class:`~.normalization.RenderContext`, which the boundary issues from a
+  validated contract, typed defaults, and a selected binding, and two typed
+  references - the
   renderer's revision and the generated values' file name and digest - and reads
   each release field from the source its row in :data:`RELEASE_PROVENANCE` names,
   refusing to read a context value that is not classified a public-safe identity.
   It accepts no raw document and copies no member of one. The release it builds
-  is then judged by the release domain's single-release rules, so a value shaped
-  like a published credential is refused here, before anything is returned.
+  is read back from its plain JSON form by the published parser, so every string
+  is checked again whatever type it arrived in, and is then judged by the release
+  domain's single-release rules, so a value shaped like a published credential is
+  refused here, before anything is returned.
 
 **What this establishes, and what it cannot.** On this path, the only text a
 release carries is two values a validated contract declares as its identity, the
@@ -32,8 +35,11 @@ response, any other document member - has a way in. What the policy cannot do is
 decide what an author meant: a secret deliberately written as a workload name that
 is otherwise a valid DNS label has exactly the shape of a name, and no rule over
 syntax can tell the two apart. That is an input-trust assumption - identities are
-public - and it is stated as one, not claimed away. Repository secret scanning is a
-separate control over committed files and is not part of this guarantee.
+public - and it is stated as one, not claimed away. Nor does it stop code in the
+same process: a caller that imports the render package's private sentinel can build
+a context holding any well-formed values, as the render suite already records.
+Repository secret scanning is a separate control over committed files and is not
+part of this guarantee.
 
 Offline and deterministic like the rest of the package: no clock, no random
 source, no environment variable, no file.
@@ -50,6 +56,7 @@ from typing import Final
 from ..context import NO_REQUEST_CONTEXT, RequestContext
 from ..release.canonical import derive_release_id
 from ..release.errors import CONTRACT_INVALID, MalformedReleaseError, ReleaseError
+from ..release.parsing import parse_rendered_workload_release
 from ..release.provenance import check_rendered_workload_release
 from ..release.release import (
     HelmValuesReference,
@@ -410,6 +417,17 @@ def record_release(
         source=source,
         output=ReleaseOutput(helm_values=helm_values),
     )
+    # The constrained types check a value when it is made, and nothing stops
+    # in-process code from making one that skips the check - a subclass, or
+    # `object.__setattr__` on a frozen instance. So the release is read back from
+    # its plain JSON form by the published parser, and what it reads is what is
+    # judged and returned: every string is checked again, whatever type it came in.
+    try:
+        release = parse_rendered_workload_release(
+            release.as_document(), context=context
+        )
+    except ReleaseError as error:
+        raise ReleaseNotRecordedError([error]) from None
     refusals = check_rendered_workload_release(release, context=context)
     if refusals:
         raise ReleaseNotRecordedError(refusals)

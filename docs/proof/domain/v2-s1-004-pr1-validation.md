@@ -85,8 +85,9 @@ and the release document publishes both of its tables, which a test holds to the
   already permits, and the workload and release domains.
 - **`src/inferops/domain/render/__init__.py`**: exports them, and its docstring names the
   path.
-- **`tests/domain/test_provenance_input_trust.py`** (new): 41 test functions, 81 tests once
-  parametrized.
+- **`tests/domain/test_provenance_input_trust.py`** (new): 44 test functions, 91 tests once
+  parametrized - 41 and 81 at the first commit; the review fixes added the three
+  functions and ten tests described below.
 - **`tests/domain/test_renderer_input_boundary.py`**: the module count the import test
   asserts goes from nine to ten. Nothing else in it changed.
 - **`docs/contracts/rendered-workload-release.md`**: a new *Provenance input trust*
@@ -112,7 +113,7 @@ and the release document publishes both of its tables, which a test holds to the
 | Asked | Reached here | How |
 |---|---|---|
 | Every supported provenance field has an explicit trust classification | Yes | Fifteen release fields and forty-four context values, each classified once; the schema's leaves, a recorded release's fields, and the ownership table's names are each compared with the tables |
-| Release construction consumes validated typed sources and an explicit allowlist, not raw document content | Yes | `record_release` takes a `RenderContext` and two typed references whose members must be their constrained types; each field is read from its row's source; a raw document, dictionary, or string at any argument, or a reference built around bare strings, is a `TypeError`; a test reads the function body and holds it to the allowlisted reader and the typed sources |
+| Release construction consumes validated typed sources and an explicit allowlist, not raw document content | Yes | `record_release` takes a `RenderContext` and two typed references whose members must be their constrained types; each field is read from its row's source; a raw document, dictionary, or string at any argument, or a reference built around bare strings, is a `TypeError`; the release is read back from its plain JSON form by the published parser, so a value of the right type that skipped its check is refused; a tripwire test reads the function body and fails on the obvious edits that would bypass the allowlisted reader. A caller importing the private sentinel can still forge a context of well-formed values; the documents state it and a test measures it |
 | Classified-sensitive or excluded inputs cannot enter through the supported path | Yes | Every excluded context value, marked, reaches no release for any committed contract; eight markers planted in real inputs reach none; a row pointed at an excluded value, or a value reclassified, raises |
 | Known credential-shaped values remain refused where applicable | Yes | The four lowercase shapes the schema cannot refuse are refused in the binding name, the workload name and version, and the values file name, without being quoted |
 | The supported-path guarantee and the arbitrary-identifier limitation are both documented | Yes | [Provenance input trust](../../contracts/rendered-workload-release.md#provenance-input-trust); a test records an unprefixed token written as a workload name being recorded |
@@ -238,6 +239,73 @@ skips are the ones earlier records name, such as symbolic links this host does n
 A first full run was started before the bare-string fix and stopped, since its tree was no
 longer the one being committed.
 
+**After the review fixes**, which touched `record_release` and its docstring, the new
+suite, three documents, the inventory, and this record, the full lane was run again with
+the same command: **16,810 passed, 33 skipped, 14 deselected, none failed**, in 14 min
+17 s - the first run's 16,800 and the ten tests the fixes added. `ruff check`, `ruff
+format --check --no-cache` (576 files), and `mypy` (316 source files) were clean again,
+the three targeted suites gave 1,290 passed (91, 119, and 1,080), the gate printed the
+same six digests, and gitleaks found nothing in any of the eighteen changed files. This
+record's review section was completed after that run; the link and document suites were
+run again over it.
+
+## What the independent review found
+
+A reviewer outside the change read the first commit, `7a639b2`, re-ran the linters and the
+three suites, recounted every figure in this record and the documents, checked the
+completed record's history byte for byte, scanned the added text for private material,
+and probed the path for ways in. It found no defect it rated critical, one it rated high,
+two medium, and four low. Every figure it could recount was correct.
+
+**High - the documents claimed more than `isinstance` enforces.** The first commit's
+documents said only typed inputs cross, and that each reference's members "refused a
+malformed value when it was made". The reviewer built values that are the right type and
+were never checked: a `ValuesFileName` subclass whose check does nothing, holding
+`has spaces and SECRET text.yaml`; a `GitRevision` subclass holding `my-secret-token`; a
+real `ValuesFileName` whose text was replaced with `object.__setattr__`; and a context
+built with the module's private sentinel. Every one was recorded. The single-release rules
+check credential prefixes, not patterns, so none was refused. **What the first commit got
+wrong** is that the typed boundary rested on types in-process code can forge, while the
+documents stated it as if construction were the only way to make one.
+
+*Fixed in code and in the documents.* `record_release` now reads the release back from its
+plain JSON form with the published parser and returns what the parser reads, so every
+string is checked against its published pattern and length again, whatever type it came
+in. Four new cases - the two unchecked subclasses, the replaced file name, and a recorded
+binding name replaced in the context's sources - are each refused with a
+`MalformedReleaseError` at exactly that field, without being quoted. With the parse-back
+removed from a copy of the module, exactly those four fail and the other 206 tests of the
+two suites pass, so they test the fix and nothing else. A context forged with the private
+sentinel is still recorded, as long as its values are well formed: that is the context's
+own documented limit, and a fifth new test measures it rather than leaving it implied. The
+release document, the boundary document, and the module's docstring now say that the
+supported path is the guarantee, not code in the same process, and no longer say that only
+the boundary can issue a context.
+
+**Medium - the tripwire was described as stronger than it is.** The test that reads
+`record_release`'s body looked only at `render_context.<attribute>` and at positional
+arguments, so an alias, `getattr`, a keyword argument, or a second attribute after
+`sources` would have passed it. It now describes every occurrence of the name by what
+encloses it and requires exactly the four the function has; five new cases add each of
+those evasions, and a direct read, to the real body and assert the tripwire sees each. The
+documents now call it a tripwire against the obvious edits, and say a read hidden behind
+another function is beyond it.
+
+**Medium - the limitation named four public fields without saying how wide two are.** A
+workload version may be a digest-pinned image reference of up to 512 characters, and a
+values file name any lowercase name of up to 255 ending in `.yaml`. The limitation
+paragraph now says so.
+
+**Low.** The "cannot enter" bullet now opens *On the supported path*. The test that the
+document states the limit checked two phrases; it now checks eight, one for each statement
+the change owes. The edited paragraph of `contracts/README.md` is rewrapped. The planted
+defects ran in an archived copy and cannot be re-run from the repository; the reviewer
+checked them for consistency, and this record already says where they ran.
+
+**Run again after the fixes:** `ruff check`, `ruff format --check --no-cache`, `mypy`, the
+three targeted suites, the gate, gitleaks over every changed path, `git diff --check`, and
+the full default lane, with the results below.
+
 ## Privacy and publicability
 
 The diff was read for private planning material, local paths, and credentials. It names
@@ -246,7 +314,10 @@ name, and no later story identifier. The only credential-shaped strings are four
 prefixes followed by four zeros and the same fixed lowercase string with no published
 prefix that the release domain's suite already carries; each is labelled where it appears
 and matches no scanner rule. The markers the suite plants are the letters `zqmark` and
-a suffix, and identify nothing.
+a suffix, and identify nothing. The review fixes add two made-up strings,
+`has spaces and SECRET text.yaml` and `my-secret-token`, as values that skipped their
+check; neither has a published prefix, neither is a credential, and gitleaks reports
+nothing for them.
 
 ## What this does not establish
 

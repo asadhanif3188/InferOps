@@ -368,20 +368,27 @@ renderer, helm_values)` in [the render package](../domain/renderer-input-boundar
 is the one function that builds a release from inputs; the parser reads a release
 someone else wrote and builds none. On that path:
 
-- **Only typed inputs cross.** It takes a `RenderContext` - which only `build_render_context`
-  and `prepare_render` issue, from a validated contract, typed platform defaults, and a
+- **Only typed inputs cross.** It takes a `RenderContext` - which `build_render_context`
+  and `prepare_render` issue from a validated contract, typed platform defaults, and a
   selected binding - a `RendererReference`, and a `HelmValuesReference` whose members are
   their constrained types. A raw document, a dictionary, or a bare string at any of the
   three, or a reference built around bare strings, is refused with a `TypeError`.
+- **Every string is checked again before it is recorded.** A constrained type checks a
+  value when it is made, and in-process code can make one that skips the check - a
+  subclass, or `object.__setattr__` on a frozen instance. So the release is read back from
+  its plain JSON form by the published parser, and what the parser reads is what is judged
+  and returned: a value of the right type that never passed its check, or was changed
+  after it did, is refused at its field, without being quoted.
 - **Each field is read from the source its row names, and from nothing else.** A context
   value is read only if it is classified `public-identity`, and both tables are consulted
   when a release is recorded, so a row pointed at an excluded value, or a value
   reclassified, is refused rather than recorded. The function's body reaches the context
-  only through that reader and the context's typed sources, and a test reads the body to
-  hold it there.
-- **Excluded content cannot enter.** No secret reference, free text, annotation, owner,
-  render setting, environment fact, environment variable, prompt, response, or other
-  document member has a path into a release. The suite gives every excluded context value
+  only through that reader and the context's typed sources; a tripwire test reads the body
+  and fails on the obvious edits - another attribute, an alias, a keyword argument, a
+  `getattr` - though not on a read hidden behind another function.
+- **Excluded content cannot enter through this path.** On the supported path, no secret
+  reference, free text, annotation, owner, render setting, environment fact, environment
+  variable, prompt, response, or other document member has a way into a release. The suite gives every excluded context value
   a distinct marker and finds none in the recorded release, and finds none of eight
   markers planted in real inputs' free text, secret references, owners, and environment
   facts; the same check, run with a path opened on purpose, does find its marker.
@@ -397,15 +404,26 @@ someone else wrote and builds none. On that path:
 **What it cannot establish - the input-trust limitation.** The four `public-identity`
 fields an author chooses - the workload's name and version, the binding's name, and the
 values file name - are public **by policy**: whoever names a workload or a binding is
-publishing a name. A secret deliberately written as an otherwise valid name has exactly
-a name's shape, and an arbitrary value of that shape cannot be proven non-secret by
-syntax alone; the credential rule recognises published formats and nothing more. A test
+publishing a name. Two of them are wider than a short name: a workload version may be a
+digest-pinned image reference, whose registry host, path, and digest may run to 512
+characters, and a values file name is any lowercase name of up to 255 characters ending
+in `.yaml`. A secret deliberately written as an otherwise valid value of any of the four
+has exactly that value's shape, and an arbitrary value of that shape cannot be proven
+non-secret by syntax alone; the credential rule recognises published formats and nothing
+more. A test
 records a release whose workload name is a lowercase token with no published prefix, and
 asserts it passes. The same holds for the three hexadecimal values a caller supplies - the
 renderer and platform-defaults revisions and the values digest - which have their shape
 checked and nothing else, so a secret that is itself a hexadecimal string of that length
 would pass. The two source digests are computed, not supplied: each is a one-way digest of
 a whole parsed document, excluded members included, and is not a copy of any of them.
+
+The guarantee is about the supported path, not about code in the same process. A caller
+that imports the render package's private sentinel can build a `RenderContext` holding
+any well-formed values, and a release is recorded from it; [the boundary's
+document](../domain/renderer-input-boundary.md) records the same limit for the context,
+and a test here measures it. The parse-back above means even such a caller gets only
+values the published patterns accept.
 
 **This is not repository secret scanning.** Secret scanning runs a scanner over committed
 files and history, against known secret formats, and is configured in `.gitleaks.toml`

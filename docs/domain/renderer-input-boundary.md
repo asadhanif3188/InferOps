@@ -530,9 +530,13 @@ string at any of the three, or a reference built around bare strings instead of 
 constrained types, is a `TypeError`. It reads each field of the release from the
 source the provenance policy names for it, reads a context value only if that value is
 classified a public-safe identity - the workload's name and version, and no other - and
-derives the release identifier. It then applies the release domain's single-release
-rules, so a value with a part shaped like a published credential is refused with
-`ReleaseNotRecordedError` before anything is returned, without quoting it.
+derives the release identifier. It reads the release back from its plain JSON form with
+the published parser, so a value of the right type that skipped its check - a subclass,
+or one changed with `object.__setattr__` - is refused, and then applies the release
+domain's single-release rules, so a value with a part shaped like a published credential
+is refused with `ReleaseNotRecordedError` before anything is returned, without quoting
+it. A caller that imports the private sentinel can still build a context of well-formed
+values the boundary never saw; that limit is the context's own, recorded above.
 
 The policy - every release field and every one of the 44 context values classified as a
 public-safe identity, a derived digest or revision, or excluded, each with its reason - is
