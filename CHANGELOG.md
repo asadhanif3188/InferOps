@@ -10,6 +10,32 @@ from `1.0.0`.
 
 ### Added
 
+- **Helm values renderer.** `V2-S2-001-PR1` adds the first renderer behind the render
+  boundary. `HelmValuesRenderer` turns a `synchronous-llm` render context into the values
+  of the existing `inferops-llm` chart, `0.3.0`, and nothing else: every one of the 44
+  context values has a published disposition - 24 rendered to 25 chart values, 8
+  constrained, 12 not rendered - and every value written is one the chart's schema already
+  defines, under a constraint copied from that schema and held to it by a test. What the
+  chart cannot carry is refused rather than dropped or guessed, under four new render
+  rules and a new `value-unsupported` category with the `capability-unavailable` code: a
+  replica range, an accelerator, another runtime sizing, a model-access or evaluation
+  integration, or a secret reference (`render-capability-unsupported`); a value outside
+  the chart's schema, or a limit below the chart's runtime request
+  (`render-value-unsupported`); a string it would write with a credential-shaped part
+  (`render-value-credential-shaped`); and, through `manual_value_findings`, a hand-written
+  values file that sets, replaces, or removes a generated value
+  (`render-manual-value-generated`). The values are written in a canonical YAML form the
+  domain writes itself - sorted keys, every string quoted, printable ASCII only - and the
+  reference workload renders a committed golden file byte for byte, on either local
+  binding, under two hash seeds. With the reference hand-written file beside them they
+  merge to the V1 real fixture's values but for the environment label, `local` instead of
+  `dev`, and `helm template` renders them byte-identically to the V1 fixture with that
+  label. Contract resources render to the runtime's limits; its requests stay the chart's.
+  Nothing writes the values where a release is installed from, no release is recorded for
+  them, no claim moves, and every check is static (`C0`); [the
+  page](docs/domain/helm-values-renderer.md) says what the renderer does and [the
+  validation record](docs/proof/domain/v2-s2-001-pr1-validation.md) what was run.
+
 - **Provenance input-trust boundary.** `V2-S1-004-PR1` closes a Sprint 1 review finding:
   the release document's Secrets section opened "A release references nothing secret and
   carries nothing secret", and the release story asked that sensitive data cannot enter

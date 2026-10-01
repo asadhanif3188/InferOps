@@ -8,10 +8,12 @@ a release and its source documents are hashed in, and [seven provenance
 rules](#provenance-rules-the-platform-domain-applies) the domain applies and the schema
 does not. `V2-S1-004-PR1` added the [provenance input-trust
 policy](#provenance-input-trust) and the one supported path that builds a release from
-validated, typed inputs. **Nothing writes a release**: no renderer exists in this
-repository - [the renderer input boundary](../domain/renderer-input-boundary.md) computes
-the `source` block a release records, and `record_release` builds the release in memory
-and writes nothing - no values file has been generated, and neither fixture describes a
+validated, typed inputs. **Nothing writes a release**: [the renderer input
+boundary](../domain/renderer-input-boundary.md) computes the `source` block a release
+records, `record_release` builds the release in memory and writes nothing, and since
+`V2-S2-001-PR1` [the Helm values renderer](../domain/helm-values-renderer.md) generates
+chart values in memory that no release names yet - no values file has been written, and
+neither fixture describes a
 release that was rendered, installed, or run.
 
 | Property | Value |
@@ -741,17 +743,18 @@ files say about each other and nothing about a running system.
 
 ## What this contract does not do
 
-- **It renders nothing, and nothing writes it.** No renderer exists; the render
-  boundary assembles a release's `source` block, and `record_release` builds a release in
-  memory and writes no file. The values file a release is installed with is still
-  written by hand, and no release document exists for it.
+- **Nothing writes it.** The render boundary assembles a release's `source` block,
+  `record_release` builds a release in memory and writes no file, and the Helm values
+  renderer generates values in memory that no release is recorded for. The values file a
+  release is installed with is still written by hand, and no release document exists for
+  it.
 - **It checks a source digest only when it is given the source.** The platform domain
   confirms the contract and binding digests against documents a caller supplies. Nothing
   finds those documents for a release, nothing confirms the values digest, and nothing
   checks that the two revisions exist.
 - **It derives provenance from a render context, never from a render.** The domain
   computes the digests and the identifier a release records, and `record_release` builds
-  one from a context; no renderer has produced values for any of them.
+  one from a context; no release has been recorded for values a renderer produced.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about a deployment.** A valid release is a well-formed statement

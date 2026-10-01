@@ -1,19 +1,20 @@
 """Render refusals: what a render is refused with, and that nothing renders when it is.
 
 Every check reads files from this repository and nothing else. No network, no
-cluster, no clock, no randomness, and no renderer: none exists, so the renderers
-here are test doubles of the interface's shape.
+cluster, no clock, and no randomness. The renderers here are test doubles of the
+interface's shape; the one real renderer, and the four rules only it applies, are
+held by ``test_helm_values_renderer``.
 
 Six things are asserted:
 
 1. **One vocabulary.** Every rule a render can be refused under has one category
    and one canonical code; a rule another domain publishes keeps that domain's
-   identifier and code; this package's own six reuse no other identifier; the
+   identifier and code; this package's own ten reuse no other identifier; the
    codes are inside the canonical vocabulary the API serves; no category exists
    without a rule; and the published refusal matrix is the code.
-2. **Every rule refuses something.** One input per rule, run through the canonical
-   path, is refused under exactly that rule, its category, and its code, before
-   anything is returned.
+2. **Every rule refuses something.** One input per boundary rule, run through the
+   canonical path, is refused under exactly that rule, its category, and its code,
+   before anything is returned. The renderer's own four are reached by its suite.
 3. **Every reason at once, in one order.** Findings from every step are gathered,
    sorted by category, field, and rule; the refusal's code is the first finding's;
    every refusal is non-retryable, carries the request context, and repeats no
@@ -361,7 +362,7 @@ def test_the_reused_binding_rules_are_the_binding_domains_with_their_codes() -> 
 
 def test_this_packages_rules_reuse_no_other_vocabularys_identifier() -> None:
     own = rules_of(RuleOrigin.RENDER)
-    assert len(own) == 6
+    assert len(own) == 10
     assert all(identifier.startswith("render-") for identifier in own)
     taken = set(OFFLINE_RULES) | set(BINDING_RULES) | set(RELEASE_RULES)
     assert own.isdisjoint(taken)
@@ -377,11 +378,15 @@ def test_every_code_is_in_the_canonical_vocabulary_the_api_serves() -> None:
     assert {rule.code for rule in RENDER_RULES.values()} == served
 
 
-def test_capability_unavailable_is_the_profile_rule_alone() -> None:
-    """The one code beyond the offline two, for a renderer not built for a profile."""
+def test_capability_unavailable_is_for_what_a_renderer_was_not_built_for() -> None:
+    """The one code beyond the offline two: a profile, a value, or a capability."""
     assert [
         key for key, rule in RENDER_RULES.items() if rule.code == CAPABILITY_UNAVAILABLE
-    ] == ["render-profile-unsupported"]
+    ] == [
+        "render-profile-unsupported",
+        "render-value-unsupported",
+        "render-capability-unsupported",
+    ]
 
 
 def test_each_category_has_one_code() -> None:
@@ -394,7 +399,7 @@ def test_each_category_has_one_code() -> None:
 def test_every_category_has_a_rule_and_none_is_for_policy() -> None:
     """A category with no rule would claim a check nothing makes."""
     assert {rule.category for rule in RENDER_RULES.values()} == set(RefusalCategory)
-    assert len(RefusalCategory) == 7
+    assert len(RefusalCategory) == 8
     assert not any("policy" in category.value for category in RefusalCategory)
 
 
@@ -557,8 +562,20 @@ REFUSAL_CASES: dict[str, tuple[Callable[[], WorkloadContract], dict[str, Any]]] 
 }
 
 
+#: The rules only the Helm values renderer applies. No boundary step reaches them,
+#: so each has its case in ``test_helm_values_renderer`` instead.
+RENDERER_RULES = (
+    "render-value-unsupported",
+    "render-capability-unsupported",
+    "render-value-credential-shaped",
+    "render-manual-value-generated",
+)
+
+
 def test_every_rule_has_a_case() -> None:
-    assert list(REFUSAL_CASES) == list(RENDER_RULES)
+    assert list(REFUSAL_CASES) == [
+        key for key in RENDER_RULES if key not in RENDERER_RULES
+    ]
 
 
 @pytest.mark.parametrize("rule", list(REFUSAL_CASES))

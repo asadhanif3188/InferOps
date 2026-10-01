@@ -5,9 +5,9 @@ Every file under `valid/` must validate and every file under `invalid/` must be
 refused; a failure either way is a defect in the schema, the fixture, or the change
 that broke one of them.
 
-These are **contract examples, not records of a release.** No renderer exists in this
-repository, so nothing produced them, no values file sits beside them, and nothing
-was installed or run with either. None of them is evidence about the workload or the
+These are **contract examples, not records of a release.** Nothing produced them - the
+one renderer in this repository generates values in memory and records no release - no
+values file sits beside them, and nothing was installed or run with either. None of them is evidence about the workload or the
 environment it names.
 
 | Fixture | Workload | Binding | What it demonstrates |
@@ -19,7 +19,7 @@ environment it names.
 and version are the committed synchronous WorkloadContract fixture's, and its binding
 reference is a committed EnvironmentBinding fixture's identity; a test holds all three
 there. Every digest and revision is a single repeated character — well formed, naming
-nothing — because no renderer exists to produce the values a release would pin. How a
+nothing — because no release has been recorded for values a renderer produced. How a
 contract or a binding is hashed is now [decided](../../../docs/contracts/rendered-workload-release.md#canonical-form-and-source-digests),
 and the fixtures were deliberately not changed to carry real digests: beside the
 documents they name, the platform domain refuses each for exactly its two placeholder

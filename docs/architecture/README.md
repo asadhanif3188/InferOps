@@ -25,7 +25,8 @@ These describe the V1 design. The platform domain — with typed workload object
 adapters, the InferOps API, the Helm chart and the Terraform prerequisite layer are
 now built, and the chart and the prerequisite layer have been installed and applied
 on the `docker-desktop` reference provider. Deployment rendering is the component
-still unbuilt: nothing turns a validated document into release values.
+still unbuilt end to end: a validated document is turned into Helm values only in memory,
+since `V2-S2-001-PR1`, and nothing installs a release from them.
 
 | Document | What it covers |
 |---|---|

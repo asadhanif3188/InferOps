@@ -5,8 +5,8 @@
 # The identities are real: support-assistant 0.1.0 is the contract fixture's name
 # and version, and local / local-docker-desktop is the binding fixture's identity.
 # The digests and revisions are NOT: each is a repeated character, well formed and
-# naming nothing, because no renderer exists to produce the values this release
-# would describe. How a contract or a binding is hashed is decided in the contract
+# naming nothing, because no renderer has produced the values this release would
+# describe. How a contract or a binding is hashed is decided in the contract
 # document; these placeholders were kept on purpose, so that beside the documents
 # it names the platform domain refuses this release for exactly its two digests.
 # The release ID is the one the published rule derives from the values above it.

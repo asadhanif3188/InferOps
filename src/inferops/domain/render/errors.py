@@ -14,20 +14,25 @@ purpose, as the contract's canonical error model keeps them apart:
 
 - **a category** - which of the kinds of refusal an operator has to tell apart this
   is: a shape the schema refuses, a semantic rule, an unsupported version or
-  profile, an incompatible model and runtime, a missing binding, or two layers
-  claiming one value. :class:`RefusalCategory` is the whole list;
+  profile, a value or a capability the renderer's chart cannot carry, an
+  incompatible model and runtime, a missing binding, or two layers claiming one
+  value. :class:`RefusalCategory` is the whole list;
 - **a canonical code** - the coarse public vocabulary a client switches on, never
   grown by a rule: ``contract-invalid``, ``version-unsupported``, and, for a profile
-  no renderer was built for, ``capability-unavailable``;
+  no renderer was built for or a value its chart cannot carry,
+  ``capability-unavailable``;
 - **a rule identifier** - which rule refused it, looked up in :data:`RENDER_RULES`.
 
 **The vocabulary reuses before it adds.** A refusal that another domain already
 publishes keeps that domain's rule identifier and code: the semantic pipeline's
 seven rules, the three structural rules the profile conditions are refused under,
 and the binding domain's five set and selection rules. :data:`RENDER_RULES` gives
-each a category and records which vocabulary published it. Six rules are this
-package's own, for what no other domain can see: a renderer that does not support
-an input's version or profile, and an input that supplies a value it does not own.
+each a category and records which vocabulary published it. Ten rules are this
+package's own, for what no other domain can see: six the boundary applies - a
+renderer that does not support an input's version or profile, and an input that
+supplies a value it does not own - and four the Helm values renderer applies - a
+value or a capability its chart cannot carry, a value it would write that is shaped
+like a credential, and a hand-written values file that sets a value it generates.
 
 **Every render refusal is final.** A document that is invalid, a binding that is
 missing, a version a renderer does not take, and a value claimed twice are each
@@ -56,7 +61,8 @@ _DIGIT_RUN = re.compile(r"([0-9]+)")
 #: The canonical codes a render refusal can carry. The first two are the ones the
 #: offline contract validator publishes; the third is the canonical code for a
 #: capability that was never built, which a renderer that does not take a profile
-#: is. A test holds all three inside the canonical vocabulary the API serves.
+#: is, and so is a chart with no setting for a value. A test holds all three inside
+#: the canonical vocabulary the API serves.
 CONTRACT_INVALID: Final = "contract-invalid"
 VERSION_UNSUPPORTED: Final = "version-unsupported"
 CAPABILITY_UNAVAILABLE: Final = "capability-unavailable"
@@ -65,13 +71,14 @@ CAPABILITY_UNAVAILABLE: Final = "capability-unavailable"
 class RefusalCategory(StrEnum):
     """Which kind of refusal a finding is, in the order a reader should fix them.
 
-    A renderer that cannot take an input at all comes first, then what is wrong
-    with the contract, then what is wrong with the environment, then what is wrong
-    between the inputs.
+    A renderer that cannot take an input at all comes first, then a value or a
+    capability its chart cannot carry, then what is wrong with the contract, then
+    what is wrong with the environment, then what is wrong between the inputs.
     """
 
     VERSION_UNSUPPORTED = "version-unsupported"
     PROFILE_UNSUPPORTED = "profile-unsupported"
+    VALUE_UNSUPPORTED = "value-unsupported"
     SHAPE_INVALID = "shape-invalid"
     SEMANTIC_INVALID = "semantic-invalid"
     MODEL_RUNTIME_INCOMPATIBLE = "model-runtime-incompatible"
@@ -154,6 +161,20 @@ RENDER_RULES: Final[Mapping[str, RenderRule]] = MappingProxyType(
                 CAPABILITY_UNAVAILABLE,
             ),
             _rule(
+                "render-value-unsupported",
+                RefusalCategory.VALUE_UNSUPPORTED,
+                _R,
+                "an accepted value has no form the renderer's chart accepts",
+                CAPABILITY_UNAVAILABLE,
+            ),
+            _rule(
+                "render-capability-unsupported",
+                RefusalCategory.VALUE_UNSUPPORTED,
+                _R,
+                "the contract asks for something the renderer's chart does not provide",
+                CAPABILITY_UNAVAILABLE,
+            ),
+            _rule(
                 "field-required",
                 RefusalCategory.SHAPE_INVALID,
                 _W,
@@ -208,6 +229,13 @@ RENDER_RULES: Final[Mapping[str, RenderRule]] = MappingProxyType(
                 "two bindings supplied together share a GitOps destination",
             ),
             _rule(
+                "render-value-credential-shaped",
+                RefusalCategory.SEMANTIC_INVALID,
+                _R,
+                "a value the renderer would write has a part shaped like a published "
+                "credential",
+            ),
+            _rule(
                 "runtime-unregistered",
                 RefusalCategory.MODEL_RUNTIME_INCOMPATIBLE,
                 _W,
@@ -255,6 +283,12 @@ RENDER_RULES: Final[Mapping[str, RenderRule]] = MappingProxyType(
                 RefusalCategory.OWNERSHIP_CONFLICT,
                 _R,
                 "an input supplies a value no row of the ownership table assigns to it",
+            ),
+            _rule(
+                "render-manual-value-generated",
+                RefusalCategory.OWNERSHIP_CONFLICT,
+                _R,
+                "a hand-written values file sets a value the renderer generates",
             ),
         )
     }
