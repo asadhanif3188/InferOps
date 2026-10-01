@@ -305,9 +305,9 @@ from `1.0.0`.
   a failing gate, not planned V2 work, with what it changed, what it left alone, and why
   the image was not rotated. The `EX-07` assessment keeps its merged text and gains a dated
   correction. [A new suite](tests/security/test_security_maintenance_history.py) holds ADR
-  0008, without its registered post-release notes, to a digest of the released text, the
-  notes to the baseline, the current surfaces to the current count, and `EX-07` to its
-  reconciled scope. `EX-07` itself, its finding, image, and deadline, the scan guards, the
+  0008, without its registered post-release notes, to a digest of the released text, each
+  note to its merged text and to `EX-07`'s reconciled scope, the current surfaces to the
+  current count, and the baseline and ignore files to that same scope. `EX-07` itself, its finding, image, and deadline, the scan guards, the
   image pin, and every claim are unchanged; [the validation
   record](docs/proof/security/v2-s1-004-pr2-validation.md) says what was run (`C0`).
 

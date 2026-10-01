@@ -27,7 +27,9 @@ changed; what was known about the pinned bytes had.
 
 **Out-of-band security maintenance.** It was not one of the changes planned for the
 first V2 sprint, and it adds no V2 capability: it renders nothing, records no release,
-and touches no contract, schema, domain package, chart, or manifest. It was made
+and touches no workload contract, published schema, domain package, chart, or manifest.
+The one data shape it extended is the security baseline's, which gained one optional
+field, below. It was made
 because a gate that every change must pass had begun to fail for a reason outside the
 repository, and it is recorded here as that rather than presented after the fact as
 planned work.
@@ -39,7 +41,7 @@ planned work.
 | The exception | `EX-07` in [the security baseline](../../security/security-baseline.v1alpha1.json) and [the deferred-risk register](../../security/deferred-risks.md): one finding, `CVE-2026-84782`, in one image digest, owned by `security`, accepted on 2026-09-30 until 2026-10-30, with `pin-image-by-digest` as its compensating control. A baseline exception may now carry a `scanFinding` naming the finding, the image, the owner, and the deadline |
 | The scan guards | `scripts/security/lib.sh` hands each scan its own committed ignore file and `--show-suppressed`, and refuses before scanning a missing ignore file, an entry that is not one identifier and an expiry, and an image exception assessed against any image but the pinned one. The runtime image's ignore file accepts `CVE-2026-84782 exp:2026-10-30`; the dependency scan's accepts nothing |
 | Tests | `tests/security/test_vulnerability_scan_exceptions.py`, 29 tests, holds the ignore files and the baseline to each other in both directions and runs the guards against a recording stub. The baseline suite accepts the one optional field |
-| Documents | [The assessment](ex-07-runtime-image-exception.md), the control matrix, the published security method and its data, the current counts in the README, `SECURITY.md`, the architecture index, and the register, the test inventory, the proof index, and the changelog. Two documents that said no continuous-integration service runs the scans were corrected, each saying what it said before |
+| Documents | [The assessment](ex-07-runtime-image-exception.md), the control matrix, the published security method and its data, the current counts in the README, `SECURITY.md`, the architecture index, and the register, the test inventory, the proof index, and the changelog. Four surfaces that said no continuous-integration service runs the scans were corrected: the two scan controls' statements of what they do not verify, in the baseline, and `docs/prerequisites.md` and the claim and test matrix, the last two each saying what it said before |
 
 The guards' change also corrected a statement that had been false before it: both
 scan controls said a guard blocks on a finding "not recorded as an accepted
@@ -52,10 +54,16 @@ exception", and neither had ever read one. The assessment records that correctio
   outside an unexpired entry, and a finding published after the assessment blocks like
   any other.
 - **The other six exceptions**, the twelve deferred risks, and every control's
-  derived status.
-- **The serving architecture, the evidence pack, and the claim register.** No record
-  in the pack cites a file this change touched; the release gate printed the same
-  released and current digests before and after it.
+  derived status. The two scan controls' text changed, as above; their status did not.
+- **The serving architecture, the evidence pack, and the claim register.** No evidence
+  record pins a file this change touched: none names one as a script it ran by
+  reference, a code identity, or an evidence path. Three records do name touched files
+  in the text of the commands they ran - the scan record both scan scripts, one record
+  the baseline suite, and one the inventory suite - and the register's test, implementation, and README references
+  and its list of surfaces that claim nothing name others; none of those binds the
+  file's content. The release gate prints the
+  same released and current digests at #103's parent, at its merge, and at the change
+  that restored the history below.
 - **`v1.0.0`.** The tag and the release were not touched.
 
 ## Why the image was not rotated in that change
@@ -64,8 +72,12 @@ A patched upstream build existed and scanned with no `HIGH` or `CRITICAL` findin
 2026-09-30. Moving the pin to it was judged more than a change unblocking a gate
 should carry: ADR 0002 selected the runtime at this digest and asks for a refresh
 procedure the repository does not have yet, twenty-three evidence records across
-seventeen claims name this digest as the runtime they measured, and roughly seven
-hundred upstream builds separate the two images. Rotation is the remediation; the
+sixteen claims name this digest as the runtime they measured, and roughly seven
+hundred upstream builds separate the two images. (The assessment says twenty-three
+records across seventeen claims. Recomputed from the claim register at #103's parent
+and now, twenty-four records across seventeen claims name the digest: the twenty-three
+that measured the runtime, and the scan record, which scanned the image rather than
+measuring it.) Rotation is the remediation; the
 exception holds the gate until it happens or until 2026-10-30, whichever is first.
 [The assessment](ex-07-runtime-image-exception.md#why-the-pin-was-not-moved-instead)
 gives the argument in full.

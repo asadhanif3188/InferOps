@@ -9,8 +9,11 @@ This module holds that shape:
 - the record, with its registered post-release notes taken out, is byte for byte
   the text ``v1.0.0`` released, so an in-place edit anywhere fails here, and a
   new note fails until it is registered below with the change that added it;
-- each note sits after the sentence it amends, inside that sentence's section;
-- the note and the security baseline agree on what ``EX-07`` is;
+- each registered note is there once, as it was merged, and the two new ones
+  sit after the sentence they amend, inside that sentence's section;
+- the note states ``EX-07``'s finding, acceptance date, and deadline as the
+  reconciliation pinned them, and while ``EX-07`` stands the live baseline is
+  held to the same pinned scope, so the two agree through it;
 - the surfaces that describe the current register state the count the data
   produces, so the restoration cannot be mistaken for rolling the current
   count back;
@@ -59,15 +62,26 @@ RELEASED_DECISION_SHA256 = (
 )
 
 # Every note added to ADR 0008 after `v1.0.0`, by the opening of its paragraph,
-# and the change that added it. A note is a paragraph of its own; adding one
-# means adding a row here, which is the point: it is a dated, visible act.
+# the change that added it, and the SHA-256 of the whole paragraph with LF line
+# endings. A note is a paragraph of its own and is history once it is merged:
+# adding one means adding a row here, which is the point - it is a dated,
+# visible act - and editing one fails like editing the released text.
 POST_RELEASE_NOTES = (
-    ("> **Note, 2026-09-27, after the release.**", "V1-S5-009-PR1"),
+    (
+        "> **Note, 2026-09-27, after the release.**",
+        "V1-S5-009-PR1",
+        "c66bbdd4de3c3c44352c472d1b77bece3111ebba4f4b658a453df88c97617937",
+    ),
     (
         "> **Note, 2026-10-01: a seventh exception, accepted on 2026-09-30.**",
         "V2-S1-004-PR2",
+        "53af4bacef5ffdbe7e7b41f2d6c4986f311ce3dccbba0e0d9179ec70334d4fb8",
     ),
-    ("> **Note, 2026-10-01.** The register bullet above", "V2-S1-004-PR2"),
+    (
+        "> **Note, 2026-10-01.** The register bullet above",
+        "V2-S1-004-PR2",
+        "6ddd84884221a62914a2b5086c79949299f51e14a7de0444e58a809c72129373",
+    ),
 )
 D11_NOTE = POST_RELEASE_NOTES[1][0]
 CONSEQUENCES_NOTE = POST_RELEASE_NOTES[2][0]
@@ -89,10 +103,17 @@ REWRITTEN_SENTENCES = (
     "and seven accepted exceptions. A shorter register",
 )
 
-# The scope `EX-07` was accepted with, as the reconciliation records it. This is
-# a tripwire: if a later change rotates the image, retires `EX-07`, or moves its
-# deadline, this fails, and that change says so in its own record and updates
-# this table. The 2026-10-01 reconciliation stays as it was written.
+# The exceptions the released sentence counted.
+RELEASED_EXCEPTION_IDS = ("EX-01", "EX-02", "EX-03", "EX-04", "EX-05", "EX-06")
+
+# The scope `EX-07` was accepted with, as the reconciliation records it. The
+# dated note and the reconciliation are compared with this table, never with
+# the live baseline, because they stay true after `EX-07` is gone. Only
+# `test_ex07_keeps_the_scope_it_was_reconciled_with` and the ignore-file test
+# compare it with the live data, as a tripwire: if a later change rotates the
+# image, retires `EX-07`, or moves its deadline, those two fail, and that change
+# says so in its own record and updates them. The 2026-10-01 reconciliation
+# stays as it was written.
 RECONCILED_EX07_SCOPE = {
     "scanner": "trivy",
     "findingId": "CVE-2026-84782",
@@ -110,14 +131,35 @@ RECONCILED_EX07_SCOPE = {
     "reviewBy": "2026-10-30",
 }
 
-# SHA-256 of the EX-07 assessment as pull request #103 merged it, blob d1b59189 at
-# 51cddd1, with LF line endings. Everything before its later correction must
-# still hash to this.
+# SHA-256 of the EX-07 assessment as pull request #103 merged it - git blob
+# fcccf2e5 at 51cddd1 - with LF line endings. Everything before its later
+# correction must still hash to this.
 MERGED_ASSESSMENT_SHA256 = (
     "d1b59189d9ec34e79e4348062efe52ad1f03e7584bce164bf824392106186acf"
 )
 
-NUMBER_WORDS = {6: "six", 7: "seven", 8: "eight", 9: "nine", 12: "twelve"}
+NUMBER_WORDS = {
+    1: "one",
+    2: "two",
+    3: "three",
+    4: "four",
+    5: "five",
+    6: "six",
+    7: "seven",
+    8: "eight",
+    9: "nine",
+    10: "ten",
+    11: "eleven",
+    12: "twelve",
+    13: "thirteen",
+    14: "fourteen",
+    15: "fifteen",
+    16: "sixteen",
+    17: "seventeen",
+    18: "eighteen",
+    19: "nineteen",
+    20: "twenty",
+}
 
 BASELINE = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
 EXCEPTIONS = {row["exceptionId"]: row for row in BASELINE["exceptions"]}
@@ -138,7 +180,7 @@ def _sha256(text: str) -> str:
 
 def _without_post_release_notes(text: str) -> str:
     paragraphs = text.split("\n\n")
-    openings = tuple(opening for opening, _ in POST_RELEASE_NOTES)
+    openings = tuple(opening for opening, _, _ in POST_RELEASE_NOTES)
     return "\n\n".join(p for p in paragraphs if not p.startswith(openings))
 
 
@@ -166,11 +208,24 @@ def test_the_decision_is_the_released_text_plus_registered_notes() -> None:
     )
 
 
-@pytest.mark.parametrize("opening,added_by", POST_RELEASE_NOTES)
-def test_every_registered_note_is_there_once(opening: str, added_by: str) -> None:
-    paragraphs = _decision().split("\n\n")
-    assert sum(1 for p in paragraphs if p.startswith(opening)) == 1, (
+@pytest.mark.parametrize(
+    "opening,added_by,digest",
+    POST_RELEASE_NOTES,
+    ids=[
+        f"{added_by}-{index}"
+        for index, (_, added_by, _) in enumerate(POST_RELEASE_NOTES)
+    ],
+)
+def test_every_registered_note_is_there_once_as_it_was_merged(
+    opening: str, added_by: str, digest: str
+) -> None:
+    """A dated note is history too: missing, repeated, or edited, it fails."""
+    notes = [p for p in _decision().split("\n\n") if p.startswith(opening)]
+    assert len(notes) == 1, (
         f"the note {added_by} added is missing or repeated: {opening!r}"
+    )
+    assert _sha256(notes[0]) == digest, (
+        f"the note {added_by} added has been edited since it was merged: {opening!r}"
     )
 
 
@@ -244,71 +299,78 @@ def _d11_note() -> str:
     return _flat(note.replace("\n>", "\n"))
 
 
-def test_the_note_and_the_baseline_agree_on_ex07() -> None:
-    """The note names EX-07's finding, its acceptance, and its deadline from the data."""
+def test_the_note_states_ex07_as_it_was_reconciled() -> None:
+    """The note names EX-07's finding, acceptance date, and deadline.
+
+    They are compared with the reconciled scope, which is pinned, not with the
+    live baseline: the note is dated and stays true after EX-07 is rotated or
+    retired. The live baseline is compared with the same pinned scope by
+    ``test_ex07_keeps_the_scope_it_was_reconciled_with``, so while EX-07 stands
+    the note and the register agree through it. The note says EX-07 is bound to
+    the image's digest without quoting it; the digest itself is compared there,
+    not here.
+    """
     note = _d11_note()
-    finding = EXCEPTIONS["EX-07"]["scanFinding"]
+    scope = RECONCILED_EX07_SCOPE
     assert "`EX-07`" in note
-    assert f"`{finding['findingId']}`" in note
-    assert f"accepted on {finding['acceptedOn']}" in note
-    assert f"until {finding['reviewBy']}" in note
+    assert f"`{scope['findingId']}`" in note
+    assert f"accepted on {scope['acceptedOn']}" in note
+    assert f"until {scope['reviewBy']}" in note
     assert "bound to that image's digest" in note
     assert "v2-s1-004-pr2-security-maintenance-reconciliation.md" in note
 
 
-def test_ex07_is_the_seventh_exception_and_the_released_six_are_the_others() -> None:
-    """The note says six were recorded at release and EX-07 made seven.
-
-    EX-01 to EX-06 are the six the released sentence counted; EX-07 is the
-    seventh. A register that renumbered or dropped one would make the note
-    false, so this fails first.
-    """
-    released = [f"EX-0{number}" for number in range(1, 7)]
-    assert sorted(EXCEPTIONS)[:7] == [*released, "EX-07"]
-    assert all("scanFinding" not in EXCEPTIONS[name] for name in released)
+def test_the_note_counts_six_at_the_release_and_ex07_as_the_seventh() -> None:
     note = _d11_note()
+    assert len(RELEASED_EXCEPTION_IDS) == 6
     assert '"six" was true then' in note
     assert "the register now records seven" in note
 
 
-def _current_count_sentences() -> list[tuple[str, str]]:
-    exceptions = _word(len(EXCEPTIONS))
-    risks = _word(len(BASELINE["deferredRisks"]))
-    return [
-        (
-            "README.md",
-            f"{risks.capitalize()} risks and {exceptions} accepted exceptions",
-        ),
-        (
-            "SECURITY.md",
-            f"{risks.capitalize()} risks V1 carries rather than reduces, and "
-            f"{exceptions} weaknesses it accepts",
-        ),
-        (
-            "docs/architecture/README.md",
-            f"{exceptions} exceptions are recorded with a compensating control each",
-        ),
-        (
-            "docs/security/deferred-risks.md",
-            f"{exceptions.capitalize()} weaknesses this project accepts rather than fixes",
-        ),
-        (
-            "docs/security/security-method.md",
-            f"{exceptions.capitalize()} weaknesses are accepted rather than fixed",
-        ),
-        ("docs/security/security-method.md", f"**All {exceptions}**"),
-    ]
+# Each current-facing statement of the register's size, with the counts filled
+# in from the baseline when the test runs.
+CURRENT_COUNT_SENTENCES = (
+    ("README.md", "{Risks} risks and {exceptions} accepted exceptions"),
+    (
+        "SECURITY.md",
+        "{Risks} risks V1 carries rather than reduces, and {exceptions} weaknesses "
+        "it accepts",
+    ),
+    (
+        "docs/architecture/README.md",
+        "{exceptions} exceptions are recorded with a compensating control each",
+    ),
+    (
+        "docs/security/deferred-risks.md",
+        "{Exceptions} weaknesses this project accepts rather than fixes",
+    ),
+    (
+        "docs/security/security-method.md",
+        "{Exceptions} weaknesses are accepted rather than fixed",
+    ),
+    ("docs/security/security-method.md", "**All {exceptions}**"),
+)
 
 
 @pytest.mark.parametrize(
-    "relative,sentence",
-    _current_count_sentences(),
-    ids=lambda value: str(value)[:40],
+    "relative,template",
+    CURRENT_COUNT_SENTENCES,
+    ids=[
+        f"{relative}-{index}"
+        for index, (relative, _) in enumerate(CURRENT_COUNT_SENTENCES)
+    ],
 )
 def test_the_current_facing_surfaces_state_the_current_count(
-    relative: str, sentence: str
+    relative: str, template: str
 ) -> None:
     """Restoring the released sentence must not roll the current count back."""
+    exceptions = _word(len(EXCEPTIONS))
+    risks = _word(len(BASELINE["deferredRisks"]))
+    sentence = template.format(
+        exceptions=exceptions,
+        Exceptions=exceptions.capitalize(),
+        Risks=risks.capitalize(),
+    )
     body = _flat((REPO_ROOT / relative).read_text(encoding="utf-8"))
     assert _flat(sentence) in body, (
         f"{relative} does not state the count the baseline produces: {sentence!r}"
@@ -321,6 +383,13 @@ def test_the_current_facing_surfaces_state_the_current_count(
 
 
 def test_ex07_keeps_the_scope_it_was_reconciled_with() -> None:
+    """Tripwire: the live baseline against the scope the reconciliation records.
+
+    It also holds the identifiers the note relies on: EX-01 to EX-06 are the six
+    the released sentence counted, none a scan exception, and EX-07 follows them.
+    """
+    assert sorted(EXCEPTIONS)[:7] == [*RELEASED_EXCEPTION_IDS, "EX-07"]
+    assert all("scanFinding" not in EXCEPTIONS[name] for name in RELEASED_EXCEPTION_IDS)
     assert EXCEPTIONS["EX-07"]["scanFinding"] == RECONCILED_EX07_SCOPE
     assert [name for name, row in EXCEPTIONS.items() if "scanFinding" in row] == [
         "EX-07"

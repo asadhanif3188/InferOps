@@ -297,3 +297,10 @@ records `EX-07` and the current count. The other three surfaces describe the cur
 register and still say seven. [The maintenance
 reconciliation](v2-s1-004-pr2-security-maintenance-reconciliation.md) records what kind
 of change this was; the exception, its scope, and its deadline are unchanged.
+
+One figure above does not recompute. *Why the pin was not moved instead* and *What was
+caught before the first commit* say twenty-three evidence records across seventeen claims
+record this digest. Read from the claim register at this change's parent and on
+2026-10-01, twenty-four records across seventeen claims name it - twenty-three in a
+version field and one in an executed component's note: twenty-three, across sixteen
+claims, as the runtime they measured, and one, the scan record, as the image it scanned.

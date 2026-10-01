@@ -34,9 +34,14 @@ highest-severity finding was closed by `V2-S1-004-PR1`. Two more were about pull
 - **The gate and the pack.** `python -B -m tools.evidence_index --gate` exited 0 with
   `FROZEN` for `V1-S5-013-PR2`, `RELEASED v1.0.0` at `718ad2e0…` with the set `1d40b33f…` and
   the pack `652e9051…`, and `CURRENT` with the set `08d4868f…` and the pack `b958a724…` - the
-  six digests `V2-S1-004-PR1` recorded. No record in the pack cites ADR 0008, the `EX-07`
-  assessment, or any file #103 touched; each of #103's 24 paths was searched for in the
-  committed index and none is there.
+  six digests `V2-S1-004-PR1` recorded. The same six are printed at #103's parent, at its
+  merge, and after this change. No evidence record pins ADR 0008, the `EX-07` assessment,
+  or any file #103 touched - none names one as a cited file, a script it ran by reference,
+  a code identity, or an evidence path. Three records name touched files in the text of
+  the commands they ran: the scan record names `scripts/security/scan-runtime-image.sh`
+  (twice) and `scripts/security/scan-dependencies.sh`, one record names
+  `tests/security/test_security_baseline.py`, and one `tests/testing/test_test_inventory.py`.
+  That text binds no content.
 
 ## What was restored, and from which revision
 
@@ -145,9 +150,15 @@ its own record. No other exception, risk, control, or status moved.
 - **The released text is identified by a pinned digest, not read from the tag.** A test
   that ran `git` would depend on a full clone with tags, which the hosted checkout does not
   guarantee; the digest and the blob it was taken from are recorded above.
-- **`EX-07`'s scope is pinned as a tripwire.** When the image is rotated or `EX-07` retired,
-  the scope test fails; that change records it in its own record and updates the pinned
-  table. The reconciliation keeps what was true on 2026-10-01.
+- **`EX-07`'s scope is pinned, and the dated text is compared with the pin.** The note
+  and the reconciliation are held to a pinned copy of the scope, never to the live
+  baseline, because they stay true after `EX-07` is gone. Two tripwire tests hold the
+  live baseline and ignore files to the same pin, so while `EX-07` stands the note and
+  the register agree through it. When the image is rotated or `EX-07` retired, those two
+  fail - and the current-count tests, until the surfaces say the new count - while the
+  tests over the dated text keep passing; this was checked by deleting `EX-07` from the
+  baseline and the ignore file in the archived copy. The change that does it records it
+  in its own record and updates the pin.
 - **The assessment is corrected after its text, not in it.** Its *What changed* row is what
   #103 did; the correction says that for ADR 0008 it was the wrong edit, and the test holds
   the merged text to its digest.
@@ -156,11 +167,12 @@ its own record. No other exception, risk, control, or status moved.
 
 ## Checks that the new tests are not decorative
 
-Twelve defects were planted, one at a time, in an archived copy of the working tree -
+Fourteen defects were planted, one at a time, in an archived copy of the working tree -
 every tracked and new file, copied outside the repository - never in the tree itself. The
 new suite and the two security suites that read the same data, 889 tests, ran in full
 against each, and the copy was confirmed back to 889 passed after the last one. Every one
-was caught:
+was caught. This is the final suite; the first commit's suite caught the first twelve
+rows too, with the counts the review section gives where they differ:
 
 | Defect, exactly as made | Of 889 |
 |---|---|
@@ -170,14 +182,16 @@ was caught:
 | ADR 0008: the `D11` note is moved to before the sentence it amends | 1 failed |
 | ADR 0008: an unrelated released sentence is edited, `D10`'s "Twelve risks are carried" becoming "Thirteen" | 1 failed |
 | ADR 0008: a dated note nobody registered is added before `D12` | 1 failed |
-| ADR 0008: the `D11` note's "accepted until 2026-10-30" becomes "2026-11-30", disagreeing with the data | 1 failed |
+| ADR 0008: the `D11` note's "accepted until 2026-10-30" becomes "2026-11-30", disagreeing with the pinned scope | 2 failed |
 | README: "Twelve risks and seven accepted exceptions" rolled back to six | 1 failed |
-| `EX-07`'s deadline moved to 2026-11-30 in the baseline and the ignore file together | 5 failed |
+| `EX-07`'s deadline moved to 2026-11-30 in the baseline and the ignore file together | 4 failed |
 | A second identifier added under `EX-07` in the runtime image's ignore file | 3 failed |
 | The `EX-07` assessment above its correction: "Date: 2026-09-30" becomes "Date: 2026-10-01" | 1 failed |
 | The reconciliation loses "**Out-of-band security maintenance.**" | 1 failed |
+| ADR 0008: the 2026-09-27 post-release note loses "When it was enabled is not recorded." | 1 failed |
+| ADR 0008: the `D11` note's "The decision is unchanged" becomes "The decision is changed" | 1 failed |
 
-Seven of the twelve are caught by one test each. That test is the one written for the
+Eight of the fourteen are caught by one test each. That test is the one written for the
 property, and the counts are stated so that nobody reads 23 new tests as 23 guards on each
 property.
 
@@ -191,8 +205,8 @@ Run from Git Bash on Windows, with the locked environment.
 | `uv run --locked ruff format --check --no-cache .` | 579 files already formatted, after the formatter rewrapped the new suite once |
 | `uv run --locked mypy` | No issues in 317 source files |
 | `uv run --locked python -m pytest tests/security/test_security_maintenance_history.py -q -p no:cacheprovider` | 23 passed |
-| `uv run --locked python -m pytest tests/security/ tests/testing/test_test_inventory.py tests/testing/test_document_links.py tests/architecture/test_decision_authority.py tests/testing/test_published_methods.py tests/telemetry/test_telemetry_catalog.py -q -p no:cacheprovider` | 3,396 passed |
-| The twelve planted defects, against an archived copy | Every one caught; see above |
+| `uv run --locked python -m pytest tests/security/ tests/testing/test_test_inventory.py tests/testing/test_document_links.py tests/architecture/test_decision_authority.py tests/testing/test_published_methods.py tests/telemetry/test_telemetry_catalog.py -q -p no:cacheprovider` | 3,398 passed, over the final tree |
+| The fourteen planted defects, against an archived copy | Every one caught; see above |
 | `python -B -m tools.evidence_index --check` | Exit 0; the committed index is what the register and ledgers produce |
 | `python -B -m tools.evidence_index --gate` | Exit 0; the six digests above, unchanged |
 | `python -B -m tools.proof_dashboard --check` | Exit 0; the dashboard is what the register produces |
@@ -209,10 +223,79 @@ ones earlier records name, such as symbolic links this host does not permit. Thi
 command table and this paragraph were completed after that run; the link, placeholder, and
 history suites were run again over it.
 
+**After the review fixes**, which touched the new suite, the two new records, the
+assessment's correction, and the changelog, the full lane was run again with the same
+command: **16,846 passed, 33 skipped, 14 deselected, none failed**, in 10 min 47 s. The
+fixes reshaped tests without adding any, so the total is the first run's. This paragraph
+was written after that run, and the link and history suites were run again over it.
+
 Not run: `helm lint`, kubeconform, Terraform and TFLint, ShellCheck, the package build, the
 image build, and both vulnerability scans. This change touches no chart, manifest,
 Terraform, workflow, script, package, or image, and `EX-07`'s behaviour is the scan guards',
 which it leaves unchanged; those gates run on the selected service.
+
+## What the independent review found
+
+A reviewer outside the change read the first commit, `6082bdb`, re-ran the linters, the
+targeted suites, and the gate at #103's parent, its merge, and the commit, recomputed the
+blob identities and digests, rebuilt all twelve planted defects in its own archived copy
+and got the same twelve counts, and scanned the added text for private material and
+reserved vocabulary. It found no defect it rated critical, one it rated high, four medium,
+and three low. The restoration itself, its source identities, and the history sentences
+were confirmed.
+
+**High - the first commit said no record in the pack names a file #103 touched, and
+three do.** The first commit said each of #103's 24 paths "was searched for in the
+committed index and none is there", and the reconciliation that "no record in the pack
+cites a file this change touched". The search had matched each path only as a whole JSON
+string, so a path inside a command line was missed: the scan record runs both scan
+scripts, and two other records run the baseline and inventory suites. **What the first
+commit got wrong** is the sentence, not the conclusion - none of those binds a file's
+content, and the gate prints the same digests before and after #103 - but the sentence
+was false. *Fixed:* both records now say what pins a file and what merely names one, and
+name the three records.
+
+**Medium - a figure repeated without being recomputed.** The reconciliation repeated the
+assessment's "twenty-three evidence records across seventeen claims". The register has
+twenty-four records across seventeen claims naming the digest; twenty-three, across
+sixteen claims, measured the runtime, and one, the scan record, scanned the image.
+*Fixed* in the reconciliation, and stated in the assessment's dated correction, below its
+merged text.
+
+**Medium - the reconciliation contradicted itself.** It said #103 touched no "contract,
+schema" while saying, a few lines later, that the baseline gained an optional field. It
+now says no workload contract or published schema, and names the one data shape #103
+extended.
+
+**Medium - it undercounted what #103 corrected.** It said two documents stopped saying no
+continuous-integration service runs the scans. #103's own changelog names four surfaces:
+the two scan controls' statements in the baseline, `docs/prerequisites.md`, and the claim
+and test matrix. It now lists the four, and says the two controls' text changed and their
+status did not.
+
+**Medium - the first commit's suite tied dated text to live data.** Its note test read
+`EX-07` from the live baseline, so retiring `EX-07` - due by 2026-10-30 - would have
+failed a test about a note that stays true; and the current-count sentences were built at
+collection time from a five-entry number map, so a register of ten or eleven would have
+broken the whole module rather than one test. *Fixed:* the note is compared with the
+pinned scope, the live baseline only by the two tripwires; the counts are built inside the
+test from a map up to twenty. Deleting `EX-07` in the archived copy now fails only the two
+tripwires and the six current-count tests, never a test of dated text. The `EX-07`
+deadline row of the planted defects moved from 5 failed to 4 as a result, and the
+note-deadline row from 1 to 2, because the note's digest is now checked too.
+
+**Low.** The targeted run's count in the first commit's table, 3,396, was taken before the
+records were finished; the same command over the final tree is in the table above. The
+note test checked less than its docstring said, and the 2026-09-27 post-release note's
+text was not guarded at all, since registered notes were removed by their opening only:
+each registered note is now held to the SHA-256 of its paragraph as merged, and the two
+new rows of the planted defects exercise it. A comment called the assessment's SHA-256 a
+blob identity; it names both now. One long table row was left as it is.
+
+**Run again after the fixes:** `ruff check`, `ruff format --check --no-cache`, `mypy`, the
+new suite, the targeted suites, the fourteen planted defects, the index check, the gate,
+the dashboard check, gitleaks over every changed path, `git diff --check`, and the full
+default lane, with the results in the table above.
 
 ## Privacy and publicability
 
