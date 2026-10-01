@@ -5,9 +5,12 @@ Status: **published schema**, at `v1alpha1` maturity, added by `V2-S1-001-PR1`, 
 compatibility rules, its ownership boundary with the WorkloadContract, and its valid and
 invalid fixtures are published here and validated on every change. The domain parses a
 binding into typed objects, refuses bindings that conflict with each other, and selects
-the one binding that serves a WorkloadContract. **Nothing uses what it selects**: no
-renderer, controller, or script in this repository turns a binding into release values,
-and a selection is not evidence that anything will.
+the one binding that serves a WorkloadContract. **Nothing turns what it selects into
+release values**: since `V2-S1-003-PR1`, [the renderer input
+boundary](../domain/renderer-input-boundary.md) reads a selected binding's facts into a
+render context beside the contract's intent, but no renderer, controller, or script in
+this repository turns either into release values, and a selection is not evidence that
+anything will.
 
 | Property | Value |
 |---|---|
@@ -287,8 +290,9 @@ once.
 **Selection merges nothing.** It returns one of the bindings supplied, as the same object,
 and reads one member of the contract, `spec.environment`. The contract's scaling,
 resources, model, and every other field are neither read nor copied, and nothing in a
-binding could hold them. Combining the two into release input is a renderer's, and no
-renderer exists.
+binding could hold them. Combining the two into render input is [the renderer input
+boundary](../domain/renderer-input-boundary.md)'s, which takes each value from its one
+owner and overrides none; no renderer exists to render from it.
 
 **Where a refusal points.** A single document's refusal is located inside it, `$.spec…`.
 A refusal about several documents names the document by its role first: `contract` for the
@@ -311,7 +315,7 @@ are.
 |---|---|---|
 | A binding value shaped like a lowercase credential is refused | A single binding has no semantic layer; see [Secrets](#secrets) | A semantic rule, which is a conditionally compatible change |
 | The selected cluster, namespace, and claim exist | A document check cannot see a cluster | The provider contract's verification, at run time, as today |
-| Release values are derived from a contract and the binding selected for it | No renderer exists | The renderer, which will consume a selected binding rather than choose one |
+| Release values are derived from a contract and the binding selected for it | No renderer exists; the render boundary reads a selected binding into a context and derives no values | A renderer, which takes that context rather than choosing a binding |
 
 ## Fixtures
 
@@ -392,8 +396,8 @@ files say about each other and nothing about a running system.
 ## What this contract does not do
 
 - **It deploys nothing, and what reads it renders nothing.** The platform domain parses a
-  binding and selects one for a contract; no renderer exists, and nothing turns a binding
-  and a contract into release values. The values file a release is installed with is
+  binding, selects one for a contract, and reads its facts into a render context; no
+  renderer exists, and nothing turns a binding and a contract into release values. The values file a release is installed with is
   still written by hand.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.

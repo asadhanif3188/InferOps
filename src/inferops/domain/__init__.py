@@ -22,6 +22,8 @@ This includes:
 - EnvironmentBinding domain model and selection (V2-S1-001)
 - RenderedWorkloadRelease domain model, canonical form, and provenance rules
   (V2-S1-002)
+- The renderer input boundary: validated input, field ownership, platform
+  defaults, and the normalized render context (V2-S1-003)
 """
 
 from __future__ import annotations

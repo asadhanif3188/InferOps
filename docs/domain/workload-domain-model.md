@@ -271,6 +271,15 @@ cross-field and compatibility matrix rules that the schema cannot express:
 | `model-artifact-format-unknown` | Artifact filename has a recognized format extension |
 | `runtime-model-incompatible` | Runtime and artifact format are a compatible pair |
 
+**The profile and its block are not among them.** The parsing table above defers that
+agreement to this pipeline, and the pipeline has no rule for it: a `synchronous-llm`
+contract with no `spec.synchronousLlm`, a `mock-llm` contract carrying the real block,
+and the other conditions the schema applies to a profile all pass both layers, while the
+published validator refuses each. `V2-S1-003-PR1` measured this and left the pipeline
+unchanged; [the renderer input boundary](renderer-input-boundary.md#what-validated-means)
+applies the ten profile conditions before a contract may be rendered, and a test there
+asserts that this pipeline still accepts every one.
+
 The validation function returns all errors at once, so a developer learns what is
 wrong all at once rather than in installments. Like the parsing layer, validation
 errors never repeat values read from the document — they name the field and
