@@ -3,8 +3,10 @@
 Status: one contract accepted and two schemas published, all at alpha maturity. The
 platform domain reads a WorkloadContract and an EnvironmentBinding into typed objects and
 selects the binding that serves a contract; nothing deploys, serves, or admits a workload
-from either, and nothing renders one. The platform domain reads a RenderedWorkloadRelease
-and checks its provenance; nothing produces one.
+from either, and nothing renders one. The [renderer input
+boundary](../domain/renderer-input-boundary.md) reads a validated contract and the binding
+selected for it into a render context, and renders nothing from it. The platform domain
+reads a RenderedWorkloadRelease and checks its provenance; nothing produces one.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under
@@ -14,7 +16,7 @@ means, how it is versioned, which rules are enforced, and which are not.
 | Contract | Version | Status | Document |
 |---|---|---|---|
 | WorkloadContract | `v1alpha1` | Accepted; parsed by [the workload domain model](../domain/workload-domain-model.md), and no runtime consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
-| EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; no renderer or other consumer exists | [EnvironmentBinding v1alpha1](environment-binding.md) |
+| EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; the renderer input boundary reads the selected binding into a render context, and no renderer exists | [EnvironmentBinding v1alpha1](environment-binding.md) |
 | RenderedWorkloadRelease | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; a repository document, not a cluster resource; parsed by the platform domain, which defines how a release and its sources are hashed, recomputes the release identifier, refuses credential-shaped values, and compares a release with the contract and binding it names; no renderer produces one | [RenderedWorkloadRelease v1alpha1](rendered-workload-release.md) |
 
 A published schema is a commitment about what will be accepted. It is not evidence
@@ -42,7 +44,8 @@ above. The renderer is the second version's first capability: it reads a binding
 writes a release, and it is built against both, so their shapes, the binding's boundary
 with the WorkloadContract, and the release's rule for its own identifier have to be fixed
 and tested first. Each document says, in its status line, what reads it and that nothing
-renders one.
+renders one. The renderer's input side now exists as [its own
+boundary](../domain/renderer-input-boundary.md); the renderer does not.
 
 A **cost record** is the one of those whose shape is now written down. [The cost
 method](../cost/cost-method.md) publishes the fields a record would carry, as part

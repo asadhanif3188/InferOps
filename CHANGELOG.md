@@ -10,6 +10,32 @@ from `1.0.0`.
 
 ### Added
 
+- **The renderer input boundary.** `V2-S1-003-PR1` added `inferops.domain.render`: the
+  validated, typed input a renderer may be given, and nothing after it. A parsed
+  WorkloadContract becomes render input only through `validate_for_render`, which applies
+  the domain's semantic pipeline and the ten profile conditions the published schema
+  applies under `spec.allOf` — conditions this change measured the domain pipeline
+  accepting on nine mutations the published validator refuses, and which are refused
+  here under the validator's own rule and field, compared mutation by mutation. A
+  versioned `PlatformDefaults` set carries three API-tier settings whose bounds and
+  defaults are the chart's. An ownership table names all 44 values of the normalized
+  render context — 35 of workload intent, 3 platform defaults, 6 environment facts —
+  with one owner and one source each, and lists the eleven fields read into no value —
+  nine from the two schemas and two of the defaults object — each with a reason; a test
+  fails if either schema gains a field in neither list. The
+  precedence rule is that there is none: no layer overrides another. `build_render_context`
+  selects the binding with the binding domain's own rules and reads each value from its
+  owner, and its sources are what a release records — a release built from them passes
+  the provenance rules. Raw documents and unvalidated contracts are refused; the context
+  is the same in two interpreters under two hash seeds and with every clock and random
+  source failing; the package imports seven standard-library modules and nothing outside
+  the domain imports it. A `Renderer` interface takes the context; no renderer exists, no
+  values are generated, the workload pipeline, schemas, and fixtures are unchanged, no
+  claim moves, and every check is static (`C0`). [The boundary's
+  document](docs/domain/renderer-input-boundary.md) lists what is not applied yet, and
+  [the validation record](docs/proof/domain/v2-s1-003-pr1-validation.md) says what was
+  run.
+
 - **The RenderedWorkloadRelease in the platform domain, with its canonical form and
   provenance rules.** `V2-S1-002-PR2` added `inferops.domain.release`: a parser that reads
   a release into frozen typed objects and refuses exactly what the published schema

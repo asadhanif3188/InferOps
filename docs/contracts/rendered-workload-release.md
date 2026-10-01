@@ -6,7 +6,9 @@ identifier, and its valid and invalid fixtures are published here and validated 
 change. `V2-S1-002-PR2` added the platform domain that reads a release, the canonical form
 a release and its source documents are hashed in, and [seven provenance
 rules](#provenance-rules-the-platform-domain-applies) the domain applies and the schema
-does not. **Nothing produces a release**: no renderer exists in this repository, no values
+does not. **Nothing produces a release**: no renderer exists in this repository - [the
+renderer input boundary](../domain/renderer-input-boundary.md) added by `V2-S1-003-PR1`
+computes the `source` block a release would record and writes no release - no values
 file has been generated, and neither fixture describes a release that was rendered,
 installed, or run.
 
@@ -578,7 +580,8 @@ files say about each other and nothing about a running system.
 
 ## What this contract does not do
 
-- **It renders nothing, and nothing produces it.** No renderer exists. The values file a
+- **It renders nothing, and nothing produces it.** No renderer exists; the render
+  boundary assembles a release's `source` block and nothing records it. The values file a
   release is installed with is still written by hand, and no release document exists for
   it.
 - **It checks a source digest only when it is given the source.** The platform domain
