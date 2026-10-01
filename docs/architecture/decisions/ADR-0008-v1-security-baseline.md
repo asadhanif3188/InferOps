@@ -338,7 +338,7 @@ publish.
 
 ## D11 — An exception is argued, not absorbed
 
-Seven exceptions are recorded. Each names where it was accepted, the compensating
+Six exceptions are recorded. Each names where it was accepted, the compensating
 control that makes it tolerable, what remains undefended anyway, and the condition
 under which it should be revisited. A test refuses an exception missing any of them
 and refuses one whose compensating control is not a control this baseline declares.
@@ -347,6 +347,20 @@ This mirrors the status ADR 0002 already reaches — `Accepted, with one recorde
 exception` — and for the same reason. The alternatives are both dishonest: leaving
 the weakness out implies it was handled, and refusing the decision denies work that
 was really done.
+
+> **Note, 2026-10-01: a seventh exception, accepted on 2026-09-30.** The first
+> paragraph of this section is the text `v1.0.0` released, and "six" was true then.
+> `EX-07` — `CVE-2026-84782` in the pinned runtime image, accepted until 2026-10-30 and
+> bound to that image's digest — was accepted after the release, so the register now
+> records seven; [the deferred-risk register](../../security/deferred-risks.md) and
+> [the baseline data](../../security/security-baseline.v1alpha1.json) carry the
+> current count, and a test recomputes it there. The change that accepted `EX-07`
+> rewrote "six" as "seven" in this section and in the consequences below; `V2-S1-004-PR2`
+> restored both sentences and added this note and the one under the consequences.
+> [The maintenance reconciliation](../../proof/security/v2-s1-004-pr2-security-maintenance-reconciliation.md)
+> says what kind of change that was. The decision is unchanged: `EX-07` names where it
+> was accepted, a compensating control, its residual risk, and a revisit condition,
+> and the same test holds it to all four.
 
 ## D12 — Reserved vocabulary
 
@@ -448,7 +462,7 @@ can commit to without deciding who does it.
   held over every manifest here before this change, by convention. A convention is
   enforced by memory; this is now enforced by a suite.
 - **The register is long and it is meant to be.** Twelve deferred risks, ten of them
-  blocking production use, and seven accepted exceptions. A shorter register at this
+  blocking production use, and six accepted exceptions. A shorter register at this
   stage of a project would mean less enumeration, not less risk.
 - **One new public claim, at the narrowest level that is honest.** The claim and test
   matrix gains `a-security-control-cannot-claim-enforcement-it-does-not-have`,
@@ -461,6 +475,10 @@ can commit to without deciding who does it.
 - **Four of fifteen rules are enforced by review alone**, and a review is enforced
   only when the reviewer remembers it. They are marked rather than promoted, which is
   the less comfortable and more true option.
+
+> **Note, 2026-10-01.** The register bullet above counts six accepted exceptions, as at
+> `v1.0.0`. There have been seven since 2026-09-30; the note under `D11` says which
+> one was added, and where the current count is kept.
 
 ## Compatibility impact
 

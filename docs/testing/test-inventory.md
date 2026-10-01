@@ -45,7 +45,7 @@ intended:
    reason, and never both.
 
 A module that defends no published claim carries a written reason instead of an
-empty list. There are fifty-seven, and they are listed in their own section rather than
+empty list. There are fifty-eight, and they are listed in their own section rather than
 hidden in the data.
 
 ## Lanes and markers, as the inventory groups them
@@ -176,7 +176,7 @@ runtime, and remains `C1` evidence.
 
 ### `documentation` — [`tests/testing/`](../../tests/testing/), [`tests/telemetry/`](../../tests/telemetry/), [`tests/cost/`](../../tests/cost/), [`tests/security/`](../../tests/security/), [`tests/serving/`](../../tests/serving/)
 
-Forty-eight modules. Committed machine-readable data checked against the documents
+Forty-nine modules. Committed machine-readable data checked against the documents
 describing it: the test strategy, this inventory, the telemetry catalog, the cost
 method, the security baseline, the inference API surface, and the selected model's
 source and cache workflow, runtime profile, standalone package, C2 certification
@@ -240,9 +240,13 @@ which holds the decision whether a second version proceeds to the register, the
 evidence index, and the case study, and the forty-sixth, which holds the change after
 the release to the release it records and the pack it left alone, and `V2-S0-001-PR1` the
 forty-seventh, which holds the decision that opens a second version to the record it
-supersedes. (This sentence
+supersedes, the change accepting `EX-07` the forty-eighth, which holds the findings
+the scan guards accept to the exceptions that argue them, and `V2-S1-004-PR2` the
+forty-ninth, which holds ADR 0008 to the text `v1.0.0` released and `EX-07` to the
+scope its reconciliation records. (This sentence
 stopped at the forty-third until `V1-S5-009-PR1`: `V1-S5-008-PR1` added its module
-without extending it.)
+without extending it. It stopped again at the forty-seventh until `V2-S1-004-PR2`:
+the change accepting `EX-07` added the forty-eighth without extending it.)
 
 That sentence is itself a correction. `V1-S4-009-PR1` added a module and wrote
 "thirty-first", and an independent review of `V1-S4-009-PR2` found thirty-two
@@ -266,6 +270,11 @@ and runs something: it sources the committed scan library with a recording stub 
 place of Trivy, to see what each guard hands the scanner and what it refuses before
 calling it. No vulnerability database is read and no image is scanned.
 
+`tests/security/test_security_maintenance_history.py` reads only committed files: it
+holds ADR 0008 to a pinned digest of the text `v1.0.0` released, so a later state can
+be added to that record only as a dated note, and holds `EX-07` to the scope recorded
+when it was reconciled.
+
 ### `real-runtime-smoke` — [`tests/realruntime/`](../../tests/realruntime/)
 
 Two modules, both deselected by default and **neither has ever been run against a
@@ -276,7 +285,7 @@ trial recorded under [`docs/proof/serving/`](../proof/serving/).
 
 ## Modules that defend no published claim
 
-Fifty-seven suites protect something no row of the claim matrix names. (This sentence
+Fifty-eight suites protect something no row of the claim matrix names. (This sentence
 said twenty-four while the table below held twenty-five rows; `V1-S4-003-PR1` added
 the twenty-sixth row and corrected it. `V1-S4-004-PR1` added the twenty-seventh and
 first left this sentence at twenty-six; its review corrected it. `V1-S4-004-PR2` added
@@ -285,7 +294,7 @@ the twenty-eighth, and `V1-S4-006-PR1` the twenty-ninth. It drifted again: by
 change added the thirty-second and thirty-third and corrected it. `V1-S5-003-PR1` added the
 thirty-fourth, and `V1-S5-004-PR1` the thirty-fifth. It drifted once more: the table held
 thirty-nine rows while this sentence said thirty-four, until `V1-S5-012-PR2` added the fortieth
-and corrected it, `V1-S5-006-PR1` added the forty-first, `V1-S5-006-PR2` the forty-second, `V1-S5-007-PR1` the forty-third, `V1-S5-013-PR1` the forty-fourth, `V1-S5-013-PR2` the forty-fifth, `V1-S5-008-PR1` the forty-sixth, `V1-S5-009-PR1` the forty-seventh and the forty-eighth, `V2-S0-001-PR1` the forty-ninth, `V2-S1-001-PR1` the fiftieth, `V2-S1-001-PR2` the fifty-first, and `V2-S1-002-PR1` the fifty-second, the change accepting `EX-07` the fifty-third, `V2-S1-002-PR2` the fifty-fourth, `V2-S1-003-PR1` the fifty-fifth, `V2-S1-003-PR2` the fifty-sixth, and `V2-S1-004-PR1` the fifty-seventh. It drifted once more: `V2-S1-003-PR1` added the fifty-fifth and left this sentence at fifty-four, and `V2-S1-003-PR2` first committed it unchanged beside fifty-six rows; that change's review found it. The machine-checked count is the one in the opening section.) Each carries its
+and corrected it, `V1-S5-006-PR1` added the forty-first, `V1-S5-006-PR2` the forty-second, `V1-S5-007-PR1` the forty-third, `V1-S5-013-PR1` the forty-fourth, `V1-S5-013-PR2` the forty-fifth, `V1-S5-008-PR1` the forty-sixth, `V1-S5-009-PR1` the forty-seventh and the forty-eighth, `V2-S0-001-PR1` the forty-ninth, `V2-S1-001-PR1` the fiftieth, `V2-S1-001-PR2` the fifty-first, and `V2-S1-002-PR1` the fifty-second, the change accepting `EX-07` the fifty-third, `V2-S1-002-PR2` the fifty-fourth, `V2-S1-003-PR1` the fifty-fifth, `V2-S1-003-PR2` the fifty-sixth, `V2-S1-004-PR1` the fifty-seventh, and `V2-S1-004-PR2` the fifty-eighth. It drifted once more: `V2-S1-003-PR1` added the fifty-fifth and left this sentence at fifty-four, and `V2-S1-003-PR2` first committed it unchanged beside fifty-six rows; that change's review found it. The machine-checked count is the one in the opening section.) Each carries its
 reason in the data; they are collected here because a reader deciding whether the
 matrix is complete needs to see them together.
 
@@ -348,6 +357,7 @@ matrix is complete needs to see them together.
 | [`tests/architecture/test_clean_clone_ledger.py`](../../tests/architecture/test_clean_clone_ledger.py) | The rules of the clean-clone ledger: when a step may be recorded as not run, the order steps may pass in, intervals, resumption, manual actions without host paths, and which complete run certifies anything. It establishes what a record may say, never that a run said it |
 | [`tests/architecture/test_telemetry_collector.py`](../../tests/architecture/test_telemetry_collector.py) | The collector `ADR 0004` `D7` was amended to allow: owned but still `planned`, off by default, reading the scrape ConfigMap rather than a second copy of it, projecting an expiring token instead of automounting one, and storing series in a bounded `emptyDir`. Its one executable check runs the pinned collector's own `promtool` over the committed render, which establishes that the configuration loads and nothing about whether anything was collected |
 | [`tests/security/test_vulnerability_scan_exceptions.py`](../../tests/security/test_vulnerability_scan_exceptions.py) | The accepted vulnerability-scan findings against the exceptions that argue them: each committed ignore entry is one finding with an expiry equal to its exception's review deadline, an image exception is bound to the pinned digest, and the committed guards hand Trivy their ignore file and refuse a missing file, a malformed entry, or an exception assessed against another image before scanning. Deliberately no claim: a scan result is dated to its run, and no published claim rests on one |
+| [`tests/security/test_security_maintenance_history.py`](../../tests/security/test_security_maintenance_history.py) | The V1 security decision's released text and the later state beside it: that ADR 0008, with its registered post-release notes taken out, is byte for byte the text v1.0.0 released, so an in-place edit or an unregistered note fails; that the two sentences the change accepting EX-07 rewrote are back in their sections, with a dated note after each; that the note and the security baseline agree on EX-07's finding, acceptance and deadline; that the surfaces describing the current register state the count the baseline produces; that EX-07 keeps the scope the maintenance reconciliation records, in the baseline and in both ignore files; and that the EX-07 assessment above its dated correction is the record as merged. Deliberately no claim: no published claim rests on the history of a decision record or on one exception's scope |
 
 The two API-surface rows are the interesting pair. The matrix's drift claim,
 `the-published-strategy-and-its-data-cannot-drift-apart`, is written about the

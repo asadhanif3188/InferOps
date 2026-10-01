@@ -281,3 +281,19 @@ Run from Git Bash with `PYTHONDONTWRITEBYTECODE=1`.
 Not run: `helm lint`, kubeconform, Terraform and TFLint, the package build and the image
 build. This change touches no chart, manifest, Terraform, workflow, package or image;
 those gates run on the selected service.
+
+## Later correction
+
+Added on 2026-10-01 by `V2-S1-004-PR2`. Nothing above this heading was changed; it is
+this record as it was merged.
+
+The *What changed* table says the README, `SECURITY.md`, the architecture index, and
+ADR 0008 each had "six" exceptions become "seven". That is what this change did, and
+for ADR 0008 it was the wrong edit: two of its sentences, in `D11` and in its
+consequences, are the decision's text as `v1.0.0` released it, and rewriting them made
+the record read as if `EX-07` had existed when the decision was made. `V2-S1-004-PR2`
+restored both sentences to the released wording and added a dated note after each that
+records `EX-07` and the current count. The other three surfaces describe the current
+register and still say seven. [The maintenance
+reconciliation](v2-s1-004-pr2-security-maintenance-reconciliation.md) records what kind
+of change this was; the exception, its scope, and its deadline are unchanged.
