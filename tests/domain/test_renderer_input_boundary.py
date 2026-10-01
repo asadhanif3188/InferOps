@@ -57,6 +57,7 @@ from inferops.domain.environment import (
     BindingSelectionError,
     EnvironmentBinding,
     parse_environment_binding,
+    select_environment_binding,
 )
 from inferops.domain.release import (
     GitRevision,
@@ -84,8 +85,11 @@ from inferops.domain.render import (
     ApiDefaults,
     Layer,
     PlatformDefaults,
+    RefusalCategory,
     RenderContext,
     Renderer,
+    RendererSupport,
+    RenderRefused,
     ValidatedWorkloadContract,
     WorkloadNotAcceptedError,
     build_render_context,
@@ -100,6 +104,7 @@ from inferops.domain.workload import (
     CompatibilityMatrixLoader,
     DnsLabel,
     InvalidValueError,
+    Profile,
     WorkloadContract,
     parse_workload_contract,
     set_matrix_loader,
@@ -1026,17 +1031,29 @@ def test_a_render_context_cannot_be_constructed_or_copied_into_one() -> None:
         ("local+ci", "ci-kind", "binding-environment-mismatch"),
     ],
 )
-def test_a_selection_refusal_passes_through_unchanged(
+def test_a_selection_refusal_is_a_render_refusal_under_its_own_rule(
     bindings: str, binding_name: str | None, rule: str
 ) -> None:
+    """The binding domain's rule identifier and field survive; the category is added."""
     supplied = {
         "local": local_bindings(),
         "none": [],
         "local+ci": [*local_bindings(), ci_binding()],
     }[bindings]
-    with pytest.raises(BindingSelectionError) as raised:
+    with pytest.raises(BindingSelectionError) as selected:
+        select_environment_binding(
+            contract(),
+            supplied,
+            binding_name=None if binding_name is None else DnsLabel(binding_name),
+        )
+    with pytest.raises(RenderRefused) as raised:
         render_context(bindings=supplied, binding_name=binding_name)
-    assert [refusal.rule_id for refusal in raised.value.refusals] == [rule]
+    assert raised.value.rule_ids() == (rule,)
+    assert raised.value.category is RefusalCategory.BINDING_MISSING
+    assert raised.value.code == "contract-invalid"
+    assert [finding.field for finding in raised.value.findings] == [
+        refusal.field for refusal in selected.value.refusals
+    ]
 
 
 def test_the_values_are_read_only() -> None:
@@ -1238,7 +1255,7 @@ def test_the_render_package_imports_only_what_a_pure_boundary_needs() -> None:
     import that leaves the package reaches the workload, environment, or release
     domain, or the request context. ``tools`` is unreachable.
     """
-    assert len(module_trees()) == 7
+    assert len(module_trees()) == 9
     for path, tree in module_trees():
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -1362,13 +1379,24 @@ class _EchoRenderer:
     """A renderer of the interface's shape: returns the context's digest."""
 
     revision = GitRevision(RENDERER_REVISION)
+    support = RendererSupport(
+        contract_versions=frozenset({"inferops.io/v1alpha1"}),
+        binding_versions=frozenset({"inferops.io/v1alpha1"}),
+        platform_defaults_versions=frozenset({"v1alpha1"}),
+        profiles=frozenset(Profile),
+    )
 
     def render(self, context: RenderContext) -> str:
         return str(context.digest())
 
 
 class _NotARenderer:
+    """Has a revision and a render method, and declares no support."""
+
     revision = GitRevision(RENDERER_REVISION)
+
+    def render(self, context: RenderContext) -> str:
+        return str(context.digest())
 
 
 def test_a_conforming_object_is_a_renderer_and_others_are_not() -> None:

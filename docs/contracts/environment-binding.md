@@ -292,7 +292,10 @@ and reads one member of the contract, `spec.environment`. The contract's scaling
 resources, model, and every other field are neither read nor copied, and nothing in a
 binding could hold them. Combining the two into render input is [the renderer input
 boundary](../domain/renderer-input-boundary.md)'s, which takes each value from its one
-owner and overrides none; no renderer exists to render from it.
+owner and overrides none; no renderer exists to render from it. Since `V2-S1-003-PR2` it
+reports a selection refusal as a render refusal under the same rule identifier and field,
+categorised `binding-missing` or, for the two set rules, `semantic-invalid`, and refuses a
+selected binding whose document carries a value the binding does not own.
 
 **Where a refusal points.** A single document's refusal is located inside it, `$.spec…`.
 A refusal about several documents names the document by its role first: `contract` for the

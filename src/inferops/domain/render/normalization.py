@@ -23,10 +23,20 @@ no ``kubectl``, no Helm. The context's canonical form is the release domain's
 canonical JSON, so it refuses a value with no single JSON spelling instead of
 writing one.
 
-**A selection refusal passes through.** A missing, ambiguous, or conflicting
-binding raises the binding domain's
-:class:`~inferops.domain.environment.errors.BindingSelectionError`, unchanged. The
-canonical render refusal it becomes is a later change.
+**Refused before anything is returned.** A missing, ambiguous, or conflicting
+binding, and an input that supplies a value it does not own, are refused with a
+:class:`~.errors.RenderRefused` carrying every finding: the binding domain's
+refusals under their own rule identifiers, and the ownership refusals of
+:mod:`.conflicts`. Nothing is half-built: a context is either returned whole or not
+at all.
+
+**One path refuses everything at once.** :func:`prepare_render` takes a parsed
+contract rather than a validated one, and a renderer's
+:class:`~.support.RendererSupport`, and gathers every finding of every step - the
+renderer's support, the contract's rules, the selection, the ownership check - into
+one :class:`~.errors.RenderRefused`, so a caller fixes everything in one pass rather
+than one refusal per run. :func:`build_render_context` remains the step that takes
+an already validated contract and knows no renderer.
 
 **The guard is against accidents, not intent**, as for the validated contract: a
 :class:`RenderContext` is refused without this module's private sentinel.
@@ -41,6 +51,7 @@ from typing import Any, Final
 
 from ..context import NO_REQUEST_CONTEXT, RequestContext
 from ..environment.binding import EnvironmentBinding
+from ..environment.errors import BindingSelectionError
 from ..environment.selection import select_environment_binding
 from ..release.canonical import binding_digest, canonical_sha256, contract_digest
 from ..release.release import (
@@ -51,10 +62,24 @@ from ..release.release import (
     RendererReference,
 )
 from ..release.values import Sha256Hex
+from ..workload.contract import WorkloadContract
 from ..workload.values import DnsLabel
-from .acceptance import ValidatedWorkloadContract
+from .acceptance import ValidatedWorkloadContract, validate_for_render
+from .conflicts import ownership_findings
 from .defaults import PlatformDefaults
+from .errors import (
+    RenderFinding,
+    RenderRefused,
+    WorkloadNotAcceptedError,
+    from_binding_refusal,
+    from_workload_finding,
+)
 from .ownership import RENDER_FIELD_OWNERSHIP, FieldOwnership, Layer
+from .support import (
+    RendererSupport,
+    unsupported_binding_findings,
+    unsupported_contract_findings,
+)
 
 #: Held only by this module. A context constructed without it is refused.
 _ISSUED: Final = object()
@@ -214,50 +239,54 @@ def _read(row: FieldOwnership, owners: Mapping[Layer, Document]) -> RenderField 
     return RenderField(row.name, row.layer, row.source, _frozen(value))
 
 
-def build_render_context(
-    contract: ValidatedWorkloadContract,
+def _binding_index(
+    bindings: Sequence[EnvironmentBinding], binding: EnvironmentBinding
+) -> int:
+    """The position of the selected binding, which selection returns unchanged."""
+    return next(index for index, entry in enumerate(bindings) if entry is binding)
+
+
+def _owners(
+    workload: WorkloadContract,
     platform_defaults: PlatformDefaults,
-    bindings: Sequence[EnvironmentBinding],
-    *,
-    binding_name: DnsLabel | None = None,
-    context: RequestContext = NO_REQUEST_CONTEXT,
-) -> RenderContext:
-    """The normalized render context for one contract, or the reason there is none.
-
-    Args:
-        contract: a contract :func:`~.acceptance.validate_for_render` accepted.
-        platform_defaults: the platform defaults to render with.
-        bindings: parsed bindings supplied together. The binding domain's set
-            rules and selection choose the one that serves ``contract``.
-        binding_name: the binding to use when more than one serves the contract's
-            environment, exactly as for selection.
-        context: request-scoped identifiers, attached to any selection refusal.
-
-    Raises:
-        BindingSelectionError: no binding could be selected, with every reason.
-        TypeError: an argument is not the validated or parsed object this reads -
-            a raw document, or a WorkloadContract that has not been validated.
-    """
-    if not isinstance(contract, ValidatedWorkloadContract):
-        raise TypeError(
-            "contract must be a ValidatedWorkloadContract produced by "
-            "validate_for_render; a parsed or raw contract cannot be rendered"
-        )
-    if not isinstance(platform_defaults, PlatformDefaults):
-        raise TypeError(
-            "platform_defaults must be PlatformDefaults, not a raw document"
-        )
-
-    workload = contract.contract
-    binding = select_environment_binding(
-        workload, bindings, binding_name=binding_name, context=context
-    )
-
-    owners: dict[Layer, Document] = {
+    binding: EnvironmentBinding,
+) -> dict[Layer, Document]:
+    return {
         Layer.WORKLOAD_INTENT: workload.as_document(),
         Layer.PLATFORM_DEFAULTS: platform_defaults.as_document(),
         Layer.ENVIRONMENT_BINDING: binding.as_document(),
     }
+
+
+def _roles(index: int) -> dict[Layer, str]:
+    return {
+        Layer.WORKLOAD_INTENT: "contract",
+        Layer.PLATFORM_DEFAULTS: "platformDefaults",
+        Layer.ENVIRONMENT_BINDING: f"bindings[{index}]",
+    }
+
+
+def _select(
+    workload: WorkloadContract,
+    bindings: Sequence[EnvironmentBinding],
+    binding_name: DnsLabel | None,
+    context: RequestContext,
+) -> tuple[EnvironmentBinding | None, list[RenderFinding]]:
+    try:
+        binding = select_environment_binding(
+            workload, bindings, binding_name=binding_name, context=context
+        )
+    except BindingSelectionError as error:
+        return None, [from_binding_refusal(refusal) for refusal in error.refusals]
+    return binding, []
+
+
+def _assemble(
+    workload: WorkloadContract,
+    platform_defaults: PlatformDefaults,
+    binding: EnvironmentBinding,
+    owners: Mapping[Layer, Document],
+) -> RenderContext:
     fields = [
         entry
         for row in RENDER_FIELD_OWNERSHIP
@@ -282,9 +311,123 @@ def build_render_context(
     )
 
 
+def _require_defaults(platform_defaults: object) -> None:
+    if not isinstance(platform_defaults, PlatformDefaults):
+        raise TypeError(
+            "platform_defaults must be PlatformDefaults, not a raw document"
+        )
+
+
+def build_render_context(
+    contract: ValidatedWorkloadContract,
+    platform_defaults: PlatformDefaults,
+    bindings: Sequence[EnvironmentBinding],
+    *,
+    binding_name: DnsLabel | None = None,
+    context: RequestContext = NO_REQUEST_CONTEXT,
+) -> RenderContext:
+    """The normalized render context for one contract, or the reason there is none.
+
+    Args:
+        contract: a contract :func:`~.acceptance.validate_for_render` accepted.
+        platform_defaults: the platform defaults to render with.
+        bindings: parsed bindings supplied together. The binding domain's set
+            rules and selection choose the one that serves ``contract``.
+        binding_name: the binding to use when more than one serves the contract's
+            environment, exactly as for selection.
+        context: request-scoped identifiers, attached to every refusal.
+
+    Raises:
+        RenderRefused: no binding could be selected, or an input supplies a value
+            it does not own; every finding at once.
+        TypeError: an argument is not the validated or parsed object this reads -
+            a raw document, or a WorkloadContract that has not been validated.
+    """
+    if not isinstance(contract, ValidatedWorkloadContract):
+        raise TypeError(
+            "contract must be a ValidatedWorkloadContract produced by "
+            "validate_for_render; a parsed or raw contract cannot be rendered"
+        )
+    _require_defaults(platform_defaults)
+
+    workload = contract.contract
+    binding, findings = _select(workload, bindings, binding_name, context)
+    if binding is None:
+        raise RenderRefused(findings)
+    owners = _owners(workload, platform_defaults, binding)
+    conflicts = ownership_findings(
+        owners, _roles(_binding_index(bindings, binding)), context
+    )
+    if conflicts:
+        raise RenderRefused(conflicts)
+    return _assemble(workload, platform_defaults, binding, owners)
+
+
+def prepare_render(
+    contract: WorkloadContract,
+    platform_defaults: PlatformDefaults,
+    bindings: Sequence[EnvironmentBinding],
+    *,
+    support: RendererSupport,
+    binding_name: DnsLabel | None = None,
+    context: RequestContext = NO_REQUEST_CONTEXT,
+) -> RenderContext:
+    """The render context for a renderer of ``support``, or every reason there is none.
+
+    The canonical path: it validates the parsed contract itself, and gathers every
+    finding of every step into one refusal - the renderer's support for the
+    contract's version and profile, the defaults' version, and the selected
+    binding's version; the contract's semantic rules and profile conditions; the
+    selection; and the ownership check. A step that needs the selected binding
+    runs only once there is one.
+
+    Raises:
+        RenderRefused: every finding, sorted by category, field, and rule.
+        TypeError: an argument is a raw document, or ``support`` is not a
+            :class:`~.support.RendererSupport`.
+        ValueError: a ``synchronous-llm`` contract was given and no compatibility
+            matrix was supplied to the workload package's loader.
+    """
+    if not isinstance(contract, WorkloadContract):
+        raise TypeError(
+            "contract must be a WorkloadContract produced by parse_workload_contract, "
+            "not a raw document"
+        )
+    _require_defaults(platform_defaults)
+    if not isinstance(support, RendererSupport):
+        raise TypeError("support must be a RendererSupport")
+
+    findings = unsupported_contract_findings(
+        support, contract, platform_defaults, context
+    )
+    validated: ValidatedWorkloadContract | None = None
+    try:
+        validated = validate_for_render(contract, context=context)
+    except WorkloadNotAcceptedError as error:
+        findings.extend(from_workload_finding(finding) for finding in error.findings)
+
+    binding, refusals = _select(contract, bindings, binding_name, context)
+    findings.extend(refusals)
+    owners: dict[Layer, Document] = {}
+    if binding is not None:
+        index = _binding_index(bindings, binding)
+        findings.extend(unsupported_binding_findings(support, binding, index, context))
+        owners = _owners(contract, platform_defaults, binding)
+        findings.extend(ownership_findings(owners, _roles(index), context))
+
+    if findings:
+        raise RenderRefused(findings)
+    if validated is None or binding is None:
+        # No finding means validation and selection both returned. Reaching this
+        # is a defect in this function, not a refusal of an input.
+        raise AssertionError("a render with no finding has no contract or binding")
+    return _assemble(validated.contract, platform_defaults, binding, owners)
+
+
 __all__ = [
     "RenderContext",
     "RenderField",
     "RenderSources",
     "build_render_context",
+    "prepare_render",
 ]

@@ -5,7 +5,9 @@ platform domain reads a WorkloadContract and an EnvironmentBinding into typed ob
 selects the binding that serves a contract; nothing deploys, serves, or admits a workload
 from either, and nothing renders one. The [renderer input
 boundary](../domain/renderer-input-boundary.md) reads a validated contract and the binding
-selected for it into a render context, and renders nothing from it. The platform domain
+selected for it into a render context, refuses under one canonical vocabulary inputs that
+are invalid, unbound, unsupported by a renderer, or in conflict over who owns a value, and
+renders nothing. The platform domain
 reads a RenderedWorkloadRelease and checks its provenance; nothing produces one.
 
 This directory indexes versioned, machine-readable public contracts and the
