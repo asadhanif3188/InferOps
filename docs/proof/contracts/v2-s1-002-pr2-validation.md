@@ -285,3 +285,20 @@ a non-ASCII digit, which identifies nothing.
 That any renderer will produce a release, that a values digest is the digest of any file,
 that the renderer and platform-defaults revisions name commits that exist, or that a
 release was ever rendered, installed, or run. Nothing produces a release.
+
+## Later correction
+
+Added on 2026-10-01 by `V2-S1-004-PR1`. Nothing above this heading was changed; it is
+this change's record as it was merged.
+
+The acceptance row for "Sensitive data cannot enter provenance" says *met structurally and
+by the credential rule, except the measured remainder above*. A criterion met with an
+exception is not met as written, and a later independent review of the sprint recorded it
+as not met: a lowercase value with no published credential prefix, written as a workload
+name, passes every rule this change added, as this change's own suite asserts. The
+criterion is now closed against a narrower, enforceable property - a release may be built
+only from fields classified public-safe identities or derived digests, through one typed,
+allowlisted path - and the part no syntax can prove is stated as an input-trust
+limitation. Both are in [provenance input
+trust](../../contracts/rendered-workload-release.md#provenance-input-trust), and what was
+run for them is in [its validation record](../domain/v2-s1-004-pr1-validation.md).

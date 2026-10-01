@@ -6,19 +6,22 @@ read, the precedence between those owners, how the values are gathered into one
 deterministic context, and what a render is refused with when any of that fails. **No
 renderer exists.** Nothing in this repository generates Helm values, writes a
 RenderedWorkloadRelease, writes to Git, or reaches a cluster, and building a render
-context is not evidence that anything will. Every check behind this page is static, at
+context is not evidence that anything will. `V2-S1-004-PR1` added `record_release`, the
+one supported path from a context to a RenderedWorkloadRelease: it builds the release in
+memory, from allowlisted fields only, and writes nothing - see
+[Recording a release](#recording-a-release). Every check behind this page is static, at
 evidence level C0.
 
 | Property | Value |
 |---|---|
 | Package | [`src/inferops/domain/render/`](../../src/inferops/domain/render/__init__.py) |
-| Entry points | `prepare_render`, the canonical path, or its two steps `validate_for_render` and `build_render_context`; `render_with` calls a `Renderer` on the result |
+| Entry points | `prepare_render`, the canonical path, or its two steps `validate_for_render` and `build_render_context`; `render_with` calls a `Renderer` on the result; `record_release` builds the release a renderer records |
 | Inputs | A parsed [WorkloadContract](../contracts/workload-contract.md), one set of platform defaults, and the parsed [EnvironmentBindings](../contracts/environment-binding.md) supplied together |
 | Output | A `RenderContext`: 44 named values, each with its one owner and its source, and the identity and digest of every input |
 | Refusal | A `RenderRefused` carrying every finding at once, each with a category, a canonical code, and a rule identifier, before any output |
 | Renderer | An interface only; no implementation |
-| Tests | [`tests/domain/test_renderer_input_boundary.py`](../../tests/domain/test_renderer_input_boundary.py) and [`tests/domain/test_renderer_refusals.py`](../../tests/domain/test_renderer_refusals.py) |
-| Validation records | [`v2-s1-003-pr1-validation.md`](../proof/domain/v2-s1-003-pr1-validation.md) and [`v2-s1-003-pr2-validation.md`](../proof/domain/v2-s1-003-pr2-validation.md) |
+| Tests | [`tests/domain/test_renderer_input_boundary.py`](../../tests/domain/test_renderer_input_boundary.py), [`tests/domain/test_renderer_refusals.py`](../../tests/domain/test_renderer_refusals.py), and [`tests/domain/test_provenance_input_trust.py`](../../tests/domain/test_provenance_input_trust.py) |
+| Validation records | [`v2-s1-003-pr1-validation.md`](../proof/domain/v2-s1-003-pr1-validation.md), [`v2-s1-003-pr2-validation.md`](../proof/domain/v2-s1-003-pr2-validation.md), and [`v2-s1-004-pr1-validation.md`](../proof/domain/v2-s1-004-pr1-validation.md) |
 
 ## Why a boundary before a renderer
 
@@ -518,6 +521,31 @@ declare, and the mock profile's three. A test builds the context from those inpu
 the canonical path and fails if one cell of this table differs. The values are a committed
 fixture's, not a deployment's: nothing was rendered from them.
 
+## Recording a release
+
+`record_release(render_context, *, renderer, helm_values)` is the one supported path from a
+`RenderContext` to a RenderedWorkloadRelease. It takes the context, a `RendererReference`,
+and a `HelmValuesReference`, and nothing else: a raw document, a dictionary, or a bare
+string at any of the three, or a reference built around bare strings instead of its
+constrained types, is a `TypeError`. It reads each field of the release from the
+source the provenance policy names for it, reads a context value only if that value is
+classified a public-safe identity - the workload's name and version, and no other - and
+derives the release identifier. It reads the release back from its plain JSON form with
+the published parser, so a value of the right type that skipped its check - a subclass,
+or one changed with `object.__setattr__` - is refused, and then applies the release
+domain's single-release rules, so a value with a part shaped like a published credential
+is refused with `ReleaseNotRecordedError` before anything is returned, without quoting
+it. A caller that imports the private sentinel can still build a context of well-formed
+values the boundary never saw; that limit is the context's own, recorded above.
+
+The policy - every release field and every one of the 44 context values classified as a
+public-safe identity, a derived digest or revision, or excluded, each with its reason - is
+published with the release, under
+[Provenance input trust](../contracts/rendered-workload-release.md#provenance-input-trust),
+and lives in `inferops.domain.render.recording`. It establishes what the supported path
+can carry. It cannot establish that a value an author chose as a name is not a secret
+written to look like one; the release document states that limit.
+
 ## What is refused, and with what
 
 | Input | Refused with |
@@ -532,6 +560,8 @@ fixture's, not a deployment's: nothing was rendered from them.
 | An input version or a profile the renderer does not declare | `RenderRefused`: a `render-*-version-unsupported` rule or `render-profile-unsupported` |
 | Defaults of an unsupported version, outside the chart's bounds, or of the wrong type | `InvalidValueError` at construction |
 | A support declaration that cannot be meant | `InvalidValueError` at construction |
+| A raw document, a dictionary, or a string where `record_release` takes a context, a renderer reference, or a values reference | `TypeError` |
+| A release the single-release rules refuse - a credential-shaped workload name, version, binding name, or values file name - or a workload version no release can hold, at `record_release` | `ReleaseNotRecordedError`, every refusal at once, non-retryable |
 
 ### Rules that are not applied yet
 
@@ -540,9 +570,9 @@ Each is stated so that nobody reads the boundary as more than it is.
 | Not applied | Why | What it needs |
 |---|---|---|
 | A policy refusal | No policy engine exists, and `policy-denied` is a code nothing emits | A policy engine, and a category with a rule |
-| A contract whose version a release cannot record is refused | A release's workload version is narrower than a contract's, and nothing here derives a release identifier | The change that writes a release |
+| A contract whose version a release cannot record is refused by the render boundary | A release's workload version is narrower than a contract's. `record_release` refuses such a version when a release is recorded, since `V2-S1-004-PR1`; `prepare_render` still builds a context for it | A support rule tying a renderer to the release versions it records |
 | The defaults revision names the values supplied | No defaults file exists | The change that reads the defaults from the repository |
-| A binding value shaped like a lowercase credential is refused | The binding has no semantic credential rule, as [its document](../contracts/environment-binding.md#secrets) states | A semantic rule on bindings |
+| A binding value shaped like a lowercase credential is refused by the render boundary | The binding has no semantic credential rule, as [its document](../contracts/environment-binding.md#secrets) states. Since `V2-S1-004-PR1` the binding's name, the one binding value a release records, is refused when a release is recorded; every other binding value is excluded from provenance and still reaches a renderer | The change that generates values, which decides what generated output may carry |
 | Generated values do not duplicate contract intent that a hand-written values file also sets | No values are generated, so there is nothing to compare | The change that generates values |
 | Helm values are generated from the context | Out of this change's scope | A renderer |
 
@@ -563,7 +593,7 @@ Each is stated so that nobody reads the boundary as more than it is.
 ## Validation
 
 ```sh
-uv run --locked python -m pytest tests/domain/test_renderer_input_boundary.py tests/domain/test_renderer_refusals.py -q
+uv run --locked python -m pytest tests/domain/test_renderer_input_boundary.py tests/domain/test_renderer_refusals.py tests/domain/test_provenance_input_trust.py -q
 uv run --locked python -m pytest tests/domain tests/architecture -q
 uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy
 ```

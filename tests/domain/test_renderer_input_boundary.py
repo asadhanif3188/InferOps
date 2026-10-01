@@ -1255,7 +1255,7 @@ def test_the_render_package_imports_only_what_a_pure_boundary_needs() -> None:
     import that leaves the package reaches the workload, environment, or release
     domain, or the request context. ``tools`` is unreachable.
     """
-    assert len(module_trees()) == 9
+    assert len(module_trees()) == 10
     for path, tree in module_trees():
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
