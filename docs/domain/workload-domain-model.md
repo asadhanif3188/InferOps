@@ -178,7 +178,8 @@ version, rather than as the string it came from.
 
 A parse answers one question — can this be read as a domain object — so it raises
 on the first thing that cannot, rather than collecting findings. Collecting every
-reason at once is what the validation pipeline owes an author, and it is `PR2`'s.
+reason at once is what the validation pipeline owes an author, and `V1-S1-001-PR2` added
+it as `validate_workload_contract`.
 
 | Raised | When |
 |---|---|

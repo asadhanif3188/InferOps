@@ -29,8 +29,9 @@ the choice is surfaced, not made.
 same object, and reads exactly one member of the contract: ``spec.environment``.
 The contract's own fields - scaling, resources, model, and the rest - are neither
 read nor copied, and the binding has no attribute that could hold one. Combining a
-contract with a binding into release input is the renderer's, and no renderer
-exists.
+contract with a binding into render input is the renderer input boundary's, in
+``inferops.domain.render``; turning that into release values is a renderer's, and
+no renderer exists.
 
 Everything here is offline and deterministic: no file system, network, cluster,
 clock, or randomness. Refusals are returned sorted, so the same input produces the

@@ -202,9 +202,13 @@ less `spec.environment`, and each of the ten contract blocks that table says a b
 not carry is read here as workload intent and never as a binding value. A test compares
 this table with the code, and both binding tables with the binding rows.
 
-**Fields deliberately read into no value.** Eleven, each with its reason in the code. A
-test walks every field each schema defines and fails if one is in neither list, so a field
-added to either schema fails the build until somebody decides who owns it.
+**Fields deliberately read into no value.** Eleven, each with its reason in the code:
+nine of the fields the two schemas define, and two attributes of the defaults object,
+which has no schema. A test walks every field each schema defines - 39 in the
+WorkloadContract's, 35 read and 4 left out, and 11 in the binding's, 6 read and 5 left
+out - and fails if one is in neither list, so a field added to either schema fails the
+build until somebody decides who owns it. Another does the same over the defaults
+object's own fields.
 
 | Owner | Field | Why no value is read from it |
 |---|---|---|

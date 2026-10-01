@@ -1268,21 +1268,89 @@ def test_the_render_package_cannot_import_anything_at_run_time() -> None:
         assert (names | attributes).isdisjoint(dynamic), path.name
 
 
-def test_nothing_outside_the_domain_imports_the_render_package() -> None:
-    """The boundary is not wired to any delivery path: no API, adapter, tool, or script."""
-    pattern = re.compile(
-        r"inferops\.domain\.render\b|domain\.render\b|domain import [^\n]*\brender\b"
-    )
+RENDER_MODULE = "inferops.domain.render"
+
+
+def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool:
+    """Whether Python source imports ``inferops.domain.render``, by any spelling.
+
+    Read from the syntax tree, so a docstring that names the package is not an
+    import. A relative import is resolved against ``package``, the dotted parts of
+    the package the source lives in; with no package, relative imports cannot reach
+    the distribution and are ignored.
+    """
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            if any(alias.name.startswith(RENDER_MODULE) for alias in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0:
+                module = node.module or ""
+            elif package is None:
+                continue
+            else:
+                base = package[: len(package) - node.level + 1]
+                module = ".".join(part for part in (*base, node.module) if part)
+            names = {alias.name for alias in node.names}
+            if module.startswith(RENDER_MODULE) or (
+                module == "inferops.domain" and "render" in names
+            ):
+                return True
+    return False
+
+
+def test_nothing_outside_the_render_package_imports_it() -> None:
+    """The boundary is not wired to any delivery path: no API, adapter, tool, or script.
+
+    Python modules under ``src`` and ``tools`` are read for imports; shell, YAML, and
+    Terraform files under ``scripts``, ``charts``, ``deploy``, and ``infra`` for the
+    module path at all.
+    """
     offenders = []
-    for root in ("src", "tools", "scripts", "charts", "deploy", "infra"):
+    src = REPO_ROOT / "src"
+    for path in sorted(src.rglob("*.py")):
+        if PACKAGE_DIR in path.parents:
+            continue
+        package = path.parent.relative_to(src).parts
+        if imports_render_package(path.read_text(encoding="utf-8"), package):
+            offenders.append(path.relative_to(REPO_ROOT).as_posix())
+    for path in sorted((REPO_ROOT / "tools").rglob("*.py")):
+        if imports_render_package(path.read_text(encoding="utf-8"), None):
+            offenders.append(path.relative_to(REPO_ROOT).as_posix())
+    for root in ("scripts", "charts", "deploy", "infra"):
         for path in sorted((REPO_ROOT / root).rglob("*")):
-            if not path.is_file() or path.suffix not in {".py", ".sh", ".yaml", ".tf"}:
-                continue
-            if PACKAGE_DIR in path.parents:
-                continue
-            if pattern.search(path.read_text(encoding="utf-8", errors="replace")):
-                offenders.append(path.relative_to(REPO_ROOT).as_posix())
+            if path.is_file() and path.suffix in {".py", ".sh", ".yaml", ".tf"}:
+                text = path.read_text(encoding="utf-8", errors="replace")
+                if RENDER_MODULE in text:
+                    offenders.append(path.relative_to(REPO_ROOT).as_posix())
     assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import inferops.domain.render\n",
+        "from inferops.domain.render import build_render_context\n",
+        "from inferops.domain import render\n",
+        "from ..domain.render import RenderContext\n",
+        "from ..domain import render\n",
+    ],
+)
+def test_the_import_check_finds_each_spelling_of_an_import(source: str) -> None:
+    """The check above would find an import if one were added, in each form."""
+    assert imports_render_package(source, ("inferops", "api"))
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '"""Mentions inferops.domain.render in prose."""\n',
+        "from .render import render_rules\n",
+        "from ..domain import release\n",
+    ],
+)
+def test_the_import_check_ignores_what_is_not_an_import_of_it(source: str) -> None:
+    assert not imports_render_package(source, ("inferops", "api"))
 
 
 # --------------------------------------------------------------------------

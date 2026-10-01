@@ -20,8 +20,9 @@ from `1.0.0`.
   versioned `PlatformDefaults` set carries three API-tier settings whose bounds and
   defaults are the chart's. An ownership table names all 44 values of the normalized
   render context — 35 of workload intent, 3 platform defaults, 6 environment facts —
-  with one owner and one source each, and lists the eleven schema fields read into no
-  value with a reason; a test fails if either schema gains a field in neither list. The
+  with one owner and one source each, and lists the eleven fields read into no value —
+  nine from the two schemas and two of the defaults object — each with a reason; a test
+  fails if either schema gains a field in neither list. The
   precedence rule is that there is none: no layer overrides another. `build_render_context`
   selects the binding with the binding domain's own rules and reads each value from its
   owner, and its sources are what a release records — a release built from them passes

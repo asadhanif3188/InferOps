@@ -29,11 +29,13 @@ deployment. It adds no record to the evidence pack and moves no claim.
 
 - **`src/inferops/domain/render/`**, seven modules: `acceptance` (the validated contract
   and the ten profile conditions), `defaults` (versioned platform defaults), `ownership`
-  (the 44-row ownership table, the eleven exclusions, and the empty override set),
+  (the 44-row ownership table, the eleven exclusions - nine schema fields and two
+  attributes of the defaults object - and the empty override set),
   `normalization` (the render context and the boundary function), `renderer` (the
   interface), `errors` (the one refusal the boundary raises itself), and `__init__`.
-- **`tests/domain/test_renderer_input_boundary.py`**: 59 test functions, 111 tests once
-  parametrized.
+- **`tests/domain/test_renderer_input_boundary.py`**: 61 test functions, 119 tests once
+  parametrized - 59 and 111 at the first commit; the review fixes added the two
+  import-check probes below.
 - **[`docs/domain/renderer-input-boundary.md`](../../domain/renderer-input-boundary.md)**,
   the published document. Its ownership and profile-condition tables are compared with the
   code by the suite.
@@ -120,7 +122,8 @@ committed:
 
 ## Checks that the new tests are not decorative
 
-Thirteen defects were planted in the package, one at a time, the suite run in full, and
+Thirteen defects were planted in the package at the first commit, when the suite had 111
+tests, one at a time, the suite run in full, and
 the file restored byte for byte (its SHA-256 checked afterwards). Every one was caught:
 
 | Defect, exactly as made | Of 111 |
@@ -137,10 +140,17 @@ the file restored byte for byte (its SHA-256 checked afterwards). Every one was 
 | The binding digest is taken of `bindings[0]` | 4 failed |
 | `evidence.proofRefs` is marked always present | 10 failed |
 | `metadata.owner` is dropped from the binding exclusions | 1 failed |
-| The boundary also accepts an unvalidated `WorkloadContract` | 35 failed |
+| `build_render_context` wraps a parsed `WorkloadContract` into a `ValidatedWorkloadContract` with the private sentinel instead of refusing it | 1 failed |
 
-Four defects are caught by exactly one test each. That test is the one written for the
+Five defects are caught by exactly one test each. That test is the one written for the
 property, and the count is stated so nobody reads 111 tests as 111 guards on each.
+
+The last row is corrected. The first commit's record said "the boundary also accepts an
+unvalidated `WorkloadContract`: 35 failed". The edit actually made was to widen the
+`isinstance` check to `(ValidatedWorkloadContract, WorkloadContract)` in a module that
+does not import `WorkloadContract`, so every call raised `NameError` and the 35 failures
+measured that crash, not the defect. The reviewer could not reproduce 35; the row above is
+the defect made properly, in a copy outside the repository, and one test catches it.
 
 ## Commands
 
@@ -149,17 +159,75 @@ Run from Git Bash on Windows, with the locked environment.
 | Command | Result |
 |---|---|
 | `uv run --locked ruff check .` | All checks passed |
-| `uv run --locked ruff format --check .` | 568 files already formatted |
+| `uv run --locked ruff format --check --no-cache .` | 569 files already formatted. The first commit's record said 568; see the review section |
 | `uv run --locked mypy` | No issues in 311 source files |
-| `uv run --locked python -m pytest tests/domain/test_renderer_input_boundary.py -q -p no:cacheprovider` | 111 passed |
+| `uv run --locked python -m pytest tests/domain/test_renderer_input_boundary.py -q -p no:cacheprovider` | 111 passed at the first commit; 119 after the review fixes |
 | `uv run --locked python -m pytest tests/domain tests/architecture tests/contracts tests/testing tests/security -q -p no:cacheprovider` | 12,352 passed, 31 skipped, and 2 failed: the link checks of the changelog and the proof index, which pointed at this record before it was written. Both resolve once it exists |
 | `python -B -m tools.evidence_index --gate` | Exit 0; the six digests above, unchanged |
 | `gitleaks dir <path> --config .gitleaks.toml --redact`, for the new package, the new suite, and the new document, with gitleaks 8.30.1 (the version the workflow pins) | No leaks found in any |
 | `git diff --cached --check` | Exit 0, no output |
 
-**Not run before the first commit:** the full default lane. It runs after the commit, so
-the link suite collects the new files, and its result is recorded with the independent
-review.
+**Not run before the first commit:** the full default lane. It ran on the first commit,
+`2f78415`, so the link suite collected the new files:
+`uv run --locked python -B -m pytest -q -rs -p no:cacheprovider --basetemp=<scratch>` gave
+**16,414 passed, 33 skipped, 14 deselected, none failed**, in 19 min 52 s. The skips are
+the ones earlier records name, such as symbolic links this host does not permit.
+
+**After the review fixes**, which touched documents, one docstring, and this suite, the
+full lane was not run again. The suites that read every touched file were:
+`uv run --locked python -m pytest tests/domain tests/contracts tests/architecture tests/testing tests/security -q -p no:cacheprovider`
+gave **12,365 passed, 31 skipped, none failed**, in 11 min 39 s, with `ruff check`,
+`ruff format --check --no-cache` (569 files), and `mypy` (311 source files) clean again.
+
+## What the independent review found
+
+A reviewer outside the change read the commit, recounted every figure, re-planted the
+defects in a copy outside the repository, planted ten of their own, and grepped the
+repository for statements the change should have updated. They found no defect in the
+code, the tests, or the scope, and nothing private in the diff. What they found, and what
+the first commit got wrong:
+
+- **"Eleven schema fields" was false.** The changelog and the commit message called all
+  eleven exclusions schema fields; nine are (four of the WorkloadContract's, five of the
+  binding's), and two are attributes of the defaults object, which has no schema. The
+  changelog, the boundary document, and this record now say so. The commit message cannot
+  be changed, and this is its correction.
+- **The thirteenth planted defect was not the defect it was named for.** See the
+  correction under the defect table: 35 was a `NameError`, and the real defect fails 1 test.
+- **568 did not reproduce.** `ruff format --check --no-cache .` reports 569 files, in the
+  working tree and in an archive of `2f78415` alike. Where the first count of 568 came
+  from could not be established, so it is replaced rather than explained.
+- **Statements still stale.** The binding selection module's docstring still said
+  combining a contract with a binding was a renderer's, and the binding fixtures' README
+  that nothing consumes a binding; both now name the render boundary. One bullet in the
+  binding document had lost its wrapping.
+- **A neighbouring statement was already wrong.** The root README's workload domain model
+  row said the validation rule pipeline is not implemented, and the workload domain
+  document said collecting every finding is "`PR2`'s". The pipeline has existed since
+  `V1-S1-001-PR2`, and the new paragraph beside them says it has seven rules, so both now
+  say what exists.
+
+**The fix broke one of this change's own tests, and the test was the defect.** The
+corrected selection docstring names `inferops.domain.render` in prose, and the check that
+nothing outside the package imports it was a text search, so it failed on a docstring.
+It now reads Python imports from the syntax tree, resolving relative imports, and still
+searches shell, YAML, and Terraform files as text. Two new parametrized tests show it
+finds each of five spellings of an import and ignores prose, an unrelated `render`
+module, and a sibling package. It also now covers modules inside the domain, so its name
+changed from "outside the domain" to "outside the render package".
+
+Accepted as they are, with the reason: the suite anchors on headings and bold sentences in
+two documents, and fails loudly if they are reworded; it sets the workload package's
+compatibility matrix at import, as the workload validation suite already does; and the
+run-time import check names `open`, `eval`, `exec`, `__import__`, and `importlib` but not
+`getattr` or `compile`, because the absolute-import allowlist is the guard and the name
+check only closes the obvious route.
+
+The reviewer's own ten defects were each caught - a dropped accelerator-count condition
+(2 failed), a dropped serving-capability condition (2), a wrong `api.replicas` source
+(27), lists instead of tuples (3), an optional value filled in (6), a plain dict instead of
+a read-only mapping (1), a wrong defaults revision in the sources (23), a duplicated table
+row (2), a millisecond floor of 0 (1), and a boolean accepted as an integer (1).
 
 ## Privacy and publicability
 
