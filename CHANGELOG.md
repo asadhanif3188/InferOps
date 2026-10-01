@@ -10,6 +10,32 @@ from `1.0.0`.
 
 ### Added
 
+- **Render refusals and ownership-conflict detection.** `V2-S1-003-PR2` gave the renderer
+  input boundary one canonical refusal: a `RenderRefused` carrying every finding of every
+  step at once, each with a category, a canonical code, and a rule identifier, sorted so
+  the first is the one to fix. Seven categories separate an unsupported version, an
+  unsupported profile, a shape the schema refuses, a semantic rule, an incompatible model
+  and runtime, a missing binding, and an ownership conflict; policy has none, because
+  nothing can refuse on policy. Twenty-one rules: fifteen keep the identifier and code
+  the workload contract or the binding domain already publishes, and six are new. Codes
+  stay `contract-invalid` and `version-unsupported`, except an unsupported profile, which
+  is `capability-unavailable`, as ADR 0010 answers a capability that was never built.
+  Every leaf of the contract, the defaults, and the selected binding must be a value the
+  ownership table assigns to that input or a field it leaves out; one owned by another
+  layer is refused as `render-ownership-conflict` with neither value chosen, and one
+  nobody owns as `render-value-unowned` rather than dropped. All 88 pairings of a value
+  with a layer that does not own it are refused; no committed valid input reaches the
+  check, because each parser refuses an undefined field first, and a test says so. A
+  `RendererSupport` declares the versions and profiles a renderer takes;
+  `prepare_render` is the canonical path and `render_with` calls a renderer only after
+  every check passed, so a refused render produces no output. `build_render_context`
+  now refuses a selection failure canonically instead of passing the binding domain's
+  error through. [The boundary's document](docs/domain/renderer-input-boundary.md)
+  publishes the refusal matrix and the field-ownership matrix for the reference
+  workload, both compared with the code. No renderer exists, no values are generated, no
+  claim moves, and every check is static (`C0`); [the validation
+  record](docs/proof/domain/v2-s1-003-pr2-validation.md) says what was run.
+
 - **The renderer input boundary.** `V2-S1-003-PR1` added `inferops.domain.render`: the
   validated, typed input a renderer may be given, and nothing after it. A parsed
   WorkloadContract becomes render input only through `validate_for_render`, which applies

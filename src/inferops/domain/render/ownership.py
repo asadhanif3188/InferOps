@@ -20,9 +20,10 @@ owns, is empty. A value has one owner, a second layer has no field to supply it
 from, and so there is no order in which a later value could win. That is the rule
 the binding's schema already states in its shape - it has no field for a contract
 value - extended to the defaults, and it is what makes "last value wins"
-impossible rather than merely discouraged. Detecting an attempt to own one value
-twice, and refusing it, is a later change; what this module fixes is that the
-answer to "who owns this value" has exactly one entry.
+impossible rather than merely discouraged. An input that supplies a value it does
+not own anyway is refused, by ``conflicts``, rather than read or ignored: the
+answer to "who owns this value" has exactly one entry, and a second answer is a
+refusal.
 
 **Names are semantic, not copied paths.** A context field is named for what it
 means - ``api.replicas``, ``serving.replicas.minimum`` - rather than for where it

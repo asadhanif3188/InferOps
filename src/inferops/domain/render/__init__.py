@@ -20,8 +20,16 @@ produced:
    digest of every input.
 3. A :class:`Renderer` takes that context. None exists yet.
 
+:func:`prepare_render` runs the first two steps as one, for a renderer's declared
+:class:`RendererSupport`, and refuses with a :class:`RenderRefused` carrying every
+finding of every step under one canonical vocabulary: a category, a code, and a
+rule identifier each. :func:`render_with` calls a renderer only once that has
+passed, so a refusal leaves no output behind.
+
 The ownership table and the precedence rule - that no layer overrides another -
-are in ``ownership``; the defaults in ``defaults``; the refusal in ``errors``.
+are in ``ownership``; the refusal of an input that supplies a value it does not
+own in ``conflicts``; a renderer's declared support in ``support``; the defaults in
+``defaults``; the refusal vocabulary in ``errors``.
 
 The published document is ``docs/domain/renderer-input-boundary.md``.
 """
@@ -35,6 +43,7 @@ from .acceptance import (
     profile_condition_findings,
     validate_for_render,
 )
+from .conflicts import ownership_findings
 from .defaults import (
     MILLISECONDS_CEILING,
     MILLISECONDS_FLOOR,
@@ -44,12 +53,25 @@ from .defaults import (
     ApiDefaults,
     PlatformDefaults,
 )
-from .errors import RenderBoundaryError, WorkloadNotAcceptedError
+from .errors import (
+    CAPABILITY_UNAVAILABLE,
+    CONTRACT_INVALID,
+    RENDER_RULES,
+    VERSION_UNSUPPORTED,
+    RefusalCategory,
+    RenderBoundaryError,
+    RenderFinding,
+    RenderRefused,
+    RenderRule,
+    RuleOrigin,
+    WorkloadNotAcceptedError,
+)
 from .normalization import (
     RenderContext,
     RenderField,
     RenderSources,
     build_render_context,
+    prepare_render,
 )
 from .ownership import (
     EXCLUDED_SOURCE_FIELDS,
@@ -61,9 +83,12 @@ from .ownership import (
     owner_of,
     ownership_of,
 )
-from .renderer import Renderer
+from .renderer import Renderer, render_with
+from .support import RendererSupport
 
 __all__ = [
+    "CAPABILITY_UNAVAILABLE",
+    "CONTRACT_INVALID",
     "EXCLUDED_SOURCE_FIELDS",
     "MILLISECONDS_CEILING",
     "MILLISECONDS_FLOOR",
@@ -72,23 +97,34 @@ __all__ = [
     "OVERRIDES",
     "PROFILE_CONDITIONS",
     "RENDER_FIELD_OWNERSHIP",
+    "RENDER_RULES",
     "SUPPORTED_PLATFORM_DEFAULTS_VERSIONS",
+    "VERSION_UNSUPPORTED",
     "ApiDefaults",
     "FieldOwnership",
     "Layer",
     "PlatformDefaults",
     "ProfileCondition",
+    "RefusalCategory",
     "RenderBoundaryError",
     "RenderContext",
     "RenderField",
+    "RenderFinding",
+    "RenderRefused",
+    "RenderRule",
     "RenderSources",
     "Renderer",
+    "RendererSupport",
+    "RuleOrigin",
     "ValidatedWorkloadContract",
     "WorkloadNotAcceptedError",
     "build_render_context",
     "may_override",
     "owner_of",
+    "ownership_findings",
     "ownership_of",
+    "prepare_render",
     "profile_condition_findings",
+    "render_with",
     "validate_for_render",
 ]

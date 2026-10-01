@@ -1,9 +1,10 @@
 # Renderer input boundary
 
-Status: **implemented in the platform domain** by `V2-S1-003-PR1`. This page says what a
-renderer may be given, who owns each value it may read, the precedence between those
-owners, and how the values are gathered into one deterministic context. **No renderer
-exists.** Nothing in this repository generates Helm values, writes a
+Status: **implemented in the platform domain** by `V2-S1-003-PR1`, with its refusals by
+`V2-S1-003-PR2`. This page says what a renderer may be given, who owns each value it may
+read, the precedence between those owners, how the values are gathered into one
+deterministic context, and what a render is refused with when any of that fails. **No
+renderer exists.** Nothing in this repository generates Helm values, writes a
 RenderedWorkloadRelease, writes to Git, or reaches a cluster, and building a render
 context is not evidence that anything will. Every check behind this page is static, at
 evidence level C0.
@@ -11,12 +12,13 @@ evidence level C0.
 | Property | Value |
 |---|---|
 | Package | [`src/inferops/domain/render/`](../../src/inferops/domain/render/__init__.py) |
-| Entry points | `validate_for_render`, then `build_render_context`; a `Renderer` takes the result |
+| Entry points | `prepare_render`, the canonical path, or its two steps `validate_for_render` and `build_render_context`; `render_with` calls a `Renderer` on the result |
 | Inputs | A parsed [WorkloadContract](../contracts/workload-contract.md), one set of platform defaults, and the parsed [EnvironmentBindings](../contracts/environment-binding.md) supplied together |
 | Output | A `RenderContext`: 44 named values, each with its one owner and its source, and the identity and digest of every input |
+| Refusal | A `RenderRefused` carrying every finding at once, each with a category, a canonical code, and a rule identifier, before any output |
 | Renderer | An interface only; no implementation |
-| Tests | [`tests/domain/test_renderer_input_boundary.py`](../../tests/domain/test_renderer_input_boundary.py) |
-| Validation record | [`v2-s1-003-pr1-validation.md`](../proof/domain/v2-s1-003-pr1-validation.md) |
+| Tests | [`tests/domain/test_renderer_input_boundary.py`](../../tests/domain/test_renderer_input_boundary.py) and [`tests/domain/test_renderer_refusals.py`](../../tests/domain/test_renderer_refusals.py) |
+| Validation records | [`v2-s1-003-pr1-validation.md`](../proof/domain/v2-s1-003-pr1-validation.md) and [`v2-s1-003-pr2-validation.md`](../proof/domain/v2-s1-003-pr2-validation.md) |
 
 ## Why a boundary before a renderer
 
@@ -43,6 +45,15 @@ Three steps, and each takes only what the one before it produced:
 A raw mapping, a parsed contract that skipped step 1, and a raw defaults or binding
 document are each refused at step 2 with a `TypeError`: they are programming errors, not
 documents to report on.
+
+**`prepare_render` runs steps 1 and 2 as one, for one renderer.** It takes a parsed
+contract, the defaults, the bindings, and the renderer's declared `RendererSupport`, and
+gathers every finding of every step - the renderer's support, the contract's rules, the
+selection, and the ownership check - into one `RenderRefused`, so a caller fixes
+everything in one pass rather than one refusal per run. A step that needs the selected
+binding runs once there is one. `render_with` calls `prepare_render` with a renderer's own
+support and calls the renderer only when nothing was found; see
+[the refusals](#what-a-render-is-refused-with).
 
 ## What validated means
 
@@ -138,9 +149,9 @@ direction: the set of pairs in which one layer may replace a value another owns,
 have no field to supply it from, and so there is no order in which a later value could win.
 That is the rule the binding's schema already states in its shape - it has no field for a
 contract value - extended to the defaults. It makes "last value wins" impossible rather
-than discouraged. Detecting an attempt to supply one value from two layers, and refusing
-it, is a later change; what this table fixes is that the answer to "who owns this value"
-has exactly one entry.
+than discouraged: the answer to "who owns this value" has exactly one entry, and
+[an input that supplies a second answer is refused](#ownership-conflicts), neither value
+chosen.
 
 Each name is semantic - `api.replicas`, `serving.replicas.minimum` - rather than a copied
 path, so two layers claiming one meaning would claim one name. No name is another's
@@ -276,22 +287,251 @@ The tests assert each property directly:
 ## The renderer interface
 
 A `Renderer` has a `revision` - the full commit it runs from, which a release records in
-`source.renderer.revision` - and a `render` method whose one input is a `RenderContext`.
-It is given no contract, binding, defaults set, raw document, path, or client: everything
-it may read is in the context, with its owner. What it returns is a type parameter rather
-than a decision, because the output is a later change. Writing that output to a GitOps
-destination and reconciling it into a cluster are other components' work, and nothing
-here does either.
+`source.renderer.revision` - a `support` naming the versions and profiles it takes, and a
+`render` method whose one input is a `RenderContext`. It is given no contract, binding,
+defaults set, raw document, path, or client: everything it may read is in the context, with
+its owner. What it returns is a type parameter rather than a decision, because the output
+is a later change. Writing that output to a GitOps destination and reconciling it into a
+cluster are other components' work, and nothing here does either.
 
-## What is refused today, and with what
+**`render_with` is the one way to call a renderer on documents.** It asks `prepare_render`
+for the context with the renderer's own support, and calls `render` only when every check
+has passed. A refused render never reaches the renderer, so there is no partial output to
+discard, and nothing in the package writes anywhere: a test runs every rule's refusal
+through it with a renderer that records its calls, and the record stays empty.
+
+### What a renderer declares it takes
+
+A `RendererSupport` lists the contract versions, binding versions, platform-defaults
+versions, and profiles a renderer takes. An input outside any of them is refused before
+the renderer is given anything: one built for today's contract cannot be assumed to render
+a later version correctly, and one built for `synchronous-llm` has nothing to say about a
+`mock-llm` workload. The binding's version is checked on the binding selected, not on every
+binding supplied.
+
+The declaration is the renderer's, not the domain's. It may name a version the domain does
+not implement yet - a renderer built for a later contract version refuses today's
+documents, which is the right outcome rather than an error in the declaration - and that
+is also how the version refusals are reached in the tests, since the domain implements one
+version of each input. What is refused at construction, with `InvalidValueError`, is a
+declaration that cannot be meant: an empty set, a set that is not a `frozenset`, an empty
+or non-string version, or a profile that is not a `Profile`. **No renderer exists, so no
+declaration exists in the repository**; the tests build them.
+
+## What a render is refused with
+
+A render is refused with a `RenderRefused`, carrying every finding at once. Each finding
+has three parts, kept apart as [the contract's canonical error
+model](../contracts/workload-contract.md#rejection-and-canonical-errors) keeps them apart,
+plus where and why:
+
+| Part | What it is for |
+|---|---|
+| **Category** | Which kind of refusal it is, out of the seven an operator has to tell apart. Stable, and the dimension a test or a dashboard groups by |
+| **Canonical code** | The coarse public vocabulary a client switches on. It does not grow when a rule is added |
+| **Rule identifier** | Which rule refused it, looked up in [the refusal matrix](#the-refusal-matrix) |
+| **Field** | Where: the input by its role - `contract`, `bindings[i]` for the i-th binding supplied, `platformDefaults`, or `selection` for the caller's own request - then the path inside it |
+| **Reason** | Why, in the rule's own words. It never repeats a value read out of an input |
+
+The seven categories, in the order findings are sorted and a reader should fix them:
+
+| Category | Code | Means |
+|---|---|---|
+| `version-unsupported` | `version-unsupported` | The renderer does not take the version of an input |
+| `profile-unsupported` | `capability-unavailable` | The renderer was not built for the contract's profile |
+| `shape-invalid` | `contract-invalid` | The contract breaks a condition the published schema applies - at this boundary, only the profile conditions the domain parser does not |
+| `semantic-invalid` | `contract-invalid` | The contract breaks a cross-field rule, or the bindings supplied together contradict each other |
+| `model-runtime-incompatible` | `contract-invalid` | The pinned runtime and model artifact do not go together under the compatibility matrix |
+| `binding-missing` | `contract-invalid` | No single binding serving the contract could be selected |
+| `ownership-conflict` | `contract-invalid` | An input supplies a value it does not own |
+
+Findings are sorted by category in that order, then by field - list indices as numbers -
+then by rule. The refusal's own `code` and `category` are its first finding's, the one to
+resolve first, so a renderer that does not take a contract's version answers
+`version-unsupported` however much else is wrong. Every render refusal is non-retryable,
+and each finding carries the request and correlation identifiers the caller supplied. The
+same inputs are refused with the same findings in the same order.
+
+**The vocabulary reuses before it adds.** A refusal that another domain already publishes
+keeps that domain's rule identifier and code: the semantic pipeline's seven rules, the three
+structural rules the profile conditions are refused under, and the binding domain's five set
+and selection rules. A test holds each reused identifier to its publisher's - the workload
+rule matrix and the binding domain's table - code for code, and holds a reused workload rule
+to `shape-invalid` exactly when the matrix calls it structural. Six rules are this package's
+own, for what no other domain can see, and a test holds them apart from every identifier the
+offline validator, the binding domain, and the release domain publish.
+
+**Why `capability-unavailable` for a profile.** It is the first domain refusal to carry a
+code beyond the two an offline document check reaches. The contract is not invalid and its
+version is supported; the renderer was simply never built for that profile. The canonical
+vocabulary already has the code for that case: [ADR 0010](../architecture/decisions/ADR-0010-inference-api-compatibility-surface.md#d8--error-mapping-and-the-counter-inferops-owns)
+answers a request for streaming, a capability V1 never built, with `capability-unavailable`
+and retryable `false`, and this is the same shape of refusal. A test holds every render code
+inside the codes the API serves, and `render-profile-unsupported` is the only rule that
+carries this one.
+
+**What is not a category.** Policy refusal: no policy engine exists, ADR 0010 records
+`policy-denied` as a code nothing emits, and a category with no rule would claim a check
+that nothing makes. A test asserts no category names one. A document that cannot be
+parsed is not a render refusal either: the boundary takes parsed objects only, and each
+parser refuses a malformed or unsupported-version document first, in its own vocabulary.
+
+### The refusal matrix
+
+Every rule a render can be refused under, in category order. "Published by" says which
+vocabulary owns the identifier. Each row has an input in the tests that is refused under
+exactly that rule and no other, through the canonical path.
+
+| Rule | Category | Code | Published by | Refuses |
+|---|---|---|---|---|
+| `render-contract-version-unsupported` | `version-unsupported` | `version-unsupported` | `render` | The renderer does not take the contract's version |
+| `render-binding-version-unsupported` | `version-unsupported` | `version-unsupported` | `render` | The renderer does not take the selected binding's version |
+| `render-defaults-version-unsupported` | `version-unsupported` | `version-unsupported` | `render` | The renderer does not take the platform defaults' version |
+| `render-profile-unsupported` | `profile-unsupported` | `capability-unavailable` | `render` | The renderer was not built for the contract's profile |
+| `field-required` | `shape-invalid` | `contract-invalid` | `workload-contract` | A profile's own block is absent |
+| `value-not-permitted` | `shape-invalid` | `contract-invalid` | `workload-contract` | A value the schema forbids for the contract's profile |
+| `value-out-of-range` | `shape-invalid` | `contract-invalid` | `workload-contract` | A mock citing proof references |
+| `replica-range-inverted` | `semantic-invalid` | `contract-invalid` | `workload-contract` | The minimum replica count exceeds the maximum |
+| `secret-value-in-locator` | `semantic-invalid` | `contract-invalid` | `workload-contract` | A secret reference shaped like a pasted credential |
+| `secret-ref-name-duplicated` | `semantic-invalid` | `contract-invalid` | `workload-contract` | Two secret entries declare the same logical name |
+| `mock-secret-ref-declared` | `semantic-invalid` | `contract-invalid` | `workload-contract` | A mock-llm workload declares a secret reference |
+| `binding-identity-duplicated` | `semantic-invalid` | `contract-invalid` | `environment-binding` | Two bindings supplied together declare the same environment and name |
+| `binding-destination-overlaps` | `semantic-invalid` | `contract-invalid` | `environment-binding` | Two bindings supplied together share a GitOps destination |
+| `runtime-unregistered` | `model-runtime-incompatible` | `contract-invalid` | `workload-contract` | The runtime image has no entry in the compatibility matrix |
+| `model-artifact-format-unknown` | `model-runtime-incompatible` | `contract-invalid` | `workload-contract` | The model artifact is in no format the matrix recognises |
+| `runtime-model-incompatible` | `model-runtime-incompatible` | `contract-invalid` | `workload-contract` | The pinned runtime does not accept the pinned artifact's format |
+| `binding-not-found` | `binding-missing` | `contract-invalid` | `environment-binding` | No binding serves the contract's environment, or none has the name asked for |
+| `binding-selection-ambiguous` | `binding-missing` | `contract-invalid` | `environment-binding` | Several bindings serve the contract's environment and none was named |
+| `binding-environment-mismatch` | `binding-missing` | `contract-invalid` | `environment-binding` | The binding named serves a different environment |
+| `render-ownership-conflict` | `ownership-conflict` | `contract-invalid` | `render` | An input supplies a value another layer owns |
+| `render-value-unowned` | `ownership-conflict` | `contract-invalid` | `render` | An input supplies a value no row of the ownership table assigns to it |
+
+The three structural rules are reached at this boundary only through the profile
+conditions, which is why the matrix describes them in those terms; elsewhere they are the
+offline validator's general structural rules.
+
+## Ownership conflicts
+
+The ownership table gives every render value one owner, and normalization reads each value
+from its owner alone, so no value inside the context can be overridden. On its own that
+would let a value somewhere else pass in silence: an input carrying a value it does not own
+would simply not be read, and its author would believe it had taken effect. So before a
+context is built, every leaf of each input's JSON form - the contract, the platform
+defaults, and the selected binding - must be a value the table assigns to that input, or a
+field the table leaves out of it with a reason. A leaf that is neither is refused:
+
+- **`render-ownership-conflict`** - the leaf is a value another layer owns: its path is
+  that layer's source path for it, or the value's own name. A binding carrying
+  `spec.scaling.minimumReplicas` claims the workload's replica range; defaults carrying
+  `api.replicas` claim the binding's API replica count. The render is refused, the finding
+  names the value and its owner, and **neither value is chosen** - that is the rule against
+  silent last-value-wins, applied to the inputs rather than only inside the context.
+- **`render-value-unowned`** - the leaf is a value no layer owns, or an input's own value at
+  a path the table does not read it from. Rendering without it would drop a value somebody
+  wrote, so it is refused rather than ignored.
+
+A leaf is any value that is not an object, an empty object included, or an object the table
+names as a whole - the contract's annotations, the one open map, left out as the non-normative
+extension point whatever its keys say.
+
+**The path is the input's meaning.** The contract and the binding share three paths, and in
+a binding each means the binding's own thing: `metadata.name` is the binding's name,
+`metadata.owner` the team that owns its facts, and `spec.environment` the selection key,
+which selection has already required to equal the contract's. A binding carrying them is a
+binding, not a claim on the workload's values. A test asserts these three are the only
+shared paths.
+
+**What the tests reach, and what reaches it today.** For each of the 44 values and each of
+the two layers that do not own it, an input of that layer supplying the value by its name is
+refused as an ownership conflict naming the owner: 88 cases. Each of the 41 values the
+contract or the binding owns is also supplied at its owner's source path from the other of
+the two: 38 are refused and the three shared paths are not. **No parsed input reaches the
+check today.** Each parser refuses a field its schema does not define, so a binding writing
+a contract field is refused as `field-unknown` before it is a binding - [the committed
+fixture](../../contracts/environment/examples/invalid/workload-intent-in-binding.yaml) shows
+it - and a test walks every pairing of a committed valid contract and a binding serving it
+and finds nothing. The tests reach it with inputs of the boundary's own types whose JSON
+form carries one more value, which is what an input type that gained a field nobody gave an
+owner - a later version, a new defaults setting - would look like. The check is what keeps
+the rule on that day.
+
+## Field-ownership matrix for the reference workload
+
+The reference workload is `support-assistant`, the [`synchronous-llm` contract
+fixture](../../contracts/workload/examples/valid/synchronous-llm-local.yaml), on the
+[V1 reference environment's binding](../../contracts/environment/examples/valid/local-docker-desktop.yaml),
+`local-docker-desktop`, with the chart's API defaults read at a placeholder revision. Each
+row is a render value; a layer's cell is **owns** with the path the value is read from, or
+`refused`: an input of that layer supplying it is refused as an ownership conflict. The last
+column is the value the reference inputs give it, in the JSON form the context holds, or
+`absent` where the contract leaves an optional value out and nothing fills it in.
+
+| Value | Workload intent | Platform defaults | Environment binding | Reference value |
+|---|---|---|---|---|
+| `workload.id` | **owns** `metadata.name` | refused | refused | `"support-assistant"` |
+| `workload.version` | **owns** `metadata.version` | refused | refused | `"0.1.0"` |
+| `workload.owner` | **owns** `metadata.owner` | refused | refused | `"team-platform-demo"` |
+| `workload.profile` | **owns** `spec.profile` | refused | refused | `"synchronous-llm"` |
+| `workload.environment` | **owns** `spec.environment` | refused | refused | `"local"` |
+| `model.servingCapability` | **owns** `spec.model.servingCapability` | refused | refused | `"inferops-native-serving"` |
+| `model.ref` | **owns** `spec.model.modelRef` | refused | refused | `"qwen3-1-7b-q8-0"` |
+| `model.runtimeProfile` | **owns** `spec.model.runtimeProfile` | refused | refused | `"resource-conscious"` |
+| `resources.cpu` | **owns** `spec.resources.cpu` | refused | refused | `"6"` |
+| `resources.memory` | **owns** `spec.resources.memory` | refused | refused | `"3Gi"` |
+| `resources.accelerator.type` | **owns** `spec.resources.accelerator.type` | refused | refused | `"none"` |
+| `resources.accelerator.count` | **owns** `spec.resources.accelerator.count` | refused | refused | `0` |
+| `serving.replicas.minimum` | **owns** `spec.scaling.minimumReplicas` | refused | refused | `1` |
+| `serving.replicas.maximum` | **owns** `spec.scaling.maximumReplicas` | refused | refused | `1` |
+| `integrations.telemetry.capabilityRef` | **owns** `spec.integrations.telemetry.capabilityRef` | refused | refused | `"platform-telemetry"` |
+| `integrations.telemetry.required` | **owns** `spec.integrations.telemetry.required` | refused | refused | `true` |
+| `integrations.modelAccess.capabilityRef` | **owns** `spec.integrations.modelAccess.capabilityRef` | refused | refused | absent |
+| `integrations.modelAccess.required` | **owns** `spec.integrations.modelAccess.required` | refused | refused | absent |
+| `integrations.evaluation.capabilityRef` | **owns** `spec.integrations.evaluation.capabilityRef` | refused | refused | absent |
+| `integrations.evaluation.required` | **owns** `spec.integrations.evaluation.required` | refused | refused | absent |
+| `security.dataClassification` | **owns** `spec.security.dataClassification` | refused | refused | `"internal"` |
+| `security.secretRefs` | **owns** `spec.security.secretRefs` | refused | refused | `[]` |
+| `attribution.tenant` | **owns** `spec.attribution.tenant` | refused | refused | `"demo"` |
+| `attribution.costCenter` | **owns** `spec.attribution.costCenter` | refused | refused | `"demo-cost-center"` |
+| `evidence.runbookRef` | **owns** `spec.evidence.runbookRef` | refused | refused | `"docs/serving/feasibility-workflow.md"` |
+| `evidence.proofRefs` | **owns** `spec.evidence.proofRefs` | refused | refused | `["docs/proof/serving/v1-s0-003-pr2-runtime-feasibility.md"]` |
+| `runtime.imageReference` | **owns** `spec.synchronousLlm.runtime.imageReference` | refused | refused | `"ghcr.io/ggml-org/llama.cpp@sha256:100de626bdc5b7df898c12561eefaf557019d2746d5fc8d3f4d7fd24e15ad384"` |
+| `model.artifact.repository` | **owns** `spec.synchronousLlm.modelArtifact.repository` | refused | refused | `"Qwen/Qwen3-1.7B-GGUF"` |
+| `model.artifact.revision` | **owns** `spec.synchronousLlm.modelArtifact.revision` | refused | refused | `"90862c4b9d2787eaed51d12237eafdfe7c5f6077"` |
+| `model.artifact.file` | **owns** `spec.synchronousLlm.modelArtifact.file` | refused | refused | `"Qwen3-1.7B-Q8_0.gguf"` |
+| `model.artifact.sizeBytes` | **owns** `spec.synchronousLlm.modelArtifact.sizeBytes` | refused | refused | `1834426016` |
+| `model.artifact.sha256` | **owns** `spec.synchronousLlm.modelArtifact.sha256` | refused | refused | `"sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a"` |
+| `mock.ciOnly` | **owns** `spec.mockLlm.ciOnly` | refused | refused | absent |
+| `mock.determinism` | **owns** `spec.mockLlm.determinism` | refused | refused | absent |
+| `mock.fixtureRef` | **owns** `spec.mockLlm.fixtureRef` | refused | refused | absent |
+| `api.requestTimeoutMs` | refused | **owns** `api.requestTimeoutMs` | refused | `120000` |
+| `api.drainTimeoutMs` | refused | **owns** `api.drainTimeoutMs` | refused | `15000` |
+| `api.maxOutputTokens` | refused | **owns** `api.maxOutputTokens` | refused | `128` |
+| `destination.clusterProvider` | refused | refused | **owns** `spec.destination.clusterProvider` | `"docker-desktop"` |
+| `destination.namespace` | refused | refused | **owns** `spec.destination.namespace` | `"inferops-release"` |
+| `modelCache.class` | refused | refused | **owns** `spec.modelCache.class` | `"existing-claim"` |
+| `modelCache.claimName` | refused | refused | **owns** `spec.modelCache.claimName` | `"inferops-model-cache"` |
+| `api.replicas` | refused | refused | **owns** `spec.platform.apiReplicas` | `1` |
+| `gitops.destinationPath` | refused | refused | **owns** `spec.gitops.destinationPath` | `"gitops/environments/local-docker-desktop"` |
+
+37 values are present and 7 absent: the two optional integrations the contract does not
+declare, and the mock profile's three. A test builds the context from those inputs through
+the canonical path and fails if one cell of this table differs. The values are a committed
+fixture's, not a deployment's: nothing was rendered from them.
+
+## What is refused, and with what
 
 | Input | Refused with |
 |---|---|
-| A raw document where a contract, defaults set, or binding belongs | `TypeError` |
-| A parsed contract that did not pass `validate_for_render` | `TypeError` |
-| A contract failing a semantic rule or a profile condition | `WorkloadNotAcceptedError`, every finding with its published rule identifier, non-retryable |
-| No binding, several and none named, a name that does not exist, or a name serving another environment | The binding domain's `BindingSelectionError`, unchanged, with its own rule identifiers |
+| A raw document where a contract, defaults set, binding, or support declaration belongs | `TypeError` |
+| A parsed contract that did not pass `validate_for_render`, given to `build_render_context` | `TypeError` |
+| An object without a revision, a support, and a render method, given to `render_with` | `TypeError` |
+| A contract failing a semantic rule or a profile condition, at `validate_for_render` | `WorkloadNotAcceptedError`, every finding with its published rule identifier, non-retryable |
+| The same, through `prepare_render` or `render_with` | `RenderRefused`, under the same rule identifiers, categorised |
+| No binding, several and none named, a name that does not exist, a name serving another environment, or bindings that contradict each other | `RenderRefused`, under the binding domain's own rule identifiers |
+| An input that supplies a value it does not own | `RenderRefused`: `render-ownership-conflict` or `render-value-unowned` |
+| An input version or a profile the renderer does not declare | `RenderRefused`: a `render-*-version-unsupported` rule or `render-profile-unsupported` |
 | Defaults of an unsupported version, outside the chart's bounds, or of the wrong type | `InvalidValueError` at construction |
+| A support declaration that cannot be meant | `InvalidValueError` at construction |
 
 ### Rules that are not applied yet
 
@@ -299,12 +539,11 @@ Each is stated so that nobody reads the boundary as more than it is.
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| A canonical render refusal code for each refusal above | No render refusal vocabulary exists; the refusals above use the contract, binding, and value vocabularies they already have | A later change that maps each to a stable code |
-| An attempt to supply one value from two layers is refused | No layer has a field for another's value today, so no input can attempt it | Conflict detection over the ownership table, a later change |
-| A profile a renderer does not support is refused | No renderer exists to support or not support one; both validated profiles reach the context | The renderer's own refusal |
+| A policy refusal | No policy engine exists, and `policy-denied` is a code nothing emits | A policy engine, and a category with a rule |
 | A contract whose version a release cannot record is refused | A release's workload version is narrower than a contract's, and nothing here derives a release identifier | The change that writes a release |
 | The defaults revision names the values supplied | No defaults file exists | The change that reads the defaults from the repository |
 | A binding value shaped like a lowercase credential is refused | The binding has no semantic credential rule, as [its document](../contracts/environment-binding.md#secrets) states | A semantic rule on bindings |
+| Generated values do not duplicate contract intent that a hand-written values file also sets | No values are generated, so there is nothing to compare | The change that generates values |
 | Helm values are generated from the context | Out of this change's scope | A renderer |
 
 ## What this does not establish
@@ -315,13 +554,16 @@ Each is stated so that nobody reads the boundary as more than it is.
   values are derived.
 - **It proves nothing about an environment.** A binding selected into a context is not a
   binding whose cluster, namespace, or claim exists.
+- **It does not show a conflict arriving from a real input.** No parsed input can carry
+  one today; the ownership check is exercised with inputs built to carry one.
+- **It declares support for no renderer.** Every `RendererSupport` is a test's.
 - **Its evidence is static.** Every check runs in the default unit lane on committed files,
   at evidence level C0.
 
 ## Validation
 
 ```sh
-uv run --locked python -m pytest tests/domain/test_renderer_input_boundary.py -q
+uv run --locked python -m pytest tests/domain/test_renderer_input_boundary.py tests/domain/test_renderer_refusals.py -q
 uv run --locked python -m pytest tests/domain tests/architecture -q
 uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy
 ```
