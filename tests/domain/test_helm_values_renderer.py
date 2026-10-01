@@ -18,9 +18,11 @@ Seven things are asserted:
    defaults with and without the hand-written file, validate against the chart's
    values schema; with ``helm`` present they render exactly what the V1 real
    fixture renders once its environment is the contract's.
-5. **Every refusal has a case.** Each of the renderer's rules refuses an input
-   built for it, through ``render_with``, under exactly that rule, without quoting
-   a value and without returning anything.
+5. **Every refusal has a case.** Each of the renderer's chart rules refuses
+   twenty accepted contracts built for them, through ``render_with``, under exactly
+   that rule, without quoting a value and without returning anything; the support
+   checks ``render`` repeats are reached by calling it directly, the hand-written
+   values rule through ``manual_value_findings``, and one gap is measured instead.
 6. **Hand-written values cannot repeat contract intent.** The committed
    hand-written file sets no generated value; setting, replacing, or removing one
    is refused, and a sibling of one is not.
@@ -1038,6 +1040,41 @@ def test_a_refusal_carries_the_request_context() -> None:
     with pytest.raises(RenderRefused) as raised:
         renderer().render(context, request=request)
     assert all(finding.context is request for finding in raised.value.findings)
+
+
+def test_render_with_attaches_the_callers_request_to_the_renderers_findings() -> None:
+    """A request identifier supplied at the edge survives a refusal from the renderer."""
+    request = RequestContext(request_id="req-render", correlation_id="corr-render")
+    workload = mutated("replica range")
+    with pytest.raises(RenderRefused) as raised:
+        render_with(
+            renderer(), workload, defaults(), bindings_for(workload), context=request
+        )
+    assert raised.value.rule_ids() == ("render-capability-unsupported",)
+    assert all(finding.context == request for finding in raised.value.findings)
+    assert raised.value.findings[0].as_dict()["requestId"] == "req-render"
+
+
+def test_render_with_keeps_a_context_the_renderer_already_attached() -> None:
+    """Only a finding with no request context is given the caller's."""
+
+    class Attaching:
+        revision = GitRevision(RENDERER_REVISION)
+        support = HELM_VALUES_SUPPORT
+
+        def render(self, context: RenderContext) -> GeneratedHelmValues:
+            return renderer().render(context, request=RequestContext(request_id="own"))
+
+    workload = mutated("replica range")
+    with pytest.raises(RenderRefused) as raised:
+        render_with(
+            Attaching(),
+            workload,
+            defaults(),
+            bindings_for(workload),
+            context=RequestContext(request_id="edge"),
+        )
+    assert [f.context.request_id for f in raised.value.findings] == ["own"]
 
 
 def test_the_renderers_rules_are_published_with_their_categories_and_codes() -> None:

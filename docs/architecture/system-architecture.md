@@ -18,9 +18,9 @@ document describes the boundary V1 is held to; each box says what exists.
 > `V1-S3-011` installed the release on the `docker-desktop` reference provider and a
 > real completion came back through the release's own Service, and several hundred
 > more have been served through it since under declared load, failure, and
-> clean-clone experiments. **Deployment rendering is still unbuilt** — nothing turns
-> a validated contract document into release values, and a values file is written by
-> hand.
+> clean-clone experiments. **Deployment rendering is still unbuilt end to end** — a
+> validated contract document is turned into Helm values only in memory, since
+> `V2-S2-001-PR1`, and the values file a release is installed with is written by hand.
 >
 > Every result behind those sentences is one provider, one Windows host, CPU, and
 > one replica of each tier. The multi-replica profile was refused at the capacity
@@ -225,8 +225,9 @@ lives outside the domain in `src/inferops/adapters/`, which is the dependency
 direction this rule exists to fix. The adapter for the selected runtime, the API
 that composes one, the chart, and the prerequisite layer have all been built
 since, and `V1-S3-011` ran them together on the reference provider. What is still
-unbuilt is deployment rendering: nothing turns a validated document into release
-values, and a values file is written by hand.
+unbuilt end to end is deployment rendering: since `V2-S2-001-PR1` a validated
+document is turned into Helm values in memory, and nothing installs a release from them;
+the values file a release is installed with is written by hand.
 
 The rule has a visible consequence and it is worth stating rather than discovering:
 the composition point — the place that decides which adapter is live — is the one

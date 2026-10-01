@@ -3,8 +3,9 @@
 A renderer turns workload intent, platform defaults, and the facts of one
 environment into release output. This package is everything up to that point and
 nothing after it: it decides what a renderer may be given, who owns each value it
-may read, and how those values are gathered into one deterministic context. It
-renders nothing, writes nothing, and reads no file.
+may read, and how those values are gathered into one deterministic context - and
+the one renderer built against it, which returns generated values in memory. It
+writes nothing and reads no file.
 
 The path through it has three steps, and each takes only what the one before it
 produced:

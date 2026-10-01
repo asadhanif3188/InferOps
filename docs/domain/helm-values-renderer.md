@@ -191,8 +191,8 @@ and never quotes a value. Every finding is reported at once, in the boundary's o
 **The chart is narrower than the contract.** `CHART_VALUE_CONSTRAINTS` copies the chart
 schema's constraint for each of the 25 values written, and a test reads the schema and fails
 if one keyword differs. The contract accepts more than the chart in these places, and each
-is refused here rather than by Helm, each through `render_with` in a test, but for the
-last row:
+is refused here rather than by Helm. A test refuses an example of each through
+`render_with`, except the last row's, which no accepted input reaches today:
 
 | Contract accepts | Chart accepts | Example refused |
 |---|---|---|
@@ -310,7 +310,8 @@ on a cluster.
   still written by hand: nothing writes generated values where an install reads them.
   `deployment-values-derive-only-from-a-validated-document` stays planned.
 - **That the hand-written half is safe.** The check refuses a hand-written value that
-  repeats a generated one; it does not judge the others.
+  repeats a generated one; it does not judge the others. Nothing runs it on a release's
+  values: a test runs it on the committed reference file.
 - **Anything beyond the reference inputs' shape.** The golden file and the V1 comparison
   are one contract on two bindings of one environment.
 

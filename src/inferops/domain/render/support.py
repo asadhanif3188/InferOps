@@ -16,8 +16,8 @@ a declaration that cannot be meant - an empty set, or a member that is not a
 non-empty string or a :class:`~inferops.domain.workload.values.Profile` - because a
 renderer that supports nothing is a renderer that was not configured.
 
-**No renderer exists**, so no declaration exists in the repository; the tests build
-them.
+**One declaration exists in the repository**, the Helm values renderer's
+``HELM_VALUES_SUPPORT``; the tests build every other.
 """
 
 from __future__ import annotations

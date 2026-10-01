@@ -45,8 +45,10 @@ deployment. It adds no record to the evidence pack and moves no claim.
   test excludes the four rules no boundary step reaches.
 - **Documents** - the new [renderer page](../../domain/helm-values-renderer.md); the
   [boundary page](../../domain/renderer-input-boundary.md), its refusal matrix and its
-  "not applied yet" table; every page that said no renderer exists - the binding and
-  release documents, the contracts index, and both example indexes; the test inventory, the
+  "not applied yet" table; the pages that said no renderer exists - the binding and
+  release documents, the contracts index, both example indexes, and, after the review below,
+  the render and binding domains' docstrings, a release example's comment, the README, and
+  two architecture pages; the test inventory, the
   secret-scanning allowlist, the proof index, and the changelog.
 
 No schema, fixture under `contracts/`, chart file, template, ownership row, or provenance
@@ -64,7 +66,7 @@ policy changed.
 | Extend the existing chart contract rather than invent a parallel format | Yes: no chart file changed; every value written is one the chart already defines |
 | Story: identical inputs produce canonically identical values and provenance | Values: met for this renderer. Provenance: pending, owned by a later change |
 | Story: generated values remain compatible with V1 synchronous real serving | Met statically: the rendered manifests equal the V1 release's but for the environment label. Not shown on a cluster; a later change owns that |
-| Story: manual values do not duplicate claim-relevant contract intent | Met for the values the renderer generates: `manual_value_findings` refuses a hand-written value that sets, replaces, or removes one |
+| Story: manual values do not duplicate claim-relevant contract intent | Met for the committed reference file, which a test checks: `manual_value_findings` refuses a hand-written value that sets, replaces, or removes a generated one. Nothing runs it on a release's values yet |
 | Story: generated files contain no secret values | Met for what this change generates, in memory: no secret reference is rendered, and a credential-shaped string is refused. No file is written by the code yet |
 | Story: release IDs and digests are deterministic | Pending: no release is bound to generated values here |
 
@@ -95,7 +97,9 @@ one by name.
 does not exist". It is now an understatement: values are derived, in memory. The claim does
 not move - nothing installs generated values and no record cites them - and an edit to the
 register is a ledger operation that moves the current evidence digests, which this change
-has no record to justify. The change that moves the claim owns the sentence.
+has no record to justify. The same sentence is carried, unchanged, by the proof dashboard
+and the V1 evidence index, which are generated from the register. The change that moves
+the claim owns all three.
 
 ## What the checks caught before the first commit
 
@@ -178,6 +182,65 @@ placeholder found the two placeholders this section and the one above stood in f
 the lane ran. They were filled with the results, and that suite was run again over the
 record. The skips are the ones earlier records name, such as symbolic links this host
 does not permit.
+
+## What the independent review found
+
+A reviewer outside the change read the first commit, `606e605`, re-ran the linters and the
+four targeted suites, recounted every figure in this record and the documents, round-tripped
+its own awkward inputs through `canonical_yaml`, probed `manual_value_findings` and the
+quantity comparison at their edges, and scanned the added lines for private material. It
+found nothing it rated critical or high, three findings it rated medium, and four low.
+Every figure it recounted was correct.
+
+**Medium - a renderer's refusal lost the caller's request context.** `render_with` called
+`renderer.render(prepared)`, and the interface's `render` takes the context alone, so every
+finding the Helm values renderer made through `render_with` carried an empty request
+context while the boundary's findings carried the caller's. The one test of the request
+context called `render` directly. *Fixed in code:* `render_with` now re-raises a renderer's
+refusal with the caller's context attached to each finding that carries none, and leaves a
+finding the renderer attached its own context to as it is. Two tests reach it through
+`render_with`. The interface is unchanged, so every existing renderer double still fits it.
+
+**Medium - "every page that said no renderer exists" was not true.** The first commit
+corrected the pages it found, and the review found more:
+`src/inferops/domain/render/renderer.py`, `support.py`, and the package docstring; the
+binding domain's `selection.py`; a second bullet of the binding document; the contracts
+index; and the comment in the release example fixture for `local-docker-desktop`. **What
+the first commit got wrong** is its "What changed" list, which said every such page was
+corrected - a sweep it had not made. That list is corrected in place, and each page is now
+corrected; a search of `src`, `docs`, `contracts`, and the
+README for "no renderer exists" finds only records of earlier changes.
+
+**Medium - "nothing turns a validated document into release values" was left in the README
+and two architecture pages.** It is now false: values are derived, in memory. Each now says
+deployment rendering is unbuilt *end to end*, that the renderer derives values in memory,
+and that the values a release is installed with are written by hand.
+
+**Low.** The claim register's stale limitation is also carried, unchanged, by the proof
+dashboard and the evidence index, which are generated from it; the paragraph above now names
+them. The sentence leading the renderer page's "narrower than the contract" table now says
+plainly that the last row is not reached. The new suite's docstring no longer says every
+rule is refused through `render_with`. And the manual-values criterion is met for the
+committed reference file, which a test checks: nothing runs the check on a release's values,
+and the renderer page now says so.
+
+**Run again after the fixes:** `ruff check`, `ruff format --check --no-cache`, `mypy`, the
+domain, testing, architecture, and contract suites, the gate, gitleaks over every changed
+path, `git diff --check`, and the full default lane, with the results below.
+
+| Command, after the fixes | Result |
+|---|---|
+| `uv run --locked ruff check .` | All checks passed |
+| `uv run --locked ruff format --check --no-cache .` | 584 files already formatted |
+| `uv run --locked mypy` | No issues in 320 source files |
+| `uv run --locked python -m pytest tests/domain tests/testing tests/architecture tests/contracts -q -p no:cacheprovider` | 12,006 passed, 31 skipped; the new suite alone 161 passed |
+| `python -B -m tools.evidence_index --gate` | Exit 0; the six digests above, unchanged |
+| gitleaks 8.30.1 over every path changed since `209ba1c` | No leaks found in any |
+| `git diff --check` | Exit 0, no output |
+| The full default lane, the command above | **17,024 passed, 33 skipped, 14 deselected, none failed**, in 9 min 55 s: the first run's 17,021, the record test that had found the placeholders, and the two new request-context tests |
+
+This record's table was filled after that run; the record and link suites were run again
+over it.
 
 ## Privacy and publicability
 

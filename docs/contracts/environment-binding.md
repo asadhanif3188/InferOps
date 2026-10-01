@@ -400,10 +400,11 @@ files say about each other and nothing about a running system.
 
 ## What this contract does not do
 
-- **It deploys nothing, and what reads it renders nothing.** The platform domain parses a
-  binding, selects one for a contract, and reads its facts into a render context; no
-  renderer exists, and nothing turns a binding and a contract into release values. The
-  values file a release is installed with is still written by hand.
+- **It deploys nothing.** The platform domain parses a binding, selects one for a
+  contract, and reads its facts into a render context, and the Helm values renderer turns
+  that context into chart values in memory; nothing writes those values where a release
+  is installed from. The values file a release is installed with is still written by
+  hand.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about an environment.** A valid binding is a well-formed

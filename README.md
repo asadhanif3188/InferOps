@@ -98,7 +98,7 @@ index of what has and has not been proven.
 
 [![InferOps V1 architecture: workload contract validation, platform domain, manually prepared release values, serving path, and proof register](docs/architecture/inferops-v1-architecture.png)](docs/architecture/inferops-v1-architecture.png)
 
-*Select the diagram to view it at full size. Deployment rendering is unbuilt; release values are written by hand.*
+*Select the diagram to view it at full size. Deployment rendering is unbuilt end to end; the values a release is installed with are written by hand.*
 
 <details>
 <summary>View the text architecture diagram</summary>
@@ -165,8 +165,10 @@ The design boundary, the request and deployment flows, the trust boundaries, and
 what is not defended at each are in
 [the system architecture](docs/architecture/system-architecture.md). The sixteen
 decision records are indexed in [the architecture index](docs/architecture/README.md).
-One component of the design is still unbuilt: nothing turns a validated contract
-into release values, and a values file is written by hand.
+One component of the design is still unbuilt end to end: release values are derived
+from a validated contract only in memory - since `V2-S2-001-PR1` the Helm values
+renderer generates them - and the values file a release is installed with is still
+written by hand.
 
 ## Prerequisites
 
@@ -350,8 +352,9 @@ time.
 - **Estimated cost only.** The only rate card is synthetic, every cost record has
   confidence `none`, and no platform component computes a cost.
 - **Not defended.** See [the security boundary](#security-boundary).
-- **Deployment rendering is unbuilt.** A validated contract does not yet produce
-  release values; the serving-a-described-workload claim is `planned`.
+- **Deployment rendering is unbuilt end to end.** A validated contract produces Helm
+  values in memory only; no release is installed from them, and the
+  serving-a-described-workload claim is `planned`.
 - **A release adds no evidence.** `v1.0.0` is cut over the frozen evidence pack and
   changes nothing in it. The register on `main` now certifies, at `C0`, only that the
   release exists, on [a record read after it](docs/proof/releases/v1-s5-009-pr1-v1.0.0-publication.md);

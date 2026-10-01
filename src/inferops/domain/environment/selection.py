@@ -31,7 +31,8 @@ The contract's own fields - scaling, resources, model, and the rest - are neithe
 read nor copied, and the binding has no attribute that could hold one. Combining a
 contract with a binding into render input is the renderer input boundary's, in
 ``inferops.domain.render``; turning that into release values is a renderer's, and
-no renderer exists.
+the one that exists, the Helm values renderer, reads the render context rather than a
+binding.
 
 Everything here is offline and deterministic: no file system, network, cluster,
 clock, or randomness. Refusals are returned sorted, so the same input produces the

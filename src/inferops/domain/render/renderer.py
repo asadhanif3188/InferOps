@@ -8,9 +8,9 @@ from, which a release records in ``source.renderer.revision`` - a
 WorkloadContract, a binding, a defaults set, a raw document, a path, or a client:
 everything it may read is already in the context, with the layer that owns it.
 
-**No renderer exists yet.** This module defines the shape one must have, and what
-a renderer returns is a type parameter rather than a decision, because the output
-- generated Helm values beside a release - is a later change. A renderer that
+**One renderer exists**: :class:`~.helm_values.HelmValuesRenderer`, which returns
+generated Helm values. This module defines the shape every renderer must have, and
+what a renderer returns is a type parameter rather than a decision. A renderer that
 honours the boundary is a pure function of its context and its own revision: it
 reads no clock, file, environment variable, or network, and it applies nothing.
 Writing its output to a Git destination, and reconciling it into a cluster, are
@@ -21,11 +21,18 @@ documents: it asks :func:`~.normalization.prepare_render` for the context, with 
 renderer's own support, and calls :meth:`~Renderer.render` only when every check has
 passed. A refusal leaves nothing behind: the renderer is never called, so there is
 no partial output to discard, and nothing here writes anywhere.
+
+**A renderer's own refusal keeps the request.** The interface's ``render`` takes the
+context alone, so a renderer that refuses cannot know the caller's request
+identifiers. :func:`render_with` attaches them to every finding of a renderer's
+:class:`~.errors.RenderRefused` that carries none, so a request identifier supplied
+at the edge survives a refusal from either stage.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 from typing import Protocol, TypeVar, runtime_checkable
 
 from ..context import NO_REQUEST_CONTEXT, RequestContext
@@ -34,6 +41,7 @@ from ..release.values import GitRevision
 from ..workload.contract import WorkloadContract
 from ..workload.values import DnsLabel
 from .defaults import PlatformDefaults
+from .errors import RenderRefused
 from .normalization import RenderContext, prepare_render
 from .support import RendererSupport
 
@@ -72,7 +80,8 @@ def render_with[OutputT](
 
     Raises:
         RenderRefused: every finding :func:`~.normalization.prepare_render` makes,
-            before the renderer is called.
+            before the renderer is called; or the renderer's own refusal, with
+            ``context`` attached to each finding that carried no request context.
         TypeError: ``renderer`` does not have the interface's shape, or an input
             is a raw document.
     """
@@ -86,7 +95,13 @@ def render_with[OutputT](
         binding_name=binding_name,
         context=context,
     )
-    return renderer.render(prepared)
+    try:
+        return renderer.render(prepared)
+    except RenderRefused as refused:
+        raise RenderRefused(
+            replace(finding, context=context) if finding.context.is_empty else finding
+            for finding in refused.findings
+        ) from None
 
 
 __all__ = ["Renderer", "render_with"]
