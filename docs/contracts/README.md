@@ -8,7 +8,9 @@ boundary](../domain/renderer-input-boundary.md) reads a validated contract and t
 selected for it into a render context, refuses under one canonical vocabulary inputs that
 are invalid, unbound, unsupported by a renderer, or in conflict over who owns a value, and
 renders nothing. The platform domain
-reads a RenderedWorkloadRelease and checks its provenance; nothing produces one.
+reads a RenderedWorkloadRelease and checks its provenance, and builds one from a render
+context only through the allowlisted path its [provenance input-trust
+policy](rendered-workload-release.md#provenance-input-trust) defines; nothing writes one.
 
 This directory indexes versioned, machine-readable public contracts and the
 compatibility policy each one carries. The schemas themselves live under
@@ -19,7 +21,7 @@ means, how it is versioned, which rules are enforced, and which are not.
 |---|---|---|---|
 | WorkloadContract | `v1alpha1` | Accepted; parsed by [the workload domain model](../domain/workload-domain-model.md), and no runtime consumer exists | [WorkloadContract v1alpha1](workload-contract.md) |
 | EnvironmentBinding | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; parsed by the platform domain, which refuses conflicting bindings and selects the one serving a contract; the renderer input boundary reads the selected binding into a render context, and no renderer exists | [EnvironmentBinding v1alpha1](environment-binding.md) |
-| RenderedWorkloadRelease | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; a repository document, not a cluster resource; parsed by the platform domain, which defines how a release and its sources are hashed, recomputes the release identifier, refuses credential-shaped values, and compares a release with the contract and binding it names; no renderer produces one | [RenderedWorkloadRelease v1alpha1](rendered-workload-release.md) |
+| RenderedWorkloadRelease | `v1alpha1` | Published schema with valid and invalid fixtures and a structural validator; a repository document, not a cluster resource; parsed by the platform domain, which defines how a release and its sources are hashed, recomputes the release identifier, refuses credential-shaped values, and compares a release with the contract and binding it names; builds one from a render context only from fields its input-trust policy classifies public-safe identities or derived digests; no renderer produces one, and nothing writes one | [RenderedWorkloadRelease v1alpha1](rendered-workload-release.md) |
 
 A published schema is a commitment about what will be accepted. It is not evidence
 that anything accepts it, and it certifies no runtime behaviour.

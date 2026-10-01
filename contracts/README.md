@@ -23,8 +23,9 @@ fixtures are published ahead of the renderer that will consume them, and say so.
 The platform domain reads a RenderedWorkloadRelease too, computes the digests and the
 identifier one should record, and refuses one whose identifier is not derived, whose
 values look like a credential, or that disagrees with the contract and binding it
-names. Nothing produces a release: its schema and fixtures are published ahead of the
-renderer that will write one. A published schema is a commitment about what will be
+names, and builds one from a render context only from fields its provenance input-trust
+policy classifies public-safe identities or derived digests. Nothing writes a release:
+its schema and fixtures are published ahead of the renderer that will write one. A published schema is a commitment about what will be
 accepted, not evidence that anything accepts it.
 
 ## Layout

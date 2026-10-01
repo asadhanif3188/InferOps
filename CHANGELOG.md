@@ -10,6 +10,30 @@ from `1.0.0`.
 
 ### Added
 
+- **Provenance input-trust boundary.** `V2-S1-004-PR1` closes a Sprint 1 review finding:
+  the release document's Secrets section opened "A release references nothing secret and
+  carries nothing secret", and the release story asked that sensitive data cannot enter
+  provenance, while a lowercase value with no published credential prefix, written as a
+  workload name, passed every rule. `inferops.domain.render.recording` now states the
+  policy as code: every field a RenderedWorkloadRelease has is classified
+  `public-identity` or `derived-digest` with the source it is read from, and every one of
+  the 44 render-context values is classified, two `public-identity` (the workload's name and
+  version) and forty-two `excluded`, the secret references among them as sensitive, each
+  with a reason. `record_release` is the one supported path that builds a release: it takes
+  a `RenderContext` and two typed references, reads each field from the source its row
+  names and a context value only if it is public, derives the identifier, and refuses with
+  `ReleaseNotRecordedError` a release the single-release rules refuse - including a binding
+  named like a credential, which the render boundary still accepts. A new suite proves the
+  classification is complete, that marked excluded values and markers planted in real
+  inputs never reach a release, that an edit opening a path is refused, that recording
+  reads no environment variable, and that the known credential shapes stay refused; it
+  also records that a lowercase token with no published prefix is still recorded, which
+  [the release document](docs/contracts/rendered-workload-release.md#provenance-input-trust)
+  now states as an input-trust limitation, separate from repository secret scanning. The
+  V2-S1-002-PR2 record keeps its original wording and gains a dated correction. No schema,
+  fixture, rule, or code changed, no claim moves, and every check is static (`C0`); [the
+  validation record](docs/proof/domain/v2-s1-004-pr1-validation.md) says what was run.
+
 - **Render refusals and ownership-conflict detection.** `V2-S1-003-PR2` gave the renderer
   input boundary one canonical refusal: a `RenderRefused` carrying every finding of every
   step at once, each with a category, a canonical code, and a rule identifier, sorted so

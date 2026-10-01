@@ -10,6 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **RenderedWorkloadRelease `v1alpha1`, provenance input-trust policy** — every field of
+  a release is classified as a public-safe identity or a derived digest or revision, with
+  the source it is read from, and every render-context value as public (the workload's
+  name and version) or excluded, with a reason; the release document publishes both
+  tables. The platform domain gains one supported path that builds a release from a
+  render context through that allowlist and refuses one its single-release rules
+  refuse. The Secrets section's opening sentence, "A release references nothing secret
+  and carries nothing secret", is replaced by the bounded property the code enforces,
+  and the part no syntax can prove is stated as an input-trust limitation. No schema,
+  fixture, rule identifier, or code changed. Compatibility classification:
+  **compatible** for every consumer of the schema, the offline validator, and the
+  domain's existing functions, whose verdicts are unchanged.
 - **RenderedWorkloadRelease `v1alpha1`, provenance rules and source digests** — how a
   release's source documents are hashed is decided: `source.contract.sha256` and
   `source.environmentBinding.sha256` are the SHA-256 of the canonical JSON form — keys

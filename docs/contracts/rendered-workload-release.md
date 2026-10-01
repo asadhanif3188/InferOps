@@ -6,11 +6,13 @@ identifier, and its valid and invalid fixtures are published here and validated 
 change. `V2-S1-002-PR2` added the platform domain that reads a release, the canonical form
 a release and its source documents are hashed in, and [seven provenance
 rules](#provenance-rules-the-platform-domain-applies) the domain applies and the schema
-does not. **Nothing produces a release**: no renderer exists in this repository - [the
-renderer input boundary](../domain/renderer-input-boundary.md) added by `V2-S1-003-PR1`
-computes the `source` block a release would record and writes no release - no values
-file has been generated, and neither fixture describes a release that was rendered,
-installed, or run.
+does not. `V2-S1-004-PR1` added the [provenance input-trust
+policy](#provenance-input-trust) and the one supported path that builds a release from
+validated, typed inputs. **Nothing writes a release**: no renderer exists in this
+repository - [the renderer input boundary](../domain/renderer-input-boundary.md) computes
+the `source` block a release records, and `record_release` builds the release in memory
+and writes nothing - no values file has been generated, and neither fixture describes a
+release that was rendered, installed, or run.
 
 | Property | Value |
 |---|---|
@@ -297,11 +299,138 @@ under two different hash seeds and requires one answer. The canonical form of ea
 fixture, and of its identity, is searched for a date, a time of day, and a UUID, and holds
 none.
 
+## Provenance input trust
+
+Added by `V2-S1-004-PR1`, on 2026-10-01. An independent review of the first V2 sprint
+found that the guarantee this document gave in [Secrets](#secrets) - it opened "A release
+references nothing secret and carries nothing secret" - and the guarantee the release's
+story asked for were stronger than any check here proves: a lowercase value with no
+published credential prefix, written as a workload name, passes every rule, and a test
+already asserted that it does. This section replaces the absolute statement with the
+property the code enforces, and states the rest as an assumption rather than hiding it.
+
+**The policy.** A release may be built only from values classified as **public-safe
+identities or references**, and from **derived immutable digests and revisions**, read from
+validated, typed inputs. Everything else is **excluded**: it has no path into a release.
+The three classes are closed - `public-identity`, `derived-digest`, and `excluded` - and
+the policy is code, in
+[`inferops.domain.render.recording`](../../src/inferops/domain/render/recording.py), which
+tests hold to the two tables below.
+
+The table below classifies every field a release has. No field is `excluded`: a release
+has no field for excluded content to be written into, which the closed schema already
+guaranteed and this table now names field by field.
+
+| Field | Trust | Origin | Source |
+|---|---|---|---|
+| `apiVersion` | `public-identity` | `release` | `apiVersion` |
+| `kind` | `public-identity` | `release` | `kind` |
+| `metadata.workloadId` | `public-identity` | `context-value` | `workload.id` |
+| `metadata.workloadVersion` | `public-identity` | `context-value` | `workload.version` |
+| `metadata.releaseId` | `derived-digest` | `derivation` | `releaseId` |
+| `source.contract.apiVersion` | `public-identity` | `context-source` | `contract.apiVersion` |
+| `source.contract.sha256` | `derived-digest` | `context-source` | `contract.sha256` |
+| `source.environmentBinding.apiVersion` | `public-identity` | `context-source` | `environmentBinding.apiVersion` |
+| `source.environmentBinding.environment` | `public-identity` | `context-source` | `environmentBinding.environment` |
+| `source.environmentBinding.name` | `public-identity` | `context-source` | `environmentBinding.name` |
+| `source.environmentBinding.sha256` | `derived-digest` | `context-source` | `environmentBinding.sha256` |
+| `source.renderer.revision` | `derived-digest` | `renderer` | `revision` |
+| `source.platformDefaults.revision` | `derived-digest` | `context-source` | `platformDefaults.revision` |
+| `output.helmValues.path` | `public-identity` | `helm-values` | `path` |
+| `output.helmValues.sha256` | `derived-digest` | `helm-values` | `sha256` |
+
+Origins: `release` is the release version and kind this code records; `context-value` is
+a value of the render context, by its context name; `context-source` is the render
+context's typed identity of an input, by its path in the release's `source`; `renderer` and
+`helm-values` are the two typed references the caller supplies; `derivation` is the
+[release identity rule](#release-identity).
+
+The table below classifies every value of the render context.
+
+| Trust | Why | Render context values |
+|---|---|---|
+| `public-identity` | the workload's identity, which a release records: public by policy | `workload.id`, `workload.version` |
+| `excluded` | who owns or pays for the workload; it identifies an organisation, not a release, and the contract digest covers it | `workload.owner`, `attribution.tenant`, `attribution.costCenter` |
+| `excluded` | a render setting the contract declares, not an identity; the contract digest covers it | `workload.profile`, `workload.environment`, `model.servingCapability`, `model.runtimeProfile`, `resources.cpu`, `resources.memory`, `resources.accelerator.type`, `resources.accelerator.count`, `serving.replicas.minimum`, `serving.replicas.maximum`, `integrations.telemetry.required`, `integrations.modelAccess.required`, `integrations.evaluation.required`, `security.dataClassification`, `model.artifact.sizeBytes`, `mock.ciOnly`, `mock.determinism` |
+| `excluded` | a reference to another artifact the contract cites, not an identity of this release; the contract digest covers it | `model.ref`, `integrations.telemetry.capabilityRef`, `integrations.modelAccess.capabilityRef`, `integrations.evaluation.capabilityRef`, `evidence.runbookRef`, `evidence.proofRefs`, `runtime.imageReference`, `model.artifact.repository`, `model.artifact.revision`, `model.artifact.file`, `model.artifact.sha256`, `mock.fixtureRef` |
+| `excluded` | sensitive: names the secrets the workload reads; a reference is not a value, and provenance carries neither | `security.secretRefs` |
+| `excluded` | a platform default, not an identity; the platform-defaults revision covers it | `api.requestTimeoutMs`, `api.drainTimeoutMs`, `api.maxOutputTokens` |
+| `excluded` | a fact of one environment, not an identity; the binding digest covers it, and the binding is recorded by name | `destination.clusterProvider`, `destination.namespace`, `modelCache.class`, `modelCache.claimName`, `api.replicas`, `gitops.destinationPath` |
+
+Members of the contract and the binding that the render context does not hold at all - a
+contract's `description` and `annotations`, a binding's `owner`, and the rest of
+[the fields the boundary leaves out](../domain/renderer-input-boundary.md#who-owns-each-value) -
+cannot be read by the supported path, because its only document-derived input is the
+context.
+
+**The supported path, and what it enforces.** `record_release(render_context, *,
+renderer, helm_values)` in [the render package](../domain/renderer-input-boundary.md#recording-a-release)
+is the one function that builds a release from inputs; the parser reads a release
+someone else wrote and builds none. On that path:
+
+- **Only typed inputs cross.** It takes a `RenderContext` - which only `build_render_context`
+  and `prepare_render` issue, from a validated contract, typed platform defaults, and a
+  selected binding - a `RendererReference`, and a `HelmValuesReference` whose members are
+  their constrained types. A raw document, a dictionary, or a bare string at any of the
+  three, or a reference built around bare strings, is refused with a `TypeError`.
+- **Each field is read from the source its row names, and from nothing else.** A context
+  value is read only if it is classified `public-identity`, and both tables are consulted
+  when a release is recorded, so a row pointed at an excluded value, or a value
+  reclassified, is refused rather than recorded. The function's body reaches the context
+  only through that reader and the context's typed sources, and a test reads the body to
+  hold it there.
+- **Excluded content cannot enter.** No secret reference, free text, annotation, owner,
+  render setting, environment fact, environment variable, prompt, response, or other
+  document member has a path into a release. The suite gives every excluded context value
+  a distinct marker and finds none in the recorded release, and finds none of eight
+  markers planted in real inputs' free text, secret references, owners, and environment
+  facts; the same check, run with a path opened on purpose, does find its marker.
+  Recording reads no environment variable: the module imports nothing that could, and a
+  release is recorded with the process environment made unreadable.
+- **Known credential shapes stay refused.** The release is judged by the single-release
+  rules before it is returned. A workload name, workload version, binding name, or values
+  file name with a part that begins with a published credential prefix is refused with
+  `ReleaseNotRecordedError`, carrying every refusal and quoting none. That includes a
+  binding named so, which the render boundary still accepts. A workload version no release
+  can hold - an uppercase pre-release - is refused the same way.
+
+**What it cannot establish - the input-trust limitation.** The four `public-identity`
+fields an author chooses - the workload's name and version, the binding's name, and the
+values file name - are public **by policy**: whoever names a workload or a binding is
+publishing a name. A secret deliberately written as an otherwise valid name has exactly
+a name's shape, and an arbitrary value of that shape cannot be proven non-secret by
+syntax alone; the credential rule recognises published formats and nothing more. A test
+records a release whose workload name is a lowercase token with no published prefix, and
+asserts it passes. The same holds for the three hexadecimal values a caller supplies - the
+renderer and platform-defaults revisions and the values digest - which have their shape
+checked and nothing else, so a secret that is itself a hexadecimal string of that length
+would pass. The two source digests are computed, not supplied: each is a one-way digest of
+a whole parsed document, excluded members included, and is not a copy of any of them.
+
+**This is not repository secret scanning.** Secret scanning runs a scanner over committed
+files and history, against known secret formats, and is configured in `.gitleaks.toml`
+with [its allowlist](../../.github/secret-scanning-allowlist.md). This policy decides what a
+release can be built from, before any file exists. Neither stands in for the other: a
+scan passing does not show that a name is not a disguised secret, and this policy says
+nothing about a file that bypasses the supported path.
+
+**Still open, and whose it is.** The render boundary hands a binding whose values are
+shaped like a credential to a renderer: provenance refuses its name when a release is
+recorded, and every other binding value is excluded from provenance, but whether
+generated output may carry such a value belongs to the change that generates values. The
+renderer revision, platform-defaults revision, and values digest are still checked for
+nothing beyond their form, as [the rules not applied yet](#rules-that-are-not-applied-yet)
+state.
+
 ## Secrets
 
-**A release references nothing secret and carries nothing secret.** Provenance names its
-inputs and its output; none of them is a credential, and it needs no secret reference.
-Two things make that structural rather than a promise:
+**A release has no field for a secret, and its supported path records only what the
+[provenance input-trust policy](#provenance-input-trust) classifies public or derived.**
+Provenance names its inputs and its output, and needs no secret reference. This section
+opened with "A release references nothing secret and carries nothing secret" until
+`V2-S1-004-PR1`, which replaced it: no check here can prove the second half for a value an
+author chose, and the policy section says exactly where the guarantee stops. Two things
+make the absence of a secret *field* structural rather than a promise:
 
 1. **Every object is closed.** A `token`, `password`, or `credentials` field is an unknown
    field and the document is refused, as
@@ -484,7 +613,7 @@ is.
 | `output.helmValues.sha256` is the digest of the values file it names | How a values file is hashed is not decided, and no values file exists | The code that writes values, and the rule for hashing them |
 | The values file exists beside the release | A document check cannot see a directory | The renderer's output check |
 | The renderer and platform-defaults revisions name commits that exist | A document check has no repository | A check against the repository the release is committed in |
-| A lowercase credential with no published prefix is refused | It has the shape of a name, and the heuristic's other branch needs mixed case; see [Secrets](#secrets) | A rule no one has written; a test asserts the gap |
+| A lowercase credential with no published prefix is refused | It has the shape of a name, and the heuristic's other branch needs mixed case; see [Secrets](#secrets). Since `V2-S1-004-PR1` this is stated as the policy's [input-trust limitation](#provenance-input-trust), not a pending rule: no rule over syntax can close it | Nothing syntactic: identities are public by policy, and a test asserts the gap on the supported path too |
 | A release committed to the repository matches what its sources derive today | Nothing commits a release | The generated-artifact drift check |
 
 ## Fixtures
@@ -501,7 +630,7 @@ or run.
 ## Validation
 
 ```sh
-python -m pytest tests/contracts/test_rendered_workload_release_v1alpha1.py tests/domain/test_rendered_workload_release_domain.py -q
+python -m pytest tests/contracts/test_rendered_workload_release_v1alpha1.py tests/domain/test_rendered_workload_release_domain.py tests/domain/test_provenance_input_trust.py -q
 ```
 
 A document that is not a committed fixture can be checked from Python, for every
@@ -574,22 +703,37 @@ every reachable prefix in every position, mistakes no committed name for one, an
 cost and the gap this document states; and that the rule table above is the code's and
 every rule refuses something.
 
+The input-trust suite, `tests/domain/test_provenance_input_trust.py`, checks that every
+field of the schema and of a recorded release has one row in the policy and none is
+excluded content, that every render-context value is classified once and only the
+workload's name and version are public, and that a schema or ownership table with one
+field added is caught as unclassified; that every field of a release recorded from each
+committed contract is the value its row names, passes both release checks, and reads back
+as itself; that a raw argument is refused, and the function's body reaches the context
+only through the allowlisted reader; that no excluded value, marked, reaches a release,
+that a row or a classification edited to open a path is refused, and that a path opened
+on purpose is seen; that recording reads no environment variable and its signature
+admits no payload; that the known credential shapes are refused in every field that can
+hold one, without being quoted; that the limitation above holds; and that both tables
+here are the code's.
+
 Every check is static. A pass is `C0` under
 [the evidence levels](../testing/evidence-levels.md): it establishes what the committed
 files say about each other and nothing about a running system.
 
 ## What this contract does not do
 
-- **It renders nothing, and nothing produces it.** No renderer exists; the render
-  boundary assembles a release's `source` block and nothing records it. The values file a
-  release is installed with is still written by hand, and no release document exists for
-  it.
+- **It renders nothing, and nothing writes it.** No renderer exists; the render
+  boundary assembles a release's `source` block, and `record_release` builds a release in
+  memory and writes no file. The values file a release is installed with is still
+  written by hand, and no release document exists for it.
 - **It checks a source digest only when it is given the source.** The platform domain
   confirms the contract and binding digests against documents a caller supplies. Nothing
   finds those documents for a release, nothing confirms the values digest, and nothing
   checks that the two revisions exist.
-- **It reads provenance, and derives none from a render.** The domain computes the digests
-  and the identifier a release should record; no component records one.
+- **It derives provenance from a render context, never from a render.** The domain
+  computes the digests and the identifier a release records, and `record_release` builds
+  one from a context; no renderer has produced values for any of them.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about a deployment.** A valid release is a well-formed statement

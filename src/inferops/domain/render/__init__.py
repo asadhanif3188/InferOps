@@ -20,6 +20,12 @@ produced:
    digest of every input.
 3. A :class:`Renderer` takes that context. None exists yet.
 
+:func:`record_release` is the one supported path from a context to a
+RenderedWorkloadRelease. It reads only the fields :data:`RELEASE_PROVENANCE`
+classifies, and only the two context values :data:`CONTEXT_FIELD_TRUST` classifies
+as public-safe identities, and refuses a release the release domain's
+single-release rules refuse. The policy and its limit are in ``recording``.
+
 :func:`prepare_render` runs the first two steps as one, for a renderer's declared
 :class:`RendererSupport`, and refuses with a :class:`RenderRefused` carrying every
 finding of every step under one canonical vocabulary: a category, a code, and a
@@ -83,11 +89,24 @@ from .ownership import (
     owner_of,
     ownership_of,
 )
+from .recording import (
+    CONTEXT_FIELD_TRUST,
+    RECORDED_RELEASE_VERSION,
+    RELEASE_PROVENANCE,
+    ContextFieldTrust,
+    ProvenanceField,
+    ProvenanceOrigin,
+    ProvenanceTrust,
+    ReleaseNotRecordedError,
+    provenance_field,
+    record_release,
+)
 from .renderer import Renderer, render_with
 from .support import RendererSupport
 
 __all__ = [
     "CAPABILITY_UNAVAILABLE",
+    "CONTEXT_FIELD_TRUST",
     "CONTRACT_INVALID",
     "EXCLUDED_SOURCE_FIELDS",
     "MILLISECONDS_CEILING",
@@ -96,16 +115,23 @@ __all__ = [
     "OUTPUT_TOKENS_FLOOR",
     "OVERRIDES",
     "PROFILE_CONDITIONS",
+    "RECORDED_RELEASE_VERSION",
+    "RELEASE_PROVENANCE",
     "RENDER_FIELD_OWNERSHIP",
     "RENDER_RULES",
     "SUPPORTED_PLATFORM_DEFAULTS_VERSIONS",
     "VERSION_UNSUPPORTED",
     "ApiDefaults",
+    "ContextFieldTrust",
     "FieldOwnership",
     "Layer",
     "PlatformDefaults",
     "ProfileCondition",
+    "ProvenanceField",
+    "ProvenanceOrigin",
+    "ProvenanceTrust",
     "RefusalCategory",
+    "ReleaseNotRecordedError",
     "RenderBoundaryError",
     "RenderContext",
     "RenderField",
@@ -125,6 +151,8 @@ __all__ = [
     "ownership_of",
     "prepare_render",
     "profile_condition_findings",
+    "provenance_field",
+    "record_release",
     "render_with",
     "validate_for_render",
 ]
