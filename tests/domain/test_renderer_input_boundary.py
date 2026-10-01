@@ -1253,9 +1253,10 @@ def test_the_render_package_imports_only_what_a_pure_boundary_needs() -> None:
 
     Every absolute import is one of seven standard-library modules; every relative
     import that leaves the package reaches the workload, environment, or release
-    domain, or the request context. ``tools`` is unreachable.
+    domain, or the request context. ``tools`` is unreachable. Twelve modules: the
+    Helm values renderer and its YAML form joined the ten of the boundary.
     """
-    assert len(module_trees()) == 10
+    assert len(module_trees()) == 12
     for path, tree in module_trees():
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):

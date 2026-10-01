@@ -3,10 +3,12 @@
 Status: **implemented in the platform domain** by `V2-S1-003-PR1`, with its refusals by
 `V2-S1-003-PR2`. This page says what a renderer may be given, who owns each value it may
 read, the precedence between those owners, how the values are gathered into one
-deterministic context, and what a render is refused with when any of that fails. **No
-renderer exists.** Nothing in this repository generates Helm values, writes a
-RenderedWorkloadRelease, writes to Git, or reaches a cluster, and building a render
-context is not evidence that anything will. `V2-S1-004-PR1` added `record_release`, the
+deterministic context, and what a render is refused with when any of that fails. **One
+renderer exists**: `V2-S2-001-PR1` added the [Helm values renderer](helm-values-renderer.md),
+which turns a `synchronous-llm` context into the `inferops-llm` chart's values in memory.
+Nothing in this repository writes those values to a file a release is installed with,
+writes a RenderedWorkloadRelease, writes to Git, or reaches a cluster, and building a
+render context is not evidence that anything will. `V2-S1-004-PR1` added `record_release`, the
 one supported path from a context to a RenderedWorkloadRelease: it builds the release in
 memory, from allowlisted fields only, and writes nothing - see
 [Recording a release](#recording-a-release). Every check behind this page is static, at
@@ -19,9 +21,9 @@ evidence level C0.
 | Inputs | A parsed [WorkloadContract](../contracts/workload-contract.md), one set of platform defaults, and the parsed [EnvironmentBindings](../contracts/environment-binding.md) supplied together |
 | Output | A `RenderContext`: 44 named values, each with its one owner and its source, and the identity and digest of every input |
 | Refusal | A `RenderRefused` carrying every finding at once, each with a category, a canonical code, and a rule identifier, before any output |
-| Renderer | An interface only; no implementation |
-| Tests | [`tests/domain/test_renderer_input_boundary.py`](../../tests/domain/test_renderer_input_boundary.py), [`tests/domain/test_renderer_refusals.py`](../../tests/domain/test_renderer_refusals.py), and [`tests/domain/test_provenance_input_trust.py`](../../tests/domain/test_provenance_input_trust.py) |
-| Validation records | [`v2-s1-003-pr1-validation.md`](../proof/domain/v2-s1-003-pr1-validation.md), [`v2-s1-003-pr2-validation.md`](../proof/domain/v2-s1-003-pr2-validation.md), and [`v2-s1-004-pr1-validation.md`](../proof/domain/v2-s1-004-pr1-validation.md) |
+| Renderer | The interface, and one implementation: `HelmValuesRenderer`, published in [the Helm values renderer](helm-values-renderer.md) |
+| Tests | [`tests/domain/test_renderer_input_boundary.py`](../../tests/domain/test_renderer_input_boundary.py), [`tests/domain/test_renderer_refusals.py`](../../tests/domain/test_renderer_refusals.py), [`tests/domain/test_provenance_input_trust.py`](../../tests/domain/test_provenance_input_trust.py), and, for the renderer's own rules, [`tests/domain/test_helm_values_renderer.py`](../../tests/domain/test_helm_values_renderer.py) |
+| Validation records | [`v2-s1-003-pr1-validation.md`](../proof/domain/v2-s1-003-pr1-validation.md), [`v2-s1-003-pr2-validation.md`](../proof/domain/v2-s1-003-pr2-validation.md), [`v2-s1-004-pr1-validation.md`](../proof/domain/v2-s1-004-pr1-validation.md), and [`v2-s2-001-pr1-validation.md`](../proof/domain/v2-s2-001-pr1-validation.md) |
 
 ## Why a boundary before a renderer
 
@@ -29,9 +31,10 @@ evidence level C0.
 contract-to-deployment rendering its first capability. A renderer is only as trustworthy
 as what it is allowed to read: one that accepts a raw document, a contract nobody
 validated, or a values file somebody edited can produce output that no input explains.
-So the input side is fixed first, and tested, before anything is rendered from it. The
-output - generated Helm values beside a release - is a later change, and is built
-against this boundary rather than beside it.
+So the input side was fixed first, and tested, before anything was rendered from it. The
+output - generated Helm values - is [the Helm values renderer](helm-values-renderer.md),
+built against this boundary rather than beside it; binding those values to a release is
+a later change.
 
 ## The path
 
@@ -43,7 +46,8 @@ Three steps, and each takes only what the one before it produced:
    parsed bindings supplied together. It selects the binding that serves the contract
    with [the binding domain's own selection rule](../contracts/environment-binding.md#rejection-and-canonical-errors),
    and returns a `RenderContext`.
-3. **A `Renderer`** takes that context, and nothing else. None exists.
+3. **A `Renderer`** takes that context, and nothing else. `HelmValuesRenderer` is the one
+   that exists.
 
 A raw mapping, a parsed contract that skipped step 1, and a raw defaults or binding
 document are each refused at step 2 with a `TypeError`: they are programming errors, not
@@ -293,9 +297,10 @@ A `Renderer` has a `revision` - the full commit it runs from, which a release re
 `source.renderer.revision` - a `support` naming the versions and profiles it takes, and a
 `render` method whose one input is a `RenderContext`. It is given no contract, binding,
 defaults set, raw document, path, or client: everything it may read is in the context, with
-its owner. What it returns is a type parameter rather than a decision, because the output
-is a later change. Writing that output to a GitOps destination and reconciling it into a
-cluster are other components' work, and nothing here does either.
+its owner. What it returns is a type parameter rather than a decision: the Helm values
+renderer returns `GeneratedHelmValues`, and another renderer may return something else.
+Writing that output to a GitOps destination and reconciling it into a cluster are other
+components' work, and nothing here does either.
 
 **`render_with` is the one way to call a renderer on documents.** It asks `prepare_render`
 for the context with the renderer's own support, and calls `render` only when every check
@@ -318,8 +323,9 @@ documents, which is the right outcome rather than an error in the declaration - 
 is also how the version refusals are reached in the tests, since the domain implements one
 version of each input. What is refused at construction, with `InvalidValueError`, is a
 declaration that cannot be meant: an empty set, a set that is not a `frozenset`, an empty
-or non-string version, or a profile that is not a `Profile`. **No renderer exists, so no
-declaration exists in the repository**; the tests build them.
+or non-string version, or a profile that is not a `Profile`. **One declaration exists in the
+repository**, the Helm values renderer's `HELM_VALUES_SUPPORT`: today's three input
+versions and the `synchronous-llm` profile. Every other declaration is a test's.
 
 ## What a render is refused with
 
@@ -330,23 +336,24 @@ plus where and why:
 
 | Part | What it is for |
 |---|---|
-| **Category** | Which kind of refusal it is, out of the seven an operator has to tell apart. Stable, and the dimension a test or a dashboard groups by |
+| **Category** | Which kind of refusal it is, out of the eight an operator has to tell apart. Stable, and the dimension a test or a dashboard groups by |
 | **Canonical code** | The coarse public vocabulary a client switches on. It does not grow when a rule is added |
 | **Rule identifier** | Which rule refused it, looked up in [the refusal matrix](#the-refusal-matrix) |
-| **Field** | Where: the input by its role - `contract`, `bindings[i]` for the i-th binding supplied, `platformDefaults`, or `selection` for the caller's own request - then the path inside it |
+| **Field** | Where: the input by its role - `contract`, `bindings[i]` for the i-th binding supplied, `platformDefaults`, or `selection` for the caller's own request; in a renderer's own findings, `binding` for the one selected, and `manualValues` for a hand-written values file - then the path inside it |
 | **Reason** | Why, in the rule's own words. It never repeats a value read out of an input |
 
-The seven categories, in the order findings are sorted and a reader should fix them:
+The eight categories, in the order findings are sorted and a reader should fix them:
 
 | Category | Code | Means |
 |---|---|---|
 | `version-unsupported` | `version-unsupported` | The renderer does not take the version of an input |
 | `profile-unsupported` | `capability-unavailable` | The renderer was not built for the contract's profile |
+| `value-unsupported` | `capability-unavailable` | The contract asks for a value or a capability the renderer's chart cannot carry. Only a renderer refuses under it, after the boundary has passed |
 | `shape-invalid` | `contract-invalid` | The contract breaks a condition the published schema applies - at this boundary, only the profile conditions the domain parser does not |
-| `semantic-invalid` | `contract-invalid` | The contract breaks a cross-field rule, or the bindings supplied together contradict each other |
+| `semantic-invalid` | `contract-invalid` | The contract breaks a cross-field rule, the bindings supplied together contradict each other, or a value a renderer would write is shaped like a credential |
 | `model-runtime-incompatible` | `contract-invalid` | The pinned runtime and model artifact do not go together under the compatibility matrix |
 | `binding-missing` | `contract-invalid` | No single binding serving the contract could be selected |
-| `ownership-conflict` | `contract-invalid` | An input supplies a value it does not own |
+| `ownership-conflict` | `contract-invalid` | An input supplies a value it does not own, or a hand-written values file sets a value a renderer generates |
 
 Findings are sorted by category in that order, then by field - list indices as numbers -
 then by rule. The refusal's own `code` and `category` are its first finding's, the one to
@@ -360,18 +367,21 @@ keeps that domain's rule identifier and code: the semantic pipeline's seven rule
 structural rules the profile conditions are refused under, and the binding domain's five set
 and selection rules. A test holds each reused identifier to its publisher's - the workload
 rule matrix and the binding domain's table - code for code, and holds a reused workload rule
-to `shape-invalid` exactly when the matrix calls it structural. Six rules are this package's
-own, for what no other domain can see, and a test holds them apart from every identifier the
-offline validator, the binding domain, and the release domain publish.
+to `shape-invalid` exactly when the matrix calls it structural. Ten rules are this package's
+own, for what no other domain can see - six the boundary applies and four only the Helm
+values renderer applies - and a test holds them apart from every identifier the offline
+validator, the binding domain, and the release domain publish.
 
 **Why `capability-unavailable` for a profile.** It is the first domain refusal to carry a
 code beyond the two an offline document check reaches. The contract is not invalid and its
-version is supported; the renderer was simply never built for that profile. The canonical
+version is supported; the renderer was simply never built for that profile. The same holds
+for a value or a capability the renderer's chart has no setting for, so the two
+`value-unsupported` rules carry it too. The canonical
 vocabulary already has the code for that case: [ADR 0010](../architecture/decisions/ADR-0010-inference-api-compatibility-surface.md#d8--error-mapping-and-the-counter-inferops-owns)
 answers a request for streaming, a capability V1 never built, with `capability-unavailable`
 and retryable `false`, and this is the same shape of refusal. A test holds every render code
-inside the codes the API serves, and `render-profile-unsupported` is the only rule that
-carries this one.
+inside the codes the API serves, and holds the rules that carry this one to
+`render-profile-unsupported`, `render-value-unsupported`, and `render-capability-unsupported`.
 
 **What is not a category.** Policy refusal: no policy engine exists, ADR 0010 records
 `policy-denied` as a code nothing emits, and a category with no rule would claim a check
@@ -383,7 +393,9 @@ parser refuses a malformed or unsupported-version document first, in its own voc
 
 Every rule a render can be refused under, in category order. "Published by" says which
 vocabulary owns the identifier. Each row has an input in the tests that is refused under
-exactly that rule and no other, through the canonical path.
+exactly that rule and no other: through the canonical path for the boundary's rules, and,
+for the four only the Helm values renderer applies, through `render_with` with that
+renderer or through `manual_value_findings`.
 
 | Rule | Category | Code | Published by | Refuses |
 |---|---|---|---|---|
@@ -391,6 +403,8 @@ exactly that rule and no other, through the canonical path.
 | `render-binding-version-unsupported` | `version-unsupported` | `version-unsupported` | `render` | The renderer does not take the selected binding's version |
 | `render-defaults-version-unsupported` | `version-unsupported` | `version-unsupported` | `render` | The renderer does not take the platform defaults' version |
 | `render-profile-unsupported` | `profile-unsupported` | `capability-unavailable` | `render` | The renderer was not built for the contract's profile |
+| `render-value-unsupported` | `value-unsupported` | `capability-unavailable` | `render` | An accepted value has no form the renderer's chart accepts |
+| `render-capability-unsupported` | `value-unsupported` | `capability-unavailable` | `render` | The contract asks for something the renderer's chart does not provide |
 | `field-required` | `shape-invalid` | `contract-invalid` | `workload-contract` | A profile's own block is absent |
 | `value-not-permitted` | `shape-invalid` | `contract-invalid` | `workload-contract` | A value the schema forbids for the contract's profile |
 | `value-out-of-range` | `shape-invalid` | `contract-invalid` | `workload-contract` | A mock citing proof references |
@@ -400,6 +414,7 @@ exactly that rule and no other, through the canonical path.
 | `mock-secret-ref-declared` | `semantic-invalid` | `contract-invalid` | `workload-contract` | A mock-llm workload declares a secret reference |
 | `binding-identity-duplicated` | `semantic-invalid` | `contract-invalid` | `environment-binding` | Two bindings supplied together declare the same environment and name |
 | `binding-destination-overlaps` | `semantic-invalid` | `contract-invalid` | `environment-binding` | Two bindings supplied together share a GitOps destination |
+| `render-value-credential-shaped` | `semantic-invalid` | `contract-invalid` | `render` | A value the renderer would write has a part shaped like a published credential |
 | `runtime-unregistered` | `model-runtime-incompatible` | `contract-invalid` | `workload-contract` | The runtime image has no entry in the compatibility matrix |
 | `model-artifact-format-unknown` | `model-runtime-incompatible` | `contract-invalid` | `workload-contract` | The model artifact is in no format the matrix recognises |
 | `runtime-model-incompatible` | `model-runtime-incompatible` | `contract-invalid` | `workload-contract` | The pinned runtime does not accept the pinned artifact's format |
@@ -408,6 +423,7 @@ exactly that rule and no other, through the canonical path.
 | `binding-environment-mismatch` | `binding-missing` | `contract-invalid` | `environment-binding` | The binding named serves a different environment |
 | `render-ownership-conflict` | `ownership-conflict` | `contract-invalid` | `render` | An input supplies a value another layer owns |
 | `render-value-unowned` | `ownership-conflict` | `contract-invalid` | `render` | An input supplies a value no row of the ownership table assigns to it |
+| `render-manual-value-generated` | `ownership-conflict` | `contract-invalid` | `render` | A hand-written values file sets a value the renderer generates |
 
 The three structural rules are reached at this boundary only through the profile
 conditions, which is why the matrix describes them in those terms; elsewhere they are the
@@ -562,6 +578,8 @@ written to look like one; the release document states that limit.
 | A support declaration that cannot be meant | `InvalidValueError` at construction |
 | A raw document, a dictionary, or a string where `record_release` takes a context, a renderer reference, or a values reference | `TypeError` |
 | A release the single-release rules refuse - a credential-shaped workload name, version, binding name, or values file name - or a workload version no release can hold, at `record_release` | `ReleaseNotRecordedError`, every refusal at once, non-retryable |
+| A context the Helm values renderer's chart cannot carry - a value outside the chart's schema, a capability the chart does not provide, or a value it would write shaped like a credential | `RenderRefused` from the renderer, after the boundary passed: `render-value-unsupported`, `render-capability-unsupported`, or `render-value-credential-shaped` |
+| A hand-written values file that sets, replaces, or removes a value the Helm values renderer generates, at `manual_value_findings` | A `render-manual-value-generated` finding per value |
 
 ### Rules that are not applied yet
 
@@ -572,28 +590,28 @@ Each is stated so that nobody reads the boundary as more than it is.
 | A policy refusal | No policy engine exists, and `policy-denied` is a code nothing emits | A policy engine, and a category with a rule |
 | A contract whose version a release cannot record is refused by the render boundary | A release's workload version is narrower than a contract's. `record_release` refuses such a version when a release is recorded, since `V2-S1-004-PR1`; `prepare_render` still builds a context for it | A support rule tying a renderer to the release versions it records |
 | The defaults revision names the values supplied | No defaults file exists | The change that reads the defaults from the repository |
-| A binding value shaped like a lowercase credential is refused by the render boundary | The binding has no semantic credential rule, as [its document](../contracts/environment-binding.md#secrets) states. Since `V2-S1-004-PR1` the binding's name, the one binding value a release records, is refused when a release is recorded; every other binding value is excluded from provenance and still reaches a renderer | The change that generates values, which decides what generated output may carry |
-| Generated values do not duplicate contract intent that a hand-written values file also sets | No values are generated, so there is nothing to compare | The change that generates values |
-| Helm values are generated from the context | Out of this change's scope | A renderer |
+| A binding value shaped like a lowercase credential is refused by the render boundary | The binding has no semantic credential rule, as [its document](../contracts/environment-binding.md#secrets) states. Since `V2-S1-004-PR1` the binding's name, the one binding value a release records, is refused when a release is recorded. Since `V2-S2-001-PR1` the Helm values renderer refuses any string it would write that has a credential-shaped part, whichever input supplied it - for a binding, the claim name. A binding value no renderer writes still reaches the context unchecked | A credential rule in the binding domain |
 
 ## What this does not establish
 
-- **It renders nothing.** No values file, release, Git write, or cluster change comes out
-  of it, and no published claim moves:
-  `deployment-values-derive-only-from-a-validated-document` stays planned, because no
-  values are derived.
+- **It writes nothing.** The Helm values renderer derives values from a context in memory;
+  no values file a release is installed with, no release, no Git write, and no cluster
+  change comes out of this package, and no published claim moves:
+  `deployment-values-derive-only-from-a-validated-document` stays planned, because nothing
+  installs generated values and no record cites them.
 - **It proves nothing about an environment.** A binding selected into a context is not a
   binding whose cluster, namespace, or claim exists.
 - **It does not show a conflict arriving from a real input.** No parsed input can carry
   one today; the ownership check is exercised with inputs built to carry one.
-- **It declares support for no renderer.** Every `RendererSupport` is a test's.
+- **It declares support for one renderer.** `HELM_VALUES_SUPPORT` is the only declaration
+  outside the tests.
 - **Its evidence is static.** Every check runs in the default unit lane on committed files,
   at evidence level C0.
 
 ## Validation
 
 ```sh
-uv run --locked python -m pytest tests/domain/test_renderer_input_boundary.py tests/domain/test_renderer_refusals.py tests/domain/test_provenance_input_trust.py -q
+uv run --locked python -m pytest tests/domain/test_renderer_input_boundary.py tests/domain/test_renderer_refusals.py tests/domain/test_provenance_input_trust.py tests/domain/test_helm_values_renderer.py -q
 uv run --locked python -m pytest tests/domain tests/architecture -q
 uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy
 ```

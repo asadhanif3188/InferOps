@@ -1,0 +1,55 @@
+# The hand-written half of the reference workload's values: everything a release
+# needs that no WorkloadContract, EnvironmentBinding, or platform-defaults field
+# owns. It is installed after the generated file, and it sets none of the values
+# the generated file holds - a test refuses it if it does.
+#
+# Every member is copied from charts/inferops-llm/ci/real-values.yaml, which is
+# what makes the two renders comparable:
+#
+#   - `api.image` is the same PLACEHOLDER digest that file documents. No InferOps
+#     image is published, so the digest is a contributor's build, not a contract
+#     value;
+#   - `model.alias`, `model.artifact.sourceUrl` and `model.license` come from
+#     docs/serving/model-source.v1.json. The contract pins the artifact's bytes; it
+#     has no field for where to download them or the licence they carry. The URL
+#     repeats the repository, revision, and file the contract pins, and nothing
+#     here checks that it agrees with them: the acquisition job's content hash,
+#     which the generated file supplies, is what refuses a different file;
+#   - the remaining members choose how the release runs on the reference host:
+#     how the claim is filled and verified, and whether the release's own
+#     collector runs.
+#
+# This is a test fixture, not a deployable values file, for the reason the API
+# image digest gives.
+
+api:
+  image:
+    repository: localhost/inferops-api
+    digest: sha256:7961c9f9ce773095461498774bc2f25053bcba6d01c40d8448da65e217091e50
+    pullPolicy: Never
+
+runtime:
+  image:
+    pullPolicy: IfNotPresent
+
+model:
+  alias: qwen3-1.7b-q8_0
+  artifact:
+    sourceUrl: https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true
+  license:
+    spdx: Apache-2.0
+    reference: https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/blob/90862c4b9d2787eaed51d12237eafdfe7c5f6077/LICENSE
+  acquisition:
+    enabled: true
+    source: download
+  cache:
+    mountPath: /models
+    readOnly: true
+  integrity:
+    verifyOnStart: sha256
+
+telemetry:
+  scrapeAnnotations: true
+  collection:
+    collector:
+      deploy: true

@@ -18,7 +18,11 @@ produced:
    returns a :class:`RenderContext`: every value a renderer may read, read from its
    one owner as :data:`RENDER_FIELD_OWNERSHIP` names it, and the identity and
    digest of every input.
-3. A :class:`Renderer` takes that context. None exists yet.
+3. A :class:`Renderer` takes that context. :class:`HelmValuesRenderer` is the one
+   that exists: it turns a ``synchronous-llm`` context into
+   :class:`GeneratedHelmValues` for the ``inferops-llm`` chart, in the canonical YAML
+   form ``values_yaml`` writes, and :func:`manual_value_findings` refuses a
+   hand-written values file that sets a value it generates.
 
 :func:`record_release` is the one supported path from a context to a
 RenderedWorkloadRelease. It reads only the fields :data:`RELEASE_PROVENANCE`
@@ -35,9 +39,11 @@ passed, so a refusal leaves no output behind.
 The ownership table and the precedence rule - that no layer overrides another -
 are in ``ownership``; the refusal of an input that supplies a value it does not
 own in ``conflicts``; a renderer's declared support in ``support``; the defaults in
-``defaults``; the refusal vocabulary in ``errors``.
+``defaults``; the refusal vocabulary in ``errors``; the Helm values renderer in
+``helm_values``.
 
-The published document is ``docs/domain/renderer-input-boundary.md``.
+The published documents are ``docs/domain/renderer-input-boundary.md`` and
+``docs/domain/helm-values-renderer.md``.
 """
 
 from __future__ import annotations
@@ -72,6 +78,20 @@ from .errors import (
     RuleOrigin,
     WorkloadNotAcceptedError,
 )
+from .helm_values import (
+    CHART_NAME,
+    CHART_VALUE_CONSTRAINTS,
+    CHART_VERSION,
+    GENERATED_VALUE_PATHS,
+    HELM_VALUE_DISPOSITIONS,
+    HELM_VALUES_SUPPORT,
+    ChartValueConstraint,
+    Disposition,
+    GeneratedHelmValues,
+    HelmValuesRenderer,
+    ValueDisposition,
+    manual_value_findings,
+)
 from .normalization import (
     RenderContext,
     RenderField,
@@ -103,12 +123,19 @@ from .recording import (
 )
 from .renderer import Renderer, render_with
 from .support import RendererSupport
+from .values_yaml import ValuesFormError, canonical_yaml
 
 __all__ = [
     "CAPABILITY_UNAVAILABLE",
+    "CHART_NAME",
+    "CHART_VALUE_CONSTRAINTS",
+    "CHART_VERSION",
     "CONTEXT_FIELD_TRUST",
     "CONTRACT_INVALID",
     "EXCLUDED_SOURCE_FIELDS",
+    "GENERATED_VALUE_PATHS",
+    "HELM_VALUES_SUPPORT",
+    "HELM_VALUE_DISPOSITIONS",
     "MILLISECONDS_CEILING",
     "MILLISECONDS_FLOOR",
     "OUTPUT_TOKENS_CEILING",
@@ -122,8 +149,12 @@ __all__ = [
     "SUPPORTED_PLATFORM_DEFAULTS_VERSIONS",
     "VERSION_UNSUPPORTED",
     "ApiDefaults",
+    "ChartValueConstraint",
     "ContextFieldTrust",
+    "Disposition",
     "FieldOwnership",
+    "GeneratedHelmValues",
+    "HelmValuesRenderer",
     "Layer",
     "PlatformDefaults",
     "ProfileCondition",
@@ -143,8 +174,12 @@ __all__ = [
     "RendererSupport",
     "RuleOrigin",
     "ValidatedWorkloadContract",
+    "ValueDisposition",
+    "ValuesFormError",
     "WorkloadNotAcceptedError",
     "build_render_context",
+    "canonical_yaml",
+    "manual_value_findings",
     "may_override",
     "owner_of",
     "ownership_findings",

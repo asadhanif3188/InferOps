@@ -5,12 +5,13 @@ Status: **published schema**, at `v1alpha1` maturity, added by `V2-S1-001-PR1`, 
 compatibility rules, its ownership boundary with the WorkloadContract, and its valid and
 invalid fixtures are published here and validated on every change. The domain parses a
 binding into typed objects, refuses bindings that conflict with each other, and selects
-the one binding that serves a WorkloadContract. **Nothing turns what it selects into
-release values**: since `V2-S1-003-PR1`, [the renderer input
-boundary](../domain/renderer-input-boundary.md) reads a selected binding's facts into a
-render context beside the contract's intent, but no renderer, controller, or script in
-this repository turns either into release values, and a selection is not evidence that
-anything will.
+the one binding that serves a WorkloadContract. **Nothing installs what it selects**:
+since `V2-S1-003-PR1`, [the renderer input boundary](../domain/renderer-input-boundary.md)
+reads a selected binding's facts into a render context beside the contract's intent, and
+since `V2-S2-001-PR1` [the Helm values renderer](../domain/helm-values-renderer.md) turns
+that context into chart values in memory - the binding's claim name and API replica count
+among them. Nothing in this repository writes those values where a release is installed
+from, and a selection is not evidence that anything will be.
 
 | Property | Value |
 |---|---|
@@ -292,7 +293,8 @@ and reads one member of the contract, `spec.environment`. The contract's scaling
 resources, model, and every other field are neither read nor copied, and nothing in a
 binding could hold them. Combining the two into render input is [the renderer input
 boundary](../domain/renderer-input-boundary.md)'s, which takes each value from its one
-owner and overrides none; no renderer exists to render from it. Since `V2-S1-003-PR2` it
+owner and overrides none; the Helm values renderer renders from that context, never from
+a binding directly. Since `V2-S1-003-PR2` it
 reports a selection refusal as a render refusal under the same rule identifier and field,
 categorised `binding-missing` or, for the two set rules, `semantic-invalid`, and refuses a
 selected binding whose document carries a value the binding does not own.
@@ -318,7 +320,7 @@ are.
 |---|---|---|
 | A binding value shaped like a lowercase credential is refused | A single binding has no semantic layer; see [Secrets](#secrets) | A semantic rule, which is a conditionally compatible change |
 | The selected cluster, namespace, and claim exist | A document check cannot see a cluster | The provider contract's verification, at run time, as today |
-| Release values are derived from a contract and the binding selected for it | No renderer exists; the render boundary reads a selected binding into a context and derives no values | A renderer, which takes that context rather than choosing a binding |
+| The values a release is installed with are derived from a contract and the binding selected for it | Since `V2-S2-001-PR1` the Helm values renderer derives chart values from the context, in memory; nothing writes them where an install reads them, and the values a release is installed with are still written by hand | A later change that writes generated values beside a release |
 
 ## Fixtures
 

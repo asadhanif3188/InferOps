@@ -48,3 +48,8 @@ docs/proof/v1-evidence-index.v1alpha1.json text eol=lf
 # stored; this pins what is checked out, so neither comparison depends on which
 # platform wrote the file.
 deploy/prometheus/*.yaml text eol=lf
+
+# The generated Helm values under this directory are compared byte for byte with
+# what the renderer writes, which is LF on every platform. Pinned so a Windows
+# checkout cannot turn the golden file into a CRLF copy that no render matches.
+tests/domain/fixtures/helm-values/** text eol=lf

@@ -5,11 +5,11 @@ Every file under `valid/` must validate and every file under `invalid/` must be
 refused; a failure either way is a defect in the schema, the fixture, or the change
 that broke one of them.
 
-These are **contract examples, not configuration anything reads.** No renderer,
-controller, or script in this repository consumes a binding - the platform domain's
-render boundary reads parsed bindings into a render context and renders nothing from
-it - and the GitOps destinations they name are declared locations rather than
-directories that exist.
+These are **contract examples, not configuration anything reads.** No controller or
+script in this repository consumes a binding - the platform domain's render boundary
+reads parsed bindings into a render context, and the Helm values renderer generates
+values from that context in memory - and the GitOps destinations they name are declared
+locations rather than directories that exist.
 Nothing here has been deployed, and none of it is evidence about the environment it
 describes.
 
