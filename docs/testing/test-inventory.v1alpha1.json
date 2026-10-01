@@ -594,6 +594,14 @@
       "note": "Deliberately no claim: a scan result is dated to the run that produced it and no published claim rests on one, which no-vulnerability-figure-is-published reserves. It reads files and runs a shell library against a stub; no vulnerability database is read and no image is scanned, so what Trivy does with the ignore file is recorded in the EX-07 assessment rather than established here."
     },
     {
+      "module": "tests/security/test_security_maintenance_history.py",
+      "layer": "documentation",
+      "marker": "docs",
+      "protects": "The V1 security decision's released text and the later state beside it: that ADR 0008, with its registered post-release notes taken out, is byte for byte the text v1.0.0 released, so an in-place edit or an unregistered note fails; that the two sentences the change accepting EX-07 rewrote are back in their sections, with a dated note after each; that the note and the security baseline agree on EX-07's finding, acceptance and deadline; that the surfaces describing the current register state the count the baseline produces; that EX-07 keeps the scope the maintenance reconciliation records, in the baseline and in both ignore files; and that the EX-07 assessment above its dated correction is the record as merged.",
+      "claims": [],
+      "note": "Deliberately no claim: it guards the history of a decision record and the scope of one accepted exception, and no published claim rests on either. It reads committed files and runs nothing; the released text is identified by a pinned digest, not read from the tag, and a note's prose is held only to the facts it names."
+    },
+    {
       "module": "tests/security/test_workload_policy.py",
       "layer": "documentation",
       "marker": "docs",

@@ -291,6 +291,25 @@ from `1.0.0`.
   files and the baseline to each other and runs the guards against a stub. The two scan
   controls, `docs/prerequisites.md` and the claim and test matrix no longer say no
   continuous-integration service runs the scans.
+- **ADR 0008's released text is restored, and the `EX-07` change is reconciled as
+  maintenance.** `V2-S1-004-PR2` closes two findings of the first V2 sprint's review. The
+  change above that accepted `EX-07`, pull request #103, had rewritten two sentences of
+  ADR 0008 - "Six exceptions are recorded" in `D11` and "six accepted exceptions" in its
+  consequences - to say seven, so an accepted V1 decision read as if `EX-07` had existed
+  when it was made. Both sentences are back to the wording `v1.0.0` released, and a dated
+  note after each records `EX-07` and where the current count is kept; the README,
+  `SECURITY.md`, the architecture index, the register, and the security method still say
+  seven, which is current. [A reconciliation
+  record](docs/proof/security/v2-s1-004-pr2-security-maintenance-reconciliation.md) says
+  what #103 was: out-of-band security maintenance forced by a newly published finding and
+  a failing gate, not planned V2 work, with what it changed, what it left alone, and why
+  the image was not rotated. The `EX-07` assessment keeps its merged text and gains a dated
+  correction. [A new suite](tests/security/test_security_maintenance_history.py) holds ADR
+  0008, without its registered post-release notes, to a digest of the released text, each
+  note to its merged text and to `EX-07`'s reconciled scope, the current surfaces to the
+  current count, and the baseline and ignore files to that same scope. `EX-07` itself, its finding, image, and deadline, the scan guards, the
+  image pin, and every claim are unchanged; [the validation
+  record](docs/proof/security/v2-s1-004-pr2-validation.md) says what was run (`C0`).
 
 ## [1.0.0] - 2026-09-27
 
