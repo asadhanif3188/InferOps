@@ -653,7 +653,34 @@ def test_the_order_does_not_depend_on_the_order_findings_arrive() -> None:
 def test_list_indices_sort_as_numbers() -> None:
     later = RenderFinding("render-value-unowned", "contract.spec.items[10]", "x")
     earlier = RenderFinding("render-value-unowned", "contract.spec.items[2]", "x")
-    assert RenderRefused([later, earlier]).findings == (earlier, later)
+    padded = RenderFinding("render-value-unowned", "contract.spec.items[007]", "x")
+    assert RenderRefused([later, padded, earlier]).findings == (earlier, padded, later)
+
+
+def test_within_a_category_the_field_orders_before_the_rule() -> None:
+    """Field order and rule order disagree here; the field wins."""
+    first = RenderFinding("render-value-unowned", "contract.a", "x")
+    second = RenderFinding("render-ownership-conflict", "contract.b", "x")
+    assert first.category is second.category
+    assert RenderRefused([second, first]).findings == (first, second)
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["contract.a1²", "contract.a٣", "contract.a" + "9" * 5000],
+)
+def test_a_field_key_cannot_turn_a_refusal_into_a_crash(key: str) -> None:
+    """A non-ASCII digit, or a digit run past Python's integer-text limit, still sorts.
+
+    The field of an unowned value is a key read from an input, so ordering it must
+    not convert it to an integer.
+    """
+    findings = [
+        RenderFinding("render-value-unowned", key, "x"),
+        RenderFinding("render-value-unowned", "contract.a2", "x"),
+    ]
+    refusal = RenderRefused(findings)
+    assert {finding.field for finding in refusal.findings} == {key, "contract.a2"}
 
 
 def test_the_same_inputs_are_refused_identically() -> None:
@@ -679,14 +706,41 @@ def test_the_structured_form_carries_every_finding_and_the_request() -> None:
 
 
 def test_every_finding_of_every_step_carries_the_request() -> None:
+    """Support, the contract's rules, the binding's version, ownership, and selection."""
     request = RequestContext(request_id="req-2", correlation_id="corr-2")
     refusal = refused(
-        bindings=[],
+        bindings=[carrying(binding(), "spec.scaling.x", 1)],
         context=request,
-        renderer_support=support(profiles=frozenset({Profile.MOCK_LLM})),
+        renderer_support=support(
+            profiles=frozenset({Profile.MOCK_LLM}),
+            binding_versions=frozenset({LATER_VERSION}),
+        ),
     )(invalid_contract("replica-range-inverted"))
-    assert len(refusal.findings) == 3
+    assert refusal.rule_ids() == (
+        "render-binding-version-unsupported",
+        "render-profile-unsupported",
+        "replica-range-inverted",
+        "render-value-unowned",
+    )
     assert {finding.context for finding in refusal.findings} == {request}
+    selection = refused(bindings=[], context=request)(contract())
+    assert {finding.context for finding in selection.findings} == {request}
+
+
+def test_the_validated_path_and_render_with_carry_the_request() -> None:
+    request = RequestContext(request_id="req-3", correlation_id="corr-3")
+    stray = [carrying(binding(), "spec.scaling.x", 1)]
+    with pytest.raises(RenderRefused) as built:
+        build_render_context(
+            validate_for_render(contract()), defaults(), stray, context=request
+        )
+    renderer = _RecordingRenderer()
+    with pytest.raises(RenderRefused) as rendered:
+        render_with(renderer, contract(), defaults(), stray, context=request)
+    for refusal in (built.value, rendered.value):
+        assert refusal.rule_ids() == ("render-value-unowned",)
+        assert {finding.context for finding in refusal.findings} == {request}
+    assert renderer.calls == []
 
 
 def test_contract_findings_are_addressed_by_role() -> None:

@@ -33,15 +33,17 @@ nothing about a deployment. It adds no record to the evidence pack and moves no 
   ownership conflict canonically in `build_render_context`, and adds `prepare_render`.
   `renderer` gives the interface a `support` and adds `render_with`. `ownership` loses the
   sentence that called conflict detection a later change. The package is nine modules.
-- **`tests/domain/test_renderer_refusals.py`** (new): 54 test functions, 264 tests
-  once parametrized.
-- **`tests/domain/test_renderer_input_boundary.py`**: three of its tests changed, because
-  the behaviour they pinned changed on purpose. The selection test asserted the binding
-  domain's error passed through unchanged; it now asserts a render refusal under the same
-  rule identifier and field, categorised `binding-missing`. The module count went from seven
-  to nine. The conforming test renderer gained a `support`, and the non-conforming one now
-  has a render method and lacks only that, so it fails on the new member alone. Still 119
-  tests.
+- **`tests/domain/test_renderer_refusals.py`** (new): 57 test functions, 269 tests
+  once parametrized - 54 and 264 at the first commit; the review fixes added the three
+  functions and five tests described below.
+- **`tests/domain/test_renderer_input_boundary.py`**: two of its test functions and two of
+  its test classes changed, because the behaviour they pinned changed on purpose. The
+  selection test asserted the binding domain's error passed through unchanged; it now
+  asserts a render refusal under the same rule identifier and field, categorised
+  `binding-missing`. The module count went from seven to nine. The conforming test renderer
+  gained a `support`, and the non-conforming one now has a render method and lacks only
+  that, so the unchanged test using both fails on the new member alone. Still 119 tests.
+  The first commit's record said "three of its tests changed"; see the review section.
 - **[`docs/domain/renderer-input-boundary.md`](../../domain/renderer-input-boundary.md)**:
   the refusal model, the refusal matrix, the ownership-conflict rule, the field-ownership
   matrix for the reference workload, and the renderer's declared support are new sections.
@@ -148,7 +150,7 @@ byte, its SHA-256 checked afterwards. Every one was caught:
 | `normalization`: `prepare_render` does not check the selected binding's version | 4 failed |
 | `normalization`: `build_render_context` skips the ownership check | 2 failed |
 | `support`: the profile check becomes `if False` | 7 failed |
-| `renderer`: `render_with` builds a support from the inputs instead of the renderer's own | 4 failed |
+| `renderer`: `render_with` passes `support=RendererSupport(frozenset({str(contract.api_version)}), frozenset({'inferops.io/v1alpha1'}), frozenset({platform_defaults.version}), frozenset({contract.spec.profile}))` instead of `support=renderer.support` | 4 failed |
 
 Four defects are caught by exactly one test each. That test is the one written for the
 property, and the count is stated so that nobody reads 264 new tests as 264 guards on each
@@ -161,9 +163,9 @@ Run from Git Bash on Windows, with the locked environment.
 | Command | Result |
 |---|---|
 | `uv run --locked ruff check .` | All checks passed |
-| `uv run --locked ruff format --check --no-cache .` | 572 files already formatted |
+| `uv run --locked ruff format --check --no-cache .` | 573 files already formatted. The first commit's record said 572; see the review section |
 | `uv run --locked mypy` | No issues in 314 source files |
-| `uv run --locked python -m pytest tests/domain/test_renderer_refusals.py tests/domain/test_renderer_input_boundary.py -q -p no:cacheprovider` | 383 passed: 264 and 119 |
+| `uv run --locked python -m pytest tests/domain/test_renderer_refusals.py tests/domain/test_renderer_input_boundary.py -q -p no:cacheprovider` | 383 passed at the first commit, 264 and 119; 388 after the review fixes, 269 and 119 |
 | `uv run --locked python -m pytest tests/testing/test_test_inventory.py -q -p no:cacheprovider` | 1,071 passed |
 | `python -B -m tools.evidence_index --gate` | Exit 0; the six digests above, unchanged |
 | `gitleaks dir <path> --config .gitleaks.toml --redact`, for the render package, both suites, the boundary document, the changelog, the inventory page, and the contracts documents, with gitleaks 8.30.1 (the version the workflow pins) | No leaks found in any |
@@ -175,6 +177,74 @@ Git so the link suite collected them:
 **16,701 passed, 33 skipped, 14 deselected, none failed**, in 8 min 33 s. The skips are the
 ones earlier records name, such as symbolic links this host does not permit. The record's
 own text was completed after that run; the link suite was run again over it.
+
+**After the review fixes**, which touched one function in the package, the new suite, the
+inventory, and this record, the full lane was run again with the same command:
+**16,706 passed, 33 skipped, 14 deselected, none failed**, in 15 min 50 s - the first run's
+16,701 and the five tests the fixes added. `ruff check`, `ruff format --check --no-cache`
+(573 files), and `mypy` (314 source files) were clean again, and the gate printed the same
+six digests.
+
+## What the independent review found
+
+A reviewer outside the change read the commit, recounted every figure, re-ran the planted
+defects and planted 29 of their own in a separate worktree - compiling each, and confirming
+the planted copy was the one imported - and swept the repository for statements the change
+should have updated. They found no defect in behaviour and nothing private in the diff.
+What they found, and what the first commit got wrong:
+
+- **"572 files already formatted" was false.** `ruff format --check --no-cache .` reports
+  573 at the first commit, in the working tree and in a clean checkout alike: PR1's 569,
+  three new modules, and this record, which did not yet exist when 572 was counted.
+- **A count this change touched was left stale.** The inventory's sentence on suites that
+  defend no claim still said fifty-four, in the paragraph whose list this change extended to
+  the fifty-sixth. It had said fifty-four beside fifty-five rows since `V2-S1-003-PR1`; it
+  now says fifty-six, and the paragraph records the drift.
+- **"Three of its tests changed" overcounted.** Two test functions changed; the third item
+  was the two test renderer classes, used by a test that did not change.
+- **Two stated properties were not tested.** "Every finding carries the request
+  identifiers" was checked on three steps only: the reviewer removed the request context
+  from the ownership step of `prepare_render`, and from `render_with`, and no test failed.
+  "Sorted by category, then field, then rule" was not checked between field and rule:
+  ordering by rule first failed nothing. Three tests were added: one input refused by
+  support, the contract's rules, the binding's version, and ownership at once, plus a
+  selection refusal, all carrying the request; the validated path and `render_with`
+  carrying it; and two findings of one category whose field order and rule order disagree.
+  Each of the three defects now fails at least one test.
+- **A field key could turn a refusal into a crash.** Ordering findings converted every digit
+  run in a field with `int`, and `str.isdigit` is true for characters such as `²` that
+  `int` cannot read; a run past Python's integer-text limit fails the same way. An unowned
+  value's field is a key read from an input, which is exactly the case the ownership check
+  exists for. The order now compares a digit run by its length and its text, with no
+  conversion, over ASCII digits only, and a test sorts a superscript digit, an Arabic-Indic
+  digit, and a 5,000-digit run. Planting the old conversion back fails two of those three:
+  `int` reads the Arabic-Indic digit. The same ordering is used for `WorkloadNotAcceptedError`,
+  whose fields come from the contract pipeline, so it changed there too.
+- **The fourteenth planted defect was described too loosely to reproduce.** The reviewer's
+  reconstruction failed 5 tests rather than 4. The row above now gives the edit exactly.
+  The other thirteen reproduced the stated counts.
+
+Re-planted after the fixes, with the same method: ordering by rule before field, 1 failed;
+the ownership step without the request context, 2; `render_with` without it, 1; the old
+`int` conversion, 2. Of 388.
+
+Accepted as they are, with the reason:
+
+- `prepare_render` raises the workload package's `ValueError` when a `synchronous-llm`
+  contract arrives and no compatibility matrix was supplied, before any other finding -
+  including an unsupported profile - is reported. It is a configuration error rather than a
+  refusal of an input, it is documented under the function's `Raises`, and nothing is
+  output.
+- The field of an unowned value names the key that carried it, while the contract document
+  echoes an offending property name only when it is short and not credential-shaped. No
+  parsed input can produce such a key today, and the reason itself never repeats a value;
+  shortening the key is left to the day an input type can carry one.
+- Bindings supplied but not selected are not checked for ownership: only the selected
+  binding's values could reach a render.
+- `capability-unavailable` for an unsupported profile: the reviewer judged it consistent
+  with ADR 0010.
+
+The reviewer's other 25 defects were each caught, from 1 to 200 failures each.
 
 ## Privacy and publicability
 

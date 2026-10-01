@@ -51,7 +51,7 @@ from ..context import NO_REQUEST_CONTEXT, RequestContext
 from ..environment.errors import BINDING_RULES, BindingRefusal
 from ..workload.errors import DomainError, WorkloadValidationError
 
-_DIGIT_RUN = re.compile(r"(\d+)")
+_DIGIT_RUN = re.compile(r"([0-9]+)")
 
 #: The canonical codes a render refusal can carry. The first two are the ones the
 #: offline contract validator publishes; the third is the canonical code for a
@@ -262,9 +262,18 @@ RENDER_RULES: Final[Mapping[str, RenderRule]] = MappingProxyType(
 
 
 def _field_parts(field: str) -> tuple[object, ...]:
-    """A field address, with list indices read as numbers rather than text."""
+    """A field address, with runs of ASCII digits ordered as numbers rather than text.
+
+    ``split`` with one capturing group alternates text and digit runs, so a position
+    always holds the same kind of part and two addresses always compare. A digit run
+    is ordered by its length without leading zeros, then its text: the order of the
+    number, with no ``int`` conversion that a run of any length or a non-ASCII digit
+    could make fail. A field can carry a key read from an input, so the key must not
+    be able to turn a refusal into a crash.
+    """
     return tuple(
-        int(part) if part.isdigit() else part for part in _DIGIT_RUN.split(field)
+        (len(part.lstrip("0")), part.lstrip("0")) if index % 2 else part
+        for index, part in enumerate(_DIGIT_RUN.split(field))
     )
 
 
