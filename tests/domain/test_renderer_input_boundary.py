@@ -1345,14 +1345,23 @@ def imports_render_package(source: str, package: tuple[str, ...] | None) -> bool
     return False
 
 
+#: The one tool allowed to import the render package, by directory. It is a
+#: repository check, not a delivery path: it derives the committed generated releases
+#: again from their declared inputs, and writes only a declared release directory in
+#: this repository, when a contributor names it. The test below holds that nothing on
+#: a delivery path reaches it in turn.
+REPOSITORY_CHECK = REPO_ROOT / "tools" / "generated_release"
+
+
 def test_nothing_outside_the_render_package_imports_it() -> None:
     """The boundary is not wired to any delivery path: no API, adapter, tool, or script.
 
     Python modules under ``src`` and ``tools`` are read for imports; shell, YAML, and
     Terraform files under ``scripts``, ``charts``, ``deploy``, and ``infra`` for the
-    module path at all.
+    module path at all. The drift check in :data:`REPOSITORY_CHECK` is exempt by name.
     """
     offenders = []
+    exempt = []
     src = REPO_ROOT / "src"
     for path in sorted(src.rglob("*.py")):
         if PACKAGE_DIR in path.parents:
@@ -1362,12 +1371,33 @@ def test_nothing_outside_the_render_package_imports_it() -> None:
             offenders.append(path.relative_to(REPO_ROOT).as_posix())
     for path in sorted((REPO_ROOT / "tools").rglob("*.py")):
         if imports_render_package(path.read_text(encoding="utf-8"), None):
-            offenders.append(path.relative_to(REPO_ROOT).as_posix())
+            if REPOSITORY_CHECK in path.parents:
+                exempt.append(path.name)
+            else:
+                offenders.append(path.relative_to(REPO_ROOT).as_posix())
+    # The exemption is used, so it cannot outlive the tool it names.
+    assert exempt == ["core.py"]
     for root in ("scripts", "charts", "deploy", "infra"):
         for path in sorted((REPO_ROOT / root).rglob("*")):
             if path.is_file() and path.suffix in {".py", ".sh", ".yaml", ".tf"}:
                 text = path.read_text(encoding="utf-8", errors="replace")
                 if RENDER_MODULE in text:
+                    offenders.append(path.relative_to(REPO_ROOT).as_posix())
+    assert offenders == []
+
+
+def test_nothing_on_a_delivery_path_reaches_the_repository_check() -> None:
+    """The exempt drift check is reached from a contributor's shell or the test suite,
+    never from the distribution, another tool, or a deployment file."""
+    names = ("tools.generated_release", "tools/generated_release")
+    offenders = []
+    for root in ("src", "tools", "scripts", "charts", "deploy", "infra"):
+        for path in sorted((REPO_ROOT / root).rglob("*")):
+            if REPOSITORY_CHECK in path.parents or not path.is_file():
+                continue
+            if path.suffix in {".py", ".sh", ".yaml", ".tf"}:
+                text = path.read_text(encoding="utf-8", errors="replace")
+                if any(name in text for name in names):
                     offenders.append(path.relative_to(REPO_ROOT).as_posix())
     assert offenders == []
 

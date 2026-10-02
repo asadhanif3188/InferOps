@@ -1,15 +1,19 @@
 # Helm values renderer
 
-Status: **implemented in the platform domain** by `V2-S2-001-PR1`, and **bound to a
-release** by `V2-S2-001-PR2`. This page says how a validated render context becomes the
-values of the existing `inferops-llm` chart: where each value goes, what is refused, the
-canonical form the values are written in, the RenderedWorkloadRelease that names them and
-the two files both are written to, what a hand-written values file may still set, and how
-the result compares with the V1 real release. A caller can now write the values and their
-release to a directory it names. Nothing in this repository calls that from a command or a
-workflow, commits a generated release, or installs one: the values a release is installed
-with are still written by hand. Every check behind this page is static, at evidence level
-C0, and so is every file it generates until a real deployment installs one.
+Status: **implemented in the platform domain** by `V2-S2-001-PR1`, **bound to a
+release** by `V2-S2-001-PR2`, and **verified once committed** by `V2-S2-002-PR1`. This
+page says how a validated render context becomes the values of the existing
+`inferops-llm` chart: where each value goes, what is refused, the canonical form the
+values are written in, the RenderedWorkloadRelease that names them and the two files both
+are written to, how a committed release is checked against its sources, what a
+hand-written values file may still set, and how the result compares with the V1 real
+release. A caller can write the values and their release to a directory it names. One
+command [verifies every committed generated release](#verifying-a-committed-release)
+against the inputs it is declared to be derived from, and regenerates a release a
+contributor names. The one committed release is the reference release, a test fixture.
+Nothing in this repository installs a generated release: the values a release is
+installed with are still written by hand. Every check behind this page is static, at
+evidence level C0, and so is every file it generates until a real deployment installs one.
 
 | Property | Value |
 |---|---|
@@ -19,9 +23,10 @@ C0, and so is every file it generates until a real deployment installs one.
 | Output | `GeneratedHelmValues`: 25 chart values, as a read-only document and as canonical YAML; through `generate_release`, also the release naming them, as the two files `values.generated.yaml` and `rendered-workload-release.yaml` with their digests |
 | Chart | `inferops-llm` `0.3.0`; a test fails if [`Chart.yaml`](../../charts/inferops-llm/Chart.yaml) names another |
 | Refusal | `RenderRefused`, under the boundary's vocabulary; four rules are the renderer's own |
-| Golden output | [`support-assistant-local.values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.values.generated.yaml), and the release naming it, [`support-assistant-local.rendered-workload-release.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local.rendered-workload-release.yaml) |
-| Tests | [`tests/domain/test_helm_values_renderer.py`](../../tests/domain/test_helm_values_renderer.py), and for the release and the files, [`tests/domain/test_generated_release.py`](../../tests/domain/test_generated_release.py) |
-| Validation records | [`v2-s2-001-pr1-validation.md`](../proof/domain/v2-s2-001-pr1-validation.md), [`v2-s2-001-pr2-validation.md`](../proof/domain/v2-s2-001-pr2-validation.md) |
+| Golden output | The release directory [`support-assistant-local-kind/`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/): [`values.generated.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/values.generated.yaml), and the release naming it, [`rendered-workload-release.yaml`](../../tests/domain/fixtures/helm-values/support-assistant-local-kind/rendered-workload-release.yaml) |
+| Drift check | [`tools/generated_release`](../../tools/generated_release/core.py): `python -m tools.generated_release --check`, and `--write NAME` to regenerate |
+| Tests | [`tests/domain/test_helm_values_renderer.py`](../../tests/domain/test_helm_values_renderer.py); for the release and the files, [`tests/domain/test_generated_release.py`](../../tests/domain/test_generated_release.py); for the drift check, [`tests/domain/test_generated_release_drift.py`](../../tests/domain/test_generated_release_drift.py) |
+| Validation records | [`v2-s2-001-pr1-validation.md`](../proof/domain/v2-s2-001-pr1-validation.md), [`v2-s2-001-pr2-validation.md`](../proof/domain/v2-s2-001-pr2-validation.md), [`v2-s2-002-pr1-validation.md`](../proof/domain/v2-s2-002-pr1-validation.md) |
 
 ## What it is for
 
@@ -203,7 +208,7 @@ That digest is not `canonical_release`'s, which hashes the release's JSON value 
 two releases as documents; a test holds the two apart.
 
 For the reference workload on the `local-kind` binding the release is the committed golden
-file, byte for byte. Its contract and binding digests are computed from the committed
+file, byte for byte, in the release directory `support-assistant-local-kind/`. Its contract and binding digests are computed from the committed
 fixtures; its two revisions are the suite's placeholders, so it is a test render, not the
 record of a render at any commit:
 
@@ -320,6 +325,112 @@ purpose; the same suite holds that nothing it runs on import - a module-level
 statement, a decorator, a default value - names a file-system operation, so it touches a
 file only inside a function a caller invokes. The rule otherwise stands - an earlier change left a process
 memory metric unemitted rather than read a path for it, and that reasoning is unchanged.
+
+## Verifying a committed release
+
+Added by `V2-S2-002-PR1`. A generated release committed to this repository is worth reading
+only while it is what its sources produce. [`tools/generated_release`](../../tools/generated_release/core.py)
+checks that. It is also the only path in this repository that regenerates a committed
+release.
+
+**Declared inputs.** `DECLARED_RELEASES` names each committed release directory and the
+inputs it is derived from: the WorkloadContract, the EnvironmentBindings offered to the
+boundary and the name of the one to select, the file the platform defaults are read from,
+and the renderer and platform-defaults revisions. The check derives both files again from
+those inputs through `generate_release` and compares the bytes. It trusts nothing in the
+committed release: the revisions come from the declaration, not from the release. One
+release is declared:
+
+| Release | Contract | Binding | Platform defaults | Revisions |
+|---|---|---|---|---|
+| `support-assistant-local-kind` | `contracts/workload/examples/valid/synchronous-llm-local.yaml` | `local-kind`, the only binding offered | The `api` block of `charts/inferops-llm/values.yaml` | Placeholders: `a` and `b`, each repeated 40 times |
+
+**The workflow.**
+
+```sh
+# Verify: compare every committed release with what its declared inputs derive.
+uv run --locked python -m tools.generated_release --check
+# After a deliberate change to a declared input: read the diff, then regenerate by name.
+uv run --locked python -m tools.generated_release --write support-assistant-local-kind
+# Print every declared release and its inputs.
+uv run --locked python -m tools.generated_release --list
+```
+
+`--check` writes nothing and repairs nothing. It exits 0 when every release is what its
+inputs derive, and 1 when one is not. It reports each drifted release with the rule it
+breaks; each release field that differs, with what the difference means and both values;
+a unified diff from the committed file to the derived one; and the command that
+regenerates it. `--write` regenerates only the releases it is given by name. It replaces
+the two files through `write_release`, so the result is both files or neither, and it
+refuses a directory that holds anything else, or a staging directory left beside one.
+Regeneration replaces a hand edit without asking, so read the diff first. The default-lane
+test suite runs the same check over every declared release, so a stale or hand-edited
+release fails the build that introduces it.
+
+**The rules**, in the order a finding is reported:
+
+| Rule | Statement |
+|---|---|
+| `generated-release-missing` | A declared release directory exists. |
+| `generated-release-file-missing` | A release directory holds both generated files. |
+| `generated-release-unexpected-entry` | A release directory holds the two generated files and nothing else. |
+| `generated-release-staging-left` | No staging directory from an unfinished write is left beside a release. |
+| `generated-release-sources-refused` | The declared sources of a release still derive a release. |
+| `generated-release-values-unrecorded` | The committed values file's SHA-256 is the digest the committed release records. |
+| `generated-release-field-drifted` | Each field of the committed release is the field its declared sources derive. |
+| `generated-release-file-drifted` | Each committed file is, byte for byte, the file its declared sources derive. |
+
+**What each kind of drift is reported as.** The suite plants each of these in a copy of
+the declared inputs:
+
+- **A hand edit to the values file** - a value, a comment, trailing whitespace, an
+  unquoted string, or CRLF line endings - is `generated-release-file-drifted` and
+  `generated-release-values-unrecorded`: the release no longer records those bytes. A
+  CRLF checkout is named as a line-ending difference, without a diff.
+- **A source changed after generation** is `generated-release-field-drifted` at
+  `source.contract.sha256` or `source.environmentBinding.sha256`, with the recorded
+  digest named as stale, and at `metadata.releaseId`. A change that moves a chart value,
+  such as the contract's replica count, also moves `output.helmValues.sha256` and the
+  values file.
+- **A release edited to name other provenance** - either revision, the identifier, the
+  binding's name, the contract digest, the values file's path or digest - is reported at
+  that field. An edit no field shows, such as one to the header comment, is still a
+  drifted file.
+- **Values and a release edited to agree** are consistent with each other and not with
+  their sources: both files and `output.helmValues.sha256` are reported.
+- **Sources that no longer render** are `generated-release-sources-refused`, with the
+  boundary's or the renderer's refusal. A missing input file is the same rule. Nothing is
+  compared, because there is nothing to compare with.
+
+**Platform defaults, measured.** The reference release reads its defaults from the
+chart's `api` block, as the generated-release suite does. A change to one of those values
+is drift: the values file and `output.helmValues.sha256` move. `metadata.releaseId` does
+not move, because the platform-defaults revision is declared, not derived from the
+content. This is the [limitation measured above](#the-generated-release), now visible as
+drift in a committed release; it is not closed.
+
+**Decided here.**
+
+- A release's inputs are declared in code beside the check, not in a file in the release
+  directory. The directory holds what `write_release` writes and nothing else, which is
+  what `generated-release-unexpected-entry` holds.
+- The reference release moved from two golden files named with a prefix to a directory in
+  the layout `write_release` produces, so the release's `output.helmValues.path` names a
+  file that is beside it.
+- `--write` takes release names and has no default. A drift that nobody named is
+  reported, never repaired.
+
+**What it does not check.**
+
+- **That either revision names a commit**, or that the platform defaults are the ones at
+  the declared revision. Nothing reads Git history, and nothing reconstructs the defaults.
+- **A release nobody declared.** A test lists every tracked file named like a generated
+  file and fails unless each is in a declared directory. A file Git does not track is not
+  checked.
+- **Helm.** The check compares files. The generated-release suite renders the values with
+  Helm when Helm is on `PATH`.
+- **Anything at runtime.** A pass is `C0`: the committed files agree with their committed
+  sources. It does not establish that anything was installed or served.
 
 ## What it refuses
 
@@ -474,11 +585,11 @@ on a cluster.
 
 | Not applied | Why | What it needs |
 |---|---|---|
-| A command or workflow writes a generated release | `generate_release` and `write_release` are library functions; nothing calls them | A later change |
-| Committed generated values are verified against their sources | Nothing commits generated values yet, and nothing reads a written release directory back | A later change |
+| A delivery workflow writes a generated release | The one command that writes a release regenerates a declared release in this repository when a contributor names it; nothing writes one for delivery | A later change |
+| A revision a release records names a commit | Neither the declaration nor the drift check reads Git history, and the reference release's revisions are placeholders | A check against the repository the release is committed in |
 | A secret reference is rendered | No accepted mapping from a contract locator to the chart's secret binding | A decision on that mapping |
 | The `mock-llm` profile is rendered | The renderer declares the synchronous profile only, as the story scopes it | A renderer, or a support change, for the mock profile |
-| The platform defaults are read from a committed file | No defaults file exists; the caller supplies the defaults and states their revision, as at the boundary. Until then defaults content changed under a falsely retained revision moves the values digest and not the release identifier, and a test measures it | A change that reconstructs the defaults from a committed source bound to the revision a release records, before any source verification relies on that revision |
+| The platform defaults are read from a committed file | No defaults file exists; the caller supplies the defaults and states their revision, as at the boundary. Until then defaults content changed under a falsely retained revision moves the values digest and not the release identifier, and a test measures it | A change that reconstructs the defaults from a committed source bound to the revision a release records, before any source verification relies on that revision. The drift check reads the reference release's defaults from the chart's `api` block, so a change to them is reported as drift, and the declared revision does not move |
 | A hand-written values file outside the supported suffix is checked | Only files named with `.manual-values.yaml` are found and admitted; nothing installs generated values, so there is no install path to refuse others on | The deployment path that installs generated values |
 | The API image is generated | It is a contributor's local build, published to no registry | A published API image |
 | The download URL agrees with the contract's pins | The contract has no field for it; the content hash is the check | A contract field for the source, or a derivation rule |
@@ -492,8 +603,10 @@ on a cluster.
   still written by hand: generated values and their release are written only to a
   directory a caller names, and nothing installs from one.
   `deployment-values-derive-only-from-a-validated-document` stays planned.
-- **That a written release is still what was written.** The writer reads both files back
-  before it moves them into place; nothing checks a release directory after that.
+- **That a release directory nobody declared is still what was written.** The writer reads
+  both files back before it moves them into place, and the drift check compares every
+  declared committed release with its sources. A directory outside the declaration, or
+  outside Git, is not checked.
 - **That the hand-written half is safe.** The check refuses a hand-written value that
   repeats a generated one; it does not judge the others. It is enforced for every
   repository file named as a supported hand-written values file, and for any document a
@@ -510,7 +623,8 @@ on a cluster.
 ## Validation
 
 ```sh
-uv run --locked python -m pytest tests/domain/test_helm_values_renderer.py tests/domain/test_generated_release.py -q
+uv run --locked python -m pytest tests/domain/test_helm_values_renderer.py tests/domain/test_generated_release.py tests/domain/test_generated_release_drift.py -q
+uv run --locked python -m tools.generated_release --check
 uv run --locked python -m pytest tests/domain tests/architecture -q
 uv run --locked ruff check . && uv run --locked ruff format --check . && uv run --locked mypy
 ```

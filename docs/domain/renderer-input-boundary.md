@@ -290,7 +290,12 @@ The tests assert each property directly:
   imports reach only the workload, environment, and release domains and the request
   context; no module names `open`, `eval`, `exec`, `__import__`, or `importlib`;
 - nothing under `src`, `tools`, `scripts`, `charts`, `deploy`, or `infra` imports the
-  package, so the boundary is not wired to any delivery path.
+  package, so the boundary is not wired to any delivery path. Since `V2-S2-002-PR1` one
+  tool is exempt by name: [the drift check](helm-values-renderer.md#verifying-a-committed-release)
+  in `tools/generated_release`, a repository check that derives the committed generated
+  releases again and writes only a declared release directory in this repository. A
+  test holds that the exemption is used, and that nothing under those six directories
+  names the drift check in turn.
 
 ## The renderer interface
 

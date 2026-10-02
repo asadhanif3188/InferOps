@@ -10,6 +10,30 @@ from `1.0.0`.
 
 ### Added
 
+- **Generated release drift check.** `V2-S2-002-PR1` makes a committed generated release
+  mechanically verifiable against the inputs it is derived from.
+  `python -m tools.generated_release --check` derives each declared release again from
+  its declared WorkloadContract, EnvironmentBinding, platform defaults, and revisions,
+  through `generate_release`, and compares both committed files byte for byte. It writes
+  nothing and repairs nothing: drift is reported under one of eight rules, with each
+  release field that differs and what the difference means, a unified diff from the
+  committed file to the derived one, and the command that regenerates the release.
+  `--write NAME` is the only regeneration, and it refuses a directory that holds anything
+  the platform did not write. The reference release moved into a directory in the
+  writer's layout, `tests/domain/fixtures/helm-values/support-assistant-local-kind/`,
+  with its bytes unchanged. A new suite plants every kind of drift in a copy - edited
+  values, a stale contract or binding digest, provenance edited to name another revision,
+  identifier, or digest, values and a release forged to agree, and missing or stray files
+  - and the default lane runs the check over every declared release. The render-boundary
+  suite exempts this one tool by name from "no tool imports the render package", and
+  holds that nothing on a delivery path reaches it. Measured, not closed: the
+  platform-defaults revision is declared, so a defaults change moves the values and not
+  the release identifier, and nothing checks that a revision names a commit. No claim
+  moves, and every check is static (`C0`); [the
+  page](docs/domain/helm-values-renderer.md#verifying-a-committed-release) says what is
+  checked and [the validation record](docs/proof/domain/v2-s2-002-pr1-validation.md) what
+  was run.
+
 - **Generated release provenance.** `V2-S2-001-PR2` binds the Helm values renderer's
   output to a RenderedWorkloadRelease. `generate_release` runs the boundary, the renderer,
   and `record_release` in one path and returns the values and the release that names them

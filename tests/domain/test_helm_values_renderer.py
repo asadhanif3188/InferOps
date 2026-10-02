@@ -118,7 +118,7 @@ MATRIX_PATH = (
 WORKLOAD_VALID_DIR = REPO_ROOT / "contracts" / "workload" / "examples" / "valid"
 BINDING_VALID_DIR = REPO_ROOT / "contracts" / "environment" / "examples" / "valid"
 FIXTURES = REPO_ROOT / "tests" / "domain" / "fixtures" / "helm-values"
-GOLDEN = FIXTURES / "support-assistant-local.values.generated.yaml"
+GOLDEN = FIXTURES / "support-assistant-local-kind" / "values.generated.yaml"
 MANUAL = FIXTURES / "support-assistant-local.manual-values.yaml"
 DOC = REPO_ROOT / "docs" / "domain" / "helm-values-renderer.md"
 

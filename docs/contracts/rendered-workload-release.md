@@ -13,9 +13,11 @@ renderer](../domain/helm-values-renderer.md) generates chart values, and since
 `V2-S2-001-PR2` [`generate_release`](../domain/helm-values-renderer.md#the-generated-release)
 records the release that names them - with the values file's digest, by [the rule decided
 below](#generated-files-and-their-digests) - and `write_release` writes both files to a
-directory a caller names. **Nothing commits or installs a release.** The one generated
-release in the repository is a test's golden file, rendered at placeholder revisions, and
-neither fixture here describes a release that was rendered, installed, or run.
+directory a caller names. **Nothing installs a release.** The one generated release
+committed to the repository is a test's golden release, rendered at placeholder
+revisions, and since `V2-S2-002-PR1` [a drift check](../domain/helm-values-renderer.md#verifying-a-committed-release)
+compares it with what its declared sources derive. Neither fixture here describes a
+release that was rendered, installed, or run.
 
 | Property | Value |
 |---|---|
@@ -245,9 +247,11 @@ written. A secret deliberately written as an otherwise valid public identifier r
 lists the tests.
 
 What this costs: a checkout that rewrites line endings changes a generated file's bytes
-and so its digest. The one generated release committed today, a test's golden file, is
+and so its digest. The one generated release committed today, a test's golden release, is
 pinned to LF by `.gitattributes`, and so must any directory generated releases are
-committed to.
+committed to. Since `V2-S2-002-PR1` a test asks Git for the line-ending attribute of every
+declared release directory's files, and the drift check names a CRLF file as a
+line-ending difference.
 
 **The release identifier does not cover the values.** The identifier is derived from the
 inputs, so a values digest moves a release's canonical form and its file digest, never its
@@ -671,15 +675,18 @@ fixtures cannot be read as the record of a render.
 
 Each of these needs a file, a repository, or code that does not exist, and nothing
 applies any of them today. They are stated so that nobody reads the domain as more than it
-is.
+is. One rule left this table in `V2-S2-002-PR1`: a release committed to the repository
+matches what its sources derive today. [The drift check](../domain/helm-values-renderer.md#verifying-a-committed-release)
+applies it to every declared committed release, and a test fails if a tracked generated
+file is outside a declared release directory.
 
 | Rule | Why it is not applied | What it needs |
 |---|---|---|
-| `output.helmValues.sha256` is the digest of the values file it names, for a release read back from a directory | Since `V2-S2-001-PR2` the rule is [decided](#generated-files-and-their-digests), and `generate_release` records the digest of the bytes it hands `write_release`, which reads both files back before it moves them into place. Nothing re-checks a release directory once it is written, or a release built by calling `record_release` directly | The generated-artifact drift check |
-| The values file exists beside the release, for a release read back from a directory | `write_release` writes both files or neither for a running system, though not across a crash, which can leave the directory without both; a document check still cannot see a directory, and nothing reads one back later | The generated-artifact drift check |
+| `output.helmValues.sha256` is the digest of the values file it names, for a release read back from a directory that is not a declared committed release | Since `V2-S2-002-PR1` [the drift check](../domain/helm-values-renderer.md#verifying-a-committed-release) applies it to every declared committed release directory, as `generated-release-values-unrecorded`. A directory a caller wrote elsewhere, or a release built by calling `record_release` directly, is not read back | A check that takes any release directory |
+| The values file exists beside the release, for a release read back from a directory that is not a declared committed release | The drift check applies it to every declared committed release directory, as `generated-release-file-missing`; a document check still cannot see a directory | A check that takes any release directory |
 | The renderer and platform-defaults revisions name commits that exist | A document check has no repository | A check against the repository the release is committed in |
 | A lowercase credential with no published prefix is refused | It has the shape of a name, and the heuristic's other branch needs mixed case; see [Secrets](#secrets). Since `V2-S1-004-PR1` this is stated as the policy's [input-trust limitation](#provenance-input-trust), not a pending rule: no rule over syntax can close it | Nothing syntactic: identities are public by policy, and a test asserts the gap on the supported path too |
-| A release committed to the repository matches what its sources derive today | Nothing commits a release | The generated-artifact drift check |
+| A revision a release records is the revision its inputs were read at | The drift check takes both revisions from a release's declaration and the platform defaults from the chart's `api` block at the checked-out commit; nothing reconstructs either input at a recorded revision | A change that reads each input at the revision a release records |
 
 ## Fixtures
 
@@ -695,7 +702,8 @@ or run.
 ## Validation
 
 ```sh
-python -m pytest tests/contracts/test_rendered_workload_release_v1alpha1.py tests/domain/test_rendered_workload_release_domain.py tests/domain/test_provenance_input_trust.py tests/domain/test_generated_release.py -q
+python -m pytest tests/contracts/test_rendered_workload_release_v1alpha1.py tests/domain/test_rendered_workload_release_domain.py tests/domain/test_provenance_input_trust.py tests/domain/test_generated_release.py tests/domain/test_generated_release_drift.py -q
+python -m tools.generated_release --check
 ```
 
 A document that is not a committed fixture can be checked from Python, for every
@@ -788,15 +796,19 @@ files say about each other and nothing about a running system.
 
 ## What this contract does not do
 
-- **Nothing commits or installs it.** Since `V2-S2-001-PR2`, `generate_release` records a
-  release for the values the Helm values renderer produced, and `write_release` writes the
-  two files to a directory a caller names. Nothing calls either from a command, a
-  workflow, or a delivery path; no generated release is committed outside a test's golden
-  file; and the values file a release is installed with is still written by hand.
+- **Nothing installs it.** Since `V2-S2-001-PR2`, `generate_release` records a release for
+  the values the Helm values renderer produced, and `write_release` writes the two files to
+  a directory a caller names. Since `V2-S2-002-PR1`, one command verifies every declared
+  committed release against its declared sources and regenerates a release a contributor
+  names. Nothing calls either function from a delivery path; no generated release is
+  committed outside a test's golden release; and the values file a release is installed
+  with is still written by hand.
 - **It checks a source digest only when it is given the source.** The platform domain
-  confirms the contract and binding digests against documents a caller supplies. Nothing
-  finds those documents for a release, nothing re-checks a written values file against
-  the digest its release records, and nothing checks that the two revisions exist.
+  confirms the contract and binding digests against documents a caller supplies. The
+  drift check finds those documents for a declared committed release through its
+  declaration, and re-checks its values file against the digest the release records.
+  Nothing finds them for any other release, and nothing checks that the two revisions
+  exist.
 - **It moves no claim.** `deployment-values-derive-only-from-a-validated-document` and
   `the-platform-serves-a-workload-the-contract-describes` stay planned.
 - **It certifies nothing about a deployment.** A valid release is a well-formed statement
