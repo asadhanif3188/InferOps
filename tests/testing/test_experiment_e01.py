@@ -56,6 +56,7 @@ from tools.experiment_e01 import (
     result_page,
     run_id_problem,
 )
+from tools.experiment_e01 import core as e01_core
 from tools.experiment_e01.__main__ import _shown
 from tools.experiment_e01.core import MANIFEST, REFUSALS, RESULT
 
@@ -308,6 +309,60 @@ def test_a_second_render_from_the_same_seed_does_not_answer_e01_ac1(
     assert _judged(copied, same_seed)["E01-A"] == "INCONCLUSIVE"
 
 
+def test_a_failed_criterion_is_failed_even_beside_an_unanswered_one(
+    copied: Path,
+) -> None:
+    """FAILED is not repeatable and INCONCLUSIVE is, so FAILED must win."""
+
+    def mixed(manifest: dict[str, Any]) -> None:
+        manifest["observations"]["E01-A"]["contractDigest"] = "0" * 64
+        manifest["observations"]["E01-A"]["renderB"]["reported"] = None
+
+    assert _judged(copied, mixed)["E01-A"] == "FAILED"
+
+
+def test_renders_that_differ_fail_even_without_the_seed_report(copied: Path) -> None:
+    values = copied / "render-b" / "values.generated.yaml"
+    values.write_bytes(values.read_bytes() + b"# differs\n")
+
+    def unreported(manifest: dict[str, Any]) -> None:
+        manifest["observations"]["E01-A"]["renderB"]["reported"] = None
+
+    assert _judged(copied, unreported)["E01-A"] == "FAILED"
+
+
+def test_an_unreadable_render_leaves_its_part_unanswered(copied: Path) -> None:
+    (copied / "render-a" / "rendered-workload-release.yaml").write_bytes(b": [\n")
+    assert _judged(copied, lambda manifest: None)["E01-A"] == "INCONCLUSIVE"
+
+
+def test_a_run_against_another_reference_is_found(copied: Path) -> None:
+    manifest = _manifest(copied)
+    manifest["preconditions"]["mergedRef"] = "HEAD"
+    (copied / MANIFEST).write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    assert "preconditions.mergedRef" in _locations(copied, copied.parents[5])
+
+
+def test_recorded_findings_the_observations_do_not_give_are_found(copied: Path) -> None:
+    manifest = _manifest(copied)
+    manifest["preconditions"]["executingRevisionMerged"] = False
+    (copied / MANIFEST).write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    assert "preconditions.findings" in _locations(copied, copied.parents[5])
+
+
+def test_a_malformed_manifest_is_a_finding_not_a_traceback(copied: Path) -> None:
+    manifest = _manifest(copied)
+    del manifest["preconditions"]
+    (copied / MANIFEST).write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    assert _locations(copied, copied.parents[5]) == {MANIFEST}
+
+
 def test_an_unadmitted_hand_written_file_fails_e01_a(copied: Path) -> None:
     def refused(manifest: dict[str, Any]) -> None:
         manifest["observations"]["E01-A"]["admission"] = {
@@ -383,6 +438,8 @@ def test_a_patch_applies_add_remove_and_replace_to_a_copy() -> None:
 @pytest.mark.parametrize(
     "operation",
     [
+        {"op": "add", "path": "/spec/b"},
+        {"op": "replace", "path": "/spec/a"},
         {"op": "move", "path": "/spec/a"},
         {"op": "remove", "path": "/spec/absent"},
         {"op": "replace", "path": "/spec/absent", "value": 1},
@@ -454,6 +511,7 @@ def test_the_preconditions_hold_for_a_clean_merged_commit() -> None:
         ({"status": [" M README.md"]}, "not clean"),
         ({"moved_inputs": ["uv.lock"]}, "1 pinned input(s) differ"),
         ({"parts": (*PARTS, "E01-D")}, "E01-D is refused"),
+        ({"package_in_checkout": False}, "inferops package"),
     ],
 )
 def test_each_failed_precondition_is_named(
@@ -484,9 +542,22 @@ def _git(root: Path, *arguments: str) -> None:
     )
 
 
+def _merge(root: Path) -> None:
+    """Point the repository's origin/main at its HEAD, as a merge and a fetch would."""
+    _git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+
+
+def _run(root: Path, **options: Any) -> tuple[Path, Any]:
+    """A run in a temporary repository. The package imported is this checkout's, so
+    the run is told to expect it there rather than under the temporary root."""
+    return execute_run(
+        root, f"{_today()}-e01-abc-1", **{"source_root": REPO_ROOT, **options}
+    )
+
+
 @pytest.fixture
 def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A Git repository holding the freeze record and every input it pins, on main."""
+    """A Git repository holding the freeze record and every input it pins, merged."""
     if shutil.which("git") is None:
         pytest.skip("git is not on PATH")
     freeze = load_freeze(REPO_ROOT)
@@ -496,6 +567,7 @@ def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     _git(tmp_path, "init", "-q", "-b", "main")
     _git(tmp_path, "add", "-A")
     _git(tmp_path, "commit", "-q", "-m", "inputs")
+    _merge(tmp_path)
     # The second render's process finds the runner here, and the inputs under its root.
     monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
     monkeypatch.setenv("PYTHONHASHSEED", "1")
@@ -507,11 +579,10 @@ def _today() -> str:
 
 
 def test_a_run_writes_evidence_the_judge_agrees_with(repository: Path) -> None:
-    evidence, judgement = execute_run(
-        repository, f"{_today()}-e01-abc-1", merged_ref="main"
-    )
+    evidence, judgement = _run(repository)
     assert check_run(evidence, repository) == []
     manifest = _manifest(evidence)
+    assert manifest["preconditions"]["mergedRef"] == "origin/main"
     assert manifest["preconditions"]["findings"] == []
     assert manifest["abortChecks"]["conditions"] == []
     assert manifest["abortChecks"]["temporaryDirectoryRemoved"] is True
@@ -533,20 +604,18 @@ def test_a_run_into_an_existing_directory_writes_nothing(repository: Path) -> No
     run_id = f"{_today()}-e01-abc-1"
     (repository / RUNS_DIR / run_id).mkdir(parents=True)
     with pytest.raises(FileExistsError):
-        execute_run(repository, run_id, merged_ref="main")
+        execute_run(repository, run_id, source_root=REPO_ROOT)
     assert list((repository / RUNS_DIR / run_id).iterdir()) == []
 
 
 def test_a_run_identifier_for_another_day_writes_nothing(repository: Path) -> None:
     with pytest.raises(ValueError):
-        execute_run(repository, "20000101-e01-abc-1", merged_ref="main")
+        execute_run(repository, "20000101-e01-abc-1", source_root=REPO_ROOT)
     assert not (repository / RUNS_DIR).exists()
 
 
-def _refused(repository: Path, merged_ref: str = "main") -> dict[str, Any]:
-    evidence, judgement = execute_run(
-        repository, f"{_today()}-e01-abc-1", merged_ref=merged_ref
-    )
+def _refused(repository: Path, **options: Any) -> dict[str, Any]:
+    evidence, judgement = _run(repository, **options)
     assert dict(judgement.outcomes) == dict.fromkeys(PARTS, "REFUSED")
     assert not (evidence / REFUSALS).exists()
     assert check_run(evidence, repository) == []
@@ -567,6 +636,7 @@ def test_a_moved_pinned_input_refuses_the_run(repository: Path) -> None:
         contract.read_text(encoding="utf-8") + "# moved\n", encoding="utf-8"
     )
     _git(repository, "commit", "-q", "-am", "move an input")
+    _merge(repository)
     manifest = _refused(repository)
     assert manifest["preconditions"]["movedPinnedInputs"] == [
         "contracts/workload/examples/valid/synchronous-llm-local.yaml"
@@ -574,10 +644,49 @@ def test_a_moved_pinned_input_refuses_the_run(repository: Path) -> None:
 
 
 def test_an_unmerged_commit_refuses_the_run(repository: Path) -> None:
-    _git(repository, "branch", "merged")
     _git(repository, "commit", "-q", "--allow-empty", "-m", "not merged")
-    manifest = _refused(repository, merged_ref="merged")
+    manifest = _refused(repository)
     assert manifest["preconditions"]["executingRevisionMerged"] is False
+
+
+def test_a_package_from_another_checkout_refuses_the_run(repository: Path) -> None:
+    """The run imports this checkout's package, which is not under the temporary root."""
+    manifest = _refused(repository, source_root=None)
+    assert manifest["preconditions"]["inferopsPackage"] == (
+        "outside the checked-out tree"
+    )
+    assert any("inferops package" in f for f in manifest["preconditions"]["findings"])
+
+
+def test_a_step_that_raises_is_recorded_and_answers_nothing(
+    repository: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(*arguments: Any) -> None:
+        raise RuntimeError("a step failed")
+
+    monkeypatch.setattr(e01_core, "_run_parts", broken)
+    evidence, judgement = _run(repository)
+    manifest = _manifest(evidence)
+    assert manifest["error"] == {
+        "exception": "RuntimeError",
+        "message": "a step failed",
+    }
+    assert dict(judgement.outcomes) == dict.fromkeys(PARTS, "INCONCLUSIVE")
+    assert check_run(evidence, repository) == []
+
+
+def test_a_tracked_file_changed_during_the_run_aborts_it(
+    repository: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def tamper(root: Path, *arguments: Any) -> None:
+        (root / "uv.lock").write_text("changed\n", encoding="utf-8")
+
+    monkeypatch.setattr(e01_core, "_run_parts", tamper)
+    evidence, judgement = _run(repository)
+    assert dict(judgement.outcomes) == dict.fromkeys(PARTS, "ABORTED")
+    assert _manifest(evidence)["abortChecks"]["conditions"] == [
+        "a file outside the run's evidence directory changed"
+    ]
 
 
 def test_the_command_refuses_to_start_without_the_first_seed(
@@ -593,8 +702,6 @@ def test_the_command_refuses_to_start_without_the_first_seed(
             f"{_today()}-e01-abc-1",
             "--root",
             str(repository),
-            "--merged-ref",
-            "main",
         ],
         cwd=REPO_ROOT,
         capture_output=True,
@@ -624,8 +731,8 @@ def test_the_manifest_is_a_copy_safe_document(copied: Path) -> None:
         ),
         (["--root=/srv/checkout/repo"], "--root=<repository root>"),
         (
-            ["--root", "/srv/repo", "--merged-ref", "main"],
-            "--root <repository root> --merged-ref main",
+            ["--root", "/srv/repo", "--run", "x"],
+            "--root <repository root> --run x",
         ),
     ],
 )

@@ -131,10 +131,10 @@ Not enforced:
   files. A change to the experiment path does not need a freeze revision to merge. The run
   that follows does: its first precondition is that every pin holds, or that a merged
   revision classifies the change, and `--changes` lists what moved.
-- **No test runs an experiment.** No test compares a record's expected refusals with
-  today's code: that comparison is a result-bearing run, recorded under `runs/` and never
-  asserted by a suite. The E01 runner below executes the static parts only when a
-  contributor names a run.
+- **No test asserts that today's code passes.** The E01 suite executes the static parts
+  end to end in a temporary repository on every default lane, and asserts only that the
+  judge agrees with what the runner recorded, never that a part PASSED. A result-bearing
+  run is one a contributor names with `--run`, recorded under `runs/`.
 - **A run's refusal to start, for E01-D.** The E01 runner refuses to start E01-A, E01-B, and
   E01-C when a precondition fails, and it never runs E01-D. No runner for E01-D exists, so
   "a part with a pending field cannot run" is, for E01-D, a procedure the next run follows
@@ -190,15 +190,23 @@ uv run --locked python -m tools.experiment_e01 --check
 
 **Before it runs a part,** the runner checks the record's preconditions and records each
 observation: the executing commit is a full revision reachable from `origin/main`, the
-freeze record is in it, `git status --porcelain --untracked-files=all` prints nothing, and
-every pinned input has its pinned content. If one fails, it writes a run with every part
-REFUSED and runs nothing. It refuses an identifier whose date is not today's UTC date, and an
+freeze record is in it, `git status --porcelain --untracked-files=all` prints nothing,
+every pinned input has its pinned content, and the `inferops` package it imported is the
+one under the checkout's `src`. If one fails, it writes a run with every part REFUSED and
+runs nothing. `origin/main` is read as the clone holds it, so a clone that has not fetched
+refuses a commit that is merged; the reverse cannot happen. The runner reads revision 1
+of the freeze record only: a later revision that classifies a moved input needs the
+runner to read it before a run can rely on it. It refuses an identifier whose date is not today's UTC date, and an
 evidence directory that already exists. It starts only with `PYTHONHASHSEED=1`; the second
 E01-A render runs in its own process with `PYTHONHASHSEED=2`.
 
 **After the parts,** it records the commit and the status again. A changed commit, or a
 change outside the run's evidence directory, is an abort condition, and the parts are
-ABORTED. It removes its temporary directory and records that it did.
+ABORTED. It removes its temporary directory and records that it did. The status check
+sees what `git status` sees: a write to an ignored path, or outside the repository, is
+not detected. A step that raises is recorded as the run's `error`, and the parts it left
+unanswered are INCONCLUSIVE; a criterion that did not hold makes its part FAILED even when
+another went unanswered, because a FAILED run is not repeated.
 
 **What a run holds.** One directory under
 [`v2-e01/runs/`](v2-e01/runs/), named by its identifier, with the files the record's
@@ -207,12 +215,20 @@ commit, preconditions, host, runner file digests, observations, abort checks, th
 of every file, each criterion's verdict, and each part's outcome), `commands.txt`,
 `render-a/`, `render-b/`, `mutation/`, `refusals.json`, and `result.md`.
 
-**The check.** `--check` recomputes every verdict from the committed bytes: the two
-renders compared, the release fields read from the files, the mutation's differences
-listed again, and every refusal compared with the record's expected one. It fails when a
-file does not have the digest the manifest records, when the manifest names a file that is
-absent or omits one that is present, when a verdict or an outcome differs from the one the
-evidence gives, and when `result.md` is not the page the evidence generates. The
+**The check.** `--check` derives every verdict again from the committed renders, the
+recorded refusals, and the observations the manifest records: the two renders compared,
+the release fields read from the files, the mutation's differences listed again, and every
+refusal compared with the record's expected one. It does not recompute the contract,
+binding, or mutated-contract digests, the admission of the hand-written values, or the V1
+merge; those are the run's observations. It fails when a file does not have the digest the
+manifest records, when the manifest names a file that is absent or omits one that is
+present, when a verdict or an outcome differs from the one the evidence gives, when
+`result.md` is not the page the evidence generates, when the run names a reference other
+than `origin/main`, when its recorded precondition findings are not the ones its recorded
+observations give, and when the manifest cannot be read. The manifest is not in its own
+digest list, so an edit to it and to `result.md` together passes `--check`; the evidence
+index, which binds every cited file of the run's record by SHA-256, the manifest
+included, is what refuses that. The
 default-lane suite [`tests/testing/test_experiment_e01.py`](../../../tests/testing/test_experiment_e01.py)
 runs it over the committed run and plants each of these defects in a copy.
 
@@ -220,7 +236,7 @@ runs it over the committed run and plants each of these defects in a copy.
 the merged commit `707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3`, in a detached worktree with no
 change before the run and only the evidence directory after it. E01-A, E01-B, and E01-C each
 PASSED: every criterion from E01-AC1 to E01-AC7 held. The claim
-`identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused`
+`the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal`
 in the [claim and evidence register](../../testing/claim-evidence-matrix.v1alpha2.json)
 holds it at C0. The run's [validation record](../domain/v2-s2-003-pr2-validation.md) says
 how it was prepared and what was checked.
@@ -228,6 +244,9 @@ how it was prepared and what was checked.
 **What a run does not do.** The runner is not a pinned input of the freeze record, and the
 run of record executed from a byte copy outside the checked-out tree, so the commit it
 records does not contain the runner. The manifest records the content digest of each runner
-file instead. Nothing compares a committed run with today's code: a later change to the
+file instead. Those digests are of the runner as `V2-S2-003-PR2` first committed it: its
+independent review then changed the runner, so the files committed beside the run are not
+the ones that ran, and the first commit of that change holds the ones that did. The fixes
+changed no verdict of the run. Nothing compares a committed run with today's code: a later change to the
 renderer leaves the run as it was, and a new run needs a new identifier. Nothing here
 deploys the release input, reconciles it, or serves a completion; that is E01-D.

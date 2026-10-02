@@ -543,12 +543,16 @@ def test_the_record_names_no_private_path_or_address() -> None:
 
 # ----------------------------------------------------- the E01 static proof ledger
 
-E01_CLAIM_ID = "identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused"
+E01_CLAIM_ID = (
+    "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal"
+)
 E01_CHANGES = E01["registerChanges"]
 E01_FINDINGS = {row["findingId"]: row for row in E01["findings"]}
 (E01_ADDED,) = [c for c in E01_CHANGES if c["operation"] == "add-claim"]
 (E01_RECORD,) = E01_ADDED["claim"]["evidenceRecords"]
 E01_RUN = "docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1"
+#: The register as the reconciliation ledger left it, before the E01 ledger.
+AFTER_THIS_LEDGER_AND_RECONCILIATION = restore_migrated_register(REGISTER, E01)
 
 
 def test_the_e01_ledger_follows_the_reconciliation_and_states_no_release() -> None:
@@ -643,3 +647,11 @@ def test_the_record_states_the_outcome_and_revision_the_run_recorded() -> None:
 def test_an_added_claim_already_in_the_register_is_refused() -> None:
     with pytest.raises(ValueError, match="already exists"):
         apply_register_changes(REGISTER, E01)
+
+
+@pytest.mark.parametrize("position", [-1, 10_000])
+def test_an_added_claim_outside_the_claims_is_refused(position: int) -> None:
+    ledger = copy.deepcopy(E01)
+    ledger["registerChanges"][0]["position"] = position
+    with pytest.raises(ValueError, match="outside the claims"):
+        apply_register_changes(AFTER_THIS_LEDGER_AND_RECONCILIATION, ledger)

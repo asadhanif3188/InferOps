@@ -448,8 +448,10 @@ uv run --locked python -m tools.experiment_freeze --changes docs/proof/experimen
 
 For E01-A, E01-B, and E01-C the runner enforces that precondition itself, with the merged
 commit and the clean tree, and writes a run with every part REFUSED when one fails. No
-runner exists for E01-D, so for it the precondition is still a procedure. A run's
-evidence is never edited after it is written; a new run takes a new identifier. Every
+runner exists for E01-D, so for it the precondition is still a procedure. Do not edit a
+run's evidence after it is written; a new run takes a new identifier. Nothing refuses an
+edit by itself: `--check` finds one that leaves the files disagreeing with the manifest,
+and the evidence index finds an edit to any file the run's register record cites. Every
 committed run is judged again from its own evidence in the default lane:
 
 ```sh

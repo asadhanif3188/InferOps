@@ -678,7 +678,8 @@ applies any of them today. They are stated so that nobody reads the domain as mo
 is. One rule left this table in `V2-S2-002-PR1`: a release committed to the repository
 matches what its sources derive today. [The drift check](../domain/helm-values-renderer.md#verifying-a-committed-release)
 applies it to every declared committed release, and a test fails if a tracked generated
-file is outside a declared release directory.
+file is outside a declared release directory, except a render an E01 run's manifest
+records, which is evidence bound to the commit that ran it and is not derived again.
 
 | Rule | Why it is not applied | What it needs |
 |---|---|---|

@@ -56,9 +56,15 @@ register changes in the same before-and-after form, and the findings each answer
 is a later post-release ledger: it states no release, raises and closes no blocker,
 and declares no freeze.
 
-The six ledgers are applied in order, and undone in reverse, so the register's
-history since the migration is the six of them together. The first four are the ones
-the `v1.0.0` pack covers; the two after them are the post-release ledgers.
+**The E01 static proof ledger** is
+`docs/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json`, the record of what
+`V2-S2-003-PR2` added once the static parts of E01 had run: one claim, with its one
+record, added by an ``add-claim`` change, and one surface reason replaced. It is the
+third post-release ledger, and the first to add a claim.
+
+The seven ledgers are applied in order, and undone in reverse, so the register's
+history since the migration is the seven of them together. The first four are the
+ones the `v1.0.0` pack covers; the three after them are the post-release ledgers.
 
 **Two digests.** `evidenceSetSha256` covers every file a record cites and nothing else,
 so a change to the register's wording or to a ledger does not move it.
@@ -500,6 +506,10 @@ def apply_register_changes(
             claim_id = change["claim"]["claimId"]
             if any(row["claimId"] == claim_id for row in changed["claims"]):
                 raise ValueError(f"{change['changeId']}: {claim_id} already exists")
+            if not 0 <= change["position"] <= len(changed["claims"]):
+                raise ValueError(
+                    f"{change['changeId']}: the position is outside the claims"
+                )
             changed["claims"].insert(change["position"], copy.deepcopy(change["claim"]))
             continue
         if change["operation"] == "add-record":
@@ -1127,7 +1137,7 @@ def build_index(
     ledgers: Sequence[Mapping[str, Any]] | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
-    """The evidence index the register and the six ledgers produce today.
+    """The evidence index the register and the seven ledgers produce today.
 
     The pack sources are read from the committed files, not from the arguments: the
     pack digest binds what is on disk, which is what a release ships. The released

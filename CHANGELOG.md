@@ -16,15 +16,20 @@ from `1.0.0`.
   Each part PASSED: two renders in two processes with different hash seeds were byte for
   byte identical and recorded their sources; a replica-range change moved only
   `runtime.replicaCount` and the three release fields that record it; and six invalid or
-  conflicting inputs were each refused twice as registered, writing nothing. The run's raw
-  evidence is [committed](docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/result.md),
-  and `python -m tools.experiment_e01 --check` judges it again from its bytes in the
-  default lane. The runner, `tools/experiment_e01`, refuses to start a run whose commit is
-  not merged, whose tree is not clean, or whose pinned inputs moved; it ran from a byte
-  copy outside the checked-out tree, and the run records each runner file's digest. One
-  claim is added, certified at `C0`, through a seventh ledger and a new `add-claim`
-  operation the evidence index undoes like any other change; the released pack is
-  unchanged. Nothing was deployed: E01-D has not run. [The validation
+  conflicting inputs were each refused twice as registered, with no output directory
+  written. The run's raw evidence is
+  [committed](docs/proof/experiments/v2-e01/runs/20261002-e01-abc-1/result.md), and
+  `python -m tools.experiment_e01 --check` judges it again in the default lane from its
+  renders, its refusals, and the observations it recorded. The runner,
+  `tools/experiment_e01`, refuses to start a run whose commit is not merged, whose tree is
+  not clean, whose pinned inputs moved, or whose imported package is not the checkout's;
+  it ran from a byte copy outside the checked-out tree, and the run records each runner
+  file's digest. One claim is added, certified at `C0`, about the run's committed
+  evidence, through a seventh ledger and a new `add-claim` operation the evidence index
+  undoes like any other change; the released pack is unchanged. An independent review
+  before merge found the claim worded about the renderer rather than the evidence, a
+  FAILED part reportable as INCONCLUSIVE, a self-attested merge reference, and stale
+  pages; all are closed in the same change. Nothing was deployed: E01-D has not run. [The validation
   record](docs/proof/domain/v2-s2-003-pr2-validation.md) says how the run was prepared,
   why its record is `C0`, and what was checked.
 - **V1 synchronous compatibility and the E01 family freeze.** `V2-S2-003-PR1` records,

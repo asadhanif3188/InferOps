@@ -186,6 +186,10 @@ def test_declared_releases_have_distinct_names_and_directories() -> None:
     assert len(set(directories)) == len(directories)
 
 
+#: The directories of an E01 run that hold renders, as the freeze record names them.
+RUN_RENDERS = frozenset({"render-a", "render-b", "mutation"})
+
+
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is not on PATH")
 def test_every_committed_generated_file_is_in_a_declared_release_directory() -> None:
     """A release nobody declared would never be compared, so none may exist.
@@ -214,7 +218,8 @@ def test_every_committed_generated_file_is_in_a_declared_release_directory() -> 
         for relative in json.loads(
             (run / "run.v1alpha1.json").read_text(encoding="utf-8")
         )["files"]
-        if relative.rsplit("/", 1)[-1] in GENERATED_FILES
+        if relative.split("/")[0] in RUN_RENDERS
+        and relative.rsplit("/", 1)[-1] in GENERATED_FILES
     ]
     assert committed == sorted([*declared, *run_evidence])
 

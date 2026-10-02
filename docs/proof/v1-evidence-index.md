@@ -9,7 +9,8 @@ by `python -m tools.evidence_index --write` from
 [the `V1-S5-013-PR1` closure ledger](testing/v1-s5-013-pr1-closure.v1alpha1.json),
 [the `V1-S5-013-PR2` publication ledger](testing/v1-s5-013-pr2-publication.v1alpha1.json),
 [the `V1-S5-009-PR1` post-release ledger](testing/v1-s5-009-pr1-post-release.v1alpha1.json),
-and [the `V2-S2-001-PR2` claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json).
+[the `V2-S2-001-PR2` claim reconciliation ledger](testing/v2-s2-001-pr2-claim-reconciliation.v1alpha1.json),
+and [the `V2-S2-003-PR2` E01 static proof ledger](testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json).
 It states nothing they do not, and
 [`tests/testing/test_evidence_index.py`](../../tests/testing/test_evidence_index.py)
 regenerates it and fails on any difference.
@@ -64,7 +65,7 @@ planned claim, `deployment-values-derive-only-from-a-validated-document`, once H
 values were generated - the claim stays planned with no record - and this page's reason
 in the register, through a second post-release ledger, the claim reconciliation ledger.
 Then `V2-S2-003-PR2` added one claim,
-`identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused`,
+`the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal`,
 certified at `C0` on the record of the first run of the static parts of V2-E01, and
 replaced this page's reason in the register again, through a third post-release ledger,
 the E01 static proof ledger. It is the first ledger to add a claim. Each moves the pack
@@ -100,7 +101,7 @@ over, and for the pack this checkout holds.
 | Pack | Evidence set | Evidence pack |
 |---|---|---|
 | **Released:** the one `v1.0.0` was cut over, frozen by `V1-S5-013-PR2`, in `summary.releasedPack` | `1d40b33fd79d7b6436c35cfe1fc4ec943a8b82fc77ad1da7cd5d96bb2a5ac23a` | `652e9051161d38e6dd2e77306a431bf96d863a262cc4b0dab15c0518ba920ad2` |
-| **Current:** `main` after the three post-release ledgers, which no release quotes | `de11dcbadad7c6168f722c2fa97ea53a394e37c98db226a804db646976e2cb3f` | `124e7ba5a57f98912060fa25662de8a87cd885b95541616a1028ac4660ac619c` |
+| **Current:** `main` after the three post-release ledgers, which no release quotes | `9079a82d400a271e64f2ad233ead83abe9bbaf8e55268e7435b66d2790358a99` | `b53b1dbbc362de17e912526bb500ede816f4b4d56a738f84c5d7fc0955c6fa78` |
 
 The released pair is not read from a ledger. The index undoes the three post-release
 ledgers' changes, last first, renders the register as it was, and takes both digests

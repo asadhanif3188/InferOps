@@ -290,15 +290,21 @@ The tests assert each property directly:
   imports reach only the workload, environment, and release domains and the request
   context; no module names `open`, `eval`, `exec`, `__import__`, or `importlib`;
 - nothing under `src`, `tools`, `scripts`, `charts`, `deploy`, or `infra` imports the
-  package, so the boundary is not wired to any delivery path. Since `V2-S2-002-PR1` one
-  tool is exempt by name: [the drift check](helm-values-renderer.md#verifying-a-committed-release)
-  in `tools/generated_release`, a repository check that derives the committed generated
-  releases again and writes only a declared release directory in this repository. A
-  test holds that the exemption is used. Another reads every tracked file under `src`,
-  `tools`, `scripts`, `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`,
-  whatever its suffix, and fails if any outside the drift check names
-  `generated_release` as a whole word - so no module, script, chart, deployment or
-  infrastructure file, workflow, or project setting reaches the drift check in turn.
+  package, so the boundary is not wired to any delivery path. Two tools are exempt by
+  name, each a repository check. Since `V2-S2-002-PR1`,
+  [the drift check](helm-values-renderer.md#verifying-a-committed-release) in
+  `tools/generated_release` derives the committed generated releases again and writes
+  only a declared release directory in this repository. Since `V2-S2-003-PR2`, the
+  [E01 runner](../proof/experiments/README.md#the-e01-static-run) in `tools/experiment_e01`
+  runs the static parts of E01 and writes only a new run directory under
+  `docs/proof/experiments/v2-e01/runs/`; it reads the platform defaults with the drift
+  check's reader, because the freeze record names that reader. A test holds that each
+  exemption is used. Another reads every tracked file under `src`, `tools`, `scripts`,
+  `charts`, `deploy`, `infra`, and `.github`, and `pyproject.toml`, whatever its suffix,
+  and fails if any file outside the two tools names either tool's package as a whole
+  word - so no module, script, chart, deployment or infrastructure file, workflow, or
+  project setting reaches either in turn. A file inside one of the two is not read, so
+  the E01 runner may name the drift check's reader.
 
 ## The renderer interface
 

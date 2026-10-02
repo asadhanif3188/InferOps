@@ -46,6 +46,7 @@ from typing import Any, Final
 
 import yaml
 
+import inferops
 from inferops.domain.environment import (
     EnvironmentBinding,
     EnvironmentBindingError,
@@ -88,6 +89,7 @@ __all__ = [
     "FREEZE_PATH",
     "HASH_SEEDS",
     "KIND",
+    "MERGED_REF",
     "OUTCOME_STATES",
     "PARTS",
     "REPO_ROOT",
@@ -101,6 +103,7 @@ __all__ = [
     "committed_runs",
     "deep_merge",
     "execute_run",
+    "imported_package",
     "judge",
     "leaves",
     "load_freeze",
@@ -215,6 +218,14 @@ def _pointer(path: str) -> list[str]:
     return [part.replace("~1", "/").replace("~0", "~") for part in path[1:].split("/")]
 
 
+def _patch_value(operation: Mapping[str, Any]) -> Any:
+    if "value" not in operation:
+        raise PatchError(
+            f"{operation.get('path')}: an {operation.get('op')} needs a value"
+        )
+    return copy.deepcopy(operation["value"])
+
+
 def apply_patch(document: Any, operations: Sequence[Mapping[str, Any]]) -> Any:
     """``document`` with the JSON Patch ``add``, ``remove``, and ``replace`` applied.
 
@@ -233,7 +244,10 @@ def apply_patch(document: Any, operations: Sequence[Mapping[str, Any]]) -> Any:
             if isinstance(parent, dict) and part in parent:
                 parent = parent[part]
             elif (
-                isinstance(parent, list) and part.isdigit() and int(part) < len(parent)
+                isinstance(parent, list)
+                and part.isascii()
+                and part.isdigit()
+                and int(part) < len(parent)
             ):
                 parent = parent[int(part)]
             else:
@@ -242,14 +256,14 @@ def apply_patch(document: Any, operations: Sequence[Mapping[str, Any]]) -> Any:
         if not isinstance(parent, dict):
             raise PatchError(f"{operation.get('path')}: the target is not an object")
         if op == "add":
-            parent[last] = copy.deepcopy(operation["value"])
+            parent[last] = _patch_value(operation)
         elif op in {"remove", "replace"}:
             if last not in parent:
                 raise PatchError(f"{operation.get('path')}: {last!r} does not exist")
             if op == "remove":
                 del parent[last]
             else:
-                parent[last] = copy.deepcopy(operation["value"])
+                parent[last] = _patch_value(operation)
         else:
             raise PatchError(f"{op!r} is not an operation this run applies")
     return patched
@@ -391,6 +405,19 @@ def _a_inputs(root: Path, freeze: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def imported_package(root: Path) -> str:
+    """Where the ``inferops`` package this process imported lives, said safely.
+
+    The repository path when it is inside ``root``; otherwise a sentence that names
+    no host path.
+    """
+    location = Path(inferops.__file__).resolve().parent
+    try:
+        return location.relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return "outside the checked-out tree"
+
+
 def render_second(root: Path, revision: str, out: Path) -> dict[str, Any]:
     """E01-A step 4: the three steps again, in this process, written to ``out``."""
     freeze = load_freeze(root)
@@ -403,6 +430,7 @@ def render_second(root: Path, revision: str, out: Path) -> dict[str, Any]:
     return {
         "pythonHashSeed": os.environ.get("PYTHONHASHSEED"),
         "hashRandomization": bool(sys.flags.hash_randomization),
+        "inferopsPackage": imported_package(root),
     }
 
 
@@ -429,13 +457,15 @@ def precondition_findings(
     status: Sequence[str],
     moved_inputs: Sequence[str],
     parts: Sequence[str],
+    package_in_checkout: bool = True,
 ) -> list[str]:
     """Each freeze precondition the observed state fails, in the record's order.
 
     Every argument is an observation the caller made: the commit checked out, whether
     it is reachable from the merged branch, whether the freeze record is in it, the
-    porcelain status lines, the pinned inputs whose content moved, and the parts the
-    run executes.
+    porcelain status lines, the pinned inputs whose content moved, the parts the
+    run executes, and whether the ``inferops`` package imported is the one in the
+    checked-out tree's ``src``.
     """
     findings = []
     if not re.fullmatch(r"[0-9a-f]{40}", head):
@@ -453,7 +483,31 @@ def precondition_findings(
         )
     if "E01-D" in parts:
         findings.append("E01-D is refused while its environment identity is pending")
+    if not package_in_checkout:
+        findings.append(
+            "the inferops package imported is not the one in the checked-out tree"
+        )
     return findings
+
+
+#: The branch a run's commit must be merged into. ``check_run`` refuses a committed
+#: run that names another, because a run on any other reference proves no merge.
+MERGED_REF: Final = "origin/main"
+
+
+def _recorded_findings(manifest: Mapping[str, Any]) -> list[str]:
+    """The precondition findings the manifest's own observations give."""
+    seen = manifest["preconditions"]
+    package = seen.get("inferopsPackage", "src/inferops")
+    return precondition_findings(
+        head=manifest["executingRevision"],
+        merged=seen["executingRevisionMerged"],
+        freeze_at_head=seen["freezeRecordAtRevision"],
+        status=seen["statusBefore"],
+        moved_inputs=seen["movedPinnedInputs"],
+        parts=manifest["metadata"]["parts"],
+        package_in_checkout=package == "src/inferops",
+    )
 
 
 # --------------------------------------------------------------------------
@@ -722,16 +776,20 @@ def execute_run(
     root: Path,
     run_id: str,
     *,
-    merged_ref: str = "origin/main",
+    merged_ref: str = MERGED_REF,
     prelude: Sequence[str] = (),
     invocation: str = "",
     package: str = "tools.experiment_e01",
+    source_root: Path | None = None,
 ) -> tuple[Path, Judgement]:
     """Run the static parts once and write the evidence directory for ``run_id``.
 
     ``prelude`` is the commands the operator ran to prepare the checkout, stated by
     the operator; commands.txt marks them as stated and not executed by the runner.
-    ``invocation`` is the command line that started this run.
+    ``invocation`` is the command line that started this run. ``merged_ref`` and
+    ``source_root`` exist for the test suite: the command uses ``origin/main`` and
+    requires the ``inferops`` package to be the one under ``root/src``, and
+    ``check_run`` refuses a committed run that named another reference.
 
     Raises:
         ValueError: ``run_id`` is not valid for a run started now. Nothing is written.
@@ -766,6 +824,7 @@ def execute_run(
         f"{FREEZE_PATH}"
     )
     moved = [change.path for change in changed_inputs(freeze, root)]
+    location = imported_package(source_root or root)
     findings = precondition_findings(
         head=head,
         merged=merged,
@@ -773,6 +832,7 @@ def execute_run(
         status=status_before,
         moved_inputs=moved,
         parts=PARTS,
+        package_in_checkout=location == "src/inferops",
     )
 
     evidence.mkdir(parents=True)
@@ -842,6 +902,7 @@ def execute_run(
             "freezeRecordAtRevision": freeze_at_head,
             "statusBefore": status_before,
             "movedPinnedInputs": moved,
+            "inferopsPackage": location,
             "findings": findings,
         },
         "host": {
@@ -861,7 +922,18 @@ def execute_run(
         },
         "files": files,
     }
-    judgement = judge(evidence, freeze, manifest)
+    try:
+        judgement = judge(evidence, freeze, manifest)
+    except Exception as raised:  # the run is still recorded, and answers nothing
+        manifest["error"] = manifest["error"] or {
+            "exception": type(raised).__name__,
+            "message": str(raised),
+        }
+        judgement = Judgement(
+            verdicts=dict.fromkeys((c.criterion_id for c in CRITERIA), None),
+            basis={c.criterion_id: ("the judge raised",) for c in CRITERIA},
+            outcomes=dict.fromkeys(PARTS, "INCONCLUSIVE"),
+        )
     manifest["criteria"] = [
         {
             "id": criterion.criterion_id,
@@ -885,6 +957,15 @@ def _bytes(evidence: Path, directory: str, name: str) -> bytes | None:
     return path.read_bytes() if path.is_file() else None
 
 
+def _mapping(data: bytes | None) -> Mapping[str, Any] | None:
+    """A YAML document's mapping, or None when it is absent, unreadable, or not one."""
+    try:
+        document = yaml.safe_load(data or b"")
+    except yaml.YAMLError:
+        return None
+    return document if isinstance(document, Mapping) else None
+
+
 def _field(document: Any, dotted: str) -> Any:
     for part in dotted.split("."):
         if not isinstance(document, Mapping) or part not in document:
@@ -904,8 +985,16 @@ def _judge_a(
         for criterion in CRITERIA[:5]:
             out[criterion.criterion_id] = (None, ["the E01-A evidence is incomplete"])
         return out
-    release_a = yaml.safe_load(files_a[RELEASE_FILE_NAME] or b"")
-    release_b = yaml.safe_load(files_b[RELEASE_FILE_NAME] or b"")
+    release_a = _mapping(files_a[RELEASE_FILE_NAME])
+    release_b = _mapping(files_b[RELEASE_FILE_NAME])
+    values_a = _mapping(files_a[str(VALUES_FILE_NAME)])
+    if release_a is None or release_b is None or values_a is None:
+        for criterion in CRITERIA[:5]:
+            out[criterion.criterion_id] = (
+                None,
+                ["an E01-A file is not a YAML mapping"],
+            )
+        return out
 
     basis = []
     same = True
@@ -936,7 +1025,9 @@ def _judge_a(
         f"render-b written by a second process, exit status {second.get('exitStatus')}, "
         f"PYTHONHASHSEED {seeds[0]} then {seeds[1]}"
     )
-    out["E01-AC1"] = (same if second_process else None, basis)
+    # Renders that differ fail whatever else is known; identical ones count only
+    # when a second process with another seed wrote the second.
+    out["E01-AC1"] = (False if not same else (True if second_process else None), basis)
 
     recorded = _field(release_a, "source.contract.sha256")
     computed = seen.get("contractDigest")
@@ -985,9 +1076,7 @@ def _judge_a(
 
     admission = seen.get("admission", {})
     targets = seen.get("workloadIntentTargets") or []
-    generated_leaves = dict(
-        leaves(yaml.safe_load(files_a[str(VALUES_FILE_NAME)] or b""))
-    )
+    generated_leaves = dict(leaves(values_a))
     missing = [target for target in targets if target not in generated_leaves]
     differences = seen.get("mergedDifferences")
     # The one difference E01-AC5 allows, with both values as its statement gives them.
@@ -1044,7 +1133,14 @@ def _judge_b(
     expected = _part(freeze, "E01-B")["expectedChange"]
 
     def parsed(directory: str, name: str) -> Any:
-        return yaml.safe_load(paths[directory][name] or b"")
+        return _mapping(paths[directory][name])
+
+    if any(
+        parsed(directory, name) is None
+        for directory in (RENDER_A, MUTATION)
+        for name in RENDERED_FILES
+    ):
+        return None, ["an E01-B file is not a YAML mapping"]
 
     values = leaf_differences(
         parsed(RENDER_A, str(VALUES_FILE_NAME)), parsed(MUTATION, str(VALUES_FILE_NAME))
@@ -1188,12 +1284,15 @@ def judge(
             outcomes[part] = "REFUSED"
         elif aborted:
             outcomes[part] = "ABORTED"
+        elif any(verdict is False for verdict in verdicts):
+            # The part executed as registered and a criterion did not hold. That is
+            # FAILED even when another criterion went unanswered, so it cannot be
+            # repeated as an inconclusive run.
+            outcomes[part] = "FAILED"
         elif any(verdict is None for verdict in verdicts):
             outcomes[part] = "INCONCLUSIVE"
-        elif all(verdicts):
-            outcomes[part] = "PASSED"
         else:
-            outcomes[part] = "FAILED"
+            outcomes[part] = "PASSED"
     return Judgement(
         verdicts={key: value[0] for key, value in results.items()},
         basis={key: tuple(value[1]) for key, value in results.items()},
@@ -1313,11 +1412,33 @@ def check_run(evidence: Path, root: Path = REPO_ROOT) -> list[RunFinding]:
     the run names, by content digest.
     """
     name = evidence.name
-    findings: list[RunFinding] = []
     try:
         manifest = json.loads((evidence / MANIFEST).read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         return [RunFinding(name, MANIFEST, f"cannot be read: {type(error).__name__}")]
+    try:
+        return _check_manifest(evidence, name, manifest, root)
+    except (KeyError, TypeError, AttributeError) as error:
+        return [RunFinding(name, MANIFEST, f"is malformed: {type(error).__name__}")]
+
+
+def _check_manifest(
+    evidence: Path, name: str, manifest: Mapping[str, Any], root: Path
+) -> list[RunFinding]:
+    findings: list[RunFinding] = []
+    preconditions = manifest["preconditions"]
+    if preconditions["mergedRef"] != MERGED_REF:
+        findings.append(
+            RunFinding(name, "preconditions.mergedRef", f"is not {MERGED_REF}")
+        )
+    if preconditions["findings"] != _recorded_findings(manifest):
+        findings.append(
+            RunFinding(
+                name,
+                "preconditions.findings",
+                "are not the findings the recorded observations give",
+            )
+        )
     freeze = load_freeze(root)
     pinned = manifest["metadata"]["freezeContentSha256"]
     if content_digest((root / FREEZE_PATH).read_bytes()) != pinned:

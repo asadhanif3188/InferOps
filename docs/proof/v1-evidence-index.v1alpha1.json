@@ -27,8 +27,8 @@
   "packSources": [
     {
       "path": "docs/testing/claim-evidence-matrix.v1alpha2.json",
-      "sha256": "ecd876f9b7f12ed36200424026bb603c8519e0b8dba40c1c5cd3ca945b149ff8",
-      "gitBlob": "7b89d63c65260ccc0e84597587ec7c276403abfb"
+      "sha256": "6eb23069e5dea406508063d1a2b820d73c9e014c40358375fa0ce0dd145696fa",
+      "gitBlob": "da0cbc1350e49a793418740f2facbd893f353913"
     },
     {
       "path": "docs/proof/testing/v1-s5-006-pr1-normalization.v1alpha1.json",
@@ -62,8 +62,8 @@
     },
     {
       "path": "docs/proof/testing/v2-s2-003-pr2-e01-static-proof.v1alpha1.json",
-      "sha256": "a52d145e53968f7678473f531458e1b0c020f8133e08c683a814c28db2f95ede",
-      "gitBlob": "d2253795890b0236b2bc9841423f4dc56a98b1a5"
+      "sha256": "6de763ea73fd1d2fc79b08f4bebb9e5ca6c427e3b2655efe309e63c48edc5c46",
+      "gitBlob": "c4102bd8afcd24e8e95b1b4c452f6014ed1b8f0b"
     }
   ],
   "summary": {
@@ -135,8 +135,8 @@
     "publicationCorrections": 4,
     "evidenceFreeze": "frozen",
     "postReleaseRegisterChanges": 11,
-    "evidenceSetSha256": "de11dcbadad7c6168f722c2fa97ea53a394e37c98db226a804db646976e2cb3f",
-    "evidencePackSha256": "124e7ba5a57f98912060fa25662de8a87cd885b95541616a1028ac4660ac619c",
+    "evidenceSetSha256": "9079a82d400a271e64f2ad233ead83abe9bbaf8e55268e7435b66d2790358a99",
+    "evidencePackSha256": "b53b1dbbc362de17e912526bb500ede816f4b4d56a738f84c5d7fc0955c6fa78",
     "releasedPack": {
       "tag": "v1.0.0",
       "tagObject": "17c9bbd71ffaeaf286f7949a1c91624bbcfe3e04",
@@ -1413,19 +1413,19 @@
       "closedBlockers": []
     },
     {
-      "claimId": "identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused",
+      "claimId": "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal",
       "area": "contracts-and-domain",
       "status": "certified",
       "assertsRealBehaviour": false,
-      "statement": "Under the frozen E01 procedure, two renders of the V1 synchronous reference contract on its local binding, in two processes, wrote byte-identical release input that records its sources; a replica-range change moved only the values and release fields it owns; and six invalid or conflicting inputs were each refused twice with the registered rule, category, and code, writing nothing.",
-      "limitation": "Static, C0, from one run on one host: the renderer ran as a tool and its release input was inspected, for one contract on one binding. Nothing was deployed, reconciled, or served. The platform-defaults revision a release records is asserted, not reconstructed, and the two hand-written strings that repeat contract pins are not checked against the contract.",
-      "doesNotEstablish": "That the release input deploys or serves, which E01-D owns and has not run; determinism for another workload shape, contract, or binding; reliability under failure; or production readiness.",
+      "statement": "The committed evidence of the first run of the frozen E01 static parts holds two renders of the V1 synchronous reference contract on its local binding, written by two processes, that are byte-identical and record their sources; a render after a replica-range change that differs only in the values and release fields that change owns; and, for each of six registered invalid or conflicting inputs, two identical refusals that match the registered one and no output directory.",
+      "limitation": "Static, C0, about the committed evidence of one run on one host at one revision, for one contract on one binding. The renderer that produced it is product code and ran; a claim about the renderer itself would be C2 and is not made. Nothing was deployed, reconciled, or served. One of the six refusals, E01-C-4, comes from the binding parser and carries a code and a field but no rule category. The platform-defaults revision a release records is asserted, not reconstructed, and the two hand-written strings that repeat contract pins are not checked against the contract.",
+      "doesNotEstablish": "That the release input deploys or serves, which E01-D owns and has not run; that the renderer gives the same result at another revision, or for another workload shape, contract, or binding; that any invalid input beyond the six registered cases is refused; reliability under failure; or production readiness.",
       "claimMaterialComponents": null,
       "levels": [
         "C0"
       ],
       "recordIds": [
-        "identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused-c0"
+        "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal-c0"
       ],
       "codeIdentity": null,
       "releaseBlockers": [],
@@ -10646,14 +10646,14 @@
       ]
     },
     {
-      "recordId": "identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused-c0",
-      "claimId": "identical-validated-inputs-render-identical-release-input-and-invalid-inputs-are-refused",
+      "recordId": "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal-c0",
+      "claimId": "the-first-e01-static-run-recorded-identical-renders-and-every-registered-refusal",
       "claimStatus": "certified",
       "evidenceLevel": "C0",
       "migrationState": "migrated",
       "registerPointer": "/claims/59/evidenceRecords/0",
-      "registerEntrySha256": "84586fbd4a209f065c5c5c782eaafc55fa5f51675ad4c6cecf3d2358faa89389",
-      "summary": "On 2026-10-02 the static parts of V2-E01 ran once, as freeze revision 1 registers them, at the merged revision 707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3 with every pinned input unchanged and nothing uncommitted before the run; E01-A, E01-B, and E01-C each PASSED, and python -m tools.experiment_e01 --check judges the committed run again from its raw evidence.",
+      "registerEntrySha256": "c69fe8c542e2b320053b6a474deca776c3134cd3d04da3fd07cd52662acee0ec",
+      "summary": "On 2026-10-02 the static parts of V2-E01 ran once, as freeze revision 1 registers them, at the merged revision 707e29f4a0ff31ea90fa33f6b8cf2ec883cfb6a3 with every pinned input unchanged and nothing uncommitted before the run; E01-A, E01-B, and E01-C each PASSED, and python -m tools.experiment_e01 --check judges the committed run again from its renders, its refusals, and the observations its manifest records.",
       "execution": {
         "targetBehaviourExecuted": false,
         "executedComponents": [
@@ -10770,7 +10770,7 @@
         },
         {
           "resultId": "e01-ac7",
-          "statement": "Each of the six negative cases was refused at its registered step with exactly its registered refusal, wrote no output directory, and was refused the same way when run a second time."
+          "statement": "Each of the six negative cases was refused at its registered step with exactly its registered refusal, five with a rule, a category, and a code and E01-C-4 by the binding parser with a code and a field, left its output directory absent, and was refused the same way when run a second time."
         }
       ],
       "limitations": [
@@ -10778,11 +10778,15 @@
         "The renderer ran as a tool and its release input was inspected; the release input was not deployed, reconciled, or served.",
         "The platform-defaults revision a release records is asserted, not reconstructed, and the download URL and licence reference that repeat contract pins are not checked against the contract.",
         "The runner is not a pinned input of the freeze record. It ran from a byte copy outside the checked-out tree, and the run records each runner file's content digest instead.",
-        "The runner was first exercised in temporary repositories by its own test suite before the run; those executions are not E01 runs and are not result evidence."
+        "Before the run, the runner executed the three parts in temporary repositories built from the pinned inputs: its test suite, which also runs on every default lane, and one development preview, which showed every part PASSED. Neither ran at the merged commit, and neither is result evidence.",
+        "The renderer that produced the evidence is product code in src/, and it executed. The record is C0 because the claim is about the committed evidence and the freeze record registers C0 for these parts; a claim that the renderer renders deterministically at any revision would, by the register's parser row, be C2, and is not made.",
+        "The --check judge derives verdicts from the committed renders and refusals and from observations the run recorded; the contract, binding, and mutated-contract digests, the admission, and the V1 merge are the run's observations, not recomputed."
       ],
       "doesNotEstablish": [
         "That the release input deploys through Git and Argo CD or serves a completion: E01-D owns that and has not run.",
         "That another workload shape, contract, or binding renders deterministically.",
+        "That the renderer gives the same result at any revision other than the one that ran.",
+        "That any invalid input beyond the six registered cases is refused.",
         "Reliability under failure, or production readiness."
       ],
       "evidence": [
@@ -10828,8 +10832,8 @@
         },
         {
           "path": "docs/proof/domain/v2-s2-003-pr2-validation.md",
-          "sha256": "ad8a66ca71e11b61a478c9f755b96b1a3b91aceaaa11525c30d98ff0d5411bea",
-          "gitBlob": "e45d913acd9ef885c70a41b3c7d191d8ce5af8cb",
+          "sha256": "64f7993ee724881c5176e3ff80a159f581ee88af7bc3c77ee254ca08a0c79ab8",
+          "gitBlob": "cc42260b7a1c793bd25e5f02c417b9fcd9053e54",
           "recordedDate": {
             "label": "Date",
             "value": "2026-10-02"

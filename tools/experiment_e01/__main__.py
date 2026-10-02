@@ -6,8 +6,8 @@
 ``--run`` executes E01-A, E01-B, and E01-C as the E01 family freeze record registers
 them, and writes one evidence directory under docs/proof/experiments/v2-e01/runs/.
 It starts only with ``PYTHONHASHSEED=1``, the seed of the process that writes
-render-a; the second render runs in a process with seed 2. ``--merged-ref`` names the
-branch the executing commit must be merged into, ``origin/main`` by default.
+render-a; the second render runs in a process with seed 2. The executing commit must
+be reachable from ``origin/main`` as this clone holds it; fetch first.
 ``--prelude FILE`` copies the operator's preparation commands into commands.txt,
 marked as stated by the operator. Exit status is 0 when every part PASSED, 1 when a
 part has another outcome, and 2 when nothing was written.
@@ -81,7 +81,6 @@ def _shown(argv: Sequence[str]) -> str:
 def _run(
     root: Path,
     run_id: str,
-    merged_ref: str,
     prelude: Path | None,
     argv: Sequence[str],
 ) -> int:
@@ -103,7 +102,6 @@ def _run(
         evidence, judgement = execute_run(
             root,
             run_id,
-            merged_ref=merged_ref,
             prelude=stated,
             invocation=invocation,
             package=package,
@@ -124,7 +122,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     mode.add_argument("--check", action="store_true", help="check every committed run")
     # The second E01-A render, started by --run in its own process.
     mode.add_argument("--render-second", metavar="DIRECTORY", help=argparse.SUPPRESS)
-    parser.add_argument("--merged-ref", default="origin/main", help=argparse.SUPPRESS)
     parser.add_argument("--prelude", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--revision", help=argparse.SUPPRESS)
     parser.add_argument("--root", type=Path, default=REPO_ROOT, help=argparse.SUPPRESS)
@@ -141,7 +138,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     return _run(
         root,
         arguments.run,
-        arguments.merged_ref,
         arguments.prelude,
         sys.argv[1:] if argv is None else argv,
     )
